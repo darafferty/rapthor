@@ -1,9 +1,4 @@
-#include <string>
-
-namespace rw 
-{
-  class Module;
-}
+#include "RW.h"
 
 
 /*
@@ -14,34 +9,32 @@ class Xeon {
         Xeon(
             const char *cc, const char *cflags,
             int nr_stations, int nr_baselines, int nr_time,
-        	int nr_channels, int nr_polarizations, int blocksize,
-        	int gridsize, float imagesize);		
+        	int nr_channels, int nr_polarizations, int subgridsize,
+        	int gridsize, float imagesize, int chunksize);		
 
 		void gridder(
 			int jobsize,
-			void *visibilities, void *uvw, void *offset, void *wavenumbers,
-			void *aterm, void *spheroidal, void *baselines, void *uvgrid);
+			void *visibilities, void *uvw, void *wavenumbers,
+			void *aterm, void *spheroidal, void *baselines, void *subgrid);
 		
 		void adder(
 			int jobsize,
-			void *coordinates, void *uvgrid, void *grid);
+			void *uvw, void *subgrid, void *grid);
 			
 		void splitter(
 		    int jobsize,
-		    void *coordinates, void *uvgrid, void *grid);
+		    void *uvw, void *subgrid, void *grid);
 		
 		void degridder(
 			int jobsize,
-			void *offset, void *wavenumbers, void *aterm, void *baselines,
-			void *visibilities, void *uvw, void *spheroidal, void *uvgrid);
+			void *wavenumbers, void *aterm, void *baselines,
+			void *visibilities, void *uvw, void *spheroidal, void *subgrid);
 			
 		void fft(
 		    void *grid, int sign);
 		
 	private:
 		rw::Module *module;
-        std::string idgdir;
-        std::string tmpdir;
 		
 };
 
@@ -50,5 +43,5 @@ class Xeon {
 */
 std::string definitions(
 	int nr_stations, int nr_baselines, int nr_time,
-	int nr_channels, int nr_polarizations, int blocksize,
-	int gridsize, float imagesize);
+	int nr_channels, int nr_polarizations, int subgridsize,
+	int gridsize, float imagesize, int chunksize);

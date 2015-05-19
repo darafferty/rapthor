@@ -1,14 +1,9 @@
+#include <omp.h>
 #include <complex.h>
-#include <stdint.h>
-#include <string.h>
 
 #include <sstream>
-#include <iomanip>
 
-#include <omp.h>
-#include <cuda.h>
-#include <cufft.h>
-
+#include "Types.h"
 #include "Kernels.h"
 #include "Power.h"
 
@@ -19,20 +14,19 @@
 #define REPORT_VERBOSE 0
 #define REPORT_TOTAL   1
 
+
 /*
     Enable/disable kernels
 */
 #define GRIDDER   1
 #define DEGRIDDER 1
 #define ADDER     1
+#define SPLITTER  1
 #define SHIFTER   1
 #define FFT       1
 #define INPUT     1
 #define OUTPUT    1
-#define WARMUP    1
-#define LOOP      0
-#define REPEAT    0
-#define NR_REPETITIONS 10
+
 
 /*
 	File and kernel names
@@ -40,14 +34,17 @@
 #define SOURCE_GRIDDER      "CUDA/Gridder.cu"
 #define SOURCE_DEGRIDDER    "CUDA/Degridder.cu"
 #define SOURCE_ADDER		"CUDA/Adder.cu"
+#define SOURCE_SPLITTER     "CUDA/Splitter.cu"
 #define SOURCE_SHIFTER      "CUDA/Shifter.cu"
 #define PTX_DEGRIDDER       "CUDA/Degridder.ptx"
 #define PTX_GRIDDER         "CUDA/Gridder.ptx"
 #define PTX_ADDER 			"CUDA/Adder.ptx"
+#define PTX_SPLITTER        "CUDA/Splitter.ptx"
 #define PTX_SHIFTER         "CUDA/Shifter.ptx"
 #define KERNEL_DEGRIDDER    "kernel_degridder"
 #define KERNEL_GRIDDER      "kernel_gridder"
 #define KERNEL_ADDER        "kernel_adder"
+#define KERNEL_SPLITTER     "kernel_splitter"
 #define KERNEL_SHIFTER      "kernel_shifter"
 
 
@@ -56,71 +53,23 @@
 */
 #define VISIBILITY_SIZE	current_jobsize * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(float2)
 #define UVW_SIZE		current_jobsize * NR_TIME * 3 * sizeof(float)
-#define UVGRID_SIZE		current_jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * sizeof(float2)
-
-/*
-    Info
-*/
-void printDevices(int deviceNumber) {
-	std::clog << "Devices";
-	for (int device = 0; device < cu::Device::getCount(); device++) {
-		std::clog << "\t" << device << ": ";
-		std::clog << cu::Device(device).getName();
-		if (device == deviceNumber) {
-			std::clog << "\t" << "<---";
-		}
-		std::clog << std::endl;
-	}
-	std::clog << "\n";
-}
-
-
-/*
-    Compilation
-*/
-std::string compileOptions(int deviceNumber) {
-	std::stringstream options;
-	cu::Device device(deviceNumber);
-	options << " -DNR_STATIONS="		<< NR_STATIONS;
-	options << " -DNR_BASELINES="		<< NR_BASELINES;
-	options << " -DNR_TIME="			<< NR_TIME;
-	options << " -DNR_CHANNELS="		<< NR_CHANNELS;
-	options << " -DNR_POLARIZATIONS="	<< NR_POLARIZATIONS;
-	options << " -DBLOCKSIZE="			<< BLOCKSIZE;
-	options << " -DGRIDSIZE="			<< GRIDSIZE;
-	options << " -DIMAGESIZE="			<< IMAGESIZE;
-	int capability = 10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-						  device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
-	options << " -arch=compute_" << capability;
-	options << " -code=sm_" << capability;
-	options << " -use_fast_math";
-    options << " -lineinfo";
-    options << " -src-in-ptx";
-	return options.str();
-}
-
-void compile(int deviceNumber) {
-	std::string options = compileOptions(deviceNumber);
-	const char *optionsPtr = static_cast<const char *>(options.c_str());
-	#pragma omp parallel sections
-	{
-	#pragma omp section
-	cu::Source(SOURCE_GRIDDER).compile(PTX_GRIDDER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_DEGRIDDER).compile(PTX_DEGRIDDER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_ADDER).compile(PTX_ADDER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_SHIFTER).compile(PTX_SHIFTER, optionsPtr);
-	}
-	#pragma omp barrier
-	std::clog << std::endl;
-}
+#define SUBGRID_SIZE	current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float2)
 
 
 /*
     Benchmark
 */
+struct Record
+{
+  public:
+    void enqueue(cu::Stream&);
+    mutable cu::Event event;
+};
+
+void Record::enqueue(cu::Stream &stream) {
+    stream.record(event);
+}
+
 double runtime(const Record &startRecord, const Record &stopRecord) {
     return stopRecord.event.elapsedTime(startRecord.event) * 1e-3;
 }
@@ -138,9 +87,6 @@ void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
 }
 
 void report(const char *name, const Record &startRecord, const Record &stopRecord, uint64_t flops, uint64_t bytes) {
-#if defined MEASURE_POWER
-    double Watt = PowerSensor::Watt(startRecord.state, stopRecord.state);
-#endif
     double runtime = stopRecord.event.elapsedTime(startRecord.event) * 1e-3;
 	#pragma omp critical(clog)
 	{
@@ -149,27 +95,9 @@ void report(const char *name, const Record &startRecord, const Record &stopRecor
 		std::clog << ", " << flops / runtime * 1e-12 << " TFLOPS";
     if (bytes != 0)
 		std::clog << ", " << bytes / runtime * 1e-9 << " GB/s";
-#if defined MEASURE_POWER
-    std::clog << ", " << Watt << " W";
-    if (flops != 0)
-        std::clog << ", " << flops / runtime / Watt * 1e-9 << " GFLOPS/W";
-#endif
     std::clog << std::endl;
 	}
 }
-
-#if defined MEASURE_POWER
-void report(const char *name, double runtime, uint64_t flops, PowerSensor::State startState, PowerSensor::State stopState) {
-    double energy = PowerSensor::Joules(startState, stopState);
-
-    #pragma omp critical(clog)
-    std::clog << name << ": " << runtime << " s, "
-              << flops / runtime * 1e-12 << " TFLOPS"
-              << ", " << PowerSensor::Watt(startState, stopState) << " W"
-              << ", " << flops / energy * 1e-9 << " GFLOPS/W"
-              << std::endl;
-}
-#endif
 
 void report_visibilities(double runtime) {
     int nr_visibilities = NR_BASELINES * NR_TIME * NR_CHANNELS;
@@ -183,35 +111,157 @@ void report_subgrids(double runtime) {
 
 
 extern "C" {
+/*
+    Compilation
+*/
+std::string compileOptions(int deviceNumber) {
+	std::stringstream options;
+	cu::Device device(deviceNumber);
+	options << " -DNR_STATIONS="		<< NR_STATIONS;
+	options << " -DNR_BASELINES="		<< NR_BASELINES;
+	options << " -DNR_TIME="			<< NR_TIME;
+	options << " -DNR_CHANNELS="		<< NR_CHANNELS;
+	options << " -DNR_POLARIZATIONS="	<< NR_POLARIZATIONS;
+	options << " -DSUBGRIDSIZE="		<< SUBGRIDSIZE;
+	options << " -DGRIDSIZE="			<< GRIDSIZE;
+	options << " -DCHUNKSIZE="          << CHUNKSIZE;
+	options << " -DIMAGESIZE="			<< IMAGESIZE;
+	int capability = 10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
+						  device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
+	options << " -arch=compute_" << capability;
+	options << " -code=sm_" << capability;
+	options << " -use_fast_math";
+    options << " -lineinfo";
+    options << " -src-in-ptx";
+    options << " -ICommon";
+    options << " -g";
+	return options.str();
+}
+
+void compile(int deviceNumber) {
+	std::string options = compileOptions(deviceNumber);
+	const char *optionsPtr = static_cast<const char *>(options.c_str());
+	#pragma omp parallel sections
+	{
+	#pragma omp section
+	cu::Source(SOURCE_GRIDDER).compile(PTX_GRIDDER, optionsPtr);
+	#pragma omp section
+	cu::Source(SOURCE_DEGRIDDER).compile(PTX_DEGRIDDER, optionsPtr);
+	#pragma omp section
+	cu::Source(SOURCE_ADDER).compile(PTX_ADDER, optionsPtr);
+	#pragma omp section
+	cu::Source(SOURCE_SPLITTER).compile(PTX_SPLITTER, optionsPtr);
+	#pragma omp section
+	cu::Source(SOURCE_SHIFTER).compile(PTX_SHIFTER, optionsPtr);
+	}
+	#pragma omp barrier
+	std::clog << std::endl;
+}
+
 
 /*
-	Init
+    State
 */
-void init(int gpuDeviceNumber, const char *powerSensorDevice) {
-    cu::init();
-	printDevices(gpuDeviceNumber);
-	compile(gpuDeviceNumber);
-#if defined MEASURE_POWER
-    std::clog << "Opening power sensor: " << powerSensorDevice << std::endl;
-    powerSensor = new PowerSensor(powerSensorDevice, "powerdump");
-#endif
-    std::clog << std::setprecision(4);
+struct State {
+    int jobsize;
+    Record startRecord;
+    Record stopRecord;
+    double runtime;
+    double flops;
+    double bytes;
+    double power;
+};
+
+inline State make_state(Record &startRecord, Record &stopRecord) {
+    State s = { 0, startRecord, stopRecord, 0, 0, 0, 0 }; return s;
 }
 
 
 /*
 	Gridder
 */
+void callback_gridder_input(CUstream, CUresult, void *userData) {
+    State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = 0;
+    s->bytes = UVW_SIZE + VISIBILITY_SIZE;
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("  input", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_gridder_gridder(CUstream, CUresult, void *userData) {
+     State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = KernelGridder::flops(current_jobsize);
+    s->bytes = KernelGridder::bytes(current_jobsize);
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("gridder", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_gridder_shifter(CUstream, CUresult, void *userData) {
+     State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = KernelShifter::flops(current_jobsize);
+    s->bytes = KernelShifter::bytes(current_jobsize);
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("shifter", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_gridder_fft(CUstream, CUresult, void *userData) {
+     State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = KernelFFT::flops(SUBGRIDSIZE, current_jobsize);
+    s->bytes = KernelFFT::bytes(SUBGRIDSIZE, current_jobsize);
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("   fft", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_gridder_output(CUstream, CUresult, void *userData) {
+    State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = 0;
+    s->bytes = SUBGRID_SIZE;
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report(" output", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
 void run_gridder(
-	int deviceNumber, int nr_streams, int jobsize,
-	void *visibilities, void *uvw, void *offset, void *wavenumbers,
-	void *aterm, void *spheroidal, void *baselines, void *uvgrid) {
+    cu::Context &context, int nr_streams, int jobsize,
+    cu::HostMemory &h_visibilities, cu::HostMemory &h_uvw,
+    cu::HostMemory &h_subgrid, cu::DeviceMemory &d_wavenumbers,
+    cu::DeviceMemory &d_spheroidal, cu::DeviceMemory &d_aterm,
+    cu::DeviceMemory &d_baselines) {
 
     // Initialize
-	cu::Device device(deviceNumber);
-    cu::Context context(device);
-	cu::Stream globalstream;
-    Record records_total[4];
+    Record records_total[2];
+    cu::Stream executestream;
+    cu::Stream htodstream;
+    cu::Stream dtohstream;
 	
 	// Load kernel modules
 	cu::Module module_gridder(PTX_GRIDDER);
@@ -220,236 +270,216 @@ void run_gridder(
 	// Load kernel functions
 	KernelGridder kernel_gridder(module_gridder, KERNEL_GRIDDER);
 	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
-	KernelFFT kernel_fft;
 	
-	// Host memory
-	records_total[0].enqueue(globalstream);
-	cu::HostMemory h_offset(sizeof(OffsetType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_wavenumbers(sizeof(WavenumberType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_aterm(sizeof(ATermType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_spheroidal(sizeof(SpheroidalType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_baselines(sizeof(BaselineType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_visibilities(sizeof(VisibilitiesType));
-	cu::HostMemory h_uvw(sizeof(UVWType));
-	cu::HostMemory h_uvgrid(sizeof(UVGridType));
-	
-	// Initialize host memory
-	memcpy(h_offset, offset, sizeof(OffsetType));
-	memcpy(h_wavenumbers, wavenumbers, sizeof(WavenumberType));
-	memcpy(h_aterm, aterm, sizeof(ATermType));
-	memcpy(h_spheroidal, spheroidal, sizeof(SpheroidalType));
-	memcpy(h_baselines, baselines, sizeof(BaselineType));
-	memcpy(h_visibilities, visibilities, sizeof(VisibilitiesType));
-	memcpy(h_uvw, uvw, sizeof(UVWType));
-	memset(h_uvgrid, 0, sizeof(UVGridType));
-	
-	// Device memory
-	cu::DeviceMemory d_offset(sizeof(OffsetType));
-	cu::DeviceMemory d_wavenumbers(sizeof(WavenumberType));
-	cu::DeviceMemory d_aterm(sizeof(ATermType));
-	cu::DeviceMemory d_spheroidal(sizeof(SpheroidalType));
-	cu::DeviceMemory d_baselines(sizeof(BaselineType));
-
-	// Copy static datastructures to device
-    globalstream.memcpyHtoDAsync(d_offset, h_offset);
-	globalstream.memcpyHtoDAsync(d_wavenumbers, h_wavenumbers);
-	globalstream.memcpyHtoDAsync(d_aterm, h_aterm);
-	globalstream.memcpyHtoDAsync(d_spheroidal, h_spheroidal);
-	globalstream.memcpyHtoDAsync(d_baselines, h_baselines);
-	records_total[1].enqueue(globalstream);
-	globalstream.synchronize();
-
     // Timing variables
     double total_time_gridder[nr_streams];
     double total_time_shifter[nr_streams];
     double total_time_fft[nr_streams];
-    double total_time_in[nr_streams];
-    double total_time_out[nr_streams];
-    double total_bytes_in[nr_streams];
-    double total_bytes_out[nr_streams];
+    double total_time_input[nr_streams];
+    double total_time_output[nr_streams];
+    double total_bytes_input[nr_streams];
+    double total_bytes_output[nr_streams];
+    long total_jobs[nr_streams];
     for (int t = 0; t < nr_streams; t++) {
         total_time_gridder[t] = 0;
         total_time_shifter[t] = 0;
-        total_time_fft[t] = 0;
-        total_time_in[t] = 0;
-        total_time_out[t] = 0;
-        total_bytes_in[t] = 0;
-        total_bytes_out[t] = 0;
+        total_time_fft[t]     = 0;
+        total_time_input[t]   = 0;
+        total_time_output[t]  = 0;
+        total_bytes_input[t]  = 0;
+        total_bytes_output[t] = 0;
+        total_jobs[t]         = 0;
     }
     
-    // Warmup
-    #if WARMUP
-    cu::DeviceMemory d_uvgrid(sizeof(UVGridType)/NR_BASELINES);
-    kernel_fft.launchAsync(globalstream, 1, d_uvgrid, CUFFT_FORWARD);
-    kernel_fft.launchAsync(globalstream, 1, d_uvgrid, CUFFT_INVERSE);
-    globalstream.synchronize();
-    #endif
-
 	// Start gridder
-    records_total[2].enqueue(globalstream);
-    double time_start = omp_get_wtime();
-    
+    int nr_iterations = ((NR_BASELINES / nr_streams) / jobsize) + 1;
+    records_total[0].enqueue(dtohstream);
 	#pragma omp parallel num_threads(nr_streams)
 	{
 	    // Initialize
 	    context.setCurrent();
-	    cu::Stream stream;
-	    cu::Event event;
+        cu::Event executeFinished;
+	    cu::Event inputFree;
         int current_jobsize = jobsize;
-	    Record records[12];
+        int iteration = 0;
         int thread_num = omp_get_thread_num();
+	
+        State states_input[nr_iterations];
+        State states_gridder[nr_iterations];
+        State states_shifter1[nr_iterations];
+        State states_fft[nr_iterations];
+        State states_shifter2[nr_iterations];
+        State states_output[nr_iterations];
+    
+        KernelFFT kernel_fft;
 	    
 	    // Private device memory
     	cu::DeviceMemory d_visibilities(VISIBILITY_SIZE);
     	cu::DeviceMemory d_uvw(UVW_SIZE);
-	    cu::DeviceMemory d_uvgrid(UVGRID_SIZE);
+	    cu::DeviceMemory d_subgrid(SUBGRID_SIZE);
 	    
-        #if LOOP
-        while (true) {
-        #endif
-	    #if REPEAT
-        for (int r = 0; r < NR_REPETITIONS; r++) {
-        #endif
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
-	        // Prevent overflow
+            // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
-		    
+        
+            // States
+            State &state_input    = states_input[iteration];
+            State &state_gridder  = states_gridder[iteration];
+            State &state_shifter1 = states_shifter1[iteration];
+            State &state_fft      = states_fft[iteration];
+            State &state_shifter2 = states_shifter2[iteration];
+            State &state_output   = states_output[iteration];
+           
+            // Set jobsize in states 
+            state_input.jobsize    = current_jobsize;
+            state_gridder.jobsize  = current_jobsize;
+            state_shifter1.jobsize = current_jobsize;
+            state_fft.jobsize      = current_jobsize;
+            state_shifter2.jobsize = current_jobsize;
+            state_output.jobsize   = current_jobsize;
+
 		    // Number of elements in batch
 		    size_t visibility_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
 		    size_t uvw_elements        = NR_TIME * 3;
-		    size_t uvgrid_elements     = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
+		    size_t subgrid_elements    = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		    // Pointers to data for batch
 		    void *visibilities_ptr = (float complex *) h_visibilities + bl * visibility_elements;
 		    void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-		    void *uvgrid_ptr       = (float complex *) h_uvgrid + bl * uvgrid_elements;
+		    void *subgrid_ptr      = (float complex *) h_subgrid + bl * subgrid_elements;
+
+            // Wait for previous computation to finish
+            executestream.record(executeFinished);
+            htodstream.waitEvent(executeFinished);
 		    
 	        // Copy input data to device
-	        records[0].enqueue(stream);
-            #if INPUT
-	        stream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, VISIBILITY_SIZE);
-	        stream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
-            #endif 
-            records[1].enqueue(stream);
+            #pragma omp critical
+            {
+                inputFree.synchronize();
+                htodstream.waitEvent(inputFree);
+                state_input.startRecord.enqueue(htodstream);
+                #if INPUT
+                htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, VISIBILITY_SIZE);
+                htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
+                #endif 
+                state_input.stopRecord.enqueue(htodstream);
+                htodstream.addCallback(&callback_gridder_input, &state_input);
+            }
 
-	        // Launch gridder kernel
-	        records[2].enqueue(stream);
-            #if GRIDDER
-            kernel_gridder.launchAsync(stream, current_jobsize, bl, d_uvw, d_offset, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_uvgrid);
+            // Create FFT plan
+            #if FFT
+            #if ORDER == ORDER_BL_V_U_P
+            kernel_fft.plan(SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
+            #elif ORDER == ORDER_BL_P_V_U
+            kernel_fft.plan(SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
             #endif
-	        records[3].enqueue(stream);
-	        
-	        // Launch shifter kernel
-	        records[4].enqueue(stream);
-	        #if SHIFTER 
-            kernel_shifter.launchAsync(stream, current_jobsize, d_uvgrid);
             #endif
-	        records[5].enqueue(stream);
 
-	        // Launch FFT
-	        records[6].enqueue(stream);
-            #if FFT
-	        kernel_fft.launchAsync(stream, current_jobsize, d_uvgrid, CUFFT_INVERSE);
-	        #endif
-            records[7].enqueue(stream);
+	        #pragma omp critical
+            {
+                // Launch gridder kernel
+                executestream.waitEvent(state_input.stopRecord.event); 
+                state_gridder.startRecord.enqueue(executestream);
+                #if GRIDDER
+                kernel_gridder.launchAsync(
+                    executestream, current_jobsize, bl, d_uvw, d_wavenumbers,
+                    d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
+                #endif
+	            state_gridder.stopRecord.enqueue(executestream);
+	            executestream.record(inputFree);
+                executestream.addCallback(&callback_gridder_gridder, &state_gridder);
+                 
+    	        // Launch shifter kernel
+                state_shifter1.startRecord.enqueue(executestream);
+                #if SHIFTER 
+                kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
+                #endif
+                state_shifter1.stopRecord.enqueue(executestream);
+                executestream.addCallback(&callback_gridder_shifter, &state_shifter1);
+
+                // Launch FFT
+                state_fft.startRecord.enqueue(executestream);
+                #if FFT
+                kernel_fft.launchAsync(executestream, d_subgrid, CUFFT_INVERSE);
+                #endif
+                state_fft.stopRecord.enqueue(executestream);
+                executestream.addCallback(&callback_gridder_fft, &state_fft);
+                
+                // Launch shifter kernel
+                state_shifter2.startRecord.enqueue(executestream);
+                #if SHIFTER
+                kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
+                #endif
+                state_shifter2.stopRecord.enqueue(executestream);
+                executestream.addCallback(&callback_gridder_shifter, &state_shifter2);
+            }
 	        
-	        // Launch shifter kernel
-	        records[8].enqueue(stream);
-            #if SHIFTER
-	        kernel_shifter.launchAsync(stream, current_jobsize, d_uvgrid);
-            #endif
-	        records[9].enqueue(stream);
-	        
-	        // Wait for computation of uvgrid to finish
-	        stream.record(event);
-	        stream.waitEvent(event);
-	
-	        // Copy uvgrid to host
-	        records[10].enqueue(stream);
-            #if OUTPUT
-	        stream.memcpyDtoHAsync(uvgrid_ptr, d_uvgrid, UVGRID_SIZE);
-            #endif
-            records[11].enqueue(stream);
-            
-            // Wait for memory transfers to finish
-            stream.synchronize();
-		
-		    #if REPORT_VERBOSE
-            #if INPUT
-            report("  input", records[0], records[1],
-			    0, UVW_SIZE + VISIBILITY_SIZE);
-            #endif
-            #if GRIDDER
-    	    report("gridder", records[2], records[3],
-  		        kernel_gridder.flops(current_jobsize), kernel_gridder.bytes(current_jobsize));
-            #endif
-            #if SHIFTER
-            report("shifter", records[4], records[5],
-			    kernel_fft.flops(current_jobsize), kernel_shifter.bytes(current_jobsize));
-		    #endif
-            #if FFT
-            report("    fft", records[6], records[7],
-			    kernel_fft.flops(current_jobsize), kernel_fft.bytes(current_jobsize));
-		    #endif
-            #if SHIFTER
-            report("shifter", records[8], records[9],
-			    kernel_fft.flops(current_jobsize), kernel_shifter.bytes(current_jobsize));
-            #endif
-		    #if OUTPUT 
-            report(" output", records[10], records[11],
-			    0, UVGRID_SIZE);
-		    #endif
-		    #endif
-		    
-		    // Update total runtime
-		    total_time_in[thread_num]   += runtime(records[0], records[1]);
-	        total_time_gridder[thread_num] += runtime(records[2], records[3]);
-	        total_time_shifter[thread_num] += runtime(records[4], records[5]);
-	        total_time_fft[thread_num]     += runtime(records[6], records[7]);
-	        total_time_shifter[thread_num] += runtime(records[8], records[9]);
-	        total_time_out[thread_num]  += runtime(records[10], records[11]);
-	        total_bytes_in[thread_num]        += UVW_SIZE + VISIBILITY_SIZE;
-	        total_bytes_out[thread_num]       += UVGRID_SIZE;
-	    }
-	    #if LOOP
+	        #pragma omp critical 
+            {
+                // Copy subgrid to host
+	            dtohstream.waitEvent(state_shifter2.stopRecord.event);
+                state_output.startRecord.enqueue(dtohstream);
+                #if OUTPUT
+	            dtohstream.memcpyDtoHAsync(subgrid_ptr, d_subgrid, SUBGRID_SIZE);
+                #endif
+                state_output.stopRecord.enqueue(dtohstream);
+                dtohstream.addCallback(&callback_gridder_output, &state_output);
+            }
+
+            // Go to next iteration
+            total_jobs[thread_num] += current_jobsize;
+            iteration++;
+        }
+
+        // Sum totals
+        #if REPORT_TOTAL
+        for (int i = 0; i < nr_iterations; i++) {
+            total_time_gridder[thread_num] += states_gridder[i].runtime;
+            total_time_shifter[thread_num] += states_shifter1[i].runtime;
+            total_time_shifter[thread_num] += states_shifter2[i].runtime;
+            total_time_fft[thread_num]     += states_fft[i].runtime;
+            total_time_input[thread_num]   += states_input[i].runtime;
+            total_time_output[thread_num]  += states_output[i].runtime;
+            total_bytes_input[thread_num]  += states_input[i].bytes;
+            total_bytes_output[thread_num] += states_output[i].bytes;
         }
         #endif
-	    #if REPEAT
-        }
-        #endif
+ 
+        dtohstream.synchronize();
 	}
 
     // Measure total runtime
-    records_total[3].enqueue(globalstream);
-    globalstream.synchronize();
+    records_total[1].enqueue(dtohstream);
+    dtohstream.synchronize();
 
-    // Copy uvgrids
-    memcpy(uvgrid, h_uvgrid, sizeof(UVGridType));
-    
     #if REPORT_TOTAL
     std::clog << std::endl;
+    KernelFFT kernel_fft;
     // Report performance per stream
     for (int t = 0; t < nr_streams; t++) {
         std::clog << "--- stream " << t << " ---" << std::endl;
-        int jobsize = NR_BASELINES / nr_streams;
+        int jobsize = total_jobs[t];
         report("gridder", total_time_gridder[t],
                           kernel_gridder.flops(jobsize),
                           kernel_gridder.bytes(jobsize));
 	    report("shifter", total_time_shifter[t]/2,
 	                      kernel_shifter.flops(jobsize),
 	                      kernel_shifter.bytes(jobsize));
-        report("    fft", total_time_fft[t], kernel_fft.flops(jobsize), kernel_fft.bytes(jobsize));
-        report("  input", total_time_in[t], 0, total_bytes_in[t]);
-        report(" output", total_time_out[t], 0, total_bytes_out[t]);
+        report("    fft", total_time_fft[t],
+                          kernel_fft.flops(SUBGRIDSIZE, jobsize),
+                          kernel_fft.bytes(SUBGRIDSIZE, jobsize));
+        report("  input", total_time_input[t], 0, total_bytes_input[t]);
+        report(" output", total_time_output[t], 0, total_bytes_output[t]);
 	    std::clog << std::endl;
     }
     
     // Report overall performance
     std::clog << "--- overall ---" << std::endl;
-    long total_flops = kernel_gridder.flops(NR_BASELINES) + kernel_shifter.flops(NR_BASELINES)*2 + kernel_fft.flops(NR_BASELINES);
-    report("      init", records_total[0], records_total[1], 0, 0);
-    report("     total", records_total[2], records_total[3], total_flops, 0);
-    double total_runtime = runtime(records_total[2], records_total[3]);
+    long total_flops = kernel_gridder.flops(NR_BASELINES) +
+                       kernel_shifter.flops(NR_BASELINES)*2 +
+                       kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES);
+    report("     total", records_total[0], records_total[1], total_flops, 0);
+    double total_runtime = runtime(records_total[0], records_total[1]);
     report_visibilities(total_runtime);
     std::clog << std::endl;
     #endif
@@ -459,12 +489,10 @@ void run_gridder(
 /*
 	Adder
 */
-void run_adder(int deviceNumber, int nr_streams, int jobsize,
-	void *coordinates, void *uvgrid, void *grid) {
-	// Initialize
-	cu::Device device(deviceNumber);
-    cu::Context context(device);
-	
+void run_adder(
+    cu::Context &context, int nr_streams, int jobsize,
+    cu::HostMemory &h_subgrid, cu::HostMemory &h_uvw,
+    cu::HostMemory &h_grid) {
 	// Load kernel module
 	cu::Module module_adder(PTX_ADDER);
 	
@@ -472,25 +500,12 @@ void run_adder(int deviceNumber, int nr_streams, int jobsize,
 	KernelAdder kernel_adder(module_adder, KERNEL_ADDER);
 
 	// Streams
-	cu::Stream globalstream;
+	cu::Stream executestream;
+    cu::Stream iostream;
 	
-	// Host memory
-	cu::HostMemory h_coordinates(sizeof(CoordinateType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_uvgrid(sizeof(UVGridType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_grid(sizeof(GridType));
-	
-	// Initialize host memory
-	memcpy(h_coordinates, coordinates, sizeof(CoordinateType));
-	memcpy(h_uvgrid, uvgrid, sizeof(UVGridType));
-	
-	// Device memory
-	cu::DeviceMemory d_coordinates(sizeof(CoordinateType));
+	// Allocate device memory for grid
 	cu::DeviceMemory d_grid(sizeof(GridType));
 	d_grid.zero();
-	
-	// Copy static datastructures to device
-	globalstream.memcpyHtoDAsync(d_coordinates, h_coordinates);
-	globalstream.synchronize();
 	
 	// Timing variables
 	double total_time_adder[nr_streams];
@@ -498,85 +513,100 @@ void run_adder(int deviceNumber, int nr_streams, int jobsize,
 	double total_time_out = 0;
 	double total_bytes_in[nr_streams];
 	double total_bytes_out[nr_streams];
+	long total_jobs[nr_streams];
     for (int t = 0; t < nr_streams; t++) {
         total_time_adder[t] = 0;
-        total_time_in[t] = 0;
-        total_bytes_in[t] = 0;
-        total_bytes_out[t] = 0;
+        total_time_in[t]    = 0;
+        total_bytes_in[t]   = 0;
+        total_bytes_out[t]  = 0;
+        total_jobs[t]       = 0;
     }
 	
 	// Start adder
     Record records_total[2];
-    records_total[0].enqueue(globalstream);
+    records_total[0].enqueue(iostream);
 	#pragma omp parallel num_threads(nr_streams)
 	{
 	    // Initialize
 	    context.setCurrent();
-        cu::Stream stream;
         cu::Event event;
         Record records[4];
 	    int current_jobsize = jobsize;
 	    int thread_num = omp_get_thread_num();
         
         // Private device memory
-    	cu::DeviceMemory d_uvgrid(UVGRID_SIZE);
+        cu::DeviceMemory d_uvw(UVW_SIZE);
+    	cu::DeviceMemory d_subgrid(SUBGRID_SIZE);
     
 	    for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
 	        // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
            
 		    // Number of elements in batch
-		    size_t uvgrid_elements = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
+		    size_t uvw_elements     = NR_TIME * 3;
+		    size_t subgrid_elements = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		    // Pointers to data for current batch
-		    void *uvgrid_ptr = (float complex *) h_uvgrid + bl * uvgrid_elements;
+		    void *uvw_ptr     = (float *) h_uvw + bl * uvw_elements;
+		    void *subgrid_ptr = (float complex *) h_subgrid + bl * subgrid_elements;
 
 	        // Copy input to device
-            records[0].enqueue(stream);
+            records[0].enqueue(iostream);
             #if INPUT
-	        stream.memcpyHtoDAsync(d_uvgrid, uvgrid_ptr, UVGRID_SIZE);
+            iostream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
+	        iostream.memcpyHtoDAsync(d_subgrid, subgrid_ptr, SUBGRID_SIZE);
 	        #endif
-            records[1].enqueue(stream);
+            records[1].enqueue(iostream);
+
+            // Wait for memory transfer to finish
+            iostream.record(event);
+            executestream.waitEvent(event);
 
 	        // Launch add kernel
-            records[2].enqueue(stream);
+            records[2].enqueue(executestream);
             #if ADDER
-	        kernel_adder.launchAsync(stream, current_jobsize, bl, d_coordinates, d_uvgrid, d_grid);
+	        kernel_adder.launchAsync(
+	            executestream, current_jobsize, bl, d_uvw, d_subgrid, d_grid);
 	        #endif
-            records[3].enqueue(stream);
+            records[3].enqueue(executestream);
 
 	        // Wiat for computation of grid to finish
-	        stream.record(event);
+	        executestream.record(event);
 	        event.synchronize();
             
 		    #if REPORT_VERBOSE
 		    #if INPUT
-		    report("  input", records[0], records[1], 0, UVGRID_SIZE);
+		    report("  input", records[0], records[1], 0, UVW_SIZE + SUBGRID_SIZE);
 		    #endif
 		    #if ADDER
-		    report("  adder", records[2], records[3], kernel_adder.flops(current_jobsize), kernel_adder.bytes(current_jobsize));
+		    report("  adder", records[2], records[3],
+		        kernel_adder.flops(current_jobsize),
+		        kernel_adder.bytes(current_jobsize));
 		    #endif
 		    #endif
 		    
 		    // Update total runtime
-		    total_time_in[thread_num] += runtime(records[0], records[1]);
+		    total_time_in[thread_num]    += runtime(records[0], records[1]);
 		    total_time_adder[thread_num] += runtime(records[2], records[3]);
-		    total_bytes_in[thread_num]      += UVGRID_SIZE;
+		    total_bytes_in[thread_num]   += UVW_SIZE + SUBGRID_SIZE;
+		    total_jobs[thread_num]       += jobsize;
 	    }
 	}
+
+    // Wait for grid computation to finish
+    cu::Event event;
+    executestream.record(event);
+    iostream.waitEvent(event);
 	
     // Copy grid to host
-    Record records[2];
-    records[0].enqueue(globalstream);
-    globalstream.memcpyDtoHAsync(h_grid, d_grid, sizeof(GridType));
-    records[1].enqueue(globalstream);
-    globalstream.synchronize();
-    memcpy(grid, h_grid, sizeof(GridType));
-    total_time_out = runtime(records[0], records[1]);
+    Record records_output[2];
+    records_output[0].enqueue(iostream);
+    iostream.memcpyDtoHAsync(h_grid, d_grid, sizeof(GridType));
+    records_output[1].enqueue(iostream);
 
     // Measure total runtime
-    records_total[1].enqueue(globalstream);
-    globalstream.synchronize();
+    records_total[1].enqueue(iostream);
+    iostream.synchronize();
 
     #if REPORT_TOTAL
     std::clog << std::endl;
@@ -584,19 +614,176 @@ void run_adder(int deviceNumber, int nr_streams, int jobsize,
     // Report performance per stream
     for (int t = 0; t < nr_streams; t++) {
         std::clog << "--- stream " << t << " ---" << std::endl;
-        int jobsize = NR_BASELINES / nr_streams;
+        int jobsize = total_jobs[t];
+        report("  input", total_time_in[t], 0, total_bytes_in[t]);
         report("  adder", total_time_adder[t],
                           kernel_adder.flops(jobsize),
                           kernel_adder.bytes(jobsize));
-        report("  input", total_time_in[t], 0, sizeof(UVGridType));
         std::clog << std::endl;
     }
     
     // Report overall performance
     std::clog << "--- overall ---" << std::endl;
-    long total_flops = kernel_adder.flops(NR_BASELINES);
-    report(" output", total_time_out, 0, sizeof(GridType));
-    report("  total", records_total[0], records_total[1], total_flops, 0);
+    report(" output", records_output[0], records_output[1], 0, sizeof(GridType));
+    report("  total", records_total[0], records_total[1], 0, 0);
+    double total_runtime = runtime(records_total[0], records_total[1]);
+    report_subgrids(total_runtime);
+    std::clog << std::endl;
+    #endif
+}
+
+
+/*
+	Splitter
+*/
+void run_splitter(
+    cu::Context &context, int nr_streams, int jobsize,
+    cu::HostMemory &h_subgrid, cu::HostMemory &h_uvw,
+    cu::HostMemory &h_grid) {
+	// Load kernel module
+	cu::Module module_splitter(PTX_SPLITTER);
+	
+	// Load kernel function
+	KernelSplitter kernel_splitter(module_splitter, KERNEL_SPLITTER);
+
+	// Streams
+	cu::Stream executestream;
+    cu::Stream htodstream;
+    cu::Stream dtohstream;
+	
+	// Timing variables
+	double total_time_splitter[nr_streams];
+	double total_time_in[nr_streams];
+	double total_time_out[nr_streams];
+	double total_bytes_in[nr_streams];
+	double total_bytes_out[nr_streams];
+	long total_jobs[nr_streams];
+    for (int t = 0; t < nr_streams; t++) {
+        total_time_in[t]       = 0;
+        total_time_splitter[t] = 0;
+        total_time_out[t]      = 0;
+        total_bytes_in[t]      = 0;
+        total_bytes_out[t]     = 0;
+        total_jobs[t]          = 0;
+    }
+    
+    // Copy grid to device
+    Record records_input[2];
+	cu::DeviceMemory d_grid(sizeof(GridType));
+	records_input[0].enqueue(htodstream);
+	htodstream.memcpyHtoDAsync(d_grid, h_grid);
+	records_input[1].enqueue(htodstream);
+	executestream.synchronize();
+	
+	// Start adder
+    Record records_total[2];
+    records_total[0].enqueue(htodstream);
+	#pragma omp parallel num_threads(nr_streams)
+	{
+	    // Initialize
+	    context.setCurrent();
+        cu::Event event;
+        Record records[6];
+	    int current_jobsize = jobsize;
+	    int thread_num = omp_get_thread_num();
+        
+        // Private device memory
+        cu::DeviceMemory d_uvw(UVW_SIZE);
+    	cu::DeviceMemory d_subgrid(SUBGRID_SIZE);
+    
+	    for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
+	        // Prevent overflow
+		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+           
+		    // Number of elements in batch
+		    size_t uvw_elements     = NR_TIME * 3;
+		    size_t subgrid_elements = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
+		
+		    // Pointers to data for current batch
+		    void *uvw_ptr     = (float *) h_uvw + bl * uvw_elements;
+		    void *subgrid_ptr = (float complex *) h_subgrid + bl * subgrid_elements;
+
+	        // Copy input to device
+            records[0].enqueue(htodstream);
+            #if INPUT
+            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
+	        #endif
+            records[1].enqueue(htodstream);
+
+            // Wait for memory transfer to finish
+            htodstream.record(event);
+            executestream.waitEvent(event);
+
+	        // Launch split kernel
+            records[2].enqueue(executestream);
+            #if SPLITTER
+	        kernel_splitter.launchAsync(
+	            executestream, current_jobsize, bl, d_uvw, d_subgrid, d_grid);
+	        #endif
+            records[3].enqueue(executestream);
+            
+	        // Wait for computation of sugrid to finish
+	        executestream.record(event);
+	        dtohstream.waitEvent(event);
+            
+            // Copy subgrid to host
+	        records[4].enqueue(dtohstream);
+            #if OUTPUT
+	        dtohstream.memcpyDtoHAsync(subgrid_ptr, d_subgrid, SUBGRID_SIZE);
+            #endif
+            records[5].enqueue(dtohstream);
+
+            // Wait for memory transfers to finish
+            dtohstream.record(event);
+            event.synchronize();  
+            
+		    #if REPORT_VERBOSE
+		    #if INPUT
+		    report("   input", records[0], records[1], 0, UVW_SIZE);
+		    #endif
+		    #if SPLITTER
+		    report("splitter", records[2], records[3],
+		                       kernel_splitter.flops(current_jobsize),
+		                       kernel_splitter.bytes(current_jobsize));
+		    #endif
+		    #if OUTPUT
+		    report("  output", records[4], records[5], 0, SUBGRID_SIZE);
+		    #endif
+		    #endif
+		    
+		    // Update total runtime
+		    total_time_in[thread_num]       += runtime(records[0], records[1]);
+		    total_time_splitter[thread_num] += runtime(records[2], records[3]);
+		    total_time_out[thread_num]      += runtime(records[4], records[5]);
+            total_bytes_in[thread_num]      += UVW_SIZE;
+		    total_bytes_out[thread_num]     += SUBGRID_SIZE;
+		    total_jobs[thread_num]          += jobsize;
+	    }
+	}
+
+    // Measure total runtime
+    records_total[1].enqueue(dtohstream);
+    dtohstream.synchronize();
+
+    #if REPORT_TOTAL
+    std::clog << std::endl;
+    
+    // Report performance per stream
+    for (int t = 0; t < nr_streams; t++) {
+        std::clog << "--- stream " << t << " ---" << std::endl;
+        int jobsize = total_jobs[t];
+        report("   input", total_time_in[t], 0, total_bytes_in[t]);
+        report("splitter", total_time_splitter[t],
+                          kernel_splitter.flops(jobsize),
+                          kernel_splitter.bytes(jobsize));
+        report("  output", total_time_out[t], 0, total_bytes_out[t]);
+        std::clog << std::endl;
+    }
+    
+    // Report overall performance
+    std::clog << "--- overall ---" << std::endl;
+    report("  input", records_input[0], records_input[1], 0, sizeof(GridType));
+    report("  total", records_total[0], records_total[1], 0, 0);
     double total_runtime = runtime(records_total[0], records_total[1]);
     report_subgrids(total_runtime);
     std::clog << std::endl;
@@ -607,16 +794,88 @@ void run_adder(int deviceNumber, int nr_streams, int jobsize,
 /*
 	Degridder
 */
-void run_degridder(
-	int deviceNumber, int nr_streams, int jobsize,
-	void *offset, void *wavenumbers, void *aterm, void *baselines,
-	void *visibilities, void *uvw, void *spheroidal, void *uvgrid) {
+void callback_degridder_input(CUstream, CUresult, void *userData) {
+    State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = 0;
+    s->bytes = SUBGRID_SIZE;
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("    input", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
 
+void callback_degridder_degridder(CUstream, CUresult, void *userData) {
+     State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = KernelDegridder::flops(current_jobsize);
+    s->bytes = KernelDegridder::bytes(current_jobsize);
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("degridder", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_degridder_shifter(CUstream, CUresult, void *userData) {
+     State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = KernelShifter::flops(current_jobsize);
+    s->bytes = KernelShifter::bytes(current_jobsize);
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("  shifter", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_degridder_fft(CUstream, CUresult, void *userData) {
+     State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = KernelFFT::flops(SUBGRIDSIZE, current_jobsize);
+    s->bytes = KernelFFT::bytes(SUBGRIDSIZE, current_jobsize);
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report("      fft", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void callback_degridder_output(CUstream, CUresult, void *userData) {
+    State *s = (State *) userData;
+    int current_jobsize = s->jobsize;
+    s->runtime = runtime(s->startRecord, s->stopRecord);
+    s->flops = 0;
+    s->bytes = UVW_SIZE + VISIBILITY_SIZE;
+    #if MEASURE_POWER
+    s->power = power(s->startRecord, s->stopRecord);
+    #endif
+    #if REPORT_VERBOSE
+    report(" output", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    #endif
+}
+
+void run_degridder(
+    cu::Context &context, int nr_streams, int jobsize,
+    cu::HostMemory &h_visibilities, cu::HostMemory &h_uvw,
+    cu::HostMemory &h_subgrid, cu::DeviceMemory &d_wavenumbers,
+    cu::DeviceMemory &d_spheroidal, cu::DeviceMemory &d_aterm,
+    cu::DeviceMemory &d_baselines) {
+    
     // Initialize
-	cu::Device device(deviceNumber);
-    cu::Context context(device);
-    cu::Stream globalstream;
-    Record records_total[4];
+    Record records_total[2];
+    cu::Stream executestream;
+    cu::Stream htodstream;
+    cu::Stream dtohstream;
 	
 	// Load kernel modules
 	cu::Module module_degridder(PTX_DEGRIDDER);
@@ -624,230 +883,211 @@ void run_degridder(
 	
 	// Load kernel functions
 	KernelDegridder kernel_degridder(module_degridder, KERNEL_DEGRIDDER);
-	KernelFFT kernel_fft;
 	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
 	
-	// Host memory
-    records_total[0].enqueue(globalstream);
-	cu::HostMemory h_offset(sizeof(OffsetType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_wavenumbers(sizeof(WavenumberType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_aterm(sizeof(ATermType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_baselines(sizeof(BaselineType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_uvw(sizeof(UVWType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	cu::HostMemory h_visibilities(sizeof(VisibilitiesType));
-	cu::HostMemory h_spheroidal(sizeof(SpheroidalType));
-	cu::HostMemory h_uvgrid(sizeof(UVGridType), CU_MEMHOSTALLOC_WRITECOMBINED);
-	
-	// Initialize host memory
-	memcpy(h_offset, offset, sizeof(OffsetType));
-	memcpy(h_wavenumbers, wavenumbers, sizeof(WavenumberType));
-	memcpy(h_aterm, aterm, sizeof(ATermType));
-	memcpy(h_baselines, baselines, sizeof(BaselineType));
-	memcpy(h_uvw, uvw, sizeof(UVWType));
-	memset(h_visibilities, 0, sizeof(VisibilitiesType));
-	memcpy(h_spheroidal, spheroidal, sizeof(SpheroidalType));
-	memcpy(h_uvgrid, uvgrid, sizeof(UVGridType));
-	
-	// Device memory
-	cu::DeviceMemory d_offset(sizeof(OffsetType));
-	cu::DeviceMemory d_wavenumbers(sizeof(WavenumberType));
-	cu::DeviceMemory d_aterm(sizeof(ATermType));
-	cu::DeviceMemory d_baselines(sizeof(BaselineType));
-	cu::DeviceMemory d_spheroidal(sizeof(SpheroidalType));
-	
-	// Copy static datastructures to device
-	globalstream.memcpyHtoDAsync(d_offset, h_offset);
-	globalstream.memcpyHtoDAsync(d_wavenumbers, h_wavenumbers);
-	globalstream.memcpyHtoDAsync(d_aterm, h_aterm);
-	globalstream.memcpyHtoDAsync(d_baselines, h_baselines);
-	globalstream.memcpyHtoDAsync(d_spheroidal, h_spheroidal);
-    records_total[1].enqueue(globalstream);
-	globalstream.synchronize();
-
     // Timing variables
 	double total_time_degridder[nr_streams];
 	double total_time_shifter[nr_streams];
 	double total_time_fft[nr_streams];
-	double total_time_in[nr_streams];
-	double total_time_out[nr_streams];
-    double total_bytes_in[nr_streams];
-    double total_bytes_out[nr_streams];
+	double total_time_input[nr_streams];
+	double total_time_output[nr_streams];
+    double total_bytes_input[nr_streams];
+    double total_bytes_output[nr_streams];
+    long total_jobs[nr_streams];
     for (int t = 0; t < nr_streams; t++) {
         total_time_degridder[t] = 0;
-        total_time_shifter[t] = 0;
-        total_time_fft[t] = 0;
-        total_time_in[t] = 0;
-        total_time_out[t] = 0;
-        total_bytes_in[t] = 0;
-        total_bytes_out[t] = 0;
+        total_time_shifter[t]   = 0;
+        total_time_fft[t]       = 0;
+        total_time_input[t]     = 0;
+        total_time_output[t]    = 0;
+        total_bytes_input[t]    = 0;
+        total_bytes_output[t]   = 0;
+        total_jobs[t]           = 0;
     }
 
-    // Warmup
-    #if WARMUP
-    cu::DeviceMemory d_uvgrid(sizeof(UVGridType)/NR_BASELINES);
-    kernel_fft.launchAsync(globalstream, 1, d_uvgrid, CUFFT_FORWARD);
-    kernel_fft.launchAsync(globalstream, 1, d_uvgrid, CUFFT_INVERSE);
-    globalstream.synchronize();
-    #endif
-
     // Start degridder
-    records_total[2].enqueue(globalstream);
-	double time_start = omp_get_wtime();
-    
+    int nr_iterations = ((NR_BASELINES / nr_streams) / jobsize) + 1;
+    records_total[0].enqueue(executestream);
     #pragma omp parallel num_threads(nr_streams)
 	{
 	    // Initialize
 	    context.setCurrent();
-        cu::Stream stream;
-        cu::Event event;
+        cu::Event executeFinished;
+        cu::Event inputFree;
 	    int current_jobsize = jobsize;
-        Record records[12];
+        int iteration = 0;
         int thread_num = omp_get_thread_num();
+        
+        State states_input[nr_iterations];
+        State states_degridder[nr_iterations];
+        State states_shifter1[nr_iterations];
+        State states_fft[nr_iterations];
+        State states_shifter2[nr_iterations];
+        State states_output[nr_iterations];
+        
+        KernelFFT kernel_fft;
     
 	    // Private memory
     	cu::DeviceMemory d_uvw(UVW_SIZE);
     	cu::DeviceMemory d_visibilities(VISIBILITY_SIZE);
-    	cu::DeviceMemory d_uvgrid(UVGRID_SIZE);
+    	cu::DeviceMemory d_subgrid(SUBGRID_SIZE);
 
-        #if LOOP 
-        while (true) {
-        #endif
-        #if REPEAT
-        for (int r = 0; r < NR_REPETITIONS; r++) {
-        #endif
 	    for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
 	        // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+    
+            // States
+            State &state_input      = states_input[iteration];
+            State &state_degridder  = states_degridder[iteration];
+            State &state_shifter1   = states_shifter1[iteration];
+            State &state_fft        = states_fft[iteration];
+            State &state_shifter2   = states_shifter2[iteration];
+            State &state_output     = states_output[iteration];
+     
+            // Set jobsize in states 
+            state_input.jobsize    = current_jobsize;
+            state_degridder.jobsize  = current_jobsize;
+            state_shifter1.jobsize = current_jobsize;
+            state_fft.jobsize      = current_jobsize;
+            state_shifter2.jobsize = current_jobsize;
+            state_output.jobsize   = current_jobsize;
 
 		    // Number of elements in batch
 		    size_t uvw_elements        = NR_TIME * 3;
 		    size_t visibility_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
-		    size_t uvgrid_elements     = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
+		    size_t subgrid_elements     = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		    // Pointers to data for current batch
 		    void *visibilities_ptr = (float complex *) h_visibilities + bl * visibility_elements;
 		    void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-		    void *uvgrid_ptr       = (float complex *) h_uvgrid + bl * uvgrid_elements;
+		    void *subgrid_ptr       = (float complex *) h_subgrid + bl * subgrid_elements;
+
+            // Wait for previous computation to finish
+            executestream.record(executeFinished);
+            htodstream.waitEvent(executeFinished);
 		
 	        // Copy input data to device
-	        records[0].enqueue(stream);
-            #if INPUT
-	        stream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
-	        stream.memcpyHtoDAsync(d_uvgrid, uvgrid_ptr, UVGRID_SIZE);
-            #endif
-	        records[1].enqueue(stream);
+            #pragma omp critical
+            {
+                inputFree.synchronize();
+                htodstream.waitEvent(inputFree);
+                state_input.startRecord.enqueue(htodstream);
+                #if INPUT
+	            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
+	            htodstream.memcpyHtoDAsync(d_subgrid, subgrid_ptr, SUBGRID_SIZE);
+                #endif
+	            state_input.stopRecord.enqueue(htodstream);
+                htodstream.addCallback(&callback_degridder_input, &state_input);
+            }
 
-	        // Run shifter kernel
-	        records[2].enqueue(stream);
-	        #if SHIFTER
-            kernel_shifter.launchAsync(stream, current_jobsize, d_uvgrid);
-            #endif
-	        records[3].enqueue(stream);
-	
-	        // Run FFT
-	        records[4].enqueue(stream);
+            // Create FFT plan
             #if FFT
-	        kernel_fft.launchAsync(stream, current_jobsize, d_uvgrid, CUFFT_FORWARD);
+            #if ORDER == ORDER_BL_V_U_P
+            htodstream.plan(SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
+            #elif ORDER == ORDER_BL_P_V_U
+            kernel_fft.plan(SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
             #endif
-	        records[5].enqueue(stream);
+            #endif
 	        
-	        // Run shifter kernel
-	        records[6].enqueue(stream);
-            #if SHIFTER
-	        kernel_shifter.launchAsync(stream, current_jobsize, d_uvgrid);
-            #endif
-	        records[7].enqueue(stream);
-	
-	        // Launch degridder kernel
-	        records[8].enqueue(stream);
-            #if DEGRIDDER
-	        kernel_degridder.launchAsync(stream, current_jobsize, bl,
-		        d_uvgrid, d_uvw, d_offset, d_wavenumbers, d_aterm,
-                d_baselines, d_spheroidal, d_visibilities);
-            #endif
-	        records[9].enqueue(stream);
-
-	        // Copy visibilities to host
-	        records[10].enqueue(stream);
-            #if OUTPUT
-	        stream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, VISIBILITY_SIZE);
-            #endif
-	        records[11].enqueue(stream);
+            #pragma omp critical
+            {
+                // Launch shifter kernel
+    	        executestream.waitEvent(state_input.stopRecord.event);
+                state_shifter1.startRecord.enqueue(executestream);
+    	        #if SHIFTER
+                kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
+                #endif
+    	        state_shifter1.stopRecord.enqueue(executestream);
+                executestream.addCallback(&callback_gridder_shifter, &state_shifter1);
+    	
+    	        // Launch FFT
+    	        state_fft.startRecord.enqueue(executestream);
+                #if FFT
+    	        kernel_fft.launchAsync(executestream, d_subgrid, CUFFT_INVERSE);
+                #endif
+    	        state_fft.stopRecord.enqueue(executestream);
+                executestream.addCallback(&callback_gridder_fft, &state_fft);
+    	        
+    	        // Run shifter kernel
+    	        state_shifter2.startRecord.enqueue(executestream);
+                #if SHIFTER
+    	        kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
+                #endif
+    	        state_shifter2.stopRecord.enqueue(executestream);
+                executestream.addCallback(&callback_gridder_shifter, &state_shifter2);
+    	
+    	        // Launch degridder kernel
+    	        state_degridder.startRecord.enqueue(executestream);
+                #if DEGRIDDER
+    	        kernel_degridder.launchAsync(
+    	            executestream, current_jobsize, bl,
+    		        d_subgrid, d_uvw, d_wavenumbers, d_aterm,
+                    d_baselines, d_spheroidal, d_visibilities);
+                #endif
+    	        state_degridder.stopRecord.enqueue(executestream);
+                executestream.record(inputFree);
+                executestream.addCallback(&callback_degridder_degridder, &state_degridder);
+            }
+                
+            #pragma omp critical
+            {
+                // Copy visibilities to host
+                dtohstream.waitEvent(state_degridder.stopRecord.event);
+	            state_output.startRecord.enqueue(dtohstream);
+                #if OUTPUT
+	            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, VISIBILITY_SIZE);
+                #endif
+	            state_output.stopRecord.enqueue(dtohstream);
+                dtohstream.addCallback(&callback_degridder_output, &state_output);
+            }
 			
-	        // Wait for memory transfers to finish
-            stream.record(event);
-	        event.synchronize();
-	
-            #if REPORT_VERBOSE
-	        #if INPUT
-            report("    input", records[0], records[1], 0, UVW_SIZE + UVGRID_SIZE);
-	        #endif
-            #if SHIFTER
-            report("  shifter", records[2], records[3],
-	            kernel_shifter.flops(current_jobsize), kernel_shifter.bytes(current_jobsize));
-	        #endif
-            #if FFT
-            report("      fft", records[4], records[5], 
-                kernel_fft.flops(current_jobsize), kernel_fft.bytes(current_jobsize));
-	        #endif
-            #if SHIFTER
-            report("  shifter", records[6], records[7],
-	            kernel_shifter.flops(current_jobsize), kernel_shifter.bytes(current_jobsize));
-	        #endif
-            #if DEGRIDDER
-            report("degridder", records[8], records[9],
-		        kernel_degridder.flops(current_jobsize), kernel_degridder.bytes(current_jobsize));
-            #endif
-            #if OUTPUT
-	        report("   output", records[10], records[11], 0, VISIBILITY_SIZE);
-            #endif
-	        #endif
-	        
-             // Update total runtime
-             total_time_in[thread_num]     += runtime(records[0], records[1]);
-             total_time_shifter[thread_num]   += runtime(records[2], records[3]);
-             total_time_fft[thread_num]       += runtime(records[4], records[5]);
-             total_time_shifter[thread_num]   += runtime(records[6], records[7]);
-             total_time_degridder[thread_num] += runtime(records[8], records[9]);
-             total_time_out[thread_num]    += runtime(records[10], records[11]);
-             total_bytes_in[thread_num]          += UVW_SIZE + UVGRID_SIZE;
-             total_bytes_out[thread_num]         += VISIBILITY_SIZE;
+            // Go to next iteration
+            total_jobs[thread_num] += current_jobsize;
+            iteration++;
 	    }
-	    #if LOOP
+        
+        // Sum totals
+        #if REPORT_TOTAL
+        for (int i = 0; i < nr_iterations; i++) {
+            total_time_degridder[thread_num] += states_degridder[i].runtime;
+            total_time_shifter[thread_num]   += states_shifter1[i].runtime;
+            total_time_shifter[thread_num]   += states_shifter2[i].runtime;
+            total_time_fft[thread_num]       += states_fft[i].runtime;
+            total_time_input[thread_num]     += states_input[i].runtime;
+            total_time_output[thread_num]    += states_output[i].runtime;
+            total_bytes_input[thread_num]    += states_input[i].bytes;
+            total_bytes_output[thread_num]   += states_output[i].bytes;
         }
         #endif
-        #if REPEAT
-        }
-        #endif
+ 
+        dtohstream.synchronize();
+
     }
     
-    // Copy visibilities
-    memcpy(visibilities, h_visibilities, sizeof(VisibilitiesType));
-
     // Measure total runtime
-    records_total[3].enqueue(globalstream);
-    globalstream.synchronize();
+    records_total[1].enqueue(executestream);
+    executestream.synchronize();
 
     #if REPORT_TOTAL
-
-    // Pinrt report per thread
-    jobsize = NR_BASELINES / nr_streams;
     std::clog << std::endl;
+    KernelFFT kernel_fft;
+    // Print report per thread
     for (int t = 0; t < nr_streams; t++) {
+        jobsize = total_jobs[t];
         std::clog << "--- stream " << t << " ---" << std::endl;
         report("      fft", total_time_fft[t],
-                            kernel_fft.flops(jobsize),
-                            kernel_fft.bytes(jobsize));
+                            kernel_fft.flops(SUBGRIDSIZE, jobsize),
+                            kernel_fft.bytes(SUBGRIDSIZE, jobsize));
         report("  shifter", total_time_shifter[t]/2,
                             kernel_shifter.flops(jobsize),
                             kernel_shifter.bytes(jobsize));
         report("degridder", total_time_degridder[t],
                             kernel_degridder.flops(jobsize),
                             kernel_degridder.bytes(jobsize));
-        report("    input", total_time_in[t], 0,
-                            total_bytes_in[t]);
-        report("   output", total_time_out[t], 0,
-                            total_bytes_out[t]);
+        report("    input", total_time_input[t], 0,
+                            total_bytes_input[t]);
+        report("   output", total_time_output[t], 0,
+                            total_bytes_output[t]);
         std::clog << std::endl;
     }
     
@@ -855,12 +1095,73 @@ void run_degridder(
     std::clog << "--- overall ---" << std::endl;
     long total_flops = kernel_shifter.flops(NR_BASELINES)*2 +
                        kernel_degridder.flops(NR_BASELINES) +
-                       kernel_fft.flops(NR_BASELINES);
-    report("     init", records_total[0], records_total[1], 0, 0);
-    report("    total", records_total[2], records_total[3], total_flops, 0);
-    double total_runtime = runtime(records_total[2], records_total[3]);
+                       kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES);
+    report("    total", records_total[0], records_total[1], total_flops, 0);
+    double total_runtime = runtime(records_total[0], records_total[1]);
     report_visibilities(total_runtime);
     std::clog << std::endl;
     #endif
 }
+
+
+/*
+	FFT
+*/
+void run_fft(
+    cu::Context &context,
+    cu::HostMemory &h_grid,
+    int sign) {
+    
+    // Initialize
+    context.setCurrent();
+    cu::Stream stream;
+    Record records[6];
+    Record records_total[2];
+    
+	// Load kernel function
+	KernelFFT kernel_fft;
+	
+	// Start measure total runtime
+	records_total[0].enqueue(stream);
+	
+    // Create FFT plan
+    #if FFT
+    kernel_fft.plan(GRIDSIZE, 1, FFT_LAYOUT_YXP);
+    #endif
+    
+    // Copy grid to device
+	cu::DeviceMemory d_grid(sizeof(GridType));
+	records[0].enqueue(stream);
+	stream.memcpyHtoDAsync(d_grid, h_grid);
+	records[1].enqueue(stream);
+
+    // Launch FFT
+    records[2].enqueue(stream);
+    #if FFT
+    kernel_fft.launchAsync(stream, d_grid, sign);
+    #endif
+    records[3].enqueue(stream);
+    
+    // Copy grid to host
+    records[4].enqueue(stream);
+    stream.memcpyDtoHAsync(h_grid, d_grid, sizeof(GridType));
+    records[5].enqueue(stream);
+    
+    // Wait for computation to finish
+    records_total[1].enqueue(stream);
+    stream.synchronize();
+    
+    #if REPORT_TOTAL
+    report(" input", records[0], records[1], 0,
+        sizeof(GridType));
+    report("   fft", records[2], records[3],
+        kernel_fft.flops(GRIDSIZE, 1),
+        kernel_fft.bytes(GRIDSIZE, 1));
+    report("output", records[4], records[5], 0,
+        sizeof(GridType));
+    report(" total", records_total[0], records_total[1], 0, 0);
+    std::clog << std::endl;
+    #endif
+}
+
 }

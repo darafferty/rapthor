@@ -1,11 +1,8 @@
-#include "Util.h"
+#include "Write.h"
 
-#if RW
-#include "Types.h"
-
-extern "C" {
-
-void writeSubgrid(SubGridType *subgrid, const char *name) {
+void writeSubgrid(void *_subgrid, const char *name) {
+    SubGridType *subgrid = (SubGridType *) _subgrid;
+    
     for (int bl = 0; bl < 5000/*NR_BASELINES*/; bl += 1000) {
         char filename[strlen(name) + 1];
         sprintf(filename, "%s_%d", name, bl);
@@ -35,7 +32,8 @@ void writeSubgrid(SubGridType *subgrid, const char *name) {
     }
 }
 
-void writeGrid(GridType *grid, const char *name) {
+void writeGrid(void *_grid, const char *name) {
+    GridType *grid = (GridType *) _grid;
     FILE *file = fopen(name, "w");
 
     for (int y = 0; y < GRIDSIZE; y++) {
@@ -53,7 +51,8 @@ void writeGrid(GridType *grid, const char *name) {
     fclose(file);
 }
 
-void writeVisibilities(VisibilitiesType *visibilities, const char *name) {
+void writeVisibilities(void *_visibilities, const char *name) {
+    VisibilitiesType *visibilities = (VisibilitiesType *) _visibilities;
     FILE *file = fopen(name, "w");
     
     //for (int bl = 0; bl < NR_BASELINES; bl++) {
@@ -69,43 +68,3 @@ void writeVisibilities(VisibilitiesType *visibilities, const char *name) {
 
     fclose(file);
 }
-}
-
-#else
-Util::Util(
-    const char *cc, const char *cflags,
-    int nr_stations, int nr_baselines, int nr_time, int nr_channels,
-    int nr_polarizations, int SUBGRIDSIZE, int gridsize, float imagesize) {
-    // Get compile options
-	std::string parameters = definitions(
-		nr_stations, nr_baselines, nr_time, nr_channels,
-		nr_polarizations, SUBGRIDSIZE, gridsize, imagesize);
-
-    // Compile util wrapper
-	std::string options_util = parameters + " " +
-	                           cflags     + " " +
-                               SRC_RW     + " ";
-	rw::Source(SRC_UTIL).compile(cc, SO_UTIL, options_util.c_str());
-	
-	// Load module
-	module = new rw::Module(SO_UTIL);
-}
-
-void Util::writeSubgrid(void *subgrid, const char *name) {
-    ((void (*)(void*,const char*))
-    rw::Function(*module, FUNCTION_WRITESUBGRID).get())(
-    subgrid, name);
-}
-
-void Util::writeGrid(void *grid, const char *name) {
-    ((void (*)(void*,const void*))
-    rw::Function(*module, FUNCTION_WRITEGRID).get())(
-    grid, name);
-}
-
-void Util::writeVisibilities(void *visibilities, const char *name) {
-    ((void (*)(void*,const char*))
-    rw::Function(*module, FUNCTION_WRITEVISIBILITIES).get())(
-    visibilities, name);
-}
-#endif

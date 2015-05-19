@@ -1,4 +1,4 @@
-#include <complex>
+#pragma once
 
 /*
 	Structures
@@ -23,7 +23,17 @@ inline Baseline make_baseline(int station1, int station2)
 #if defined __NVCC__
 #define FLOAT_COMPLEX float2
 #else
-#define FLOAT_COMPLEX std::complex<float>
+#define FLOAT_COMPLEX float complex
+#endif
+
+/*
+    Derived parameters
+*/
+#if !defined NR_CHUNKS
+#define NR_CHUNKS NR_TIME / CHUNKSIZE
+#endif
+#if !defined NR_BASELINES
+#define NR_BASELINES (NR_STATIONS * (NR_STATIONS-1)) / 2
 #endif
 
 /*
@@ -31,13 +41,11 @@ inline Baseline make_baseline(int station1, int station2)
 */
 typedef FLOAT_COMPLEX VisibilitiesType[NR_BASELINES][NR_TIME][NR_CHANNELS][NR_POLARIZATIONS];
 typedef UVW UVWType[NR_BASELINES][NR_TIME];
-typedef UVW OffsetType[NR_BASELINES];
 typedef float WavenumberType[NR_CHANNELS];
-typedef FLOAT_COMPLEX ATermType[NR_STATIONS][NR_POLARIZATIONS][BLOCKSIZE][BLOCKSIZE];
-typedef float SpheroidalType[BLOCKSIZE][BLOCKSIZE];
+typedef FLOAT_COMPLEX ATermType[NR_STATIONS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
+typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
 typedef Baseline BaselineType[NR_BASELINES];
 typedef FLOAT_COMPLEX GridType[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE];
-typedef Coordinate CoordinateType[NR_BASELINES];
 
 #if !defined ORDER
 #define ORDER ORDER_BL_P_V_U
@@ -47,8 +55,9 @@ typedef Coordinate CoordinateType[NR_BASELINES];
 #define ORDER_BL_V_U_P 0
 
 #if ORDER == ORDER_BL_V_U_P
-typedef FLOAT_COMPLEX UVGridType[NR_BASELINES][BLOCKSIZE][BLOCKSIZE][NR_POLARIZATIONS];
+typedef FLOAT_COMPLEX SubGridType[NR_BASELINES][NR_CHUNKS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
 #elif ORDER == ORDER_BL_P_V_U
-typedef FLOAT_COMPLEX UVGridType[NR_BASELINES][NR_POLARIZATIONS][BLOCKSIZE][BLOCKSIZE];
+typedef FLOAT_COMPLEX SubGridType[NR_BASELINES][NR_CHUNKS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 #endif
+
 

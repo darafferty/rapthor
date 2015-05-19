@@ -1,3 +1,5 @@
+#include <string.h>
+
 #if !defined CU_WRAPPER_H
 #define CU_WRAPPER_H
 
@@ -34,8 +36,7 @@ namespace cu {
 			std::cerr << " in function " << func;
 			std::cerr << ": " << Error(result).what();
 			std::cerr << std::endl;
-			abort();
-			//throw Error(result);
+			//exit(EXIT_FAILURE);
 		}
 	}
 	#else
@@ -79,6 +80,20 @@ namespace cu {
 			operator CUdevice () {
 				return _device;
 			}
+            
+            size_t free_memory() {
+                size_t free;
+                size_t total;
+                cuMemGetInfo(&free, &total);
+                return free;
+            }
+            
+            size_t total_memory() {
+                size_t free;
+                size_t total;
+                cuMemGetInfo(&free, &total);
+                return total;
+            }
 
 		private:
 			CUdevice _device;
@@ -107,6 +122,10 @@ namespace cu {
 				checkCudaCall(cuCtxSetSharedMemConfig(config));
 			}
 
+            void synchronize() {
+                checkCudaCall(cuCtxSynchronize());
+            }
+
 			operator CUcontext () {
 				return _context;
 			}
@@ -123,11 +142,11 @@ namespace cu {
 				checkCudaCall(cuMemHostAlloc(&_ptr, size, flags));
 			}
 
-			~HostMemory() {
+        	~HostMemory() {
 				checkCudaCall(cuMemFreeHost(_ptr));
 			}
 
-			template <typename T> operator T * () {
+            template <typename T> operator T * () {
 				return static_cast<T *>(_ptr);
 			}
 			
@@ -135,6 +154,14 @@ namespace cu {
 				return _size;
 			}
 
+            void set(void *in) {
+                memcpy(_ptr, in, (size_t) _size);
+            }
+
+            void get(void *out) {
+                memcpy(out, _ptr, (size_t) _size);
+            }
+		
 		private:
 			void *_ptr;
 			size_t _size;
@@ -158,10 +185,18 @@ namespace cu {
 			operator const void*() {
 				return &_ptr;
 			}
-			
+
 			size_t size() {
 				return _size;
 			}
+            
+            void set(void *in) {
+                cuMemcpyHtoD(_ptr, in, _size);
+            }
+
+            void get(void *out) {
+                cuMemcpyDtoH(out, _ptr, _size);
+            }
 			
 			void zero() {
 				cuMemsetD8(_ptr, 0, _size);

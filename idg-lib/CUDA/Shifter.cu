@@ -8,36 +8,38 @@ extern "C" {
 	Kernel
 */
 __global__ void kernel_shifter(
-    unsigned jobsize,
-	UVGridType __restrict__ uvgrid
+    int jobsize,
+	SubGridType __restrict__ subgrid
 	) {
     int bl = blockIdx.x;
     int x = threadIdx.x;
     int pol = threadIdx.y;
     
     // Shared data
-    __shared__ float2 _uvgrid[BLOCKSIZE][BLOCKSIZE][NR_POLARIZATIONS];
+    __shared__ float2 _subgrid[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
     
-    // Load uv grid in local memory    
-    for (int y = 0; y < BLOCKSIZE; y++) {
-        #if ORDER == ORDER_BL_V_U_P
-        _uvgrid[y][x][pol] = uvgrid[bl][y][x][pol];
-        #elif ORDER == ORDER_BL_P_V_U
-        _uvgrid[y][x][pol] = uvgrid[bl][pol][y][x];
-        #endif
-    }
-    __syncthreads();
+    for (int chunk = 0; chunk < CHUNKSIZE; chunk++) {
+        // Load uv grid in local memory    
+        for (int y = 0; y < SUBGRIDSIZE; y++) {
+            #if ORDER == ORDER_BL_V_U_P
+            _subgrid[y][x][pol] = subgrid[bl][chunk][y][x][pol];
+            #elif ORDER == ORDER_BL_P_V_U
+            _subgrid[y][x][pol] = subgrid[bl][chunk][pol][y][x];
+            #endif
+        }
+        __syncthreads();
 
-    // Update uv grid
-    #pragma unroll
-    for (int y = 0; y < BLOCKSIZE; y++) {
-        int x_dst = (x + (BLOCKSIZE/2)) % BLOCKSIZE;
-        int y_dst = (y + (BLOCKSIZE/2)) % BLOCKSIZE;
-        #if ORDER == ORDER_BL_V_U_P
-        uvgrid[bl][y_dst][x_dst][pol] = _uvgrid[y][x][pol];
-        #elif ORDER == ORDER_BL_P_V_U
-        uvgrid[bl][pol][y_dst][x_dst] = _uvgrid[y][x][pol];
-        #endif
+        // Update uv grid
+        #pragma unroll
+        for (int y = 0; y < SUBGRIDSIZE; y++) {
+            int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            #if ORDER == ORDER_BL_V_U_P
+            subgrid[bl][chunk][y_dst][x_dst][pol] = _subgrid[y][x][pol];
+            #elif ORDER == ORDER_BL_P_V_U
+            subgrid[bl][chunk][pol][y_dst][x_dst] = _subgrid[y][x][pol];
+            #endif
+        }
     }
 }
 }
