@@ -1295,10 +1295,10 @@ int main(int argc, char **argv) {
 	printDevices(deviceNumber);
     
     // Check memory requirements
-    size_t required_host_memory = (
+    uint64_t required_host_memory = ( 1ULL * 
         sizeof(VisibilitiesType) + sizeof(UVWType) + sizeof(ATermType) + sizeof(SpheroidalType) +
         sizeof(BaselineType) + sizeof(SubGridType) + sizeof(GridType));
-    size_t free_host_memory = free_memory();
+    uint64_t free_host_memory = free_memory();
     std::clog << "Memory on host (required/available: ";
     std::clog << required_host_memory / 1e9 << " / ";
     std::clog << free_host_memory / 1e9 << " GB" << std::endl;
@@ -1306,10 +1306,10 @@ int main(int argc, char **argv) {
         std::clog << "Too little host memory available\n" << std::endl;
         exit(EXIT_FAILURE);
     }
-    size_t required_device_memory = (
+    uint64_t required_device_memory = (
         sizeof(VisibilitiesType) + sizeof(UVWType) + sizeof(SubGridType)) /
         (NR_BASELINES / (double) JOBSIZE) * nr_streams;
-    size_t free_device_memory = device.free_memory();
+    uint64_t free_device_memory = device.free_memory();
     std::clog << "Memory on device (required/available): ";
     std::clog << required_device_memory / 1e9 << " / ";
     std::clog << free_device_memory  / 1e9 << " GB" << std::endl;
