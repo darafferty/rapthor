@@ -7,60 +7,53 @@
 #include <omp.h>
 #include <fftw3.h>
 
-#include <idg/Common/RW.h>
-#include <idg/Common/Parameters.h>
-#include <idg/Common/Types.h>
-
+#include "RW.h"
 #include "Kernels.h"
+#include "Parameters.h"
+#include "Types.h"
 
 /*
     Performance reporting
 */
-#define REPORT_VERBOSE 0
+#define REPORT_VERBOSE 1
 #define REPORT_TOTAL   1
 
 /*
 	File and kernel names
 */
-#define SOURCE_GRIDDER      SOURCE_DIR "/XEON/Gridder.cpp"
-#define SOURCE_DEGRIDDER    SOURCE_DIR "/XEON/Degridder.cpp"
-#define SOURCE_FFT		    SOURCE_DIR "/XEON/FFT.cpp"
-#define SOURCE_ADDER	    SOURCE_DIR "/XEON/Adder.cpp"
-#define SOURCE_SPLITTER     SOURCE_DIR "/XEON/Splitter.cpp"
-#define SOURCE_SHIFTER      SOURCE_DIR "/XEON/Shifter.cpp"
-#define SO_GRIDDER          BINARY_DIR "/Gridder.so"
-#define SO_DEGRIDDER        BINARY_DIR "/Degridder.so"
-#define SO_FFT			    BINARY_DIR "/FFT.so"
-#define SO_ADDER		    BINARY_DIR "/Adder.so"
-#define SO_SPLITTER         BINARY_DIR "/Splitter.so"
-#define SO_SHIFTER          BINARY_DIR "/Shifter.so"
-#define KERNEL_GRIDDER      "kernel_gridder"
-#define KERNEL_DEGRIDDER    "kernel_degridder"
-#define KERNEL_FFT		    "kernel_fft"
-#define KERNEL_ADDER	    "kernel_adder"
-#define KERNEL_SPLITTER	    "kernel_splitter"
-#define KERNEL_SHIFTER      "kernel_shifter"
+#define SOURCE_GRIDDER      "XEON/KernelGridder.cpp"
+#define SOURCE_DEGRIDDER    "XEON/KernelDegridder.cpp"
+#define SOURCE_FFT		    "XEON/KernelFFT.cpp"
+#define SOURCE_ADDER	    "XEON/KernelAdder.cpp"
+#define SOURCE_SPLITTER     "XEON/KernelSplitter.cpp"
+#define SOURCE_SHIFTER      "XEON/KernelShifter.cpp"
+#define SO_GRIDDER          "XEON/Gridder.so"
+#define SO_DEGRIDDER        "XEON/Degridder.so"
+#define SO_FFT			    "XEON/FFT.so"
+#define SO_ADDER		    "XEON/Adder.so"
+#define SO_SPLITTER         "XEON/Splitter.so"
+#define SO_SHIFTER          "XEON/Shifter.so"
 
 std::string compileOptions(const char *cflags) {
 	std::stringstream options;
-    options << " -I " << INCLUDE_DIR;
 	options << " -DNR_STATIONS="		<< NR_STATIONS;
 	options << " -DNR_BASELINES="		<< NR_BASELINES;
 	options << " -DNR_TIME="			<< NR_TIME;
 	options << " -DNR_CHANNELS="		<< NR_CHANNELS;
 	options << " -DNR_POLARIZATIONS="	<< NR_POLARIZATIONS;
-	options << " -DBLOCKSIZE="			<< BLOCKSIZE;
+	options << " -DSUBGRIDSIZE="		<< SUBGRIDSIZE;
 	options << " -DGRIDSIZE="			<< GRIDSIZE;
+	options << " -DCHUNKSIZE="          << CHUNKSIZE;
+    options << " -DNR_CHUNKS="          << NR_CHUNKS;
 	options << " -DIMAGESIZE="			<< IMAGESIZE;
     options << " "                      << cflags;
+    options << " -ICommon";
 	return options.str();
 }
 
 void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
 	#pragma omp critical (clog)
 	{
-    std::clog << std::setprecision(3);
-    std::clog << std::scientific;
     std::clog << name << ": " << runtime << " s";
     if (flops != 0)
 		std::clog << ", " << flops / runtime * 1e-9 << " GFLOPS";
@@ -71,18 +64,15 @@ void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
 }
 
 void report_runtime(double runtime) {
-    std::clog << std::setprecision(2);
     std::clog << "runtime: " << runtime << " s" << std::endl;
 }
 
 void report_visibilities(double runtime) {
     int nr_visibilities = NR_BASELINES * NR_TIME * NR_CHANNELS;
-    std::clog << std::setprecision(2);
     std::clog << "throughput: " << 1e-6 * nr_visibilities / runtime << " Mvisibilities/s" << std::endl;
 }
 
 void report_subgrids(double runtime) {
-    std::clog << std::setprecision(2);
     std::clog << "throughput: " << 1e-3 * NR_BASELINES / runtime << " Ksubgrids/s" << std::endl;
 }
 
@@ -101,20 +91,20 @@ void kernel_info() {
 	rw::Module module_shifter(SO_SHIFTER);
 	
 	// Load kernel functions
-	KernelGridder kernel_gridder(module_gridder, KERNEL_GRIDDER);
-	KernelDegridder kernel_degridder(module_degridder, KERNEL_DEGRIDDER);
-	KernelFFT kernel_fft(module_fft, KERNEL_FFT);
-	KernelAdder kernel_adder(module_adder, KERNEL_ADDER);
-	KernelAdder kernel_splitter(module_splitter, KERNEL_SPLITTER);
-	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
+	KernelGridder kernel_gridder(module_gridder);
+	KernelDegridder kernel_degridder(module_degridder);
+	KernelFFT kernel_fft(module_fft);
+	KernelAdder kernel_adder(module_adder);
+	KernelSplitter kernel_splitter(module_splitter);
+	KernelShifter kernel_shifter(module_shifter);
 
 	std::clog << ">>> Arithmetic intensity" << std::endl;
 	std::clog << "  gridder: " << (float) kernel_gridder.flops(1) /
 	                                      kernel_gridder.bytes(1) << std::endl;
 	std::clog << "degridder: " << (float) kernel_degridder.flops(1) /
 	                                      kernel_degridder.bytes(1) << std::endl;
-	std::clog << "      fft: " << (float) kernel_fft.flops(BLOCKSIZE, 1) /
-	                                      kernel_fft.bytes(BLOCKSIZE, 1) << std::endl;
+	std::clog << "      fft: " << (float) kernel_fft.flops(SUBGRIDSIZE, 1) /
+	                                      kernel_fft.bytes(SUBGRIDSIZE, 1) << std::endl;
 	std::clog << "    adder: " << (float) kernel_adder.flops(1) /
 	                                      kernel_adder.bytes(1) << std::endl;
 	std::clog << " splitter: " << (float) kernel_splitter.flops(1) /
@@ -142,12 +132,12 @@ void compile_kernel(const char *cc, const char *cflags, const char *source, cons
 		
 		// Check if parameters match the arguments
 		if (parameters->nr_stations         != int(NR_STATIONS)         ||
-            parameters->nr_baselines		!= int(NR_BASELINES)	    ||
 			parameters->nr_time				!= int(NR_TIME)			    ||
 			parameters->nr_channels			!= int(NR_CHANNELS)		    ||
 			parameters->nr_polarizations	!= int(NR_POLARIZATIONS)    ||
-			parameters->blocksize			!= int(BLOCKSIZE)	    	||
+			parameters->subgridsize			!= int(SUBGRIDSIZE)	    	||
 			parameters->gridsize			!= int(GRIDSIZE)		    ||
+			parameters->chunksize           != int(CHUNKSIZE)           ||
 			parameters->imagesize			!= float(IMAGESIZE)) {
 			throw std::exception();
 		}
@@ -190,17 +180,17 @@ void init(const char *cc, const char *cflags) {
 */
 void run_gridder(
 	int jobsize,
-	void *visibilities, void *uvw, void *offset, void *wavenumbers,
-	void *aterm, void *spheroidal, void *baselines, void *uvgrid) {
+	void *visibilities, void *uvw, void *wavenumbers,
+	void *aterm, void *spheroidal, void *baselines, void *subgrid) {
 	// Load kernel modules
 	rw::Module module_gridder(SO_GRIDDER);
 	rw::Module module_shifter(SO_SHIFTER);
 	rw::Module module_fft(SO_FFT);
 	
 	// Load kernel functions
-	KernelGridder kernel_gridder(module_gridder, KERNEL_GRIDDER);
-	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
-	KernelFFT kernel_fft(module_fft, KERNEL_FFT);
+	KernelGridder kernel_gridder(module_gridder);
+	KernelShifter kernel_shifter(module_shifter);
+	KernelFFT kernel_fft(module_fft);
 
     // Runtime counters
     double total_runtime_gridder = 0;
@@ -214,41 +204,43 @@ void run_gridder(
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
 		
 		// Number of elements in batch
-		size_t uvw_elements        = NR_TIME * 3;
-		size_t offset_elements     = 3;
-		size_t visibility_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
-		size_t uvgrid_elements     = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
-		size_t baselines_elements  = 2;
+		int uvw_elements          = NR_TIME * 3;
+		int visibilities_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
+		int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		// Pointers to data for current batch
         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-        void *offset_ptr       = (float *) offset + bl * offset_elements;
         void *wavenumbers_ptr  = wavenumbers;
-		void *visibilities_ptr = (float complex *) visibilities + bl * visibility_elements;
+		void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
 		void *spheroidal_ptr   = spheroidal;
 		void *aterm_ptr        = aterm;
-		void *uvgrid_ptr       = (float complex *) uvgrid + bl * uvgrid_elements;
-		void *baselines_ptr    = (int *) baselines + bl * baselines_elements;
+		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
+		void *baselines_ptr    = baselines;
 		
 		double runtime_gridder = omp_get_wtime();
 		kernel_gridder.run(
-		    jobsize, uvw_ptr, offset_ptr, wavenumbers_ptr, visibilities_ptr,
-		    spheroidal_ptr, aterm, baselines_ptr, uvgrid_ptr);
+		    jobsize, bl, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+		    spheroidal_ptr, aterm_ptr, baselines_ptr, subgrid_ptr);
 		runtime_gridder = omp_get_wtime() - runtime_gridder;
         total_runtime_gridder += runtime_gridder;
 		
 		double runtime_shifter1 = omp_get_wtime();
-		kernel_shifter.run(jobsize, uvgrid_ptr);
+		kernel_shifter.run(jobsize, subgrid_ptr);
 		runtime_shifter1 = omp_get_wtime() - runtime_shifter1;
 		total_runtime_shifter += runtime_shifter1;
 	
 		double runtime_fft = omp_get_wtime();
-		kernel_fft.run(BLOCKSIZE, jobsize*NR_POLARIZATIONS, uvgrid_ptr, FFTW_BACKWARD);
+		#if ORDER == ORDER_BL_V_U_P
+        kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
+        #elif ORDER == ORDER_BL_P_V_U
+        kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
+        #endif
+
 		runtime_fft = omp_get_wtime() - runtime_fft;
         total_runtime_fft += runtime_fft;
 		
 	    double runtime_shifter2 = omp_get_wtime();
-		kernel_shifter.run(jobsize, uvgrid_ptr);
+		kernel_shifter.run(jobsize, subgrid_ptr);
 		runtime_shifter2 = omp_get_wtime() - runtime_shifter2;
         total_runtime_shifter += runtime_shifter2;
 	
@@ -261,8 +253,8 @@ void run_gridder(
 	                      kernel_shifter.flops(jobsize),
 	                      kernel_shifter.bytes(jobsize));
 		report("    fft", runtime_fft,
-		                  kernel_fft.flops(jobsize),
-		                  kernel_fft.bytes(jobsize));
+                          kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
+                          kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
 		#endif
 	}
 
@@ -278,8 +270,8 @@ void run_gridder(
 	                  kernel_shifter.flops(NR_BASELINES),
 	                  kernel_shifter.bytes(NR_BASELINES));
     report("    fft", total_runtime_fft,
-                      kernel_fft.flops(BLOCKSIZE, NR_BASELINES*NR_POLARIZATIONS),
-                      kernel_fft.bytes(BLOCKSIZE, NR_BASELINES*NR_POLARIZATIONS));
+                      kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
+                      kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
 	double time_stop = omp_get_wtime();
 	double runtime = time_stop - time_start;
     report_runtime(runtime);
@@ -294,12 +286,12 @@ void run_gridder(
 */
 void run_adder(
 	int jobsize,
-	void *coordinates, void *uvgrid, void *grid) {
+	void *uvw, void *subgrid, void *grid) {
 	// Load kernel module
 	rw::Module module_adder(SO_ADDER);
 	
 	// Load kernel function
-	KernelAdder kernel_adder(module_adder, KERNEL_ADDER);
+	KernelAdder kernel_adder(module_adder);
 
     // Runtime counter
 	double total_runtime_adder = 0;
@@ -311,16 +303,16 @@ void run_adder(
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
 		
 		// Number of elements in batch
-		size_t coordinate_elements = 2;
-		size_t uvgrid_elements = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
+        int uvw_elements     = NR_TIME * 3;
+		int subgrid_elements = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
-		// Pointer to data for current uvgrids
-		void *coordinates_ptr = (int *) coordinates + bl * coordinate_elements;
-		void *uvgrid_ptr      = (float complex *) uvgrid + bl * uvgrid_elements;
-		void *grid_ptr        = grid;
+		// Pointer to data for current jobs
+		void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
+		void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
+		void *grid_ptr    = grid;
 	
 		double runtime_adder = omp_get_wtime();
-		kernel_adder.run(jobsize, coordinates_ptr, uvgrid_ptr, grid_ptr);
+		kernel_adder.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
 		runtime_adder = omp_get_wtime() - runtime_adder;
 		total_runtime_adder += runtime_adder;
 
@@ -353,12 +345,12 @@ void run_adder(
 */
 void run_splitter(
 	int jobsize,
-	void *coordinates, void *uvgrid, void *grid) {
+	void *uvw, void *subgrid, void *grid) {
 	// Load kernel module
 	rw::Module module_splitter(SO_SPLITTER);
 	
 	// Load kernel function
-	KernelSplitter kernel_splitter(module_splitter, KERNEL_SPLITTER);
+	KernelSplitter kernel_splitter(module_splitter);
 
     // Runtime counter
 	double total_runtime_splitter = 0;
@@ -370,16 +362,16 @@ void run_splitter(
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
 		
 		// Number of elements in batch
-		size_t coordinate_elements = 2;
-		size_t uvgrid_elements = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
+        int uvw_elements     = NR_TIME * 3;;
+		int subgrid_elements = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
-		// Pointer to data for current uvgrids
-		void *coordinates_ptr = (int *) coordinates + bl * coordinate_elements;
-		void *uvgrid_ptr      = (float complex *) uvgrid + bl * uvgrid_elements;
-		void *grid_ptr        = grid;
+		// Pointer to data for current jobs
+		void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
+		void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
+		void *grid_ptr    = grid;
 	
 		double runtime_splitter = omp_get_wtime();
-		kernel_splitter.run(jobsize, coordinates_ptr, uvgrid_ptr, grid_ptr);
+		kernel_splitter.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
 		runtime_splitter = omp_get_wtime() - runtime_splitter;
 		total_runtime_splitter += runtime_splitter;
 
@@ -412,17 +404,17 @@ void run_splitter(
 */
 void run_degridder(
 	int jobsize,
-	void *offset, void *wavenumbers, void *aterm, void *baselines,
-	void *visibilities, void *uvw, void *spheroidal, void *uvgrid) {
+	void *wavenumbers, void *aterm, void *baselines,
+	void *visibilities, void *uvw, void *spheroidal, void *subgrid) {
 	// Load kernel modules
 	rw::Module module_degridder(SO_DEGRIDDER);
 	rw::Module module_fft(SO_FFT);
 	rw::Module module_shifter(SO_SHIFTER);
 	
 	// Load kernel functions
-	KernelDegridder kernel_degridder(module_degridder, KERNEL_DEGRIDDER);
-	KernelFFT kernel_fft(module_fft, KERNEL_FFT);
-	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
+	KernelDegridder kernel_degridder(module_degridder);
+	KernelFFT kernel_fft(module_fft);
+	KernelShifter kernel_shifter(module_shifter);
 
     // Zero visibilties
     memset(visibilities, 0, sizeof(VisibilitiesType));
@@ -439,47 +431,48 @@ void run_degridder(
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
 		
 		// Number of elements in batch
-		size_t uvw_elements        = NR_TIME * 3;
-		size_t offset_elements     = 3;
-		size_t visibility_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
-		size_t uvgrid_elements     = BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS;
-		size_t baselines_elements  = 2;
+		int uvw_elements          = NR_TIME * 3;
+		int visibilities_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
+		int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		// Pointers to data for current batch
         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-        void *offset_ptr       = (float *) offset + bl * offset_elements;
         void *wavenumbers_ptr  = wavenumbers;
-		void *visibilities_ptr = (float complex *) visibilities + bl * visibility_elements;
+		void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
 		void *spheroidal_ptr   = spheroidal;
 		void *aterm_ptr        = aterm;
-		void *uvgrid_ptr       = (float complex *) uvgrid + bl * uvgrid_elements;
-		void *baselines_ptr    = (int *) baselines + bl * baselines_elements;
+		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
+		void *baselines_ptr    = baselines;
 		
         double runtime_shifter1 = omp_get_wtime();
-        kernel_shifter.run(jobsize, uvgrid_ptr);
+        kernel_shifter.run(jobsize, subgrid_ptr);
         runtime_shifter1 = omp_get_wtime() - runtime_shifter1;
 
 		double runtime_fft = omp_get_wtime();
-		kernel_fft.run(BLOCKSIZE, jobsize*NR_POLARIZATIONS, uvgrid_ptr, FFTW_FORWARD);
+        #if ORDER == ORDER_BL_V_U_P
+		kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
+        #elif ORDER == ORDER_BL_P_V_U
+		kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_PYX);
+        #endif
 		runtime_fft = omp_get_wtime() - runtime_fft;
 		total_runtime_fft += runtime_fft;
 
         double runtime_shifter2 = omp_get_wtime();
-        kernel_shifter.run(jobsize, uvgrid_ptr);
+        kernel_shifter.run(jobsize, subgrid_ptr);
         runtime_shifter2 = omp_get_wtime() - runtime_shifter2;
         total_runtime_shifter += runtime_shifter2;
 
 		double runtime_degridder = omp_get_wtime();
 		kernel_degridder.run(
-		    jobsize, uvgrid_ptr, uvw_ptr, offset_ptr, wavenumbers_ptr,
+		    jobsize, bl, subgrid_ptr, uvw_ptr, wavenumbers_ptr,
 		    aterm_ptr, baselines_ptr, spheroidal_ptr, visibilities_ptr);
-		runtime_degridder = omp_get_wtime() - runtime_degridder;
+        runtime_degridder = omp_get_wtime() - runtime_degridder;
 		total_runtime_degridder += runtime_degridder;
 	
 		#if REPORT_VERBOSE
 		report("      fft", runtime_fft,
-		                    kernel_fft.flops(BLOCKSIZE, NR_BASELINES*NR_POLARIZATIONS),
-		                    kernel_fft.bytes(BLOCKSIZE, NR_BASELINES*NR_POLARIZATIONS));
+		                    kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
+		                    kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
 		double runtime_shifter = (runtime_shifter1 + runtime_shifter2) / 2;
 	    report("  shifter", runtime_shifter,
 	                        kernel_shifter.flops(jobsize),
@@ -496,8 +489,8 @@ void run_degridder(
 	
     #if REPORT_TOTAL
     report("      fft", total_runtime_fft,
-                        kernel_fft.flops(BLOCKSIZE, NR_BASELINES*NR_POLARIZATIONS),
-                        kernel_fft.bytes(BLOCKSIZE, NR_BASELINES*NR_POLARIZATIONS));
+                        kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
+                        kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
 	report("  shifter", total_runtime_shifter/2,
 	                    kernel_shifter.flops(NR_BASELINES),
 	                    kernel_shifter.bytes(NR_BASELINES));
@@ -519,11 +512,11 @@ void run_fft(
 	rw::Module module_fft(SO_FFT);
 	
 	// Load kernel function
-	KernelFFT kernel_fft(module_fft, KERNEL_FFT);
+	KernelFFT kernel_fft(module_fft);
 
     // Start fft
 	double runtime_fft = omp_get_wtime();
-	kernel_fft.run(GRIDSIZE, NR_POLARIZATIONS, grid, sign);
+	kernel_fft.run(GRIDSIZE, 1, grid, sign, FFT_LAYOUT_PYX);
 	runtime_fft = omp_get_wtime() - runtime_fft;
 
     #if REPORT_TOTAL

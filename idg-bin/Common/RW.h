@@ -2,6 +2,8 @@
 #include <sstream>
 #include <cstdlib>
 #include <dlfcn.h>
+#include <stdio.h>
+#include <errno.h>
 
 
 #ifndef RUNTIME_WRAPPER
@@ -40,13 +42,17 @@ namespace rw {
 	class Module {
 		public:
 			Module(const char *file_name) {
-				_module = dlopen(file_name, RTLD_LAZY);
+				_module = dlopen(file_name, RTLD_NOW);
 				if (!_module) {
-					std::stringstream message;
-					message << "Invalid module: " << file_name;
-					throw Error(message.str().c_str());
+					std::cerr << "Error loading: " << file_name << ": ";
+					std::cerr << dlerror() << std::endl;
+					exit(EXIT_FAILURE);
 				}
 			}
+
+            Module(Module &module) {
+                _module = module;
+            }
 			
 			operator void*() {
 				return _module;
@@ -65,20 +71,16 @@ namespace rw {
 			Function(Module &module, const char *name) {
 				_function = dlsym(module, name);
 				if (!_function) {
-					std::stringstream message;
-					message << "Invalid function: " << name;
-					throw Error(message.str().c_str());
+					std::cerr << "Error loading: " << name << std::endl;
+					std::cerr << dlerror() << std::endl;
+					exit(EXIT_FAILURE);
 				}
 			}
-			
-			int* exec() {
-				return ((int* (*)(void)) _function)();
-			}
-			
-			void *get() {
-				return _function;
-			}
 
+            operator void*() {
+                return _function;
+            }
+			
 		private:
 			void *_function;
 	};

@@ -2,171 +2,128 @@
 
 
 // Function signatures
-#define sig_degridder (void (*)(unsigned,void*,void*,void*,void*,void*,void*,void*,void*))
-#define sig_gridder   (void (*)(unsigned,void*,void*,void*,void*,void*,void*,void*,void*))
-#define sig_fft		  (void (*)(int,int,void*,int))
+#define sig_degridder (void (*)(int,int,void*,void*,void*,void*,void*,void*,void*))
+#define sig_gridder   (void (*)(int,int,void*,void*,void*,void*,void*,void*,void*))
+#define sig_fft		  (void (*)(int,int,void*,int,int))
 #define sig_adder	  (void (*)(int,void*,void*,void*))
+#define sig_splitter  (void (*)(int,void*,void*,void*))
 #define sig_shifter   (void (*)(int,void*))
 
 
-KernelGridder::KernelGridder(rw::Module &module, const char *kernel) : function(module, kernel) {}
+KernelGridder::KernelGridder(rw::Module &module) :
+    _run(module,   "kernel_gridder"),
+    _flops(module, "kernel_gridder_flops"),
+    _bytes(module, "kernel_gridder_bytes")
+     {}
 
 void KernelGridder::run(
-    int jobsize,
-    void *uvw, void *offset,
-    void *wavenumbers, void *visibilities,
-    void *spheroidal, void *aterm,
-    void *baselines, void *uvgrid) {
-    (sig_gridder function.get())(
-        jobsize, uvw, offset, wavenumbers, visibilities, spheroidal, aterm, baselines, uvgrid);
+    int jobsize, int bl_offset, void *uvw, void *wavenumbers, void *visibilities,
+    void *spheroidal, void *aterm, void *baselines, void *uvgrid) {
+    (sig_gridder (void *) _run)(
+        jobsize, bl_offset, uvw, wavenumbers, visibilities, spheroidal, aterm, baselines, uvgrid);
 }
 
 uint64_t KernelGridder::flops(int jobsize) {
-    return
-    // Grid
-    1ULL * jobsize * NR_TIME * BLOCKSIZE * BLOCKSIZE * NR_CHANNELS * (
-        // Phasor        
-        2 + 92 + 
-        // UV
-        NR_POLARIZATIONS * 8) +
-    // ATerm
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * 30 +
-    // Spheroidal
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * 2;
+    return ((uint64_t (*)(int)) (void *) _flops)(jobsize);
 }
 
 uint64_t KernelGridder::bytes(int jobsize) {
-    return
-    // Grid
-    1ULL * jobsize * NR_TIME * BLOCKSIZE * BLOCKSIZE * NR_CHANNELS * (NR_POLARIZATIONS * sizeof(float complex) + sizeof(float)) +
-    // ATerm
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * (2 * sizeof(unsigned)) + (2 * NR_POLARIZATIONS * sizeof(float complex) + sizeof(float)) +
-    // Spheroidal
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * sizeof(float complex);
+    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }
 
 
-KernelDegridder::KernelDegridder(rw::Module &module, const char *kernel) : function(module, kernel) {}
+KernelDegridder::KernelDegridder(rw::Module &module) :
+    _run(module,   "kernel_degridder"),
+    _flops(module, "kernel_degridder_flops"),
+    _bytes(module, "kernel_degridder_bytes")
+     {}
 
 void KernelDegridder::run(
-    int jobsize,
-    void *uvgrid, void *uvw,
-    void *offset, void *wavenumbers,
-    void *aterm, void *baselines,
-    void *spheroidal, void *visibilities) {
-    (sig_degridder function.get())(
-        jobsize, uvgrid, uvw, offset, wavenumbers, aterm, baselines, spheroidal, visibilities);
+    int jobsize, int bl_offset, void *uvgrid, void *uvw, void *wavenumbers,
+    void *aterm, void *baselines, void *spheroidal, void *visibilities) {
+    (sig_degridder (void *) _run)(
+        jobsize, bl_offset, uvgrid, uvw, wavenumbers, aterm, baselines, spheroidal, visibilities);
 }
 
 uint64_t KernelDegridder::flops(int jobsize) {
-    return
-    // ATerm
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * 32 +
-    // Spheroidal
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * 2 +
-    // Degrid
-    1ULL * jobsize * NR_TIME * NR_CHANNELS * BLOCKSIZE * BLOCKSIZE * (
-        // LMN
-        12 + 
-        // Offset
-        5 +
-        // Phasor
-        7 + 97 +
-        // UV
-        NR_POLARIZATIONS * 8);
+    return ((uint64_t (*)(int)) (void *) _flops)(jobsize);
 }
 
 uint64_t KernelDegridder::bytes(int jobsize) {
-    return
-    // ATerm
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * 2 * NR_POLARIZATIONS * sizeof(float complex) +
-    // Spheroidal
-    1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * sizeof(float) +
-    // Degrid
-    1ULL * jobsize * NR_TIME * NR_CHANNELS * (
-        // Offset
-        BLOCKSIZE * BLOCKSIZE * 3 * sizeof(float) +
-        // UV
-        BLOCKSIZE * BLOCKSIZE * NR_POLARIZATIONS * sizeof(float complex) +
-        // Visibilities            
-        NR_POLARIZATIONS * sizeof(float complex));
+    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }
 
-KernelFFT::KernelFFT(rw::Module &module, const char *kernel) : function(module, kernel) {}
+KernelFFT::KernelFFT(rw::Module &module) :
+    _run(module,   "kernel_fft"),
+    _flops(module, "kernel_fft_flops"),
+    _bytes(module, "kernel_fft_bytes")
+     {}
 
-void KernelFFT::run(int size, int batch, void *data, int direction) {
-	(sig_fft function.get())(
-		size, batch, data, direction);
+void KernelFFT::run(int size, int batch, void *data, int direction, int layout) {
+	(sig_fft (void *) _run)(
+		size, batch, data, direction, layout);
 }
 
 uint64_t KernelFFT::flops(int size, int batch) {
-	return 1ULL * batch * 5 * size * size * log(size * size);
+    return ((uint64_t (*)(int,int)) (void *) _flops)(size, batch);
 }
 
 uint64_t KernelFFT::bytes(int size, int batch) {
-	return 1ULL * 2 * batch * size * size * sizeof(float complex);
+    return ((uint64_t (*)(int,int)) (void *) _bytes)(size, batch);
 }
 
 
-KernelAdder::KernelAdder(rw::Module &module, const char *kernel) : function(module, kernel) {}
+KernelAdder::KernelAdder(rw::Module &module) :
+    _run(module,   "kernel_adder"),
+    _flops(module, "kernel_adder_flops"),
+    _bytes(module, "kernel_adder_bytes")
+     {}
 
-void KernelAdder::run(
-	int jobsize,
-	void *coordinates,
-	void *uvgrid,
-	void *grid) {
-	(sig_adder function.get())(
-		jobsize, coordinates, uvgrid, grid);
+void KernelAdder::run(int jobsize, void *uvw, void *uvgrid, void *grid) {
+	(sig_adder (void *) _run)(jobsize, uvw, uvgrid, grid);
 }
 
 uint64_t KernelAdder::flops(int jobsize) {
-    return 1ULL * BLOCKSIZE * BLOCKSIZE * jobsize;
+    return ((uint64_t (*)(int)) (void *) _flops)(jobsize);
 }
 
 uint64_t KernelAdder::bytes(int jobsize) {
-	return 1ULL * BLOCKSIZE * BLOCKSIZE * jobsize * (
-    // Coordinate
-    2 * sizeof(unsigned) +
-    // Pixels
-    3 * NR_POLARIZATIONS * sizeof(float complex));
+    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }
 
-KernelSplitter::KernelSplitter(rw::Module &module, const char *kernel) : function(module, kernel) {}
 
-void KernelSplitter::run(
-	int jobsize,
-	void *coordinates,
-	void *uvgrid,
-	void *grid) {
-	(sig_adder function.get())(
-		jobsize, coordinates, uvgrid, grid);
+KernelSplitter::KernelSplitter(rw::Module &module) :
+    _run(module,   "kernel_splitter"),
+    _flops(module, "kernel_splitter_flops"),
+    _bytes(module, "kernel_splitter_bytes")
+     {}
+
+void KernelSplitter::run(int jobsize, void *uvw, void *uvgrid, void *grid) {
+    (sig_splitter (void *) _run)(jobsize, uvw, uvgrid, grid);
 }
 
 uint64_t KernelSplitter::flops(int jobsize) {
-    return 1ULL * BLOCKSIZE * BLOCKSIZE * jobsize;
+    return ((uint64_t (*)(int)) (void *) _flops)(jobsize);
 }
 
 uint64_t KernelSplitter::bytes(int jobsize) {
-	return 1ULL * BLOCKSIZE * BLOCKSIZE * jobsize * (
-    // Coordinate
-    2 * sizeof(unsigned) +
-    // Pixels
-    3 * NR_POLARIZATIONS * sizeof(float complex));
+    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }
 
-KernelShifter::KernelShifter(rw::Module &module, const char *kernel) : function(module, kernel) {}
+KernelShifter::KernelShifter(rw::Module &module) :
+    _run(module,   "kernel_shifter"),
+    _flops(module, "kernel_shifter_flops"),
+    _bytes(module, "kernel_shifter_bytes")
+     {}
 
-void KernelShifter::run(
-	int jobsize,
-	void *uvgrid) {
-	(sig_shifter function.get())(
-		jobsize, uvgrid);
+void KernelShifter::run(int jobsize, void *uvgrid) {
+	(sig_shifter (void *) _run)(jobsize, uvgrid);
 }
 
 uint64_t KernelShifter::flops(int jobsize) {
-    return 1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * 6;
+    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }
 
 uint64_t KernelShifter::bytes(int jobsize) {
-    return 1ULL * jobsize * BLOCKSIZE * BLOCKSIZE * 3 * sizeof(float complex);
+    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }

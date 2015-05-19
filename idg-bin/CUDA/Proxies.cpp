@@ -1,73 +1,109 @@
 #include "Proxies.h"
 
+/*
+    Library and source names
+*/
+#define SO_WRAPPER      "./Wrapper.so"
+#define SRC_WRAPPER     "CUDA/Wrapper.cpp"
+#define SRC_CUDA        "CUDA/CU.cpp CUDA/CUFFT.cpp CUDA/Kernels.cpp"
+#define SRC_POWER       "CUDA/Power.cpp"
+
+/*
+	Function names
+*/
+#define FUNCTION_GRIDDER    "run_gridder"
+#define FUNCTION_DEGRIDDER  "run_degridder"
+#define FUNCTION_ADDER      "run_adder"
+#define FUNCTION_SPLITTER   "run_splitter"
+#define FUNCTION_FFT        "run_fft"
+#define FUNCTION_COMPILE    "compile"
+
+/*
+    CUDA library location
+*/
+#define CUDA_INCLUDE    " -I/usr/local/cuda-7.0/include"
+#define CUDA_LIB        " -L/usr/local/cuda-7.0/lib64"
+
 std::string definitions(
 	int nr_stations, int nr_baselines, int nr_time,
-	int nr_channels, int nr_polarizations, int blocksize,
-	int gridsize, float imagesize) {
+	int nr_channels, int nr_polarizations, int subgridsize,
+	int gridsize, float imagesize, int chunksize) {
 	std::stringstream parameters;
-	parameters << " -DNR_STATIONS="		    << nr_stations;
-	parameters << " -DNR_BASELINES="		<< nr_baselines;
-	parameters << " -DNR_TIME="			    << nr_time;
-	parameters << " -DNR_CHANNELS="		    << nr_channels;
-	parameters << " -DNR_POLARIZATIONS="	<< nr_polarizations;
-	parameters << " -DBLOCKSIZE="			<< blocksize;
-	parameters << " -DGRIDSIZE="			<< gridsize;
-	parameters << " -DIMAGESIZE="			<< imagesize;
+	parameters << " -DNR_STATIONS="		 << nr_stations;
+	parameters << " -DNR_BASELINES="	 << nr_baselines;
+	parameters << " -DNR_TIME="			 << nr_time;
+	parameters << " -DNR_CHANNELS="		 << nr_channels;
+	parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
+	parameters << " -DSUBGRIDSIZE="		 << subgridsize;
+	parameters << " -DGRIDSIZE="		 << gridsize;
+	parameters << " -DIMAGESIZE="	     << imagesize;
+	parameters << " -DCHUNKSIZE="        << chunksize;
 	return parameters.str();
 }
 
-CUDA::CUDA(
-    const char *cc, const char *cflags,
-    int nr_stations, int nr_baselines, int nr_time,
-	int nr_channels, int nr_polarizations, int blocksize,
-	int gridsize, float imagesize, bool measure_power) {
 
+CUDA::CUDA(
+    const char *cc, const char *cflags, int deviceNumber,
+    int nr_stations, int nr_baselines, int nr_time,
+	int nr_channels, int nr_polarizations, int subgridsize,
+    int gridsize, float imagesize, int chunksize) {
     // Get compile options
 	std::string parameters = definitions(
 		nr_stations, nr_baselines, nr_time, nr_channels,
-		nr_polarizations, blocksize, gridsize, imagesize);
+		nr_polarizations, subgridsize, gridsize, imagesize, chunksize);
 
     // Compile CUDA wrapper
-    const char *options_power = measure_power ? "-DMEASURE_POWER libPowerSensor.o" : "";
 	std::string options_cuda = parameters + " " +
                                cflags     + " " +
-                               options_power +
+                               "-ICommon" + " " +
+                               " -fopenmp -lcuda -lcufft " +
                                CUDA_INCLUDE + " " +
                                CUDA_LIB + " " +
-                               SRC_CUDA;
+                               SRC_CUDA + " " +
+                               SRC_POWER;
 	rw::Source(SRC_WRAPPER).compile(cc, SO_WRAPPER, options_cuda.c_str());
 
     // Load module
     module = new rw::Module(SO_WRAPPER);
-}
 
-void CUDA::init(int deviceNumber, const char *powerSensor) {
-	((void (*)(int, const char *)) rw::Function(*module, "init").get())(deviceNumber, powerSensor);
-
+    // Compile kernels
+	((void (*)(int)) (void *) rw::Function(*module, FUNCTION_COMPILE))(deviceNumber);
 }
 
 void CUDA::gridder(
-	int deviceNumber, int nr_streams, int jobsize,
-	void *visibilities, void *uvw, void *offset, void *wavenumbers,
-	void *aterm, void *spheroidal, void *baselines, void *uvgrid) {
-	((void (*)(int,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
-	rw::Function(*module, FUNCTION_GRIDDER).get())(
-	deviceNumber, nr_streams, jobsize, visibilities, uvw, offset, wavenumbers, aterm, spheroidal, baselines, uvgrid);
+            cu::Context &context, int nr_streams, int jobsize,
+			cu::HostMemory &visibilities, cu::HostMemory &uvw, cu::HostMemory &subgrid,
+            cu::DeviceMemory &wavenumbers, cu::DeviceMemory &aterm,
+            cu::DeviceMemory &spheroidal, cu::DeviceMemory &baselines) {
+    ((void (*)(cu::Context&,int,int,cu::HostMemory&,cu::HostMemory&,cu::HostMemory&,cu::DeviceMemory&,cu::DeviceMemory&,cu::DeviceMemory&,cu::DeviceMemory&)) (void *)
+	rw::Function(*module, FUNCTION_GRIDDER))(context, nr_streams, jobsize, visibilities, uvw, subgrid, wavenumbers, aterm, spheroidal, baselines);
 }
 
 void CUDA::adder(
-	int deviceNumber, int nr_streams, int jobsize,
-	void *coordinates, void *uvgrid, void *grid) {
-	((void (*)(int,int,int,void*,void*,void*))
-	rw::Function(*module, FUNCTION_ADDER).get())(
-	deviceNumber, nr_streams, jobsize, coordinates, uvgrid, grid);
+            cu::Context &context, int nr_streams, int jobsize,
+			cu::HostMemory &subgrid, cu::HostMemory &uvw, cu::HostMemory &grid) {
+	((void (*)(cu::Context&,int,int,cu::HostMemory&,cu::HostMemory&,cu::HostMemory&)) (void *)
+	rw::Function(*module, FUNCTION_ADDER))(context, nr_streams, jobsize, subgrid, uvw, grid);
+}
+
+void CUDA::splitter(
+            cu::Context &context, int nr_streams, int jobsize,
+		    cu::HostMemory &subgrid, cu::HostMemory &uvw, cu::HostMemory &grid) {
+	((void (*)(cu::Context&,int,int,cu::HostMemory&,cu::HostMemory&,cu::HostMemory&)) (void *)
+	rw::Function(*module, FUNCTION_SPLITTER))(context, nr_streams, jobsize, subgrid, uvw, grid);
 }
 
 void CUDA::degridder(
-	int deviceNumber, int nr_streams, int jobsize,
-	void *offset, void *wavenumbers, void *aterm, void *baselines,
-	void *visibilities, void *uvw, void *spheroidal, void *uvgrid) {
-	((void (*)(int,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
-	rw::Function(*module, FUNCTION_DEGRIDDER).get())(
-	deviceNumber, nr_streams, jobsize, offset, wavenumbers, aterm, baselines, visibilities, uvw, spheroidal, uvgrid);
+            cu::Context &context, int nr_streams, int jobsize,
+			cu::HostMemory &visibilities, cu::HostMemory &uvw, cu::HostMemory &subgrid,
+            cu::DeviceMemory &wavenumbers, cu::DeviceMemory &spheroidal,
+            cu::DeviceMemory &aterm, cu::DeviceMemory &baselines) {
+    ((void (*)(cu::Context&,int,int,cu::HostMemory&,cu::HostMemory&,cu::HostMemory&,cu::DeviceMemory&,cu::DeviceMemory&,cu::DeviceMemory&,cu::DeviceMemory&)) (void *)
+	rw::Function(*module, FUNCTION_DEGRIDDER))(context, nr_streams, jobsize, visibilities, uvw, subgrid, wavenumbers, spheroidal, aterm, baselines);
+}
+
+void CUDA::fft(
+            cu::Context &context, cu::HostMemory &grid, int sign) {
+	((void (*)(cu::Context&,cu::HostMemory&,int)) (void *)
+	rw::Function(*module, FUNCTION_FFT))(context, grid, sign);
 }
