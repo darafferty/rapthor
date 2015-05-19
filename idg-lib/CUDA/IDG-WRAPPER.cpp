@@ -1,10 +1,11 @@
+#include <stdint.h>
+#include <cuda.h>
+#include <cudaProfiler.h>
+
 #include "Proxies.h"
 #include "Init.h"
 #include "Arguments.h"
 #include "Memory.h"
-
-#include <cuda.h>
-#include <cudaProfiler.h>
 
 #include "CU.h"
 #include "CUFFT.h"
@@ -86,14 +87,14 @@ int main(int argc, char **argv) {
     std::clog << std::endl;
 
     // Compute size of data structures
-    size_t wavenumber_size   = nr_channels * sizeof(float);
-    size_t aterm_size        = nr_stations * nr_polarizations * subgridsize * subgridsize * 2 * sizeof(float);
-    size_t spheroidal_size   = subgridsize * subgridsize * sizeof(float);
-    size_t baseline_size     = nr_baselines * 2 * sizeof(int);
-    size_t visibilities_size = nr_baselines * nr_time * nr_channels * nr_polarizations * 2 * sizeof(float);
-    size_t uvw_size          = nr_baselines * nr_time * 3 * sizeof(float);
-    size_t subgrid_size      = nr_baselines * nr_chunks * nr_polarizations * subgridsize * subgridsize * 2 * sizeof(float);
-    size_t grid_size         = nr_polarizations * gridsize * gridsize * 2 * sizeof(float);
+    uint64_t wavenumber_size   = 1ULL * nr_channels * sizeof(float);
+    uint64_t aterm_size        = 1ULL * nr_stations * nr_polarizations * subgridsize * subgridsize * 2 * sizeof(float);
+    uint64_t spheroidal_size   = 1ULL * subgridsize * subgridsize * sizeof(float);
+    uint64_t baseline_size     = 1ULL * nr_baselines * 2 * sizeof(int);
+    uint64_t visibilities_size = 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * 2 * sizeof(float);
+    uint64_t uvw_size          = 1ULL * nr_baselines * nr_time * 3 * sizeof(float);
+    uint64_t subgrid_size      = 1ULL * nr_baselines * nr_chunks * nr_polarizations * subgridsize * subgridsize * 2 * sizeof(float);
+    uint64_t grid_size         = 1ULL * nr_polarizations * gridsize * gridsize * 2 * sizeof(float);
     
 	// Print size of datastructures
 	std::clog << "Size of data" << std::endl;
@@ -114,9 +115,9 @@ int main(int argc, char **argv) {
     context.setCurrent();
    
     // Check memory requirements
-    size_t required_host_memory = visibilities_size + uvw_size + aterm_size + spheroidal_size +
+    uint64_t required_host_memory = visibilities_size + uvw_size + aterm_size + spheroidal_size +
                                   baseline_size + subgrid_size + grid_size;
-    size_t free_host_memory = free_memory();
+    uint64_t free_host_memory = free_memory();
     std::clog << "Memory on host (required/available: ";
     std::clog << required_host_memory / 1e9 << " / ";
     std::clog << free_host_memory / 1e9 << " GB" << std::endl;
@@ -124,9 +125,9 @@ int main(int argc, char **argv) {
         std::clog << "Too little host memory available\n" << std::endl;
         exit(EXIT_FAILURE);
     }
-    size_t required_device_memory = (visibilities_size + uvw_size + subgrid_size) /
+    uint64_t required_device_memory = (visibilities_size + uvw_size + subgrid_size) /
                                     (nr_baselines / (double) jobsize) * nr_streams;
-    size_t free_device_memory = device.free_memory();
+    uint64_t free_device_memory = device.free_memory();
     std::clog << "Memory on device (required/available): ";
     std::clog << required_device_memory / 1e9 << " / ";
     std::clog << free_device_memory  / 1e9 << " GB" << std::endl;
