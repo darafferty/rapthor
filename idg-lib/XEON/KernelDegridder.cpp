@@ -69,18 +69,22 @@ void kernel_degridder(
 			        
 			        // Get spheroidal
 			        float s = (*spheroidal)[y][x];
-			
+		
+                    // Compute shifted position in subgrid
+                    int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+        	
 			        // Load uv values
                     #if ORDER == ORDER_BL_P_V_U
-				    float complex uvXX = s * (*subgrid)[bl][chunk][0][y][x];
-				    float complex uvXY = s * (*subgrid)[bl][chunk][1][y][x];
-				    float complex uvYX = s * (*subgrid)[bl][chunk][2][y][x];
-				    float complex uvYY = s * (*subgrid)[bl][chunk][3][y][x];
+				    float complex uvXX = s * (*subgrid)[bl][chunk][0][y_src][x_src];
+				    float complex uvXY = s * (*subgrid)[bl][chunk][1][y_src][x_src];
+				    float complex uvYX = s * (*subgrid)[bl][chunk][2][y_src][x_src];
+				    float complex uvYY = s * (*subgrid)[bl][chunk][3][y_src][x_src];
 			        #elif ORDER == ORDER_BL_V_U_P
-				    float complex uvXX = s * (*subgrid)[bl][chunk][y][x][0];
-				    float complex uvXY = s * (*subgrid)[bl][chunk][y][x][1];
-				    float complex uvYX = s * (*subgrid)[bl][chunk][y][x][2];
-				    float complex uvYY = s * (*subgrid)[bl][chunk][y][x][3];
+				    float complex uvXX = s * (*subgrid)[bl][chunk][y_src][x_src][0];
+				    float complex uvXY = s * (*subgrid)[bl][chunk][y_src][x_src][1];
+				    float complex uvYX = s * (*subgrid)[bl][chunk][y_src][x_src][2];
+				    float complex uvYY = s * (*subgrid)[bl][chunk][y_src][x_src][3];
 				    #endif
 			
                     // Apply aterm to subgrid
@@ -197,6 +201,8 @@ uint64_t kernel_degridder_flops(int jobsize) {
     return
     // ATerm
     1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 32 +
+    // Shift
+    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6 +
     // Spheroidal
     1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
     // Degrid

@@ -33,16 +33,20 @@ void kernel_splitter(
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 #pragma ivdep
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
+                    // Compute shifted position in subgrid
+                    int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
                     #if ORDER == ORDER_BL_V_U_P
-                    (*subgrid)[bl][chunk][y][x][0] = (*grid)[0][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][y][x][1] = (*grid)[1][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][y][x][2] = (*grid)[2][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][y][x][3] = (*grid)[3][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][y_dst][x_dst][0] = (*grid)[0][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][y_dst][x_dst][1] = (*grid)[1][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][y_dst][x_dst][2] = (*grid)[2][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][y_dst][x_dst][3] = (*grid)[3][grid_y+y][grid_x+x];
                     #elif ORDER == ORDER_BL_P_V_U
-                    (*subgrid)[bl][chunk][0][y][x] = (*grid)[0][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][1][y][x] = (*grid)[1][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][2][y][x] = (*grid)[2][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][3][y][x] = (*grid)[3][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][0][y_dst][x_dst] = (*grid)[0][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][1][y_dst][x_dst] = (*grid)[1][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][2][y_dst][x_dst] = (*grid)[2][grid_y+y][grid_x+x];
+                    (*subgrid)[bl][chunk][3][y_dst][x_dst] = (*grid)[3][grid_y+y][grid_x+x];
                     #endif
                 }
             }
@@ -55,11 +59,16 @@ void kernel_splitter(
 }
 
 uint64_t kernel_splitter_flops(int jobsize) {
-    return 1ULL * SUBGRIDSIZE * SUBGRIDSIZE * jobsize;
+    return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+    // Shift
+    11 +
+    // Add
+    4
+    );
 }
 
 uint64_t kernel_splitter_bytes(int jobsize) {
-	return 1ULL * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+	return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
     // Coordinate
     2 * sizeof(unsigned) +
     // Pixels
