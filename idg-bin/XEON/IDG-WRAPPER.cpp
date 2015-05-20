@@ -10,7 +10,7 @@
 #define ADDER		1
 #define SPLITTER    1
 #define DEGRIDDER	1
-#define FFT         0
+#define FFT         1
 
 
 /*

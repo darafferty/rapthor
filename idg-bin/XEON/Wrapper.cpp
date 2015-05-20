@@ -26,13 +26,11 @@
 #define SOURCE_FFT		    "XEON/KernelFFT.cpp"
 #define SOURCE_ADDER	    "XEON/KernelAdder.cpp"
 #define SOURCE_SPLITTER     "XEON/KernelSplitter.cpp"
-#define SOURCE_SHIFTER      "XEON/KernelShifter.cpp"
 #define SO_GRIDDER          "XEON/Gridder.so"
 #define SO_DEGRIDDER        "XEON/Degridder.so"
 #define SO_FFT			    "XEON/FFT.so"
 #define SO_ADDER		    "XEON/Adder.so"
 #define SO_SPLITTER         "XEON/Splitter.so"
-#define SO_SHIFTER          "XEON/Shifter.so"
 
 std::string compileOptions(const char *cflags) {
 	std::stringstream options;
@@ -88,7 +86,6 @@ void kernel_info() {
 	rw::Module module_fft(SO_FFT);
 	rw::Module module_adder(SO_ADDER);
 	rw::Module module_splitter(SO_SPLITTER);
-	rw::Module module_shifter(SO_SHIFTER);
 	
 	// Load kernel functions
 	KernelGridder kernel_gridder(module_gridder);
@@ -96,7 +93,6 @@ void kernel_info() {
 	KernelFFT kernel_fft(module_fft);
 	KernelAdder kernel_adder(module_adder);
 	KernelSplitter kernel_splitter(module_splitter);
-	KernelShifter kernel_shifter(module_shifter);
 
 	std::clog << ">>> Arithmetic intensity" << std::endl;
 	std::clog << "  gridder: " << (float) kernel_gridder.flops(1) /
@@ -109,8 +105,6 @@ void kernel_info() {
 	                                      kernel_adder.bytes(1) << std::endl;
 	std::clog << " splitter: " << (float) kernel_splitter.flops(1) /
 	                                      kernel_splitter.bytes(1) << std::endl;
-	std::clog << "  shifter: " << (float) kernel_shifter.flops(1) /
-	                                      kernel_shifter.bytes(1) << std::endl;
 	std::clog << std::endl;
 }
 
@@ -162,8 +156,6 @@ void compile(const char *cc, const char *cflags, bool force = false) {
     compile_kernel(cc, cflags, SOURCE_SPLITTER, SO_SPLITTER, force);
 	#pragma omp section
     compile_kernel(cc, cflags, SOURCE_FFT, SO_FFT, force);
-    #pragma omp section
-    compile_kernel(cc, cflags, SOURCE_SHIFTER, SO_SHIFTER, force);
 	}
 	#pragma omp barrier
 	std::clog << std::endl;
@@ -184,17 +176,14 @@ void run_gridder(
 	void *aterm, void *spheroidal, void *baselines, void *subgrid) {
 	// Load kernel modules
 	rw::Module module_gridder(SO_GRIDDER);
-	rw::Module module_shifter(SO_SHIFTER);
 	rw::Module module_fft(SO_FFT);
 	
 	// Load kernel functions
 	KernelGridder kernel_gridder(module_gridder);
-	KernelShifter kernel_shifter(module_shifter);
 	KernelFFT kernel_fft(module_fft);
 
     // Runtime counters
     double total_runtime_gridder = 0;
-    double total_runtime_shifter = 0;
     double total_runtime_fft = 0;
 
 	// Start gridder
@@ -224,11 +213,6 @@ void run_gridder(
 		runtime_gridder = omp_get_wtime() - runtime_gridder;
         total_runtime_gridder += runtime_gridder;
 		
-		double runtime_shifter1 = omp_get_wtime();
-		kernel_shifter.run(jobsize, subgrid_ptr);
-		runtime_shifter1 = omp_get_wtime() - runtime_shifter1;
-		total_runtime_shifter += runtime_shifter1;
-	
 		double runtime_fft = omp_get_wtime();
 		#if ORDER == ORDER_BL_V_U_P
         kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
@@ -239,19 +223,10 @@ void run_gridder(
 		runtime_fft = omp_get_wtime() - runtime_fft;
         total_runtime_fft += runtime_fft;
 		
-	    double runtime_shifter2 = omp_get_wtime();
-		kernel_shifter.run(jobsize, subgrid_ptr);
-		runtime_shifter2 = omp_get_wtime() - runtime_shifter2;
-        total_runtime_shifter += runtime_shifter2;
-	
         #if REPORT_VERBOSE
 		report("gridder", runtime_gridder,
 		                  kernel_gridder.flops(jobsize),
 		                  kernel_gridder.bytes(jobsize));
-		double runtime_shifter = (runtime_shifter1 + runtime_shifter2) / 2;
-	    report("shifter", runtime_shifter,
-	                      kernel_shifter.flops(jobsize),
-	                      kernel_shifter.bytes(jobsize));
 		report("    fft", runtime_fft,
                           kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
                           kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
@@ -266,9 +241,6 @@ void run_gridder(
     report("gridder", total_runtime_gridder,
                       kernel_gridder.flops(NR_BASELINES),
                       kernel_gridder.bytes(NR_BASELINES));
-	report("shifter", total_runtime_shifter/2,
-	                  kernel_shifter.flops(NR_BASELINES),
-	                  kernel_shifter.bytes(NR_BASELINES));
     report("    fft", total_runtime_fft,
                       kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
                       kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
@@ -409,18 +381,15 @@ void run_degridder(
 	// Load kernel modules
 	rw::Module module_degridder(SO_DEGRIDDER);
 	rw::Module module_fft(SO_FFT);
-	rw::Module module_shifter(SO_SHIFTER);
 	
 	// Load kernel functions
 	KernelDegridder kernel_degridder(module_degridder);
 	KernelFFT kernel_fft(module_fft);
-	KernelShifter kernel_shifter(module_shifter);
 
     // Zero visibilties
     memset(visibilities, 0, sizeof(VisibilitiesType));
 	
     // Runtime counters
-    double total_runtime_shifter = 0;
     double total_runtime_fft = 0;
     double total_runtime_degridder = 0;
 
@@ -444,10 +413,6 @@ void run_degridder(
 		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
 		void *baselines_ptr    = baselines;
 		
-        double runtime_shifter1 = omp_get_wtime();
-        kernel_shifter.run(jobsize, subgrid_ptr);
-        runtime_shifter1 = omp_get_wtime() - runtime_shifter1;
-
 		double runtime_fft = omp_get_wtime();
         #if ORDER == ORDER_BL_V_U_P
 		kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
@@ -456,11 +421,6 @@ void run_degridder(
         #endif
 		runtime_fft = omp_get_wtime() - runtime_fft;
 		total_runtime_fft += runtime_fft;
-
-        double runtime_shifter2 = omp_get_wtime();
-        kernel_shifter.run(jobsize, subgrid_ptr);
-        runtime_shifter2 = omp_get_wtime() - runtime_shifter2;
-        total_runtime_shifter += runtime_shifter2;
 
 		double runtime_degridder = omp_get_wtime();
 		kernel_degridder.run(
@@ -473,10 +433,6 @@ void run_degridder(
 		report("      fft", runtime_fft,
 		                    kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
 		                    kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
-		double runtime_shifter = (runtime_shifter1 + runtime_shifter2) / 2;
-	    report("  shifter", runtime_shifter,
-	                        kernel_shifter.flops(jobsize),
-	                        kernel_shifter.bytes(jobsize));
 		report("degridder", runtime_degridder,
 		                    kernel_degridder.flops(jobsize),
 		                    kernel_degridder.bytes(jobsize));
@@ -491,9 +447,6 @@ void run_degridder(
     report("      fft", total_runtime_fft,
                         kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES),
                         kernel_fft.bytes(SUBGRIDSIZE, NR_BASELINES));
-	report("  shifter", total_runtime_shifter/2,
-	                    kernel_shifter.flops(NR_BASELINES),
-	                    kernel_shifter.bytes(NR_BASELINES));
     report("degridder", total_runtime_degridder,
                         kernel_degridder.flops(NR_BASELINES),
                         kernel_degridder.bytes(NR_BASELINES));
@@ -527,6 +480,5 @@ void run_fft(
     std::clog << std::endl;
     #endif
 }
-
 
 }

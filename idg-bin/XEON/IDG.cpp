@@ -15,7 +15,6 @@
 #include "KernelGridder.cpp"
 #include "KernelDegridder.cpp"
 #include "KernelFFT.cpp"
-#include "KernelShifter.cpp"
 #include "KernelAdder.cpp"
 #include "KernelSplitter.cpp"
 
@@ -23,10 +22,10 @@
 /*
     Enable/disable parts of the program
 */
-#define GRIDDER		0
+#define GRIDDER		1
 #define ADDER		1
 #define SPLITTER    1
-#define DEGRIDDER	0
+#define DEGRIDDER	1
 #define FFT         1
 #define WRITE		0
 
@@ -98,8 +97,6 @@ void kernel_info() {
 	                                      kernel_adder_bytes(1) << std::endl;
 	std::clog << " splitter: " << (float) kernel_splitter_flops(1) /
 	                                      kernel_splitter_bytes(1) << std::endl;
-	std::clog << "  shifter: " << (float) kernel_shifter_flops(1) /
-	                                      kernel_shifter_bytes(1) << std::endl;
 	std::clog << std::endl;
 }
 
@@ -113,12 +110,11 @@ void run_gridder(
 	void *aterm, void *spheroidal, void *baselines, void *subgrid) {
     // Runtime counters
     double total_runtime_gridder = 0;
-    double total_runtime_shifter = 0;
     double total_runtime_fft = 0;
     
     // Power states
     PowerSensor::State startState, stopState;
-    PowerSensor::State powerStates[8];
+    PowerSensor::State powerStates[4];
 	
     // Start gridder
     startState = powerSensor.read();
@@ -147,40 +143,24 @@ void run_gridder(
 	    powerStates[1] = powerSensor.read();
 		
 		powerStates[2] = powerSensor.read();
-		kernel_shifter(jobsize, (SubGridType *) subgrid_ptr);
-		powerStates[3] = powerSensor.read();
-	
-		powerStates[4] = powerSensor.read();
 		#if ORDER == ORDER_BL_V_U_P
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
         #elif ORDER == ORDER_BL_P_V_U
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
         #endif
-		powerStates[5] = powerSensor.read();
+		powerStates[3] = powerSensor.read();
 		
-	    powerStates[6] = powerSensor.read();
-		kernel_shifter(jobsize, (SubGridType *) subgrid_ptr);
-		powerStates[7] = powerSensor.read();
-	
         #if REPORT_VERBOSE
         report("gridder", kernel_gridder_flops(jobsize),
                           kernel_gridder_bytes(jobsize),
                           powerStates[0], powerStates[1]);
-	    report("shifter", kernel_shifter_flops(jobsize),
-	                      kernel_shifter_bytes(jobsize),
-	                      powerStates[2], powerStates[3]);
 		report("    fft", kernel_fft_flops(SUBGRIDSIZE, jobsize),
                           kernel_fft_bytes(SUBGRIDSIZE, jobsize),
-                          powerStates[4], powerStates[5]);
-  	    report("shifter", kernel_shifter_flops(jobsize),
-	                      kernel_shifter_bytes(jobsize),
-	                      powerStates[6], powerStates[7]);
+                          powerStates[2], powerStates[3]);
 		#endif
 		#if REPORT_TOTAL
 		total_runtime_gridder += PowerSensor::seconds(powerStates[0], powerStates[1]);
-		total_runtime_shifter += PowerSensor::seconds(powerStates[2], powerStates[3]);
-		total_runtime_fft     += PowerSensor::seconds(powerStates[4], powerStates[5]);
-		total_runtime_shifter += PowerSensor::seconds(powerStates[6], powerStates[7]);
+		total_runtime_fft     += PowerSensor::seconds(powerStates[2], powerStates[3]);
 		#endif
 	}
     stopState = powerSensor.read();
@@ -192,17 +172,12 @@ void run_gridder(
     report("gridder", total_runtime_gridder,
                       kernel_gridder_flops(NR_BASELINES),
                       kernel_gridder_bytes(NR_BASELINES));
-	report("shifter", total_runtime_shifter,
-	                  kernel_shifter_flops(NR_BASELINES) * 2,
-	                  kernel_shifter_bytes(NR_BASELINES) * 2);
     report("    fft", total_runtime_fft,
                       kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES),
                       kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES));
     long total_flops = kernel_gridder_flops(NR_BASELINES) +
-                       kernel_shifter_flops(NR_BASELINES) * 2 +
                        kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES); 
     long total_bytes = kernel_gridder_bytes(NR_BASELINES) +
-                       kernel_shifter_bytes(NR_BASELINES) * 2 +
                        kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES); 
     report("  total", total_flops, total_bytes, startState, stopState); 
     report_visibilities(PowerSensor::seconds(startState, stopState));
@@ -325,7 +300,6 @@ void run_degridder(
     memset(visibilities, 0, sizeof(VisibilitiesType));
 	
     // Runtime counters
-    double total_runtime_shifter = 0;
     double total_runtime_fft = 0;
     double total_runtime_degridder = 0;
     
@@ -353,47 +327,31 @@ void run_degridder(
 		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
 		void *baselines_ptr    = baselines;
 		
-        powerStates[0] = powerSensor.read();
-        kernel_shifter(jobsize, (SubGridType *) subgrid_ptr);
-        powerStates[1] = powerSensor.read();
-
-		powerStates[2] = powerSensor.read();
+		powerStates[0] = powerSensor.read();
 		#if ORDER == ORDER_BL_V_U_P
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
         #elif ORDER == ORDER_BL_P_V_U
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_PYX);
         #endif
-        powerStates[3] = powerSensor.read();
+        powerStates[1] = powerSensor.read();
 
-        powerStates[4] = powerSensor.read();
-        kernel_shifter(jobsize, (SubGridType *) subgrid_ptr);
-        powerStates[5] = powerSensor.read();
-
-		powerStates[6] = powerSensor.read();
+		powerStates[2] = powerSensor.read();
 		kernel_degridder(
 		    jobsize, bl, (SubGridType *) subgrid_ptr, (UVWType *) uvw_ptr, (WavenumberType *) wavenumbers_ptr,
 		    (ATermType *) aterm_ptr, (BaselineType *) baselines_ptr, (SpheroidalType *) spheroidal_ptr, (VisibilitiesType *) visibilities_ptr);
-		powerStates[7] = powerSensor.read();
+		powerStates[3] = powerSensor.read();
 
 		#if REPORT_VERBOSE
-	    report("  shifter", kernel_shifter_flops(jobsize),
-	                        kernel_shifter_bytes(jobsize),
-	                        powerStates[0], powerStates[1]);
 		report("      fft", kernel_fft_flops(SUBGRIDSIZE, jobsize),
 		                    kernel_fft_bytes(SUBGRIDSIZE, jobsize),
-		                    powerStates[2], powerStates[3]);
-	    report("  shifter", kernel_shifter_flops(jobsize),
-	                        kernel_shifter_bytes(jobsize),
-	                        powerStates[4], powerStates[5]);
+		                    powerStates[0], powerStates[1]);
 		report("degridder", kernel_degridder_flops(jobsize),
 		                    kernel_degridder_bytes(jobsize),
-		                    powerStates[6], powerStates[7]);
+		                    powerStates[2], powerStates[3]);
 	    #endif
         #if REPORT_TOTAL
-        total_runtime_shifter   += PowerSensor::seconds(powerStates[0], powerStates[1]);
-		total_runtime_fft       += PowerSensor::seconds(powerStates[2], powerStates[3]);
-        total_runtime_shifter   += PowerSensor::seconds(powerStates[4], powerStates[5]);
-		total_runtime_degridder += PowerSensor::seconds(powerStates[6], powerStates[7]);
+		total_runtime_fft       += PowerSensor::seconds(powerStates[0], powerStates[1]);
+		total_runtime_degridder += PowerSensor::seconds(powerStates[2], powerStates[3]);
 		#endif
 	}
 	stopState = powerSensor.read();
@@ -406,17 +364,12 @@ void run_degridder(
     report("      fft", total_runtime_fft,
                         kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES),
                         kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES));
-	report("  shifter", total_runtime_shifter,
-	                    kernel_shifter_flops(NR_BASELINES) * 2,
-	                    kernel_shifter_bytes(NR_BASELINES) * 2);
     report("degridder", total_runtime_degridder,
                         kernel_degridder_flops(NR_BASELINES),
                         kernel_degridder_bytes(NR_BASELINES));
     long total_flops = kernel_degridder_flops(NR_BASELINES) +
-                       kernel_shifter_flops(NR_BASELINES) * 2 +
                        kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES); 
     long total_bytes = kernel_degridder_bytes(NR_BASELINES) +
-                       kernel_shifter_bytes(NR_BASELINES) * 2 +
                        kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES); 
     report("    total", total_flops, total_bytes, startState, stopState); 
     report_visibilities(PowerSensor::seconds(startState, stopState));

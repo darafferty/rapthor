@@ -109,21 +109,3 @@ uint64_t KernelSplitter::flops(int jobsize) {
 uint64_t KernelSplitter::bytes(int jobsize) {
     return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
 }
-
-KernelShifter::KernelShifter(rw::Module &module) :
-    _run(module,   "kernel_shifter"),
-    _flops(module, "kernel_shifter_flops"),
-    _bytes(module, "kernel_shifter_bytes")
-     {}
-
-void KernelShifter::run(int jobsize, void *uvgrid) {
-	(sig_shifter (void *) _run)(jobsize, uvgrid);
-}
-
-uint64_t KernelShifter::flops(int jobsize) {
-    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
-}
-
-uint64_t KernelShifter::bytes(int jobsize) {
-    return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
-}

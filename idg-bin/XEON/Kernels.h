@@ -77,16 +77,3 @@ class KernelSplitter {
         rw::Function _flops;
         rw::Function _bytes;
 };
-
-class KernelShifter {
-	public:
-		KernelShifter(rw::Module &module);
-		void run(int jobsize, void *uvgrid);
-		uint64_t flops(int jobsize);
-		uint64_t bytes(int jobsize);
-		
-	private:
-        rw::Function _run;
-        rw::Function _flops;
-        rw::Function _bytes;
-};
