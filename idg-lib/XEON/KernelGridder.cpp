@@ -149,7 +149,6 @@ void kernel_gridder(
 		    }
 		
 		    // Apply aterm and spheroidal and store result
-		    #pragma unroll_and_jam(2)
 		    for (int y = 0; y < SUBGRIDSIZE; y++) {
 		        #pragma ivdep
 			    for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -192,17 +191,21 @@ void kernel_gridder(
                     uv[y][x][3] += (uvXY * aXY2); 
                     uv[y][x][3] += (uvYY * aYY2);
                                     
+                    // Compute shifted position in subgrid
+                    int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    
 		            // Update uv grid
 		            #if ORDER == ORDER_BL_V_U_P
-		            (*subgrid)[bl][chunk][y][x][0] = uv[y][x][0] * s;
-		            (*subgrid)[bl][chunk][y][x][1] = uv[y][x][1] * s;
-		            (*subgrid)[bl][chunk][y][x][2] = uv[y][x][2] * s;
-		            (*subgrid)[bl][chunk][y][x][3] = uv[y][x][3] * s;
+		            (*subgrid)[bl][chunk][y_dst][x_dst][0] = uv[y][x][0] * s;
+		            (*subgrid)[bl][chunk][y_dst][x_dst][1] = uv[y][x][1] * s;
+		            (*subgrid)[bl][chunk][y_dst][x_dst][2] = uv[y][x][2] * s;
+		            (*subgrid)[bl][chunk][y_dst][x_dst][3] = uv[y][x][3] * s;
 		            #elif ORDER == ORDER_BL_P_V_U
-		            (*subgrid)[bl][chunk][0][y][x] = uv[y][x][0] * s;
-		            (*subgrid)[bl][chunk][1][y][x] = uv[y][x][1] * s;
-		            (*subgrid)[bl][chunk][2][y][x] = uv[y][x][2] * s;
-		            (*subgrid)[bl][chunk][3][y][x] = uv[y][x][3] * s;
+		            (*subgrid)[bl][chunk][0][y_dst][x_dst] = uv[y][x][0] * s;
+		            (*subgrid)[bl][chunk][1][y_dst][x_dst] = uv[y][x][1] * s;
+		            (*subgrid)[bl][chunk][2][y_dst][x_dst] = uv[y][x][2] * s;
+		            (*subgrid)[bl][chunk][3][y_dst][x_dst] = uv[y][x][3] * s;
                     #endif
 	            }
             }
@@ -224,7 +227,9 @@ uint64_t kernel_gridder_flops(int jobsize) {
     // ATerm
     1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 30 +
     // Spheroidal
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2;
+    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
+    // Shift
+    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6;
 }
 
 uint64_t kernel_gridder_bytes(int jobsize) {

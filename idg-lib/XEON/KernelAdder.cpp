@@ -35,10 +35,14 @@ void kernel_adder(
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     #pragma ivdep
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
+                        // Compute shifted position in subgrid
+                        int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                        int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
                         #if ORDER == ORDER_BL_V_U_P
-                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[bl][chunk][y][x][pol];
+                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[bl][chunk][y_src][x_src][pol];
                         #elif ORDER == ORDER_BL_P_V_U
-                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[bl][chunk][pol][y][x];
+                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[bl][chunk][pol][y_src][x_src];
                         #endif
                     }
                 }
@@ -52,11 +56,16 @@ void kernel_adder(
 }
 
 uint64_t kernel_adder_flops(int jobsize) {
-    return 1ULL * SUBGRIDSIZE * SUBGRIDSIZE * jobsize;
+    return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+    // Shift
+    11 +
+    // Add
+    4
+    );
 }
 
 uint64_t kernel_adder_bytes(int jobsize) {
-	return 1ULL * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+	return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
     // Coordinate
     2 * sizeof(unsigned) +
     // Pixels
