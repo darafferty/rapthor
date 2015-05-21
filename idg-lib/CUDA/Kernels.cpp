@@ -52,7 +52,7 @@ void KernelDegridder::launchAsync(
     const void *parameters[] = {
         &bl_offset, d_subgrid, d_uvw, d_wavenumbers,
         d_aterm, d_baselines, d_spheroidal, d_visibilities};
-	stream.launchKernel(function, jobsize, 1, 1, 64, 1, 1, 0, parameters);
+	stream.launchKernel(function, jobsize, 1, 1, 128, 1, 1, 0, parameters);
 }
 
 uint64_t KernelDegridder::flops(int jobsize) {

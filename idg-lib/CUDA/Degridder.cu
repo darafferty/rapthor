@@ -25,7 +25,7 @@ __global__ void kernel_degridder(
      // Shared data
     __shared__ UVW _uvw[CHUNKSIZE];
     __shared__ float _wavenumbers[NR_CHANNELS];
-    __shared__ float2 _uv[SUBGRIDSIZE][NR_POLARIZATIONS];
+    __shared__ float2 _uv[NR_POLARIZATIONS][SUBGRIDSIZE];
     __shared__ float _ulvmwn[SUBGRIDSIZE];
     __shared__ float _phase_offset[SUBGRIDSIZE];
     
@@ -102,23 +102,44 @@ __global__ void kernel_degridder(
                     // Remaining threads start preparing uvgrid values
                     tid = blockDim.x - nr_compute_threads;
 
-                    // Preload and correct subgrid values for one row
+                    // Compute shifted y position in subgrid
+                    int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                   
+                    // Preload subgrid values and apply spheroidal 
                     for (int x = tid; x < SUBGRIDSIZE; x += nr_load_threads) {
                         // Get spheroidal
                         float s = spheroidal[y][x];
-                        
-                        // Load uv grid points
+
+                        // Compute shifted x position in subgrid
+                        int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
+                        // Load subrid pixels
                         #if ORDER == ORDER_BL_P_V_U
-                        float2 uvXX = s * subgrid[bl][chunk][0][y][x];
-                        float2 uvXY = s * subgrid[bl][chunk][1][y][x];
-                        float2 uvYX = s * subgrid[bl][chunk][2][y][x];
-                        float2 uvYY = s * subgrid[bl][chunk][3][y][x];
+                        float2 uvXX = s * subgrid[bl][chunk][0][y_src][x_src];
+                        float2 uvXY = s * subgrid[bl][chunk][1][y_src][x_src];
+                        float2 uvYX = s * subgrid[bl][chunk][2][y_src][x_src];
+                        float2 uvYY = s * subgrid[bl][chunk][3][y_src][x_src];
                         #elif ORDER == ORDER_BL_V_U_P
-                        float2 uvXX = s * subgrid[bl][chunk][y][x][0];
-                        float2 uvXY = s * subgrid[bl][chunk][y][x][1];
-                        float2 uvYX = s * subgrid[bl][chunk][y][x][2];
-                        float2 uvYY = s * subgrid[bl][chunk][y][x][3];
+                        float2 uvXX = s * subgrid[bl][chunk][y_src][x_src][0];
+                        float2 uvXY = s * subgrid[bl][chunk][y_src][x_src][1];
+                        float2 uvYX = s * subgrid[bl][chunk][y_src][x_src][2];
+                        float2 uvYY = s * subgrid[bl][chunk][y_src][x_src][3];
                         #endif
+                        
+                        // Store pixels in shared memory
+                        _uv[0][x] = uvXX;
+                        _uv[1][x] = uvXY;
+                        _uv[2][x] = uvYX;
+                        _uv[3][x] = uvYY;
+                    }
+
+                    // Apply aterm to subgrid values
+                    for (int x = tid; x < SUBGRIDSIZE; x += nr_load_threads) {
+                        // Load uv values from shared memory
+                        float2 uvXX = _uv[0][x];
+                        float2 uvXY = _uv[1][x];
+                        float2 uvYX = _uv[2][x];
+                        float2 uvYY = _uv[3][x];
                         
                         // Get aterm for station1
                         float2 aXX1 = aterm[station1][0][y][x];
@@ -157,10 +178,10 @@ __global__ void kernel_degridder(
                         _uvYY += uvYY * aYY2;
                         
                         // Store uv values
-                        _uv[x][0] = _uvXX;
-                        _uv[x][1] = _uvXY;
-                        _uv[x][2] = _uvYX;
-                        _uv[x][3] = _uvYY;
+                        _uv[0][x] = _uvXX;
+                        _uv[1][x] = _uvXY;
+                        _uv[2][x] = _uvYX;
+                        _uv[3][x] = _uvYY;
                     }
                 }
                 
@@ -175,10 +196,10 @@ __global__ void kernel_degridder(
                     phasor.y = sin(phase);
             
                     // Update data points
-                    dataXX += phasor * _uv[x][0];
-                    dataXY += phasor * _uv[x][1];
-                    dataYX += phasor * _uv[x][2];
-                    dataYY += phasor * _uv[x][3];
+                    dataXX += phasor * _uv[0][x];
+                    dataXY += phasor * _uv[1][x];
+                    dataYX += phasor * _uv[2][x];
+                    dataYY += phasor * _uv[3][x];
                 }
             }
         

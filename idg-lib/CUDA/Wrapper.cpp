@@ -35,17 +35,14 @@
 #define SOURCE_DEGRIDDER    "CUDA/Degridder.cu"
 #define SOURCE_ADDER		"CUDA/Adder.cu"
 #define SOURCE_SPLITTER     "CUDA/Splitter.cu"
-#define SOURCE_SHIFTER      "CUDA/Shifter.cu"
 #define PTX_DEGRIDDER       "CUDA/Degridder.ptx"
 #define PTX_GRIDDER         "CUDA/Gridder.ptx"
 #define PTX_ADDER 			"CUDA/Adder.ptx"
 #define PTX_SPLITTER        "CUDA/Splitter.ptx"
-#define PTX_SHIFTER         "CUDA/Shifter.ptx"
 #define KERNEL_DEGRIDDER    "kernel_degridder"
 #define KERNEL_GRIDDER      "kernel_gridder"
 #define KERNEL_ADDER        "kernel_adder"
 #define KERNEL_SPLITTER     "kernel_splitter"
-#define KERNEL_SHIFTER      "kernel_shifter"
 
 
 /*
@@ -151,8 +148,6 @@ void compile(int deviceNumber) {
 	cu::Source(SOURCE_ADDER).compile(PTX_ADDER, optionsPtr);
 	#pragma omp section
 	cu::Source(SOURCE_SPLITTER).compile(PTX_SPLITTER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_SHIFTER).compile(PTX_SHIFTER, optionsPtr);
 	}
 	#pragma omp barrier
 	std::clog << std::endl;
@@ -162,18 +157,24 @@ void compile(int deviceNumber) {
 /*
     State
 */
-struct State {
-    int jobsize;
-    Record startRecord;
-    Record stopRecord;
-    double runtime;
-    double flops;
-    double bytes;
-    double power;
+class State {
+    public:
+        State();
+        int jobsize;
+        Record startRecord;
+        Record stopRecord;
+        double runtime;
+        double flops;
+        double bytes;
+        double power;
 };
 
-inline State make_state(Record &startRecord, Record &stopRecord) {
-    State s = { 0, startRecord, stopRecord, 0, 0, 0, 0 }; return s;
+State::State() {
+    jobsize = 0;
+    runtime = 0;
+    flops   = 0;
+    bytes   = 0;
+    power   = 0;
 }
 
 
@@ -208,20 +209,6 @@ void callback_gridder_gridder(CUstream, CUresult, void *userData) {
     #endif
 }
 
-void callback_gridder_shifter(CUstream, CUresult, void *userData) {
-     State *s = (State *) userData;
-    int current_jobsize = s->jobsize;
-    s->runtime = runtime(s->startRecord, s->stopRecord);
-    s->flops = KernelShifter::flops(current_jobsize);
-    s->bytes = KernelShifter::bytes(current_jobsize);
-    #if MEASURE_POWER
-    s->power = power(s->startRecord, s->stopRecord);
-    #endif
-    #if REPORT_VERBOSE
-    report("shifter", s->startRecord, s->stopRecord, s->flops, s->bytes);
-    #endif
-}
-
 void callback_gridder_fft(CUstream, CUresult, void *userData) {
      State *s = (State *) userData;
     int current_jobsize = s->jobsize;
@@ -232,7 +219,7 @@ void callback_gridder_fft(CUstream, CUresult, void *userData) {
     s->power = power(s->startRecord, s->stopRecord);
     #endif
     #if REPORT_VERBOSE
-    report("   fft", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    report("    fft", s->startRecord, s->stopRecord, s->flops, s->bytes);
     #endif
 }
 
@@ -263,17 +250,14 @@ void run_gridder(
     cu::Stream htodstream;
     cu::Stream dtohstream;
 	
-	// Load kernel modules
+	// Load kernel module
 	cu::Module module_gridder(PTX_GRIDDER);
-	cu::Module module_shifter(PTX_SHIFTER);
 	
-	// Load kernel functions
+    // Load kernel function
 	KernelGridder kernel_gridder(module_gridder, KERNEL_GRIDDER);
-	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
 	
     // Timing variables
     double total_time_gridder[nr_streams];
-    double total_time_shifter[nr_streams];
     double total_time_fft[nr_streams];
     double total_time_input[nr_streams];
     double total_time_output[nr_streams];
@@ -282,7 +266,6 @@ void run_gridder(
     long total_jobs[nr_streams];
     for (int t = 0; t < nr_streams; t++) {
         total_time_gridder[t] = 0;
-        total_time_shifter[t] = 0;
         total_time_fft[t]     = 0;
         total_time_input[t]   = 0;
         total_time_output[t]  = 0;
@@ -291,8 +274,10 @@ void run_gridder(
         total_jobs[t]         = 0;
     }
     
-	// Start gridder
+    // Number of iterations per stream
     int nr_iterations = ((NR_BASELINES / nr_streams) / jobsize) + 1;
+	
+    // Start gridder
     records_total[0].enqueue(dtohstream);
 	#pragma omp parallel num_threads(nr_streams)
 	{
@@ -301,17 +286,15 @@ void run_gridder(
         cu::Event executeFinished;
 	    cu::Event inputFree;
         int current_jobsize = jobsize;
-        int iteration = 0;
         int thread_num = omp_get_thread_num();
+        KernelFFT kernel_fft;
+        int iteration = 0;
 	
+        // Initialize states
         State states_input[nr_iterations];
         State states_gridder[nr_iterations];
-        State states_shifter1[nr_iterations];
         State states_fft[nr_iterations];
-        State states_shifter2[nr_iterations];
         State states_output[nr_iterations];
-    
-        KernelFFT kernel_fft;
 	    
 	    // Private device memory
     	cu::DeviceMemory d_visibilities(VISIBILITY_SIZE);
@@ -325,17 +308,13 @@ void run_gridder(
             // States
             State &state_input    = states_input[iteration];
             State &state_gridder  = states_gridder[iteration];
-            State &state_shifter1 = states_shifter1[iteration];
             State &state_fft      = states_fft[iteration];
-            State &state_shifter2 = states_shifter2[iteration];
             State &state_output   = states_output[iteration];
            
             // Set jobsize in states 
             state_input.jobsize    = current_jobsize;
             state_gridder.jobsize  = current_jobsize;
-            state_shifter1.jobsize = current_jobsize;
             state_fft.jobsize      = current_jobsize;
-            state_shifter2.jobsize = current_jobsize;
             state_output.jobsize   = current_jobsize;
 
 		    // Number of elements in batch
@@ -389,14 +368,6 @@ void run_gridder(
 	            executestream.record(inputFree);
                 executestream.addCallback(&callback_gridder_gridder, &state_gridder);
                  
-    	        // Launch shifter kernel
-                state_shifter1.startRecord.enqueue(executestream);
-                #if SHIFTER 
-                kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
-                #endif
-                state_shifter1.stopRecord.enqueue(executestream);
-                executestream.addCallback(&callback_gridder_shifter, &state_shifter1);
-
                 // Launch FFT
                 state_fft.startRecord.enqueue(executestream);
                 #if FFT
@@ -404,20 +375,12 @@ void run_gridder(
                 #endif
                 state_fft.stopRecord.enqueue(executestream);
                 executestream.addCallback(&callback_gridder_fft, &state_fft);
-                
-                // Launch shifter kernel
-                state_shifter2.startRecord.enqueue(executestream);
-                #if SHIFTER
-                kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
-                #endif
-                state_shifter2.stopRecord.enqueue(executestream);
-                executestream.addCallback(&callback_gridder_shifter, &state_shifter2);
             }
 	        
 	        #pragma omp critical 
             {
                 // Copy subgrid to host
-	            dtohstream.waitEvent(state_shifter2.stopRecord.event);
+	            dtohstream.waitEvent(state_fft.stopRecord.event);
                 state_output.startRecord.enqueue(dtohstream);
                 #if OUTPUT
 	            dtohstream.memcpyDtoHAsync(subgrid_ptr, d_subgrid, SUBGRID_SIZE);
@@ -435,8 +398,6 @@ void run_gridder(
         #if REPORT_TOTAL
         for (int i = 0; i < nr_iterations; i++) {
             total_time_gridder[thread_num] += states_gridder[i].runtime;
-            total_time_shifter[thread_num] += states_shifter1[i].runtime;
-            total_time_shifter[thread_num] += states_shifter2[i].runtime;
             total_time_fft[thread_num]     += states_fft[i].runtime;
             total_time_input[thread_num]   += states_input[i].runtime;
             total_time_output[thread_num]  += states_output[i].runtime;
@@ -444,7 +405,8 @@ void run_gridder(
             total_bytes_output[thread_num] += states_output[i].bytes;
         }
         #endif
- 
+        
+        // Wait for final transfer to finish 
         dtohstream.synchronize();
 	}
 
@@ -462,9 +424,6 @@ void run_gridder(
         report("gridder", total_time_gridder[t],
                           kernel_gridder.flops(jobsize),
                           kernel_gridder.bytes(jobsize));
-	    report("shifter", total_time_shifter[t]/2,
-	                      kernel_shifter.flops(jobsize),
-	                      kernel_shifter.bytes(jobsize));
         report("    fft", total_time_fft[t],
                           kernel_fft.flops(SUBGRIDSIZE, jobsize),
                           kernel_fft.bytes(SUBGRIDSIZE, jobsize));
@@ -476,7 +435,6 @@ void run_gridder(
     // Report overall performance
     std::clog << "--- overall ---" << std::endl;
     long total_flops = kernel_gridder.flops(NR_BASELINES) +
-                       kernel_shifter.flops(NR_BASELINES)*2 +
                        kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES);
     report("     total", records_total[0], records_total[1], total_flops, 0);
     double total_runtime = runtime(records_total[0], records_total[1]);
@@ -822,20 +780,6 @@ void callback_degridder_degridder(CUstream, CUresult, void *userData) {
     #endif
 }
 
-void callback_degridder_shifter(CUstream, CUresult, void *userData) {
-     State *s = (State *) userData;
-    int current_jobsize = s->jobsize;
-    s->runtime = runtime(s->startRecord, s->stopRecord);
-    s->flops = KernelShifter::flops(current_jobsize);
-    s->bytes = KernelShifter::bytes(current_jobsize);
-    #if MEASURE_POWER
-    s->power = power(s->startRecord, s->stopRecord);
-    #endif
-    #if REPORT_VERBOSE
-    report("  shifter", s->startRecord, s->stopRecord, s->flops, s->bytes);
-    #endif
-}
-
 void callback_degridder_fft(CUstream, CUresult, void *userData) {
      State *s = (State *) userData;
     int current_jobsize = s->jobsize;
@@ -860,7 +804,7 @@ void callback_degridder_output(CUstream, CUresult, void *userData) {
     s->power = power(s->startRecord, s->stopRecord);
     #endif
     #if REPORT_VERBOSE
-    report(" output", s->startRecord, s->stopRecord, s->flops, s->bytes);
+    report("   output", s->startRecord, s->stopRecord, s->flops, s->bytes);
     #endif
 }
 
@@ -877,17 +821,14 @@ void run_degridder(
     cu::Stream htodstream;
     cu::Stream dtohstream;
 	
-	// Load kernel modules
+	// Load kernel module
 	cu::Module module_degridder(PTX_DEGRIDDER);
-	cu::Module module_shifter(PTX_SHIFTER);
 	
-	// Load kernel functions
+	// Load kernel function
 	KernelDegridder kernel_degridder(module_degridder, KERNEL_DEGRIDDER);
-	KernelShifter kernel_shifter(module_shifter, KERNEL_SHIFTER);
 	
     // Timing variables
 	double total_time_degridder[nr_streams];
-	double total_time_shifter[nr_streams];
 	double total_time_fft[nr_streams];
 	double total_time_input[nr_streams];
 	double total_time_output[nr_streams];
@@ -896,7 +837,6 @@ void run_degridder(
     long total_jobs[nr_streams];
     for (int t = 0; t < nr_streams; t++) {
         total_time_degridder[t] = 0;
-        total_time_shifter[t]   = 0;
         total_time_fft[t]       = 0;
         total_time_input[t]     = 0;
         total_time_output[t]    = 0;
@@ -905,8 +845,10 @@ void run_degridder(
         total_jobs[t]           = 0;
     }
 
-    // Start degridder
+    // Number of iterations per stream
     int nr_iterations = ((NR_BASELINES / nr_streams) / jobsize) + 1;
+    
+    // Start degridder
     records_total[0].enqueue(executestream);
     #pragma omp parallel num_threads(nr_streams)
 	{
@@ -915,17 +857,15 @@ void run_degridder(
         cu::Event executeFinished;
         cu::Event inputFree;
 	    int current_jobsize = jobsize;
-        int iteration = 0;
         int thread_num = omp_get_thread_num();
-        
+        KernelFFT kernel_fft;
+        int iteration = 0;
+       
+        // Initialize states 
         State states_input[nr_iterations];
         State states_degridder[nr_iterations];
-        State states_shifter1[nr_iterations];
         State states_fft[nr_iterations];
-        State states_shifter2[nr_iterations];
         State states_output[nr_iterations];
-        
-        KernelFFT kernel_fft;
     
 	    // Private memory
     	cu::DeviceMemory d_uvw(UVW_SIZE);
@@ -939,18 +879,14 @@ void run_degridder(
             // States
             State &state_input      = states_input[iteration];
             State &state_degridder  = states_degridder[iteration];
-            State &state_shifter1   = states_shifter1[iteration];
             State &state_fft        = states_fft[iteration];
-            State &state_shifter2   = states_shifter2[iteration];
             State &state_output     = states_output[iteration];
      
             // Set jobsize in states 
-            state_input.jobsize    = current_jobsize;
-            state_degridder.jobsize  = current_jobsize;
-            state_shifter1.jobsize = current_jobsize;
-            state_fft.jobsize      = current_jobsize;
-            state_shifter2.jobsize = current_jobsize;
-            state_output.jobsize   = current_jobsize;
+            state_input.jobsize     = current_jobsize;
+            state_degridder.jobsize = current_jobsize;
+            state_fft.jobsize       = current_jobsize;
+            state_output.jobsize    = current_jobsize;
 
 		    // Number of elements in batch
 		    size_t uvw_elements        = NR_TIME * 3;
@@ -960,7 +896,7 @@ void run_degridder(
 		    // Pointers to data for current batch
 		    void *visibilities_ptr = (float complex *) h_visibilities + bl * visibility_elements;
 		    void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-		    void *subgrid_ptr       = (float complex *) h_subgrid + bl * subgrid_elements;
+		    void *subgrid_ptr      = (float complex *) h_subgrid + bl * subgrid_elements;
 
             // Wait for previous computation to finish
             executestream.record(executeFinished);
@@ -991,31 +927,15 @@ void run_degridder(
 	        
             #pragma omp critical
             {
-                // Launch shifter kernel
-    	        executestream.waitEvent(state_input.stopRecord.event);
-                state_shifter1.startRecord.enqueue(executestream);
-    	        #if SHIFTER
-                kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
-                #endif
-    	        state_shifter1.stopRecord.enqueue(executestream);
-                executestream.addCallback(&callback_gridder_shifter, &state_shifter1);
-    	
     	        // Launch FFT
+                executestream.waitEvent(state_input.stopRecord.event);
     	        state_fft.startRecord.enqueue(executestream);
                 #if FFT
     	        kernel_fft.launchAsync(executestream, d_subgrid, CUFFT_INVERSE);
                 #endif
     	        state_fft.stopRecord.enqueue(executestream);
-                executestream.addCallback(&callback_gridder_fft, &state_fft);
+                executestream.addCallback(&callback_degridder_fft, &state_fft);
     	        
-    	        // Run shifter kernel
-    	        state_shifter2.startRecord.enqueue(executestream);
-                #if SHIFTER
-    	        kernel_shifter.launchAsync(executestream, current_jobsize, d_subgrid);
-                #endif
-    	        state_shifter2.stopRecord.enqueue(executestream);
-                executestream.addCallback(&callback_gridder_shifter, &state_shifter2);
-    	
     	        // Launch degridder kernel
     	        state_degridder.startRecord.enqueue(executestream);
                 #if DEGRIDDER
@@ -1050,8 +970,6 @@ void run_degridder(
         #if REPORT_TOTAL
         for (int i = 0; i < nr_iterations; i++) {
             total_time_degridder[thread_num] += states_degridder[i].runtime;
-            total_time_shifter[thread_num]   += states_shifter1[i].runtime;
-            total_time_shifter[thread_num]   += states_shifter2[i].runtime;
             total_time_fft[thread_num]       += states_fft[i].runtime;
             total_time_input[thread_num]     += states_input[i].runtime;
             total_time_output[thread_num]    += states_output[i].runtime;
@@ -1060,8 +978,8 @@ void run_degridder(
         }
         #endif
  
+        // Wait for final transfers to finish
         dtohstream.synchronize();
-
     }
     
     // Measure total runtime
@@ -1078,9 +996,6 @@ void run_degridder(
         report("      fft", total_time_fft[t],
                             kernel_fft.flops(SUBGRIDSIZE, jobsize),
                             kernel_fft.bytes(SUBGRIDSIZE, jobsize));
-        report("  shifter", total_time_shifter[t]/2,
-                            kernel_shifter.flops(jobsize),
-                            kernel_shifter.bytes(jobsize));
         report("degridder", total_time_degridder[t],
                             kernel_degridder.flops(jobsize),
                             kernel_degridder.bytes(jobsize));
@@ -1093,8 +1008,7 @@ void run_degridder(
     
     // Print overall report
     std::clog << "--- overall ---" << std::endl;
-    long total_flops = kernel_shifter.flops(NR_BASELINES)*2 +
-                       kernel_degridder.flops(NR_BASELINES) +
+    long total_flops = kernel_degridder.flops(NR_BASELINES) +
                        kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES);
     report("    total", records_total[0], records_total[1], total_flops, 0);
     double total_runtime = runtime(records_total[0], records_total[1]);
