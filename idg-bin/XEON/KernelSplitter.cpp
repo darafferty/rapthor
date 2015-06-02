@@ -19,6 +19,7 @@ void kernel_splitter(
     likwid_markerThreadInit();
     likwid_markerStartRegion("splitter");
     #endif
+    #pragma omp for
     for (int bl = 0; bl < jobsize; bl++) {
         for (int chunk = 0; chunk < CHUNKSIZE; chunk++) {
             // Get first and last UVW coordinate
