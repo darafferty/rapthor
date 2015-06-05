@@ -53,7 +53,11 @@ IDG-CUDA-WRAPPER: CUDA/IDG-WRAPPER.cpp CUDA/Proxies.cpp CUDA/CU.cpp Data/Init.cp
 #
 #	Util
 #
-EXEC=IDG-XEON IDG-XEON-WRAPPER IDG-CUDA IDG-CUDA-WRAPPER IDG-MIC
+BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
+HASH=$(shell git rev-parse HEAD | head -c 10)
+archive:
+	git archive -o idg-${BRANCH}-${HASH}.tar HEAD
 
+EXEC=IDG-XEON IDG-XEON-WRAPPER IDG-CUDA IDG-CUDA-WRAPPER IDG-MIC
 clean:
 	@rm -f ${EXEC} *.so */*.so *.gch */*.ptx */*~ *~ *.optrpt */*.optrpt subgrid* grid* visibilities* powerdump
