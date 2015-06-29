@@ -4,8 +4,11 @@
 #include <immintrin.h>
 #include <omp.h>
 #include <string.h>
-#include <likwid.h>
 #include <stdint.h>
+
+#if USE_LIKWID
+#include <likwid.h>
+#endif
 
 #define USE_VML 1
 #if USE_VML

@@ -17,8 +17,8 @@ PARAMETERS=-DIMAGESIZE=${IMAGESIZE} -DW_PLANES=${W_PLANES} -DNR_STATIONS=${NR_ST
 #
 #   Benchmarking
 #
-MEASURE_POWER=1
-USE_LIKWID=1
+MEASURE_POWER=0
+USE_LIKWID=0
 
 #
 #   Architecture specific
@@ -30,20 +30,19 @@ ARCH=${ARCH_AVX}
 #
 #   Dependencies
 #
-LIKWID_INC=/usr/local/include/likwid
-FFTW3_INC=/opt/intel/composer_xe_2015/mkl/include/fftw/
+LIKWID_INC=-I/usr/local/include/likwid
+FFTW3_INC=-I/opt/intel/composer_xe_2015/mkl/include/fftw/
 
 #
 #   IDG	
 #
-all: IDG IDG-WRAPPER
+all: IDG.x IDG-WRAPPER.x
 
-IDG: IDG.cpp Power.cpp ../Data/Init.cpp ../Common/Write.cpp ../Lib/uvwsim.c
-	icpc -o $@ $^ -ldl -fopenmp -I../Common -I../Data -I../Lib -I${LIKWID_INC} -mkl -llikwid -lnuma ${PARAMETERS} -DMEASURE_POWER=${MEASURE_POWER} -DUSE_LIKWID=${USE_LIKWID} ${ARCH}
+IDG.x: IDG.cpp Power.cpp ../Data/Init.cpp ../Common/Write.cpp ../Lib/uvwsim.c
+	icpc -o $@ $^ -ldl -fopenmp -I../Common -I../Data -I../Lib ${LIKWID_INC} -mkl -llikwid -lnuma ${PARAMETERS} -DMEASURE_POWER=${MEASURE_POWER} -DUSE_LIKWID=${USE_LIKWID} ${ARCH}
 
-IDG-WRAPPER: IDG-WRAPPER.cpp Proxies.cpp ../Data/Init.cpp ../Common/RW.cpp ../Lib/uvwsim.c
+IDG-WRAPPER.x: IDG-WRAPPER.cpp Proxies.cpp ../Data/Init.cpp ../Common/RW.cpp ../Lib/uvwsim.c
 	icpc -o $@ $^ -ldl -fopenmp -I../Common -I../Data -I../Lib
 
-EXEC=IDG IDG-WRAPPER 
 clean:
-	@rm -f ${EXEC} *.so */*.so *.gch */*.ptx */*~ *~ *.optrpt */*.optrpt 
+	@rm -f *.x *.so */*.so *.gch */*.ptx */*~ *~ *.optrpt */*.optrpt 

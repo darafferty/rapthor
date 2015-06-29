@@ -4,11 +4,14 @@
 #include <string.h>
 #include <omp.h>
 #include <fftw3.h>
+
+#if USE_LIKWID
 #include <likwid.h>
+#endif
 
 #include "Util.h"
 #include "Init.h"
-#include "Power.h"
+#include "Power.h"  // not needed
 #include "Write.h"
 #include "Types.h"
 
@@ -41,35 +44,35 @@
 /*
     Performance reporting
 */
-void report(const char *message, uint64_t flops, uint64_t bytes, const PowerSensor::State &startState, const PowerSensor::State &stopState) {
+// void report(const char *message, uint64_t flops, uint64_t bytes, const PowerSensor::State &startState, const PowerSensor::State &stopState) {
+//     #pragma omp critical (clog)
+//     {
+//     double runtime = PowerSensor::seconds(startState, stopState);
+//     double energy  = PowerSensor::Joules(startState, stopState);
+
+//     std::clog << message << ": " << runtime << " s, "
+//               << flops * 1e-9 / runtime  << " GFLOPS, "
+//               << bytes * 1e-9  / runtime << " GB/s";
+//     #if MEASURE_POWER
+//     if (runtime > 1e-2) {
+//         std::clog << ", " << energy / runtime << " W" 
+//                      ", " << flops * 1e-9 / energy   << " GFLOPS/W";
+//     }
+//     #endif
+//     std::clog << std::endl;
+//     }
+// }
+
+
+void report(const char *message, uint64_t flops, uint64_t bytes, double runtime) {
     #pragma omp critical (clog)
-    {
-    double runtime = PowerSensor::seconds(startState, stopState);
-    double energy  = PowerSensor::Joules(startState, stopState);
-
-    std::clog << message << ": " << runtime << " s, "
-              << flops * 1e-9 / runtime  << " GFLOPS, "
-              << bytes * 1e-9  / runtime << " GB/s";
-    #if MEASURE_POWER
-    if (runtime > 1e-2) {
-        std::clog << ", " << energy / runtime << " W" 
-                     ", " << flops * 1e-9 / energy   << " GFLOPS/W";
-    }
-    #endif
-    std::clog << std::endl;
-    }
-}
-
-
-void report(const char *message, double runtime, uint64_t flops, uint64_t bytes) {
-	#pragma omp critical (clog)
 	{
-    std::clog << message << ": " << runtime << " s";
-    if (flops != 0)
-	std::clog << ", " << flops / runtime * 1e-9 << " GFLOPS";
-    if (bytes != 0)
-	std::clog << ", " << bytes / runtime * 1e-9 << " GB/s";
-    std::clog << std::endl;
+        std::clog << message << ": " << runtime << " s";
+        if (flops != 0)
+            std::clog << ", " << flops / runtime * 1e-9 << " GFLOPS";
+        if (bytes != 0)
+            std::clog << ", " << bytes / runtime * 1e-9 << " GB/s";
+        std::clog << std::endl;
 	}
 }
 
@@ -104,20 +107,21 @@ void kernel_info() {
 /*
 	Gridder
 */
-void run_gridder(
-	int jobsize,
-	void *visibilities, void *uvw, void *wavenumbers,
-	void *aterm, void *spheroidal, void *baselines, void *subgrid) {
+void run_gridder(int jobsize,
+                 void *visibilities, 
+                 void *uvw, 
+                 void *wavenumbers,
+                 void *aterm, 
+                 void *spheroidal, 
+                 void *baselines, 
+                 void *subgrid) 
+{
     // Runtime counters
     double total_runtime_gridder = 0;
     double total_runtime_fft = 0;
-    
-    // Power states
-    PowerSensor::State startState, stopState;
-    PowerSensor::State powerStates[4];
-	
+  
     // Start gridder
-    startState = powerSensor.read();
+    double total_runtime = -omp_get_wtime();
 	for (int bl = 0; bl < NR_BASELINES; bl += jobsize) {
 		// Prevent overflow
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
@@ -136,68 +140,76 @@ void run_gridder(
 		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
 		void *baselines_ptr    = baselines;
 		
-	    powerStates[0] = powerSensor.read();
-		kernel_gridder(
-		    jobsize, bl, (UVWType *) uvw_ptr, (WavenumberType *) wavenumbers_ptr, (VisibilitiesType *) visibilities_ptr,
-		    (SpheroidalType *) spheroidal_ptr, (ATermType *) aterm_ptr, (BaselineType *) baselines_ptr, (SubGridType *) subgrid_ptr);
-	    powerStates[1] = powerSensor.read();
-		
-		powerStates[2] = powerSensor.read();
-		#if ORDER == ORDER_BL_V_U_P
+        double runtime_gridder = -omp_get_wtime();
+        
+		kernel_gridder(jobsize, bl, (UVWType *) uvw_ptr, 
+                       (WavenumberType *) wavenumbers_ptr, 
+                       (VisibilitiesType *) visibilities_ptr,
+                       (SpheroidalType *) spheroidal_ptr, 
+                       (ATermType *) aterm_ptr, 
+                       (BaselineType *) baselines_ptr, 
+                       (SubGridType *) subgrid_ptr);
+        
+        runtime_gridder += omp_get_wtime();
+        
+        double runtime_fft = -omp_get_wtime();
+    
+#if ORDER == ORDER_BL_V_U_P
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
-        #elif ORDER == ORDER_BL_P_V_U
+#elif ORDER == ORDER_BL_P_V_U
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
-        #endif
-		powerStates[3] = powerSensor.read();
+#endif
+        
+        runtime_fft += omp_get_wtime();
 		
-        #if REPORT_VERBOSE
+#if REPORT_VERBOSE
         report("gridder", kernel_gridder_flops(jobsize),
-                          kernel_gridder_bytes(jobsize),
-                          powerStates[0], powerStates[1]);
+               kernel_gridder_bytes(jobsize),
+               runtime_gridder);
 		report("    fft", kernel_fft_flops(SUBGRIDSIZE, jobsize),
-                          kernel_fft_bytes(SUBGRIDSIZE, jobsize),
-                          powerStates[2], powerStates[3]);
-		#endif
-		#if REPORT_TOTAL
-		total_runtime_gridder += PowerSensor::seconds(powerStates[0], powerStates[1]);
-		total_runtime_fft     += PowerSensor::seconds(powerStates[2], powerStates[3]);
-		#endif
+               kernel_fft_bytes(SUBGRIDSIZE, jobsize),
+               runtime_fft);
+#endif
+        
+#if REPORT_TOTAL
+		total_runtime_gridder += runtime_gridder;
+		total_runtime_fft     += runtime_fft;
+#endif
 	}
-    stopState = powerSensor.read();
-
-    #if REPORT_VERBOSE
+    total_runtime += omp_get_wtime();
+    
+#if REPORT_VERBOSE
     std::clog << std::endl;
-    #endif
-    #if REPORT_TOTAL
+#endif
+    
+#if REPORT_TOTAL
     report("gridder", total_runtime_gridder,
-                      kernel_gridder_flops(NR_BASELINES),
-                      kernel_gridder_bytes(NR_BASELINES));
+           kernel_gridder_flops(NR_BASELINES),
+           kernel_gridder_bytes(NR_BASELINES));
     report("    fft", total_runtime_fft,
-                      kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES),
-                      kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES));
+           kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES),
+           kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES));
     long total_flops = kernel_gridder_flops(NR_BASELINES) +
-                       kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES); 
+        kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES); 
     long total_bytes = kernel_gridder_bytes(NR_BASELINES) +
-                       kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES); 
-    report("  total", total_flops, total_bytes, startState, stopState); 
-    report_visibilities(PowerSensor::seconds(startState, stopState));
+        kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES); 
+    report("  total", total_flops, total_bytes, total_runtime); 
+    report_visibilities(total_runtime);
     std::clog << std::endl;
-	#endif
+#endif
 }
 
 
 /*
 	Adder
 */
-void run_adder(
-	int jobsize,
-	void *uvw, void *subgrid, void *grid) {
-	// Power states
-	PowerSensor::State startState, stopState;
-    PowerSensor::State powerStates[2];
-	
+void run_adder(int jobsize,
+               void *uvw, 
+               void *subgrid, 
+               void *grid) 
+{
 	// Run adder
-	startState = powerSensor.read();
+	double total_runtime = -omp_get_wtime();
 	for (int bl = 0; bl < NR_BASELINES; bl += jobsize) {
 		// Prevent overflow
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
@@ -211,17 +223,19 @@ void run_adder(
 		void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
 		void *grid_ptr    = grid;
 	
-		powerStates[0] = powerSensor.read();
+        double runtime_adder = -omp_get_wtime();
+        
 		kernel_adder(jobsize, (UVWType *) uvw_ptr, (SubGridType *) subgrid_ptr, (GridType *) grid_ptr);
-		powerStates[1] = powerSensor.read();
-
+        
+        runtime_adder += omp_get_wtime();
+        
 		#if REPORT_VERBOSE
 		report("adder", kernel_adder_flops(jobsize),
 		                kernel_adder_bytes(jobsize),
-		                powerStates[0], powerStates[1]);
+		                runtime_adder);
 		#endif
 	}
-	stopState = powerSensor.read();
+	total_runtime += omp_get_wtime();
 	
     #if REPORT_VERBOSE
     std::clog << std::endl;
@@ -230,50 +244,50 @@ void run_adder(
     #if REPORT_TOTAL
     long total_flops = kernel_adder_flops(NR_BASELINES);
     long total_bytes = kernel_adder_bytes(NR_BASELINES);
-    report("total", total_flops, total_bytes, startState, stopState); 
-    report_subgrids(PowerSensor::seconds(startState, stopState));
+    report("total", total_flops, total_bytes, total_runtime); 
+    report_subgrids(total_runtime);
     std::clog << std::endl;
-	#endif
+    #endif
 }
 
 
 /*
 	Splitter
 */
-void run_splitter(
-	int jobsize,
-	void *uvw, void *subgrid, void *grid) {
-	// Power states
-	PowerSensor::State startState, stopState;
-    PowerSensor::State powerStates[2];
-	
+void run_splitter(int jobsize,
+                  void *uvw, 
+                  void *subgrid, 
+                  void *grid) 
+{
 	// Run splitter
-	startState = powerSensor.read();
+	double total_runtime = -omp_get_wtime();
 	for (int bl = 0; bl < NR_BASELINES; bl += jobsize) {
 		// Prevent overflow
 		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
 		
 		// Number of elements in batch
-        int uvw_elements     = NR_TIME * 3;;
-		int subgrid_elements = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
-		
-		// Pointer to data for current jobs
-		void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
-		void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
-		void *grid_ptr    = grid;
+    int uvw_elements     = NR_TIME * 3;;
+    int subgrid_elements = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 	
-		// Run splitter
-		powerStates[0] = powerSensor.read();
-		kernel_splitter(jobsize, (UVWType *) uvw_ptr, (SubGridType *) subgrid_ptr, (GridType *) grid_ptr);
-		powerStates[1] = powerSensor.read();
+    // Pointer to data for current jobs
+    void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
+    void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
+    void *grid_ptr    = grid;
+	
+    // Run splitter
+    double runtime_splitter = -omp_get_wtime();
+	
+    kernel_splitter(jobsize, (UVWType *) uvw_ptr, (SubGridType *) subgrid_ptr, (GridType *) grid_ptr);
+    
+    runtime_splitter += omp_get_wtime();
 
-		#if REPORT_VERBOSE
-		report("splitter", kernel_splitter_flops(jobsize),
-		                   kernel_splitter_bytes(jobsize),
-		                   powerStates[0], powerStates[1]);
-		#endif
+	#if REPORT_VERBOSE
+    report("splitter", kernel_splitter_flops(jobsize),
+           kernel_splitter_bytes(jobsize),
+           runtime_splitter);
+    #endif
 	}
-    stopState = powerSensor.read();
+	total_runtime += omp_get_wtime();
 	
     #if REPORT_VERBOSE
     std::clog << std::endl;
@@ -282,20 +296,24 @@ void run_splitter(
     #if REPORT_TOTAL
     long total_flops = kernel_splitter_flops(NR_BASELINES);
     long total_bytes = kernel_splitter_bytes(NR_BASELINES);
-    report("   total", total_flops, total_bytes, startState, stopState); 
-    report_subgrids(PowerSensor::seconds(startState, stopState));
+    report("   total", total_flops, total_bytes, total_runtime); 
+    report_subgrids(total_runtime);
     std::clog << std::endl;
 	#endif
 }
 
 
 /*
-	Degridder
+  Degridder
 */
-void run_degridder(
-	int jobsize,
-	void *wavenumbers, void *aterm, void *baselines,
-	void *visibilities, void *uvw, void *spheroidal, void *subgrid) {
+void run_degridder(int jobsize,
+                   void *wavenumbers, 
+                   void *aterm, 
+                   void *baselines,
+                   void *visibilities, 
+                   void *uvw, 
+                   void *spheroidal, 
+                   void *subgrid) {
     // Zero visibilties
     memset(visibilities, 0, sizeof(VisibilitiesType));
 	
@@ -303,98 +321,102 @@ void run_degridder(
     double total_runtime_fft = 0;
     double total_runtime_degridder = 0;
     
-    // Power states
-    PowerSensor::State startState, stopState;
-    PowerSensor::State powerStates[8];
-
-	// Start degridder
-	startState = powerSensor.read();
-	for (int bl = 0; bl < NR_BASELINES; bl += jobsize) {
-		// Prevent overflow
-		jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
-		
-		// Number of elements in batch
-		int uvw_elements          = NR_TIME * 3;
-		int visibilities_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
-		int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
-		
-		// Pointers to data for current batch
+    // Start degridder
+    double total_runtime = -omp_get_wtime();
+    for (int bl = 0; bl < NR_BASELINES; bl += jobsize) {
+        // Prevent overflow
+        jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+        
+        // Number of elements in batch
+        int uvw_elements          = NR_TIME * 3;
+        int visibilities_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
+        int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
+      
+        // Pointers to data for current batch
         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
         void *wavenumbers_ptr  = wavenumbers;
-		void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
-		void *spheroidal_ptr   = spheroidal;
-		void *aterm_ptr        = aterm;
-		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
-		void *baselines_ptr    = baselines;
-		
-		powerStates[0] = powerSensor.read();
-		#if ORDER == ORDER_BL_V_U_P
+        void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
+        void *spheroidal_ptr   = spheroidal;
+        void *aterm_ptr        = aterm;
+        void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
+        void *baselines_ptr    = baselines;
+        
+        double runtime_fft = -omp_get_wtime();
+        
+#if ORDER == ORDER_BL_V_U_P
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
-        #elif ORDER == ORDER_BL_P_V_U
+#elif ORDER == ORDER_BL_P_V_U
         kernel_fft(SUBGRIDSIZE, jobsize*NR_POLARIZATIONS, (fftwf_complex *) subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_PYX);
-        #endif
-        powerStates[1] = powerSensor.read();
-
-		powerStates[2] = powerSensor.read();
-		kernel_degridder(
-		    jobsize, bl, (SubGridType *) subgrid_ptr, (UVWType *) uvw_ptr, (WavenumberType *) wavenumbers_ptr,
-		    (ATermType *) aterm_ptr, (BaselineType *) baselines_ptr, (SpheroidalType *) spheroidal_ptr, (VisibilitiesType *) visibilities_ptr);
-		powerStates[3] = powerSensor.read();
-
-		#if REPORT_VERBOSE
-		report("      fft", kernel_fft_flops(SUBGRIDSIZE, jobsize),
-		                    kernel_fft_bytes(SUBGRIDSIZE, jobsize),
-		                    powerStates[0], powerStates[1]);
-		report("degridder", kernel_degridder_flops(jobsize),
-		                    kernel_degridder_bytes(jobsize),
-		                    powerStates[2], powerStates[3]);
-	    #endif
-        #if REPORT_TOTAL
-		total_runtime_fft       += PowerSensor::seconds(powerStates[0], powerStates[1]);
-		total_runtime_degridder += PowerSensor::seconds(powerStates[2], powerStates[3]);
-		#endif
-	}
-	stopState = powerSensor.read();
-	
-    #if REPORT_VERBOSE
+#endif
+        
+        runtime_fft += omp_get_wtime();
+        
+      double runtime_degridder = -omp_get_wtime();
+      
+      kernel_degridder(jobsize, bl, (SubGridType *) subgrid_ptr, 
+                       (UVWType *) uvw_ptr, (WavenumberType *) wavenumbers_ptr, 
+                       (ATermType *) aterm_ptr, (BaselineType *) baselines_ptr, 
+                       (SpheroidalType *) spheroidal_ptr, 
+                       (VisibilitiesType *) visibilities_ptr);
+      
+      runtime_degridder += omp_get_wtime();
+      
+#if REPORT_VERBOSE
+      report("      fft", kernel_fft_flops(SUBGRIDSIZE, jobsize),
+             kernel_fft_bytes(SUBGRIDSIZE, jobsize),
+             runtime_fft);
+	  report("degridder", kernel_degridder_flops(jobsize),
+             kernel_degridder_bytes(jobsize),
+             runtime_degridder);
+#endif
+      
+#if REPORT_TOTAL
+      total_runtime_fft       += runtime_fft;
+      total_runtime_degridder += runtime_degridder;
+#endif
+    }
+    total_runtime += omp_get_wtime();
+    
+#if REPORT_VERBOSE
     std::clog << std::endl;
-    #endif
+#endif
 	
-    #if REPORT_TOTAL
+#if REPORT_TOTAL
     report("      fft", total_runtime_fft,
-                        kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES),
-                        kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES));
+           kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES),
+           kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES));
     report("degridder", total_runtime_degridder,
-                        kernel_degridder_flops(NR_BASELINES),
+           kernel_degridder_flops(NR_BASELINES),
                         kernel_degridder_bytes(NR_BASELINES));
     long total_flops = kernel_degridder_flops(NR_BASELINES) +
-                       kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES); 
+        kernel_fft_flops(SUBGRIDSIZE, NR_BASELINES); 
     long total_bytes = kernel_degridder_bytes(NR_BASELINES) +
-                       kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES); 
-    report("    total", total_flops, total_bytes, startState, stopState); 
-    report_visibilities(PowerSensor::seconds(startState, stopState));
+        kernel_fft_bytes(SUBGRIDSIZE, NR_BASELINES); 
+    report("    total", total_flops, total_bytes, total_runtime); 
+    report_visibilities(total_runtime);
     std::clog << std::endl;
-	#endif
+#endif
 }
 
 
 /*
     FFT
 */
-void run_fft(
-	void *grid,
-	int sign) {
+void run_fft(void *grid,
+             int sign) 
+{
     // Start fft
-	PowerSensor::State powerStates[2];
-	powerStates[0] = powerSensor.read();
+    double runtime_fft = -omp_get_wtime();
+    
 	kernel_fft(GRIDSIZE, 1, (fftwf_complex *) grid, sign, FFT_LAYOUT_PYX);
-	powerStates[1] = powerSensor.read();
+
+    runtime_fft += omp_get_wtime();
 
     #if REPORT_TOTAL
     report("fft", kernel_fft_flops(GRIDSIZE, 1),
                   kernel_fft_bytes(GRIDSIZE, 1),
-                  powerStates[0], powerStates[1]);
-    double runtime_fft = PowerSensor::seconds(powerStates[0], powerStates[1]);
+                  runtime_fft);
+    //    double runtime_fft = PowerSensor::seconds(powerStates[0], powerStates[1]);
     std::clog << std::endl;
     #endif
 }
