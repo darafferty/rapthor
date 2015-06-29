@@ -3,12 +3,19 @@
 #include <string.h>
 
 #include <sstream>
+#include <fstream>
 #include <iomanip>
+#include <cstdlib>
+
+#include <omp.h>
+#include <CL/cl.hpp>
 
 #include "Util.h"
 #include "Init.h"
-#include "Kernels.h"
 #include "Memory.h"
+#include "Types.h"
+
+#include "opencl.h"
 
 
 /*
@@ -62,10 +69,14 @@
 /*
     Size of device datastructures for one block of work
 */
-#define VISIBILITY_SIZE	current_jobsize * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(float2)
+#define VISIBILITY_SIZE	current_jobsize * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
 #define UVW_SIZE		current_jobsize * NR_TIME * 3 * sizeof(float)
-#define SUBGRID_SIZE	current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float2)
+#define SUBGRID_SIZE	current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeoft(FLOAT_COMPLEX)
 
+
+/*
+    OpenCL
+*/
 
 /*
     Info
@@ -75,17 +86,17 @@ void printDevices(int deviceNumber) {
 	cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
 
 	// Get devices
-	vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	
 	std::clog << "Devices";
 	for (int d = 0; d < devices.size(); d++) {
-		cl::Device device = devices[p];
+		cl::Device device = devices[d];
 		device_info_t devInfo = getDeviceInfo(device);    
 		std::clog << "Device: "			  << devInfo.deviceName << std::endl;
 		std::clog << "Driver version  : " << devInfo.driverVersion << std::endl;
 		std::clog << "Compute units   : " << devInfo.numCUs << std::endl;
 		std::clog << "Clock frequency : " << devInfo.maxClockFreq << " MHz" << std::endl;
-		if (device == deviceNumber) {
+		if (d == deviceNumber) {
 			std::clog << "\t" << "<---";
 		}
 		std::clog << std::endl;
@@ -99,7 +110,6 @@ void printDevices(int deviceNumber) {
 */
 std::string compileOptions(int deviceNumber) {
 	std::stringstream options;
-	cu::Device device(deviceNumber);
 	options << " -DNR_STATIONS="		<< NR_STATIONS;
 	options << " -DNR_BASELINES="		<< NR_BASELINES;
 	options << " -DNR_TIME="			<< NR_TIME;
@@ -111,24 +121,6 @@ std::string compileOptions(int deviceNumber) {
 	options << " -DIMAGESIZE="			<< IMAGESIZE;
     options << " -ICommon";
 	return options.str();
-}
-
-void compile(int deviceNumber) {
-	std::string options = compileOptions(deviceNumber);
-	const char *optionsPtr = static_cast<const char *>(options.c_str());
-	#pragma omp parallel sections
-	{
-	#pragma omp section
-	cu::Source(SOURCE_GRIDDER).compile(PTX_GRIDDER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_DEGRIDDER).compile(PTX_DEGRIDDER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_ADDER).compile(PTX_ADDER, optionsPtr);
-	#pragma omp section
-	cu::Source(SOURCE_SPLITTER).compile(PTX_SPLITTER, optionsPtr);
-	}
-	#pragma omp barrier
-	std::clog << std::endl;
 }
 
 
@@ -181,7 +173,7 @@ cl::Program compile(const char *filename, cl::Context context, cl::Device device
 	Gridder
 */
 void run_gridder(
-    cu::Context &context, cu::Device &device, cu::CommandQueue &queue,
+    cl::Context &context, cl::Device &device, cl::CommandQueue &queue,
     int nr_streams, int jobsize,
     cl::Buffer &h_visibilities, cl::Buffer &h_uvw,
     cl::Buffer &h_subgrid, cl::Buffer &d_wavenumbers,
@@ -221,9 +213,9 @@ void run_gridder(
         int iteration = 0;
 	    
 	    // Private device memory
-        cl::Buffer d_visibilities = cl::Buffer(VISIBILITY_SIZE);
-        cl::Buffer d_uvw          = cl::Buffer(UVW_SIZE);
-        cl::Buffer d_subgrid      = cl::Buffer(SUBGRID_SIZE);
+        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, VISIBILITY_SIZE);
+        cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, UVW_SIZE);
+        cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_READ_WRITE, SUBGRID_SIZE);
 	    
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
             // Prevent overflow
@@ -356,7 +348,7 @@ int main(int argc, char **argv) {
 	// Initialize OpenCL
     std::clog << ">>> Initialize OpenCL" << std::endl;
     cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
-    vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+    std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
     cl::Device device = devices[deviceNumber];
     cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
     
