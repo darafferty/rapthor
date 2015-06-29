@@ -1,3 +1,5 @@
+#if USE_LIKWID
+
 #include <iostream>
 
 #include <stdint.h>
@@ -39,3 +41,5 @@ class PowerSensor {
 };
 
 static PowerSensor powerSensor;
+
+#endif // USE_LIKWID

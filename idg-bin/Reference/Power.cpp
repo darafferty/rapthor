@@ -1,3 +1,5 @@
+#if USE_LIKWID
+
 #include "Power.h"
 
 PowerSensor::PowerSensor() {
@@ -67,3 +69,4 @@ double PowerSensor::Watt(const State &firstState, const State &secondState) {
     return Joules(firstState, secondState) / seconds(firstState, secondState);
 }
 
+#endif // USE_LIKWID
