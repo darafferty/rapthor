@@ -4,9 +4,9 @@
 	 Library and source names
 */
 #define SO_WRAPPER      "./Wrapper.so"
-#define SRC_WRAPPER     "XEON/Wrapper.cpp"
-#define SRC_RW          "Common/RW.cpp"
-#define SRC_KERNELS     "XEON/Kernels.cpp"
+#define SRC_WRAPPER     "Wrapper.cpp"
+#define SRC_RW          "../Common/RW.cpp"
+#define SRC_KERNELS     "Kernels.cpp"
 
 /*
 	Function names
@@ -49,7 +49,7 @@ Xeon::Xeon(
     // Compile XEON wrapper
 	std::string options_xeon = parameters + " " +
                                cflags     + " " +
-                               "-ICommon" + " " +
+                               "-I../Common" + " " +
                                SRC_RW     + " " + SRC_KERNELS;
 	rw::Source(SRC_WRAPPER).compile(cc, SO_WRAPPER, options_xeon.c_str());
     

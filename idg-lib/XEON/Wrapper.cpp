@@ -21,16 +21,16 @@
 /*
 	File and kernel names
 */
-#define SOURCE_GRIDDER      "XEON/KernelGridder.cpp"
-#define SOURCE_DEGRIDDER    "XEON/KernelDegridder.cpp"
-#define SOURCE_FFT		    "XEON/KernelFFT.cpp"
-#define SOURCE_ADDER	    "XEON/KernelAdder.cpp"
-#define SOURCE_SPLITTER     "XEON/KernelSplitter.cpp"
-#define SO_GRIDDER          "XEON/Gridder.so"
-#define SO_DEGRIDDER        "XEON/Degridder.so"
-#define SO_FFT			    "XEON/FFT.so"
-#define SO_ADDER		    "XEON/Adder.so"
-#define SO_SPLITTER         "XEON/Splitter.so"
+#define SOURCE_GRIDDER      "KernelGridder.cpp"
+#define SOURCE_DEGRIDDER    "KernelDegridder.cpp"
+#define SOURCE_FFT		      "KernelFFT.cpp"
+#define SOURCE_ADDER	      "KernelAdder.cpp"
+#define SOURCE_SPLITTER     "KernelSplitter.cpp"
+#define SO_GRIDDER          "Gridder.so"
+#define SO_DEGRIDDER        "Degridder.so"
+#define SO_FFT			        "FFT.so"
+#define SO_ADDER		        "Adder.so"
+#define SO_SPLITTER         "Splitter.so"
 
 std::string compileOptions(const char *cflags) {
 	std::stringstream options;
@@ -45,7 +45,7 @@ std::string compileOptions(const char *cflags) {
     options << " -DNR_CHUNKS="          << NR_CHUNKS;
 	options << " -DIMAGESIZE="			<< IMAGESIZE;
     options << " "                      << cflags;
-    options << " -ICommon";
+    options << " -I../Common";
 	return options.str();
 }
 
