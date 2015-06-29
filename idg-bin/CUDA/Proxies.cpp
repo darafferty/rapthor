@@ -3,10 +3,10 @@
 /*
     Library and source names
 */
-#define SO_WRAPPER      "./Wrapper.so"
-#define SRC_WRAPPER     "CUDA/Wrapper.cpp"
-#define SRC_CUDA        "CUDA/CU.cpp CUDA/CUFFT.cpp CUDA/Kernels.cpp"
-#define SRC_POWER       "CUDA/Power.cpp"
+#define SO_WRAPPER      "Wrapper.so"
+#define SRC_WRAPPER     "Wrapper.cpp"
+#define SRC_CUDA        "CU.cpp CUFFT.cpp Kernels.cpp"
+#define SRC_POWER       "Power.cpp"
 
 /*
 	Function names
@@ -55,7 +55,7 @@ CUDA::CUDA(
     // Compile CUDA wrapper
 	std::string options_cuda = parameters + " " +
                                cflags     + " " +
-                               "-ICommon" + " " +
+                               "-I../Common" + " " +
                                " -fopenmp -lcuda -lcufft " +
                                CUDA_INCLUDE + " " +
                                CUDA_LIB + " " +

@@ -11,7 +11,7 @@
 /*
     Performance reporting
 */
-#define REPORT_VERBOSE 0
+#define REPORT_VERBOSE 1
 #define REPORT_TOTAL   1
 
 
@@ -31,14 +31,14 @@
 /*
 	File and kernel names
 */
-#define SOURCE_GRIDDER      "CUDA/Gridder.cu"
-#define SOURCE_DEGRIDDER    "CUDA/Degridder.cu"
-#define SOURCE_ADDER		"CUDA/Adder.cu"
-#define SOURCE_SPLITTER     "CUDA/Splitter.cu"
-#define PTX_DEGRIDDER       "CUDA/Degridder.ptx"
-#define PTX_GRIDDER         "CUDA/Gridder.ptx"
-#define PTX_ADDER 			"CUDA/Adder.ptx"
-#define PTX_SPLITTER        "CUDA/Splitter.ptx"
+#define SOURCE_GRIDDER      "Gridder.cu"
+#define SOURCE_DEGRIDDER    "Degridder.cu"
+#define SOURCE_ADDER        "Adder.cu"
+#define SOURCE_SPLITTER     "Splitter.cu"
+#define PTX_DEGRIDDER       "Degridder.ptx"
+#define PTX_GRIDDER         "Gridder.ptx"
+#define PTX_ADDER 	    "Adder.ptx"
+#define PTX_SPLITTER        "Splitter.ptx"
 #define KERNEL_DEGRIDDER    "kernel_degridder"
 #define KERNEL_GRIDDER      "kernel_gridder"
 #define KERNEL_ADDER        "kernel_adder"
@@ -130,7 +130,7 @@ std::string compileOptions(int deviceNumber) {
 	options << " -use_fast_math";
     options << " -lineinfo";
     options << " -src-in-ptx";
-    options << " -ICommon";
+    options << " -I../Common";
     options << " -g";
 	return options.str();
 }
