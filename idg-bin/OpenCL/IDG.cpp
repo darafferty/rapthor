@@ -8,6 +8,7 @@
 #include <cstdlib>
 
 #include <omp.h>
+#define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
 #include "Util.h"
@@ -56,10 +57,10 @@
 /*
 	File and kernel names
 */
-#define SOURCE_GRIDDER      "OpenCL/Gridder.cl"
-#define SOURCE_DEGRIDDER    "OpenCL/Degridder.cl"
-#define SOURCE_ADDER		"OpenCL/Adder.cl"
-#define SOURCE_SPLITTER     "OpenCL/Splitter.cl"
+#define SOURCE_GRIDDER      "Gridder.cl"
+#define SOURCE_DEGRIDDER    "Degridder.cl"
+#define SOURCE_ADDER		"Adder.cl"
+#define SOURCE_SPLITTER     "Splitter.cl"
 #define KERNEL_DEGRIDDER    "kernel_degridder"
 #define KERNEL_GRIDDER      "kernel_gridder"
 #define KERNEL_ADDER        "kernel_adder"
@@ -109,7 +110,7 @@ void printDevices(int deviceNumber) {
 /*
     Compilation
 */
-std::string compileOptions(int deviceNumber) {
+std::string compileOptions() {
 	std::stringstream options;
 	options << " -DNR_STATIONS="		<< NR_STATIONS;
 	options << " -DNR_BASELINES="		<< NR_BASELINES;
@@ -154,18 +155,38 @@ void report_subgrids(double runtime) {
     Compilation
 */
 cl::Program compile(const char *filename, cl::Context context, cl::Device device) {
+    // Open source file
 	std::ifstream source_file(filename);
 	std::string source(std::istreambuf_iterator<char>(source_file),
 					  (std::istreambuf_iterator<char>()));
 	source_file.close();
-	cl::Program program(context, source);
-	program.build();
-	
-	#if BUILD_LOG
-	std::cout << "Build log: " << std::endl;
-	std::cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-	std::cout << std::endl;
-	#endif
+    std::clog << "Source for " << filename << std::endl << source << std::endl;
+
+    // Get arguments
+	std::string args = compileOptions();
+	const char *argsPtr = static_cast<const char *>(args.c_str());
+
+    // Create vector of devices
+    std::vector<cl::Device> devices;
+    devices.push_back(device);
+
+    // Try to build the program
+    cl::Program program(context, source);
+    try {
+	    program.build(devices, argsPtr);
+        std::string msg;
+        program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+	    #if BUILD_LOG
+        std::clog << msg << std::endl;
+	    #endif
+    } catch (cl::Error &error) {
+        if (strcmp(error.what(), "clBuildProgram") == 0) {
+            std::string msg;
+            program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+            std::cerr << msg << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 	
 	return program;
 }
@@ -182,7 +203,7 @@ void run_gridder(
     cl::Buffer &d_baselines) {
 
     // Compile kernels
-    cl::Program program = compile("SOURCE_GRIDDER", context, device);
+    cl::Program program = compile(SOURCE_GRIDDER, context, device);
 	
     // Timing variables
     double total_time_gridder[nr_streams];
@@ -367,7 +388,7 @@ int main(int argc, char **argv) {
         sizeof(VisibilitiesType) + sizeof(UVWType) + sizeof(SubGridType)) /
         (NR_BASELINES / (double) JOBSIZE) * nr_streams;
     std::clog << "Memory on device (required): ";
-    std::clog << required_device_memory / 1e9 << std::endl;
+    std::clog << required_device_memory / 1e9 << " GB" << std::endl;
     std::clog << std::endl;
 	
     // Set output mode
