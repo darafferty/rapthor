@@ -121,7 +121,7 @@ std::string compileOptions() {
 	options << " -DGRIDSIZE="			<< GRIDSIZE;
 	options << " -DCHUNKSIZE="          << CHUNKSIZE;
 	options << " -DIMAGESIZE="			<< IMAGESIZE;
-    options << " -ICommon";
+    options << " -I.";
 	return options.str();
 }
 
@@ -160,7 +160,6 @@ cl::Program compile(const char *filename, cl::Context context, cl::Device device
 	std::string source(std::istreambuf_iterator<char>(source_file),
 					  (std::istreambuf_iterator<char>()));
 	source_file.close();
-    std::clog << "Source for " << filename << std::endl << source << std::endl;
 
     // Get arguments
 	std::string args = compileOptions();
@@ -242,6 +241,7 @@ void run_gridder(
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
             // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+            std::clog << "gridding bl " << bl << " " << current_jobsize << std::endl;
         
 		    // Number of elements in batch
 		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
