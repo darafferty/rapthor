@@ -70,9 +70,9 @@
 /*
     Size of device datastructures for one block of work
 */
-#define VISIBILITY_SIZE	current_jobsize * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
-#define UVW_SIZE		current_jobsize * NR_TIME * 3 * sizeof(float)
-#define SUBGRID_SIZE	current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
+#define VISIBILITIES_SIZE current_jobsize * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
+#define UVW_SIZE		  current_jobsize * NR_TIME * 3 * sizeof(float)
+#define SUBGRID_SIZE	  current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
 
 
 /*
@@ -203,6 +203,7 @@ void run_gridder(
 
     // Compile kernels
     cl::Program program = compile(SOURCE_GRIDDER, context, device);
+    cl::Kernel kernel_gridder = cl::Kernel(program, KERNEL_GRIDDER); 
 	
     // Timing variables
     double total_time_gridder[nr_streams];
@@ -234,7 +235,7 @@ void run_gridder(
         int iteration = 0;
 	    
 	    // Private device memory
-        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, VISIBILITY_SIZE);
+        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, VISIBILITIES_SIZE);
         cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, UVW_SIZE);
         cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_READ_WRITE, SUBGRID_SIZE);
 	    
@@ -249,9 +250,9 @@ void run_gridder(
 		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 	        // Copy input data to device
-            //queue.enqueueWriteBuffer
-            //htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, VISIBILITY_SIZE);
-            //htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
+            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, VISIBILITIES_SIZE, NULL, NULL);
+            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, NULL);
+            queue.enqueueCopyBuffer(h_subgrid, d_subgrid, subgrid_offset, 0, SUBGRID_SIZE, NULL, NULL);
 
             // Create FFT plan
             #if FFT
@@ -264,9 +265,20 @@ void run_gridder(
 
             // Launch gridder kernel
             #if GRIDDER
-            //kernel_gridder.launchAsync(
-            //    executestream, current_jobsize, bl, d_uvw, d_wavenumbers,
-            //    d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
+            int wgSize = 8;
+            cl::NDRange globalSize(jobsize * wgSize, jobsize * wgSize);
+            //cl::NDRange globalSize(jobsize, jobsize);
+            cl::NDRange localSize(wgSize, wgSize);
+            kernel_gridder.setArg(0, bl);
+            kernel_gridder.setArg(1, d_uvw);
+            kernel_gridder.setArg(2, d_wavenumbers);
+            kernel_gridder.setArg(3, d_visibilities);
+            kernel_gridder.setArg(4, d_spheroidal);
+            kernel_gridder.setArg(5, d_aterm);
+            kernel_gridder.setArg(6, d_baselines);
+            kernel_gridder.setArg(7, d_subgrid);
+            queue.enqueueNDRangeKernel(kernel_gridder, cl::NullRange, globalSize, localSize, NULL, NULL);
+            queue.finish();
             #endif
 
             // Launch FFT
