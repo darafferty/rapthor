@@ -373,9 +373,10 @@ int main(int argc, char **argv) {
 	printDevices(deviceNumber);
     
     // Check memory requirements
+    // (double the amount of memory is needed for some data structures due to host allocated memory)
     uint64_t required_host_memory = ( 1ULL * 
-        sizeof(VisibilitiesType) + sizeof(UVWType) + sizeof(ATermType) + sizeof(SpheroidalType) +
-        sizeof(BaselineType) + sizeof(SubGridType) + sizeof(GridType));
+        2 * sizeof(VisibilitiesType) + 2 * sizeof(UVWType) + sizeof(ATermType) + sizeof(SpheroidalType) +
+        sizeof(BaselineType) + 2 * sizeof(SubGridType) + 2 * sizeof(GridType));
     uint64_t free_host_memory = free_memory();
     std::clog << "Memory on host (required/available: ";
     std::clog << required_host_memory / 1e9 << " / ";
@@ -407,18 +408,22 @@ int main(int argc, char **argv) {
 
     // Initialize OpenCL buffers
     std::clog << ">>> Initialize OpenCL buffers" << std::endl;
-    cl::Buffer d_wavenumbers  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(WavenumberType), wavenumbers);
-    cl::Buffer d_aterm        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(ATermType), aterm);
-    cl::Buffer d_spheroidal   = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(SpheroidalType), spheroidal);
-    cl::Buffer d_baselines    = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(BaselineType), baselines);
-    cl::Buffer h_visibilities = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(VisibilitiesType), visibilities);
-    cl::Buffer h_uvw          = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(UVWType), uvw);
-    cl::Buffer h_subgrid      = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(SubGridType), subgrid);
-    cl::Buffer h_grid         = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(GridType), grid);
-    queue.enqueueWriteBuffer(d_wavenumbers, CL_TRUE, 0, sizeof(WavenumberType), wavenumbers, 0, NULL);
-    queue.enqueueWriteBuffer(d_aterm,       CL_TRUE, 0, sizeof(ATermType),      aterm, 0, NULL);
-    queue.enqueueWriteBuffer(d_spheroidal,  CL_TRUE, 0, sizeof(SpheroidalType), spheroidal, 0, NULL);
-    queue.enqueueWriteBuffer(d_baselines,   CL_TRUE, 0, sizeof(BaselineType),   baselines, 0, NULL);
+    cl::Buffer d_wavenumbers  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(WavenumberType),       NULL);
+    cl::Buffer d_aterm        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(ATermType),            NULL);
+    cl::Buffer d_spheroidal   = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(SpheroidalType),       NULL);
+    cl::Buffer d_baselines    = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(BaselineType),         NULL);
+    cl::Buffer h_visibilities = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(VisibilitiesType), NULL);
+    cl::Buffer h_uvw          = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(UVWType),          NULL);
+    cl::Buffer h_subgrid      = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(SubGridType),      NULL);
+    cl::Buffer h_grid         = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(GridType),         NULL);
+    queue.enqueueWriteBuffer(d_wavenumbers,  CL_TRUE, 0, sizeof(WavenumberType),   wavenumbers,  0, NULL);
+    queue.enqueueWriteBuffer(d_aterm,        CL_TRUE, 0, sizeof(ATermType),        aterm,        0, NULL);
+    queue.enqueueWriteBuffer(d_spheroidal,   CL_TRUE, 0, sizeof(SpheroidalType),   spheroidal,   0, NULL);
+    queue.enqueueWriteBuffer(d_baselines,    CL_TRUE, 0, sizeof(BaselineType),     baselines,    0, NULL);
+    queue.enqueueWriteBuffer(h_visibilities, CL_TRUE, 0, sizeof(VisibilitiesType), visibilities, 0, NULL);
+    queue.enqueueWriteBuffer(h_uvw,          CL_TRUE, 0, sizeof(UVWType),          uvw,          0, NULL);
+    queue.enqueueWriteBuffer(h_subgrid,      CL_TRUE, 0, sizeof(SubGridType),      subgrid,      0, NULL);
+    queue.enqueueWriteBuffer(h_grid,         CL_TRUE, 0, sizeof(GridType),         grid,         0, NULL);
     
     // Run Gridder
 	#if RUN_GRIDDER
