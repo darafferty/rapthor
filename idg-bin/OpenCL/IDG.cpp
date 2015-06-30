@@ -71,7 +71,7 @@
 */
 #define VISIBILITY_SIZE	current_jobsize * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
 #define UVW_SIZE		current_jobsize * NR_TIME * 3 * sizeof(float)
-#define SUBGRID_SIZE	current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeoft(FLOAT_COMPLEX)
+#define SUBGRID_SIZE	current_jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX)
 
 
 /*
@@ -88,18 +88,19 @@ void printDevices(int deviceNumber) {
 	// Get devices
 	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	
-	std::clog << "Devices";
+	std::clog << "Devices" << std::endl;
 	for (int d = 0; d < devices.size(); d++) {
 		cl::Device device = devices[d];
 		device_info_t devInfo = getDeviceInfo(device);    
-		std::clog << "Device: "			  << devInfo.deviceName << std::endl;
-		std::clog << "Driver version  : " << devInfo.driverVersion << std::endl;
-		std::clog << "Compute units   : " << devInfo.numCUs << std::endl;
-		std::clog << "Clock frequency : " << devInfo.maxClockFreq << " MHz" << std::endl;
+		std::clog << "Device: "			  << devInfo.deviceName;
 		if (d == deviceNumber) {
 			std::clog << "\t" << "<---";
 		}
 		std::clog << std::endl;
+		std::clog << "Driver version  : " << devInfo.driverVersion << std::endl;
+		std::clog << "Compute units   : " << devInfo.numCUs << std::endl;
+		std::clog << "Clock frequency : " << devInfo.maxClockFreq << " MHz" << std::endl;
+        std::clog << std::endl;
     }
 	std::clog << "\n";
 }
@@ -222,17 +223,12 @@ void run_gridder(
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
         
 		    // Number of elements in batch
-		    size_t visibility_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
-		    size_t uvw_elements        = NR_TIME * 3;
-		    size_t subgrid_elements    = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
+		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
+		    size_t uvw_offset          = bl * NR_TIME * 3;
+		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
-		    // Pointers to data for batch
-		    void *visibilities_ptr = (float complex *) h_visibilities + bl * visibility_elements;
-		    void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-		    void *subgrid_ptr      = (float complex *) h_subgrid + bl * subgrid_elements;
-
-		    
 	        // Copy input data to device
+            //queue.enqueueWriteBuffer
             //htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, VISIBILITY_SIZE);
             //htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, UVW_SIZE);
 
@@ -370,7 +366,6 @@ int main(int argc, char **argv) {
     uint64_t required_device_memory = (
         sizeof(VisibilitiesType) + sizeof(UVWType) + sizeof(SubGridType)) /
         (NR_BASELINES / (double) JOBSIZE) * nr_streams;
-    uint64_t free_device_memory = device.free_memory();
     std::clog << "Memory on device (required): ";
     std::clog << required_device_memory / 1e9 << std::endl;
     std::clog << std::endl;
@@ -378,27 +373,27 @@ int main(int argc, char **argv) {
     // Set output mode
     std::clog << std::setprecision(4);
 	
-    // Allocate datastructures
-    std::clog << ">>> Allocate data structures" << std::endl;
-    cl::Buffer d_wavenumbers  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(WavenumberType));
-    cl::Buffer d_aterm        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(ATermType));
-    cl::Buffer d_spheroidal   = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(SpheroidalType));
-    cl::Buffer d_baselines    = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(BaselineType));
-    cl::Buffer h_visibilities = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(VisibilitiesType));
-    cl::Buffer h_uvw          = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(UVWType));
-    cl::Buffer h_subgrid      = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(SubGridType));
-    cl::Buffer h_grid         = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(GridType));
-    
     // Initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
-    init_visibilities(h_visibilities, NR_BASELINES, NR_TIME, NR_CHANNELS, NR_POLARIZATIONS);
-	init_uvw(h_uvw, NR_STATIONS, NR_BASELINES, NR_TIME, GRIDSIZE, SUBGRIDSIZE, W_PLANES);
-	init_subgrid(h_subgrid, NR_BASELINES, SUBGRIDSIZE, NR_POLARIZATIONS, NR_CHUNKS);
+    void *visibilities = init_visibilities(NR_BASELINES, NR_TIME, NR_CHANNELS, NR_POLARIZATIONS);
+    void *uvw          = init_uvw(NR_STATIONS, NR_BASELINES, NR_TIME, GRIDSIZE, SUBGRIDSIZE, W_PLANES);
+    void *subgrid      = init_subgrid(NR_BASELINES, SUBGRIDSIZE, NR_POLARIZATIONS, NR_CHUNKS);
 	void *wavenumbers  = init_wavenumbers(NR_CHANNELS);
 	void *aterm        = init_aterm(NR_STATIONS, NR_POLARIZATIONS, SUBGRIDSIZE);
 	void *spheroidal   = init_spheroidal(SUBGRIDSIZE);
 	void *baselines    = init_baselines(NR_STATIONS, NR_BASELINES);
 	void *grid         = init_grid(GRIDSIZE, NR_POLARIZATIONS);
+
+    // Initialize OpenCL buffers
+    std::clog << ">>> Initialize OpenCL buffers" << std::endl;
+    cl::Buffer d_wavenumbers  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(WavenumberType), wavenumbers);
+    cl::Buffer d_aterm        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(ATermType), aterm);
+    cl::Buffer d_spheroidal   = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(SpheroidalType), spheroidal);
+    cl::Buffer d_baselines    = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(BaselineType), baselines);
+    cl::Buffer h_visibilities = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(VisibilitiesType), visibilities);
+    cl::Buffer h_uvw          = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(UVWType), uvw);
+    cl::Buffer h_subgrid      = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(SubGridType), subgrid);
+    cl::Buffer h_grid         = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof(GridType), grid);
     queue.enqueueWriteBuffer(d_wavenumbers, CL_TRUE, 0, sizeof(WavenumberType), wavenumbers, 0, NULL);
     queue.enqueueWriteBuffer(d_aterm,       CL_TRUE, 0, sizeof(ATermType),      aterm, 0, NULL);
     queue.enqueueWriteBuffer(d_spheroidal,  CL_TRUE, 0, sizeof(SpheroidalType), spheroidal, 0, NULL);
