@@ -22,8 +22,8 @@ OPENCL_INC=/opt/AMDAPPSDK-2.9-1/include
 #
 #   Rules	
 #
-IDG-OPENCL: IDG.cpp
-	g++ -o $@ $^ -fopenmp -I../Common -I../Data -I../Lib -I${OPENCL_INC} ${PARAMETERS}
+IDG-OPENCL: IDG.cpp ../Data/Init.cpp ../Lib/uvwsim.c
+	g++ -o $@ $^ -lOpenCL -fopenmp -I../Common -I../Data -I../Lib -I${OPENCL_INC} ${PARAMETERS}
 
 EXEC=IDG-OPENCL
 clean:
