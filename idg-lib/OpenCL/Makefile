@@ -22,7 +22,7 @@ OPENCL_INC=/opt/AMDAPP/include
 #
 #   Rules	
 #
-IDG-OPENCL: IDG.cpp ../Data/Init.cpp ../Lib/uvwsim.c
+IDG-OPENCL: IDG.cpp Kernels.cpp ../Data/Init.cpp ../Lib/uvwsim.c
 	g++ -o $@ $^ -lOpenCL -fopenmp -I../Common -I../Data -I../Lib -I${OPENCL_INC} ${PARAMETERS}
 
 EXEC=IDG-OPENCL
