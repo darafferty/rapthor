@@ -207,6 +207,7 @@ void run_gridder(
 
     // Get kernels
     KernelGridder kernel_gridder = KernelGridder(program, KERNEL_GRIDDER);
+    KernelFFT kernel_fft;
 	
     // Timing variables
     double total_time_gridder[nr_streams];
@@ -245,7 +246,6 @@ void run_gridder(
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
             // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
-            std::clog << "gridding bl " << bl << " " << current_jobsize << std::endl;
         
 		    // Number of elements in batch
 		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
@@ -260,21 +260,22 @@ void run_gridder(
             // Create FFT plan
             #if FFT
             #if ORDER == ORDER_BL_V_U_P
-            //kernel_fft.plan(SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
+            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
             #elif ORDER == ORDER_BL_P_V_U
-            //kernel_fft.plan(SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
+            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
             #endif
             #endif
 
             // Launch gridder kernel
             #if GRIDDER
+            std::clog << "gridding " << bl << " " << current_jobsize << std::endl;
             kernel_gridder.launchAsync(queue, current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
-            queue.finish();
             #endif
 
             // Launch FFT
             #if FFT
-            //kernel_fft.launchAsync(executestream, d_subgrid, CUFFT_INVERSE);
+            std::clog << "     fft " << bl << " " << current_jobsize << std::endl;
+            kernel_fft.launchAsync(queue, d_subgrid, CLFFT_BACKWARD);
             #endif
 	        
             // Copy subgrid to host
@@ -285,6 +286,14 @@ void run_gridder(
             // Go to next iteration
             total_jobs[thread_num] += current_jobsize;
             iteration++;
+
+            // Check for errors
+            try {
+                queue.finish();
+            } catch (cl::Error &error) {
+                std::cerr << "Error finishing queue: " << error.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
         }
 
         // Sum totals

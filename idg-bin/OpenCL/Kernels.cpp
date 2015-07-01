@@ -8,7 +8,6 @@ void KernelGridder::launchAsync(
     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
     cl::Buffer &d_aterm, cl::Buffer &d_baselines,
     cl::Buffer &d_subgrid) {
-    std::cout << "Run gridder!" << std::endl;
     int wgSize = 8;
     cl::NDRange globalSize(jobsize * wgSize, wgSize);
     cl::NDRange localSize(wgSize, wgSize);
@@ -20,7 +19,12 @@ void KernelGridder::launchAsync(
     kernel.setArg(5, d_aterm);
     kernel.setArg(6, d_baselines);
     kernel.setArg(7, d_subgrid);
-    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, NULL);
+    try {
+        queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, NULL);
+    } catch (cl::Error &error) {
+        std::cerr << "Error launching gridder: " << error.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }   
 
 uint64_t KernelGridder::flops(int jobsize) {
@@ -50,12 +54,11 @@ uint64_t KernelGridder::bytes(int jobsize) {
 }
 
 
-#if 0
 KernelFFT::KernelFFT() {
     fft = NULL;
 }
 
-void KernelFFT::plan(int size, int batch, int layout) {
+void KernelFFT::plan(cl::Context context, int size, int batch, int layout) {
     // Check wheter a new plan has to be created
     if (fft == NULL ||
         size == planned_size ||
@@ -66,11 +69,11 @@ void KernelFFT::plan(int size, int batch, int layout) {
             // Polarizations in inner dimension
             int stride = NR_POLARIZATIONS;
             int dist = 1;
-            fft = new cufft::C2C_2D(size, size, stride, dist, batch * NR_POLARIZATIONS);
+            size_t lengths[2] = {size, size};
+            //clfftCreateDefaultPlan(fft, context, CLFFT_2D, lengths);
         } else if (layout == FFT_LAYOUT_PYX) {
             int stride = 1;
             int dist = size * size;
-            fft = new cufft::C2C_2D(size, size, stride, dist, batch * NR_POLARIZATIONS);
         }
         
         // Update parameters
@@ -80,10 +83,7 @@ void KernelFFT::plan(int size, int batch, int layout) {
     }
 }
 
-void KernelFFT::launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction) {
-    cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-    (*fft).setStream(stream);
-    (*fft).execute(data_ptr, data_ptr, direction);
+void KernelFFT::launchAsync(cl::CommandQueue queue, cl::Buffer &data, int direction) {
 }
 
 uint64_t KernelFFT::flops(int size, int batch) {
@@ -91,6 +91,5 @@ uint64_t KernelFFT::flops(int size, int batch) {
 }
 
 uint64_t KernelFFT::bytes(int size, int batch) {
-	return 1ULL * 2 * batch * size * size * NR_POLARIZATIONS * sizeof(cuFloatComplex);
+	return 1ULL * 2 * batch * size * size * NR_POLARIZATIONS * sizeof(float complex);
 }
-#endif

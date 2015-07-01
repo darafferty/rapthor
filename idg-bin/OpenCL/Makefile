@@ -17,13 +17,15 @@ PARAMETERS=-DIMAGESIZE=${IMAGESIZE} -DW_PLANES=${W_PLANES} -DNR_STATIONS=${NR_ST
 #
 #   Dependencies
 #
-OPENCL_INC=/opt/AMDAPP/include
+#OPENCL_INC=/opt/AMDAPP/include
+OPENCL_INC=/usr/local/cuda-7.5.7_rc/include
+CLFFT_INC=clFFT/include
 
 #
 #   Rules	
 #
 IDG-OPENCL: IDG.cpp Kernels.cpp ../Data/Init.cpp ../Lib/uvwsim.c
-	g++ -o $@ $^ -lOpenCL -fopenmp -I../Common -I../Data -I../Lib -I${OPENCL_INC} ${PARAMETERS}
+	g++ -o $@ $^ -lOpenCL -fopenmp -I../Common -I../Data -I../Lib -I${OPENCL_INC} -I${CLFFT_INC} ${PARAMETERS}
 
 EXEC=IDG-OPENCL
 clean:
