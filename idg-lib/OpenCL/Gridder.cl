@@ -10,21 +10,21 @@ typedef struct { int station1, station2; } Baseline;
     Types
 */
 typedef struct { float u, v, w; } UVW;
-typedef float2 VisibilitiesType[NR_BASELINES][NR_TIME][NR_CHANNELS][NR_POLARIZATIONS];
+typedef fcomplex VisibilitiesType[NR_BASELINES][NR_TIME][NR_CHANNELS][NR_POLARIZATIONS];
 typedef UVW UVWType[NR_BASELINES][NR_TIME];
 typedef float WavenumberType[NR_CHANNELS];
-typedef float2 ATermType[NR_STATIONS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
+typedef fcomplex ATermType[NR_STATIONS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
 typedef Baseline BaselineType[NR_BASELINES];
-typedef float2 GridType[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE];
+typedef fcomplex GridType[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE];
 
 #if !defined ORDER
 #define ORDER ORDER_BL_P_V_U
 #endif
 #if ORDER == ORDER_BL_V_U_P
-typedef float2 SubGridType[NR_BASELINES][NR_CHUNKS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
+typedef fcomplex SubGridType[NR_BASELINES][NR_CHUNKS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
 #elif ORDER == ORDER_BL_P_V_U
-typedef float2 SubGridType[NR_BASELINES][NR_CHUNKS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
+typedef fcomplex SubGridType[NR_BASELINES][NR_CHUNKS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 #endif
 
 
@@ -37,9 +37,9 @@ __kernel void kernel_gridder(
 	__global const WavenumberType	wavenumbers,
 	__global const VisibilitiesType	visibilities,
 	__global const SpheroidalType	spheroidal,
-	__global const ATermType			aterm,
+	__global const ATermType		aterm,
 	__global const BaselineType		baselines,		
-	__global SubGridType				subgrid
+	__global SubGridType			subgrid
 	) {
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
@@ -49,7 +49,7 @@ __kernel void kernel_gridder(
     // Shared data
 	__local UVW _uvw[CHUNKSIZE];
 	__local float _wavenumbers[NR_CHANNELS];
-	__local float2 _visibilities[NR_CHANNELS][NR_POLARIZATIONS];
+	__local fcomplex _visibilities[NR_CHANNELS][NR_POLARIZATIONS];
 	
     // Load wavenumbers
     if (tid < NR_CHANNELS) {
@@ -63,7 +63,7 @@ __kernel void kernel_gridder(
 	        _uvw[tid] = uvw[bl][tid];	    
 	    }
         barrier(CLK_LOCAL_MEM_FENCE);
-	
+
 	    // Compute offset for current chunk
 	    UVW uvw_first = _uvw[0];
         UVW uvw_last = _uvw[CHUNKSIZE-1];
@@ -76,10 +76,10 @@ __kernel void kernel_gridder(
         for (int y = tidy; y < SUBGRIDSIZE; y += get_local_size(1)) {
 	        for (int x = tidx; x < SUBGRIDSIZE; x += get_local_size(0)) {
 	            // Private subgrid points
-	            float2 uvXX = {0, 0};
-	            float2 uvXY = {0, 0};
-	            float2 uvYX = {0, 0};
-	            float2 uvYY = {0, 0};
+	            fcomplex uvXX = (float2) 0;
+	            fcomplex uvXY = (float2) 0;
+	            fcomplex uvYX = (float2) 0;
+	            fcomplex uvYY = (float2) 0;
 	        
 	            // Compute l,m,n
 	            float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
@@ -109,36 +109,48 @@ __kernel void kernel_gridder(
 		            // Compute phasor
 		            float phasor_real[NR_CHANNELS];
 		            float phasor_imag[NR_CHANNELS];
+
 		            for (int chan = 0; chan < NR_CHANNELS; chan++) {
 		                float phase = (ulvmwn * _wavenumbers[chan]) - phase_offset;
+                        #if 0
                         phasor_real[chan] = cos(phase);
                         phasor_imag[chan] = sin(phase);
+                        #else
                         float _phasor_real = 0;
                         float _phasor_imag = 0;
                         _phasor_imag = sincos(phase, &_phasor_real);
                         phasor_real[chan] = _phasor_real;
                         phasor_imag[chan] = _phasor_imag;
+                        #endif
                     }
 
 		            // Sum updates for all channels
 		            for (int chan = 0; chan < NR_CHANNELS; chan++) {
 			            // Load visibilities from shared memory
-			            float2 visXX = _visibilities[chan][0];
-			            float2 visXY = _visibilities[chan][1];
-			            float2 visYX = _visibilities[chan][2];
-			            float2 visYY = _visibilities[chan][3];
+			            fcomplex visXX = _visibilities[chan][0];
+			            fcomplex visXY = _visibilities[chan][1];
+			            fcomplex visYX = _visibilities[chan][2];
+			            fcomplex visYY = _visibilities[chan][3];
 			                	
 			            // Load phasor
-                        float2 phasor = {phasor_real[chan], phasor_imag[chan]};
+                        fcomplex phasor = {phasor_real[chan], phasor_imag[chan]};
 			
 			            // Multiply visibility by phasor
-			            uvXX += phasor * visXX;
-			            uvXY += phasor * visXY;
-			            uvYX += phasor * visYX;
-			            uvYY += phasor * visYY;
+			            fcomplex updateXX = cmul(phasor, visXX);
+			            fcomplex updateXY = cmul(phasor, visXY);
+			            fcomplex updateYX = cmul(phasor, visYX);
+			            fcomplex updateYY = cmul(phasor, visYY);
+
+                        // Update subgrid point
+                        #if 0
+			            uvXX = cadd(uvXX, updateXX);
+			            uvXY = cadd(uvXY, updateXY);
+			            uvYX = cadd(uvYX, updateYX);
+			            uvYY = cadd(uvYY, updateYY);
+                        #endif
 		            }
 	            }
-	
+
 	            // Load spheroidal
 	            float s = spheroidal[y][x];
 	
@@ -147,22 +159,22 @@ __kernel void kernel_gridder(
 	            int station2 = baselines[bl+bl_offset].station2;
 	
                 // Get a term for station1
-	            float2 aXX1 = conj(aterm[station1][0][y][x]);
-	            float2 aXY1 = conj(aterm[station1][1][y][x]);
-	            float2 aYX1 = conj(aterm[station1][2][y][x]);
-	            float2 aYY1 = conj(aterm[station1][3][y][x]);
+	            fcomplex aXX1 = conj(aterm[station1][0][y][x]);
+	            fcomplex aXY1 = conj(aterm[station1][1][y][x]);
+	            fcomplex aYX1 = conj(aterm[station1][2][y][x]);
+	            fcomplex aYY1 = conj(aterm[station1][3][y][x]);
 
 	            // Get aterm for station2
-	            float2 aXX2 = aterm[station2][0][y][x];
-	            float2 aXY2 = aterm[station2][1][y][x];
-	            float2 aYX2 = aterm[station2][2][y][x];
-	            float2 aYY2 = aterm[station2][3][y][x];
+	            fcomplex aXX2 = aterm[station2][0][y][x];
+	            fcomplex aXY2 = aterm[station2][1][y][x];
+	            fcomplex aYX2 = aterm[station2][2][y][x];
+	            fcomplex aYY2 = aterm[station2][3][y][x];
 	
 	            // Apply aterm
-	            float2 _uvXX = uvXX;
-	            float2 _uvXY = uvXY;
-	            float2 _uvYX = uvYX;
-	            float2 _uvYY = uvYY;
+	            fcomplex _uvXX = uvXX;
+	            fcomplex _uvXY = uvXY;
+	            fcomplex _uvYX = uvYX;
+	            fcomplex _uvYY = uvYY;
 	            uvXX  = _uvXX * aXX1;
 	            uvXX += _uvXY * aYX1; 
 	            uvXX += _uvXX * aXX2;
@@ -179,7 +191,8 @@ __kernel void kernel_gridder(
 	            uvYY += _uvYY * aYY1;
 	            uvYY += _uvYY * aXY2;
 	            uvYY += _uvYY * aYY2;
-	
+
+                #if 0
 	            // Apply spheroidal and update uv grid
                 #if ORDER == ORDER_BL_P_V_U
 	            subgrid[bl][chunk][0][y][x] = uvXX * s;
@@ -192,6 +205,7 @@ __kernel void kernel_gridder(
 	            subgrid[bl][chunk][y][x][2] = uvYX * s;
 	            subgrid[bl][chunk][y][x][3] = uvYY * s;
 	            #endif
+                #endif
             }
         }
     }

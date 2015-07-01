@@ -1,10 +1,13 @@
 #include <stdint.h>
 #include <complex.h>
+#include <math.h>
 
 #include <iostream>
 
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
+
+#include <clFFT.h>
 
 #include "Types.h"
 
@@ -29,7 +32,6 @@ class KernelGridder {
 };
 
 
-#if 0
 /*
     FFT
 */
@@ -39,8 +41,8 @@ class KernelGridder {
 class KernelFFT {
 	public:
         KernelFFT();
-        void plan(int size, int batch, int layout);
-        void launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction);
+        void plan(cl::Context context, int size, int batch, int layout);
+        void launchAsync(cl::CommandQueue queue, cl::Buffer &data, int direction);
 		static uint64_t flops(int size, int batch);
 		static uint64_t bytes(int size, int batch);
 
@@ -48,6 +50,5 @@ class KernelFFT {
         int planned_size;
         int planned_batch;
         int planned_layout;
-        cufft::C2C_2D *fft;
+        clfftPlanHandle *fft; 
 };
-#endif
