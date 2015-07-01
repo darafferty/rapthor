@@ -15,6 +15,7 @@
 #include "Init.h"
 #include "Memory.h"
 #include "Types.h"
+#include "Kernels.h"
 
 #include "opencl.h"
 
@@ -49,7 +50,7 @@
 #define DEGRIDDER 0
 #define ADDER     0
 #define SPLITTER  0
-#define FFT       0
+#define FFT       1
 #define INPUT     1
 #define OUTPUT    1
 
@@ -203,7 +204,9 @@ void run_gridder(
 
     // Compile kernels
     cl::Program program = compile(SOURCE_GRIDDER, context, device);
-    cl::Kernel kernel_gridder = cl::Kernel(program, KERNEL_GRIDDER); 
+
+    // Get kernels
+    KernelGridder kernel_gridder = KernelGridder(program, KERNEL_GRIDDER);
 	
     // Timing variables
     double total_time_gridder[nr_streams];
@@ -265,19 +268,7 @@ void run_gridder(
 
             // Launch gridder kernel
             #if GRIDDER
-            int wgSize = 8;
-            cl::NDRange globalSize(jobsize * wgSize, jobsize * wgSize);
-            //cl::NDRange globalSize(jobsize, jobsize);
-            cl::NDRange localSize(wgSize, wgSize);
-            kernel_gridder.setArg(0, bl);
-            kernel_gridder.setArg(1, d_uvw);
-            kernel_gridder.setArg(2, d_wavenumbers);
-            kernel_gridder.setArg(3, d_visibilities);
-            kernel_gridder.setArg(4, d_spheroidal);
-            kernel_gridder.setArg(5, d_aterm);
-            kernel_gridder.setArg(6, d_baselines);
-            kernel_gridder.setArg(7, d_subgrid);
-            queue.enqueueNDRangeKernel(kernel_gridder, cl::NullRange, globalSize, localSize, NULL, NULL);
+            kernel_gridder.launchAsync(queue, current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
             queue.finish();
             #endif
 
