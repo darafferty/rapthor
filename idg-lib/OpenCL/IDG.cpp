@@ -277,9 +277,9 @@ void run_gridder(
             // Create FFT plan
             #if FFT
             #if ORDER == ORDER_BL_V_U_P
-            //kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
+            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
             #elif ORDER == ORDER_BL_P_V_U
-            //kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
+            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
             #endif
             #endif
 
@@ -292,7 +292,7 @@ void run_gridder(
             // Launch FFT
             #if FFT
             //std::clog << "     fft " << bl << " " << current_jobsize << std::endl;
-            //kernel_fft.launchAsync(queue, events[3], d_subgrid, CLFFT_BACKWARD);
+            kernel_fft.launchAsync(queue, events[3], d_subgrid, CLFFT_BACKWARD);
             #endif
 	        
             // Copy subgrid to host
@@ -318,7 +318,7 @@ void run_gridder(
             double bytes_input   = UVW_SIZE + VISIBILITIES_SIZE;
             double bytes_output  = SUBGRID_SIZE;
             report("  input", runtime_input, 0, bytes_input);
-            //report("gridder",  events[2], KernelGridder::flops(current_jobsize), KernelGridder::bytes(current_jobsize));
+            report("gridder",  events[2], KernelGridder::flops(current_jobsize), KernelGridder::bytes(current_jobsize));
             //report("    fft",  events[3], KernelFFT::flops(SUBGRIDSIZE, current_jobsize),
             //                              KernelFFT::bytes(SUBGRIDSIZE, current_jobsize));
             report(" output", runtime_output, 0, bytes_output);
@@ -327,7 +327,7 @@ void run_gridder(
             // Sum totals
             #if REPORT_TOTAL
             for (int i = 0; i < nr_iterations; i++) {
-                //total_time_gridder[thread_num] += runtime(events[2]);
+                total_time_gridder[thread_num] += runtime(events[2]);
                 //total_time_fft[thread_num]     += runtime(events[3]);
                 total_time_input[thread_num]   += runtime(events[0]) + runtime(events[1]);
                 total_time_output[thread_num]  += runtime(events[4]);
@@ -346,9 +346,9 @@ void run_gridder(
     for (int t = 0; t < nr_streams; t++) {
         std::clog << "--- stream " << t << " ---" << std::endl;
         int jobsize = total_jobs[t];
-        //report("gridder", total_time_gridder[t],
-        //                  kernel_gridder.flops(jobsize),
-        //                  kernel_gridder.bytes(jobsize));
+        report("gridder", total_time_gridder[t],
+                          kernel_gridder.flops(jobsize),
+                          kernel_gridder.bytes(jobsize));
         //report("    fft", total_time_fft[t],
         //                  kernel_fft.flops(SUBGRIDSIZE, jobsize),
         //                  kernel_fft.bytes(SUBGRIDSIZE, jobsize));
