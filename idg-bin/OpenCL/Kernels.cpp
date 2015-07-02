@@ -55,25 +55,27 @@ uint64_t KernelGridder::bytes(int jobsize) {
 
 
 KernelFFT::KernelFFT() {
-    fft = NULL;
+    uninitialized = true;
 }
 
 void KernelFFT::plan(cl::Context context, int size, int batch, int layout) {
     // Check wheter a new plan has to be created
-    if (fft == NULL ||
-        size == planned_size ||
-        batch == planned_batch ||
-        layout == planned_layout) {
+    if (uninitialized ||
+        size   != planned_size ||
+        batch  != planned_batch ||
+        layout != planned_layout) {
         // Create new plan
+        size_t lengths[2] = {size, size};
+        clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
+        clfftSetPlanBatchSize(fft, batch);
         if (layout == FFT_LAYOUT_YXP) {
             // Polarizations in inner dimension
-            int stride = NR_POLARIZATIONS;
-            int dist = 1;
-            size_t lengths[2] = {size, size};
-            //clfftCreateDefaultPlan(fft, context, CLFFT_2D, lengths);
+            size_t stride[2] = {NR_POLARIZATIONS, NR_POLARIZATIONS};
+            clfftSetPlanInStride(fft, CLFFT_2D, stride);
+            clfftSetPlanOutStride(fft, CLFFT_2D, stride);
         } else if (layout == FFT_LAYOUT_PYX) {
-            int stride = 1;
-            int dist = size * size;
+            size_t dist = size * size;
+            clfftSetPlanDistance(fft, dist, dist);
         }
         
         // Update parameters
@@ -83,7 +85,14 @@ void KernelFFT::plan(cl::Context context, int size, int batch, int layout) {
     }
 }
 
-void KernelFFT::launchAsync(cl::CommandQueue queue, cl::Buffer &data, int direction) {
+void KernelFFT::launchAsync(cl::CommandQueue queue, cl::Buffer &data, clfftDirection direction) {
+    cl_event waitEvents[0];
+    cl_event outEvents[0];
+    cl_command_queue queues[1];
+    queues[0] = queue();
+    cl_mem input[1];
+    input[0] = data();
+    clfftEnqueueTransform(fft, direction, 1, queues, 0, waitEvents, outEvents, input, NULL, NULL);
 }
 
 uint64_t KernelFFT::flops(int size, int batch) {

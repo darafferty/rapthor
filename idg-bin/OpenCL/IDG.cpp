@@ -336,6 +336,9 @@ void run_gridder(
     //report_visibilities(total_runtime);
     //std::clog << std::endl;
     #endif
+
+    // Terminate clfft
+    clfftTeardown();   
 }
 
 
