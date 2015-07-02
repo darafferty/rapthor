@@ -3,7 +3,7 @@
 KernelGridder::KernelGridder(cl::Program &program, const char *kernel_name) : kernel(program, kernel_name) {}
 
 void KernelGridder::launchAsync(
-    cl::CommandQueue &queue, int jobsize, int bl_offset,
+    cl::CommandQueue &queue, cl::Event &event, int jobsize, int bl_offset,
     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
     cl::Buffer &d_aterm, cl::Buffer &d_baselines,
@@ -20,7 +20,7 @@ void KernelGridder::launchAsync(
     kernel.setArg(6, d_baselines);
     kernel.setArg(7, d_subgrid);
     try {
-        queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, NULL);
+        queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
     } catch (cl::Error &error) {
         std::cerr << "Error launching gridder: " << error.what() << std::endl;
         exit(EXIT_FAILURE);
@@ -85,9 +85,10 @@ void KernelFFT::plan(cl::Context context, int size, int batch, int layout) {
     }
 }
 
-void KernelFFT::launchAsync(cl::CommandQueue queue, cl::Buffer &data, clfftDirection direction) {
+void KernelFFT::launchAsync(cl::CommandQueue &queue, cl::Event &event, cl::Buffer &data, clfftDirection direction) {
     cl_event waitEvents[0];
-    cl_event outEvents[0];
+    cl_event outEvents[1];
+    outEvents[0] = event();
     cl_command_queue queues[1];
     queues[0] = queue();
     cl_mem input[1];

@@ -19,7 +19,7 @@ class KernelGridder {
     public:
         KernelGridder(cl::Program &program, const char *kernel_name);
         void launchAsync(
-            cl::CommandQueue &queue, int jobsize, int bl_offset,
+            cl::CommandQueue &queue, cl::Event &event, int jobsize, int bl_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_baselines,
@@ -42,7 +42,9 @@ class KernelFFT {
 	public:
         KernelFFT();
         void plan(cl::Context context, int size, int batch, int layout);
-        void launchAsync(cl::CommandQueue queue, cl::Buffer &data, clfftDirection direction);
+        void launchAsync(
+            cl::CommandQueue &queue, cl::Event &event,
+            cl::Buffer &data, clfftDirection direction);
 		static uint64_t flops(int size, int batch);
 		static uint64_t bytes(int size, int batch);
 
