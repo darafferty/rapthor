@@ -77,10 +77,6 @@
 
 
 /*
-    OpenCL
-*/
-
-/*
     Info
 */
 void printDevices(int deviceNumber) {
@@ -130,6 +126,12 @@ std::string compileOptions() {
 /*
     Benchmark
 */
+double runtime(cl::Event &event) {
+    cl_ulong start = event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+    cl_ulong end   = event.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+    return ((long) end - (long) start) * 1e-8;
+}
+
 void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
 	#pragma omp critical(clog)
 	{
@@ -138,6 +140,19 @@ void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
 		std::clog << ", " << flops / runtime * 1e-12 << " TFLOPS";
     if (bytes != 0)
 		std::clog << ", " << bytes / runtime * 1e-9 << " GB/s";
+    std::clog << std::endl;
+	}
+}
+
+void report(const char *name, cl::Event &event, uint64_t flops, uint64_t bytes) {
+	#pragma omp critical(clog)
+	{
+    double _runtime = runtime(event);
+    std::clog << name << ": " << _runtime << " s";
+    if (flops != 0)
+		std::clog << ", " << flops / _runtime * 1e-12 << " TFLOPS";
+    if (bytes != 0)
+		std::clog << ", " << bytes / _runtime * 1e-9 << " GB/s";
     std::clog << std::endl;
 	}
 }
@@ -244,6 +259,8 @@ void run_gridder(
         cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_READ_WRITE, SUBGRID_SIZE);
 	    
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
+            cl::Event events[5];
+
             // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
         
@@ -253,34 +270,34 @@ void run_gridder(
 		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 	        // Copy input data to device
-            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, VISIBILITIES_SIZE, NULL, NULL);
-            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, NULL);
-            queue.enqueueCopyBuffer(h_subgrid, d_subgrid, subgrid_offset, 0, SUBGRID_SIZE, NULL, NULL);
+            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, VISIBILITIES_SIZE, NULL, &events[0]);
+            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[1]);
+            //queue.enqueueCopyBuffer(h_subgrid, d_subgrid, subgrid_offset, 0, SUBGRID_SIZE, NULL, NULL);
 
             // Create FFT plan
             #if FFT
             #if ORDER == ORDER_BL_V_U_P
-            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
+            //kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
             #elif ORDER == ORDER_BL_P_V_U
-            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
+            //kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
             #endif
             #endif
 
             // Launch gridder kernel
             #if GRIDDER
             std::clog << "gridding " << bl << " " << current_jobsize << std::endl;
-            kernel_gridder.launchAsync(queue, current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
+            kernel_gridder.launchAsync(queue, events[2], current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
             #endif
 
             // Launch FFT
             #if FFT
-            std::clog << "     fft " << bl << " " << current_jobsize << std::endl;
-            kernel_fft.launchAsync(queue, d_subgrid, CLFFT_BACKWARD);
+            //std::clog << "     fft " << bl << " " << current_jobsize << std::endl;
+            //kernel_fft.launchAsync(queue, events[3], d_subgrid, CLFFT_BACKWARD);
             #endif
 	        
             // Copy subgrid to host
             #if OUTPUT
-	        //dtohstream.memcpyDtoHAsync(subgrid_ptr, d_subgrid, SUBGRID_SIZE);
+            queue.enqueueCopyBuffer(d_subgrid, h_subgrid, 0, subgrid_offset, SUBGRID_SIZE, NULL, &events[4]);
             #endif
 
             // Go to next iteration
@@ -294,19 +311,32 @@ void run_gridder(
                 std::cerr << "Error finishing queue: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
-        }
 
-        // Sum totals
-        #if REPORT_TOTAL
-        for (int i = 0; i < nr_iterations; i++) {
-            total_time_gridder[thread_num] += 0;
-            total_time_fft[thread_num]     += 0;
-            total_time_input[thread_num]   += 0;
-            total_time_output[thread_num]  += 0;
-            total_bytes_input[thread_num]  += 0;
-            total_bytes_output[thread_num] += 0;
-        }
-        #endif
+            #if REPORT_VERBOSE
+            double runtime_input  = runtime(events[0]) + runtime(events[1]);
+            double runtime_output = runtime(events[4]);
+            double bytes_input   = UVW_SIZE + VISIBILITIES_SIZE;
+            double bytes_output  = SUBGRID_SIZE;
+            report("  input", runtime_input, 0, bytes_input);
+            //report("gridder",  events[2], KernelGridder::flops(current_jobsize), KernelGridder::bytes(current_jobsize));
+            //report("    fft",  events[3], KernelFFT::flops(SUBGRIDSIZE, current_jobsize),
+            //                              KernelFFT::bytes(SUBGRIDSIZE, current_jobsize));
+            report(" output", runtime_output, 0, bytes_output);
+            #endif
+
+            // Sum totals
+            #if REPORT_TOTAL
+            for (int i = 0; i < nr_iterations; i++) {
+                //total_time_gridder[thread_num] += runtime(events[2]);
+                //total_time_fft[thread_num]     += runtime(events[3]);
+                total_time_input[thread_num]   += runtime(events[0]) + runtime(events[1]);
+                total_time_output[thread_num]  += runtime(events[4]);
+                total_bytes_input[thread_num]  += UVW_SIZE + VISIBILITIES_SIZE;
+                total_bytes_output[thread_num] += SUBGRID_SIZE;
+            }
+            #endif
+     }
+
 	}
 
     // Measure total runtime
@@ -314,17 +344,17 @@ void run_gridder(
     std::clog << std::endl;
     // Report performance per stream
     for (int t = 0; t < nr_streams; t++) {
-        //std::clog << "--- stream " << t << " ---" << std::endl;
-        //int jobsize = total_jobs[t];
+        std::clog << "--- stream " << t << " ---" << std::endl;
+        int jobsize = total_jobs[t];
         //report("gridder", total_time_gridder[t],
         //                  kernel_gridder.flops(jobsize),
         //                  kernel_gridder.bytes(jobsize));
         //report("    fft", total_time_fft[t],
         //                  kernel_fft.flops(SUBGRIDSIZE, jobsize),
         //                  kernel_fft.bytes(SUBGRIDSIZE, jobsize));
-        //report("  input", total_time_input[t], 0, total_bytes_input[t]);
-        //report(" output", total_time_output[t], 0, total_bytes_output[t]);
-	    //std::clog << std::endl;
+        report("  input", total_time_input[t], 0, total_bytes_input[t]);
+        report(" output", total_time_output[t], 0, total_bytes_output[t]);
+	    std::clog << std::endl;
     }
     
     // Report overall performance
