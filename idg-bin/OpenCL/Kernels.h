@@ -41,7 +41,7 @@ class KernelGridder {
 class KernelFFT {
 	public:
         KernelFFT();
-        void plan(cl::Context context, int size, int batch, int layout);
+        void plan(cl::Context &context, int size, int batch, int layout);
         void launchAsync(
             cl::CommandQueue &queue, cl::Event &event,
             cl::Buffer &data, clfftDirection direction);

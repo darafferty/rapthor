@@ -58,7 +58,7 @@ KernelFFT::KernelFFT() {
     uninitialized = true;
 }
 
-void KernelFFT::plan(cl::Context context, int size, int batch, int layout) {
+void KernelFFT::plan(cl::Context &context, int size, int batch, int layout) {
     // Check wheter a new plan has to be created
     if (uninitialized ||
         size   != planned_size ||
