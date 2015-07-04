@@ -21,17 +21,20 @@ namespace idg {
   
   void AlgorithmicParameters::set_chunk_size(unsigned int cs) 
   {
-    chunk_size = cs;
+    if (cs > 0) // avoid chunk_size==0 
+      chunk_size = cs;
   }
     
   void AlgorithmicParameters::set_w_planes(unsigned int wp) 
   { 
-    cerr << "Setting the number of polarizations is currently not supported." << endl;    
+    if (wp != 1)
+      cerr << "WARNING: Setting the number of W-planes is currently not supported." << endl;    
   }
 
   void AlgorithmicParameters::set_job_size(unsigned int js)
   {
-    job_size = js;
+    if (js > 0) // avoid job_size==0
+      job_size = js;
   }
 
 
@@ -70,8 +73,8 @@ namespace idg {
   {
     const unsigned int DEFAULT_GRIDSIZE = 0;
     const unsigned int DEFAULT_SUBGRIDSIZE = 0;
-    const unsigned int DEFAULT_CHUNKSIZE = 0;
-    const unsigned int DEFAULT_JOBSIZE = 0;
+    const unsigned int DEFAULT_CHUNKSIZE = 1;
+    const unsigned int DEFAULT_JOBSIZE = 1;
     const unsigned int DEFAULT_WPLANES = 1;
 
     // grid_size
@@ -94,6 +97,8 @@ namespace idg {
     char *cstr_chunk_size = getenv(ENV_CHUNKSIZE.c_str());
     if (cstr_chunk_size != nullptr) {
       chunk_size = atoi(cstr_chunk_size);
+      if (chunk_size < 1)
+	chunk_size = DEFAULT_CHUNKSIZE;
     } else {
       chunk_size = DEFAULT_CHUNKSIZE;
     }
@@ -102,6 +107,8 @@ namespace idg {
     char *cstr_job_size = getenv(ENV_JOBSIZE.c_str());
     if (cstr_job_size != nullptr) {
       job_size = atoi(cstr_job_size);
+      if (job_size < 1)
+	job_size = DEFAULT_JOBSIZE;
     } else {
       job_size = DEFAULT_JOBSIZE;
     }
