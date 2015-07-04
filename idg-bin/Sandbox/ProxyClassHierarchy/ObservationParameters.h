@@ -3,7 +3,6 @@
 #define IDG_OBSERVATIONPARAMETERS_H_
 
 #include <iostream>
-#include <iostream>
 
 namespace idg {
 
@@ -13,6 +12,10 @@ namespace idg {
   const std::string ENV_NR_CHANNELS = "NR_CHANNELS";
   const std::string ENV_NR_POLARIZATIONS = "NR_POLARIZATIONS"; // for future use
   const std::string ENV_FIELD_OF_VIEW = "FIELD_OF_VIEW";  
+
+  // set constants 
+  const float MAX_FOV = 1.0; // maximal value for field of view; Q: what is the correct value here?
+
 
   class ObservationParameters 
   {
@@ -25,7 +28,7 @@ namespace idg {
     // default copy constructor/assignment okay
     
     // default destructur
-    ~ObservationParameters() {};
+    ~ObservationParameters() = default;
     
     // set and get methods
     void set_nr_stations(unsigned int ns);

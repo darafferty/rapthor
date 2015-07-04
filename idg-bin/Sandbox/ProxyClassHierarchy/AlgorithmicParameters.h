@@ -24,7 +24,7 @@ namespace idg {
     // default copy constructor/assignment okay
     
     // default destructur
-    ~AlgorithmicParameters() {};
+    ~AlgorithmicParameters() = default;
     
     // set and get methods
     void set_grid_size(unsigned int gs);
