@@ -28,17 +28,19 @@ namespace idg {
 
   void ObservationParameters::set_nr_polarizations(unsigned int np) 
   {
-    cerr << "Setting the number of polarizations is currently not supported." << endl;    
+    if (np != 4) 
+      cerr << "WARNING: Setting the number of polarizations is currently not supported." << endl;    
   }
 
   void ObservationParameters::set_field_of_view(float fov) 
   {
-    // MP: this range check needs to be edited
-    if (fov < 0) {   // also if > ? (what is its unit?)
-      // throw out of range exception?
-      cerr << "Warning: field of view out of range." << endl;          
+    if (fov < 0) {
+      field_of_view = 0;
+    } else if (fov > MAX_FOV) {
+      field_of_view = MAX_FOV;
+    } else {
+      field_of_view = fov;
     }
-    field_of_view = fabs(fov);
   }
 
 

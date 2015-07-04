@@ -11,15 +11,17 @@ namespace idg {
   class CompileTimeConstants 
   {
   public:
-    // default constructor reads from parameters from ENV
-    //  CompileTimeConstants() {};
-    // CompileTimeConstants(ObservationParameters& op, 
-    //			AlgorithmicParameters& ap);
+    // Constructor 
+    CompileTimeConstants() = default;
+    CompileTimeConstants(ObservationParameters& op, 
+    			 AlgorithmicParameters& ap) 
+      : observation_parameters(op),
+      algorithmic_parameters(ap) {};
   
     // default copy constructor/assignment okay
     
     // default destructur
-    ~CompileTimeConstants() {};
+    ~CompileTimeConstants() = default;
     
     // set and get methods
     void set_nr_stations(unsigned int ns) { 
@@ -57,7 +59,11 @@ namespace idg {
     void set_job_size(unsigned int js) {
       algorithmic_parameters.set_job_size(js); 
     } 
-    
+
+    void set_w_planes(unsigned int wp) {
+      algorithmic_parameters.set_w_planes(wp);
+    }
+   
     
     unsigned int get_nr_stations() const { 
       return observation_parameters.get_nr_stations(); 
@@ -94,21 +100,27 @@ namespace idg {
     unsigned int get_job_size() const { 
       return algorithmic_parameters.get_job_size(); 
     }
-    
-    
-    // display all parameters
-    void print() const { 
-      observation_parameters.print(); 
-      std::cout << std::endl;
-      algorithmic_parameters.print(); 
+
+    unsigned int get_w_planes() const { 
+      return algorithmic_parameters.get_w_planes(); 
     }
     
+    
+    // display all parameters    
     void print(std::ostream& os) const { 
+      os << "-----------------------" << std::endl;
+      os << "COMPILE TIME CONSTANTS:" << std::endl;
+      os << std::endl;
       observation_parameters.print(os);
       os << std::endl;
       algorithmic_parameters.print(os); 
+      os << "-----------------------" << std::endl;
     }
-    
+
+    void print() const { 
+      print(std::cout);
+    }    
+
   private:
     ObservationParameters observation_parameters;
     AlgorithmicParameters algorithmic_parameters;
