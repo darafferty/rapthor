@@ -8,3 +8,4 @@
 * Range checks! Should we throw exceptions?
 * What unit is "field of view"? Arcsec? What is maximal value?
 * What should we do if NR_STATIONS=-48 in environment; Nothing?
+* w_planes -> nr_w_planes?
