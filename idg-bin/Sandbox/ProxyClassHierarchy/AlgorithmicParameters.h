@@ -1,3 +1,10 @@
+/** 
+ *  \class AlgorithmicParameters
+ *
+ *  \brief Collection of constants for a specific invocation of IDG
+ *
+ *  Have a more detailed description here
+ */
 
 #ifndef IDG_ALGORITHMICPARAMETERS_H_
 #define IDG_ALGORITHMICPARAMETERS_H_
@@ -6,7 +13,7 @@
 
 namespace idg {
 
-  // define the enviroment names searched for
+  /// Define the environment names searched for
   const std::string ENV_GRIDSIZE = "GRIDSIZE";
   const std::string ENV_SUBGRIDSIZE = "SUBGRIDSIZE"; 
   const std::string ENV_CHUNKSIZE = "CHUNKSIZE";
@@ -16,7 +23,7 @@ namespace idg {
   class AlgorithmicParameters 
   {
   public:
-    // default constructor reads from parameters from ENV
+    /// Default constructor reads from parameters from ENV
     AlgorithmicParameters() {
       read_parameters_from_env();
     }
@@ -26,7 +33,7 @@ namespace idg {
     // default destructur
     ~AlgorithmicParameters() = default;
     
-    // set and get methods
+    // set and get methods    
     void set_grid_size(unsigned int gs);
     void set_subgrid_size(unsigned int sgs);
     void set_chunk_size(unsigned int cs);

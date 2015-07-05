@@ -12,18 +12,30 @@ namespace idg {
   // set methods
   void ObservationParameters::set_nr_stations(unsigned int ns) 
   {
-    nr_stations = ns;
+    if (ns > 1) {
+      nr_stations = ns;
+    } else {
+      nr_stations = 1;
+    }
     nr_baselines = (nr_stations * (nr_stations-1)) / 2;
   }
   
   void ObservationParameters::set_nr_timesteps(unsigned int nt) 
   {
-    nr_timesteps = nt;
+    if (nt > 1) {
+      nr_timesteps = nt;
+    } else {
+      nr_timesteps = 1;
+    }
   }
 
   void ObservationParameters::set_nr_channels(unsigned int nc) 
   {
-    nr_channels = nc;
+    if (nc > 1) {
+      nr_channels = nc;
+    } else {
+      nr_channels = 1;
+    }
   }
 
   void ObservationParameters::set_nr_polarizations(unsigned int np) 

@@ -1,8 +1,16 @@
-
+/** 
+ *  \class ObservationParameters
+ *
+ *  \brief Collection of constants for a specific observation
+ *
+ *  Have a more detailed description here
+ */
+   
 #ifndef IDG_OBSERVATIONPARAMETERS_H_
 #define IDG_OBSERVATIONPARAMETERS_H_
 
 #include <iostream>
+#include <climits> // UINT_MAX
 
 namespace idg {
 
@@ -13,9 +21,8 @@ namespace idg {
   const std::string ENV_NR_POLARIZATIONS = "NR_POLARIZATIONS"; // for future use
   const std::string ENV_FIELD_OF_VIEW = "FIELD_OF_VIEW";  
 
-  // set constants 
-  const float MAX_FOV = 1.0; // maximal value for field of view; Q: what is the correct value here?
-
+  // set MIN/MAX constants 
+  const float MAX_FOV = 1.0; // max. field of view; Q: what is the correct value here?  
 
   class ObservationParameters 
   {
@@ -49,12 +56,12 @@ namespace idg {
     void read_parameters_from_env();
     
   private:
-    unsigned int nr_stations;
-    unsigned int nr_baselines;
-    unsigned int nr_timesteps;
-    unsigned int nr_channels;
-    unsigned int nr_polarizations; 
-    float field_of_view;           // unit?    
+    unsigned int nr_stations;      
+    unsigned int nr_baselines;     /// nr_stations*(nr_stations-1)/2
+    unsigned int nr_timesteps;     
+    unsigned int nr_channels;      
+    unsigned int nr_polarizations; /// currently fixed to 4 
+    float field_of_view;           /// unit?    
   };
 
   // helper functions
