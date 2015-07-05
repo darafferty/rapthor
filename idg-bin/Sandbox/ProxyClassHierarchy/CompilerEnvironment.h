@@ -15,7 +15,7 @@
 
 namespace idg {
 
-  // define the environment names searched for
+  /// Define the environment names searched for in ENV
   const std::string ENV_CC = "CC";
   const std::string ENV_CFLAGS = "CFLAGS";
   const std::string ENV_CPP = "CPP";
@@ -26,7 +26,7 @@ namespace idg {
   const std::string ENV_NVCCFLAGS = "NVCCLAGS";
   // extend to MPICC, ...
 
-  // internal identifiers
+  /// Internal identifiers (keys) for various settings
   const std::string CC = "CC";
   const std::string CFLAGS = "CFLAGS";
   const std::string CPP = "CPP";
@@ -55,10 +55,13 @@ namespace idg {
     // set and get methods
 
     /** \brief Sets the C compiler.
-      * \param s (path to) the C complier such that $s CFLAGS ... works */
+      * \param s (alias or fullpath) C complier such that $s CFLAGS ... works */
     void set_c_compiler(std::string s) { value[CC] = s; }
 
+    /** \brief Sets the C compiler flags.
+      * \param s the C complier flags */
     void set_c_flags(std::string s) { value[CFLAGS] = s; }
+
     void set_cpp_compiler(std::string s) { value[CPP] = s; }
     void set_cpp_flags(std::string s) { value[CPPFLAGS] = s; }
     void set_f_compiler(std::string s) { value[FC] = s; }
