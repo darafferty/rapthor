@@ -37,7 +37,7 @@
 
 
 /*
-    Performance reporting
+u   Performance reporting
 */
 #define REPORT_VERBOSE 1
 #define REPORT_TOTAL   1
@@ -285,7 +285,7 @@ void run_gridder(
 
             // Launch gridder kernel
             #if GRIDDER
-            kernel_gridder.launchAsync(queue, events[2], current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
+            kernel_gridder.launchAsync(queue, current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
             #endif
 
             // Launch FFT
@@ -319,7 +319,7 @@ void run_gridder(
             double bytes_input   = UVW_SIZE + VISIBILITIES_SIZE;
             double bytes_output  = SUBGRID_SIZE;
             report("  input", runtime_input, 0, bytes_input);
-            report("gridder",  events[2], KernelGridder::flops(current_jobsize), KernelGridder::bytes(current_jobsize));
+            //report("gridder",  events[2], KernelGridder::flops(current_jobsize), KernelGridder::bytes(current_jobsize));
             //report("    fft",  events[3], KernelFFT::flops(SUBGRIDSIZE, current_jobsize),
             //                              KernelFFT::bytes(SUBGRIDSIZE, current_jobsize));
             report(" output", runtime_output, 0, bytes_output);
@@ -328,7 +328,7 @@ void run_gridder(
             // Sum totals
             #if REPORT_TOTAL
             for (int i = 0; i < nr_iterations; i++) {
-                total_time_gridder[thread_num] += runtime(events[2]);
+                //total_time_gridder[thread_num] += runtime(events[2]);
                 //total_time_fft[thread_num]     += runtime(events[3]);
                 total_time_input[thread_num]   += runtime(events[0]) + runtime(events[1]);
                 total_time_output[thread_num]  += runtime(events[4]);
@@ -347,9 +347,9 @@ void run_gridder(
     for (int t = 0; t < nr_streams; t++) {
         std::clog << "--- stream " << t << " ---" << std::endl;
         int jobsize = total_jobs[t];
-        report("gridder", total_time_gridder[t],
-                          kernel_gridder.flops(jobsize),
-                          kernel_gridder.bytes(jobsize));
+        //report("gridder", total_time_gridder[t],
+        //                  kernel_gridder.flops(jobsize),
+        //                  kernel_gridder.bytes(jobsize));
         //report("    fft", total_time_fft[t],
         //                  kernel_fft.flops(SUBGRIDSIZE, jobsize),
         //                  kernel_fft.bytes(SUBGRIDSIZE, jobsize));

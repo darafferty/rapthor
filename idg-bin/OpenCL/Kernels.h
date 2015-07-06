@@ -20,7 +20,7 @@ class KernelGridder {
     public:
         KernelGridder(cl::Program &program, const char *kernel_name);
         void launchAsync(
-            cl::CommandQueue &queue, cl::Event &event, int jobsize, int bl_offset,
+            cl::CommandQueue &queue, int jobsize, int bl_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_baselines,
@@ -30,6 +30,7 @@ class KernelGridder {
 	
 	private:
 	    cl::Kernel kernel;
+        PerformanceCounter counter;
 };
 
 
