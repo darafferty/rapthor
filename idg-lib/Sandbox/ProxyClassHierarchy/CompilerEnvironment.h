@@ -15,6 +15,10 @@
 
 namespace idg {
 
+  /// typedefs
+  typedef std::string Compiler;
+  typedef std::string Compilerflags;
+
   /// Define the environment names searched for in ENV
   const std::string ENV_CC = "CC";
   const std::string ENV_CFLAGS = "CFLAGS";
@@ -36,6 +40,7 @@ namespace idg {
   const std::string NVCC = "NVCC";
   const std::string NVCCFLAGS = "NVCCLAGS";
   // extend to MPICC, ...
+
 
   class CompilerEnvironment 
   {
@@ -90,8 +95,10 @@ namespace idg {
     std::map<std::string,std::string> value;
   }; 
 
+
   // helper functions
   std::ostream& operator<<(std::ostream& os, const CompilerEnvironment& cc);
+
 
 } // namespace idg
 

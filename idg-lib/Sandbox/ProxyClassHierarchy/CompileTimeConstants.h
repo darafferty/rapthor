@@ -23,7 +23,7 @@ namespace idg {
     // default destructur
     ~CompileTimeConstants() = default;
     
-    /// Set the number of stations in [1,UINT_MAX]
+    /// Set the number of stations in [2,UINT_MAX]
     /** A more detailed description could be here */
     void set_nr_stations(unsigned int ns) { 
       observation_parameters.set_nr_stations(ns); 

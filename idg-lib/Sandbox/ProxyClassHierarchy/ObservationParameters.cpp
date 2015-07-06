@@ -22,7 +22,7 @@ namespace idg {
   
   void ObservationParameters::set_nr_timesteps(unsigned int nt) 
   {
-    if (nt > 1) {
+    if (nt > 0) {
       nr_timesteps = nt;
     } else {
       nr_timesteps = 1;
@@ -31,7 +31,7 @@ namespace idg {
 
   void ObservationParameters::set_nr_channels(unsigned int nc) 
   {
-    if (nc > 1) {
+    if (nc > 0) {
       nr_channels = nc;
     } else {
       nr_channels = 1;
