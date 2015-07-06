@@ -37,7 +37,9 @@ void PerformanceCounter::eventCompleteCallBack(cl_event event, cl_int, void *use
 void PerformanceCounter::report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
 	#pragma omp critical(clog)
 	{
-    std::clog << name << ": " << runtime << " s";
+    std::clog << std::setw(14) << name;
+    std::clog << std::setprecision(5) << std::fixed;
+    std::clog << ": " << runtime << " s";
     if (flops != 0)
 		std::clog << ", " << flops / runtime * 1e-12 << " TFLOPS";
     if (bytes != 0)

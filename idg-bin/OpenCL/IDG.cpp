@@ -124,48 +124,20 @@ std::string compileOptions() {
 
 
 /*
-    Benchmark
+    Throughput
 */
-double runtime(cl::Event &event) {
-    cl_ulong start = event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-    cl_ulong end   = event.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-    return ((long) end - (long) start) * 1e-9;
-}
-
-void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
-	#pragma omp critical(clog)
-	{
-    std::clog << name << ": " << runtime << " s";
-    if (flops != 0)
-		std::clog << ", " << flops / runtime * 1e-12 << " TFLOPS";
-    if (bytes != 0)
-		std::clog << ", " << bytes / runtime * 1e-9 << " GB/s";
-    std::clog << std::endl;
-	}
-}
-
-void report(const char *name, cl::Event &event, uint64_t flops, uint64_t bytes) {
-	#pragma omp critical(clog)
-	{
-    double _runtime = runtime(event);
-    std::clog << name << ": " << _runtime << " s";
-    if (flops != 0)
-		std::clog << ", " << flops / _runtime * 1e-12 << " TFLOPS";
-    if (bytes != 0)
-		std::clog << ", " << bytes / _runtime * 1e-9 << " GB/s";
-    std::clog << std::endl;
-	}
-}
-
 void report_visibilities(double runtime) {
     int nr_visibilities = NR_BASELINES * NR_TIME * NR_CHANNELS;
-    std::clog << "throughput: " << 1e-6 * nr_visibilities / runtime << " Mvisibilities/s" << std::endl;
+    std::clog << "    throughput: ";
+    std::clog << 1e-6 * nr_visibilities / runtime << " Mvisibilities/s" << std::endl;
 }
 
 
 void report_subgrids(double runtime) {
-    std::clog << "throughput: " << 1e-3 * NR_BASELINES / runtime << " Ksubgrids/s" << std::endl;
+    std::clog << "    throughput: ";
+    std::clog << 1e-3 * NR_BASELINES / runtime << " Ksubgrids/s" << std::endl;
 }
+
 
 /*
     Compilation
@@ -223,6 +195,11 @@ void run_gridder(
     // Get kernels
     KernelGridder kernel_gridder = KernelGridder(program, KERNEL_GRIDDER);
     KernelFFT kernel_fft;
+   
+    // Performance counters for io 
+    PerformanceCounter counter_input_visibilities("input vis");
+    PerformanceCounter counter_input_uvw("input uvw");
+    PerformanceCounter counter_output_subgrid("output subgrid");
 	
     // Timing variables
     double total_time_gridder[nr_streams];
@@ -246,6 +223,8 @@ void run_gridder(
     int nr_iterations = ((NR_BASELINES / nr_streams) / jobsize) + 1;
 	
     // Start gridder
+    double time_start = omp_get_wtime();
+    std::clog << "--- jobs ---" << std::endl;
 	#pragma omp parallel num_threads(nr_streams)
 	{
 	    // Initialize
@@ -254,25 +233,28 @@ void run_gridder(
         int iteration = 0;
 	    
 	    // Private device memory
-        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, VISIBILITIES_SIZE);
-        cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, UVW_SIZE);
-        cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_READ_WRITE, SUBGRID_SIZE);
+        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  VISIBILITIES_SIZE);
+        cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  UVW_SIZE);
+        cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
 	    
-        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize) {
-            cl::Event events[5];
+        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
+            cl::Event events[3];
 
             // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
         
 		    // Number of elements in batch
-		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
-		    size_t uvw_offset          = bl * NR_TIME * 3;
-		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
+		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+		    size_t uvw_offset          = bl * NR_TIME * sizeof(UVW);
+		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
             
 	        // Copy input data to device
-            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, VISIBILITIES_SIZE, NULL, &events[0]);
-            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[1]);
-            //queue.enqueueCopyBuffer(h_subgrid, d_subgrid, subgrid_offset, 0, SUBGRID_SIZE, NULL, NULL);
+            #if INPUT
+            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[0]);
+            counter_input_uvw.doOperation(events[0], 0, UVW_SIZE);
+            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, VISIBILITIES_SIZE, NULL, &events[1]);
+            counter_input_visibilities.doOperation(events[1], 0, VISIBILITIES_SIZE);
+            #endif
 
             // Create FFT plan
             #if FFT
@@ -296,12 +278,12 @@ void run_gridder(
 	        
             // Copy subgrid to host
             #if OUTPUT
-            queue.enqueueCopyBuffer(d_subgrid, h_subgrid, 0, subgrid_offset, SUBGRID_SIZE, NULL, &events[4]);
+            queue.enqueueCopyBuffer(d_subgrid, h_subgrid, 0, subgrid_offset, SUBGRID_SIZE, NULL, &events[2]);
+            counter_output_subgrid.doOperation(events[2], 0, SUBGRID_SIZE);
             #endif
 
             // Go to next iteration
             total_jobs[thread_num] += current_jobsize;
-
 
             // Check for errors
             try {
@@ -310,63 +292,16 @@ void run_gridder(
                 std::cerr << "Error finishing queue: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
-            //cl_ulong test = events[3].getProfilingInfo<CL_PROFILING_COMMAND_END>();
-            //std::clog << "test :" << test << std::endl;
-
-            #if REPORT_VERBOSE
-            double runtime_input  = runtime(events[0]) + runtime(events[1]);
-            double runtime_output = runtime(events[4]);
-            double bytes_input   = UVW_SIZE + VISIBILITIES_SIZE;
-            double bytes_output  = SUBGRID_SIZE;
-            report("  input", runtime_input, 0, bytes_input);
-            //report("gridder",  events[2], KernelGridder::flops(current_jobsize), KernelGridder::bytes(current_jobsize));
-            //report("    fft",  events[3], KernelFFT::flops(SUBGRIDSIZE, current_jobsize),
-            //                              KernelFFT::bytes(SUBGRIDSIZE, current_jobsize));
-            report(" output", runtime_output, 0, bytes_output);
-            #endif
-
-            // Sum totals
-            #if REPORT_TOTAL
-            for (int i = 0; i < nr_iterations; i++) {
-                //total_time_gridder[thread_num] += runtime(events[2]);
-                //total_time_fft[thread_num]     += runtime(events[3]);
-                total_time_input[thread_num]   += runtime(events[0]) + runtime(events[1]);
-                total_time_output[thread_num]  += runtime(events[4]);
-                total_bytes_input[thread_num]  += UVW_SIZE + VISIBILITIES_SIZE;
-                total_bytes_output[thread_num] += SUBGRID_SIZE;
-            }
-            #endif
-     }
+        }
 
 	}
-
-    // Measure total runtime
-    #if REPORT_TOTAL
-    std::clog << std::endl;
-    // Report performance per stream
-    for (int t = 0; t < nr_streams; t++) {
-        std::clog << "--- stream " << t << " ---" << std::endl;
-        int jobsize = total_jobs[t];
-        //report("gridder", total_time_gridder[t],
-        //                  kernel_gridder.flops(jobsize),
-        //                  kernel_gridder.bytes(jobsize));
-        //report("    fft", total_time_fft[t],
-        //                  kernel_fft.flops(SUBGRIDSIZE, jobsize),
-        //                  kernel_fft.bytes(SUBGRIDSIZE, jobsize));
-        report("  input", total_time_input[t], 0, total_bytes_input[t]);
-        report(" output", total_time_output[t], 0, total_bytes_output[t]);
-	    std::clog << std::endl;
-    }
+    double time_end = omp_get_wtime();
     
     // Report overall performance
-    //std::clog << "--- overall ---" << std::endl;
-    //long total_flops = kernel_gridder.flops(NR_BASELINES) +
-    //                   kernel_fft.flops(SUBGRIDSIZE, NR_BASELINES);
-    //report("     total", records_total[0], records_total[1], total_flops, 0);
-    //double total_runtime = runtime(records_total[0], records_total[1]);
-    //report_visibilities(total_runtime);
-    //std::clog << std::endl;
-    #endif
+    std::clog << std::endl;
+    std::clog << "--- overall ---" << std::endl;
+    double total_runtime = time_end - time_start;
+    report_visibilities(total_runtime);
 
     // Terminate clfft
     clfftTeardown();   
