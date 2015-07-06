@@ -129,7 +129,7 @@ std::string compileOptions() {
 double runtime(cl::Event &event) {
     cl_ulong start = event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
     cl_ulong end   = event.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-    return ((long) end - (long) start) * 1e-8;
+    return ((long) end - (long) start) * 1e-9;
 }
 
 void report(const char *name, double runtime, uint64_t flops, uint64_t bytes) {
@@ -268,7 +268,7 @@ void run_gridder(
 		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
 		    size_t uvw_offset          = bl * NR_TIME * 3;
 		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
-		
+            
 	        // Copy input data to device
             queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, VISIBILITIES_SIZE, NULL, &events[0]);
             queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[1]);
@@ -285,14 +285,13 @@ void run_gridder(
 
             // Launch gridder kernel
             #if GRIDDER
-            std::clog << "gridding " << bl << " " << current_jobsize << std::endl;
             kernel_gridder.launchAsync(queue, events[2], current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
             #endif
 
             // Launch FFT
             #if FFT
             //std::clog << "     fft " << bl << " " << current_jobsize << std::endl;
-            kernel_fft.launchAsync(queue, events[3], d_subgrid, CLFFT_BACKWARD);
+            kernel_fft.launchAsync(queue, d_subgrid, CLFFT_BACKWARD);
             #endif
 	        
             // Copy subgrid to host
@@ -302,7 +301,7 @@ void run_gridder(
 
             // Go to next iteration
             total_jobs[thread_num] += current_jobsize;
-            iteration++;
+
 
             // Check for errors
             try {
@@ -311,6 +310,8 @@ void run_gridder(
                 std::cerr << "Error finishing queue: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
+            //cl_ulong test = events[3].getProfilingInfo<CL_PROFILING_COMMAND_END>();
+            //std::clog << "test :" << test << std::endl;
 
             #if REPORT_VERBOSE
             double runtime_input  = runtime(events[0]) + runtime(events[1]);

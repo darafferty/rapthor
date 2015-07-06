@@ -54,7 +54,7 @@ uint64_t KernelGridder::bytes(int jobsize) {
 }
 
 
-KernelFFT::KernelFFT() {
+KernelFFT::KernelFFT() : counter("fft") {
     uninitialized = true;
 }
 
@@ -85,15 +85,25 @@ void KernelFFT::plan(cl::Context &context, int size, int batch, int layout) {
     }
 }
 
-void KernelFFT::launchAsync(cl::CommandQueue &queue, cl::Event &event, cl::Buffer &data, clfftDirection direction) {
-    cl_event waitEvents[0];
-    cl_event outEvents[1];
-    outEvents[0] = event();
-    cl_command_queue queues[1];
-    queues[0] = queue();
-    cl_mem input[1];
-    input[0] = data();
-    clfftEnqueueTransform(fft, direction, 1, queues, 0, waitEvents, outEvents, input, NULL, NULL);
+void KernelFFT::launchAsync(cl::CommandQueue &queue, cl::Buffer &data, clfftDirection direction) {
+    //cl_event waitEvents[0];
+    //cl_event outEvents[0];
+    //outEvents[0] = event();
+    //cl_command_queue queues[1];
+    //queues[0] = queue();
+    //cl_mem input[1];
+    //input[0] = data();
+    cl_event _event;
+    //clfftEnqueueTransform(fft, direction, 1, queues, 0, NULL, &event, input, NULL, NULL);
+    clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &_event, &data(), &data(), NULL);
+    event = _event;
+    //queue.finish();
+    //cl_ulong time_start = 0;
+    //cl_ulong time_end = 0;
+    //clGetEventProfilingInfo(test_event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+    //clGetEventProfilingInfo(test_event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+    //std::clog << "fft: " << ((long)time_end-(long)time_start) * 1e-9 << std::endl;
+    counter.doOperation(event, flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 }
 
 uint64_t KernelFFT::flops(int size, int batch) {

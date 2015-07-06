@@ -10,6 +10,7 @@
 #include <clFFT.h>
 
 #include "Types.h"
+#include "PerformanceCounter.h"
 
 
 /*
@@ -43,8 +44,7 @@ class KernelFFT {
         KernelFFT();
         void plan(cl::Context &context, int size, int batch, int layout);
         void launchAsync(
-            cl::CommandQueue &queue, cl::Event &event,
-            cl::Buffer &data, clfftDirection direction);
+            cl::CommandQueue &queue, cl::Buffer &data, clfftDirection direction);
 		static uint64_t flops(int size, int batch);
 		static uint64_t bytes(int size, int batch);
 
@@ -53,5 +53,7 @@ class KernelFFT {
         int planned_size;
         int planned_batch;
         int planned_layout;
-        clfftPlanHandle fft; 
+        clfftPlanHandle fft;
+        PerformanceCounter counter;
+        cl::Event event;
 };
