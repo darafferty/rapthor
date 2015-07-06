@@ -10,7 +10,6 @@
 #ifndef IDG_SMP_H_
 #define IDG_SMP_H_
 
-#include "CompileTimeConstants.h"
 #include "Proxy.h"
 
 namespace idg {
@@ -23,14 +22,14 @@ namespace idg {
       /// Constructors
       SMP(Compiler compiler, 
 	  Compilerflags flags,
-	  CompileTimeConstants constants);
-      // ProxyInfo info = Proxy Info()); 
+	  CompileTimeConstants constants,
+          ProxyInfo info = ProxyInfo()); 
+
       
       SMP(CompilerEnvironment cc, 
-	  CompileTimeConstants constants);
-      // ProxyInfo info = ProxyInfo()); 
+	  CompileTimeConstants constants,
+	  ProxyInfo info = ProxyInfo()); 
       
-
       /// Copy constructor, copy assigment (see below in private)
       // te be edited
 
