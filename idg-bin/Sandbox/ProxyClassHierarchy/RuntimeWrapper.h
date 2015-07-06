@@ -11,7 +11,7 @@
 
 namespace idg {
   
-  namespace rw {
+  namespace runtimewrapper {
     
     class Error : public std::exception {
     public:
@@ -86,6 +86,7 @@ namespace idg {
     };
     
   } // namespace rw
+
 } // namespace idg
 
 #endif

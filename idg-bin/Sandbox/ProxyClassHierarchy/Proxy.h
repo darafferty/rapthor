@@ -9,8 +9,11 @@
 #ifndef IDG_PROXY_H_
 #define IDG_PROXY_H_
 
-#include "CompilerEnvironment.h"
 #include "RuntimeWrapper.h"
+#include "ProxyInfo.h"  // to be use in derived class
+#include "CompileTimeConstants.h" // to be use in derived class
+#include "CompilerEnvironment.h" // to be use in derived class
+
 
 namespace idg {
 
@@ -19,6 +22,10 @@ namespace idg {
     ImageDomainToFourierDomain
   };
 
+}
+
+
+namespace idg {
 
   namespace proxy {
     
@@ -29,7 +36,7 @@ namespace idg {
        * Proxy(Compiler compiler, 
        *       Compilerflags flags,
        *       CompileTimeConstants constants);
-       *       ProxyInfo info = Proxy Info()); 
+       *       ProxyInfo info = ProxyInfo()); 
        *
        * Proxy(CompilerEnviroment cc, 
        *       CompileTimeConstants constants);
@@ -40,7 +47,7 @@ namespace idg {
       // te be edited
 
       /// Destructor
-      virtual ~Proxy() = 0; // default for now; 	
+      virtual ~Proxy() {}; // default for now; can make purely virtual?
 
 
       /// Inteface for methods provided by the proxy
@@ -88,7 +95,7 @@ namespace idg {
       virtual void transform(DomainAtoDomainB direction, void* grid) = 0;
             
     protected:  
-      rw::Module *module;
+      runtimewrapper::Module *module;
 
       //    Proxy(const Proxy&); // prevents copy for now; do somehow differently?
       //    Proxy& operator=(const Proxy&);
