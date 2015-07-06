@@ -26,7 +26,7 @@ CLFFT_LIB=clFFT/lib64
 #   Rules	
 #
 IDG-OPENCL: IDG.cpp Kernels.cpp PerformanceCounter.cpp ../Data/Init.cpp ../Lib/uvwsim.c
-	g++ -o $@ $^ -lOpenCL -fopenmp -L${CLFFT_LIB} -lclFFT -I../Common -I../Data -I../Lib -I${OPENCL_INC} -I${CLFFT_INC} ${PARAMETERS}
+	g++ -o $@ $^ -std=c++11 -lOpenCL -fopenmp -L${CLFFT_LIB} -lclFFT -I../Common -I../Data -I../Lib -I${OPENCL_INC} -I${CLFFT_INC} ${PARAMETERS}
 
 EXEC=IDG-OPENCL
 clean:

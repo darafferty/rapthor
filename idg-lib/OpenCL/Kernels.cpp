@@ -46,11 +46,11 @@ uint64_t KernelGridder::flops(int jobsize) {
 uint64_t KernelGridder::bytes(int jobsize) {
 	return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE *(
     // Grid
-    (NR_POLARIZATIONS * sizeof(float complex) + sizeof(float)) +
+    (NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
     // ATerm
-    ((2 * sizeof(int)) + (2 * NR_POLARIZATIONS * sizeof(float complex))) +
+    ((2 * sizeof(int)) + (2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX))) +
     // Spheroidal
-	NR_POLARIZATIONS * sizeof(float complex));
+	NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 }
 
 
@@ -65,7 +65,7 @@ void KernelFFT::plan(cl::Context &context, int size, int batch, int layout) {
         batch  != planned_batch ||
         layout != planned_layout) {
         // Create new plan
-        size_t lengths[2] = {size, size};
+        size_t lengths[2] = {(size_t) size, (size_t) size};
         clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
         clfftSetPlanBatchSize(fft, batch);
         if (layout == FFT_LAYOUT_YXP) {
@@ -111,5 +111,5 @@ uint64_t KernelFFT::flops(int size, int batch) {
 }
 
 uint64_t KernelFFT::bytes(int size, int batch) {
-	return 1ULL * 2 * batch * size * size * NR_POLARIZATIONS * sizeof(float complex);
+	return 1ULL * 2 * batch * size * size * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
 }
