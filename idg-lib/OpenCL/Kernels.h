@@ -55,5 +55,4 @@ class KernelFFT {
         int planned_layout;
         clfftPlanHandle fft;
         PerformanceCounter counter;
-        cl::Event event;
 };

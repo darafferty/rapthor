@@ -1,4 +1,5 @@
 #include <iostream>
+#include <functional>
 
 #include <CL/cl.hpp>
 
@@ -14,7 +15,7 @@ class PerformanceCounter {
 
     private:
         static void eventCompleteCallBack(cl_event, cl_int, void *counter);
-        void report(double runtime, uint64_t flops, uint64_t bytes);
+        static void report(const char *name, double runtime, uint64_t flops, uint64_t bytes);
 
     public:
        const char *name;
@@ -22,7 +23,6 @@ class PerformanceCounter {
        uint64_t total_bytes;
        double   total_runtime;
 
-   private:
-       uint64_t _flops;
-       uint64_t _bytes;
+   private:    
+       std::function<void (cl_event)> callback;
 };
