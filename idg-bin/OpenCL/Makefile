@@ -1,7 +1,7 @@
 #
 #   Parameters
 #
-NR_STATIONS=30
+NR_STATIONS=70
 NR_TIME=1024
 NR_CHANNELS=16
 NR_POLARIZATIONS=4
@@ -25,7 +25,7 @@ CLFFT_LIB=clFFT/lib64
 #
 #   Rules	
 #
-IDG-OPENCL: IDG.cpp Kernels.cpp ../Data/Init.cpp ../Lib/uvwsim.c
+IDG-OPENCL: IDG.cpp Kernels.cpp PerformanceCounter.cpp ../Data/Init.cpp ../Lib/uvwsim.c
 	g++ -o $@ $^ -lOpenCL -fopenmp -L${CLFFT_LIB} -lclFFT -I../Common -I../Data -I../Lib -I${OPENCL_INC} -I${CLFFT_INC} ${PARAMETERS}
 
 EXEC=IDG-OPENCL
