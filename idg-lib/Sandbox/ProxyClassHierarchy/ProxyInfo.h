@@ -18,7 +18,17 @@ namespace idg {
     public:
       ProxyInfo() // set default values
 	: path_to_src("./src"),
-	  path_to_lib("./lib")
+	path_to_lib("./lib"),
+	src_gridder("KernelGridder.cpp"),
+	src_degridder("KernelDegridder.cpp"),
+	src_fft("KernelFFT.cpp"),
+	src_adder("KernelAdder.cpp"),
+	src_splitter("KernelSplitter.cpp"),
+	so_gridder("Gridder.so"),
+	so_degridder("Degridder.so"),
+	so_fft("FFT.so"),
+	so_adder("Adder.so"),
+	so_splitter("Splitter.so")
 	{ }
 
       // copy constructor, assigment: default okay
@@ -38,8 +48,17 @@ namespace idg {
 
     private:
       std::string path_to_src;
-      std::string path_to_lib;      
-    
+      std::string path_to_lib; 
+      std::string src_gridder; 
+      std::string src_degridder; 
+      std::string src_fft; 
+      std::string src_adder; 
+      std::string src_splitter; 
+      std::string so_gridder; 
+      std::string so_degridder; 
+      std::string so_fft; 
+      std::string so_adder; 
+      std::string so_splitter; 
     };
 
     // helper functions
