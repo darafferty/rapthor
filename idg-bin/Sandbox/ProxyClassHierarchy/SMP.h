@@ -77,6 +77,18 @@ namespace idg {
        */
       void transform(DomainAtoDomainB direction, void* grid);
 
+
+      // the function are divided into the following subroutines
+      // gridder 
+      // adder
+      // splitter
+      // degridder
+
+    protected:
+      
+      void compile(Compiler compiler, Compilerflags flags, 
+		   CompileTimeConstants constants, ProxyInfo info);
+
     }; // class SMP
 
   } // namespace proxy

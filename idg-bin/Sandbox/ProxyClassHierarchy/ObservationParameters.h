@@ -45,6 +45,7 @@ namespace idg {
     void set_field_of_view(float fov);
 
     unsigned int get_nr_stations() const { return nr_stations; }
+    unsigned int get_nr_baselines() const { return nr_baselines; }
     unsigned int get_nr_timesteps() const { return nr_timesteps; }
     unsigned int get_nr_channels() const { return nr_channels; }
     unsigned int get_nr_polarizations() const { return nr_polarizations; } 
@@ -54,6 +55,13 @@ namespace idg {
     void print() const;
     void print(std::ostream& os) const;
     void read_parameters_from_env();
+
+    static std::string definitions(unsigned int nr_stations, 
+				   unsigned int nr_baselines, 
+				   unsigned int nr_timesteps,
+				   unsigned int nr_channels, 
+				   unsigned int nr_polarizations,
+				   float field_of_view);
     
   private:
     unsigned int nr_stations;      
