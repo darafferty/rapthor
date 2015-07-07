@@ -17,8 +17,8 @@ PARAMETERS=-DIMAGESIZE=${IMAGESIZE} -DW_PLANES=${W_PLANES} -DNR_STATIONS=${NR_ST
 #
 #   Dependencies
 #
-#OPENCL_INC=/opt/AMDAPP/include
-OPENCL_INC=/usr/local/cuda-7.5.7_rc/include
+OPENCL_INC_AMD=/opt/AMDAPP/include
+OPENCL_INC_NVIDIA=/usr/local/cuda/include
 CLFFT_INC=clFFT/include
 CLFFT_LIB=clFFT/lib64
 
@@ -26,7 +26,7 @@ CLFFT_LIB=clFFT/lib64
 #   Rules	
 #
 IDG-OPENCL: IDG.cpp Kernels.cpp PerformanceCounter.cpp ../Data/Init.cpp ../Lib/uvwsim.c
-	g++ -o $@ $^ -std=c++11 -lOpenCL -fopenmp -L${CLFFT_LIB} -lclFFT -I../Common -I../Data -I../Lib -I${OPENCL_INC} -I${CLFFT_INC} ${PARAMETERS}
+	g++ -o $@ $^ -std=c++11 -lOpenCL -fopenmp -L${CLFFT_LIB} -lclFFT -I../Common -I../Data -I../Lib -I${OPENCL_INC_AMD} -I${OPENCL_INC_NVIDIA} -I${CLFFT_INC} ${PARAMETERS}
 
 EXEC=IDG-OPENCL
 clean:
