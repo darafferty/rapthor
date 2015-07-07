@@ -109,15 +109,17 @@ void printDevices(int deviceNumber) {
 */
 std::string compileOptions() {
 	std::stringstream options;
-	options << " -DNR_STATIONS="		<< NR_STATIONS;
-	options << " -DNR_BASELINES="		<< NR_BASELINES;
-	options << " -DNR_TIME="			<< NR_TIME;
-	options << " -DNR_CHANNELS="		<< NR_CHANNELS;
-	options << " -DNR_POLARIZATIONS="	<< NR_POLARIZATIONS;
-	options << " -DSUBGRIDSIZE="		<< SUBGRIDSIZE;
-	options << " -DGRIDSIZE="			<< GRIDSIZE;
-	options << " -DCHUNKSIZE="          << CHUNKSIZE;
-	options << " -DIMAGESIZE="			<< IMAGESIZE;
+	options << " -DNR_STATIONS="	  << NR_STATIONS;
+	options << " -DNR_BASELINES="	  << NR_BASELINES;
+	options << " -DNR_TIME="		  << NR_TIME;
+	options << " -DNR_CHANNELS="	  << NR_CHANNELS;
+	options << " -DNR_POLARIZATIONS=" << NR_POLARIZATIONS;
+	options << " -DSUBGRIDSIZE="	  << SUBGRIDSIZE;
+	options << " -DGRIDSIZE="		  << GRIDSIZE;
+	options << " -DCHUNKSIZE="        << CHUNKSIZE;
+	options << " -DIMAGESIZE="		  << IMAGESIZE;
+    options << " -DJOBSIZE="          << JOBSIZE;
+    options << " -DORDER="            << ORDER;
     options << " -I.";
 	return options.str();
 }
@@ -160,6 +162,9 @@ cl::Program compile(const char *filename, cl::Context context, cl::Device device
     // Try to build the program
     cl::Program program(context, source);
     try {
+        #if BUILD_LOG
+        std::clog << "Compiling " << filename << ":" << std::endl << args << std::endl;
+        #endif
 	    program.build(devices, argsPtr);
         std::string msg;
         program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
@@ -200,7 +205,7 @@ void run_gridder(
     PerformanceCounter counter_input_visibilities("input vis");
     PerformanceCounter counter_input_uvw("input uvw");
     PerformanceCounter counter_output_subgrid("output subgrid");
-	
+
     // Timing variables
     double total_time_gridder[nr_streams];
     double total_time_fft[nr_streams];
@@ -219,9 +224,6 @@ void run_gridder(
         total_jobs[t]         = 0;
     }
     
-    // Number of iterations per stream
-    int nr_iterations = ((NR_BASELINES / nr_streams) / jobsize) + 1;
-	
     // Start gridder
     double time_start = omp_get_wtime();
     std::clog << "--- jobs ---" << std::endl;
@@ -230,7 +232,6 @@ void run_gridder(
 	    // Initialize
         int current_jobsize = jobsize;
         int thread_num = omp_get_thread_num();
-        int iteration = 0;
 	    
 	    // Private device memory
         cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  VISIBILITIES_SIZE);
@@ -238,6 +239,7 @@ void run_gridder(
         cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
 	    
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
+            // Events for io
             cl::Event events[3];
 
             // Prevent overflow
@@ -272,7 +274,6 @@ void run_gridder(
 
             // Launch FFT
             #if FFT
-            //std::clog << "     fft " << bl << " " << current_jobsize << std::endl;
             kernel_fft.launchAsync(queue, d_subgrid, CLFFT_BACKWARD);
             #endif
 	        
@@ -281,23 +282,11 @@ void run_gridder(
             queue.enqueueCopyBuffer(d_subgrid, h_subgrid, 0, subgrid_offset, SUBGRID_SIZE, NULL, &events[2]);
             counter_output_subgrid.doOperation(events[2], 0, SUBGRID_SIZE);
             #endif
-
-            // Go to next iteration
-            total_jobs[thread_num] += current_jobsize;
-
-            // Check for errors
-            try {
-                queue.finish();
-            } catch (cl::Error &error) {
-                std::cerr << "Error finishing queue: " << error.what() << std::endl;
-                exit(EXIT_FAILURE);
-            }
         }
-
 	}
-    double time_end = omp_get_wtime();
     
     // Report overall performance
+    double time_end = omp_get_wtime();
     std::clog << std::endl;
     std::clog << "--- overall ---" << std::endl;
     double total_runtime = time_end - time_start;
