@@ -206,24 +206,6 @@ void run_gridder(
     PerformanceCounter counter_input_uvw("input uvw");
     PerformanceCounter counter_output_subgrid("output subgrid");
 
-    // Timing variables
-    double total_time_gridder[nr_streams];
-    double total_time_fft[nr_streams];
-    double total_time_input[nr_streams];
-    double total_time_output[nr_streams];
-    double total_bytes_input[nr_streams];
-    double total_bytes_output[nr_streams];
-    long total_jobs[nr_streams];
-    for (int t = 0; t < nr_streams; t++) {
-        total_time_gridder[t] = 0;
-        total_time_fft[t]     = 0;
-        total_time_input[t]   = 0;
-        total_time_output[t]  = 0;
-        total_bytes_input[t]  = 0;
-        total_bytes_output[t] = 0;
-        total_jobs[t]         = 0;
-    }
-    
     // Start gridder
     double time_start = omp_get_wtime();
     std::clog << "--- jobs ---" << std::endl;
