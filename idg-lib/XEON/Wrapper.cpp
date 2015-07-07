@@ -1,3 +1,4 @@
+#include <complex>
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
@@ -200,10 +201,10 @@ void run_gridder(
 		// Pointers to data for current batch
         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
         void *wavenumbers_ptr  = wavenumbers;
-		void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
+		void *visibilities_ptr = (FLOAT_COMPLEX *) visibilities + bl * visibilities_elements;
 		void *spheroidal_ptr   = spheroidal;
 		void *aterm_ptr        = aterm;
-		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
+		void *subgrid_ptr      = (FLOAT_COMPLEX *) subgrid + bl * subgrid_elements;
 		void *baselines_ptr    = baselines;
 		
 		double runtime_gridder = omp_get_wtime();
@@ -280,7 +281,7 @@ void run_adder(
 		
 		// Pointer to data for current jobs
 		void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
-		void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
+		void *subgrid_ptr = (FLOAT_COMPLEX *) subgrid + bl * subgrid_elements;
 		void *grid_ptr    = grid;
 	
 		double runtime_adder = omp_get_wtime();
@@ -339,7 +340,7 @@ void run_splitter(
 		
 		// Pointer to data for current jobs
 		void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
-		void *subgrid_ptr = (float complex *) subgrid + bl * subgrid_elements;
+		void *subgrid_ptr = (FLOAT_COMPLEX *) subgrid + bl * subgrid_elements;
 		void *grid_ptr    = grid;
 	
 		double runtime_splitter = omp_get_wtime();
@@ -407,10 +408,10 @@ void run_degridder(
 		// Pointers to data for current batch
         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
         void *wavenumbers_ptr  = wavenumbers;
-		void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
+		void *visibilities_ptr = (FLOAT_COMPLEX *) visibilities + bl * visibilities_elements;
 		void *spheroidal_ptr   = spheroidal;
 		void *aterm_ptr        = aterm;
-		void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
+		void *subgrid_ptr      = (FLOAT_COMPLEX *) subgrid + bl * subgrid_elements;
 		void *baselines_ptr    = baselines;
 		
 		double runtime_fft = omp_get_wtime();

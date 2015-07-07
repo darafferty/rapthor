@@ -49,6 +49,7 @@ Xeon::Xeon(
     // Compile XEON wrapper
 	std::string options_xeon = parameters + " " +
                                cflags     + " " +
+                               "-std=c++11" + " " +
                                "-I../Common" + " " +
                                SRC_RW     + " " + SRC_KERNELS;
 	rw::Source(SRC_WRAPPER).compile(cc, SO_WRAPPER, options_xeon.c_str());
