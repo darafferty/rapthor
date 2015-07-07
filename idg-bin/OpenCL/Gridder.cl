@@ -87,16 +87,8 @@ __kernel void kernel_gridder(
 
 		            for (int chan = 0; chan < NR_CHANNELS; chan++) {
 		                float phase = (ulvmwn * _wavenumbers[chan]) - phase_offset;
-                        #if 0
-                        phasor_real[chan] = cos(phase);
-                        phasor_imag[chan] = sin(phase);
-                        #else
-                        float _phasor_real = 0;
-                        float _phasor_imag = 0;
-                        _phasor_imag = sincos(phase, &_phasor_real);
-                        phasor_real[chan] = _phasor_real;
-                        phasor_imag[chan] = _phasor_imag;
-                        #endif
+                        phasor_real[chan] = native_cos(phase);
+                        phasor_imag[chan] = native_sin(phase);
                     }
 
 		            // Sum updates for all channels
