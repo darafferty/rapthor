@@ -11,54 +11,38 @@
 
 #include <iostream>
 #include <string>
+#include <map>
+#include <vector>
 
 namespace idg {
       
     class ProxyInfo {
     public:
-      ProxyInfo() // set default values
-	: path_to_src("./src"),
-	path_to_lib("./lib"),
-	src_gridder("KernelGridder.cpp"),
-	src_degridder("KernelDegridder.cpp"),
-	src_fft("KernelFFT.cpp"),
-	src_adder("KernelAdder.cpp"),
-	src_splitter("KernelSplitter.cpp"),
-	so_gridder("Gridder.so"),
-	so_degridder("Degridder.so"),
-	so_fft("FFT.so"),
-	so_adder("Adder.so"),
-	so_splitter("Splitter.so")
-	{ }
+      /// Default constructor
+      ProxyInfo(); 
 
       // copy constructor, assigment: default okay
       
       ~ProxyInfo() = default;
 
-      // set and get methods
+      // get and set methods
       std::string get_path_to_src() const { return path_to_src; }
       std::string get_path_to_lib() const { return path_to_lib; }      
+      
+      void set_path_to_src(std::string s) { path_to_src = s; } 
+      void set_path_to_lib(std::string s) { path_to_lib = s; } 
+
+      void add_lib(std::string libname);
+      void add_src_file_to_lib(std::string libname, std::string filename);
 
       // auxiliary functions
       void print() const { print(std::cout); }
-      void print(std::ostream& os) const {
-	os << "Path to source files: " << path_to_src << std::endl;
-	os << "Path to library: " << path_to_lib << std::endl;
-      }
+      void print(std::ostream& os) const;
 
     private:
-      std::string path_to_src;
-      std::string path_to_lib; 
-      std::string src_gridder; 
-      std::string src_degridder; 
-      std::string src_fft; 
-      std::string src_adder; 
-      std::string src_splitter; 
-      std::string so_gridder; 
-      std::string so_degridder; 
-      std::string so_fft; 
-      std::string so_adder; 
-      std::string so_splitter; 
+      std::string path_to_src; // path where src code that is put into libs lives
+      std::string path_to_lib; // path where to create the libs
+      std::map< std::string, std::vector<std::string> > libs; // maps library name to list of files 
     };
 
     // helper functions
