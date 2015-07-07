@@ -33,7 +33,7 @@
 #define RUN_ADDER		0
 #define RUN_SPLITTER    0
 #define RUN_FFT         0
-#define RUN_DEGRIDDER	0
+#define RUN_DEGRIDDER	1
 
 
 /*
@@ -47,7 +47,7 @@ u   Performance reporting
     Enable/disable kernels
 */
 #define GRIDDER   1
-#define DEGRIDDER 0
+#define DEGRIDDER 1
 #define ADDER     0
 #define SPLITTER  0
 #define FFT       1
@@ -220,10 +220,10 @@ void run_gridder(
         cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  UVW_SIZE);
         cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
 	    
-        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
-            // Events for io
-            cl::Event events[3];
+        // Events for io
+        cl::Event events[3];
 
+        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
             // Prevent overflow
 		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
         
@@ -265,6 +265,10 @@ void run_gridder(
             counter_output_subgrid.doOperation(events[2], 0, SUBGRID_SIZE);
             #endif
         }
+
+        // Wait for final memory transfer
+        #pragma omp barrier
+        events[2].wait();
 	}
     
     // Report overall performance
@@ -273,11 +277,111 @@ void run_gridder(
     std::clog << "--- overall ---" << std::endl;
     double total_runtime = time_end - time_start;
     report_visibilities(total_runtime);
+    std::clog << std::endl;
 
     // Terminate clfft
     clfftTeardown();   
 }
 
+/*
+	Degridder
+*/
+void run_degridder(
+    cl::Context &context, cl::Device &device, cl::CommandQueue &queue,
+    int nr_streams, int jobsize,
+    cl::Buffer &h_visibilities, cl::Buffer &h_uvw,
+    cl::Buffer &h_subgrid, cl::Buffer &d_wavenumbers,
+    cl::Buffer &d_spheroidal, cl::Buffer &d_aterm,
+    cl::Buffer &d_baselines) {
+
+    // Compile kernels
+    cl::Program program = compile(SOURCE_DEGRIDDER, context, device);
+
+    // Get kernels
+    KernelDegridder kernel_degridder = KernelDegridder(program, KERNEL_DEGRIDDER);
+    KernelFFT kernel_fft;
+   
+    // Performance counters for io 
+    PerformanceCounter counter_input_uvw("input uvw");
+    PerformanceCounter counter_input_subgrid("input subgrid");
+    PerformanceCounter counter_output_visibilities("output vis");
+
+    // Start gridder
+    double time_start = omp_get_wtime();
+    std::clog << "--- jobs ---" << std::endl;
+	#pragma omp parallel num_threads(nr_streams)
+	{
+	    // Initialize
+        int current_jobsize = jobsize;
+        int thread_num = omp_get_thread_num();
+	    
+	    // Private device memory
+        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  VISIBILITIES_SIZE);
+        cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  UVW_SIZE);
+        cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
+	    
+        // Events for io
+        cl::Event events[3];
+
+        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
+            // Prevent overflow
+		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+        
+		    // Number of elements in batch
+		    size_t visibilities_offset = bl * NR_TIME * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+		    size_t uvw_offset          = bl * NR_TIME * sizeof(UVW);
+		    size_t subgrid_offset      = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+            
+	        // Copy input data to device
+            #if INPUT
+            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[0]);
+            counter_input_uvw.doOperation(events[0], 0, UVW_SIZE);
+            queue.enqueueCopyBuffer(h_subgrid, d_subgrid, subgrid_offset, 0, SUBGRID_SIZE, NULL, &events[1]);
+            counter_input_subgrid.doOperation(events[1], 0, SUBGRID_SIZE);
+            #endif
+
+            // Create FFT plan
+            #if FFT
+            #if ORDER == ORDER_BL_V_U_P
+            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_YXP);
+            #elif ORDER == ORDER_BL_P_V_U
+            kernel_fft.plan(context, SUBGRIDSIZE, current_jobsize, FFT_LAYOUT_PYX);
+            #endif
+            #endif
+
+            // Launch FFT
+            #if FFT
+            kernel_fft.launchAsync(queue, d_subgrid, CLFFT_BACKWARD);
+            #endif
+
+            // Launch degridder kernel
+            #if DEGRIDDER
+            kernel_degridder.launchAsync(queue, current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
+            #endif
+
+            // Copy subgrid to host
+            #if OUTPUT
+            queue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, VISIBILITIES_SIZE, NULL, &events[2]);
+            counter_output_visibilities.doOperation(events[2], 0, VISIBILITIES_SIZE);
+            #endif
+        }
+
+        // Wait for final memory transfer
+        #pragma omp barrier
+        events[2].wait();
+	}
+
+    // Report overall performance
+    double time_end = omp_get_wtime();
+    std::clog << std::endl;
+    std::clog << "--- overall ---" << std::endl;
+    double total_runtime = time_end - time_start;
+    report_visibilities(total_runtime);
+    std::clog << std::endl;
+
+    // Terminate clfft
+    clfftTeardown();   
+}
 
 /*
 	Main
@@ -381,6 +485,14 @@ int main(int argc, char **argv) {
 	#if RUN_GRIDDER
 	std::clog << ">>> Run gridder" << std::endl;
     run_gridder(
+	    context, device, queue, nr_streams, jobsize, h_visibilities, h_uvw, h_subgrid,
+	    d_wavenumbers, d_spheroidal, d_aterm, d_baselines);
+	#endif
+    
+    // Run degridder
+    #if RUN_DEGRIDDER
+	std::clog << ">>> Run degridder" << std::endl;
+	run_degridder(
 	    context, device, queue, nr_streams, jobsize, h_visibilities, h_uvw, h_subgrid,
 	    d_wavenumbers, d_spheroidal, d_aterm, d_baselines);
 	#endif
