@@ -1,4 +1,5 @@
-#include <complex.h>
+#include <complex>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -69,6 +70,6 @@ uint64_t kernel_adder_bytes(int jobsize) {
     // Coordinate
     2 * sizeof(unsigned) +
     // Pixels
-    3 * NR_POLARIZATIONS * sizeof(float complex));
+    3 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 }
 }

@@ -12,18 +12,14 @@ void writeSubgrid(void *_subgrid, const char *name) {
         for (int y = 0; y < SUBGRIDSIZE; y++) {
             for (int x = 0; x < SUBGRIDSIZE; x++) {
                 #if ORDER == ORDER_BL_V_U_P
-                float complex value = (*subgrid)[0][bl][y][x][0];
+                FLOAT_COMPLEX value = (*subgrid)[0][bl][y][x][0];
                 #elif ORDER == ORDER_BL_P_V_U
-                float complex value = (*subgrid)[0][bl][0][y][x];
+                FLOAT_COMPLEX value = (*subgrid)[0][bl][0][y][x];
                 #endif
                 if (x > 0) {
                     fprintf(file, "\t");
                 }
-                #if 0 
-                fprintf(file, "%.2f", round(creal(value)));
-                #else
-                fprintf(file, "%f", value);
-                #endif
+                fprintf(file, "%f", value.real());
             }
             fprintf(file, "\n");
         }
@@ -38,11 +34,11 @@ void writeGrid(void *_grid, const char *name) {
 
     for (int y = 0; y < GRIDSIZE; y++) {
         for (int x = 0; x < GRIDSIZE; x++) {
-            float complex value = (*grid)[0][y][x];
+            FLOAT_COMPLEX value = (*grid)[0][y][x];
             if (x > 0) {
             fprintf(file, "\t");
             }
-            fprintf(file, "%.2f", round(creal(value)));
+            fprintf(file, "%.2f", round(value.real()));
         }   
         fprintf(file, "\n");
     }   
@@ -60,8 +56,8 @@ void writeVisibilities(void *_visibilities, const char *name) {
         //for (int time = 0; time < NR_TIME; time++) {
          int time = NR_TIME / 2;
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                float complex value =(*visibilities)[bl][time][chan][0];
-                fprintf(file, "%f + %f I\n", creal(value), cimag(value));
+                FLOAT_COMPLEX value =(*visibilities)[bl][time][chan][0];
+                fprintf(file, "%f + %f I\n", value.real(), value.imag());
             }
         //}
     //}
