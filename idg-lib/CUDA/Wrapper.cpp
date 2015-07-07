@@ -1,6 +1,6 @@
 #include <omp.h>
-#include <complex.h>
 
+#include <complex>
 #include <sstream>
 
 #include "Types.h"
@@ -323,9 +323,9 @@ void run_gridder(
 		    size_t subgrid_elements    = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		    // Pointers to data for batch
-		    void *visibilities_ptr = (float complex *) h_visibilities + bl * visibility_elements;
+		    void *visibilities_ptr = (FLOAT_COMPLEX *) h_visibilities + bl * visibility_elements;
 		    void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-		    void *subgrid_ptr      = (float complex *) h_subgrid + bl * subgrid_elements;
+		    void *subgrid_ptr      = (FLOAT_COMPLEX *) h_subgrid + bl * subgrid_elements;
 
             // Wait for previous computation to finish
             executestream.record(executeFinished);
@@ -506,7 +506,7 @@ void run_adder(
 		
 		    // Pointers to data for current batch
 		    void *uvw_ptr     = (float *) h_uvw + bl * uvw_elements;
-		    void *subgrid_ptr = (float complex *) h_subgrid + bl * subgrid_elements;
+		    void *subgrid_ptr = (FLOAT_COMPLEX *) h_subgrid + bl * subgrid_elements;
 
 	        // Copy input to device
             records[0].enqueue(iostream);
@@ -659,7 +659,7 @@ void run_splitter(
 		
 		    // Pointers to data for current batch
 		    void *uvw_ptr     = (float *) h_uvw + bl * uvw_elements;
-		    void *subgrid_ptr = (float complex *) h_subgrid + bl * subgrid_elements;
+		    void *subgrid_ptr = (FLOAT_COMPLEX *) h_subgrid + bl * subgrid_elements;
 
 	        // Copy input to device
             records[0].enqueue(htodstream);
@@ -894,9 +894,9 @@ void run_degridder(
 		    size_t subgrid_elements     = SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 		    // Pointers to data for current batch
-		    void *visibilities_ptr = (float complex *) h_visibilities + bl * visibility_elements;
+		    void *visibilities_ptr = (FLOAT_COMPLEX *) h_visibilities + bl * visibility_elements;
 		    void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-		    void *subgrid_ptr      = (float complex *) h_subgrid + bl * subgrid_elements;
+		    void *subgrid_ptr      = (FLOAT_COMPLEX *) h_subgrid + bl * subgrid_elements;
 
             // Wait for previous computation to finish
             executestream.record(executeFinished);

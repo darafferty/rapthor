@@ -31,7 +31,7 @@ CUDA_LIB=/usr/local/cuda-7.0/lib64
 default: IDG-CUDA IDG-CUDA-WRAPPER
 
 IDG-CUDA: IDG.cpp Kernels.cpp Power.cpp ../Data/Init.cpp CU.cpp CUFFT.cpp  ../Common/RW.cpp ../Lib/uvwsim.c
-	g++ -o $@ $^ -ldl -lcuda -lcufft -fopenmp -I../Common -I../Data -I../Lib -I${CUDA_INC} -L${CUDA_LIB} ${PARAMETERS} -DMEASURE_POWER=${MEASURE_POWER}
+	g++ -o $@ $^ -std=c++11 -ldl -lcuda -lcufft -fopenmp -I../Common -I../Data -I../Lib -I${CUDA_INC} -L${CUDA_LIB} ${PARAMETERS} -DMEASURE_POWER=${MEASURE_POWER}
 
 IDG-CUDA-WRAPPER: IDG-WRAPPER.cpp Proxies.cpp CU.cpp ../Data/Init.cpp ../Common/RW.cpp ../Lib/uvwsim.c
 	g++ -o $@ $^ -ldl -lcuda -lcufft -fopenmp -I../Common -I../Data -I../Lib -I${CUDA_INC} -L${CUDA_LIB}
