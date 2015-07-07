@@ -4,27 +4,32 @@
     Derived parameters
 */
 #define NR_CHUNKS NR_TIME / CHUNKSIZE
-typedef struct { int station1, station2; } Baseline;
+
 
 /*
-    Types
+    Structures
 */
 typedef struct { float u, v, w; } UVW;
-typedef fcomplex VisibilitiesType[NR_BASELINES][NR_TIME][NR_CHANNELS][NR_POLARIZATIONS];
-typedef UVW UVWType[NR_BASELINES][NR_TIME];
+typedef struct { int station1, station2; } Baseline;
+
+
+/*
+    Datatypes
+*/
+typedef fcomplex VisibilitiesType[JOBSIZE][NR_TIME][NR_CHANNELS][NR_POLARIZATIONS];
+typedef UVW UVWType[JOBSIZE][NR_TIME];
 typedef float WavenumberType[NR_CHANNELS];
 typedef fcomplex ATermType[NR_STATIONS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
-typedef Baseline BaselineType[NR_BASELINES];
+typedef Baseline BaselineType[JOBSIZE];
 typedef fcomplex GridType[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE];
 
-#if !defined ORDER
-#define ORDER ORDER_BL_P_V_U
-#endif
+#define ORDER_BL_P_V_U 1
+#define ORDER_BL_V_U_P 0
 #if ORDER == ORDER_BL_V_U_P
-typedef fcomplex SubGridType[NR_BASELINES][NR_CHUNKS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
+typedef fcomplex SubGridType[JOBSIZE][NR_CHUNKS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
 #elif ORDER == ORDER_BL_P_V_U
-typedef fcomplex SubGridType[NR_BASELINES][NR_CHUNKS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
+typedef fcomplex SubGridType[JOBSIZE][NR_CHUNKS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 #endif
 
 
@@ -44,7 +49,7 @@ __kernel void kernel_gridder(
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
 	int tid = tidx + tidy * get_local_size(0);;
-    int bl = get_global_id(0) + get_global_id(1) * get_global_size(0);
+    int bl = get_global_id(0) / get_local_size(0);
 
     // Shared data
 	__local UVW _uvw[CHUNKSIZE];
@@ -76,10 +81,10 @@ __kernel void kernel_gridder(
         for (int y = tidy; y < SUBGRIDSIZE; y += get_local_size(1)) {
 	        for (int x = tidx; x < SUBGRIDSIZE; x += get_local_size(0)) {
 	            // Private subgrid points
-	            fcomplex uvXX = (float2) 0;
-	            fcomplex uvXY = (float2) 0;
-	            fcomplex uvYX = (float2) 0;
-	            fcomplex uvYY = (float2) 0;
+	            fcomplex uvXX = (float2) (0, 0);
+	            fcomplex uvXY = (float2) (0, 0);
+	            fcomplex uvYX = (float2) (0, 0);
+	            fcomplex uvYY = (float2) (0, 0);
 	        
 	            // Compute l,m,n
 	            float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
@@ -133,7 +138,7 @@ __kernel void kernel_gridder(
 			            fcomplex visYY = _visibilities[chan][3];
 			                	
 			            // Load phasor
-                        fcomplex phasor = {phasor_real[chan], phasor_imag[chan]};
+                        fcomplex phasor = (float2) (phasor_real[chan], phasor_imag[chan]);
 			
 			            // Multiply visibility by phasor
 			            fcomplex updateXX = cmul(phasor, visXX);
@@ -141,13 +146,11 @@ __kernel void kernel_gridder(
 			            fcomplex updateYX = cmul(phasor, visYX);
 			            fcomplex updateYY = cmul(phasor, visYY);
 
-                        // Update subgrid point
-                        #if 0
-			            uvXX = cadd(uvXX, updateXX);
-			            uvXY = cadd(uvXY, updateXY);
-			            uvYX = cadd(uvYX, updateYX);
-			            uvYY = cadd(uvYY, updateYY);
-                        #endif
+                        // Update subgrid points
+                        uvXX += updateXX;
+                        uvXY += updateXY;
+                        uvYX += updateYX;
+                        uvYY += updateYY;
 		            }
 	            }
 
@@ -192,7 +195,6 @@ __kernel void kernel_gridder(
 	            uvYY += _uvYY * aXY2;
 	            uvYY += _uvYY * aYY2;
 
-                #if 0
 	            // Apply spheroidal and update uv grid
                 #if ORDER == ORDER_BL_P_V_U
 	            subgrid[bl][chunk][0][y][x] = uvXX * s;
@@ -205,7 +207,6 @@ __kernel void kernel_gridder(
 	            subgrid[bl][chunk][y][x][2] = uvYX * s;
 	            subgrid[bl][chunk][y][x][3] = uvYY * s;
 	            #endif
-                #endif
             }
         }
     }
