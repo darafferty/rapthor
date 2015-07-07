@@ -69,11 +69,11 @@ int main(int argc, char **argv) {
     // Compiler options
     const char *cc = "icc";  // input parameter
     const char *cflags;      // input parameter
-    // if (can_use_intel_core_4th_gen_features()) {
-    //     cflags = "-O3 -xCORE-AVX2 -fopenmp -mkl -lmkl_vml_avx2 -lmkl_avx2";
-    // } else {
-        cflags = "-O3 -xAVX -fopenmp -mkl -lmkl_vml_avx -lmkl_avx";
-    // }
+    //if (can_use_intel_core_4th_gen_features()) {
+        cflags = "-O3 -xCORE-AVX2 -fopenmp -mkl -lmkl_vml_avx2 -lmkl_avx2";
+    //} else {
+    //    cflags = "-O3 -xAVX -fopenmp -mkl -lmkl_vml_avx -lmkl_avx";
+    //}
     std::string options = compileOptions(nr_stations, nr_time, nr_channels, w_planes, gridsize, subgridsize, chunksize, jobsize, nr_polarizations, nr_baselines);
 
     // Print configuration

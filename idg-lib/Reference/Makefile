@@ -74,4 +74,4 @@ IDG-WRAPPER.x: $(HDR) $(OBJ)
 
 .PHONY: clean
 clean:
-	@rm -f *.x *.so */*.so *.gch */*.ptx */*~ *~ *.optrpt */*.optrpt  
+	@rm -f *.x *.o */*.o *.so */*.so *.gch */*.ptx */*~ *~ *.optrpt */*.optrpt  
