@@ -55,6 +55,7 @@ CUDA::CUDA(
     // Compile CUDA wrapper
 	std::string options_cuda = parameters + " " +
                                cflags     + " " +
+                               "-std=c++11" + " " +
                                "-I../Common" + " " +
                                " -fopenmp -lcuda -lcufft " +
                                CUDA_INCLUDE + " " +
