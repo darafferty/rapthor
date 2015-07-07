@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include "AlgorithmicParameters.h" 
 
 using namespace std;
@@ -117,6 +118,22 @@ namespace idg {
     w_planes = DEFAULT_WPLANES;
 
   } // read_parameters_from_env()
+
+
+  string AlgorithmicParameters::definitions(unsigned int grid_size, 
+					    unsigned int subgrid_size,
+					    unsigned int chunk_size,
+					    unsigned int job_size,
+					    unsigned int w_planes)
+  {
+    cerr << "job_size seems to be not a compile time constant" << endl;
+    stringstream parameters;
+    parameters << " -DGRIDSIZE=" << grid_size;
+    parameters << " -DSUBGRIDSIZE=" << subgrid_size;
+    parameters << " -DCHUNKSIZE=" << chunk_size;
+    parameters << " -DWPLANES=" << w_planes;
+    return parameters.str();
+  }
 
 
   // helper functions

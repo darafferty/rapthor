@@ -10,6 +10,7 @@ SRC = $(wildcard *.cpp)
 OBJ = $(patsubst %.cpp,%.o,$(SRC))
 
 INC = 
+LIBS = -ldl
 
 all: main.x
 

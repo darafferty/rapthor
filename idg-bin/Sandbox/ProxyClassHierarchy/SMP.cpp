@@ -18,6 +18,8 @@ namespace idg {
       cout << "Compiler flags: " << flags << endl;
       cout << constants;
       cout << info;
+
+      compile(compiler, flags, constants, info); 
     }
     
 
@@ -91,6 +93,51 @@ namespace idg {
       cout << "Direction: " << direction << endl;
       // ((void (*)(void*,int)) (void *)
       //  rw::Function(*module, FUNCTION_FFT))(grid, sign);
+    }
+
+
+    // gridder
+    // adder
+    // splitter
+    // degridder
+
+
+
+    void SMP::compile(Compiler compiler, Compilerflags flags, 
+		      CompileTimeConstants constants, ProxyInfo info) 
+    {
+      // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
+      string parameters1 = ObservationParameters::definitions(constants.get_nr_stations(), 
+							      constants.get_nr_baselines(), 
+							      constants.get_nr_timesteps(), 
+							      constants.get_nr_channels(),
+							      constants.get_nr_polarizations(), 
+							      constants.get_field_of_view()); 
+      string parameters2 = AlgorithmicParameters::definitions(constants.get_grid_size(), 
+							      constants.get_subgrid_size(), 
+							      constants.get_chunk_size(), 
+							      constants.get_job_size(), 
+							      constants.get_w_planes());
+      stringstream pp;
+      pp << " -DNR_CHUNKS=" << constants.get_nr_timesteps() / constants.get_chunk_size();
+      string parameters3 = pp.str();
+
+      string parameters = parameters1 + parameters2 + parameters3;
+      
+      cout << parameters << endl;
+
+      /// below needs to be modified
+
+      // Compile wrapper
+      string options = parameters + " " + flags + " " + "-I.. -I../Common" + " " +
+	"RuntimeWrapper.cpp"     + " " + "src/Kernels.cpp";
+      //      runtimewrapper::Source("src/Wrapper.cpp").compile(compiler.c_str(), "lib/Wrapper.so", options.c_str());
+      
+      // Load module
+      // module = new runtimewrapper::Module("./lib/Wrapper.so");  // have to be relased in destructor
+      
+      // Initialize module
+      // ((void (*)(const char*, const char *)) (void *) runtimewrapper::Function(*module, "init"))(compiler.c_str(), flags.c_str());
     }
 
 

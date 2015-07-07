@@ -2,6 +2,7 @@
 #include <cstdlib> // getenv, atoi
 #include <iostream> // ostream
 #include <iomanip> // setw
+#include <sstream>
 #include <cmath> // fabs
 #include "ObservationParameters.h"
 
@@ -139,6 +140,23 @@ namespace idg {
     }
 
   } // read_parameters_from_env()
+
+
+  string ObservationParameters::definitions(unsigned int nr_stations, 
+					    unsigned int nr_baselines, 
+					    unsigned int nr_timesteps,
+					    unsigned int nr_channels, 
+					    unsigned int nr_polarizations,
+					    float field_of_view) {
+    stringstream parameters;
+    parameters << " -DNR_STATIONS=" << nr_stations;
+    parameters << " -DNR_BASELINES=" << nr_baselines;
+    parameters << " -DNR_TIME=" << nr_timesteps;
+    parameters << " -DNR_CHANNELS=" << nr_channels;
+    parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
+    parameters << " -DIMAGESIZE=" << field_of_view;
+    return parameters.str();
+  }
 
 
   // helper functions
