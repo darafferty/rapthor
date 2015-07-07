@@ -87,6 +87,10 @@ namespace idg {
     unsigned int get_nr_stations() const { 
       return observation_parameters.get_nr_stations(); 
     }
+
+    unsigned int get_nr_baselines() const { 
+      return observation_parameters.get_nr_baselines(); 
+    }
     
     unsigned int get_nr_timesteps() const { 
       return observation_parameters.get_nr_timesteps(); 

@@ -50,12 +50,18 @@ namespace idg {
     void print() const;
     void print(std::ostream& os) const;
     void read_parameters_from_env();
+
+    static std::string definitions(unsigned int grid_size, 
+				   unsigned int subgrid_size,
+				   unsigned int chunk_size,
+				   unsigned int job_size,
+				   unsigned int w_planes);
     
   private:
     unsigned int grid_size;
     unsigned int subgrid_size;
     unsigned int chunk_size; // rename?
-    unsigned int job_size; // rename?
+    unsigned int job_size; // rename? THIS SEEMS TO BE NOT A COMPILE TIME CONSTANT, BUT RUNTIME PARAMETER!
     unsigned int w_planes;    
   };
 
