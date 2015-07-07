@@ -1,5 +1,6 @@
+#include <complex>
+
 #include <math.h>
-#include <complex.h>
 #include <stdio.h>
 #include <immintrin.h>
 #include <string.h>
@@ -38,7 +39,7 @@ void kernel_degridder(
 	
 	    for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
 	        // Storage for precomputed values
-            float complex _subgrid[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
+            FLOAT_COMPLEX _subgrid[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
 		    float phasor_real[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
         	float phasor_imag[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
         	float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
@@ -56,16 +57,16 @@ void kernel_degridder(
 		    for (int y = 0; y < SUBGRIDSIZE; y++) {
 			    for (int x = 0; x < SUBGRIDSIZE; x++) {
 	        		// Get aterm for station1
-		            float complex aXX1 = (*aterm)[station1][0][y][x];
-		            float complex aXY1 = (*aterm)[station1][1][y][x];
-		            float complex aYX1 = (*aterm)[station1][2][y][x];
-		            float complex aYY1 = (*aterm)[station1][3][y][x];
+		            FLOAT_COMPLEX aXX1 = (*aterm)[station1][0][y][x];
+		            FLOAT_COMPLEX aXY1 = (*aterm)[station1][1][y][x];
+		            FLOAT_COMPLEX aYX1 = (*aterm)[station1][2][y][x];
+		            FLOAT_COMPLEX aYY1 = (*aterm)[station1][3][y][x];
 
 		            // Get aterm for station2
-		            float complex aXX2 = conj((*aterm)[station2][0][y][x]);
-		            float complex aXY2 = conj((*aterm)[station2][1][y][x]);
-		            float complex aYX2 = conj((*aterm)[station2][2][y][x]);
-		            float complex aYY2 = conj((*aterm)[station2][3][y][x]);
+		            FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][0][y][x]);
+		            FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][1][y][x]);
+		            FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][2][y][x]);
+		            FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][3][y][x]);
 			        
 			        // Get spheroidal
 			        float s = (*spheroidal)[y][x];
@@ -76,15 +77,15 @@ void kernel_degridder(
         	
 			        // Load uv values
                     #if ORDER == ORDER_BL_P_V_U
-				    float complex uvXX = s * (*subgrid)[bl][chunk][0][y_src][x_src];
-				    float complex uvXY = s * (*subgrid)[bl][chunk][1][y_src][x_src];
-				    float complex uvYX = s * (*subgrid)[bl][chunk][2][y_src][x_src];
-				    float complex uvYY = s * (*subgrid)[bl][chunk][3][y_src][x_src];
+				    FLOAT_COMPLEX uvXX = s * (*subgrid)[bl][chunk][0][y_src][x_src];
+				    FLOAT_COMPLEX uvXY = s * (*subgrid)[bl][chunk][1][y_src][x_src];
+				    FLOAT_COMPLEX uvYX = s * (*subgrid)[bl][chunk][2][y_src][x_src];
+				    FLOAT_COMPLEX uvYY = s * (*subgrid)[bl][chunk][3][y_src][x_src];
 			        #elif ORDER == ORDER_BL_V_U_P
-				    float complex uvXX = s * (*subgrid)[bl][chunk][y_src][x_src][0];
-				    float complex uvXY = s * (*subgrid)[bl][chunk][y_src][x_src][1];
-				    float complex uvYX = s * (*subgrid)[bl][chunk][y_src][x_src][2];
-				    float complex uvYY = s * (*subgrid)[bl][chunk][y_src][x_src][3];
+				    FLOAT_COMPLEX uvXX = s * (*subgrid)[bl][chunk][y_src][x_src][0];
+				    FLOAT_COMPLEX uvXY = s * (*subgrid)[bl][chunk][y_src][x_src][1];
+				    FLOAT_COMPLEX uvYX = s * (*subgrid)[bl][chunk][y_src][x_src][2];
+				    FLOAT_COMPLEX uvYY = s * (*subgrid)[bl][chunk][y_src][x_src][3];
 				    #endif
 			
                     // Apply aterm to subgrid
@@ -165,14 +166,14 @@ void kernel_degridder(
 		        }
                 #endif
             
-		        float complex sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
+		        FLOAT_COMPLEX sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
         
 			    for (int chan = 0; chan < NR_CHANNELS; chan++) {
-		            memset(sum, 0, NR_POLARIZATIONS * sizeof(float complex));
+		            memset(sum, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 			
 		            for (int y = 0; y < SUBGRIDSIZE; y++) {
 				        for (int x = 0; x < SUBGRIDSIZE; x++) {
-				            float complex phasor = phasor_real[chan][y][x] + phasor_imag[chan][y][x] * I;
+				            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
 
 						    // Update all polarizations
 						    sum[0] += _subgrid[y][x][0] * phasor;
@@ -216,7 +217,7 @@ uint64_t kernel_degridder_flops(int jobsize) {
 uint64_t kernel_degridder_bytes(int jobsize) {
     return
     // ATerm
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * 2 * NR_POLARIZATIONS * sizeof(float complex) +
+    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * 2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
     // Spheroidal
     1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float) +
     // Degrid
@@ -224,8 +225,8 @@ uint64_t kernel_degridder_bytes(int jobsize) {
         // Offset
         SUBGRIDSIZE * SUBGRIDSIZE * 3 * sizeof(float) +
         // UV
-        SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float complex) +
+        SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
         // Visibilities            
-        NR_POLARIZATIONS * sizeof(float complex));
+        NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 }
 }

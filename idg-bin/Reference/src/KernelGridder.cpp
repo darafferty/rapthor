@@ -1,5 +1,6 @@
+#include <complex>
+
 #include <math.h>
-#include <complex.h>
 #include <stdio.h>
 #include <immintrin.h>
 #include <omp.h>
@@ -46,16 +47,16 @@ void kernel_gridder(
 	
 	    for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
             // Initialize private uv grid
-		    float complex uv[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
-		    memset(uv, 0, SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float complex));
+		    FLOAT_COMPLEX uv[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
+		    memset(uv, 0, SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 	
 	        // Storage for precomputed values
 	        float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
 	        float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-	        float complex visXX[NR_CHANNELS]             __attribute__((aligned(32)));
-            float complex visXY[NR_CHANNELS]             __attribute__((aligned(32)));
-            float complex visYX[NR_CHANNELS]             __attribute__((aligned(32)));
-            float complex visYY[NR_CHANNELS]             __attribute__((aligned(32)));
+	        FLOAT_COMPLEX visXX[NR_CHANNELS]             __attribute__((aligned(32)));
+            FLOAT_COMPLEX visXY[NR_CHANNELS]             __attribute__((aligned(32)));
+            FLOAT_COMPLEX visYX[NR_CHANNELS]             __attribute__((aligned(32)));
+            FLOAT_COMPLEX visYY[NR_CHANNELS]             __attribute__((aligned(32)));
 		    float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         	float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         	
@@ -134,10 +135,10 @@ void kernel_gridder(
 		        // Update current subgrid
 			    for (int y = 0; y < SUBGRIDSIZE; y++) {
 				    for (int x = 0; x < SUBGRIDSIZE; x++) {
-				        float complex phasor[NR_CHANNELS] __attribute__((aligned(32)));
+				        FLOAT_COMPLEX phasor[NR_CHANNELS] __attribute__((aligned(32)));
 				        #pragma unroll
 				        for (int chan = 0; chan < NR_CHANNELS; chan++) {
-				            phasor[chan] = phasor_real[y][x][chan] + phasor_imag[y][x][chan] * I;
+				            phasor[chan] = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
 				        }
 				
 				        #pragma unroll
@@ -156,25 +157,25 @@ void kernel_gridder(
 		        #pragma ivdep
 			    for (int x = 0; x < SUBGRIDSIZE; x++) {
 				    // Get a term for station1
-				    float complex aXX1 = (*aterm)[station1][0][y][x];
-				    float complex aXY1 = (*aterm)[station1][1][y][x];
-				    float complex aYX1 = (*aterm)[station1][2][y][x];
-				    float complex aYY1 = (*aterm)[station1][3][y][x];
+				    FLOAT_COMPLEX aXX1 = (*aterm)[station1][0][y][x];
+				    FLOAT_COMPLEX aXY1 = (*aterm)[station1][1][y][x];
+				    FLOAT_COMPLEX aYX1 = (*aterm)[station1][2][y][x];
+				    FLOAT_COMPLEX aYY1 = (*aterm)[station1][3][y][x];
 	
 				    // Get aterm for station2
-				    float complex aXX2 = conj((*aterm)[station2][0][y][x]);
-				    float complex aXY2 = conj((*aterm)[station2][1][y][x]);
-				    float complex aYX2 = conj((*aterm)[station2][2][y][x]);
-				    float complex aYY2 = conj((*aterm)[station2][3][y][x]);
+				    FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][0][y][x]);
+				    FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][1][y][x]);
+				    FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][2][y][x]);
+				    FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][3][y][x]);
 	
 	                // Get spheroidal
 	                float s = (*spheroidal)[y][x];
 	                
 				    // Load uv values
-                    float complex uvXX = uv[y][x][0];
-				    float complex uvXY = uv[y][x][1];
-				    float complex uvYX = uv[y][x][2];
-				    float complex uvYY = uv[y][x][3];
+                    FLOAT_COMPLEX uvXX = uv[y][x][0];
+				    FLOAT_COMPLEX uvXY = uv[y][x][1];
+				    FLOAT_COMPLEX uvYX = uv[y][x][2];
+				    FLOAT_COMPLEX uvYY = uv[y][x][3];
 
 				    // Apply aterm to subgrid
                     uv[y][x][0]  = (uvXX * aXX1);
@@ -238,10 +239,10 @@ uint64_t kernel_gridder_flops(int jobsize) {
 uint64_t kernel_gridder_bytes(int jobsize) {
     return
     // Grid
-    1ULL * jobsize * NR_TIME * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (NR_POLARIZATIONS * sizeof(float complex) + sizeof(float)) +
+    1ULL * jobsize * NR_TIME * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
     // ATerm
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * (2 * sizeof(unsigned)) + (2 * NR_POLARIZATIONS * sizeof(float complex) + sizeof(float)) +
+    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * (2 * sizeof(unsigned)) + (2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
     // Spheroidal
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float complex);
+    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
 }
 }
