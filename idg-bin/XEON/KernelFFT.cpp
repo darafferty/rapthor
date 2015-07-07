@@ -1,5 +1,6 @@
+#include <complex>
+
 #include <math.h>
-#include <complex.h>
 #include <fftw3.h>
 #include <stdint.h>
 
@@ -83,6 +84,6 @@ uint64_t kernel_fft_flops(int size, int batch) {
 }
 
 uint64_t kernel_fft_bytes(int size, int batch) {
-	return 1ULL * 2 * batch * NR_POLARIZATIONS * size * size * sizeof(float complex);
+	return 1ULL * 2 * batch * NR_POLARIZATIONS * size * size * sizeof(FLOAT_COMPLEX);
 }
 }
