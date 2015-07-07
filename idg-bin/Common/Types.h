@@ -20,11 +20,7 @@ inline Baseline make_baseline(int station1, int station2)
 /*
     Complex numbers
 */
-#if defined __NVCC__
-#define FLOAT_COMPLEX float2
-#else
-#define FLOAT_COMPLEX float complex
-#endif
+#define FLOAT_COMPLEX std::complex<float>
 
 /*
     Derived parameters
