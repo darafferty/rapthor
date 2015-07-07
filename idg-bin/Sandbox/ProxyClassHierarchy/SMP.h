@@ -13,29 +13,31 @@
 #include "Proxy.h"
 
 namespace idg {
-
+  
   namespace proxy {
 
     class SMP : public Proxy {
     public:
-
+      
       /// Constructors
       SMP(Compiler compiler, 
 	  Compilerflags flags,
 	  CompileTimeConstants constants,
-          ProxyInfo info = ProxyInfo()); 
-
+          ProxyInfo info = default_info()); 
+      
       
       SMP(CompilerEnvironment cc, 
 	  CompileTimeConstants constants,
-	  ProxyInfo info = ProxyInfo()); 
+	  ProxyInfo info = default_info()); 
       
       /// Copy constructor, copy assigment (see below in private)
       // te be edited
-
+      
       /// Destructor
       ~SMP();
-
+      
+      // Get default values for ProxyInfo
+      static ProxyInfo default_info();
 
       /** \brief Grid the visibilities onto a uniform grid (visibilities -> grid)
        *  \param visibilities [in] ... what is; format
@@ -84,10 +86,23 @@ namespace idg {
       // splitter
       // degridder
 
-    protected:
+      // gridder
+      virtual void grid_onto_subgrid(int jobsize, void *visibilities, void *uvw, 
+				void *wavenumbers, void *aterm, void *spheroidal, 
+				void *baselines, void *subgrid); 
+      // virtual void add_subgrids_to_grid(); // adder
+      // virtual void split_grid_into_subgrids(); // splitter
+      // virtual void degrid_from_subgrids(); // degridder
+
+
+    private:
       
       void compile(Compiler compiler, Compilerflags flags, 
 		   CompileTimeConstants constants, ProxyInfo info);
+
+      void run_gridder(int jobsize, void *visibilities, void *uvw, 
+		       void *wavenumbers, void *aterm, void *spheroidal, 
+		       void *baselines, void *subgrid);
 
     }; // class SMP
 

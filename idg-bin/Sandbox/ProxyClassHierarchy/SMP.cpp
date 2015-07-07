@@ -41,7 +41,30 @@ namespace idg {
       cout << "SMP::" << __func__ << endl;
       cerr << "~SMP() to be implemented" << endl;
     }
-    
+
+
+    ProxyInfo SMP::default_info() 
+    {
+      cout << "SMP::" << __func__ << endl;
+
+      ProxyInfo p;
+      p.set_path_to_src("./src");
+      p.set_path_to_lib("./lib");
+
+      p.add_lib("Gridder.so"); // should all be with a hash
+      p.add_lib("Degridder.so");
+      p.add_lib("FFT.so");
+      p.add_lib("Adder.so");
+      p.add_lib("Splitter.so");
+      
+      p.add_src_file_to_lib("Gridder.so", "KernelGridder.cpp");
+      p.add_src_file_to_lib("Degridder.so", "KernelDegridder.cpp");
+      p.add_src_file_to_lib("FFT.so", "KernelFFT.cpp");
+      p.add_src_file_to_lib("Adder.so", "KernelAdder.cpp");
+      p.add_src_file_to_lib("Splitter.so", "KernelSplitter.cpp");
+      
+      return p;
+    }
     
 
     /// Methods
@@ -55,15 +78,16 @@ namespace idg {
     {
       cout << "SMP::" << __func__ << endl;
 
+      // allocate subgrid
+      int jobsize = 100;
+      void* subgrid;
 
-      // ((void (*)(int,void*,void*,void*,void*,void*,void*,void*)) (void *)
-      //  rw::Function(*module, FUNCTION_GRIDDER))(jobsize, visibilities, 
-      // 						uvw, wavenumbers, aterm, 
-      // 						spheroidal, baselines, 
-      // 						subgrid);
-      
-      // ((void (*)(int,void*,void*,void*)) (void *)
-      //  rw::Function(*module, FUNCTION_ADDER))(jobsize, coordinates, subgrid, grid);      
+      // grid_onto_subgrid(jobsize, visibilities, uvw, wavenumbers, aterm, 
+      // 			spheroidal, baselines, subgrid);
+
+      // add_subgrids_to_grid(); // adder
+
+      // free subgrid
     }
 
 
@@ -78,11 +102,6 @@ namespace idg {
     {
       cout << "SMP::" << __func__ << endl;
 
-      // ((void (*)(int,void*,void*,void*)) (void *)
-      //  rw::Function(*module, FUNCTION_SPLITER))(jobsize, coordinates, subgrid, grid);
-
-      // ((void (*)(int,void*,void*,void*,void*,void*,void*,void*)) (void *)
-      //  rw::Function(*module, FUNCTION_DEGRIDDER))(jobsize, wavenumbers, aterm, baselines, visibilities, uvw, spheroidal, subgrid);
     }
 
 
@@ -139,6 +158,65 @@ namespace idg {
       // Initialize module
       // ((void (*)(const char*, const char *)) (void *) runtimewrapper::Function(*module, "init"))(compiler.c_str(), flags.c_str());
     }
+
+
+
+    void SMP::grid_onto_subgrid(int jobsize, void *visibilities, void *uvw, 
+				void *wavenumbers, void *aterm, void *spheroidal, 
+				void *baselines, void *subgrid)
+    {
+      run_gridder(jobsize, visibilities, uvw, 
+		  wavenumbers, aterm, spheroidal, 
+		  baselines, subgrid);
+    }
+
+    
+    void SMP::run_gridder(int jobsize, void *visibilities, void *uvw, 
+			  void *wavenumbers, void *aterm, void *spheroidal, 
+			  void *baselines, void *subgrid) 
+    {
+//       // HACK:
+//       // int NR_BASELINES =
+
+//       // Load kernel modules
+//       // rw::Module module_gridder(SO_GRIDDER);
+//       // rw::Module module_fft(SO_FFT);
+      
+//       // Load kernel functions
+//       // KernelGridder kernel_gridder(module_gridder);
+//       // KernelFFT kernel_fft(module_fft);
+      
+//       // Start gridder
+//       for (int bl = 0; bl < NR_BASELINES; bl += jobsize) {
+// 	// Prevent overflow
+// 	jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+	
+// 	// Number of elements in batch
+// 	int uvw_elements          = NR_TIME * 3;
+// 	int visibilities_elements = NR_TIME * NR_CHANNELS * NR_POLARIZATIONS;
+// 	int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
+	
+// 	// Pointers to data for current batch
+//         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+//         void *wavenumbers_ptr  = wavenumbers;
+// 	void *visibilities_ptr = (float complex *) visibilities + bl * visibilities_elements;
+// 	void *spheroidal_ptr   = spheroidal;
+// 	void *aterm_ptr        = aterm;
+// 	void *subgrid_ptr      = (float complex *) subgrid + bl * subgrid_elements;
+// 	void *baselines_ptr    = baselines;
+	
+// 	// kernel_gridder.run(jobsize, bl, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+// 	// 		   spheroidal_ptr, aterm_ptr, baselines_ptr, subgrid_ptr);
+	
+// // #if ORDER == ORDER_BL_V_U_P
+// //         kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
+// // #elif ORDER == ORDER_BL_P_V_U
+// //         kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
+// // #endif
+//       } 
+	
+    } // run_gridder
+    
 
 
   } // namespace proxy
