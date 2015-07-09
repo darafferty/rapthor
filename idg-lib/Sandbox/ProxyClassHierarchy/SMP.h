@@ -1,4 +1,3 @@
-
 /** 
  *  \class Proxy
  *
@@ -86,27 +85,35 @@ namespace idg {
 			      void *wavenumbers, void *aterm, void *spheroidal, 
 			      void *baselines, void *subgrids);
 
-      // adder
-      // splitter
-      // degridder
+      void add_subgrids_to_grid(int jobsize, void *uvw, void *subgrids, void *grid);
+
+      void split_grid_into_subgrids(int jobsize, void *uvw, void *subgrids, void *grid); 
+
+      void degrid_from_subgrids(int jobsize, void *wavenumbers, void *aterm, 
+				void *baselines, void *visibilities, void *uvw, 
+				void *spheroidal, void *subgrids); 
 
     protected:
 
       void run_gridder(int jobsize, void *visibilities, void *uvw, 
 		       void *wavenumbers, void *aterm, void *spheroidal, 
 		       void *baselines, void *subgrids);
-      // virtual void add_subgrids_to_grid(); // adder
-      // virtual void split_grid_into_subgrids(); // splitter
-      // virtual void degrid_from_subgrids(); // degridder
 
+      void run_adder(int jobsize, void *uvw, void *subgrids, void *grid);
+
+      void run_splitter(int jobsize, void *uvw, void *subgrids, void *grid);
+
+      void run_degridder(int jobsize, void *wavenumbers, void *aterm, 
+			 void *baselines, void *visibilities, void *uvw, 
+			 void *spheroidal, void *subgrids);
 
     private:
       
       void compile(Compiler compiler, Compilerflags flags);
 
       // data
-      Parameters mParams;
-      ProxyInfo mInfo;
+      Parameters mParams;  // store parameters passed on creation
+      ProxyInfo mInfo; // info about shared object files
 
     }; // class SMP
 

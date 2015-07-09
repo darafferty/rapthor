@@ -9,6 +9,7 @@
 #ifndef IDG_PROXY_H_
 #define IDG_PROXY_H_
 
+#include <vector>
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
@@ -94,11 +95,13 @@ namespace idg {
        */
       virtual void transform(DomainAtoDomainB direction, void* grid) = 0;
             
-      // protected:  
+    protected:  
       // runtimewrapper::Module *module;
       // Proxy(const Proxy&); // prevents copy for now; do somehow differently?
       // Proxy& operator=(const Proxy&);
+      std::vector<runtimewrapper::Module> modules;
     };
+
     
   } // namespace proxy
 
