@@ -8,20 +8,20 @@
 
 namespace idg {
 
-  class CompileTimeConstants 
+  class Parameters 
   {
   public:
     /// Constructor: default reads values from ENV or sets default 
-    CompileTimeConstants() = default;
-    CompileTimeConstants(ObservationParameters& op, 
-    			 AlgorithmicParameters& ap) 
+    Parameters() = default;
+    Parameters(ObservationParameters& op, 
+	       AlgorithmicParameters& ap) 
       : observation_parameters(op),
       algorithmic_parameters(ap) {};
   
     // default copy constructor/assignment okay
     
     // default destructur
-    ~CompileTimeConstants() = default;
+    ~Parameters() = default;
     
     /// Set the number of stations in [2,UINT_MAX]
     /** A more detailed description could be here */
@@ -132,7 +132,7 @@ namespace idg {
     // display all parameters    
     void print(std::ostream& os) const { 
       os << "-----------------------" << std::endl;
-      os << "COMPILE TIME CONSTANTS:" << std::endl;
+      os << "CONSTANTS:" << std::endl;
       os << std::endl;
       observation_parameters.print(os);
       os << std::endl;
@@ -150,7 +150,7 @@ namespace idg {
   };
   
   // helper functions
-  std::ostream& operator<<(std::ostream& os, const CompileTimeConstants& ctc);
+  std::ostream& operator<<(std::ostream& os, const Parameters& c);
   
 } // namespace idg
 
