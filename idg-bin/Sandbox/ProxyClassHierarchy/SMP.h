@@ -22,12 +22,12 @@ namespace idg {
       /// Constructors
       SMP(Compiler compiler, 
 	  Compilerflags flags,
-	  CompileTimeConstants constants,
+	  Parameters params,
           ProxyInfo info = default_info()); 
       
       
       SMP(CompilerEnvironment cc, 
-	  CompileTimeConstants constants,
+	  Parameters params,
 	  ProxyInfo info = default_info()); 
       
       /// Copy constructor, copy assigment (see below in private)
@@ -82,14 +82,19 @@ namespace idg {
 
       // the function are divided into the following subroutines
       // gridder 
+      void grid_onto_subgrids(int jobsize, void *visibilities, void *uvw, 
+			      void *wavenumbers, void *aterm, void *spheroidal, 
+			      void *baselines, void *subgrids);
+
       // adder
       // splitter
       // degridder
 
-      // gridder
-      virtual void grid_onto_subgrid(int jobsize, void *visibilities, void *uvw, 
-				void *wavenumbers, void *aterm, void *spheroidal, 
-				void *baselines, void *subgrid); 
+    protected:
+
+      void run_gridder(int jobsize, void *visibilities, void *uvw, 
+		       void *wavenumbers, void *aterm, void *spheroidal, 
+		       void *baselines, void *subgrids);
       // virtual void add_subgrids_to_grid(); // adder
       // virtual void split_grid_into_subgrids(); // splitter
       // virtual void degrid_from_subgrids(); // degridder
@@ -97,12 +102,11 @@ namespace idg {
 
     private:
       
-      void compile(Compiler compiler, Compilerflags flags, 
-		   CompileTimeConstants constants, ProxyInfo info);
+      void compile(Compiler compiler, Compilerflags flags);
 
-      void run_gridder(int jobsize, void *visibilities, void *uvw, 
-		       void *wavenumbers, void *aterm, void *spheroidal, 
-		       void *baselines, void *subgrid);
+      // data
+      Parameters mParams;
+      ProxyInfo mInfo;
 
     }; // class SMP
 

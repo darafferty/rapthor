@@ -35,6 +35,9 @@ namespace idg {
       void add_lib(std::string libname);
       void add_src_file_to_lib(std::string libname, std::string filename);
 
+      std::vector<std::string> get_lib_names() const;
+      std::vector<std::string> get_source_files(std::string libname) const;
+
       // auxiliary functions
       void print() const { print(std::cout); }
       void print(std::ostream& os) const;

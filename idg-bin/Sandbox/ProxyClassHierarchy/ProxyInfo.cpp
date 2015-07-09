@@ -26,7 +26,24 @@ namespace idg {
       }
   }
 
-  void ProxyInfo::print(std::ostream& os) const {
+
+  vector<string> ProxyInfo::get_lib_names() const 
+  {
+    vector<string> v;
+    for (auto iter = libs.begin(); iter!=libs.end(); iter++)
+      v.push_back(iter->first);
+    return v;
+  }
+
+  
+  vector<string> ProxyInfo::get_source_files(string libname) const 
+  {
+    return libs.at(libname);
+  }
+  
+
+  void ProxyInfo::print(std::ostream& os) const 
+  {
     os << "PROXY INFO" << endl;
     os << "Path to source files: " << path_to_src << std::endl;
     os << "Path to library: " << path_to_lib << std::endl;
@@ -40,7 +57,8 @@ namespace idg {
   }
   
   // helper functions
-  ostream& operator<<(ostream& os, const ProxyInfo& pi) {
+  ostream& operator<<(ostream& os, const ProxyInfo& pi) 
+  {
     pi.print(os);
     return os;
   }
