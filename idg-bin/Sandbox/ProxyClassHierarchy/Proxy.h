@@ -11,7 +11,7 @@
 
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
-#include "CompileTimeConstants.h" // to be use in derived class
+#include "Parameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
 
 
@@ -35,12 +35,12 @@ namespace idg {
       /** Contructors of derived classes should support 
        * Proxy(Compiler compiler, 
        *       Compilerflags flags,
-       *       CompileTimeConstants constants);
-       *       ProxyInfo info = ProxyInfo()); 
+       *       Parameters params);
+       *       ProxyInfo info = default()); 
        *
        * Proxy(CompilerEnviroment cc, 
-       *       CompileTimeConstants constants);
-       *       ProxyInfo info = ProxyInfo()); 
+       *       Parameters params);
+       *       ProxyInfo info = default()); 
        */
 
       /// Copy constructor, copy assigment (see below in private)
@@ -94,11 +94,10 @@ namespace idg {
        */
       virtual void transform(DomainAtoDomainB direction, void* grid) = 0;
             
-    protected:  
-      runtimewrapper::Module *module;
-
-      //    Proxy(const Proxy&); // prevents copy for now; do somehow differently?
-      //    Proxy& operator=(const Proxy&);
+      // protected:  
+      // runtimewrapper::Module *module;
+      // Proxy(const Proxy&); // prevents copy for now; do somehow differently?
+      // Proxy& operator=(const Proxy&);
     };
     
   } // namespace proxy

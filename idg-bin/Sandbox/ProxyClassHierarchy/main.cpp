@@ -9,21 +9,21 @@ using namespace std;
 int main(int argc, char *argv[])
 {
   // Set constants explicitly
-  idg::CompileTimeConstants constants;    
-  constants.set_nr_stations(48);
-  constants.set_nr_timesteps(1024);
-  constants.set_nr_channels(256);
-  constants.set_nr_polarizations(4); 
-  constants.set_field_of_view(0.1);
-  constants.set_grid_size(4096);
-  constants.set_subgrid_size(32);
-  constants.set_chunk_size(128);
-  constants.set_job_size(128);
-  constants.set_w_planes(1);
+  idg::Parameters params;    
+  params.set_nr_stations(48);
+  params.set_nr_timesteps(1024);
+  params.set_nr_channels(256);
+  params.set_nr_polarizations(4); 
+  params.set_field_of_view(0.1);
+  params.set_grid_size(4096);
+  params.set_subgrid_size(32);
+  params.set_chunk_size(128);
+  params.set_job_size(128);
+  params.set_w_planes(1);
 
   // Print configuration
   clog << ">>> Configuration"  << std::endl;
-  clog << constants;
+  clog << params;
 
   // Initialize data structures
   clog << ">>> Initialize data structures" << std::endl;
@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
   clog << ">> Initialize proxy" << endl;
   idg::Compiler compiler = "/usr/bin/gcc";
   idg::Compilerflags compilerflags = "-Wall -O2 -g -DDEBUG -fopenmp";
-  idg::proxy::SMP xeon(compiler, compilerflags, constants);
-  // Alternative: idg::proxy::SMP xeon("/usr/bin/gcc", "-O2 -fopenmp", constants);
+  idg::proxy::SMP xeon(compiler, compilerflags, params);
+  // Alternative: idg::proxy::SMP xeon("/usr/bin/gcc", "-O2 -fopenmp", params);
 
   // Run gridding
   xeon.grid_visibilities(dummy_ptr, dummy_ptr, dummy_ptr, dummy_ptr, 
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
   // cc.set_cpp_compiler("icpc");
   // cc.set_cpp_flags("-O2 -fopenmp");
 
-  // idg::proxy::SMP another(cc, constants);
+  // idg::proxy::SMP another(cc, params);
 
   // another.grid_visibilities(dummy_ptr, dummy_ptr, dummy_ptr, dummy_ptr, 
   // 			    dummy_ptr, dummy_ptr, dummy_ptr);

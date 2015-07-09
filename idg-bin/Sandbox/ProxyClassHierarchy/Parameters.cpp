@@ -1,15 +1,15 @@
 
 #include <iostream>
-#include "CompileTimeConstants.h"
+#include "Parameters.h"
 
 using namespace std;
 
 namespace idg {
 
   // helper functions
-  ostream& operator<<(ostream& os, const CompileTimeConstants& ctc) 
+  ostream& operator<<(ostream& os, const Parameters& c) 
   {
-    ctc.print(os);
+    c.print(os);
     return os;
   }
 
