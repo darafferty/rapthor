@@ -99,10 +99,9 @@ namespace idg {
       virtual void transform(DomainAtoDomainB direction, void* grid) = 0;
             
     protected:  
-      // runtimewrapper::Module *module;
+      // runtime::Module *module;
       // Proxy(const Proxy&); // prevents copy for now; do somehow differently?
       // Proxy& operator=(const Proxy&);
-      std::vector<runtimewrapper::Module> modules;
     };
 
     
