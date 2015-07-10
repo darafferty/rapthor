@@ -13,6 +13,7 @@
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
+#include "AlgorithmParameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
 
 
@@ -37,11 +38,13 @@ namespace idg {
        * Proxy(Compiler compiler, 
        *       Compilerflags flags,
        *       Parameters params);
-       *       ProxyInfo info = default()); 
+       *       AlgorithmParameters algparams = default_algparams()); 
+       *       ProxyInfo info = default_info()); 
        *
        * Proxy(CompilerEnviroment cc, 
        *       Parameters params);
-       *       ProxyInfo info = default()); 
+       *       AlgorithmParameters algparams = default_algparams()); 
+       *       ProxyInfo info = default_info()); 
        */
 
       /// Copy constructor, copy assigment (see below in private)
