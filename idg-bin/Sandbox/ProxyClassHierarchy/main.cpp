@@ -16,9 +16,6 @@ int main(int argc, char *argv[])
   params.set_nr_polarizations(4); 
   params.set_field_of_view(0.1);
   params.set_grid_size(4096);
-  params.set_subgrid_size(32);
-  params.set_chunk_size(128);
-  params.set_job_size(128);
   params.set_w_planes(1);
 
   // Print configuration
