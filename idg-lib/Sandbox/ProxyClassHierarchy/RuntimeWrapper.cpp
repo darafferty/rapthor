@@ -6,7 +6,7 @@ using namespace std;
 
 namespace idg {
 
-  namespace runtimewrapper {
+  namespace runtime {
     
     const char *Error::what() const throw() {
       return _what;
