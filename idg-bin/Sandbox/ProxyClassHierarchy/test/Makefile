@@ -5,8 +5,8 @@ LD = g++
 CXXFLAGS = -std=c++0x -Wall -O2 -fopenmp
 LDFLAGS = $(CXXFLAGS)
 
-HDR = ../AlgorithmicParameters.h ../ObservationParameters.h ../CompileTimeConstants.h ../CompilerEnvironment.h 
-SRC = ../AlgorithmicParameters.cpp ../ObservationParameters.cpp ../CompileTimeConstants.cpp ../CompilerEnvironment.cpp
+HDR = ../Parameters.h ../CompilerEnvironment.h 
+SRC = ../Parameters.cpp ../CompilerEnvironment.cpp
 OBJ = $(patsubst %.cpp,%.o,$(SRC))
 
 INC = -I..

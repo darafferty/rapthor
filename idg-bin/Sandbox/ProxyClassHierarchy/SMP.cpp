@@ -9,16 +9,20 @@ namespace idg {
     
     /// Constructors
     SMP::SMP(Compiler compiler, 
-	Compilerflags flags,
-	Parameters params,
-	ProxyInfo info) 
+	     Compilerflags flags,
+	     Parameters params,
+	     AlgorithmParameters algparams,
+	     ProxyInfo info) 
       : mParams(params),
+	mAlgParams(algparams),
 	mInfo(info)
     {
       cout << "SMP::" << __func__ << endl;
       
       cout << "Compiler: " << compiler << endl;
       cout << "Compiler flags: " << flags << endl;
+
+      // make sanity check for passed arguments dubgrid_size <= grid_size etc..
 
       // allocate subgrid data structure?
 
@@ -31,7 +35,11 @@ namespace idg {
     
     SMP::SMP(CompilerEnvironment cc, 
 	     Parameters params,
+	     AlgorithmParameters algparams,
 	     ProxyInfo info) 
+      : mParams(params),
+	mAlgParams(algparams),
+	mInfo(info)
     {
       cout << "SMP::" << __func__ << endl;
 
@@ -49,6 +57,19 @@ namespace idg {
       // free subgrid data structure?
       // unload modules?
       // delete .so files?
+    }
+
+
+    AlgorithmParameters SMP::default_algparams() 
+    {
+      cout << "SMP::" << __func__ << endl;
+
+      AlgorithmParameters p;
+      p.set_job_size(128);  // please set sensible value here
+      p.set_subgrid_size(32); // please set sensible value here
+      p.set_chunk_size(128); // please set sensible value here
+
+      return p;
     }
 
 
@@ -88,7 +109,7 @@ namespace idg {
       cout << "SMP::" << __func__ << endl;
 
       // allocate subgrid
-      int jobsize = mParams.get_job_size();
+      int jobsize = mAlgParams.get_job_size();
       void* subgrids;
 
       grid_onto_subgrids(jobsize, visibilities, uvw, wavenumbers, aterm, 
@@ -112,7 +133,7 @@ namespace idg {
       cout << "SMP::" << __func__ << endl;
 
       // allocate subgrids?
-      int jobsize = mParams.get_job_size();
+      int jobsize = mAlgParams.get_job_size();
       void* subgrids;
 
       split_grid_into_subgrids(jobsize, uvw, subgrids, grid);
@@ -199,8 +220,8 @@ namespace idg {
       int NR_TIME = mParams.get_nr_timesteps();
       int NR_CHANNELS = mParams.get_nr_channels();
       int NR_POLARIZATIONS = mParams.get_nr_polarizations();
-      int NR_CHUNKS = mParams.get_chunk_size();
-      int SUBGRIDSIZE = mParams.get_subgrid_size();
+      int NR_CHUNKS = mAlgParams.get_chunk_size();
+      int SUBGRIDSIZE = mAlgParams.get_subgrid_size();
 
       // Load kernel modules
       // rw::Module module_gridder(SO_GRIDDER);
@@ -252,8 +273,8 @@ namespace idg {
       int NR_BASELINES = mParams.get_nr_baselines();
       int NR_TIME = mParams.get_nr_timesteps();
       int NR_POLARIZATIONS = mParams.get_nr_polarizations();
-      int NR_CHUNKS = mParams.get_chunk_size();
-      int SUBGRIDSIZE = mParams.get_subgrid_size();
+      int NR_CHUNKS = mAlgParams.get_chunk_size();
+      int SUBGRIDSIZE = mAlgParams.get_subgrid_size();
 
       // Load kernel module
       // rw::Module module_adder(SO_ADDER);
@@ -291,8 +312,8 @@ namespace idg {
       int NR_BASELINES = mParams.get_nr_baselines();
       int NR_TIME = mParams.get_nr_timesteps();
       int NR_POLARIZATIONS = mParams.get_nr_polarizations();
-      int NR_CHUNKS = mParams.get_chunk_size();
-      int SUBGRIDSIZE = mParams.get_subgrid_size();
+      int NR_CHUNKS = mAlgParams.get_chunk_size();
+      int SUBGRIDSIZE = mAlgParams.get_subgrid_size();
 
       // Load kernel module
       // rw::Module module_splitter(SO_SPLITTER);
@@ -333,8 +354,8 @@ namespace idg {
       int NR_CHANNELS = mParams.get_nr_channels();
       int NR_TIME = mParams.get_nr_timesteps();
       int NR_POLARIZATIONS = mParams.get_nr_polarizations();
-      int NR_CHUNKS = mParams.get_chunk_size();
-      int SUBGRIDSIZE = mParams.get_subgrid_size();
+      int NR_CHUNKS = mAlgParams.get_chunk_size();
+      int SUBGRIDSIZE = mAlgParams.get_subgrid_size();
 
       // Load kernel modules
       //	rw::Module module_degridder(SO_DEGRIDDER);
@@ -385,19 +406,23 @@ namespace idg {
     void SMP::compile(Compiler compiler, Compilerflags flags) 
     {
       // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-      string parameters1 = ObservationParameters::definitions(mParams.get_nr_stations(), 
-							      mParams.get_nr_baselines(), 
-							      mParams.get_nr_timesteps(), 
-							      mParams.get_nr_channels(),
-							      mParams.get_nr_polarizations(), 
-							      mParams.get_field_of_view()); 
-      string parameters2 = AlgorithmicParameters::definitions(mParams.get_grid_size(), 
-							      mParams.get_subgrid_size(), 
-							      mParams.get_chunk_size(), 
-							      mParams.get_job_size(), 
-							      mParams.get_w_planes());
+      string parameters1 = Parameters::definitions(
+                           mParams.get_nr_stations(), 
+			   mParams.get_nr_baselines(), 
+			   mParams.get_nr_timesteps(), 
+			   mParams.get_nr_channels(),
+			   mParams.get_nr_polarizations(), 
+			   mParams.get_field_of_view(),
+                           mParams.get_grid_size(), 
+			   mParams.get_w_planes());
+
+      string parameters2 = AlgorithmParameters::definitions(
+			   mAlgParams.get_subgrid_size(), 
+			   mAlgParams.get_chunk_size(), 
+			   mAlgParams.get_job_size());
+
       stringstream pp;
-      pp << " -DNR_CHUNKS=" << mParams.get_nr_timesteps() / mParams.get_chunk_size();
+      pp << " -DNR_CHUNKS=" << mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
       string parameters3 = pp.str();
 
       string parameters = parameters1 + parameters2 + parameters3;
