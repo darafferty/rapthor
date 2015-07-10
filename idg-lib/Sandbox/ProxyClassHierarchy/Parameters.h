@@ -1,152 +1,88 @@
+/** 
+ *  \class ObservationParameters
+ *
+ *  \brief Collection of constants for a specific observation
+ *
+ *  Have a more detailed description here
+ */
 
-#ifndef IDG_COMPILETIMECONSTANTS_H_
-#define IDG_COMPILETIMECONSTANTS_H_
+#ifndef IDG_PARAMETERS_H_
+#define IDG_PARAMETERS_H_
 
 #include <iostream>
-#include "ObservationParameters.h"
-#include "AlgorithmicParameters.h"
 
 namespace idg {
+
+  /// Define the environment names searched for
+  const std::string ENV_NR_STATIONS = "NR_STATIONS";
+  const std::string ENV_NR_TIMESTEPS = "NR_TIME"; // for compatibility
+  const std::string ENV_NR_CHANNELS = "NR_CHANNELS";
+  const std::string ENV_NR_POLARIZATIONS = "NR_POLARIZATIONS"; // for future use
+  const std::string ENV_FIELD_OF_VIEW = "FIELD_OF_VIEW";  
+  const std::string ENV_GRIDSIZE = "GRIDSIZE";
+  const std::string ENV_WPLANES = "WPLANES"; // for future use
+
+  /// set MIN/MAX values 
+  const float MIN_FOV = 0.0;
+  const float MAX_FOV = 1.0; // max. field of view; Q: what is the correct value here?  
+  
 
   class Parameters 
   {
   public:
     /// Constructor: default reads values from ENV or sets default 
-    Parameters() = default;
-    Parameters(ObservationParameters& op, 
-	       AlgorithmicParameters& ap) 
-      : observation_parameters(op),
-      algorithmic_parameters(ap) {};
+    Parameters() {
+      read_parameters_from_env();
+    }
   
     // default copy constructor/assignment okay
     
     // default destructur
     ~Parameters() = default;
-    
-    /// Set the number of stations in [2,UINT_MAX]
-    /** A more detailed description could be here */
-    void set_nr_stations(unsigned int ns) { 
-      observation_parameters.set_nr_stations(ns); 
-    } 
-    
-    /// Set the number of timesteps in [1,UINT_MAX]
-    /** A more detailed description could be here */
-    void set_nr_timesteps(unsigned int nt) { 
-      observation_parameters.set_nr_timesteps(nt); 
-    }
-    
-    /// Set the number of channels in [1,UINT_MAX]
-    /** A more detailed description could be here */
-    void set_nr_channels(unsigned int nc) { 
-      observation_parameters.set_nr_channels(nc); 
-    }
-    
-    /// Set the number of polarizations in [1,2,4], only 4 supported so far
-    /** A more detailed description could be here */
-    void set_nr_polarizations(unsigned int np) { 
-      observation_parameters.set_nr_polarizations(np); 
-    }
-    
-    /// Set the field of view in (unit) [0,MAX_FOV]
-    /** A more detailed description could be here */
-    void set_field_of_view(float fov) { 
-      observation_parameters.set_field_of_view(fov); 
-    }
-    
-    /// Set the grid size N: constructed image is N-by-N 
-    /** A more detailed description could be here */
-    void set_grid_size(unsigned int gs) { 
-      algorithmic_parameters.set_grid_size(gs); 
-    }
 
-    /// Set the subgrid used in image domain gridding
-    /** A more detailed description should be there */
-    void set_subgrid_size(unsigned int sgs) { 
-      algorithmic_parameters.set_subgrid_size(sgs); 
-    }
-    
-    /// Set the chunk size used in image domain gridding
-    /** A more detailed description should be there */
-    void set_chunk_size(unsigned int cs) { 
-      algorithmic_parameters.set_chunk_size(cs); 
-    }
-    
-    /// Set the job size used in image domain gridding
-    /** A more detailed description should be there */
-    void set_job_size(unsigned int js) {
-      algorithmic_parameters.set_job_size(js); 
-    } 
+    // get methods
+    unsigned int get_nr_stations() const { return nr_stations; }
+    unsigned int get_nr_baselines() const { return nr_baselines; }
+    unsigned int get_nr_timesteps() const { return nr_timesteps; }
+    unsigned int get_nr_channels() const { return nr_channels; }
+    unsigned int get_nr_polarizations() const { return nr_polarizations; } 
+    float get_field_of_view() const { return field_of_view; } 
+    unsigned int get_grid_size() const { return grid_size; }
+    unsigned int get_w_planes() const { return w_planes; }
 
-    /// Set the number of W-planes used in image domain gridding
-    /** A more detailed description should be there */
-    void set_w_planes(unsigned int wp) {
-      algorithmic_parameters.set_w_planes(wp);
-    }
-   
-    
-    unsigned int get_nr_stations() const { 
-      return observation_parameters.get_nr_stations(); 
-    }
+    // set methods
+    void set_nr_stations(unsigned int ns);
+    void set_nr_timesteps(unsigned int nt);
+    void set_nr_channels(unsigned int nc);
+    void set_nr_polarizations(unsigned int np); // for future use
+    void set_field_of_view(float fov);
+    void set_grid_size(unsigned int gs);
+    void set_w_planes(unsigned int wp); // for future use
+ 
+    // auxiliary functions
+    void print() const;
+    void print(std::ostream& os) const;
+    void read_parameters_from_env();
 
-    unsigned int get_nr_baselines() const { 
-      return observation_parameters.get_nr_baselines(); 
-    }
-    
-    unsigned int get_nr_timesteps() const { 
-      return observation_parameters.get_nr_timesteps(); 
-    }
-    
-    unsigned int get_nr_channels() const { 
-      return observation_parameters.get_nr_channels(); 
-    }
-    
-    unsigned int get_nr_polarizations() const { 
-      return observation_parameters.get_nr_polarizations(); 
-    }
-    
-    float get_field_of_view() const { 
-      return observation_parameters.get_field_of_view(); 
-    } 
-    
-    unsigned int get_grid_size() const { 
-      return algorithmic_parameters.get_grid_size(); 
-    }
-    
-    unsigned int get_subgrid_size() const { 
-      return algorithmic_parameters.get_subgrid_size(); 
-    }
-    
-    unsigned int get_chunk_size() const { 
-      return algorithmic_parameters.get_chunk_size(); 
-    }
-    
-    unsigned int get_job_size() const { 
-      return algorithmic_parameters.get_job_size(); 
-    }
-
-    unsigned int get_w_planes() const { 
-      return algorithmic_parameters.get_w_planes(); 
-    }
-    
-    
-    // display all parameters    
-    void print(std::ostream& os) const { 
-      os << "-----------------------" << std::endl;
-      os << "CONSTANTS:" << std::endl;
-      os << std::endl;
-      observation_parameters.print(os);
-      os << std::endl;
-      algorithmic_parameters.print(os); 
-      os << "-----------------------" << std::endl;
-    }
-
-    void print() const { 
-      print(std::cout);
-    }    
+    static std::string 
+      definitions(unsigned int nr_stations, 
+		  unsigned int nr_baselines, 
+		  unsigned int nr_timesteps,
+		  unsigned int nr_channels, 
+		  unsigned int nr_polarizations,
+		  float field_of_view,
+		  unsigned int grid_size,
+		  unsigned int w_planes);
 
   private:
-    ObservationParameters observation_parameters; 
-    AlgorithmicParameters algorithmic_parameters;
+    unsigned int nr_stations;      
+    unsigned int nr_baselines;     // nr_stations*(nr_stations-1)/2
+    unsigned int nr_timesteps;     
+    unsigned int nr_channels;      
+    unsigned int nr_polarizations; // currently fixed to 4 
+    float        field_of_view;    // unit?    
+    unsigned int grid_size;
+    unsigned int w_planes;    
   };
   
   // helper functions

@@ -22,11 +22,13 @@ namespace idg {
       SMP(Compiler compiler, 
 	  Compilerflags flags,
 	  Parameters params,
+	  AlgorithmParameters algparams = default_algparams(), 
           ProxyInfo info = default_info()); 
       
       
       SMP(CompilerEnvironment cc, 
 	  Parameters params,
+	  AlgorithmParameters algparams = default_algparams(), 
 	  ProxyInfo info = default_info()); 
       
       /// Copy constructor, copy assigment (see below in private)
@@ -36,6 +38,7 @@ namespace idg {
       ~SMP();
       
       // Get default values for ProxyInfo
+      static AlgorithmParameters default_algparams();
       static ProxyInfo default_info();
 
       /** \brief Grid the visibilities onto a uniform grid (visibilities -> grid)
@@ -113,6 +116,7 @@ namespace idg {
 
       // data
       Parameters mParams;  // store parameters passed on creation
+      AlgorithmParameters mAlgParams;  // store parameters passed on creation
       ProxyInfo mInfo; // info about shared object files
 
     }; // class SMP
