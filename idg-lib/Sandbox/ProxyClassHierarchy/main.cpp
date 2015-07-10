@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
   // Initialize interface to kernels
   clog << ">> Initialize proxy" << endl;
   idg::Compiler compiler = "/usr/bin/gcc";
-  idg::Compilerflags compilerflags = "-Wall -O2 -g -DDEBUG -fopenmp";
+  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
   idg::proxy::SMP xeon(compiler, compilerflags, params);
   // Alternative: idg::proxy::SMP xeon("/usr/bin/gcc", "-O2 -fopenmp", params);
 

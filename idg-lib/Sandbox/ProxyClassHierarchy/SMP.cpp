@@ -1,4 +1,9 @@
+#include <cstdlib>  // rand
+#include <ctime> // time() to init srand()
 #include <complex>
+#include <sstream>
+#include <memory>
+
 #include "SMP.h"
 
 using namespace std;
@@ -22,13 +27,14 @@ namespace idg {
       cout << "Compiler: " << compiler << endl;
       cout << "Compiler flags: " << flags << endl;
 
-      // make sanity check for passed arguments dubgrid_size <= grid_size etc..
+      // cout << params;
+      // cout << algparams;
 
-      // allocate subgrid data structure?
+      parameter_sanity_check(); // throws exception if bad parameters
 
       compile(compiler, flags); 
 
-      // load_shared_objects();
+      load_shared_objects();
     }
     
 
@@ -54,9 +60,11 @@ namespace idg {
       cout << "SMP::" << __func__ << endl;
       cerr << "~SMP() to be implemented" << endl;
 
-      // free subgrid data structure?
       // unload modules?
-      // delete .so files?
+      // modules.push_back(new runtime::Module M(lib.c_str()););
+
+      // delete .so files
+      // cstdio has remove(filename)
     }
 
 
@@ -81,17 +89,32 @@ namespace idg {
       p.set_path_to_src("./src/kernels");
       p.set_path_to_lib("./lib");
 
-      p.add_lib("Gridder.so"); // should all be with a hash to avoid conflict
-      p.add_lib("Degridder.so");
-      p.add_lib("FFT.so");
-      p.add_lib("Adder.so");
-      p.add_lib("Splitter.so");
+      // Will be changed to use tmp dir by default, 
+      // instead of random numbers
+
+      srand(time(NULL));
+      int rnd = rand();
+      stringstream ss;
+      ss << rnd;
+      string rnd_str = ss.str();
+
+      string libgridder = "Gridder" + rnd_str + ".so";
+      string libdegridder = "Degridder" + rnd_str + ".so";
+      string libfft = "FFT" + rnd_str + ".so";
+      string libadder = "Adder" + rnd_str + ".so";
+      string libsplitter = "Splitter" + rnd_str + ".so";
+
+      p.add_lib(libgridder); // should all be with a hash to avoid conflict
+      p.add_lib(libdegridder);
+      p.add_lib(libfft);
+      p.add_lib(libadder);
+      p.add_lib(libsplitter);
       
-      p.add_src_file_to_lib("Gridder.so", "KernelGridder.cpp");
-      p.add_src_file_to_lib("Degridder.so", "KernelDegridder.cpp");
-      p.add_src_file_to_lib("FFT.so", "KernelFFT.cpp");
-      p.add_src_file_to_lib("Adder.so", "KernelAdder.cpp");
-      p.add_src_file_to_lib("Splitter.so", "KernelSplitter.cpp");
+      p.add_src_file_to_lib(libgridder, "KernelGridder.cpp");
+      p.add_src_file_to_lib(libdegridder, "KernelDegridder.cpp");
+      p.add_src_file_to_lib(libfft, "KernelFFT.cpp");
+      p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
+      p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
       
       return p;
     }
@@ -109,14 +132,16 @@ namespace idg {
       cout << "SMP::" << __func__ << endl;
 
       // allocate subgrid
-      int jobsize = mAlgParams.get_job_size();
       void* subgrids;
 
-      grid_onto_subgrids(jobsize, visibilities, uvw, wavenumbers, aterm, 
+      // Get job sizes for gridding and adding routines
+      int jobsize_gridder = mAlgParams.get_job_size_gridder();
+      int jobsize_adder = mAlgParams.get_job_size_adder();
+
+      grid_onto_subgrids(jobsize_gridder, visibilities, uvw, wavenumbers, aterm, 
 			 spheroidal, baselines, subgrids);
 
-      // Note: the jobsize might be different from the one above
-      add_subgrids_to_grid(jobsize, uvw, subgrids, grid); 
+      add_subgrids_to_grid(jobsize_adder, uvw, subgrids, grid); 
 
       // free subgrid
     }
@@ -133,14 +158,19 @@ namespace idg {
       cout << "SMP::" << __func__ << endl;
 
       // allocate subgrids?
-      int jobsize = mAlgParams.get_job_size();
       void* subgrids;
 
-      split_grid_into_subgrids(jobsize, uvw, subgrids, grid);
+      // Get job sizes for gridding and adding routines
+      int jobsize_splitter = mAlgParams.get_job_size_splitter();
+      int jobsize_degridder = mAlgParams.get_job_size_degridder();
+
+      split_grid_into_subgrids(jobsize_splitter, uvw, subgrids, grid);
 
       // Note: job_size might be different
-      degrid_from_subgrids(jobsize, wavenumbers, aterm, baselines, visibilities, 
-			   uvw, spheroidal, subgrids); 
+      degrid_from_subgrids(jobsize_degridder, wavenumbers, aterm, baselines, 
+			   visibilities, uvw, spheroidal, subgrids); 
+      
+      // free subgrids
     }
 
 
@@ -242,13 +272,13 @@ namespace idg {
  	int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 
  	// Pointers to data for current batch
-	void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-	void *wavenumbers_ptr  = wavenumbers;
- 	void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
- 	void *spheroidal_ptr   = spheroidal;
- 	void *aterm_ptr        = aterm;
- 	void *subgrids_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *baselines_ptr    = baselines;
+	// void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+	// void *wavenumbers_ptr  = wavenumbers;
+ 	// void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+ 	// void *spheroidal_ptr   = spheroidal;
+ 	// void *aterm_ptr        = aterm;
+ 	// void *subgrids_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
+	// void *baselines_ptr    = baselines;
 	
  	// kernel_gridder.run(jobsize, bl, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
  	// 		   spheroidal_ptr, aterm_ptr, baselines_ptr, subgrid_ptr);
@@ -292,9 +322,9 @@ namespace idg {
 	int subgrid_elements = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 	// Pointer to data for current jobs
-	void *uvw_ptr     = (float*) uvw + bl * uvw_elements;
-	void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *grid_ptr    = grid;
+	// void *uvw_ptr     = (float*) uvw + bl * uvw_elements;
+	// void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
+	// void *grid_ptr    = grid;
 	
 	// kernel_adder.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
 
@@ -331,9 +361,9 @@ namespace idg {
 	int subgrid_elements = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 	
 	// Pointer to data for current jobs
-	void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
-	void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *grid_ptr    = grid;
+	// void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
+	// void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
+	// void *grid_ptr    = grid;
 	
 	// kernel_splitter.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
 
@@ -380,13 +410,13 @@ namespace idg {
 	int subgrid_elements      = NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS;
 		
 	// Pointers to data for current batch
-        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-        void *wavenumbers_ptr  = wavenumbers;
-	void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
-	void *spheroidal_ptr   = spheroidal;
-	void *aterm_ptr        = aterm;
-	void *subgrid_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *baselines_ptr    = baselines;
+        // void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+        // void *wavenumbers_ptr  = wavenumbers;
+	// void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+	// void *spheroidal_ptr   = spheroidal;
+	// void *aterm_ptr        = aterm;
+	// void *subgrid_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
+	// void *baselines_ptr    = baselines;
 	
         // #if ORDER == ORDER_BL_V_U_P
 	// kernel_fft.run(SUBGRIDSIZE, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
@@ -425,7 +455,7 @@ namespace idg {
       pp << " -DNR_CHUNKS=" << mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
       string parameters3 = pp.str();
 
-      string parameters = parameters1 + parameters2 + parameters3;
+      string parameters = " " + flags + " " + parameters1 + parameters2 + parameters3;
       
       cout << parameters << endl;
 
@@ -448,7 +478,7 @@ namespace idg {
 	  string lib = mInfo.get_path_to_lib() + "/" + libname;
 	  cout << " " << lib << " " << endl;
 
-	  runtimewrapper::Source(source.c_str()).compile(compiler.c_str(), 
+	  runtime::Source(source.c_str()).compile(compiler.c_str(), 
 							 lib.c_str(), 
 							 parameters.c_str());
 	} // for each source file for library 
@@ -456,7 +486,31 @@ namespace idg {
       } // for each library
 
     } // compile
+
+
     
+    void SMP::parameter_sanity_check() 
+    {
+      cout << "SMP::" << __func__ << endl;
+
+      // assert: subgrid_size <= grid_size
+      // assert: job_size <= ?
+      // what else?     
+    }
+
+    
+    void SMP::load_shared_objects() 
+    {
+      cout << "SMP::" << __func__ << endl;
+
+      for (auto libname : mInfo.get_lib_names()) {
+	string lib = mInfo.get_path_to_lib() + "/" + libname;
+
+	cout << "Loading " << libname << endl;
+
+	modules.push_back(std::unique_ptr<runtime::Module>(new runtime::Module(lib.c_str())));
+      }
+    }
 
 
   } // namespace proxy

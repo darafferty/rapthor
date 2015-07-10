@@ -9,6 +9,7 @@
 #ifndef IDG_SMP_H_
 #define IDG_SMP_H_
 
+#include <memory> // unique_ptr
 #include "Proxy.h"
 
 namespace idg {
@@ -113,12 +114,17 @@ namespace idg {
     private:
       
       void compile(Compiler compiler, Compilerflags flags);
+      void parameter_sanity_check();
+      void load_shared_objects();
 
       // data
       Parameters mParams;  // store parameters passed on creation
       AlgorithmParameters mAlgParams;  // store parameters passed on creation
       ProxyInfo mInfo; // info about shared object files
 
+      // store the ptr to Module, which each loads an .so-file 
+      std::vector< std::unique_ptr<runtime::Module> > modules;  // move to Proxy.h?
+      //      KernelGridder *kg;
     }; // class SMP
 
   } // namespace proxy

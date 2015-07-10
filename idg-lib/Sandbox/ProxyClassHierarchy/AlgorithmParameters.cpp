@@ -17,14 +17,55 @@ namespace idg {
   
   void AlgorithmParameters::set_chunk_size(unsigned int cs) 
   {
-    if (cs > 0) // avoid chunk_size==0 
-      chunk_size = cs;
+    if (cs > 0) chunk_size = cs; // avoid chunk_size==0 
   }
     
   void AlgorithmParameters::set_job_size(unsigned int js)
   {
-    if (js > 0) // avoid job_size==0
-      job_size = js;
+    if (js == 0) return; // avoid job_size==0
+    job_size = js;
+    job_size_gridding = js;
+    job_size_degridding = js;
+    job_size_gridder = js; 
+    job_size_adder = js; 
+    job_size_splitter = js; 
+    job_size_degridder = js; 
+  }
+
+  void AlgorithmParameters::set_job_size_gridding(unsigned int js)
+  {
+    if (js == 0) return; // avoid job_size==0
+    job_size_gridding = js;
+    job_size_gridder = js; 
+    job_size_adder = js; 
+  }
+  
+  void AlgorithmParameters::set_job_size_degridding(unsigned int js)
+  {
+    if (js == 0) return; // avoid job_size==0
+    job_size_degridding = js;
+    job_size_splitter = js; 
+    job_size_degridder = js; 
+  }
+
+  void AlgorithmParameters::set_job_size_gridder(unsigned int js)
+  {
+    if(js > 0) job_size_gridder = js;
+  }
+  
+  void AlgorithmParameters::set_job_size_adder(unsigned int js)
+  {
+    if(js > 0) job_size_adder = js;
+  }
+  
+  void AlgorithmParameters::set_job_size_splitter(unsigned int js)
+  {
+    if(js > 0) job_size_splitter = js;
+  } 
+
+  void AlgorithmParameters::set_job_size_degridder(unsigned int js)
+  {
+    if(js > 0) job_size_degridder = js;
   }
 
 
@@ -44,6 +85,24 @@ namespace idg {
         
     os << setw(fw1) << left << "Job size" << "== " 
        << setw(fw2) << right << job_size << endl;
+
+    os << setw(fw1) << left << "Job size (gridding)" << "== " 
+       << setw(fw2) << right << job_size_gridding << endl;
+
+    os << setw(fw1) << left << "Job size (degridding)" << "== " 
+       << setw(fw2) << right << job_size_degridding << endl;
+
+    os << setw(fw1) << left << "Job size (gridder)" << "== " 
+       << setw(fw2) << right << job_size_gridder << endl;
+
+    os << setw(fw1) << left << "Job size (adder)" << "== " 
+       << setw(fw2) << right << job_size_adder << endl;
+
+    os << setw(fw1) << left << "Job size (splitter)" << "== " 
+       << setw(fw2) << right << job_size_splitter << endl;
+
+    os << setw(fw1) << left << "Job size (degridder)" << "== " 
+       << setw(fw2) << right << job_size_degridder << endl;
   }
 
 
@@ -80,12 +139,15 @@ namespace idg {
     // job_size
     char *cstr_job_size = getenv(ENV_JOBSIZE.c_str());
     if (cstr_job_size != nullptr) {
-      job_size = atoi(cstr_job_size);
+      set_job_size( atoi(cstr_job_size) );
       if (job_size < 1)
-	job_size = DEFAULT_JOBSIZE;
+	set_job_size( DEFAULT_JOBSIZE );
     } else {
-      job_size = DEFAULT_JOBSIZE;
+      set_job_size( DEFAULT_JOBSIZE );
     }
+
+    // so far finer control over jobsizes not via environment 
+    // must use set methods
 
   } // read_parameters_from_env()
 

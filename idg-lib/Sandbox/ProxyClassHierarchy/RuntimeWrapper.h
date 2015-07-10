@@ -11,7 +11,7 @@
 
 namespace idg {
   
-  namespace runtimewrapper {
+  namespace runtime {
     
     class Error : public std::exception {
     public:
