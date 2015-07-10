@@ -11,6 +11,7 @@
 
 #include <memory> // unique_ptr
 #include "Proxy.h"
+#include "SMPKernels.h"
 
 namespace idg {
   
