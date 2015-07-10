@@ -74,7 +74,8 @@ namespace idg {
     const int fw2 = 10;
     const int fw3 = 10;
 
-    os << "OBSERVATION PARAMETERS:" << endl;
+    os << "-----------" << endl;
+    os << "PARAMETERS:" << endl;
     
     os << setw(fw1) << left << "Number of stations" << "== " 
        << setw(fw2) << right << nr_stations << endl;
@@ -100,6 +101,8 @@ namespace idg {
     
     os << setw(fw1) << left << "Number of W-planes" << "== " 
        << setw(fw2) << right << w_planes << endl;
+
+    os << "-----------" << endl;
   }
 
 
