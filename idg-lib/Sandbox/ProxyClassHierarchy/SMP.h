@@ -1,15 +1,15 @@
 /** 
- *  \class Proxy
+ *  \class SMP
  *
- *  \brief Abstract base class for all "proxy clases" 
+ *  \brief Class for ... 
  *
  *  Have a more detailed description here
+ *  This will be included by a user, so detail usage...
  */
 
 #ifndef IDG_SMP_H_
 #define IDG_SMP_H_
 
-#include <memory> // unique_ptr
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "Proxy.h"
 #include "SMPKernels.h"
@@ -86,6 +86,14 @@ namespace idg {
       void transform(DomainAtoDomainB direction, void* grid);
 
 
+      // get parameters
+      const Parameters& get_parameters() const { return mParams; }  
+      const AlgorithmParameters& get_algorithm_parameters() const { return mAlgParams; } 
+      const ProxyInfo& get_info() const { return mInfo; } 
+
+
+    protected:
+
       // the function are divided into the following subroutines
       // gridder 
       void grid_onto_subgrids(int jobsize, void *visibilities, void *uvw, 
@@ -100,12 +108,6 @@ namespace idg {
 				void *baselines, void *visibilities, void *uvw, 
 				void *spheroidal, void *subgrids); 
 
-      // get parameters
-      const Parameters& get_parameters() const { return mParams; }  
-      const AlgorithmParameters& get_algorithm_parameters() const { return mAlgParams; } 
-      const ProxyInfo& get_info() const { return mInfo; } 
-
-    protected:
 
       void run_gridder(int jobsize, void *visibilities, void *uvw, 
 		       void *wavenumbers, void *aterm, void *spheroidal, 
