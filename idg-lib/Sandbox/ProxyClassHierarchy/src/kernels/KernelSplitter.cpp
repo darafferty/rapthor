@@ -14,6 +14,9 @@ void kernel_splitter(
     SubGridType    __restrict__ *subgrid,
     const GridType __restrict__ *grid
     ) {
+
+  printf("Running: kernel_splitter\n");
+
     #pragma omp parallel
     {
     #if USE_LIKWID

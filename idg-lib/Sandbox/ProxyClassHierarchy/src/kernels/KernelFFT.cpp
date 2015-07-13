@@ -18,6 +18,9 @@ void kernel_fft(
 	int sign,
     int layout
 	) {
+
+  printf("Running: kernel_fft\n");
+
     if (layout == FFT_LAYOUT_YXP) {
         // 2D FFT
         int rank = 2;

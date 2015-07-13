@@ -10,8 +10,10 @@
 #define IDG_SMP_H_
 
 #include <memory> // unique_ptr
+#include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "Proxy.h"
 #include "SMPKernels.h"
+
 
 namespace idg {
   
@@ -52,13 +54,13 @@ namespace idg {
        *  \param baselines [in] ... what is; format
        *  \param grid [out] ... what is; format
        */
-      virtual void grid_visibilities(void *visibilities, 
-				     void *uvw, 
-				     void *wavenumbers,
-				     void *aterm, 
-				     void *spheroidal, 
-				     void *baselines, 
-				     void *grid);
+      void grid_visibilities(void *visibilities, 
+			     void *uvw, 
+			     void *wavenumbers,
+			     void *aterm, 
+			     void *spheroidal, 
+			     void *baselines, 
+			     void *grid);
 
       /** \brief Degrid the visibilities from a uniform grid (grid -> visibilities)
        *  \param grid [in] ... what is; format
@@ -98,6 +100,11 @@ namespace idg {
 				void *baselines, void *visibilities, void *uvw, 
 				void *spheroidal, void *subgrids); 
 
+      // get parameters
+      const Parameters& get_parameters() const { return mParams; }  
+      const AlgorithmParameters& get_algorithm_parameters() const { return mAlgParams; } 
+      const ProxyInfo& get_info() const { return mInfo; } 
+
     protected:
 
       void run_gridder(int jobsize, void *visibilities, void *uvw, 
@@ -117,6 +124,7 @@ namespace idg {
       void compile(Compiler compiler, Compilerflags flags);
       void parameter_sanity_check();
       void load_shared_objects();
+      void find_kernel_functions();
 
       // data
       Parameters mParams;  // store parameters passed on creation
@@ -124,8 +132,9 @@ namespace idg {
       ProxyInfo mInfo; // info about shared object files
 
       // store the ptr to Module, which each loads an .so-file 
-      std::vector< std::unique_ptr<runtime::Module> > modules;  // move to Proxy.h?
-      //      KernelGridder *kg;
+      // std::vector< std::unique_ptr<runtime::Module> > modules;  
+      std::vector<runtime::Module*> modules;  
+      std::map<std::string,int> which_module;  
     }; // class SMP
 
   } // namespace proxy
