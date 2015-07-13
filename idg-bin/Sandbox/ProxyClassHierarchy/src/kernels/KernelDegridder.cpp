@@ -25,6 +25,9 @@ void kernel_degridder(
 	const SpheroidalType __restrict__ *spheroidal,
 	VisibilitiesType	 __restrict__ *visibilities
 	) {
+
+  printf("Running: kernel_degridder\n");
+
     #pragma omp parallel shared(subgrid, uvw, wavenumbers, aterm, baselines, spheroidal)
     {
     #if USE_LIKWID

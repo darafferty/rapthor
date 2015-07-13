@@ -16,7 +16,6 @@
 #include "AlgorithmParameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
 
-
 namespace idg {
 
   enum DomainAtoDomainB {

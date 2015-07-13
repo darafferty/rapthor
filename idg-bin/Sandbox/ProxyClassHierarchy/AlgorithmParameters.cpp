@@ -156,11 +156,9 @@ namespace idg {
 					  unsigned int chunk_size,
 					  unsigned int job_size)
   {
-    cerr << "job_size seems to be not a compile time constant" << endl;
     stringstream parameters;
     parameters << " -DSUBGRIDSIZE=" << subgrid_size;
     parameters << " -DCHUNKSIZE=" << chunk_size;
-    // no jobsize here?
     return parameters.str();
   }
 

@@ -1,6 +1,5 @@
-
-#ifndef RUNTIME_WRAPPER_H
-#define RUNTIME_WRAPPER_H
+#ifndef IDG_RUNTIME_WRAPPER_H
+#define IDG_RUNTIME_WRAPPER_H
 
 #include <iostream>
 #include <sstream>

@@ -20,25 +20,25 @@ namespace idg {
   typedef std::string Compilerflags;
 
   /// Define the environment names searched for in ENV
-  const std::string ENV_CC = "CC";
-  const std::string ENV_CFLAGS = "CFLAGS";
-  const std::string ENV_CPP = "CPP";
-  const std::string ENV_CPPFLAGS = "CPPFLAGS";
-  const std::string ENV_FC = "FC";
-  const std::string ENV_FFLAGS = "FFLAGS";
-  const std::string ENV_NVCC = "NVCC";
-  const std::string ENV_NVCCFLAGS = "NVCCLAGS";
+  static const std::string ENV_CC = "CC";
+  static const std::string ENV_CFLAGS = "CFLAGS";
+  static const std::string ENV_CPP = "CPP";
+  static const std::string ENV_CPPFLAGS = "CPPFLAGS";
+  static const std::string ENV_FC = "FC";
+  static const std::string ENV_FFLAGS = "FFLAGS";
+  static const std::string ENV_NVCC = "NVCC";
+  static const std::string ENV_NVCCFLAGS = "NVCCLAGS";
   // extend to MPICC, ...
 
   /// Internal identifiers (keys) for various settings
-  const std::string CC = "CC";
-  const std::string CFLAGS = "CFLAGS";
-  const std::string CPP = "CPP";
-  const std::string CPPFLAGS = "CPPFLAGS";
-  const std::string FC = "FC";
-  const std::string FFLAGS = "FFLAGS";
-  const std::string NVCC = "NVCC";
-  const std::string NVCCFLAGS = "NVCCLAGS";
+  static const std::string CC = "CC";
+  static const std::string CFLAGS = "CFLAGS";
+  static const std::string CPP = "CPP";
+  static const std::string CPPFLAGS = "CPPFLAGS";
+  static const std::string FC = "FC";
+  static const std::string FFLAGS = "FFLAGS";
+  static const std::string NVCC = "NVCC";
+  static const std::string NVCCFLAGS = "NVCCLAGS";
   // extend to MPICC, ...
 
 
