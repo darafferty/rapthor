@@ -10,7 +10,7 @@ namespace idg {
   ProxyInfo::ProxyInfo() // set default values
 	: path_to_src("./src"),
 	  path_to_lib("./lib")
-  { }
+  { delete_libs=true; }
 
 
   void ProxyInfo::add_lib(std::string libname) 
