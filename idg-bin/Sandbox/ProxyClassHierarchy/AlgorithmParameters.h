@@ -14,9 +14,9 @@
 namespace idg {
 
   /// Define the environment names searched for
-  const std::string ENV_SUBGRIDSIZE = "SUBGRIDSIZE"; 
-  const std::string ENV_CHUNKSIZE = "CHUNKSIZE";
-  const std::string ENV_JOBSIZE = "JOBSIZE"; // to all routines
+  static const std::string ENV_SUBGRIDSIZE = "SUBGRIDSIZE"; 
+  static const std::string ENV_CHUNKSIZE = "CHUNKSIZE";
+  static const std::string ENV_JOBSIZE = "JOBSIZE"; // to all routines
 
   class AlgorithmParameters 
   {

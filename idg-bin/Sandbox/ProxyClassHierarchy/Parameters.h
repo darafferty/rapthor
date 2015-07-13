@@ -14,17 +14,17 @@
 namespace idg {
 
   /// Define the environment names searched for
-  const std::string ENV_NR_STATIONS = "NR_STATIONS";
-  const std::string ENV_NR_TIMESTEPS = "NR_TIME"; // for compatibility
-  const std::string ENV_NR_CHANNELS = "NR_CHANNELS";
-  const std::string ENV_NR_POLARIZATIONS = "NR_POLARIZATIONS"; // for future use
-  const std::string ENV_FIELD_OF_VIEW = "FIELD_OF_VIEW";  
-  const std::string ENV_GRIDSIZE = "GRIDSIZE";
-  const std::string ENV_WPLANES = "WPLANES"; // for future use
+  static const std::string ENV_NR_STATIONS = "NR_STATIONS";
+  static const std::string ENV_NR_TIMESTEPS = "NR_TIME"; // for compatibility
+  static const std::string ENV_NR_CHANNELS = "NR_CHANNELS";
+  static const std::string ENV_NR_POLARIZATIONS = "NR_POLARIZATIONS"; // for future use
+  static const std::string ENV_FIELD_OF_VIEW = "FIELD_OF_VIEW";  
+  static const std::string ENV_GRIDSIZE = "GRIDSIZE";
+  static const std::string ENV_WPLANES = "WPLANES"; // for future use
 
   /// set MIN/MAX values 
-  const float MIN_FOV = 0.0;
-  const float MAX_FOV = 1.0; // max. field of view; Q: what is the correct value here?  
+  static const float MIN_FOV = 0.0;
+  static const float MAX_FOV = 1.0; // max. field of view; Q: what is the correct value here?  
   
 
   class Parameters 

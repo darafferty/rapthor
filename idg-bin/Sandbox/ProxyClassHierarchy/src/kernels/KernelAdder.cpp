@@ -14,6 +14,9 @@ void kernel_adder(
     const SubGridType __restrict__ *subgrid,
     GridType          __restrict__ *grid
     ) {
+
+  printf("Running: kernel_adder\n");
+
     #pragma omp parallel
     {
     #if USE_LIKWID

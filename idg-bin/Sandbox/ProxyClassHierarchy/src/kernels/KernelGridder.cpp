@@ -30,6 +30,8 @@ void kernel_gridder(
 	const BaselineType	   __restrict__ *baselines,		
 	SubGridType			   __restrict__ *subgrid
 	) {
+
+  printf("Running: kernel_gridder\n");
 	
 	omp_set_nested(1);
 	
