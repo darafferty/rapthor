@@ -97,7 +97,7 @@ namespace idg {
 
       ProxyInfo p;
 
-      p.set_path_to_src("./src/kernels");
+      p.set_path_to_src("./kernels/SMP/reference");
       p.set_path_to_lib("./lib"); // change to use tmp dir by default
 
       srand(time(NULL));
