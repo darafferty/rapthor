@@ -9,6 +9,10 @@
 * Check if loaded .so has the correct paramters (importent if not cerated
   before, but existing loaded)
 * put .so in tmp/tmp-XXXXXX by default
+* copy constructor, copy assignement for SMP class
+* create libidg.{a|so} out of common files; application links to it, which
+  is shown in examples
+* set sensible values as defaults
 
 
 ## FFTW3 linking problem
