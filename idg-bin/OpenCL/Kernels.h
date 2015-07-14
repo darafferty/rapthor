@@ -56,6 +56,27 @@ class KernelDegridder {
 
 
 /*
+    Adder
+*/
+class KernelAdder {
+    public:
+        KernelAdder(cl::Program &program, const char *kernel_name);
+        void launchAsync(
+            cl::CommandQueue &queue, int jobsize, int bl_offset,
+            cl::Buffer &d_uvw,
+            cl::Buffer &d_subgrid,
+            cl::Buffer &d_grid);
+
+    	static uint64_t flops(int jobsize);
+		static uint64_t bytes(int jobsize);
+
+	private:
+	    cl::Kernel kernel;
+        PerformanceCounter counter;
+};
+
+
+/*
     FFT
 */
 #define FFT_LAYOUT_YXP (-1)

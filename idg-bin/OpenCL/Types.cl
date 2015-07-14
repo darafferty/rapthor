@@ -8,6 +8,7 @@
     Structures
 */
 typedef struct { float u, v, w; } UVW;
+typedef struct { int x, y; } Coordinate;
 typedef struct { int station1, station2; } Baseline;
 
 
