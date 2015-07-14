@@ -25,7 +25,7 @@ void kernel_splitter(
     #endif
     #pragma omp for
     for (int bl = 0; bl < jobsize; bl++) {
-        for (int chunk = 0; chunk < CHUNKSIZE; chunk++) {
+        for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
             // Get first and last UVW coordinate
             int time_offset = chunk * CHUNKSIZE;
 		    UVW uvw_first = (*uvw)[bl][time_offset];
