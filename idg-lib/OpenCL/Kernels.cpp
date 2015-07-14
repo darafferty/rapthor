@@ -160,3 +160,42 @@ uint64_t KernelFFT::flops(int size, int batch) {
 uint64_t KernelFFT::bytes(int size, int batch) {
 	return 1ULL * 2 * batch * size * size * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
 }
+
+
+KernelAdder::KernelAdder(cl::Program &program, const char *kernel_name) :
+    counter("adder"),
+    kernel(program, kernel_name) {}
+
+void KernelAdder::launchAsync(
+    cl::CommandQueue &queue, int jobsize, int bl_offset,
+    cl::Buffer &d_uvw,
+    cl::Buffer &d_subgrid,
+    cl::Buffer &d_grid) {
+    int wgSize = 64;
+    cl::NDRange globalSize(jobsize * wgSize, 1);
+    cl::NDRange localSize(wgSize, 1);
+    kernel.setArg(0, bl_offset);
+    kernel.setArg(1, d_uvw);
+    kernel.setArg(2, d_subgrid);
+    kernel.setArg(3, d_grid);
+    try {
+        cl::Event event;
+        queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+        counter.doOperation(event, flops(jobsize), bytes(jobsize));
+    } catch (cl::Error &error) {
+        std::cerr << "Error launching adder: " << error.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+uint64_t KernelAdder::flops(int jobsize) {
+	return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2;
+}
+
+uint64_t KernelAdder::bytes(int jobsize) {
+	return
+    // Coordinate
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * 2 * sizeof(int) +
+    // Grid
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+}
