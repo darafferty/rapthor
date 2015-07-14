@@ -29,11 +29,11 @@
 /*
     Enable/disable parts of the program
 */
-#define RUN_GRIDDER		1
-#define RUN_ADDER		0
+#define RUN_GRIDDER		0
+#define RUN_ADDER		1
 #define RUN_SPLITTER    0
 #define RUN_FFT         0
-#define RUN_DEGRIDDER	1
+#define RUN_DEGRIDDER	0
 
 
 /*
@@ -48,7 +48,7 @@ u   Performance reporting
 */
 #define GRIDDER   1
 #define DEGRIDDER 1
-#define ADDER     0
+#define ADDER     1
 #define SPLITTER  0
 #define FFT       1
 #define INPUT     1
@@ -384,6 +384,84 @@ void run_degridder(
 }
 
 /*
+    Adder
+*/
+void run_adder(
+    cl::Context &context, cl::Device &device, cl::CommandQueue &queue,
+    int nr_streams, int jobsize,
+    cl::Buffer &h_subgrid, cl::Buffer &h_uvw,
+    cl::Buffer &h_grid) {
+
+    // Compile kernels
+    cl::Program program = compile(SOURCE_ADDER, context, device);
+
+    // Get kernels
+    KernelAdder kernel_adder = KernelAdder(program, KERNEL_ADDER);
+   
+    // Performance counters for io 
+    PerformanceCounter counter_input_uvw("input uvw");
+    PerformanceCounter counter_input_subgrid("input subgrid");
+    PerformanceCounter counter_output_grid("output grid");
+
+    // Allocate device memory for grid
+    cl::Buffer d_grid(context, CL_MEM_READ_WRITE, sizeof(GridType));
+
+    // Start adder
+    double time_start = omp_get_wtime();
+    std::clog << "--- jobs ---" << std::endl;
+	#pragma omp parallel num_threads(nr_streams)
+	{
+	    // Initialize
+        int current_jobsize = jobsize;
+        int thread_num = omp_get_thread_num();
+	    
+	    // Private device memory
+        cl::Buffer d_uvw     = cl::Buffer(context, CL_MEM_READ_ONLY,  UVW_SIZE);
+        cl::Buffer d_subgrid = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
+	    
+        // Events for io
+        cl::Event events[2];
+
+        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
+            // Prevent overflow
+		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+        
+		    // Number of elements in batch
+		    size_t uvw_offset     = bl * NR_TIME * sizeof(UVW);
+		    size_t subgrid_offset = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+            
+	        // Copy input data to device
+            #if INPUT
+            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[0]);
+            counter_input_uvw.doOperation(events[0], 0, UVW_SIZE);
+            queue.enqueueCopyBuffer(h_subgrid, d_subgrid, subgrid_offset, 0, SUBGRID_SIZE, NULL, &events[1]);
+            counter_input_subgrid.doOperation(events[1], 0, SUBGRID_SIZE);
+            #endif
+
+            // Launch adder kernel
+            #if ADDER
+            kernel_adder.launchAsync(queue, current_jobsize, bl, d_uvw, d_subgrid, d_grid);
+            #endif
+        }
+
+        // Copy grid to host
+        queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof(GridType), NULL, &events[2]);
+        counter_output_grid.doOperation(events[2], 0, sizeof(GridType));
+        #pragma omp barrier
+        events[2].wait();
+	}
+
+    // Report overall performance
+    double time_end = omp_get_wtime();
+    std::clog << std::endl;
+    std::clog << "--- overall ---" << std::endl;
+    double total_runtime = time_end - time_start;
+    report_subgrids(total_runtime);
+    std::clog << std::endl;
+
+ }
+ 
+/*
 	Main
 */
 int main(int argc, char **argv) {
@@ -481,14 +559,22 @@ int main(int argc, char **argv) {
     queue.enqueueWriteBuffer(h_subgrid,      CL_TRUE, 0, sizeof(SubGridType),      subgrid,      0, NULL);
     queue.enqueueWriteBuffer(h_grid,         CL_TRUE, 0, sizeof(GridType),         grid,         0, NULL);
     
-    // Run Gridder
+    // Run gridder
 	#if RUN_GRIDDER
 	std::clog << ">>> Run gridder" << std::endl;
     run_gridder(
 	    context, device, queue, nr_streams, jobsize, h_visibilities, h_uvw, h_subgrid,
 	    d_wavenumbers, d_spheroidal, d_aterm, d_baselines);
 	#endif
-    
+
+    // Run adder
+    #if RUN_ADDER
+	std::clog << ">>> Run adder" << std::endl;
+    run_adder(
+        context, device, queue, nr_streams, jobsize, h_subgrid, h_uvw, h_grid
+    );
+    #endif
+
     // Run degridder
     #if RUN_DEGRIDDER
 	std::clog << ">>> Run degridder" << std::endl;
