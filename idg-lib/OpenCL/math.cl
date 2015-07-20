@@ -34,7 +34,7 @@ inline void atomic_add_float(volatile __global float *a, const float b) {
     } while (atomic_cmpxchg((volatile __global unsigned int *)a, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
-inline void atomicAdd(fcomplex *a, fcomplex b) {
-    atomic_add_float(&(*a)->x, b.x);
-    atomic_add_float(&(*a)->y, b.x);
+inline void atomicAdd(__global fcomplex *a, fcomplex b) {
+    atomic_add_float(&a->x, b.x);
+    atomic_add_float(&a->y, b.x);
 }
