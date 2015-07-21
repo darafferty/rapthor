@@ -1,7 +1,7 @@
 #include "Kernels.h"
 
-KernelGridder::KernelGridder(cl::Program &program, const char *kernel_name) :
-    counter("gridder"),
+KernelGridder::KernelGridder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
     kernel(program, kernel_name) {}
 
 void KernelGridder::launchAsync(
@@ -58,8 +58,8 @@ uint64_t KernelGridder::bytes(int jobsize) {
 }
 
 
-KernelDegridder::KernelDegridder(cl::Program &program, const char *kernel_name) :
-    counter("degridder"),
+KernelDegridder::KernelDegridder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
     kernel(program, kernel_name) {}
 
 void KernelDegridder::launchAsync(
@@ -116,7 +116,7 @@ uint64_t KernelDegridder::bytes(int jobsize) {
 }
 
 
-KernelFFT::KernelFFT() : counter("fft") {
+KernelFFT::KernelFFT(PerformanceCounter &counter) : counter(counter) {
     uninitialized = true;
 }
 
@@ -162,8 +162,8 @@ uint64_t KernelFFT::bytes(int size, int batch) {
 }
 
 
-KernelAdder::KernelAdder(cl::Program &program, const char *kernel_name) :
-    counter("adder"),
+KernelAdder::KernelAdder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
     kernel(program, kernel_name) {}
 
 void KernelAdder::launchAsync(
@@ -193,6 +193,44 @@ uint64_t KernelAdder::flops(int jobsize) {
 }
 
 uint64_t KernelAdder::bytes(int jobsize) {
+	return
+    // Coordinate
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * 2 * sizeof(int) +
+    // Grid
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+}
+
+KernelSplitter::KernelSplitter(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
+    kernel(program, kernel_name) {}
+
+void KernelSplitter::launchAsync(
+    cl::CommandQueue &queue, int jobsize, int bl_offset,
+    cl::Buffer &d_uvw,
+    cl::Buffer &d_subgrid,
+    cl::Buffer &d_grid) {
+    int wgSize = 64;
+    cl::NDRange globalSize(jobsize * wgSize, 1);
+    cl::NDRange localSize(wgSize, 1);
+    kernel.setArg(0, bl_offset);
+    kernel.setArg(1, d_uvw);
+    kernel.setArg(2, d_subgrid);
+    kernel.setArg(3, d_grid);
+    try {
+        cl::Event event;
+        queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+        counter.doOperation(event, flops(jobsize), bytes(jobsize));
+    } catch (cl::Error &error) {
+        std::cerr << "Error launching splitter: " << error.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+uint64_t KernelSplitter::flops(int jobsize) {
+	return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2;
+}
+
+uint64_t KernelSplitter::bytes(int jobsize) {
 	return
     // Coordinate
     1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * 2 * sizeof(int) +
