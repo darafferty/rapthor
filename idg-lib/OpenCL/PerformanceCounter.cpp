@@ -4,15 +4,12 @@ PerformanceCounter::PerformanceCounter(const char *name) :
     name(name),
     total_flops(0),
     total_bytes(0),
-    total_runtime(0) {}
-
-PerformanceCounter::~PerformanceCounter() {
-    #if REPORT_TOTAL
-    report(name, total_runtime, total_flops, total_bytes);
-    #endif
-}
+    total_runtime(0),
+    nr_callbacks(0) {}
 
 void PerformanceCounter::doOperation(cl::Event &event, uint64_t flops, uint64_t bytes) {
+    #pragma omp atomic
+    nr_callbacks++;
     callback = [=] (cl_event _event) {
         cl_ulong start, end;
         if (clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
@@ -23,10 +20,14 @@ void PerformanceCounter::doOperation(cl::Event &event, uint64_t flops, uint64_t 
             #if REPORT_VERBOSE
             report(name, runtime, flops, bytes);
             #endif
+            #pragma omp atomic
+            nr_callbacks--;
         }
     };
     event.setCallback(CL_COMPLETE, &PerformanceCounter::eventCompleteCallBack, this);
+    #pragma omp atomic
     total_flops += flops;
+    #pragma omp atomic
     total_bytes += bytes;
 }
 
@@ -46,4 +47,16 @@ void PerformanceCounter::report(const char *name, double runtime, uint64_t flops
 		std::clog << ", " << bytes / runtime * 1e-9 << " GB/s";
     std::clog << std::endl;
 	}
+}
+
+void PerformanceCounter::report_total() {
+    #if REPORT_TOTAL
+    report(name, total_runtime, total_flops, total_bytes);
+    #endif
+}
+
+void PerformanceCounter::wait() {
+    while (nr_callbacks > 0) {
+        usleep(100);
+    }
 }

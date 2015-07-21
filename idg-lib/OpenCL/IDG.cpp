@@ -30,8 +30,8 @@
     Enable/disable parts of the program
 */
 #define RUN_GRIDDER		0
-#define RUN_ADDER		1
-#define RUN_SPLITTER    0
+#define RUN_ADDER		0
+#define RUN_SPLITTER    1
 #define RUN_FFT         0
 #define RUN_DEGRIDDER	0
 
@@ -49,7 +49,7 @@ u   Performance reporting
 #define GRIDDER   1
 #define DEGRIDDER 1
 #define ADDER     1
-#define SPLITTER  0
+#define SPLITTER  1
 #define FFT       1
 #define INPUT     1
 #define OUTPUT    1
@@ -445,8 +445,10 @@ void run_adder(
         }
 
         // Copy grid to host
+        #if OUTPUT
         queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof(GridType), NULL, &events[2]);
         counter_output_grid.doOperation(events[2], 0, sizeof(GridType));
+        #endif
         #pragma omp barrier
         events[2].wait();
 	}
@@ -458,9 +460,97 @@ void run_adder(
     double total_runtime = time_end - time_start;
     report_subgrids(total_runtime);
     std::clog << std::endl;
-
- }
+}
  
+/*
+    Splitter
+*/
+void run_splitter(
+    cl::Context &context, cl::Device &device, cl::CommandQueue &queue,
+    int nr_streams, int jobsize,
+    cl::Buffer &h_subgrid, cl::Buffer &h_uvw,
+    cl::Buffer &h_grid) {
+
+    // Performance counters
+    PerformanceCounter counter_input_grid("input grid");
+    PerformanceCounter counter_input_uvw("input uvw");
+    PerformanceCounter counter_output_subgrid("output subgrid");
+    PerformanceCounter counter_splitter("splitter");
+
+    // Compile kernels
+    cl::Program program = compile(SOURCE_SPLITTER, context, device);
+
+    // Get kernels
+    KernelSplitter kernel_splitter = KernelSplitter(program, KERNEL_SPLITTER, counter_splitter);
+
+    // Copy grid to device
+    cl::Buffer d_grid(context, CL_MEM_READ_WRITE, sizeof(GridType));
+    cl::Event event;
+    queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof(GridType), NULL, &event);
+    counter_input_grid.doOperation(event, 0, sizeof(GridType));
+
+    // Start splitter
+    double time_start = omp_get_wtime();
+    std::clog << "--- jobs ---" << std::endl;
+
+	#pragma omp parallel num_threads(nr_streams)
+	{
+	    // Initialize
+        int current_jobsize = jobsize;
+        int thread_num = omp_get_thread_num();
+	    
+	    // Private device memory
+        cl::Buffer d_uvw     = cl::Buffer(context, CL_MEM_READ_ONLY,  UVW_SIZE);
+        cl::Buffer d_subgrid = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
+	    
+        // Events for io
+        cl::Event events[2];
+
+        for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
+            // Prevent overflow
+		    current_jobsize = bl + jobsize > NR_BASELINES ? NR_BASELINES - bl : jobsize;
+        
+		    // Number of elements in batch
+		    size_t uvw_offset     = bl * NR_TIME * sizeof(UVW);
+		    size_t subgrid_offset = bl * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+            
+	        // Copy input data to device
+            #if INPUT
+            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, UVW_SIZE, NULL, &events[0]);
+            counter_input_uvw.doOperation(events[0], 0, UVW_SIZE);
+            #endif
+
+            // Launch splitter kernel
+            #if SPLITTER 
+            kernel_splitter.launchAsync(queue, current_jobsize, bl, d_uvw, d_subgrid, d_grid);
+            #endif
+
+            // Copy subgrid to host
+            #if OUTPUT
+            queue.enqueueCopyBuffer(d_subgrid, h_subgrid, 0, subgrid_offset, SUBGRID_SIZE, NULL, &events[1]);
+            counter_output_subgrid.doOperation(events[1], 0, SUBGRID_SIZE);
+            #endif
+        }
+
+        #pragma omp barrier
+        queue.finish();
+        counter_output_subgrid.wait();
+	}
+
+    // Report overall performance
+    double time_end = omp_get_wtime();
+    std::clog << std::endl;
+    std::clog << "--- overall ---" << std::endl;
+    counter_input_grid.report_total();
+    counter_input_uvw.report_total();
+    counter_splitter.report_total();
+    counter_output_subgrid.report_total();
+    double total_runtime = time_end - time_start;
+    PerformanceCounter::report("total", total_runtime, 0, 0);
+    report_subgrids(total_runtime);
+    std::clog << std::endl;
+}
+
 /*
 	Main
 */
@@ -582,6 +672,15 @@ int main(int argc, char **argv) {
 	    context, device, queue, nr_streams, jobsize, h_visibilities, h_uvw, h_subgrid,
 	    d_wavenumbers, d_spheroidal, d_aterm, d_baselines);
 	#endif
+
+    // Run splitter
+    #if RUN_SPLITTER
+	std::clog << ">>> Run splitter" << std::endl;
+    run_splitter(
+        context, device, queue, nr_streams, jobsize, h_subgrid, h_uvw, h_grid
+    );
+    #endif
+
 
 	// Free memory
 	free(wavenumbers);
