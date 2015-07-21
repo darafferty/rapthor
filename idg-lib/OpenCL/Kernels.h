@@ -60,7 +60,7 @@ class KernelDegridder {
 */
 class KernelAdder {
     public:
-        KernelAdder(cl::Program &program, const char *kernel_name);
+        KernelAdder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter);
         void launchAsync(
             cl::CommandQueue &queue, int jobsize, int bl_offset,
             cl::Buffer &d_uvw,
@@ -72,7 +72,7 @@ class KernelAdder {
 
 	private:
 	    cl::Kernel kernel;
-        PerformanceCounter counter;
+        PerformanceCounter &counter;
 };
 
 
