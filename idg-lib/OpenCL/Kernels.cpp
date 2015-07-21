@@ -1,7 +1,7 @@
 #include "Kernels.h"
 
-KernelGridder::KernelGridder(cl::Program &program, const char *kernel_name) :
-    counter("gridder"),
+KernelGridder::KernelGridder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
     kernel(program, kernel_name) {}
 
 void KernelGridder::launchAsync(
@@ -58,8 +58,8 @@ uint64_t KernelGridder::bytes(int jobsize) {
 }
 
 
-KernelDegridder::KernelDegridder(cl::Program &program, const char *kernel_name) :
-    counter("degridder"),
+KernelDegridder::KernelDegridder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
     kernel(program, kernel_name) {}
 
 void KernelDegridder::launchAsync(
@@ -116,7 +116,7 @@ uint64_t KernelDegridder::bytes(int jobsize) {
 }
 
 
-KernelFFT::KernelFFT() : counter("fft") {
+KernelFFT::KernelFFT(PerformanceCounter &counter) : counter(counter) {
     uninitialized = true;
 }
 

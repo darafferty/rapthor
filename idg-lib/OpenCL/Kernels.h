@@ -18,7 +18,7 @@
 */
 class KernelGridder {
     public:
-        KernelGridder(cl::Program &program, const char *kernel_name);
+        KernelGridder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter);
         void launchAsync(
             cl::CommandQueue &queue, int jobsize, int bl_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
@@ -30,7 +30,7 @@ class KernelGridder {
 	
 	private:
 	    cl::Kernel kernel;
-        PerformanceCounter counter;
+        PerformanceCounter &counter;
 };
 
 
@@ -39,7 +39,7 @@ class KernelGridder {
 */
 class KernelDegridder {
     public:
-        KernelDegridder(cl::Program &program, const char *kernel_name);
+        KernelDegridder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter);
         void launchAsync(
             cl::CommandQueue &queue, int jobsize, int bl_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
@@ -51,7 +51,7 @@ class KernelDegridder {
 	
 	private:
 	    cl::Kernel kernel;
-        PerformanceCounter counter;
+        PerformanceCounter &counter;
 };
 
 
@@ -105,7 +105,7 @@ class KernelSplitter {
 
 class KernelFFT {
 	public:
-        KernelFFT();
+        KernelFFT(PerformanceCounter &counter);
         void plan(cl::Context &context, int size, int batch, int layout);
         void launchAsync(
             cl::CommandQueue &queue, cl::Buffer &data, clfftDirection direction);
@@ -118,5 +118,5 @@ class KernelFFT {
         int planned_batch;
         int planned_layout;
         clfftPlanHandle fft;
-        PerformanceCounter counter;
+        PerformanceCounter &counter;
 };

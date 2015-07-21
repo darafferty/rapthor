@@ -8,27 +8,28 @@ PerformanceCounter::PerformanceCounter(const char *name) :
     nr_callbacks(0) {}
 
 void PerformanceCounter::doOperation(cl::Event &event, uint64_t flops, uint64_t bytes) {
+    usleep(1000);
     #pragma omp atomic
-    nr_callbacks++;
+    nr_callbacks += 1;
     callback = [=] (cl_event _event) {
-        cl_ulong start, end;
-        if (clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
-            clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
-            double runtime = (end - start) * 1e-9;
-            #pragma omp atomic
-            total_runtime += runtime;
-            #if REPORT_VERBOSE
-            report(name, runtime, flops, bytes);
-            #endif
-            #pragma omp atomic
-            nr_callbacks--;
-        }
-    };
-    event.setCallback(CL_COMPLETE, &PerformanceCounter::eventCompleteCallBack, this);
-    #pragma omp atomic
-    total_flops += flops;
-    #pragma omp atomic
-    total_bytes += bytes;
+            cl_ulong start, end;
+                if (clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
+                    clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
+                    double runtime = (end - start) * 1e-9;
+                    #pragma omp atomic
+                    total_runtime += runtime;
+                    #if REPORT_VERBOSE
+                    report(name, runtime, flops, bytes);
+                    #endif
+                    #pragma omp atomic
+                    nr_callbacks -= 1;
+                }
+        };
+        event.setCallback(CL_COMPLETE, &PerformanceCounter::eventCompleteCallBack, this);
+        #pragma omp atomic
+        total_flops += flops;
+        #pragma omp atomic
+        total_bytes += bytes;
 }
 
 void PerformanceCounter::eventCompleteCallBack(cl_event event, cl_int, void *user_data) {
@@ -57,6 +58,7 @@ void PerformanceCounter::report_total() {
 
 void PerformanceCounter::wait() {
     while (nr_callbacks > 0) {
-        usleep(100);
+        //std::clog << name << " " << nr_callbacks << std::endl;
+        usleep(1000);
     }
 }
