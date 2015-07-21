@@ -29,11 +29,11 @@
 /*
     Enable/disable parts of the program
 */
-#define RUN_GRIDDER		0
+#define RUN_GRIDDER		1
 #define RUN_ADDER		1
 #define RUN_SPLITTER    1
-#define RUN_FFT         0
-#define RUN_DEGRIDDER	0
+#define RUN_FFT         1
+#define RUN_DEGRIDDER	1
 
 
 /*
@@ -169,7 +169,7 @@ cl::Program compile(const char *filename, cl::Context context, cl::Device device
         std::string msg;
         program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
 	    #if BUILD_LOG
-        std::clog << msg << std::endl;
+        std::clog << msg;
 	    #endif
     } catch (cl::Error &error) {
         if (strcmp(error.what(), "clBuildProgram") == 0) {
@@ -193,19 +193,21 @@ void run_gridder(
     cl::Buffer &h_subgrid, cl::Buffer &d_wavenumbers,
     cl::Buffer &d_spheroidal, cl::Buffer &d_aterm,
     cl::Buffer &d_baselines) {
+  
+    // Performance counters for io 
+    PerformanceCounter counter_input_visibilities("input vis");
+    PerformanceCounter counter_input_uvw("input uvw");
+    PerformanceCounter counter_output_subgrid("output subgrid");
+    PerformanceCounter counter_gridder("gridder");
+    PerformanceCounter counter_fft("fft");
 
     // Compile kernels
     cl::Program program = compile(SOURCE_GRIDDER, context, device);
 
     // Get kernels
-    KernelGridder kernel_gridder = KernelGridder(program, KERNEL_GRIDDER);
-    KernelFFT kernel_fft;
-   
-    // Performance counters for io 
-    PerformanceCounter counter_input_visibilities("input vis");
-    PerformanceCounter counter_input_uvw("input uvw");
-    PerformanceCounter counter_output_subgrid("output subgrid");
-
+    KernelGridder kernel_gridder = KernelGridder(program, KERNEL_GRIDDER, counter_gridder);
+    KernelFFT kernel_fft = KernelFFT(counter_fft);
+ 
     // Start gridder
     double time_start = omp_get_wtime();
     std::clog << "--- jobs ---" << std::endl;
@@ -268,14 +270,20 @@ void run_gridder(
 
         // Wait for final memory transfer
         #pragma omp barrier
-        events[2].wait();
+        counter_output_subgrid.wait(); 
 	}
     
     // Report overall performance
     double time_end = omp_get_wtime();
     std::clog << std::endl;
     std::clog << "--- overall ---" << std::endl;
+    counter_input_uvw.report_total();
+    counter_input_visibilities.report_total();
+    counter_gridder.report_total();
+    counter_fft.report_total();
+    counter_output_subgrid.report_total();
     double total_runtime = time_end - time_start;
+    PerformanceCounter::report("total", total_runtime, 0, 0);
     report_visibilities(total_runtime);
     std::clog << std::endl;
 
@@ -294,19 +302,21 @@ void run_degridder(
     cl::Buffer &d_spheroidal, cl::Buffer &d_aterm,
     cl::Buffer &d_baselines) {
 
-    // Compile kernels
-    cl::Program program = compile(SOURCE_DEGRIDDER, context, device);
-
-    // Get kernels
-    KernelDegridder kernel_degridder = KernelDegridder(program, KERNEL_DEGRIDDER);
-    KernelFFT kernel_fft;
-   
     // Performance counters for io 
     PerformanceCounter counter_input_uvw("input uvw");
     PerformanceCounter counter_input_subgrid("input subgrid");
     PerformanceCounter counter_output_visibilities("output vis");
+    PerformanceCounter counter_fft("fft");
+    PerformanceCounter counter_degridder("degridder");
 
-    // Start gridder
+    // Compile kernels
+    cl::Program program = compile(SOURCE_DEGRIDDER, context, device);
+
+    // Get kernels
+    KernelDegridder kernel_degridder = KernelDegridder(program, KERNEL_DEGRIDDER, counter_degridder);
+    KernelFFT kernel_fft = KernelFFT(counter_fft);
+
+     // Start degridder
     double time_start = omp_get_wtime();
     std::clog << "--- jobs ---" << std::endl;
 	#pragma omp parallel num_threads(nr_streams)
@@ -316,9 +326,9 @@ void run_degridder(
         int thread_num = omp_get_thread_num();
 	    
 	    // Private device memory
-        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  VISIBILITIES_SIZE);
+        cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_WRITE_ONLY, VISIBILITIES_SIZE);
         cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  UVW_SIZE);
-        cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
+        cl::Buffer d_subgrid      = cl::Buffer(context, CL_MEM_READ_ONLY,  SUBGRID_SIZE);
 	    
         // Events for io
         cl::Event events[3];
@@ -351,7 +361,7 @@ void run_degridder(
 
             // Launch FFT
             #if FFT
-            kernel_fft.launchAsync(queue, d_subgrid, CLFFT_BACKWARD);
+            kernel_fft.launchAsync(queue, d_subgrid, CLFFT_FORWARD);
             #endif
 
             // Launch degridder kernel
@@ -359,16 +369,20 @@ void run_degridder(
             kernel_degridder.launchAsync(queue, current_jobsize, bl, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_baselines, d_subgrid);
             #endif
 
-            // Copy subgrid to host
+            // Copy visibilities to host
             #if OUTPUT
             queue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, VISIBILITIES_SIZE, NULL, &events[2]);
             counter_output_visibilities.doOperation(events[2], 0, VISIBILITIES_SIZE);
             #endif
         }
 
-        // Wait for final memory transfer
+        // Wait for all reports
+        counter_input_uvw.wait();
+        counter_input_subgrid.wait();
+        counter_fft.wait();
+        counter_degridder.wait();
+        counter_output_visibilities.wait();
         #pragma omp barrier
-        events[2].wait();
 	}
 
     // Report overall performance
@@ -376,6 +390,12 @@ void run_degridder(
     std::clog << std::endl;
     std::clog << "--- overall ---" << std::endl;
     double total_runtime = time_end - time_start;
+    counter_input_uvw.report_total();
+    counter_input_subgrid.report_total();
+    counter_fft.report_total();
+    counter_degridder.report_total();
+    counter_output_visibilities.report_total();
+    PerformanceCounter::report("total", total_runtime, 0, 0);
     report_visibilities(total_runtime);
     std::clog << std::endl;
 
@@ -671,14 +691,6 @@ int main(int argc, char **argv) {
     );
     #endif
 
-    // Run degridder
-    #if RUN_DEGRIDDER
-	std::clog << ">>> Run degridder" << std::endl;
-	run_degridder(
-	    context, device, queue, nr_streams, jobsize, h_visibilities, h_uvw, h_subgrid,
-	    d_wavenumbers, d_spheroidal, d_aterm, d_baselines);
-	#endif
-
     // Run splitter
     #if RUN_SPLITTER
 	std::clog << ">>> Run splitter" << std::endl;
@@ -687,6 +699,14 @@ int main(int argc, char **argv) {
     );
     #endif
 
+
+    // Run degridder
+    #if RUN_DEGRIDDER
+	std::clog << ">>> Run degridder" << std::endl;
+	run_degridder(
+	    context, device, queue, nr_streams, jobsize, h_visibilities, h_uvw, h_subgrid,
+	    d_wavenumbers, d_spheroidal, d_aterm, d_baselines);
+	#endif
 
 	// Free memory
 	free(wavenumbers);
