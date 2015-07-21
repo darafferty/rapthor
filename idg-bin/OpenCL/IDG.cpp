@@ -30,7 +30,7 @@
     Enable/disable parts of the program
 */
 #define RUN_GRIDDER		0
-#define RUN_ADDER		0
+#define RUN_ADDER		1
 #define RUN_SPLITTER    1
 #define RUN_FFT         0
 #define RUN_DEGRIDDER	0
@@ -391,18 +391,19 @@ void run_adder(
     int nr_streams, int jobsize,
     cl::Buffer &h_subgrid, cl::Buffer &h_uvw,
     cl::Buffer &h_grid) {
+  
+    // Performance counters for io 
+    PerformanceCounter counter_input_uvw("input uvw");
+    PerformanceCounter counter_input_subgrid("input subgrid");
+    PerformanceCounter counter_output_grid("output grid");
+    PerformanceCounter counter_adder("adder");
 
     // Compile kernels
     cl::Program program = compile(SOURCE_ADDER, context, device);
 
     // Get kernels
-    KernelAdder kernel_adder = KernelAdder(program, KERNEL_ADDER);
-   
-    // Performance counters for io 
-    PerformanceCounter counter_input_uvw("input uvw");
-    PerformanceCounter counter_input_subgrid("input subgrid");
-    PerformanceCounter counter_output_grid("output grid");
-
+    KernelAdder kernel_adder = KernelAdder(program, KERNEL_ADDER, counter_adder);
+ 
     // Allocate device memory for grid
     cl::Buffer d_grid(context, CL_MEM_READ_WRITE, sizeof(GridType));
 
@@ -420,7 +421,7 @@ void run_adder(
         cl::Buffer d_subgrid = cl::Buffer(context, CL_MEM_WRITE_ONLY, SUBGRID_SIZE);
 	    
         // Events for io
-        cl::Event events[2];
+        cl::Event events[3];
 
         for (int bl = thread_num * jobsize; bl < NR_BASELINES; bl += nr_streams * jobsize)  {
             // Prevent overflow
@@ -450,14 +451,19 @@ void run_adder(
         counter_output_grid.doOperation(events[2], 0, sizeof(GridType));
         #endif
         #pragma omp barrier
-        events[2].wait();
+        counter_output_grid.wait();
 	}
 
     // Report overall performance
     double time_end = omp_get_wtime();
     std::clog << std::endl;
     std::clog << "--- overall ---" << std::endl;
+    counter_input_uvw.report_total();
+    counter_input_subgrid.report_total();
+    counter_adder.report_total();
+    counter_output_grid.report_total();
     double total_runtime = time_end - time_start;
+    PerformanceCounter::report("total", total_runtime, 0, 0);
     report_subgrids(total_runtime);
     std::clog << std::endl;
 }

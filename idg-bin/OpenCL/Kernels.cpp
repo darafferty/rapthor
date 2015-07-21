@@ -162,8 +162,8 @@ uint64_t KernelFFT::bytes(int size, int batch) {
 }
 
 
-KernelAdder::KernelAdder(cl::Program &program, const char *kernel_name) :
-    counter("adder"),
+KernelAdder::KernelAdder(cl::Program &program, const char *kernel_name, PerformanceCounter &counter) :
+    counter(counter),
     kernel(program, kernel_name) {}
 
 void KernelAdder::launchAsync(
