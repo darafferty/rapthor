@@ -35,7 +35,7 @@ inline void atomic_add_float(volatile __global float *a, const float b) {
 }
 
 inline void atomicAdd(__global fcomplex *a, fcomplex b) {
-    __global *a_ptr = a;
+    __global float *a_ptr = (__global float *) a;
     atomic_add_float(a_ptr + 0, b.x);
     atomic_add_float(a_ptr + 1, b.x);
 }
