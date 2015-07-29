@@ -1,3 +1,6 @@
+#ifndef IDG_INIT_H_
+#define IDG_INIT_H_
+
 #include <iostream>
 #include <complex>
 
@@ -8,21 +11,15 @@
 
 #include "uvwsim.h"
 
-/*
-    Macro
-*/
+  /* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-/*
-    Constants
-*/
+/* Constants */
 #define RANDOM_SEED         1234
 #define SPEED_OF_LIGHT      299792458.0
 
-/*
-    Observation parameters
-*/
+/* Observation parameters */
 #define LAYOUT_FILE         "./utility/SKA1_low_ecef.txt"
 #define START_FREQUENCY     500.0e6
 #define FREQUENCY_INCREMENT 5.0e6
@@ -35,9 +32,9 @@
 #define MINUTE              57
 #define SECONDS             1.3
 
-/*
-    Methods
-*/
+namespace idg {
+
+/* Methods */
 void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize, int w_planes);
 void init_visibilities(void *ptr, int nr_baselines, int nr_time, int nr_channels, int nr_polarizations);
 void init_wavenumbers(void *ptr, int nr_channels);
@@ -55,3 +52,7 @@ void* init_spheroidal(int subgridsize);
 void* init_baselines(int nr_stations, int nr_baselines);
 void* init_subgrid(int nr_baselines, int subgridsize, int nr_polarizations, int nr_chunks);
 void* init_grid(int gridsize, int nr_polarizations);
+
+} // namespace idg
+
+#endif

@@ -6,38 +6,55 @@
 #include <complex>
 #include "SMP.h"
 #include "Init.h"  // Data init routines
+#include "Arguments.h"  // Parse command line arguments
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-  // Set constants explicitly
+  // Get parameters passed as arguments
+  int nr_stations = 0;
+  int nr_time = 0;
+  int nr_channels = 0;
+  int w_planes = 0;
+  int gridsize = 0;
+  int subgridsize = 0;
+  int chunksize = 0;
+  int jobsize = 0;
+  idg::get_parameters(argc, argv, &nr_stations, &nr_time, &nr_channels, 
+                      &w_planes, &gridsize, &subgridsize, &chunksize, &jobsize);
+
+  // Set other parameters
+  int nr_polarizations = 4;
+  float field_of_view = 0.1; 
+
+  // Set constants explicitly in the parameters parameter
   clog << ">>> Configuration"  << endl;
   idg::Parameters params;    
-  params.set_nr_stations(24);
-  params.set_nr_timesteps(256);
-  params.set_nr_channels(32);
-  params.set_nr_polarizations(4); 
-  params.set_field_of_view(0.1);
-  params.set_grid_size(128);
-  params.set_w_planes(1);
+  params.set_nr_stations(nr_stations);
+  params.set_nr_timesteps(nr_time);
+  params.set_nr_channels(nr_channels);
+  params.set_nr_polarizations(nr_polarizations); 
+  params.set_field_of_view(field_of_view);
+  params.set_grid_size(gridsize);
+  params.set_w_planes(w_planes);
 
   idg::AlgorithmParameters algparams;
-  algparams.set_job_size(8); 
-  algparams.set_subgrid_size(8); 
-  algparams.set_chunk_size(8); 
+  algparams.set_job_size(jobsize); 
+  algparams.set_subgrid_size(subgridsize); 
+  algparams.set_chunk_size(chunksize); 
   
   // retrieve constants for memory allocation
-  int nr_stations = params.get_nr_stations();
-  int nr_baselines = params.get_nr_baselines();
-  int nr_time = params.get_nr_timesteps();
-  int nr_channels = params.get_nr_channels();
-  int nr_polarizations = params.get_nr_polarizations();
-  int w_planes = params.get_w_planes();
-  int gridsize = params.get_grid_size();
+  nr_stations = params.get_nr_stations();
+  auto nr_baselines = params.get_nr_baselines();
+  nr_time = params.get_nr_timesteps();
+  nr_channels = params.get_nr_channels();
+  nr_polarizations = params.get_nr_polarizations();
+  w_planes = params.get_w_planes();
+  gridsize = params.get_grid_size();
 
   //  int jobsize = algparams.get_job_size();
-  int subgridsize = algparams.get_subgrid_size();
+  subgridsize = algparams.get_subgrid_size();
 
   // Print configuration
   clog << params;
@@ -63,13 +80,15 @@ int main(int argc, char *argv[])
   auto baselines = new int[size_baselines];
   auto grid = new complex<float>[size_grid];  
 
-  init_visibilities(visibilities, nr_baselines, nr_time, nr_channels, nr_polarizations);
-  init_uvw(uvw, nr_stations, nr_baselines, nr_time, gridsize, subgridsize, w_planes);
-  init_wavenumbers(wavenumbers, nr_channels);
-  init_aterm(aterm, nr_stations, nr_polarizations, subgridsize);
-  init_spheroidal(spheroidal, subgridsize);
-  init_baselines(baselines, nr_stations, nr_baselines);
-  init_grid(grid, gridsize, nr_polarizations);
+  idg::init_visibilities(visibilities, nr_baselines, nr_time, nr_channels, 
+                         nr_polarizations);
+  idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time, gridsize, 
+                subgridsize, w_planes);
+  idg::init_wavenumbers(wavenumbers, nr_channels);
+  idg::init_aterm(aterm, nr_stations, nr_polarizations, subgridsize);
+  idg::init_spheroidal(spheroidal, subgridsize);
+  idg::init_baselines(baselines, nr_stations, nr_baselines);
+  idg::init_grid(grid, gridsize, nr_polarizations);
 
   clog << endl;
 
