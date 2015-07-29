@@ -82,7 +82,7 @@ namespace idg {
     unsigned int nr_polarizations; // currently fixed to 4 
     float        field_of_view;    // unit?    
     unsigned int grid_size;
-    unsigned int w_planes;    
+    unsigned int w_planes;         // currently fixed to 1
   };
   
   // helper functions
