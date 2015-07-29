@@ -26,7 +26,7 @@ void kernel_degridder(
 	VisibilitiesType	 __restrict__ *visibilities
 	) {
 
-  printf("Running: kernel_degridder\n");
+  //  printf("Running: kernel_degridder\n");
 
     #pragma omp parallel shared(subgrid, uvw, wavenumbers, aterm, baselines, spheroidal)
     {

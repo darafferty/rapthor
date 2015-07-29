@@ -15,7 +15,7 @@ void kernel_splitter(
     const GridType __restrict__ *grid
     ) {
 
-  printf("Running: kernel_splitter\n");
+  //  printf("Running: kernel_splitter\n");
 
     #pragma omp parallel
     {

@@ -1,6 +1,9 @@
 #include <iostream>
+#include <iomanip>
 #include <cstdint>
 #include <omp.h>
+
+#include "auxiliary.h"
 
 using namespace std;
 
@@ -13,13 +16,26 @@ namespace idg {
 		  uint64_t flops, 
 		  uint64_t bytes) 
       {
+	const int fw1 = 12;
+	const int fw2 = 10;
+	const int fw3 = 10;
+
+	string name_str(name);
+	
+
 #pragma omp critical (clog)
 	{
-	  clog << name << ": " << runtime << " s";
+	  clog << setw(fw1) << left << name_str + ": " 
+	       << setw(fw2) << right << scientific << setprecision(4) 
+	       << runtime << " s";
 	  if (flops != 0)
-	    clog << ", " << flops / runtime * 1e-9 << " GFLOPS";
+	    clog << ", ";
+	    clog << setw(fw2) << right << fixed << setprecision(2)
+		 << flops / runtime * 1e-9 << " GFLOPS";
 	  if (bytes != 0)
-	    clog << ", " << bytes / runtime * 1e-9 << " GB/s";
+	    clog << ", ";
+	    clog << setw(fw2) << right << fixed << setprecision(2)
+		 << bytes / runtime * 1e-9 << " GB/s";
 	  clog << endl;
 	}
       }      
@@ -27,7 +43,12 @@ namespace idg {
       
       void report_runtime(double runtime) 
       {
-	clog << "runtime: " << runtime << " s" << endl;
+	const int fw1 = 12;
+	const int fw2 = 10;
+
+	clog << setw(fw1) << left << "runtime: " 
+	     << setw(fw2) << right << scientific << setprecision(4)
+	     << runtime << " s" << endl;
       }
       
       
@@ -36,8 +57,14 @@ namespace idg {
 			       uint64_t nr_time,
 			       uint64_t nr_channels) 
       {
+	const int fw1 = 12;
+	const int fw2 = 10;
+
 	uint64_t nr_visibilities = nr_baselines * nr_time * nr_channels;
-	clog << "throughput: " << 1e-6 * nr_visibilities / runtime 
+
+	clog << setw(fw1) << left << "throughput: " 
+	     << setw(fw2) << right << scientific << setprecision(4)
+	     << 1e-6 * nr_visibilities / runtime 
 	     << " Mvisibilities/s" << endl;
       }
       
