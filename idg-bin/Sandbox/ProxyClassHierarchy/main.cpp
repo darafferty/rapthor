@@ -18,8 +18,8 @@ int main(int argc, char *argv[])
   params.set_nr_channels(32);
   params.set_nr_polarizations(4); 
   params.set_field_of_view(0.1);
-  params.set_grid_size(64);
-  //  params.set_w_planes(1);
+  params.set_grid_size(128);
+  params.set_w_planes(1);
 
   idg::AlgorithmParameters algparams;
   algparams.set_job_size(8); 
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
   int nr_time = params.get_nr_timesteps();
   int nr_channels = params.get_nr_channels();
   int nr_polarizations = params.get_nr_polarizations();
-  //  int w_planes = params.get_w_planes();
+  int w_planes = params.get_w_planes();
   int gridsize = params.get_grid_size();
 
   //  int jobsize = algparams.get_job_size();
@@ -43,16 +43,8 @@ int main(int argc, char *argv[])
   clog << params;
   clog << endl;
 
-  // Initialize data structures
+  // Allocate and initialize data structures
   clog << ">>> Initialize data structures" << std::endl;
-  // void *visibilities = init_visibilities(nr_baselines, nr_time, nr_channels, nr_polarizations);
-  // void *uvw          = init_uvw(nr_stations, nr_baselines, nr_time, gridsize, subgridsize, w_planes);
-  // void *wavenumbers  = init_wavenumbers(nr_channels);
-  // void *aterm        = init_aterm(nr_stations, nr_polarizations, subgridsize);
-  // void *spheroidal   = init_spheroidal(subgridsize);
-  // void *baselines    = init_baselines(nr_stations, nr_baselines);
-  // //  void *subgrids     = init_subgrid(nr_baselines, subgridsize, nr_polarizations, nr_chunks);
-  // void *grid         = init_grid(gridsize, nr_polarizations);
 
   size_t size_visibilities = (size_t) nr_baselines*nr_time*nr_channels*nr_polarizations;
   size_t size_uvw = (size_t) nr_baselines*nr_time*3; 
@@ -60,7 +52,7 @@ int main(int argc, char *argv[])
   size_t size_aterm = (size_t) nr_stations*nr_polarizations*subgridsize*subgridsize;
   size_t size_spheroidal = (size_t) subgridsize*subgridsize;
   size_t size_baselines = (size_t) nr_baselines*2;
-  size_t size_grid = (size_t) nr_polarizations*gridsize*gridsize;
+  size_t size_grid = (size_t) nr_polarizations*gridsize*gridsize; 
 
   auto visibilities = new complex<float>[size_visibilities];
   auto uvw = new float[size_uvw];
@@ -68,13 +60,24 @@ int main(int argc, char *argv[])
   auto aterm = new complex<float>[size_aterm];
   auto spheroidal = new float[size_spheroidal];
   auto baselines = new int[size_baselines];
-  auto grid = new complex<float>[size_grid];
+  auto grid = new complex<float>[size_grid];  
+
+  init_visibilities(visibilities, nr_baselines, nr_time, nr_channels, nr_polarizations);
+  init_uvw(uvw, nr_stations, nr_baselines, nr_time, gridsize, subgridsize, w_planes);
+  init_wavenumbers(wavenumbers, nr_channels);
+  init_aterm(aterm, nr_stations, nr_polarizations, subgridsize);
+  init_spheroidal(spheroidal, subgridsize);
+  init_baselines(baselines, nr_stations, nr_baselines);
+  init_grid(grid, gridsize, nr_polarizations);
+
   clog << endl;
 
   // Initialize interface to kernels
   clog << ">> Initialize proxy" << endl;
-  idg::Compiler compiler = "/usr/bin/gcc";
-  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
+  //  idg::Compiler compiler = "/usr/bin/gcc";
+  idg::Compiler compiler = "icpc";
+  //  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
+  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -mkl";
   idg::proxy::SMP xeon(compiler, compilerflags, params, algparams);
   // Alternative: idg::proxy::SMP xeon("/usr/bin/gcc", "-O2 -fopenmp", params);
 
@@ -126,6 +129,16 @@ int main(int argc, char *argv[])
   delete[] spheroidal;
   delete[] baselines;
   delete[] grid;
+
+
+  // free(visibilities);
+  // free(uvw);
+  // free(wavenumbers);
+  // free(aterm);
+  // free(spheroidal);
+  // free(baselines);
+  // //  free(subgrids);
+  // free(grid);
     
   return 0;
 }
