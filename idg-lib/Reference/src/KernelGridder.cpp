@@ -11,7 +11,7 @@
 #include <likwid.h>
 #endif
 
-#define USE_VML 1
+#define USE_VML 0 // HACK
 #if USE_VML
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
