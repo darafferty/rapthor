@@ -19,7 +19,7 @@ void kernel_fft(
     int layout
 	) {
 
-  printf("Running: kernel_fft\n");
+  //  printf("Running: kernel_fft\n");
 
     if (layout == FFT_LAYOUT_YXP) {
         // 2D FFT

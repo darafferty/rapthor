@@ -31,7 +31,7 @@ void kernel_gridder(
 	SubGridType			   __restrict__ *subgrid
 	) {
 
-  printf("Running: kernel_gridder\n");
+  //  printf("Running: kernel_gridder\n");
 	
 	omp_set_nested(1);
 	
