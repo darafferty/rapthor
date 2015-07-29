@@ -1,6 +1,7 @@
 #ifndef IDG_AUX_H_
 #define IDG_AUX_H_
 
+#include <cstdint>
 
 namespace idg {  
   namespace auxiliary {
@@ -12,16 +13,15 @@ namespace idg {
 
     void report_runtime(double runtime);
 
-    void report_visibilities(double runtime
+    void report_visibilities(double runtime,
 			     uint64_t nr_baselines,
 			     uint64_t nr_time,
 			     uint64_t nr_channels);
 
-    void report_subgrids(double runtime
+    void report_subgrids(double runtime,
 			 uint64_t nr_baselines);
 
   } // namespace auxiliary
 } // namespace idg
-
 
 #endif

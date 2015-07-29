@@ -2,10 +2,11 @@ CC = gcc
 CXX = g++
 LD = g++
 
-DEBUG = 1
-PERFORMANCE = 0
+DEBUG = 0
+REPORT_VERBOSE = 1
+REPORT_TOTAL = 1
 
-CXXFLAGS = -std=c++0x -Wall -O2 -fopenmp -DDEBUG=$(DEBUG) -DPERF=$(PERFORMANCE)
+CXXFLAGS = -std=c++0x -Wall -O2 -fopenmp -DDEBUG=$(DEBUG) -DREPORT_VERBOSE=$(REPORT_VERBOSE) -DREPORT_TOTAL=$(REPORT_TOTAL)
 LDFLAGS = $(CXXFLAGS)
 
 DIRS = . ./common ./utility ./external

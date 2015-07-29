@@ -15,7 +15,7 @@ void kernel_adder(
     GridType          __restrict__ *grid
     ) {
 
-  printf("Running: kernel_adder\n");
+  //  printf("Running: kernel_adder\n");
 
     #pragma omp parallel
     {

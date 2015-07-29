@@ -12,6 +12,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
   // Set constants explicitly
+  clog << ">>> Configuration"  << endl;
   idg::Parameters params;    
   params.set_nr_stations(24);
   params.set_nr_timesteps(256);
@@ -39,12 +40,12 @@ int main(int argc, char *argv[])
   int subgridsize = algparams.get_subgrid_size();
 
   // Print configuration
-  clog << ">>> Configuration"  << std::endl;
   clog << params;
   clog << endl;
 
+
   // Allocate and initialize data structures
-  clog << ">>> Initialize data structures" << std::endl;
+  clog << ">>> Initialize data structures" << endl;
 
   size_t size_visibilities = (size_t) nr_baselines*nr_time*nr_channels*nr_polarizations;
   size_t size_uvw = (size_t) nr_baselines*nr_time*3; 
@@ -72,56 +73,49 @@ int main(int argc, char *argv[])
 
   clog << endl;
 
+
   // Initialize interface to kernels
-  clog << ">> Initialize proxy" << endl;
-  //  idg::Compiler compiler = "/usr/bin/gcc";
-  idg::Compiler compiler = "icpc";
-  //  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
-  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -mkl";
+  clog << ">>> Initialize proxy" << endl;
+  
+  // basic gcc settings
+  idg::Compiler compiler = "/usr/bin/gcc";
+  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
+  
+  // basic intel settings
+  // idg::Compiler compiler = "icpc";
+  // idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -mkl";
+
   idg::proxy::SMP xeon(compiler, compilerflags, params, algparams);
-  // Alternative: idg::proxy::SMP xeon("/usr/bin/gcc", "-O2 -fopenmp", params);
+
+  clog << endl;
+
 
   // Run gridding
+  clog << ">>> Run gridder" << endl;
   xeon.grid_visibilities(visibilities, uvw, wavenumbers, aterm, 
   			 spheroidal, baselines, grid);
+  clog << endl;
 
   // Run transform: Fourier->Image
+  clog << ">>> Run transform" << endl;
   xeon.transform(idg::FourierDomainToImageDomain, grid);
+  clog << endl;
 
-  // do something 
+  // do something here
 
   // Run transform: Image->Fourier
+  clog << ">>> Run transform" << endl;
   xeon.transform(idg::ImageDomainToFourierDomain, grid);
+  clog << endl;
 
   // Run degridding
+  clog << ">>> Run degridder" << endl;
   xeon.degrid_visibilities(grid, uvw, wavenumbers, aterm, 
 			   spheroidal, baselines, visibilities);
-
-  // // create another proxy:
-
-  // // set compiler settings
-  // idg::CompilerEnvironment cc; // default constructor reads from ENV
-  // cc.set_c_compiler("icc");
-  // cc.set_c_flags("-O3 -fopenmp");
-  // cc.set_cpp_compiler("icpc");
-  // cc.set_cpp_flags("-O2 -fopenmp");
-
-  // idg::proxy::SMP another(cc, params);
-
-  // another.grid_visibilities(dummy_ptr, dummy_ptr, dummy_ptr, dummy_ptr, 
-  // 			    dummy_ptr, dummy_ptr, dummy_ptr);
-
-  // another.transform(idg::FourierDomainToImageDomain, dummy_ptr);
-
-  // // do something 
-
-  // another.transform(idg::ImageDomainToFourierDomain, dummy_ptr);
-
-  // another.degrid_visibilities(dummy_ptr, dummy_ptr, dummy_ptr, dummy_ptr, 
-  // 			      dummy_ptr, dummy_ptr, dummy_ptr);
+  clog << endl;
 
 
-  // free memory for data structures?
+  // free memory for data structures
   delete[] visibilities;
   delete[] uvw;
   delete[] wavenumbers;
@@ -130,15 +124,6 @@ int main(int argc, char *argv[])
   delete[] baselines;
   delete[] grid;
 
-
-  // free(visibilities);
-  // free(uvw);
-  // free(wavenumbers);
-  // free(aterm);
-  // free(spheroidal);
-  // free(baselines);
-  // //  free(subgrids);
-  // free(grid);
     
   return 0;
 }
