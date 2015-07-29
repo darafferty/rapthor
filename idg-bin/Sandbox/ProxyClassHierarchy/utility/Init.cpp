@@ -1,4 +1,5 @@
 #include "Init.h"
+
 #define TYPEDEF_UVW               typedef struct { float u, v, w; } UVW;
 #define TYPEDEF_UVW_TYPE          typedef UVW UVWType[nr_baselines][nr_time];
 #define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
@@ -9,6 +10,9 @@
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
 #define TYPEDEF_SUBGRID_TYPE      typedef std::complex<float> SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
 #define TYPEDEF_GRID_TYPE         typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+
+
+namespace idg {
 
 /*
     Methos where pointed to allocated memory is provided
@@ -305,3 +309,5 @@ void* init_grid(int gridsize, int nr_polarizations) {
     init_grid(ptr, gridsize, nr_polarizations);
     return ptr;
 }
+
+} // namespace idg

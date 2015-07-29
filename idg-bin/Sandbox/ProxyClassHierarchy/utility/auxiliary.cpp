@@ -34,7 +34,7 @@ namespace idg {
 		 << flops / runtime * 1e-9 << " GFLOPS";
 	  if (bytes != 0)
 	    clog << ", ";
-	    clog << setw(fw2) << right << fixed << setprecision(2)
+	    clog << setw(fw3) << right << fixed << setprecision(2)
 		 << bytes / runtime * 1e-9 << " GB/s";
 	  clog << endl;
 	}
