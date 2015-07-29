@@ -97,12 +97,12 @@ int main(int argc, char *argv[])
   clog << ">>> Initialize proxy" << endl;
   
   // basic gcc settings
-  idg::Compiler compiler = "/usr/bin/gcc";
-  idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
+  //  idg::Compiler compiler = "/usr/bin/gcc";
+  // idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f";
   
   // basic intel settings
-  // idg::Compiler compiler = "icpc";
-  // idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -mkl";
+  idg::Compiler compiler = "icpc";
+  idg::Compilerflags compilerflags = "-Wall -O3 -xAVX -g -DDEBUG -fopenmp -mkl -lmkl_vml_avx -lmkl_avx";
 
   idg::proxy::SMP xeon(compiler, compilerflags, params, algparams);
 
