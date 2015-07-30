@@ -20,83 +20,92 @@ namespace idg {
     
     /// Constructors
     SMP::SMP(Compiler compiler, 
-	     Compilerflags flags,
-	     Parameters params,
-	     AlgorithmParameters algparams,
-	     ProxyInfo info) 
+             Compilerflags flags,
+             Parameters params,
+             AlgorithmParameters algparams,
+             ProxyInfo info) 
       : mParams(params),
-	mAlgParams(algparams),
-	mInfo(info)
+        mAlgParams(algparams),
+        mInfo(info)
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
-      if (DEBUG) cout << "Compiler: " << compiler << endl;
-      if (DEBUG) cout << "Compiler flags: " << flags << endl;
-      if (DEBUG) cout << params;
-      if (DEBUG) cout << algparams;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      cout << "Compiler: " << compiler << endl;
+      cout << "Compiler flags: " << flags << endl;
+      cout << params;
+      cout << algparams;
+      #endif
 
       parameter_sanity_check(); // throws exception if bad parameters
-
+      
       compile(compiler, flags); 
-
+      
       load_shared_objects();
-
+      
       find_kernel_functions();
     }
     
 
-    
     SMP::SMP(CompilerEnvironment cc, 
-	     Parameters params,
-	     AlgorithmParameters algparams,
-	     ProxyInfo info) 
+             Parameters params,
+             AlgorithmParameters algparams,
+             ProxyInfo info) 
       : mParams(params),
-	mAlgParams(algparams),
-	mInfo(info)
+        mAlgParams(algparams),
+        mInfo(info)
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
-
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
+      
       // find out which compiler to use
       // call SMP(compiler, flags, params, algparams)
-
+      
       cerr << "Constructor not implemented yet" << endl;
     } 
-
+    
 
     SMP::~SMP() 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // unload shared objects by ~Module
       for (unsigned int i=0; i<modules.size(); i++)
-	delete modules[i];
-
+        delete modules[i];
+      
       // Delete .so files 
       if( mInfo.delete_shared_objects() ) {
-	for (auto libname : mInfo.get_lib_names()) {
-	  string lib = mInfo.get_path_to_lib() + "/" + libname;
-	  remove(lib.c_str());
-	} 
+        for (auto libname : mInfo.get_lib_names()) {
+          string lib = mInfo.get_path_to_lib() + "/" + libname;
+          remove(lib.c_str());
+        } 
       }
-
+      
     }
 
 
     AlgorithmParameters SMP::default_algparams() 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       AlgorithmParameters p;
-      p.set_job_size(128);  // please set sensible value here
+      p.set_job_size(128);    // please set sensible value here
       p.set_subgrid_size(32); // please set sensible value here
-      p.set_chunk_size(128); // please set sensible value here
-
+      p.set_chunk_size(32);   // please set sensible value here
+      
       return p;
     }
 
 
     ProxyInfo SMP::default_info() 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       ProxyInfo p;
 
@@ -104,10 +113,7 @@ namespace idg {
       p.set_path_to_lib("./lib"); // change to use tmp dir by default
 
       srand(time(NULL));
-      int rnd = rand();
-      stringstream ss;
-      ss << rnd;
-      string rnd_str = ss.str();
+      string rnd_str = to_string( rand() );
 
       string libgridder = "Gridder" + rnd_str + ".so";
       string libdegridder = "Degridder" + rnd_str + ".so";
@@ -142,7 +148,9 @@ namespace idg {
 				void *baselines, 
 				void *grid) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // get parameters
       unsigned int nr_baselines = mParams.get_nr_baselines();
@@ -177,7 +185,9 @@ namespace idg {
 				  void *baselines,
 				  void *visibilities) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // get parameters
       unsigned int nr_baselines = mParams.get_nr_baselines();
@@ -186,8 +196,7 @@ namespace idg {
       unsigned int nr_polarizations = mParams.get_nr_polarizations();
 
       // allocate subgrids: two different versions dependingon layout?
-      size_t size_subgrids = (size_t) nr_baselines*nr_chunks*subgridsize*subgridsize
-	*nr_polarizations;
+      size_t size_subgrids = (size_t) nr_baselines*nr_chunks*subgridsize*subgridsize*nr_polarizations;
       auto subgrids = new complex<float>[size_subgrids];
 
       // Get job sizes for gridding and adding routines
@@ -206,11 +215,14 @@ namespace idg {
 
     void SMP::transform(DomainAtoDomainB direction, void* grid) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      cout << "Transform direction: " << direction << endl;
+      #endif
 
-      cout << "Direction: " << direction << endl;
-      // ((void (*)(void*,int)) (void *)
-      //  rw::Function(*module, FUNCTION_FFT))(grid, sign);
+      int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+
+      run_fft(grid, sign);
     }
 
     
@@ -219,21 +231,24 @@ namespace idg {
 				 void *wavenumbers, void *aterm, void *spheroidal, 
 				 void *baselines, void *subgrids)
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
-
-      run_gridder(jobsize, visibilities, uvw, 
-		  wavenumbers, aterm, spheroidal, 
-		  baselines, subgrids);
+      
+      run_gridder(jobsize, visibilities, uvw, wavenumbers, aterm, spheroidal, 
+        baselines, subgrids);
     }
 
-
+    
     void SMP::add_subgrids_to_grid(int jobsize, void *uvw, void *subgrids, 
-				   void *grid) 
+                                   void *grid) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
@@ -245,7 +260,9 @@ namespace idg {
     void SMP::split_grid_into_subgrids(int jobsize, void *uvw, void *subgrids, 
 				       void *grid)
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
@@ -258,7 +275,9 @@ namespace idg {
 				   void *baselines, void *visibilities, void *uvw, 
 				   void *spheroidal, void *subgrids)
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
@@ -273,13 +292,17 @@ namespace idg {
 			  void *wavenumbers, void *aterm, void *spheroidal, 
 			  void *baselines, void *subgrids) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // Performance measurements
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       double runtime, runtime_gridder, runtime_fft;
       double total_runtime_gridder = 0;
       double total_runtime_fft = 0;
-
+      #endif
+      
       // Constants
       auto nr_baselines = mParams.get_nr_baselines();
       auto nr_time = mParams.get_nr_timesteps();
@@ -292,69 +315,78 @@ namespace idg {
       kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
       kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
 
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime = -omp_get_wtime();
+      #endif
+      
       // Start gridder
-      if (REPORT_VERBOSE || REPORT_TOTAL) runtime = -omp_get_wtime();
       for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
- 	// Prevent overflow
- 	jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-	
- 	// Number of elements in batch
- 	int uvw_elements          = nr_time * 3;
- 	int visibilities_elements = nr_time * nr_channels * nr_polarizations;
- 	int subgrid_elements      = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        // Prevent overflow
+        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+        
+        // Number of elements in batch
+        int uvw_elements          = nr_time * 3;
+        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+        int subgrid_elements      = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        
+        // Pointers to data for current batch
+        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+        void *wavenumbers_ptr  = wavenumbers;
+        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+        void *spheroidal_ptr   = spheroidal;
+        void *aterm_ptr        = aterm;
+        void *subgrids_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
+        void *baselines_ptr    = baselines;
 
- 	// Pointers to data for current batch
-	void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-	void *wavenumbers_ptr  = wavenumbers;
- 	void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
- 	void *spheroidal_ptr   = spheroidal;
- 	void *aterm_ptr        = aterm;
- 	void *subgrids_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *baselines_ptr    = baselines;
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_gridder = -omp_get_wtime();
-
- 	kernel_gridder.run(jobsize, bl, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
- 	 		   spheroidal_ptr, aterm_ptr, baselines_ptr, subgrids_ptr);
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_gridder += omp_get_wtime();
-	if (REPORT_VERBOSE || REPORT_TOTAL) total_runtime_gridder += runtime_gridder;
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_fft = -omp_get_wtime();
-
-#if ORDER == ORDER_BL_V_U_P
-	kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
-#elif ORDER == ORDER_BL_P_V_U
-	kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
-#endif
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_fft += omp_get_wtime();
-        if (REPORT_VERBOSE || REPORT_TOTAL) total_runtime_fft += runtime_fft;
-
-        if (REPORT_VERBOSE) {
-	  auxiliary::report("gridder", runtime_gridder,
-			    kernel_gridder.flops(jobsize),
-			    kernel_gridder.bytes(jobsize));
-	  auxiliary::report("fft", runtime_fft,
-			    kernel_fft.flops(subgridsize, nr_baselines),
-			    kernel_fft.bytes(subgridsize, nr_baselines));
-	}
-
+        
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_gridder = -omp_get_wtime();
+        #endif
+        
+        kernel_gridder.run(jobsize, bl, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+                           spheroidal_ptr, aterm_ptr, baselines_ptr, subgrids_ptr);
+        
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_gridder += omp_get_wtime();
+        total_runtime_gridder += runtime_gridder;
+        runtime_fft = -omp_get_wtime();
+        #endif
+        
+        #if ORDER == ORDER_BL_V_U_P
+        kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
+        #elif ORDER == ORDER_BL_P_V_U
+        kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
+        #endif
+        
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_fft += omp_get_wtime();
+        total_runtime_fft += runtime_fft;
+        #endif
+        
+        #if defined(REPORT_VERBOSE)
+        auxiliary::report("gridder", runtime_gridder,
+                          kernel_gridder.flops(jobsize),
+                          kernel_gridder.bytes(jobsize));
+        auxiliary::report("fft", runtime_fft,
+                          kernel_fft.flops(subgridsize, nr_baselines),
+                          kernel_fft.bytes(subgridsize, nr_baselines));
+        #endif
+        
       } // end for bl
-
-      if (REPORT_VERBOSE || REPORT_TOTAL) {
-	runtime += omp_get_wtime();
-	clog << endl;
-	clog << "Total: gridding" << endl;
-	auxiliary::report("gridder", total_runtime_gridder,
-			  kernel_gridder.flops(nr_baselines),
-			  kernel_gridder.bytes(nr_baselines));
-	auxiliary::report("    fft", total_runtime_fft,
-			  kernel_fft.flops(subgridsize, nr_baselines),
-			  kernel_fft.bytes(subgridsize, nr_baselines));
-	auxiliary::report_runtime(runtime);
-	clog << endl;
-      }
+      
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime += omp_get_wtime();
+      clog << endl;
+      clog << "Total: gridding" << endl;
+      auxiliary::report("gridder", total_runtime_gridder,
+                        kernel_gridder.flops(nr_baselines),
+                        kernel_gridder.bytes(nr_baselines));
+      auxiliary::report("fft", total_runtime_fft,
+                        kernel_fft.flops(subgridsize, nr_baselines),
+                        kernel_fft.bytes(subgridsize, nr_baselines));
+      auxiliary::report_runtime(runtime);
+      clog << endl;
+      #endif
 
     } // run_gridder
 
@@ -362,11 +394,15 @@ namespace idg {
 
     void SMP::run_adder(int jobsize, void *uvw, void *subgrids, void *grid) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // Performance measurements
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       double runtime, runtime_adder;
       double total_runtime_adder = 0;
+      #endif
 
       // Constants
       auto nr_baselines = mParams.get_nr_baselines();
@@ -378,59 +414,70 @@ namespace idg {
       // Load kernel function
       kernel::Adder kernel_adder(*(modules[which_module[kernel::name_adder]]));
 
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime = -omp_get_wtime();
+      #endif
+
       // Run adder
-      if (REPORT_VERBOSE || REPORT_TOTAL) runtime = -omp_get_wtime();
       for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
-	// Prevent overflow
-	jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-		
-	// Number of elements in batch
+        // Prevent overflow
+        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+        
+        // Number of elements in batch
         int uvw_elements     = nr_time * 3;
-	int subgrid_elements = nr_chunks * subgridsize * subgridsize * nr_polarizations;
-		
-	// Pointer to data for current jobs
-	void *uvw_ptr     = (float*) uvw + bl * uvw_elements;
-	void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *grid_ptr    = grid;
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_adder = -omp_get_wtime();
-	
-	kernel_adder.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_adder += omp_get_wtime();
-	if (REPORT_VERBOSE || REPORT_TOTAL) total_runtime_adder += runtime_adder;
-
-	if (REPORT_VERBOSE) {
-	  auxiliary::report("adder", runtime_adder,
-			    kernel_adder.flops(jobsize),
-			    kernel_adder.bytes(jobsize));
-	}
-
+        int subgrid_elements = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        
+        // Pointer to data for current jobs
+        void *uvw_ptr     = (float*) uvw + bl * uvw_elements;
+        void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
+        void *grid_ptr    = grid;
+        
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_adder = -omp_get_wtime();
+        #endif
+        
+        kernel_adder.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
+        
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_adder += omp_get_wtime();
+        total_runtime_adder += runtime_adder;
+        #endif
+        
+        #if defined(REPORT_VERBOSE)
+        auxiliary::report("adder", runtime_adder,
+                          kernel_adder.flops(jobsize),
+                          kernel_adder.bytes(jobsize));
+        #endif
+        
       } // end for bl
-
-      if (REPORT_VERBOSE || REPORT_TOTAL) { 
-	runtime += omp_get_wtime();
-	clog << endl;
-	clog << "Total: adding" << endl;
-	auxiliary::report("adder", total_runtime_adder,
-			  kernel_adder.flops(nr_baselines),
-			  kernel_adder.bytes(nr_baselines));
-	auxiliary::report_runtime(runtime);
-	auxiliary::report_subgrids(runtime, nr_baselines);
-	clog << endl;
-      }
-	
+      
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime += omp_get_wtime();
+      clog << endl;
+      clog << "Total: adding" << endl;
+      auxiliary::report("adder", total_runtime_adder,
+                        kernel_adder.flops(nr_baselines),
+                        kernel_adder.bytes(nr_baselines));
+      auxiliary::report_runtime(runtime);
+      auxiliary::report_subgrids(runtime, nr_baselines);
+      clog << endl;
+      #endif
+      
     } // run_adder
 
 
 
     void SMP::run_splitter(int jobsize, void *uvw, void *subgrids, void *grid) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // Performance measurements
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       double runtime, runtime_splitter;
       double total_runtime_splitter = 0;
+      #endif
 
       // Constants
       auto nr_baselines = mParams.get_nr_baselines();
@@ -441,64 +488,75 @@ namespace idg {
 
       // Load kernel function
       kernel::Splitter kernel_splitter(*(modules[which_module[kernel::name_splitter]]));
-      
+
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime = -omp_get_wtime();
+      #endif
+
       // Run splitter
-      if (REPORT_VERBOSE || REPORT_TOTAL) runtime = -omp_get_wtime();
       for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
-	// Prevent overflow
-	jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+        // Prevent overflow
+        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 		
-	// Number of elements in batch
+        // Number of elements in batch
         int uvw_elements     = nr_time * 3;;
-	int subgrid_elements = nr_chunks * subgridsize * subgridsize * nr_polarizations;
-	
-	// Pointer to data for current jobs
-	void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
-	void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *grid_ptr    = grid;
+        int subgrid_elements = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        
+        // Pointer to data for current jobs
+        void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
+        void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
+        void *grid_ptr    = grid;
 
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_splitter = -omp_get_wtime();
-	
-	kernel_splitter.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_splitter = -omp_get_wtime();
+        #endif
+        
+        kernel_splitter.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
 
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_splitter += omp_get_wtime();
-	if (REPORT_VERBOSE || REPORT_TOTAL) total_runtime_splitter += runtime_splitter;
-
-	if (REPORT_VERBOSE) {
-	  auxiliary::report("splitter", runtime_splitter,
-			    kernel_splitter.flops(jobsize),
-			    kernel_splitter.bytes(jobsize));
-	}
-
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_splitter += omp_get_wtime();
+        total_runtime_splitter += runtime_splitter;
+        #endif
+        
+        #if defined(REPORT_VERBOSE) 
+        auxiliary::report("splitter", runtime_splitter,
+                          kernel_splitter.flops(jobsize),
+                          kernel_splitter.bytes(jobsize));
+       #endif
+        
       } // end for bl
 
-      if (REPORT_VERBOSE || REPORT_TOTAL) { 
-	runtime += omp_get_wtime();
-	clog << endl;
-	clog << "Total: splitting" << endl;
-	auxiliary::report("splitter", total_runtime_splitter,
-			  kernel_splitter.flops(nr_baselines),
-			  kernel_splitter.bytes(nr_baselines));
-	auxiliary::report_runtime(runtime);
-	auxiliary::report_subgrids(runtime, nr_baselines);
-	clog << endl;
-      }
-	
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime += omp_get_wtime();
+      clog << endl;
+      clog << "Total: splitting" << endl;
+      auxiliary::report("splitter", total_runtime_splitter,
+        kernel_splitter.flops(nr_baselines),
+        kernel_splitter.bytes(nr_baselines));
+      auxiliary::report_runtime(runtime);
+      auxiliary::report_subgrids(runtime, nr_baselines);
+      clog << endl;
+      #endif
+      
     } // run_splitter
 
 
 
     void SMP::run_degridder(int jobsize, void *wavenumbers, void *aterm, 
-			    void *baselines, void *visibilities, void *uvw, 
-			    void *spheroidal, void *subgrids)
+                            void *baselines, void *visibilities, void *uvw, 
+                            void *spheroidal, void *subgrids)
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // Performance measurements
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       double runtime, runtime_degridder, runtime_fft;
       double total_runtime_degridder = 0;
       double total_runtime_fft = 0;
-
+      #endif
+      
       // Constants
       auto nr_baselines = mParams.get_nr_baselines();
       auto nr_channels = mParams.get_nr_channels();
@@ -506,139 +564,192 @@ namespace idg {
       auto nr_polarizations = mParams.get_nr_polarizations();
       auto nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
       auto subgridsize = mAlgParams.get_subgrid_size();
-
+      
       // Load kernel functions
       kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]));
       kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
-
+      
       // Zero visibilties: can be done when touched first time?
-      if (DEBUG) {
-	cout << "Removed: memset(visibilities, 0, sizeof(VisibilitiesType))" << endl;
-	// memset(visibilities, 0, sizeof(VisibilitiesType)); 
-      }
-	
+      #if defined(DEBUG) 
+      cout << "Removed: memset(visibilities, 0, sizeof(VisibilitiesType))" << endl;
+      // memset(visibilities, 0, sizeof(VisibilitiesType)); 
+      #endif
+
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime = -omp_get_wtime();
+      #endif
+      
       // Start degridder
-      if (REPORT_VERBOSE || REPORT_TOTAL) runtime = -omp_get_wtime();
       for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
-	// Prevent overflow
-	jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+        // Prevent overflow
+        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 		
-	// Number of elements in batch
-	int uvw_elements          = nr_time * 3;
-	int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-	int subgrid_elements      = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        // Number of elements in batch
+        int uvw_elements          = nr_time * 3;
+        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+        int subgrid_elements      = nr_chunks * subgridsize * subgridsize * nr_polarizations;
 		
-	// Pointers to data for current batch
+        // Pointers to data for current batch
         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
         void *wavenumbers_ptr  = wavenumbers;
-	void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
-	void *spheroidal_ptr   = spheroidal;
-	void *aterm_ptr        = aterm;
-	void *subgrid_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
-	void *baselines_ptr    = baselines;
+        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+        void *spheroidal_ptr   = spheroidal;
+        void *aterm_ptr        = aterm;
+        void *subgrid_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
+        void *baselines_ptr    = baselines;
 
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_fft = -omp_get_wtime();
-	
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_fft = -omp_get_wtime();
+        #endif
+        
 #if ORDER == ORDER_BL_V_U_P
-	kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
+        kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
 #elif ORDER == ORDER_BL_P_V_U
-	kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_PYX);
+        kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_PYX);
 #endif
 
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_fft += omp_get_wtime();
-        if (REPORT_VERBOSE || REPORT_TOTAL) total_runtime_fft += runtime_fft;
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_fft += omp_get_wtime();
+        total_runtime_fft += runtime_fft;
+        runtime_degridder = -omp_get_wtime();
+        #endif
+        
+        kernel_degridder.run(jobsize, bl, subgrid_ptr, uvw_ptr, wavenumbers_ptr,
+                             aterm_ptr, baselines_ptr, spheroidal_ptr, 
+                             visibilities_ptr);
 
+        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+        runtime_degridder += omp_get_wtime();
+        total_runtime_degridder += runtime_degridder;
+        #endif
 
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_degridder = -omp_get_wtime();
-
-	kernel_degridder.run(jobsize, bl, subgrid_ptr, uvw_ptr, wavenumbers_ptr,
-			     aterm_ptr, baselines_ptr, spheroidal_ptr, 
-			     visibilities_ptr);
-
-	if (REPORT_VERBOSE || REPORT_TOTAL) runtime_degridder += omp_get_wtime();
-	if (REPORT_VERBOSE || REPORT_TOTAL) total_runtime_degridder += runtime_degridder;
-
-        if (REPORT_VERBOSE) {
-	  auxiliary::report("degridder", runtime_degridder,
-			    kernel_degridder.flops(jobsize),
-			    kernel_degridder.bytes(jobsize));
-	  auxiliary::report("fft", runtime_fft,
-			    kernel_fft.flops(subgridsize, nr_baselines),
-			    kernel_fft.bytes(subgridsize, nr_baselines));
-	}
-	
+        #if defined(REPORT_VERBOSE)
+        auxiliary::report("degridder", runtime_degridder,
+        kernel_degridder.flops(jobsize),
+        kernel_degridder.bytes(jobsize));
+        auxiliary::report("fft", runtime_fft,
+        kernel_fft.flops(subgridsize, nr_baselines),
+        kernel_fft.bytes(subgridsize, nr_baselines));
+        #endif
+        
       } // end for bl
 
-      if (REPORT_VERBOSE || REPORT_TOTAL) {
-	runtime += omp_get_wtime();
-	clog << endl;
-	clog << "Total: degridding" << endl;
-	auxiliary::report("degridder", total_runtime_degridder,
-			  kernel_degridder.flops(nr_baselines),
-			  kernel_degridder.bytes(nr_baselines));
-	auxiliary::report("fft", total_runtime_fft,
-			  kernel_fft.flops(subgridsize, nr_baselines),
-			  kernel_fft.bytes(subgridsize, nr_baselines));
-	auxiliary::report_runtime(runtime);
-	clog << endl;
-      }
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime += omp_get_wtime();
+      clog << endl;
+      clog << "Total: degridding" << endl;
+      auxiliary::report("degridder", total_runtime_degridder,
+        kernel_degridder.flops(nr_baselines),
+        kernel_degridder.bytes(nr_baselines));
+      auxiliary::report("fft", total_runtime_fft,
+        kernel_fft.flops(subgridsize, nr_baselines),
+        kernel_fft.bytes(subgridsize, nr_baselines));
+      auxiliary::report_runtime(runtime);
+      clog << endl;
+      #endif
 	
     } // run_degridder
 
 
+    void SMP::run_fft(void *grid, int sign) 
+    {
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
+
+      // Performance measurements
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      double runtime;
+      #endif
+
+      // Constants
+      auto gridsize = mParams.get_grid_size();
+      
+      // Load kernel function
+      kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+      
+      // Start fft
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime = -omp_get_wtime();
+      #endif
+      
+      kernel_fft.run(gridsize, 1, grid, sign, FFT_LAYOUT_PYX);
+      
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      runtime += omp_get_wtime();
+      #endif
+      
+      #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+      clog << endl;
+      clog << "Total: fft" << endl;
+      auxiliary::report("fft", runtime,
+                        kernel_fft.flops(gridsize, 1),
+        kernel_fft.bytes(gridsize, 1));
+      auxiliary::report_runtime(runtime);
+      clog << endl;
+      #endif
+
+    } // run_fft
+
+
     void SMP::compile(Compiler compiler, Compilerflags flags) 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-      string parameters1 = Parameters::definitions(
-                           mParams.get_nr_stations(), 
-			   mParams.get_nr_baselines(), 
-			   mParams.get_nr_timesteps(), 
-			   mParams.get_nr_channels(),
-			   mParams.get_nr_polarizations(), 
-			   mParams.get_field_of_view(),
-                           mParams.get_grid_size(), 
-			   mParams.get_w_planes());
-
-      string parameters2 = AlgorithmParameters::definitions(
-			   mAlgParams.get_subgrid_size(), 
-			   mAlgParams.get_chunk_size(), 
-			   mAlgParams.get_job_size());
-
+      string parameters1 = 
+        Parameters::definitions(mParams.get_nr_stations(), 
+        mParams.get_nr_baselines(), 
+        mParams.get_nr_timesteps(), 
+        mParams.get_nr_channels(),
+        mParams.get_nr_polarizations(), 
+        mParams.get_field_of_view(),
+        mParams.get_grid_size(), 
+        mParams.get_w_planes());
+      
+      string parameters2 = 
+        AlgorithmParameters::definitions(mAlgParams.get_subgrid_size(), 
+        mAlgParams.get_chunk_size(), 
+        mAlgParams.get_job_size());
+      
       stringstream pp;
       pp << " -DNR_CHUNKS=" << mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
       string parameters3 = pp.str();
 
-      string parameters = " " + flags + " " + parameters1 + parameters2 + parameters3;
+      string parameters = " " + flags + " " + parameters1 + parameters2 
+                          + parameters3;
       
       // for each shared libarary: compile the source files and put into *.so file 
       // OMP parallel?!
       for (auto libname : mInfo.get_lib_names()) {
-	// create shared object "libname"
-	string lib = mInfo.get_path_to_lib() + "/" + libname;
+        // create shared object "libname"
+        string lib = mInfo.get_path_to_lib() + "/" + libname;
 
-	vector<string> source_files = mInfo.get_source_files(libname);
+        vector<string> source_files = mInfo.get_source_files(libname);
 
-	string source;
-	for (auto src : source_files) {
-	  source += mInfo.get_path_to_src() + "/" + src + " "; 
-	} // source = a.cpp b.cpp c.cpp ... 
+        string source;
+        for (auto src : source_files) {
+          source += mInfo.get_path_to_src() + "/" + src + " "; 
+        } // source = a.cpp b.cpp c.cpp ... 
 
-	cout << lib << " " << source << " " << endl;
+        cout << lib << " " << source << " " << endl;
 
-	runtime::Source(source.c_str()).compile(compiler.c_str(), 
-						lib.c_str(), 
-						parameters.c_str());
+        runtime::Source(source.c_str()).compile(compiler.c_str(), 
+                                                lib.c_str(), 
+                                                parameters.c_str());
       } // for each library
 
     } // compile
-
+    
 
     
     void SMP::parameter_sanity_check() 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       // assert: subgrid_size <= grid_size
       // assert: job_size <= ?
@@ -648,14 +759,18 @@ namespace idg {
     
     void SMP::load_shared_objects() 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
 
       for (auto libname : mInfo.get_lib_names()) {
-	string lib = mInfo.get_path_to_lib() + "/" + libname;
+        string lib = mInfo.get_path_to_lib() + "/" + libname;
 
-	if (DEBUG) cout << "Loading: " << libname << endl;
+        #if defined(DEBUG) 
+        cout << "Loading: " << libname << endl;
+        #endif
 
-	modules.push_back(new runtime::Module(lib.c_str()));
+        modules.push_back(new runtime::Module(lib.c_str()));
       }
     }
 
@@ -663,7 +778,9 @@ namespace idg {
     /// maps name -> index in modules that contain that symbol 
     void SMP::find_kernel_functions() 
     {
-      if (DEBUG) cout << "SMP::" << __func__ << endl;
+      #if defined(DEBUG) 
+      cout << "SMP::" << __func__ << endl;
+      #endif
       
       for (unsigned int i=0; i<modules.size(); i++) {
       	if (dlsym(*modules[i], kernel::name_gridder.c_str())) {
