@@ -121,6 +121,8 @@ namespace idg {
 			 void *baselines, void *visibilities, void *uvw, 
 			 void *spheroidal, void *subgrids);
 
+      void run_fft(void *grid, int direction);
+
     private:
       
       void compile(Compiler compiler, Compilerflags flags);
