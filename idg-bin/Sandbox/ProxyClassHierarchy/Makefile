@@ -8,11 +8,10 @@ CC = icc
 CXX = icpc
 LD = icpc
 
-DEBUG = 0
-REPORT_VERBOSE = 1
-REPORT_TOTAL = 1
-
-CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DDEBUG=$(DEBUG) -DREPORT_VERBOSE=$(REPORT_VERBOSE) -DREPORT_TOTAL=$(REPORT_TOTAL)
+# CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DDEBUG -DREPORT_VERBOSE
+# CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DREPORT_TOTAL
+CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DREPORT_VERBOSE
+# CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp 
 LDFLAGS = $(CXXFLAGS)
 
 DIRS = . ./common ./utility ./external
