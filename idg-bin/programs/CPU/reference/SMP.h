@@ -11,7 +11,7 @@
 #define IDG_SMP_H_
 
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
-#include "Proxy.h"
+#include "AbstractProxy.h"
 #include "Kernels.h"
 
 
