@@ -36,11 +36,8 @@ void kernel_adder(
                         int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                         int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-                        #if ORDER == ORDER_BL_V_U_P
-                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[bl][chunk][y_src][x_src][pol];
-                        #elif ORDER == ORDER_BL_P_V_U
+                        // Add subgrid value to grid
                         (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[bl][chunk][pol][y_src][x_src];
-                        #endif
                     }
                 }
             }

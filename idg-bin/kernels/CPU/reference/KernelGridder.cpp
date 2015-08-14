@@ -164,17 +164,10 @@ void kernel_gridder(
                     int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                     
 		            // Update uv grid
-		            #if ORDER == ORDER_BL_V_U_P
-		            (*subgrid)[bl][chunk][y_dst][x_dst][0] = uv[y][x][0] * s;
-		            (*subgrid)[bl][chunk][y_dst][x_dst][1] = uv[y][x][1] * s;
-		            (*subgrid)[bl][chunk][y_dst][x_dst][2] = uv[y][x][2] * s;
-		            (*subgrid)[bl][chunk][y_dst][x_dst][3] = uv[y][x][3] * s;
-		            #elif ORDER == ORDER_BL_P_V_U
 		            (*subgrid)[bl][chunk][0][y_dst][x_dst] = uv[y][x][0] * s;
 		            (*subgrid)[bl][chunk][1][y_dst][x_dst] = uv[y][x][1] * s;
 		            (*subgrid)[bl][chunk][2][y_dst][x_dst] = uv[y][x][2] * s;
 		            (*subgrid)[bl][chunk][3][y_dst][x_dst] = uv[y][x][3] * s;
-                    #endif
 	            }
             }
         }

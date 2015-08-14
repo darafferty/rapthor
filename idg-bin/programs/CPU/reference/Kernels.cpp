@@ -58,8 +58,8 @@ namespace idg {
       _bytes(module, name_fft_bytes.c_str())
     {}
 
-    void GridFFT::run(int size, int batch, void *data, int direction, int layout) {
-      (sig_fft (void *) _run)(size, batch, data, direction, layout);
+    void GridFFT::run(int size, int batch, void *data, int direction) {
+      (sig_fft (void *) _run)(size, batch, data, direction);
     }
 
     uint64_t GridFFT::flops(int size, int batch) {
