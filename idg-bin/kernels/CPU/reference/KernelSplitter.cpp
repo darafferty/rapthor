@@ -10,24 +10,16 @@
 extern "C" {
 void kernel_splitter(
     const int jobsize,
-    const UVWType  __restrict__ *uvw,
-    SubGridType    __restrict__ *subgrid,
-    const GridType __restrict__ *grid
+    const MetadataType __restrict__ *metadata,
+    SubGridType        __restrict__ *subgrid,
+    const GridType     __restrict__ *grid
     ) {
 
-    #pragma omp parallel
-    {
-    #pragma omp for
-    for (int bl = 0; bl < jobsize; bl++) {
-        for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
-            // Get first and last UVW coordinate
-            int time_offset = chunk * CHUNKSIZE;
-		    UVW uvw_first = (*uvw)[bl][time_offset];
-		    UVW uvw_last  = (*uvw)[bl][time_offset + CHUNKSIZE];
-		
-		    // Compute position in master grid
-		    int grid_x = ((uvw_first.u + uvw_last.u) / 2) - (SUBGRIDSIZE / 2);
-		    int grid_y = ((uvw_first.v + uvw_last.v) / 2) - (SUBGRIDSIZE / 2);
+    #pragma omp parallel for
+    for (int s = 0; s < jobsize; s++) {
+            // Load position in grid
+            int grid_x = metadata[s].coordinate.x - (SUBGRIDSIZE/2);
+            int grid_y = metadata[s].coordinate.y - (SUBGRIDSIZE/2);
         
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -37,12 +29,11 @@ void kernel_splitter(
 
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        (*subgrid)[bl][chunk][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
+                        (*subgrid)[s][chunk][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
                     }
                 }
             }
         }
-    }
     }
 }
 
