@@ -19,7 +19,7 @@ namespace idg {
   namespace proxy {
     
     /// Constructors
-    SMP::SMP(Compiler compiler, 
+    CPU::CPU(Compiler compiler, 
              Compilerflags flags,
              Parameters params,
              AlgorithmParameters algparams,
@@ -29,7 +29,7 @@ namespace idg {
         mInfo(info)
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       cout << "Compiler: " << compiler << endl;
       cout << "Compiler flags: " << flags << endl;
       cout << params;
@@ -46,7 +46,7 @@ namespace idg {
     }
     
 
-    SMP::SMP(CompilerEnvironment cc, 
+    CPU::CPU(CompilerEnvironment cc, 
              Parameters params,
              AlgorithmParameters algparams,
              ProxyInfo info) 
@@ -55,20 +55,20 @@ namespace idg {
         mInfo(info)
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
       
       // find out which compiler to use
-      // call SMP(compiler, flags, params, algparams)
+      // call CPU(compiler, flags, params, algparams)
       
       cerr << "Constructor not implemented yet" << endl;
     } 
     
 
-    SMP::~SMP() 
+    CPU::~CPU() 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // unload shared objects by ~Module
@@ -86,10 +86,10 @@ namespace idg {
     }
 
 
-    AlgorithmParameters SMP::default_algparams() 
+    AlgorithmParameters CPU::default_algparams() 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       AlgorithmParameters p;
@@ -101,16 +101,16 @@ namespace idg {
     }
 
 
-    ProxyInfo SMP::default_info() 
+    ProxyInfo CPU::default_info() 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       ProxyInfo p;
 
       p.set_path_to_src("../../../kernels/CPU/reference");
-      p.set_path_to_lib("./lib"); // change to use tmp dir by default
+      p.set_path_to_lib("../../../lib"); // change to use tmp dir by default
 
       srand(time(NULL));
       string rnd_str = to_string( rand() );
@@ -140,7 +140,7 @@ namespace idg {
     
 
     /// Methods
-    void SMP::grid_visibilities(void *visibilities, 
+    void CPU::grid_visibilities(void *visibilities, 
 				void *uvw, 
 				void *wavenumbers,
 				void *aterm, 
@@ -149,7 +149,7 @@ namespace idg {
 				void *grid) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // get parameters
@@ -177,7 +177,7 @@ namespace idg {
     }
 
 
-    void SMP::degrid_visibilities(void *grid,
+    void CPU::degrid_visibilities(void *grid,
 				  void *uvw,
 				  void *wavenumbers, 
 				  void *aterm,
@@ -186,7 +186,7 @@ namespace idg {
 				  void *visibilities) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // get parameters
@@ -213,10 +213,10 @@ namespace idg {
     }
 
 
-    void SMP::transform(DomainAtoDomainB direction, void* grid) 
+    void CPU::transform(DomainAtoDomainB direction, void* grid) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       cout << "Transform direction: " << direction << endl;
       #endif
 
@@ -227,12 +227,12 @@ namespace idg {
 
     
     // lower-level inteface: (de)gridding split into two function calls each
-    void SMP::grid_onto_subgrids(int jobsize, void *visibilities, void *uvw, 
+    void CPU::grid_onto_subgrids(int jobsize, void *visibilities, void *uvw, 
 				 void *wavenumbers, void *aterm, void *spheroidal, 
 				 void *baselines, void *subgrids)
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // argument checks
@@ -243,11 +243,11 @@ namespace idg {
     }
 
     
-    void SMP::add_subgrids_to_grid(int jobsize, void *uvw, void *subgrids, 
+    void CPU::add_subgrids_to_grid(int jobsize, void *uvw, void *subgrids, 
                                    void *grid) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // argument checks
@@ -257,11 +257,11 @@ namespace idg {
     }
 
 
-    void SMP::split_grid_into_subgrids(int jobsize, void *uvw, void *subgrids, 
+    void CPU::split_grid_into_subgrids(int jobsize, void *uvw, void *subgrids, 
 				       void *grid)
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // argument checks
@@ -271,12 +271,12 @@ namespace idg {
     }
 
     
-    void SMP::degrid_from_subgrids(int jobsize, void *wavenumbers, void *aterm, 
+    void CPU::degrid_from_subgrids(int jobsize, void *wavenumbers, void *aterm, 
 				   void *baselines, void *visibilities, void *uvw, 
 				   void *spheroidal, void *subgrids)
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // argument checks
@@ -288,12 +288,12 @@ namespace idg {
 
 
     
-    void SMP::run_gridder(int jobsize, void *visibilities, void *uvw, 
+    void CPU::run_gridder(int jobsize, void *visibilities, void *uvw, 
 			  void *wavenumbers, void *aterm, void *spheroidal, 
 			  void *baselines, void *subgrids) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // Performance measurements
@@ -392,10 +392,10 @@ namespace idg {
 
 
 
-    void SMP::run_adder(int jobsize, void *uvw, void *subgrids, void *grid) 
+    void CPU::run_adder(int jobsize, void *uvw, void *subgrids, void *grid) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // Performance measurements
@@ -467,10 +467,10 @@ namespace idg {
 
 
 
-    void SMP::run_splitter(int jobsize, void *uvw, void *subgrids, void *grid) 
+    void CPU::run_splitter(int jobsize, void *uvw, void *subgrids, void *grid) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // Performance measurements
@@ -542,12 +542,12 @@ namespace idg {
 
 
 
-    void SMP::run_degridder(int jobsize, void *wavenumbers, void *aterm, 
+    void CPU::run_degridder(int jobsize, void *wavenumbers, void *aterm, 
                             void *baselines, void *visibilities, void *uvw, 
                             void *spheroidal, void *subgrids)
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // Performance measurements
@@ -651,10 +651,10 @@ namespace idg {
     } // run_degridder
 
 
-    void SMP::run_fft(void *grid, int sign) 
+    void CPU::run_fft(void *grid, int sign) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // Performance measurements
@@ -692,10 +692,10 @@ namespace idg {
     } // run_fft
 
 
-    void SMP::compile(Compiler compiler, Compilerflags flags) 
+    void CPU::compile(Compiler compiler, Compilerflags flags) 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
@@ -745,10 +745,10 @@ namespace idg {
     
 
     
-    void SMP::parameter_sanity_check() 
+    void CPU::parameter_sanity_check() 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       // assert: subgrid_size <= grid_size
@@ -757,10 +757,10 @@ namespace idg {
     }
 
     
-    void SMP::load_shared_objects() 
+    void CPU::load_shared_objects() 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
 
       for (auto libname : mInfo.get_lib_names()) {
@@ -776,10 +776,10 @@ namespace idg {
 
 
     /// maps name -> index in modules that contain that symbol 
-    void SMP::find_kernel_functions() 
+    void CPU::find_kernel_functions() 
     {
       #if defined(DEBUG) 
-      cout << "SMP::" << __func__ << endl;
+      cout << "CPU::" << __func__ << endl;
       #endif
       
       for (unsigned int i=0; i<modules.size(); i++) {

@@ -1,5 +1,5 @@
-#ifndef IDG_SMPKERNELS_H_
-#define IDG_SMPKERNELS_H_
+#ifndef IDG_KERNELS_H_
+#define IDG_KERNELS_H_
 
 #include <cstdint>
 #include <ccomplex>

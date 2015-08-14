@@ -1,5 +1,5 @@
 /** 
- *  \class SMP
+ *  \class CPU
  *
  *  \brief Class for ... 
  *
@@ -7,8 +7,8 @@
  *  This will be included by a user, so detail usage...
  */
 
-#ifndef IDG_SMP_H_
-#define IDG_SMP_H_
+#ifndef IDG_CPU_H_
+#define IDG_CPU_H_
 
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
@@ -19,18 +19,18 @@ namespace idg {
   
   namespace proxy {
 
-    class SMP : public Proxy {
+    class CPU : public Proxy {
     public:
       
       /// Constructors
-      SMP(Compiler compiler, 
+      CPU(Compiler compiler, 
 	  Compilerflags flags,
 	  Parameters params,
 	  AlgorithmParameters algparams = default_algparams(), 
           ProxyInfo info = default_info()); 
       
       
-      SMP(CompilerEnvironment cc, 
+      CPU(CompilerEnvironment cc, 
 	  Parameters params,
 	  AlgorithmParameters algparams = default_algparams(), 
 	  ProxyInfo info = default_info()); 
@@ -39,7 +39,7 @@ namespace idg {
       // te be edited
       
       /// Destructor
-      ~SMP();
+      ~CPU();
       
       // Get default values for ProxyInfo
       static AlgorithmParameters default_algparams();
@@ -139,7 +139,7 @@ namespace idg {
       // std::vector< std::unique_ptr<runtime::Module> > modules;  
       std::vector<runtime::Module*> modules;  
       std::map<std::string,int> which_module;  
-    }; // class SMP
+    }; // class CPU
 
   } // namespace proxy
 
