@@ -7,7 +7,7 @@
 #include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
 
-#include "SMP.h"
+#include "Proxy.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif

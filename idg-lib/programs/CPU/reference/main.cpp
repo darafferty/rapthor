@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstdlib> // size_t
 #include <complex>
-#include "SMP.h"
+#include "Proxy.h"
 #include "Init.h"  // Data init routines
 #include "Arguments.h"  // Parse command line arguments
 
