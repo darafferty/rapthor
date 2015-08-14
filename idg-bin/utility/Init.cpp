@@ -24,8 +24,23 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
     UVWType *uvw = (UVWType *) ptr;
     
     // Check whether layout file exists
-    const char* filename = LAYOUT_FILE;
-    if (!uvwsim_file_exists(filename)) {
+    char* filename;
+    bool found = false;
+    for (int i = 0; i < 4; i++) {
+        std::stringstream ss;
+        for (int j = 0; j < i; j++) {
+            ss << "../";
+        }
+        ss << LAYOUT_FILE;
+        filename = (char *) ss.str().c_str();
+
+        if (uvwsim_file_exists(filename)) {
+            found = true;
+            break;    
+        }
+    }
+
+    if (!found) {
         std::cerr << "Unable to find specified layout file: " << filename << std::endl;
         exit(EXIT_FAILURE);
     }
