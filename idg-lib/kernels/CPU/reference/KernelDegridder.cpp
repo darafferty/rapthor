@@ -67,19 +67,12 @@ void kernel_degridder(
                     int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
         	
 			        // Load uv values
-                    #if ORDER == ORDER_BL_P_V_U
 				    FLOAT_COMPLEX uvXX = s * (*subgrid)[bl][chunk][0][y_src][x_src];
 				    FLOAT_COMPLEX uvXY = s * (*subgrid)[bl][chunk][1][y_src][x_src];
 				    FLOAT_COMPLEX uvYX = s * (*subgrid)[bl][chunk][2][y_src][x_src];
 				    FLOAT_COMPLEX uvYY = s * (*subgrid)[bl][chunk][3][y_src][x_src];
-			        #elif ORDER == ORDER_BL_V_U_P
-				    FLOAT_COMPLEX uvXX = s * (*subgrid)[bl][chunk][y_src][x_src][0];
-				    FLOAT_COMPLEX uvXY = s * (*subgrid)[bl][chunk][y_src][x_src][1];
-				    FLOAT_COMPLEX uvYX = s * (*subgrid)[bl][chunk][y_src][x_src][2];
-				    FLOAT_COMPLEX uvYY = s * (*subgrid)[bl][chunk][y_src][x_src][3];
-				    #endif
-			
-                    // Apply aterm to subgrid
+
+			        // Apply aterm to subgrid
 				    _subgrid[y][x][0]  = uvXX * aXX1;
                     _subgrid[y][x][0] += uvXY * aYX1;
                     _subgrid[y][x][0] += uvXX * aXX2;

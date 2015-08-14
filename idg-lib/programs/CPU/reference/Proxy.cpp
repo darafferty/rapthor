@@ -352,11 +352,7 @@ namespace idg {
         runtime_fft = -omp_get_wtime();
         #endif
         
-        #if ORDER == ORDER_BL_V_U_P
-        kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD, FFT_LAYOUT_YXP);
-        #elif ORDER == ORDER_BL_P_V_U
-        kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD, FFT_LAYOUT_PYX);
-        #endif
+        kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD);
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_fft += omp_get_wtime();
@@ -602,11 +598,7 @@ namespace idg {
         runtime_fft = -omp_get_wtime();
         #endif
         
-#if ORDER == ORDER_BL_V_U_P
-        kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_YXP);
-#elif ORDER == ORDER_BL_P_V_U
-        kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD, FFT_LAYOUT_PYX);
-#endif
+        kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD);
 
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_fft += omp_get_wtime();
@@ -673,7 +665,7 @@ namespace idg {
       runtime = -omp_get_wtime();
       #endif
       
-      kernel_fft.run(gridsize, 1, grid, sign, FFT_LAYOUT_PYX);
+      kernel_fft.run(gridsize, 1, grid, sign);
       
       #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       runtime += omp_get_wtime();

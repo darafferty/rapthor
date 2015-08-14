@@ -35,17 +35,10 @@ void kernel_splitter(
                     int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                     int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-                    #if ORDER == ORDER_BL_V_U_P
-                    (*subgrid)[bl][chunk][y_dst][x_dst][0] = (*grid)[0][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][y_dst][x_dst][1] = (*grid)[1][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][y_dst][x_dst][2] = (*grid)[2][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][y_dst][x_dst][3] = (*grid)[3][grid_y+y][grid_x+x];
-                    #elif ORDER == ORDER_BL_P_V_U
-                    (*subgrid)[bl][chunk][0][y_dst][x_dst] = (*grid)[0][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][1][y_dst][x_dst] = (*grid)[1][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][2][y_dst][x_dst] = (*grid)[2][grid_y+y][grid_x+x];
-                    (*subgrid)[bl][chunk][3][y_dst][x_dst] = (*grid)[3][grid_y+y][grid_x+x];
-                    #endif
+                    // Set grid value to subgrid
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        (*subgrid)[bl][chunk][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
+                    }
                 }
             }
         }

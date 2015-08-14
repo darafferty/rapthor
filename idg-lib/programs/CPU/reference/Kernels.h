@@ -22,7 +22,7 @@ namespace idg {
     // Function signatures
     #define sig_gridder   (void (*)(int,int,void*,void*,void*,void*,void*,void*,void*))
     #define sig_degridder (void (*)(int,int,void*,void*,void*,void*,void*,void*,void*))
-    #define sig_fft		  (void (*)(int,int,void*,int,int))
+    #define sig_fft		  (void (*)(int,int,void*,int))
     #define sig_adder	  (void (*)(int,void*,void*,void*))
     #define sig_splitter  (void (*)(int,void*,void*,void*))
 
@@ -38,11 +38,6 @@ namespace idg {
     static const std::string name_fft_bytes = "kernel_fft_bytes";
     static const std::string name_adder_bytes = "kernel_adder_bytes";
     static const std::string name_splitter_bytes = "kernel_splitter_bytes";
-
-    // the ORDER DEFINES should be obsolete at some point
-    #define ORDER_BL_P_V_U 1
-    #define ORDER_BL_V_U_P 0
-
 
     class Gridder {
     public:
@@ -76,12 +71,10 @@ namespace idg {
     };
 
     
-#define FFT_LAYOUT_YXP (-1)
-#define FFT_LAYOUT_PYX (+1)
     class GridFFT {
     public:
       GridFFT(runtime::Module &module);
-      void run(int size, int batch, void *data, int direction, int layout);
+      void run(int size, int batch, void *data, int direction);
       uint64_t flops(int size, int batch);
       uint64_t bytes(int size, int batch);
     
