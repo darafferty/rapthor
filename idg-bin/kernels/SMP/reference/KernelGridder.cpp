@@ -7,16 +7,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#if USE_LIKWID
-#include <likwid.h>
-#endif
-
-#define USE_VML 0 // HACK
-#if USE_VML
-#define VML_PRECISION VML_LA
-#include <mkl_vml.h>
-#endif
-
 #include "Types.h"
 
 extern "C" {
@@ -31,16 +21,8 @@ void kernel_gridder(
 	SubGridType			   __restrict__ *subgrid
 	) {
 
-  //  printf("Running: kernel_gridder\n");
-	
-	omp_set_nested(1);
-	
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, baselines)
     {
-    #if USE_LIKWID
-    likwid_markerThreadInit();
-    likwid_markerStartRegion("gridder");
-    #endif
     #pragma omp for
 	for (int bl = 0; bl < jobsize; bl++) {
 	    // Load stations for current baseline
@@ -79,7 +61,6 @@ void kernel_gridder(
 			    float w = (*uvw)[bl][time].w;
 		
 		        // Compute phase indices and phase offsets
-                #pragma unroll
 			    for (int y = 0; y < SUBGRIDSIZE; y++) {
 				    for (int x = 0; x < SUBGRIDSIZE; x++) {
 					    // Compute l,m,n
@@ -104,21 +85,6 @@ void kernel_gridder(
 			    }
 			
 			    // Compute phasor
-			    #if USE_VML
-			    float phase[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
-
-			    #pragma unroll_and_jam(3)
-			    for (int y = 0; y < SUBGRIDSIZE; y++) {
-				    for (int x = 0; x < SUBGRIDSIZE; x++) {
-					    for (int chan = 0; chan < NR_CHANNELS; chan++) {
-						    phase[y][x][chan] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-					    }
-				    }
-			    }
-			
-			    vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS, (const float*) &phase[0][0][0], &phasor_imag[0][0][0], &phasor_real[0][0][0], VML_PRECISION);
-			    #else
-			    #pragma unroll_and_jam(3)
 			    for (int y = 0; y < SUBGRIDSIZE; y++) {
 				    for (int x = 0; x < SUBGRIDSIZE; x++) {
 					    for (int chan = 0; chan < NR_CHANNELS; chan++) {
@@ -132,18 +98,15 @@ void kernel_gridder(
 					    }
 				    }
 			    }
-                #endif
 		
 		        // Update current subgrid
 			    for (int y = 0; y < SUBGRIDSIZE; y++) {
 				    for (int x = 0; x < SUBGRIDSIZE; x++) {
 				        FLOAT_COMPLEX phasor[NR_CHANNELS] __attribute__((aligned(32)));
-				        #pragma unroll
 				        for (int chan = 0; chan < NR_CHANNELS; chan++) {
 				            phasor[chan] = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
 				        }
 				
-				        #pragma unroll
 					    for (int chan = 0; chan < NR_CHANNELS; chan++) {
                             uv[y][x][0] += visXX[chan] * phasor[chan];
 						    uv[y][x][1] += visXY[chan] * phasor[chan];
@@ -156,7 +119,6 @@ void kernel_gridder(
 		
 		    // Apply aterm and spheroidal and store result
 		    for (int y = 0; y < SUBGRIDSIZE; y++) {
-		        #pragma ivdep
 			    for (int x = 0; x < SUBGRIDSIZE; x++) {
 				    // Get a term for station1
 				    FLOAT_COMPLEX aXX1 = (*aterm)[station1][0][y][x];
@@ -217,9 +179,6 @@ void kernel_gridder(
             }
         }
 	}
-    #if USE_LIKWID
-    likwid_markerStopRegion("gridder");
-    #endif
     }
 }
 

@@ -15,14 +15,8 @@ void kernel_adder(
     GridType          __restrict__ *grid
     ) {
 
-  //  printf("Running: kernel_adder\n");
-
     #pragma omp parallel
     {
-    #if USE_LIKWID
-    likwid_markerThreadInit();
-    likwid_markerStartRegion("adder");
-    #endif
     #pragma omp for
     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
         for (int bl = 0; bl < jobsize; bl++) {
@@ -37,7 +31,6 @@ void kernel_adder(
 		        int grid_y = ((uvw_first.v + uvw_last.v) / 2) - (SUBGRIDSIZE / 2);
 		        
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
-                    #pragma ivdep
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         // Compute shifted position in subgrid
                         int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
@@ -53,9 +46,6 @@ void kernel_adder(
             }
         }
     }
-    #if USE_LIKWID
-    likwid_markerStopRegion("adder");
-    #endif
     }
 }
 

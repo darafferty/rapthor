@@ -6,12 +6,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define USE_VML 0 // Hack
-#if USE_VML
-#define VML_PRECISION VML_LA
-#include <mkl_vml.h>
-#endif
-
 #include "Types.h"
 
 extern "C" {
@@ -26,14 +20,8 @@ void kernel_degridder(
 	VisibilitiesType	 __restrict__ *visibilities
 	) {
 
-  //  printf("Running: kernel_degridder\n");
-
     #pragma omp parallel shared(subgrid, uvw, wavenumbers, aterm, baselines, spheroidal)
     {
-    #if USE_LIKWID
-    likwid_markerThreadInit();
-    likwid_markerStartRegion("degridder");
-    #endif
     #pragma omp for
 	for (int bl = 0; bl < jobsize; bl++) {
 	    // Load stations for current baseline
@@ -120,7 +108,6 @@ void kernel_degridder(
 			    float w = (*uvw)[bl][time].w;
 			
 		        // Compute phase indices and phase offsets
-                #pragma unroll
 			    for (int y = 0; y < SUBGRIDSIZE; y++) {
 				    for (int x = 0; x < SUBGRIDSIZE; x++) {
 					    // Compute l,m,n
@@ -139,22 +126,7 @@ void kernel_degridder(
                 }
 			
 			    // Compute phasor
-		        #if USE_VML
-		        float phase[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-
-		        #pragma unroll_and_jam(3)
-		        for (int chan = 0; chan < NR_CHANNELS; chan++) {
-		            for (int y = 0; y < SUBGRIDSIZE; y++) {
-			            for (int x = 0; x < SUBGRIDSIZE; x++) {
-					        phase[chan][y][x] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-				        }
-			        }
-		        }
-		
-		        vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS, (const float*) &phase[0][0][0], &phasor_imag[0][0][0], &phasor_real[0][0][0], VML_PRECISION);
-		        #else
-		        #pragma unroll_and_jam(3)
-		        for (int chan = 0; chan < NR_CHANNELS; chan++) {
+    	        for (int chan = 0; chan < NR_CHANNELS; chan++) {
 		            for (int y = 0; y < SUBGRIDSIZE; y++) {
 			            for (int x = 0; x < SUBGRIDSIZE; x++) {
 				            // Compute phase
@@ -167,7 +139,6 @@ void kernel_degridder(
 				        }
 			        }
 		        }
-                #endif
             
 		        FLOAT_COMPLEX sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
         
@@ -195,9 +166,6 @@ void kernel_degridder(
 		    }
 	    }
 	}
-    #if USE_LIKWID
-    likwid_markerStopRegion("degridder");
-    #endif
     }
 }
 
