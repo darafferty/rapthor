@@ -1,5 +1,5 @@
 #include <cstdint> // unint64_t
-#include "SMPKernels.h"
+#include "Kernels.h"
 
 namespace idg {
 

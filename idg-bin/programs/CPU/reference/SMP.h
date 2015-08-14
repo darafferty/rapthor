@@ -12,7 +12,7 @@
 
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "Proxy.h"
-#include "SMPKernels.h"
+#include "Kernels.h"
 
 
 namespace idg {
