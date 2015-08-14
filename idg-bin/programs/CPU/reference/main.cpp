@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
   idg::Compiler compiler = "g++";
   idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
 
-  idg::proxy::SMP xeon(compiler, compilerflags, params, algparams);
+  idg::proxy::CPU xeon(compiler, compilerflags, params, algparams);
   clog << endl;
 
 
