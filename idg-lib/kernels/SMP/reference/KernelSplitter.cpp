@@ -15,14 +15,8 @@ void kernel_splitter(
     const GridType __restrict__ *grid
     ) {
 
-  //  printf("Running: kernel_splitter\n");
-
     #pragma omp parallel
     {
-    #if USE_LIKWID
-    likwid_markerThreadInit();
-    likwid_markerStartRegion("splitter");
-    #endif
     #pragma omp for
     for (int bl = 0; bl < jobsize; bl++) {
         for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
@@ -36,7 +30,6 @@ void kernel_splitter(
 		    int grid_y = ((uvw_first.v + uvw_last.v) / 2) - (SUBGRIDSIZE / 2);
         
             for (int y = 0; y < SUBGRIDSIZE; y++) {
-                #pragma ivdep
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     // Compute shifted position in subgrid
                     int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
@@ -57,9 +50,6 @@ void kernel_splitter(
             }
         }
     }
-    #if USE_LIKWID
-    likwid_markerStopRegion("splitter");
-    #endif
     }
 }
 

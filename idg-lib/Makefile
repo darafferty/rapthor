@@ -1,17 +1,9 @@
 # GNU
-# CC = gcc
-# CXX = g++
-# LD = g++
+CC = gcc
+CXX = g++
+LD = g++
 
-# Intel
-CC = icc
-CXX = icpc
-LD = icpc
-
-# CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DDEBUG -DREPORT_VERBOSE
-# CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DREPORT_TOTAL
-CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp -DREPORT_VERBOSE
-# CXXFLAGS = -std=c++0x -Wall -O2 -xAVX -fopenmp 
+CXXFLAGS = -std=c++0x -Wall -O2 -fopenmp -DREPORT_VERBOSE
 LDFLAGS = $(CXXFLAGS)
 
 DIRS = . ./common ./utility ./external
@@ -21,8 +13,7 @@ SRC = $(foreach DIR, $(DIRS), $(wildcard $(DIR)/*.cpp))
 OBJ = $(patsubst %.cpp,%.o,$(SRC))
 
 INC = -I./common -I./utility -I./external
-# LIBS = -ldl -lfftw3 -lfftw3f
-LIBS = -ldl -mkl -lmkl_vml_avx -lmkl_avx
+LIBS = -ldl -lfftw3 -lfftw3f -lfftw3f_omp
 
 all: main.x
 
