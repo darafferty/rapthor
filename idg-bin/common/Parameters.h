@@ -83,14 +83,15 @@ namespace idg {
 
     static std::string 
       definitions(
-          unsigned int nr_stations, 
-          unsigned int nr_baselines,
-		  unsigned int nr_channels, 
-		  unsigned int nr_timesteps,
-		  unsigned int nr_timeslots,
-		  float imagesize, 
-		  unsigned int grid_size,
-          unsigned int subgrid_size);
+            unsigned int nr_stations, 
+            unsigned int nr_baselines, 
+            unsigned int nr_channels,
+            unsigned int nr_timesteps,
+            unsigned int nr_timeslots,
+            float imagesize,
+            unsigned int nr_polarizations,
+            unsigned int grid_size,
+            unsigned int subgrid_size);
 
   private:
     unsigned int nr_stations;      

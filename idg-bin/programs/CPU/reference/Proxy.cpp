@@ -638,9 +638,10 @@ namespace idg {
         mParams.get_nr_channels(),
         mParams.get_nr_timesteps(), 
         mParams.get_nr_timeslots(), 
-        mParams.get_nr_polarizations(), 
         mParams.get_imagesize(),
-        mParams.get_grid_size());
+        mParams.get_nr_polarizations(), 
+        mParams.get_grid_size(),
+        mParams.get_subgrid_size());
       
       string parameters = " " + flags + " " + mparameters; 
       

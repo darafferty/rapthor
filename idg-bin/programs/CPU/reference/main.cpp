@@ -1,4 +1,3 @@
-// This file mimics IDG-WRAPPER
 // run with -DNR_STATIONS=x -DNR_CHANNELS=... or get with arguments...
 
 #include <iostream>
@@ -69,11 +68,10 @@ int main(int argc, char *argv[])
   idg::Compiler compiler = "g++";
   idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
 
-#if 0
-  idg::proxy::CPU xeon(compiler, compilerflags, params, algparams);
+  idg::proxy::CPU xeon(compiler, compilerflags, params);
   clog << endl;
 
-
+#if 0
   // Run gridding
   clog << ">>> Run gridder" << endl;
   xeon.grid_visibilities(visibilities, uvw, wavenumbers, aterm, 

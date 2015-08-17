@@ -17,21 +17,20 @@ void kernel_degridder(
 	const SpheroidalType __restrict__ *spheroidal,
 	const ATermType		 __restrict__ *aterm,
 	const MetadataType	 __restrict__ *metadata,
-	const SubGridType	 __restrict__ *subgrid,
+	const SubGridType	 __restrict__ *subgrid
 	) {
-
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
     // Iterate all subgrids
     #pragma omp for
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
-        Metadata m = metadata[s];
-        int time_nr = m.time_nr;
-        int station1 = m.baseline.station1;
-        int station2 = m.baseline.station2;
-        int x_coordinate = m.coordinates.x;
-        int y_coordinate = m.coordinates.y;
+        Metadata *m = metadata[s];
+        int time_nr = m->time_nr;
+        int station1 = m->baseline.station1;
+        int station2 = m->baseline.station2;
+        int x_coordinate = m->coordinate.x;
+        int y_coordinate = m->coordinate.y;
 	
         // Storage for precomputed values
         FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
@@ -42,7 +41,7 @@ void kernel_degridder(
 
         // Compute u and v offset
         float u_offset = x_coordinate / IMAGESIZE;
-        float v_offset = x_coordinate / IMAGESIZE;
+        float v_offset = y_coordinate / IMAGESIZE;
 
         // Apply aterm to subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -60,17 +59,17 @@ void kernel_degridder(
                 FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][time_nr][3][y][x]);
                 
                 // Load spheroidal
-                float s = (*spheroidal)[y][x];
+                float _spheroidal = (*spheroidal)[y][x];
     
                 // Compute shifted position in subgrid
                 int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                 int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
         
                 // Load uv values
-                FLOAT_COMPLEX pixelsXX = s * (*subgrid)[bl][chunk][0][y_src][x_src];
-                FLOAT_COMPLEX pixelsXY = s * (*subgrid)[bl][chunk][1][y_src][x_src];
-                FLOAT_COMPLEX pixelsYX = s * (*subgrid)[bl][chunk][2][y_src][x_src];
-                FLOAT_COMPLEX pixelsYY = s * (*subgrid)[bl][chunk][3][y_src][x_src];
+                FLOAT_COMPLEX pixelsXX = _spheroidal * (*subgrid)[s][0][y_src][x_src];
+                FLOAT_COMPLEX pixelsXY = _spheroidal * (*subgrid)[s][1][y_src][x_src];
+                FLOAT_COMPLEX pixelsYX = _spheroidal * (*subgrid)[s][2][y_src][x_src];
+                FLOAT_COMPLEX pixelsYY = _spheroidal * (*subgrid)[s][3][y_src][x_src];
 
                 // Apply aterm to subgrid
                 _pixels[y][x][0]  = pixelsXX * aXX1;
@@ -93,7 +92,7 @@ void kernel_degridder(
         }
 
         // Iterate all timesteps
-        for (int time = 0; time < NR_TIMEE; time++) {
+        for (int time = 0; time < NR_TIMESTEPS; time++) {
             // Load UVW coordinates
             float u = (*uvw)[s][time].u;
             float v = (*uvw)[s][time].v;
@@ -111,7 +110,7 @@ void kernel_degridder(
                     phase_index[y][x] = u*l + v*m + w*n;
                 
                     // Compute phase offset
-                    phase_offset[y][x] = offset_u*l + offset_v*m + offset_w*n;
+                    phase_offset[y][x] = u_offset*l + v_offset*m + w_offset*n;
                 }
             }
         
@@ -148,10 +147,10 @@ void kernel_degridder(
                 }
             
                 // Set visibilities
-                (*visibilities)[bl][time][chan][0] = sum[0];
-                (*visibilities)[bl][time][chan][1] = sum[1];
-                (*visibilities)[bl][time][chan][2] = sum[2];
-                (*visibilities)[bl][time][chan][3] = sum[3];
+                (*visibilities)[s][time][chan][0] = sum[0];
+                (*visibilities)[s][time][chan][1] = sum[1];
+                (*visibilities)[s][time][chan][2] = sum[2];
+                (*visibilities)[s][time][chan][3] = sum[3];
             }
         }
 	}
@@ -161,13 +160,13 @@ void kernel_degridder(
 uint64_t kernel_degridder_flops(int jobsize) {
     return
     // ATerm
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 32 +
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 32 +
     // Shift
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6 +
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6 +
     // Spheroidal
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
     // Degrid
-    1ULL * jobsize * NR_TIME * NR_CHANNELS * SUBGRIDSIZE * SUBGRIDSIZE * (
+    1ULL * jobsize * NR_TIMESTEPS * NR_CHANNELS * SUBGRIDSIZE * SUBGRIDSIZE * (
         // Phasor
         2 * 22 +
         // UV
@@ -177,11 +176,11 @@ uint64_t kernel_degridder_flops(int jobsize) {
 uint64_t kernel_degridder_bytes(int jobsize) {
     return
     // ATerm
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * 2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * 2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
     // Spheroidal
-    1ULL * jobsize * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float) +
+    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float) +
     // Degrid
-    1ULL * jobsize * NR_TIME * NR_CHANNELS * (
+    1ULL * jobsize * NR_TIMESTEPS * NR_CHANNELS * (
         // Offset
         SUBGRIDSIZE * SUBGRIDSIZE * 3 * sizeof(float) +
         // UV

@@ -232,20 +232,21 @@ namespace idg {
   string Parameters::definitions(
             unsigned int nr_stations, 
             unsigned int nr_baselines, 
+            unsigned int nr_channels,
             unsigned int nr_timesteps,
-            unsigned int nr_channels, 
-            unsigned int nr_polarizations,
+            unsigned int nr_timeslots,
             float imagesize,
+            unsigned int nr_polarizations,
             unsigned int grid_size,
             unsigned int subgrid_size) {
     stringstream parameters;
     parameters << " -DNR_STATIONS=" << nr_stations;
     parameters << " -DNR_BASELINES=" << nr_baselines;
+    parameters << " -DNR_CHANNELS=" << nr_channels;
     parameters << " -DNR_TIMESTEPS=" << nr_timesteps;
     parameters << " -DNR_TIMESLOTS=" << nr_timesteps;
-    parameters << " -DNR_CHANNELS=" << nr_channels;
-    parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
     parameters << " -DIMAGESIZE=" << imagesize;
+    parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
     parameters << " -DGRIDSIZE=" << grid_size;
     parameters << " -DSUBGRIDSIZE=" << subgrid_size;
     return parameters.str();
