@@ -22,13 +22,19 @@ namespace idg {
   static const std::string ENV_GRIDSIZE     = "GRIDSIZE";
   static const std::string ENV_SUBGRIDSIZE  = "SUBGRIDSIZE";
   static const std::string ENV_JOBSIZE      = "JOBSIZE"; // to all routines
+  static const std::string ENV_JOBSIZE_GRIDDING   = "JOBSIZE_GRIDDING";
+  static const std::string ENV_JOBSIZE_DEGRIDDING = "JOBSIZE_DEGRIDDING";
+  static const std::string ENV_JOBSIZE_GRIDDER    = "JOBSIZE_GRIDDER";
+  static const std::string ENV_JOBSIZE_ADDER      = "JOBSIZE_ADDER";
+  static const std::string ENV_JOBSIZE_SPLITTER   = "JOBSIZE_SPLITTER";
+  static const std::string ENV_JOBSIZE_DEGRIDDER  = "JOBSIZE_DEGRIDDER";
 
   class Parameters 
   {
   public:
     /// Constructor: default reads values from ENV or sets default 
     Parameters() {
-      read_parameters_from_env();
+      set_from_env();
     }
   
     // default copy constructor/assignment okay
@@ -73,7 +79,7 @@ namespace idg {
     // auxiliary functions
     void print() const;
     void print(std::ostream& os) const;
-    void read_parameters_from_env();
+    void set_from_env();
 
     static std::string 
       definitions(

@@ -158,7 +158,7 @@ namespace idg {
   }
  
 
-  void Parameters::read_parameters_from_env() 
+  void Parameters::set_from_env() 
   {
     const unsigned int DEFAULT_NR_STATIONS = 44;
     const unsigned int DEFAULT_NR_CHANNELS = 16;
@@ -172,50 +172,60 @@ namespace idg {
 
     // nr_stations
     char *cstr_nr_stations = getenv(ENV_NR_STATIONS.c_str());
-    nr_stations = cstr_nr_stations != nullptr ? atoi(cstr_nr_stations): DEFAULT_NR_STATIONS;
+    nr_stations = cstr_nr_stations ? atoi(cstr_nr_stations): DEFAULT_NR_STATIONS;
 
     // nr_baselines 
     nr_baselines = (nr_stations * (nr_stations-1)) / 2;
 
     // nr_channels
     char *cstr_nr_channels = getenv(ENV_NR_CHANNELS.c_str());
-    nr_channels = cstr_nr_channels != nullptr ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
+    nr_channels = cstr_nr_channels ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
 
     // nr_timesteps
     char *cstr_nr_timesteps = getenv(ENV_NR_TIMESTEPS.c_str());
-    nr_timesteps = cstr_nr_timesteps != nullptr ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
+    nr_timesteps = cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
 
     // nr_timeslots
     char *cstr_nr_timeslots = getenv(ENV_NR_TIMESLOTS.c_str());
-    nr_timeslots = cstr_nr_timeslots != nullptr ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
+    nr_timeslots = cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
     // nr_polarizations
     nr_polarizations = DEFAULT_NR_POLARIZATIONS;
 
     // imagesize 
     char *cstr_imagesize = getenv(ENV_IMAGESIZE.c_str());
-    imagesize = cstr_imagesize != nullptr ? atof(cstr_imagesize) : DEFAULT_IMAGESIZE;
+    imagesize = cstr_imagesize ? atof(cstr_imagesize) : DEFAULT_IMAGESIZE;
 
     // grid_size
     char *cstr_grid_size = getenv(ENV_GRIDSIZE.c_str());
-    grid_size = cstr_grid_size != nullptr ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
+    grid_size = cstr_grid_size ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
 
     // subgrid_size
     char *cstr_subgrid_size = getenv(ENV_SUBGRIDSIZE.c_str());
-    subgrid_size = cstr_subgrid_size != nullptr ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
+    subgrid_size = cstr_subgrid_size ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
 
     // job_size
     char *cstr_job_size = getenv(ENV_JOBSIZE.c_str());
-    job_size = cstr_job_size != nullptr ? atoi(cstr_job_size) : DEFAULT_JOBSIZE;
-    job_size = job_size < 0 ? DEFAULT_NR_STATIONS : job_size;
+    job_size = cstr_job_size ? atoi(cstr_job_size) : DEFAULT_JOBSIZE;
 
     // job_size_*
-    job_size_gridding = job_size;
-    job_size_degridding = job_size;
-    job_size_gridder = job_size;
-    job_size_adder = job_size;
-    job_size_splitter = job_size;
-    job_size_degridder = job_size;
+    char *cstr_job_size_gridding = getenv(ENV_JOBSIZE_GRIDDING.c_str());
+    job_size_gridding = cstr_job_size_gridding ? atoi(cstr_job_size_gridding) : job_size; 
+
+    char *cstr_job_size_degridding = getenv(ENV_JOBSIZE_DEGRIDDING.c_str());
+    job_size_degridding = cstr_job_size_degridding ? atoi(cstr_job_size_degridding) : job_size;
+
+    char *cstr_job_size_gridder = getenv(ENV_JOBSIZE_GRIDDER.c_str());
+    job_size_gridder = cstr_job_size_gridder ? atoi(cstr_job_size_gridder) : job_size;
+
+    char *cstr_job_size_adder = getenv(ENV_JOBSIZE_ADDER.c_str());
+    job_size_adder = cstr_job_size_adder ? atoi(cstr_job_size_adder) : job_size;
+
+    char *cstr_job_size_splitter = getenv(ENV_JOBSIZE_SPLITTER.c_str());
+    job_size_splitter = cstr_job_size_splitter ? atoi(cstr_job_size_splitter) : job_size;
+
+    char *cstr_job_size_degridder = getenv(ENV_JOBSIZE_DEGRIDDER.c_str());
+    job_size_degridder = cstr_job_size_degridder ? atoi(cstr_job_size_degridder) : job_size;
   } // read_parameters_from_env()
 
 
