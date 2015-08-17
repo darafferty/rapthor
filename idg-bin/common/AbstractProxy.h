@@ -13,7 +13,6 @@
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
-#include "AlgorithmParameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
 
 namespace idg {
