@@ -166,7 +166,7 @@ namespace idg {
     const unsigned int DEFAULT_NR_TIMESLOTS = 16;
     const unsigned int DEFAULT_NR_POLARIZATIONS = 4;
     const float DEFAULT_IMAGESIZE = 0.1f;
-    const unsigned int DEFAULT_GRIDSIZE = 2048;
+    const unsigned int DEFAULT_GRIDSIZE = 1024;
     const unsigned int DEFAULT_SUBGRIDSIZE = 32;
     const unsigned int DEFAULT_JOBSIZE = 100;
 
@@ -201,13 +201,21 @@ namespace idg {
     grid_size = cstr_grid_size != nullptr ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
 
     // subgrid_size
-    char *cstr_subgrid_size = getenv(ENV_GRIDSIZE.c_str());
-    grid_size = cstr_subgrid_size != nullptr ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
+    char *cstr_subgrid_size = getenv(ENV_SUBGRIDSIZE.c_str());
+    subgrid_size = cstr_subgrid_size != nullptr ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
 
     // job_size
     char *cstr_job_size = getenv(ENV_JOBSIZE.c_str());
     job_size = cstr_job_size != nullptr ? atoi(cstr_job_size) : DEFAULT_JOBSIZE;
     job_size = job_size < 0 ? DEFAULT_NR_STATIONS : job_size;
+
+    // job_size_*
+    job_size_gridding = job_size;
+    job_size_degridding = job_size;
+    job_size_gridder = job_size;
+    job_size_adder = job_size;
+    job_size_splitter = job_size;
+    job_size_degridder = job_size;
   } // read_parameters_from_env()
 
 
@@ -219,7 +227,7 @@ namespace idg {
             unsigned int nr_polarizations,
             float imagesize,
             unsigned int grid_size,
-            unsigned int w_planes) {
+            unsigned int subgrid_size) {
     stringstream parameters;
     parameters << " -DNR_STATIONS=" << nr_stations;
     parameters << " -DNR_BASELINES=" << nr_baselines;
@@ -229,9 +237,9 @@ namespace idg {
     parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
     parameters << " -DIMAGESIZE=" << imagesize;
     parameters << " -DGRIDSIZE=" << grid_size;
+    parameters << " -DSUBGRIDSIZE=" << subgrid_size;
     return parameters.str();
   }
-
 
   // helper functions
   ostream& operator<<(ostream& os, const Parameters& c) 
