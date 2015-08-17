@@ -4,12 +4,15 @@
 #define TYPEDEF_UVW_TYPE          typedef UVW UVWType[nr_baselines][nr_time];
 #define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
-#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_polarizations][subgridsize][subgridsize];
+#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_time][nr_polarizations][subgridsize][subgridsize];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
 #define TYPEDEF_BASELINE          typedef struct { int station1, station2; } Baseline;
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
 #define TYPEDEF_SUBGRID_TYPE      typedef std::complex<float> SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
 #define TYPEDEF_GRID_TYPE         typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+#define TYPEDEF_COORDINATE        typedef struct { int x, y; } Coordinate;
+#define TYPEDEF_METADATA          typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
+#define TYPEDEF_METADATA_TYPE     typedef Metadata MetadataType[nr_subgrids];
 
 
 namespace idg {
@@ -17,7 +20,7 @@ namespace idg {
 /*
     Methos where pointed to allocated memory is provided
 */
-void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize, int w_planes) {
+void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize) {
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
     
@@ -146,21 +149,15 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
         }
     }
 
-    // Scale uvw to to grid and collapse into w-planes
-    float scale_u = ((gridsize/2.0f)-subgridsize-1) / MAX(abs(min.u), max.u);
-    float scale_v = ((gridsize/2.0f)-subgridsize-1) / MAX(abs(min.v), max.v);
-    float scale_w = (w_planes/2) / MAX(abs(min.w), max.w);
-
+    // Fill UVW datastructure
     for (int bl = 0; bl < nr_baselines; bl++) {
         for (int t = 0; t < nr_time; t++) {
-            UVW value = (*uvw)[bl][t];
-            value.u = scale_u * value.u + (gridsize/2.0f);
-            value.v = scale_v * value.v + (gridsize/2.0f);
-            value.w = scale_w * value.w + (w_planes/2.0f);
+            int i = bl * nr_time + t;
+            UVW value = {(float) uu[i], (float) vv[i], (float) ww[i]};
             (*uvw)[bl][t] = value;
         }
     }
-  
+
     // Free memory 
     free(x); free(y); free(z);
     free(uu); free(vv); free(ww);
@@ -201,20 +198,22 @@ void init_wavenumbers(void *ptr, int nr_channels) {
 	}
 }
 
-void init_aterm(void *ptr, int nr_stations, int nr_polarizations, int subgridsize) {
+void init_aterm(void *ptr, int nr_stations, int nr_time, int nr_polarizations, int subgridsize) {
 	TYPEDEF_ATERM_TYPE
     ATermType *aterm = (ATermType *) ptr;
 	
 	std::complex<float> value(1, 1);
-	
+
 	for (int ant = 0; ant < nr_stations; ant++) {
-		for (int y = 0; y < subgridsize; y++) {
-			for (int x = 0; x < subgridsize; x++) {
-				for (int pol = 0; pol < nr_polarizations; pol++) {
-					(*aterm)[ant][pol][y][x] = value;
-				}
-			}
-		}
+        for (int t = 0; t < nr_time; t++) {
+		    for (int y = 0; y < subgridsize; y++) {
+		    	for (int x = 0; x < subgridsize; x++) {
+		    		for (int pol = 0; pol < nr_polarizations; pol++) {
+		    			(*aterm)[ant][t][pol][y][x] = value;
+		    		}
+		    	}
+		    }
+        }
 	}
 }
 
@@ -262,15 +261,104 @@ void init_grid(void *ptr, int gridsize, int nr_polarizations) {
 	memset(grid, 0, sizeof(GridType));
 }
 
+float min(float coordinate_first, float coordinate_last, float wavenumber_first, float wavenumber_last) {
+    return MIN(
+           MIN(coordinate_first * wavenumber_first, coordinate_first * wavenumber_last),
+           MIN(coordinate_last  * wavenumber_first, coordinate_last  * wavenumber_last));
+}
+
+float max(float coordinate_first, float coordinate_last, float wavenumber_first, float wavenumber_last) {
+    return MAX(
+           MAX(coordinate_first * wavenumber_first, coordinate_first * wavenumber_last),
+           MAX(coordinate_last  * wavenumber_first, coordinate_last  * wavenumber_last));
+}
+
+void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, int nr_baselines, int nr_timesteps, int nr_timeslots, int nr_channels, int gridsize, int subgridsize, float imagesize) {
+    // Compute number of subgrids
+    int nr_subgrids = nr_baselines * nr_timeslots;
+
+    // nr_time is the total number of timesteps for a baseline
+    int nr_time = nr_timesteps * nr_timeslots;
+
+    // Define datatypes
+    TYPEDEF_UVW 
+    TYPEDEF_UVW_TYPE
+    TYPEDEF_WAVENUMBER_TYPE
+    TYPEDEF_BASELINE
+    TYPEDEF_BASELINE_TYPE
+    TYPEDEF_COORDINATE
+    TYPEDEF_METADATA
+    TYPEDEF_METADATA_TYPE
+
+    // Pointers to datastructures
+    UVWType *uvw = (UVWType *) _uvw;
+    WavenumberType *wavenumbers = (WavenumberType *) init_wavenumbers(nr_channels);
+    BaselineType *baselines = (BaselineType *) init_baselines(nr_stations, nr_baselines);
+    MetadataType *metadata = (MetadataType *) ptr; 
+
+    // Get wavenumber for first and last frequency
+    float wavenumber_first = (*wavenumbers)[0];
+    float wavenumber_last  = (*wavenumbers)[nr_channels];
+
+    // Iterate all baselines
+    for (int bl = 0; bl < nr_baselines; bl++) {
+        // Load baseline
+        Baseline baseline = (*baselines)[bl];
+
+        // Iterate all timeslots
+        for (int t = 0; t < nr_timeslots; t++) {
+            int time_offset = t * nr_timesteps;
+
+            // Get first and last UVW coordinate in meters
+            UVW first = (*uvw)[bl][time_offset];
+            UVW last  = (*uvw)[bl][MIN(time_offset + nr_timesteps, nr_timesteps * nr_timeslots)];
+
+            // Find mininmum and maximum u and v for current chunk in wavelengths
+            float u_min = min(first.u, last.u, wavenumber_first, wavenumber_last);
+            float u_max = max(first.u, last.u, wavenumber_first, wavenumber_last);
+            float v_min = min(first.v, last.v, wavenumber_first, wavenumber_last);
+            float v_max = max(first.v, last.v, wavenumber_first, wavenumber_last);
+
+            // Compute middle point
+            float u_middle_wavelenghts = (int) ((u_max + u_min) / 2);
+            float v_middle_wavelenghts = (int) ((v_max + v_min) / 2);
+
+            // Compute middle point in pixels
+            int u_middle_pixels = u_middle_wavelenghts * imagesize;
+            int v_middle_pixels = v_middle_wavelenghts * imagesize;
+
+            // Shift center from middle of grid to top left
+            u_middle_pixels -= (gridsize/2);
+            v_middle_pixels -= (gridsize/2);
+            
+            // Shift from middle of subgrid to top left
+            u_middle_pixels -= (subgridsize/2);
+            v_middle_pixels -= (subgridsize/2);
+
+            // Construct coordinate
+            Coordinate coordinate = { u_middle_pixels, v_middle_pixels };
+
+            // Compute subgrid number
+            int subgrid_nr = bl * nr_timeslots + t;
+
+            // Set metadata
+            Metadata m = { t, baseline, coordinate };
+            (*metadata)[subgrid_nr] = m;
+        }
+    }
+
+    // Free baselines
+    free(baselines);
+}
 
 /*
     Methods where memory is allocated
 */
-void* init_uvw(int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize, int w_planes) {
+void* init_uvw(int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize) {
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
     void *ptr = malloc(sizeof(UVWType));
-    init_uvw(ptr, nr_stations, nr_baselines, nr_time, gridsize, subgridsize, w_planes);
+    init_uvw(ptr, nr_stations, nr_baselines, nr_time, gridsize, subgridsize);
     return ptr;
 }
 
@@ -288,10 +376,10 @@ void* init_wavenumbers(int nr_channels) {
     return ptr;
 }
 
-void* init_aterm(int nr_stations, int nr_polarizations, int subgridsize) {
+void* init_aterm(int nr_stations, int nr_time, int nr_polarizations, int subgridsize) {
     TYPEDEF_ATERM_TYPE
     void *ptr = malloc(sizeof(ATermType));
-    init_aterm(ptr, nr_stations, nr_polarizations, subgridsize);
+    init_aterm(ptr, nr_stations, nr_time, nr_polarizations, subgridsize);
     return ptr;
 }
 
@@ -325,4 +413,14 @@ void* init_grid(int gridsize, int nr_polarizations) {
     return ptr;
 }
 
+void *init_metadata(void *uvw, void *wavenumbers, int nr_stations, int nr_baselines, int nr_timesteps, int nr_timeslots, int nr_channels, int gridsize, int subgridsize, float imagesize) {
+   int nr_subgrids = nr_baselines * nr_timeslots;
+   TYPEDEF_BASELINE
+   TYPEDEF_COORDINATE
+   TYPEDEF_METADATA 
+   TYPEDEF_METADATA_TYPE
+   void *ptr = malloc(sizeof(MetadataType));
+   init_metadata(ptr, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
+   return ptr;
+}
 } // namespace idg
