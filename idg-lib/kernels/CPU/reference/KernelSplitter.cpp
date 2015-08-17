@@ -17,20 +17,19 @@ void kernel_splitter(
 
     #pragma omp parallel for
     for (int s = 0; s < jobsize; s++) {
-            // Load position in grid
-            int grid_x = metadata[s].coordinate.x - (SUBGRIDSIZE/2);
-            int grid_y = metadata[s].coordinate.y - (SUBGRIDSIZE/2);
-        
-            for (int y = 0; y < SUBGRIDSIZE; y++) {
-                for (int x = 0; x < SUBGRIDSIZE; x++) {
-                    // Compute shifted position in subgrid
-                    int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                    int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+        // Load position in grid
+        int grid_x = metadata[s]->coordinate.x - (SUBGRIDSIZE/2);
+        int grid_y = metadata[s]->coordinate.y - (SUBGRIDSIZE/2);
+    
+        for (int y = 0; y < SUBGRIDSIZE; y++) {
+            for (int x = 0; x < SUBGRIDSIZE; x++) {
+                // Compute shifted position in subgrid
+                int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-                    // Set grid value to subgrid
-                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        (*subgrid)[s][chunk][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
-                    }
+                // Set grid value to subgrid
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    (*subgrid)[s][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
                 }
             }
         }
@@ -38,7 +37,7 @@ void kernel_splitter(
 }
 
 uint64_t kernel_splitter_flops(int jobsize) {
-    return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+    return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (
     // Shift
     11 +
     // Add
@@ -47,7 +46,7 @@ uint64_t kernel_splitter_flops(int jobsize) {
 }
 
 uint64_t kernel_splitter_bytes(int jobsize) {
-	return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+	return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (
     // Coordinate
     2 * sizeof(unsigned) +
     // Pixels

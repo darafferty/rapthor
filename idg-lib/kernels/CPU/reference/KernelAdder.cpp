@@ -19,8 +19,8 @@ void kernel_adder(
     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
         for (int s = 0; s < jobsize; s++) {
             // Load position in grid
-            int grid_x = metadata[s].coordinate.x - (SUBGRIDSIZE/2);
-            int grid_y = metadata[s].coordinate.y - (SUBGRIDSIZE/2);
+            int grid_x = metadata[s]->coordinate.x - (SUBGRIDSIZE/2);
+            int grid_y = metadata[s]->coordinate.y - (SUBGRIDSIZE/2);
 
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -29,7 +29,7 @@ void kernel_adder(
                     int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                     // Add subgrid value to grid
-                    (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][chunk][pol][y_src][x_src];
+                    (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
                 }
             }
         }
@@ -37,7 +37,7 @@ void kernel_adder(
 }
 
 uint64_t kernel_adder_flops(int jobsize) {
-    return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+    return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (
     // Shift
     8 +
     // Add
@@ -46,7 +46,7 @@ uint64_t kernel_adder_flops(int jobsize) {
 }
 
 uint64_t kernel_adder_bytes(int jobsize) {
-	return 1ULL * NR_CHUNKS * SUBGRIDSIZE * SUBGRIDSIZE * jobsize * (
+    return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (
     // Coordinate
     2 * sizeof(unsigned) +
     // Pixels

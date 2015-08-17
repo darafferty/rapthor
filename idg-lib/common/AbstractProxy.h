@@ -53,42 +53,42 @@ namespace idg {
 
 
       /// Inteface for methods provided by the proxy
-      
       /** \brief Grid the visibilities onto a uniform grid (visibilities -> grid)
-       *  \param visibilities [in] ... what is; format
+       *  \param w_offset [in] ... what is; format
        *  \param uvw [in] ... what is; format
        *  \param wavenumbers [in] ... what is; format
-       *  \param aterm [in] ... what is; format
+       *  \param visibilities [in] ... what is; format
        *  \param spheroidal [in] ... what is; format
-       *  \param baselines [in] ... what is; format
+       *  \param aterm [in] ... what is; format
        *  \param grid [out] ... what is; format
        */
-      virtual void grid_visibilities(void *visibilities, 
-				     void *uvw, 
-				     void *wavenumbers,
-				     void *aterm, 
-				     void *spheroidal, 
-				     void *baselines, 
-				     void *grid) = 0;
-      /// removed jobsize: do we need one for each routine (gridder, adder, splitter, degridder)
-      /// instead of one for all
+      virtual void grid_visibilities(
+                 float w_offset,
+			     void *uvw, 
+                 void *wavenumbers,
+                 void *visibilities, 
+			     void *spheroidal, 
+			     void *aterm, 
+			     void *grid) = 0;
 
       /** \brief Degrid the visibilities from a uniform grid (grid -> visibilities)
-       *  \param grid [in] ... what is; format
+       *  \param w_offset [in] ... what is; format
        *  \param uvw [in] ... what is; format
        *  \param wavenumbers [in] ... what is; format
-       *  \param aterm [in] ... what is; format
+       *  \param visibilities [in] ... what is; format
        *  \param spheroidal [in] ... what is; format
-       *  \param baselines [in] ... what is; format
-       *  \param visibilities [out] ... what is; format
+       *  \param aterm [in] ... what is; format
+       *  \param metadata [in] ... what is; format
+       *  \param grid [out] ... what is; format
        */
-      virtual void degrid_visibilities(void *grid,
-				       void *uvw,
-				       void *wavenumbers, 
-				       void *aterm,
-				       void *spheroidal, 
-				       void *baselines,
-				       void *visibilities) = 0;
+      virtual void degrid_visibilities(
+                 float w_offset,
+			     void *uvw, 
+                 void *wavenumbers,
+                 void *visibilities, 
+			     void *spheroidal, 
+			     void *aterm, 
+			     void *grid) = 0;
 
       /** \brief Applyies (inverse) Fourier transform to grid (grid -> grid)
        *  \param direction [in] idg::FourierDomainToImageDomain or idg::ImageDomainToFourierDomain
