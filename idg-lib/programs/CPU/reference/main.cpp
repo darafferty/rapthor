@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
   // Set constants explicitly in the parameters parameter
   clog << ">>> Configuration"  << endl;
   idg::Parameters params;
-  params.read_parameters_from_env();
+  params.set_from_env();
 
   // retrieve constants for memory allocation
   int nr_stations = params.get_nr_stations();
