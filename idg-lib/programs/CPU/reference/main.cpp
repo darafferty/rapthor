@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
 
   // Set other parameters
   int nr_polarizations = 4;
-  float field_of_view = 0.1; 
 
   // Set constants explicitly in the parameters parameter
   clog << ">>> Configuration"  << endl;
@@ -34,32 +33,21 @@ int main(int argc, char *argv[])
   params.set_nr_stations(nr_stations);
   params.set_nr_timesteps(nr_time);
   params.set_nr_channels(nr_channels);
-  params.set_nr_polarizations(nr_polarizations); 
-  params.set_field_of_view(field_of_view);
   params.set_grid_size(gridsize);
-  params.set_w_planes(w_planes);
 
-  idg::AlgorithmParameters algparams;
-  algparams.set_job_size(jobsize); 
-  algparams.set_subgrid_size(subgridsize); 
-  algparams.set_chunk_size(chunksize); 
-  
   // retrieve constants for memory allocation
   nr_stations = params.get_nr_stations();
   auto nr_baselines = params.get_nr_baselines();
   nr_time = params.get_nr_timesteps();
   nr_channels = params.get_nr_channels();
-  nr_polarizations = params.get_nr_polarizations();
-  w_planes = params.get_w_planes();
   gridsize = params.get_grid_size();
 
   //  int jobsize = algparams.get_job_size();
-  subgridsize = algparams.get_subgrid_size();
+  subgridsize = params.get_subgrid_size();
 
   // Print configuration
   clog << params;
   clog << endl;
-
 
   // Allocate and initialize data structures
   clog << ">>> Initialize data structures" << endl;
@@ -100,6 +88,7 @@ int main(int argc, char *argv[])
   idg::Compiler compiler = "g++";
   idg::Compilerflags compilerflags = "-Wall -O3 -g -DDEBUG -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
 
+#if 0
   idg::proxy::CPU xeon(compiler, compilerflags, params, algparams);
   clog << endl;
 
@@ -127,6 +116,7 @@ int main(int argc, char *argv[])
   xeon.degrid_visibilities(grid, uvw, wavenumbers, aterm, 
 			   spheroidal, baselines, visibilities);
   clog << endl;
+#endif
 
 
   // free memory for data structures

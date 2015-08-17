@@ -20,8 +20,8 @@ namespace idg {
     static const std::string name_splitter = "kernel_splitter";
 
     // Function signatures
-    #define sig_gridder   (void (*)(int,int,void*,void*,void*,void*,void*,void*,void*))
-    #define sig_degridder (void (*)(int,int,void*,void*,void*,void*,void*,void*,void*))
+    #define sig_gridder   (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
+    #define sig_degridder (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
     #define sig_fft		  (void (*)(int,int,void*,int))
     #define sig_adder	  (void (*)(int,void*,void*,void*))
     #define sig_splitter  (void (*)(int,void*,void*,void*))
@@ -42,9 +42,9 @@ namespace idg {
     class Gridder {
     public:
       Gridder(runtime::Module &module);
-      void run(int jobsize, int bl_offset, void *uvw, void *wavenumbers,
+      void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
 	       void *visibilities, void *spheroidal, void *aterm,
-	       void *baselines, void *uvgrid);
+	       void *metadata, void *subgrid);
       uint64_t flops(int jobsize);
       uint64_t bytes(int jobsize);
       
@@ -58,9 +58,9 @@ namespace idg {
     class Degridder {
     public:
       Degridder(runtime::Module &module);
-      void run(int jobsize, int bl_offset, void *uvgrid, void *uvw,
-	       void *wavenumbers, void *aterm, void *baselines,
-	       void *spheroidal, void *visibilities);
+      void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
+	       void *visibilities, void *spheroidal, void *aterm,
+	       void *metadata, void *subgrid);
       uint64_t flops(int jobsize);
       uint64_t bytes(int jobsize);
       
@@ -88,7 +88,7 @@ namespace idg {
     class Adder {
     public:
       Adder(runtime::Module &module);
-      void run(int jobsize, void *uvw, void *uvgrid, void *grid);
+      void run(int jobsize, void *metadata, void *subgrid, void *grid);
       uint64_t flops(int jobsize);
       uint64_t bytes(int jobsize);
     
@@ -102,7 +102,7 @@ namespace idg {
     class Splitter {
     public:
       Splitter(runtime::Module &module);
-      void run(int jobsize, void *uvw, void *uvgrid, void *grid);
+      void run(int jobsize, void *metadata, void *subgrid, void *grid);
       uint64_t flops(int jobsize);
       uint64_t bytes(int jobsize);
     

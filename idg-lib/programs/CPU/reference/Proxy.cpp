@@ -22,10 +22,8 @@ namespace idg {
     CPU::CPU(Compiler compiler, 
              Compilerflags flags,
              Parameters params,
-             AlgorithmParameters algparams,
              ProxyInfo info) 
       : mParams(params),
-        mAlgParams(algparams),
         mInfo(info)
     {
       #if defined(DEBUG) 
@@ -48,10 +46,8 @@ namespace idg {
 
     CPU::CPU(CompilerEnvironment cc, 
              Parameters params,
-             AlgorithmParameters algparams,
              ProxyInfo info) 
       : mParams(params),
-        mAlgParams(algparams),
         mInfo(info)
     {
       #if defined(DEBUG) 
@@ -83,21 +79,6 @@ namespace idg {
         } 
       }
       
-    }
-
-
-    AlgorithmParameters CPU::default_algparams() 
-    {
-      #if defined(DEBUG) 
-      cout << "CPU::" << __func__ << endl;
-      #endif
-
-      AlgorithmParameters p;
-      p.set_job_size(128);    // please set sensible value here
-      p.set_subgrid_size(32); // please set sensible value here
-      p.set_chunk_size(32);   // please set sensible value here
-      
-      return p;
     }
 
 
@@ -140,73 +121,60 @@ namespace idg {
     
 
     /// Methods
-    void CPU::grid_visibilities(void *visibilities, 
-				void *uvw, 
-				void *wavenumbers,
-				void *aterm, 
-				void *spheroidal, 
-				void *baselines, 
-				void *grid) 
+    void CPU::grid_visibilities(GRIDDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
       #endif
 
       // get parameters
-      unsigned int nr_baselines = mParams.get_nr_baselines();
-      unsigned int nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      unsigned int subgridsize = mAlgParams.get_subgrid_size();
+      unsigned int nr_subgrids = 0; // TODO
+      unsigned int subgridsize = mParams.get_subgrid_size();
       unsigned int nr_polarizations = mParams.get_nr_polarizations();
+      void *metadata = NULL; // TODO
 
-      // allocate subgrids: two different versions dependingon layout?
-      size_t size_subgrids = (size_t) nr_baselines*nr_chunks*subgridsize
-	                              *subgridsize*nr_polarizations;
+      // allocate subgrids
+      size_t size_subgrids = (size_t) nr_subgrids*nr_polarizations*subgridsize*subgridsize;
       auto subgrids = new complex<float>[size_subgrids];
 
       // Get job sizes for gridding and adding routines
-      int jobsize_gridder = mAlgParams.get_job_size_gridder();
-      int jobsize_adder = mAlgParams.get_job_size_adder();
+      int jobsize_gridder = mParams.get_job_size_gridder();
+      int jobsize_adder = mParams.get_job_size_adder();
 
-      grid_onto_subgrids(jobsize_gridder, visibilities, uvw, wavenumbers, aterm, 
-			 spheroidal, baselines, subgrids);
+      grid_onto_subgrids(jobsize_gridder, nr_subgrids, w_offset, visibilities, uvw,
+                         wavenumbers, aterm, spheroidal, metadata, subgrids);
 
-      add_subgrids_to_grid(jobsize_adder, uvw, subgrids, grid); 
+      add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid); 
 
       // free subgrid
       delete[] subgrids;
     }
 
 
-    void CPU::degrid_visibilities(void *grid,
-				  void *uvw,
-				  void *wavenumbers, 
-				  void *aterm,
-				  void *spheroidal, 
-				  void *baselines,
-				  void *visibilities) 
+    void CPU::degrid_visibilities(GRIDDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
       #endif
 
       // get parameters
-      unsigned int nr_baselines = mParams.get_nr_baselines();
-      unsigned int nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      unsigned int subgridsize = mAlgParams.get_subgrid_size();
+      unsigned int nr_subgrids = 0; // TODO
+      unsigned int subgridsize = mParams.get_subgrid_size();
       unsigned int nr_polarizations = mParams.get_nr_polarizations();
+      void *metadata = NULL; // TODO
 
-      // allocate subgrids: two different versions dependingon layout?
-      size_t size_subgrids = (size_t) nr_baselines*nr_chunks*subgridsize*subgridsize*nr_polarizations;
+      // allocate subgrids
+      size_t size_subgrids = (size_t) nr_subgrids*nr_polarizations*subgridsize*subgridsize;
       auto subgrids = new complex<float>[size_subgrids];
 
       // Get job sizes for gridding and adding routines
-      int jobsize_splitter = mAlgParams.get_job_size_splitter();
-      int jobsize_degridder = mAlgParams.get_job_size_degridder();
+      int jobsize_splitter = mParams.get_job_size_splitter();
+      int jobsize_degridder = mParams.get_job_size_degridder();
 
-      split_grid_into_subgrids(jobsize_splitter, uvw, subgrids, grid);
+      split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
 
-      degrid_from_subgrids(jobsize_degridder, wavenumbers, aterm, baselines, 
-			   visibilities, uvw, spheroidal, subgrids); 
+      degrid_from_subgrids(jobsize_degridder, nr_subgrids, w_offset, uvw,
+                           wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
       
       // free subgrids
       delete[] subgrids;
@@ -227,9 +195,7 @@ namespace idg {
 
     
     // lower-level inteface: (de)gridding split into two function calls each
-    void CPU::grid_onto_subgrids(int jobsize, void *visibilities, void *uvw, 
-				 void *wavenumbers, void *aterm, void *spheroidal, 
-				 void *baselines, void *subgrids)
+    void CPU::grid_onto_subgrids(int jobsize, SUBGRIDDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -238,13 +204,12 @@ namespace idg {
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
       
-      run_gridder(jobsize, visibilities, uvw, wavenumbers, aterm, spheroidal, 
-        baselines, subgrids);
+      run_gridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
+                  spheroidal, aterm, metadata, subgrids);
     }
 
     
-    void CPU::add_subgrids_to_grid(int jobsize, void *uvw, void *subgrids, 
-                                   void *grid) 
+    void CPU::add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -253,12 +218,11 @@ namespace idg {
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
 
-      run_adder(jobsize, uvw, subgrids, grid);
+      run_adder(jobsize, nr_subgrids, metadata, subgrids, grid);
     }
 
 
-    void CPU::split_grid_into_subgrids(int jobsize, void *uvw, void *subgrids, 
-				       void *grid)
+    void CPU::split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -267,13 +231,11 @@ namespace idg {
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
 
-      run_splitter(jobsize, uvw, subgrids, grid);
+      run_splitter(jobsize, nr_subgrids, metadata, subgrids, grid);
     }
 
     
-    void CPU::degrid_from_subgrids(int jobsize, void *wavenumbers, void *aterm, 
-				   void *baselines, void *visibilities, void *uvw, 
-				   void *spheroidal, void *subgrids)
+    void CPU::degrid_from_subgrids(int jobsize, SUBGRIDDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -282,15 +244,12 @@ namespace idg {
       // argument checks
       // check if visibilities.size() etc... matches what is in parameters of proxy
 
-      run_degridder(jobsize, wavenumbers, aterm, baselines, visibilities, 
-		    uvw, spheroidal, subgrids);
+      run_degridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
+                    spheroidal, aterm, metadata, subgrids);
     }
 
-
     
-    void CPU::run_gridder(int jobsize, void *visibilities, void *uvw, 
-			  void *wavenumbers, void *aterm, void *spheroidal, 
-			  void *baselines, void *subgrids) 
+    void CPU::run_gridder(int jobsize, SUBGRIDDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -304,12 +263,10 @@ namespace idg {
       #endif
       
       // Constants
-      auto nr_baselines = mParams.get_nr_baselines();
       auto nr_time = mParams.get_nr_timesteps();
       auto nr_channels = mParams.get_nr_channels();
       auto nr_polarizations = mParams.get_nr_polarizations();
-      auto nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      auto subgridsize = mAlgParams.get_subgrid_size();
+      auto subgridsize = mParams.get_subgrid_size();
 
       // load kernel functions
       kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
@@ -320,31 +277,31 @@ namespace idg {
       #endif
       
       // Start gridder
-      for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
+      for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
         // Prevent overflow
-        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+        jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
         
         // Number of elements in batch
         int uvw_elements          = nr_time * 3;
         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-        int subgrid_elements      = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+        int metadata_elements     = 5;
         
         // Pointers to data for current batch
-        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+        void *uvw_ptr          = (float *) uvw + s * uvw_elements;
         void *wavenumbers_ptr  = wavenumbers;
-        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+        void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
         void *spheroidal_ptr   = spheroidal;
         void *aterm_ptr        = aterm;
-        void *subgrids_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
-        void *baselines_ptr    = baselines;
-
+        void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
+        void *metadata_ptr     = (int *) metadata + s * metadata_elements;
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_gridder = -omp_get_wtime();
         #endif
         
-        kernel_gridder.run(jobsize, bl, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                           spheroidal_ptr, aterm_ptr, baselines_ptr, subgrids_ptr);
+        kernel_gridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+                           spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_gridder += omp_get_wtime();
@@ -364,22 +321,22 @@ namespace idg {
                           kernel_gridder.flops(jobsize),
                           kernel_gridder.bytes(jobsize));
         auxiliary::report("fft", runtime_fft,
-                          kernel_fft.flops(subgridsize, nr_baselines),
-                          kernel_fft.bytes(subgridsize, nr_baselines));
+                          kernel_fft.flops(subgridsize, nr_subgrids),
+                          kernel_fft.bytes(subgridsize, nr_subgrids));
         #endif
         
-      } // end for bl
+      } // end for s 
       
       #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       runtime += omp_get_wtime();
       clog << endl;
       clog << "Total: gridding" << endl;
       auxiliary::report("gridder", total_runtime_gridder,
-                        kernel_gridder.flops(nr_baselines),
-                        kernel_gridder.bytes(nr_baselines));
+                        kernel_gridder.flops(nr_subgrids),
+                        kernel_gridder.bytes(nr_subgrids));
       auxiliary::report("fft", total_runtime_fft,
-                        kernel_fft.flops(subgridsize, nr_baselines),
-                        kernel_fft.bytes(subgridsize, nr_baselines));
+                        kernel_fft.flops(subgridsize, nr_subgrids),
+                        kernel_fft.bytes(subgridsize, nr_subgrids));
       auxiliary::report_runtime(runtime);
       clog << endl;
       #endif
@@ -388,7 +345,7 @@ namespace idg {
 
 
 
-    void CPU::run_adder(int jobsize, void *uvw, void *subgrids, void *grid) 
+    void CPU::run_adder(int jobsize, ADDER_PARAMETERS) 
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -401,11 +358,8 @@ namespace idg {
       #endif
 
       // Constants
-      auto nr_baselines = mParams.get_nr_baselines();
-      auto nr_time = mParams.get_nr_timesteps();
       auto nr_polarizations = mParams.get_nr_polarizations();
-      auto nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      auto subgridsize = mAlgParams.get_subgrid_size();
+      auto subgridsize = mParams.get_subgrid_size();
 
       // Load kernel function
       kernel::Adder kernel_adder(*(modules[which_module[kernel::name_adder]]));
@@ -415,24 +369,24 @@ namespace idg {
       #endif
 
       // Run adder
-      for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
+      for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
         // Prevent overflow
-        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+        jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s: jobsize;
         
         // Number of elements in batch
-        int uvw_elements     = nr_time * 3;
-        int subgrid_elements = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        int metadata_elements = 5;
+        int subgrid_elements  = subgridsize * subgridsize * nr_polarizations;
         
         // Pointer to data for current jobs
-        void *uvw_ptr     = (float*) uvw + bl * uvw_elements;
-        void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
-        void *grid_ptr    = grid;
+        void *metadata_ptr = (int *) metadata + s * metadata_elements;
+        void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
+        void *grid_ptr     = grid;
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_adder = -omp_get_wtime();
         #endif
         
-        kernel_adder.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
+        kernel_adder.run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_adder += omp_get_wtime();
@@ -445,17 +399,17 @@ namespace idg {
                           kernel_adder.bytes(jobsize));
         #endif
         
-      } // end for bl
+      } // end for s
       
       #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       runtime += omp_get_wtime();
       clog << endl;
       clog << "Total: adding" << endl;
       auxiliary::report("adder", total_runtime_adder,
-                        kernel_adder.flops(nr_baselines),
-                        kernel_adder.bytes(nr_baselines));
+                        kernel_adder.flops(nr_subgrids),
+                        kernel_adder.bytes(nr_subgrids));
       auxiliary::report_runtime(runtime);
-      auxiliary::report_subgrids(runtime, nr_baselines);
+      auxiliary::report_subgrids(runtime, nr_subgrids);
       clog << endl;
       #endif
       
@@ -463,7 +417,7 @@ namespace idg {
 
 
 
-    void CPU::run_splitter(int jobsize, void *uvw, void *subgrids, void *grid) 
+    void CPU::run_splitter(int jobsize, SPLITTER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -476,11 +430,8 @@ namespace idg {
       #endif
 
       // Constants
-      auto nr_baselines = mParams.get_nr_baselines();
-      auto nr_time = mParams.get_nr_timesteps();
       auto nr_polarizations = mParams.get_nr_polarizations();
-      auto nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      auto subgridsize = mAlgParams.get_subgrid_size();
+      auto subgridsize = mParams.get_subgrid_size();
 
       // Load kernel function
       kernel::Splitter kernel_splitter(*(modules[which_module[kernel::name_splitter]]));
@@ -490,24 +441,24 @@ namespace idg {
       #endif
 
       // Run splitter
-      for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
+      for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
         // Prevent overflow
-        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-		
+        jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+        
         // Number of elements in batch
-        int uvw_elements     = nr_time * 3;;
-        int subgrid_elements = nr_chunks * subgridsize * subgridsize * nr_polarizations;
+        int metadata_elements = 5;
+        int subgrid_elements  = subgridsize * subgridsize * nr_polarizations;
         
         // Pointer to data for current jobs
-        void *uvw_ptr     = (float *) uvw + bl * uvw_elements;
-        void *subgrid_ptr = (complex<float>*) subgrids + bl * subgrid_elements;
-        void *grid_ptr    = grid;
+        void *metadata_ptr = (int *) metadata + s * metadata_elements;
+        void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
+        void *grid_ptr     = grid;
 
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_splitter = -omp_get_wtime();
         #endif
         
-        kernel_splitter.run(jobsize, uvw_ptr, subgrid_ptr, grid_ptr);
+        kernel_splitter.run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
 
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_splitter += omp_get_wtime();
@@ -527,10 +478,10 @@ namespace idg {
       clog << endl;
       clog << "Total: splitting" << endl;
       auxiliary::report("splitter", total_runtime_splitter,
-        kernel_splitter.flops(nr_baselines),
-        kernel_splitter.bytes(nr_baselines));
+        kernel_splitter.flops(nr_subgrids),
+        kernel_splitter.bytes(nr_subgrids));
       auxiliary::report_runtime(runtime);
-      auxiliary::report_subgrids(runtime, nr_baselines);
+      auxiliary::report_subgrids(runtime, nr_subgrids);
       clog << endl;
       #endif
       
@@ -538,9 +489,7 @@ namespace idg {
 
 
 
-    void CPU::run_degridder(int jobsize, void *wavenumbers, void *aterm, 
-                            void *baselines, void *visibilities, void *uvw, 
-                            void *spheroidal, void *subgrids)
+    void CPU::run_degridder(int jobsize, SUBGRIDDER_PARAMETERS)
     {
       #if defined(DEBUG) 
       cout << "CPU::" << __func__ << endl;
@@ -554,51 +503,44 @@ namespace idg {
       #endif
       
       // Constants
-      auto nr_baselines = mParams.get_nr_baselines();
       auto nr_channels = mParams.get_nr_channels();
       auto nr_time = mParams.get_nr_timesteps();
       auto nr_polarizations = mParams.get_nr_polarizations();
-      auto nr_chunks = mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      auto subgridsize = mAlgParams.get_subgrid_size();
+      auto subgridsize = mParams.get_subgrid_size();
       
       // Load kernel functions
       kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]));
       kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
       
-      // Zero visibilties: can be done when touched first time?
-      #if defined(DEBUG) 
-      cout << "Removed: memset(visibilities, 0, sizeof(VisibilitiesType))" << endl;
-      // memset(visibilities, 0, sizeof(VisibilitiesType)); 
-      #endif
-
       #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       runtime = -omp_get_wtime();
       #endif
       
       // Start degridder
-      for (unsigned int bl=0; bl<nr_baselines; bl+=jobsize) {
+      for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
         // Prevent overflow
-        jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-		
+        jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+        
         // Number of elements in batch
         int uvw_elements          = nr_time * 3;
         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-        int subgrid_elements      = nr_chunks * subgridsize * subgridsize * nr_polarizations;
-		
+        int metadata_elements     = 5;
+        int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+        
         // Pointers to data for current batch
-        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+        void *uvw_ptr          = (float *) uvw + s * uvw_elements;
         void *wavenumbers_ptr  = wavenumbers;
-        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+        void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
         void *spheroidal_ptr   = spheroidal;
         void *aterm_ptr        = aterm;
-        void *subgrid_ptr      = (complex<float>*) subgrids + bl * subgrid_elements;
-        void *baselines_ptr    = baselines;
+        void *metadata_ptr     = (int *) metadata + s * metadata_elements;
+        void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
 
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_fft = -omp_get_wtime();
         #endif
         
-        kernel_fft.run(subgridsize, jobsize, subgrid_ptr, FFTW_FORWARD);
+        kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_FORWARD);
 
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_fft += omp_get_wtime();
@@ -606,9 +548,8 @@ namespace idg {
         runtime_degridder = -omp_get_wtime();
         #endif
         
-        kernel_degridder.run(jobsize, bl, subgrid_ptr, uvw_ptr, wavenumbers_ptr,
-                             aterm_ptr, baselines_ptr, spheroidal_ptr, 
-                             visibilities_ptr);
+        kernel_degridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+                             spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
 
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_degridder += omp_get_wtime();
@@ -620,26 +561,26 @@ namespace idg {
         kernel_degridder.flops(jobsize),
         kernel_degridder.bytes(jobsize));
         auxiliary::report("fft", runtime_fft,
-        kernel_fft.flops(subgridsize, nr_baselines),
-        kernel_fft.bytes(subgridsize, nr_baselines));
+        kernel_fft.flops(subgridsize, nr_subgrids),
+        kernel_fft.bytes(subgridsize, nr_subgrids));
         #endif
         
-      } // end for bl
+      } // end for s
 
       #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
       runtime += omp_get_wtime();
       clog << endl;
       clog << "Total: degridding" << endl;
       auxiliary::report("degridder", total_runtime_degridder,
-        kernel_degridder.flops(nr_baselines),
-        kernel_degridder.bytes(nr_baselines));
+        kernel_degridder.flops(nr_subgrids),
+        kernel_degridder.bytes(nr_subgrids));
       auxiliary::report("fft", total_runtime_fft,
-        kernel_fft.flops(subgridsize, nr_baselines),
-        kernel_fft.bytes(subgridsize, nr_baselines));
+        kernel_fft.flops(subgridsize, nr_subgrids),
+        kernel_fft.bytes(subgridsize, nr_subgrids));
       auxiliary::report_runtime(runtime);
       clog << endl;
       #endif
-	
+    
     } // run_degridder
 
 
@@ -691,27 +632,17 @@ namespace idg {
       #endif
 
       // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-      string parameters1 = 
-        Parameters::definitions(mParams.get_nr_stations(), 
-        mParams.get_nr_baselines(), 
-        mParams.get_nr_timesteps(), 
+      string mparameters =  Parameters::definitions(
+        mParams.get_nr_stations(), 
+        mParams.get_nr_baselines(),
         mParams.get_nr_channels(),
+        mParams.get_nr_timesteps(), 
+        mParams.get_nr_timeslots(), 
         mParams.get_nr_polarizations(), 
-        mParams.get_field_of_view(),
-        mParams.get_grid_size(), 
-        mParams.get_w_planes());
+        mParams.get_imagesize(),
+        mParams.get_grid_size());
       
-      string parameters2 = 
-        AlgorithmParameters::definitions(mAlgParams.get_subgrid_size(), 
-        mAlgParams.get_chunk_size(), 
-        mAlgParams.get_job_size());
-      
-      stringstream pp;
-      pp << " -DNR_CHUNKS=" << mParams.get_nr_timesteps() / mAlgParams.get_chunk_size();
-      string parameters3 = pp.str();
-
-      string parameters = " " + flags + " " + parameters1 + parameters2 
-                          + parameters3;
+      string parameters = " " + flags + " " + mparameters; 
       
       // for each shared libarary: compile the source files and put into *.so file 
       // OMP parallel?!
@@ -775,26 +706,26 @@ namespace idg {
       #endif
       
       for (unsigned int i=0; i<modules.size(); i++) {
-      	if (dlsym(*modules[i], kernel::name_gridder.c_str())) {
-      	  // found gridder kernel in module i
-      	  which_module[kernel::name_gridder] = i;
-      	}
-      	if (dlsym(*modules[i], kernel::name_degridder.c_str())) {
-      	  // found degridder kernel in module i
-      	  which_module[kernel::name_degridder] = i;
-      	}
-      	if (dlsym(*modules[i], kernel::name_fft.c_str())) {
-      	  // found fft kernel in module i
-      	  which_module[kernel::name_fft] = i;
-      	}
-      	if (dlsym(*modules[i], kernel::name_adder.c_str())) {
-      	  // found adder kernel in module i
-      	  which_module[kernel::name_adder] = i;
-      	}
-      	if (dlsym(*modules[i], kernel::name_splitter.c_str())) {
-      	  // found gridder kernel in module i
-      	  which_module[kernel::name_splitter] = i;
-      	}
+        if (dlsym(*modules[i], kernel::name_gridder.c_str())) {
+          // found gridder kernel in module i
+          which_module[kernel::name_gridder] = i;
+        }
+        if (dlsym(*modules[i], kernel::name_degridder.c_str())) {
+          // found degridder kernel in module i
+          which_module[kernel::name_degridder] = i;
+        }
+        if (dlsym(*modules[i], kernel::name_fft.c_str())) {
+          // found fft kernel in module i
+          which_module[kernel::name_fft] = i;
+        }
+        if (dlsym(*modules[i], kernel::name_adder.c_str())) {
+          // found adder kernel in module i
+          which_module[kernel::name_adder] = i;
+        }
+        if (dlsym(*modules[i], kernel::name_splitter.c_str())) {
+          // found gridder kernel in module i
+          which_module[kernel::name_splitter] = i;
+        }
       } // end for
 
     } // end find_kernel_functions

@@ -12,11 +12,12 @@ namespace idg {
       _bytes(module, name_gridder_bytes.c_str())
     {}
 
-    void Gridder::run(int jobsize, int bl_offset, void *uvw, void *wavenumbers, 
-		      void *visibilities, void *spheroidal, void *aterm, 
-		      void *baselines, void *uvgrid) {
-      (sig_gridder (void *) _run)(jobsize, bl_offset, uvw, wavenumbers, visibilities, 
-				  spheroidal, aterm, baselines, uvgrid);
+    void Gridder::run(
+            int jobsize, float w_offset, void *uvw, void *wavenumbers,
+            void *visibilities, void *spheroidal, void *aterm,
+            void *metadata, void *subgrid) {
+          (sig_gridder (void *) _run)(jobsize, w_offset, uvw, wavenumbers,
+          visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     uint64_t Gridder::flops(int jobsize) {
@@ -35,11 +36,12 @@ namespace idg {
       _bytes(module, name_degridder_bytes.c_str())
     {}
 
-    void Degridder::run(int jobsize, int bl_offset, void *uvgrid, void *uvw, 
-			void *wavenumbers, void *aterm, void *baselines, 
-			void *spheroidal, void *visibilities) {
-      (sig_degridder (void *) _run)(jobsize, bl_offset, uvgrid, uvw, wavenumbers, 
-				    aterm, baselines, spheroidal, visibilities);
+    void Degridder::run(
+            int jobsize, float w_offset, void *uvw, void *wavenumbers,
+            void *visibilities, void *spheroidal, void *aterm,
+            void *metadata, void *subgrid) {
+          (sig_degridder (void *) _run)(jobsize, w_offset, uvw, wavenumbers,
+          visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     uint64_t Degridder::flops(int jobsize) {
@@ -78,8 +80,8 @@ namespace idg {
       _bytes(module, name_adder_bytes.c_str())
     {}
 
-    void Adder::run(int jobsize, void *uvw, void *uvgrid, void *grid) {
-      (sig_adder (void *) _run)(jobsize, uvw, uvgrid, grid);
+    void Adder::run(int jobsize, void *metadata, void *subgrid, void *grid) {
+      (sig_adder (void *) _run)(jobsize, metadata, subgrid, grid);
     }
 
     uint64_t Adder::flops(int jobsize) {
@@ -98,8 +100,8 @@ namespace idg {
       _bytes(module, name_splitter_bytes.c_str())
     {}
 
-    void Splitter::run(int jobsize, void *uvw, void *uvgrid, void *grid) {
-      (sig_splitter (void *) _run)(jobsize, uvw, uvgrid, grid);
+    void Splitter::run(int jobsize, void *metadata, void *subgrid, void *grid) {
+      (sig_splitter (void *) _run)(jobsize, metadata, subgrid, grid);
     }
   
     uint64_t Splitter::flops(int jobsize) {
