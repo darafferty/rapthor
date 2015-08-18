@@ -27,9 +27,15 @@ void kernel_splitter(
                 int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                 int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-                // Set grid value to subgrid
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    (*subgrid)[s][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
+                // Check wheter subgrid fits in grid
+                if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
+                    grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
+    
+
+                    // Set grid value to subgrid
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        (*subgrid)[s][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
+                    }
                 }
             }
         }

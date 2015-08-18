@@ -11,7 +11,7 @@ CXX = g++
 LD = g++
 
 # Flags
-CXXFLAGS = -std=c++0x -Wall -O2 -fopenmp -DREPORT_VERBOSE
+CXXFLAGS = -std=c++0x -Wall -O2 -fopenmp -DREPORT_VERBOSE -g
 LDFLAGS = $(CXXFLAGS)
 INC = -I${COMMON_DIR} -I${UTILITY_DIR} -I${EXTERNAL_DIR}
 LIBS = -ldl -lfftw3 -lfftw3f -lfftw3f_omp
