@@ -31,7 +31,7 @@ void kernel_degridder(
         int station2 = m.baseline.station2;
         int x_coordinate = m.coordinate.x;
         int y_coordinate = m.coordinate.y;
-	
+
         // Storage for precomputed values
         FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
         float phasor_real[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
@@ -39,9 +39,9 @@ void kernel_degridder(
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
 
-        // Compute u and v offset
-        float u_offset = x_coordinate / IMAGESIZE;
-        float v_offset = y_coordinate / IMAGESIZE;
+        // Compute u and v offset in wavelenghts
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
 
         // Apply aterm to subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -57,14 +57,14 @@ void kernel_degridder(
                 FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][time_nr][1][y][x]);
                 FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][time_nr][2][y][x]);
                 FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][time_nr][3][y][x]);
-                
+
                 // Load spheroidal
                 float _spheroidal = (*spheroidal)[y][x];
-    
+
                 // Compute shifted position in subgrid
                 int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                 int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-        
+
                 // Load uv values
                 FLOAT_COMPLEX pixelsXX = _spheroidal * (*subgrid)[s][0][y_src][x_src];
                 FLOAT_COMPLEX pixelsXY = _spheroidal * (*subgrid)[s][1][y_src][x_src];
@@ -97,7 +97,7 @@ void kernel_degridder(
             float u = (*uvw)[s][time].u;
             float v = (*uvw)[s][time].v;
             float w = (*uvw)[s][time].w;
-        
+
             // Compute phase indices and phase offsets
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -105,15 +105,15 @@ void kernel_degridder(
                     float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
-                
+
                     // Compute phase index
                     phase_index[y][x] = u*l + v*m + w*n;
-                
+
                     // Compute phase offset
                     phase_offset[y][x] = u_offset*l + v_offset*m + w_offset*n;
                 }
             }
-        
+
             // Compute phasor
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -121,19 +121,19 @@ void kernel_degridder(
                         // Compute phase
                         float wavenumber = (*wavenumbers)[chan];
                         float phase  = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
-                
+
                         // Compute phasor
                         phasor_real[chan][y][x] = cosf(phase);
                         phasor_imag[chan][y][x] = sinf(phase);
                     }
                 }
             }
-        
+
             FLOAT_COMPLEX sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
-    
+
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
                 memset(sum, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
-        
+
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
@@ -145,7 +145,7 @@ void kernel_degridder(
                         sum[3] += _pixels[y][x][3] * phasor;
                     }
                 }
-            
+
                 // Set visibilities
                 (*visibilities)[s][time][chan][0] = sum[0];
                 (*visibilities)[s][time][chan][1] = sum[1];
@@ -185,7 +185,7 @@ uint64_t kernel_degridder_bytes(int jobsize) {
         SUBGRIDSIZE * SUBGRIDSIZE * 3 * sizeof(float) +
         // UV
         SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
-        // Visibilities            
+        // Visibilities
         NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 }
 }

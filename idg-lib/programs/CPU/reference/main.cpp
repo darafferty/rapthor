@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
     auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
     auto size_wavenumbers = 1ULL * nr_channels;
-    auto size_aterm = 1ULL * nr_stations*nr_timesteps*nr_polarizations*subgridsize*subgridsize;
+    auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize;
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
     auto size_metadata = 1ULL * nr_subgrids*5;

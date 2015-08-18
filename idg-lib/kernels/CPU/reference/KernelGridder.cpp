@@ -17,7 +17,7 @@ void kernel_gridder(
 	const VisibilitiesType __restrict__ *visibilities,
 	const SpheroidalType   __restrict__ *spheroidal,
 	const ATermType		   __restrict__ *aterm,
-	const MetadataType	   __restrict__ *metadata,		
+	const MetadataType	   __restrict__ *metadata,
 	SubGridType			   __restrict__ *subgrid
 	) {
 
@@ -33,10 +33,10 @@ void kernel_gridder(
         int station2 = m.baseline.station2;
         int x_coordinate = m.coordinate.x;
         int y_coordinate = m.coordinate.y;
-        
-        // Compute u and v offset
-        float u_offset = x_coordinate / IMAGESIZE;
-        float v_offset = y_coordinate / IMAGESIZE;
+
+        // Compute u and v offset in wavelenghts
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
 
         // Initialize private subgrid
         FLOAT_COMPLEX pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
@@ -51,14 +51,14 @@ void kernel_gridder(
         FLOAT_COMPLEX visYY[NR_CHANNELS]             __attribute__((aligned(32)));
         float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
-        
+
         // Iterate all timesteps
         for (int time = 0; time < NR_TIMESTEPS; time++) {
             // Load UVW coordinates
             float u = (*uvw)[s][time].u;
             float v = (*uvw)[s][time].v;
             float w = (*uvw)[s][time].w;
-    
+
             // Compute phase indices and phase offsets
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -66,14 +66,15 @@ void kernel_gridder(
                     float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
-                
+
                     // Compute phase index
                     phase_index[y][x] = u*l + v*m + w*n;
-                
+
                     // Compute phase offset
                     phase_offset[y][x] = u_offset*l + v_offset*m + w_offset*n;
-                } }
-        
+                }
+            }
+
             // Load visibilities
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
                 visXX[chan] = (*visibilities)[s][time][chan][0];
@@ -81,7 +82,7 @@ void kernel_gridder(
                 visYX[chan] = (*visibilities)[s][time][chan][2];
                 visYY[chan] = (*visibilities)[s][time][chan][3];
             }
-        
+
             // Compute phasor
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -89,14 +90,14 @@ void kernel_gridder(
                         // Compute phase
                         float wavenumber = (*wavenumbers)[chan];
                         float phase  = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
-                    
+
                         // Compute phasor
                         phasor_real[y][x][chan] = cosf(phase);
                         phasor_imag[y][x][chan] = sinf(phase);
                     }
                 }
             }
-    
+
             // Update current subgrid
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -104,7 +105,7 @@ void kernel_gridder(
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
                         phasor[chan] = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
                     }
-            
+
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
                         pixels[y][x][0] += visXX[chan] * phasor[chan];
                         pixels[y][x][1] += visXY[chan] * phasor[chan];
@@ -114,7 +115,7 @@ void kernel_gridder(
                 }
             }
         }
-    
+
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < SUBGRIDSIZE; y++) {
             for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -132,7 +133,7 @@ void kernel_gridder(
 
                 // Load spheroidal
                 float _spheroidal = (*spheroidal)[y][x];
-                
+
                 // Load uv values
                 FLOAT_COMPLEX pixelsXX = pixels[y][x][0];
                 FLOAT_COMPLEX pixelsXY = pixels[y][x][1];
@@ -150,19 +151,19 @@ void kernel_gridder(
                 pixels[y][x][1] += (pixelsYY * aYX2);
                 pixels[y][x][2]  = (pixelsYX * aXX1);
                 pixels[y][x][2] += (pixelsYY * aYX1);
-                pixels[y][x][2] += (pixelsXX * aXY2); 
+                pixels[y][x][2] += (pixelsXX * aXY2);
                 pixels[y][x][2] += (pixelsYX * aYY2);
                 pixels[y][x][3]  = (pixelsYX * aXY1);
                 pixels[y][x][3] += (pixelsYY * aYY1);
-                pixels[y][x][3] += (pixelsXY * aXY2); 
+                pixels[y][x][3] += (pixelsXY * aXY2);
                 pixels[y][x][3] += (pixelsYY * aYY2);
-                                
+
                 // Compute shifted position in subgrid
                 int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                 int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                
+
                 // Set subgrid value
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++ ) {
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     (*subgrid)[s][pol][y_dst][x_dst] = pixels[y][x][pol] * _spheroidal;
                 }
             }
@@ -172,10 +173,10 @@ void kernel_gridder(
 }
 
 uint64_t kernel_gridder_flops(int jobsize) {
-    return 
+    return
     1ULL * jobsize * NR_TIMESTEPS * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (
         // Phasor
-        2 * 22 + 
+        2 * 22 +
         // UV
         NR_POLARIZATIONS * 8) +
     // ATerm
