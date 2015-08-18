@@ -264,7 +264,8 @@ namespace idg {
       
       // Constants
       auto nr_baselines = mParams.get_nr_baselines();
-      auto nr_time = mParams.get_nr_timesteps();
+      auto nr_timesteps = mParams.get_nr_timesteps();
+      auto nr_timeslots = mParams.get_nr_timeslots();
       auto nr_channels = mParams.get_nr_channels();
       auto nr_polarizations = mParams.get_nr_polarizations();
       auto subgridsize = mParams.get_subgrid_size();
@@ -283,8 +284,8 @@ namespace idg {
         jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
         
         // Number of elements in batch
-        int uvw_elements          = nr_time * 3;
-        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+        int uvw_elements          = nr_timesteps * 3;
+        int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
         int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
         int metadata_elements     = 5;
         
@@ -339,7 +340,7 @@ namespace idg {
                         kernel_fft.flops(subgridsize, nr_subgrids),
                         kernel_fft.bytes(subgridsize, nr_subgrids));
       auxiliary::report_runtime(runtime);
-      auxiliary::report_visibilities(runtime, nr_baselines, nr_time, nr_channels);
+      auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
       clog << endl;
       #endif
 
@@ -507,7 +508,8 @@ namespace idg {
       // Constants
       auto nr_baselines = mParams.get_nr_baselines();
       auto nr_channels = mParams.get_nr_channels();
-      auto nr_time = mParams.get_nr_timesteps();
+      auto nr_timesteps = mParams.get_nr_timesteps();
+      auto nr_timeslots = mParams.get_nr_timeslots();
       auto nr_polarizations = mParams.get_nr_polarizations();
       auto subgridsize = mParams.get_subgrid_size();
       
@@ -525,8 +527,8 @@ namespace idg {
         jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
         
         // Number of elements in batch
-        int uvw_elements          = nr_time * 3;
-        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+        int uvw_elements          = nr_timesteps * 3;
+        int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
         int metadata_elements     = 5;
         int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
         
@@ -581,7 +583,7 @@ namespace idg {
         kernel_fft.flops(subgridsize, nr_subgrids),
         kernel_fft.bytes(subgridsize, nr_subgrids));
       auxiliary::report_runtime(runtime);
-      auxiliary::report_visibilities(runtime, nr_baselines, nr_time, nr_channels);
+      auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
       clog << endl;
       #endif
     

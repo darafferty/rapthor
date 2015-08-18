@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
   size_t size_wavenumbers = (size_t) nr_channels;
   size_t size_aterm = (size_t) nr_stations*nr_timesteps*nr_polarizations*subgridsize*subgridsize;
   size_t size_spheroidal = (size_t) subgridsize*subgridsize;
-  size_t size_baselines = (size_t) nr_baselines*2;
   size_t size_grid = (size_t) nr_polarizations*gridsize*gridsize; 
   size_t size_metadata = (size_t) nr_subgrids*5;
   size_t size_subgrids = (size_t) nr_subgrids*nr_polarizations*subgridsize*subgridsize;
@@ -50,7 +49,6 @@ int main(int argc, char *argv[])
   auto wavenumbers = new float[size_wavenumbers];
   auto aterm = new complex<float>[size_aterm];
   auto spheroidal = new float[size_spheroidal];
-  auto baselines = new int[size_baselines];
   auto grid = new complex<float>[size_grid];  
   auto metadata = new int[size_metadata];
   auto subgrids = new complex<float>[size_subgrids];
@@ -96,42 +94,14 @@ int main(int argc, char *argv[])
   int jobsize_degridder = params.get_job_size_degridder();
   xeon.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
-#if 0
-  // Run gridding
-  clog << ">>> Run gridder" << endl;
-  xeon.grid_visibilities(visibilities, uvw, wavenumbers, aterm, 
-  			 spheroidal, baselines, grid);
-  clog << endl;
-
-  // Run transform: Fourier->Image
-  clog << ">>> Run transform" << endl;
-  xeon.transform(idg::FourierDomainToImageDomain, grid);
-  clog << endl;
-
-  // do something here
-
-  // Run transform: Image->Fourier
-  clog << ">>> Run transform" << endl;
-  xeon.transform(idg::ImageDomainToFourierDomain, grid);
-  clog << endl;
-
-  // Run degridding
-  clog << ">>> Run degridder" << endl;
-  xeon.degrid_visibilities(grid, uvw, wavenumbers, aterm, 
-			   spheroidal, baselines, visibilities);
-  clog << endl;
-#endif
-
-
   // free memory for data structures
   delete[] visibilities;
   delete[] uvw;
   delete[] wavenumbers;
   delete[] aterm;
   delete[] spheroidal;
-  delete[] baselines;
   delete[] grid;
+  delete[] subgrids;
 
-    
   return 0;
 }
