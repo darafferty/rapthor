@@ -101,7 +101,7 @@ namespace idg {
       const ProxyInfo& get_info() const { return mInfo; } 
 
 
-    protected:
+    public:
       // the function are divided into the following subroutines
       // gridder 
       void grid_onto_subgrids(int jobsize, SUBGRIDDER_PARAMETERS);

@@ -97,22 +97,22 @@ namespace idg {
       string rnd_str = to_string( rand() );
 
       string libgridder = "Gridder" + rnd_str + ".so";
-      string libdegridder = "Degridder" + rnd_str + ".so";
+      //string libdegridder = "Degridder" + rnd_str + ".so";
       string libfft = "FFT" + rnd_str + ".so";
-      string libadder = "Adder" + rnd_str + ".so";
-      string libsplitter = "Splitter" + rnd_str + ".so";
+      //string libadder = "Adder" + rnd_str + ".so";
+      //string libsplitter = "Splitter" + rnd_str + ".so";
 
       p.add_lib(libgridder); 
       p.add_lib(libdegridder);
       p.add_lib(libfft);
-      p.add_lib(libadder);
-      p.add_lib(libsplitter);
+      //p.add_lib(libadder);
+      //p.add_lib(libsplitter);
       
       p.add_src_file_to_lib(libgridder, "KernelGridder.cpp");
       p.add_src_file_to_lib(libdegridder, "KernelDegridder.cpp");
       p.add_src_file_to_lib(libfft, "KernelFFT.cpp");
-      p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
-      p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
+      //p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
+      //p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
 
       p.set_delete_shared_objects(true);
       
@@ -294,7 +294,8 @@ namespace idg {
         void *spheroidal_ptr   = spheroidal;
         void *aterm_ptr        = aterm;
         void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
-        void *metadata_ptr     = (int *) metadata + s * metadata_elements;
+        //void *metadata_ptr     = (int *) metadata + s * metadata_elements;
+        void *metadata_ptr = metadata;
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_gridder = -omp_get_wtime();
