@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
   size_t size_baselines = (size_t) nr_baselines*2;
   size_t size_grid = (size_t) nr_polarizations*gridsize*gridsize; 
   size_t size_metadata = (size_t) nr_subgrids*5;
+  size_t size_subgrids = (size_t) nr_subgrids*nr_polarizations*subgridsize*subgridsize;
 
   auto visibilities = new complex<float>[size_visibilities];
   auto uvw = new float[size_uvw];
@@ -52,6 +53,7 @@ int main(int argc, char *argv[])
   auto baselines = new int[size_baselines];
   auto grid = new complex<float>[size_grid];  
   auto metadata = new int[size_metadata];
+  auto subgrids = new complex<float>[size_subgrids];
 
   idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
   idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
@@ -73,6 +75,11 @@ int main(int argc, char *argv[])
 
   idg::proxy::CPU xeon(compiler, compilerflags, params);
   clog << endl;
+
+   // Run gridder
+  clog << ">>> Run gridder" << endl;
+  int jobsize_gridder = params.get_job_size_gridder();
+  xeon.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
 #if 0
   // Run gridding

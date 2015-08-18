@@ -27,12 +27,12 @@ void kernel_gridder(
     #pragma omp for
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
-        Metadata *m = metadata[s];
-        int time_nr = m->time_nr;
-        int station1 = m->baseline.station1;
-        int station2 = m->baseline.station2;
-        int x_coordinate = m->coordinate.x;
-        int y_coordinate = m->coordinate.y;
+        const Metadata m = (*metadata)[0];
+        int time_nr = m.time_nr;
+        int station1 = m.baseline.station1;
+        int station2 = m.baseline.station2;
+        int x_coordinate = m.coordinate.x;
+        int y_coordinate = m.coordinate.y;
         
         // Compute u and v offset
         float u_offset = x_coordinate / IMAGESIZE;
