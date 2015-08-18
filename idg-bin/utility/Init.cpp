@@ -133,22 +133,6 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
             nr_stations, x, y, z, ra0, dec0, time_mjd);
     }
    
-    // Find minimum and maxmium u, v and w values
-    UVW min = {0, 0, 0};
-    UVW max = {0, 0, 0};
-    for (int bl = 0; bl < nr_baselines; bl++) {
-        for (int t = 0; t < nr_time; t++) {
-            int i = bl * nr_time + t;
-            UVW value = {(float) uu[i], (float) vv[i], (float) ww[i]};
-            if (value.u < min.u) min.u = value.u;
-            if (value.v < min.v) min.v = value.v;
-            if (value.w < min.w) min.w = value.w;
-            if (value.u > max.u) max.u = value.u;
-            if (value.v > max.v) max.v = value.v;
-            if (value.w > max.w) max.w = value.w;
-        }
-    }
-
     // Fill UVW datastructure
     for (int bl = 0; bl < nr_baselines; bl++) {
         for (int t = 0; t < nr_time; t++) {

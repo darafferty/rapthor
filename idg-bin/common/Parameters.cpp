@@ -28,7 +28,7 @@ namespace idg {
 
   void Parameters::set_nr_timeslots(unsigned int nt) 
   {
-    nr_timesteps = nt > 0 ? nt : 1;
+    nr_timeslots = nt > 0 ? nt : 1;
   }
 
   void Parameters::set_imagesize(float is) 
@@ -116,7 +116,7 @@ namespace idg {
        << setw(fw2) << right << nr_timesteps << endl;
     
     os << setw(fw1) << left << "Number of timeslots" << "== " 
-       << setw(fw2) << right << nr_timesteps << endl;
+       << setw(fw2) << right << nr_timeslots << endl;
     
     os << setw(fw1) << left << "Imagesize" << "== " 
        << setw(fw2) << right << imagesize  << endl;
@@ -162,13 +162,13 @@ namespace idg {
   {
     const unsigned int DEFAULT_NR_STATIONS = 44;
     const unsigned int DEFAULT_NR_CHANNELS = 16;
-    const unsigned int DEFAULT_NR_TIMESTEPS = 128;
-    const unsigned int DEFAULT_NR_TIMESLOTS = 16;
+    const unsigned int DEFAULT_NR_TIMESTEPS = 16;
+    const unsigned int DEFAULT_NR_TIMESLOTS = 128;
     const unsigned int DEFAULT_NR_POLARIZATIONS = 4;
     const float DEFAULT_IMAGESIZE = 0.1f;
     const unsigned int DEFAULT_GRIDSIZE = 4096;
     const unsigned int DEFAULT_SUBGRIDSIZE = 32;
-    const unsigned int DEFAULT_JOBSIZE = 1024;
+    const unsigned int DEFAULT_JOBSIZE = 8192;
 
     // nr_stations
     char *cstr_nr_stations = getenv(ENV_NR_STATIONS.c_str());

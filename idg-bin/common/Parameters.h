@@ -16,8 +16,8 @@ namespace idg {
   /// Define the environment names searched for
   static const std::string ENV_NR_STATIONS  = "NR_STATIONS";
   static const std::string ENV_NR_CHANNELS  = "NR_CHANNELS";
-  static const std::string ENV_NR_TIMESTEPS = "NR_TIMESLOTS";
-  static const std::string ENV_NR_TIMESLOTS = "NR_TIMESTEPS";
+  static const std::string ENV_NR_TIMESTEPS = "NR_TIMESTEPS";
+  static const std::string ENV_NR_TIMESLOTS = "NR_TIMESLOTS";
   static const std::string ENV_IMAGESIZE    = "IMAGESIZE";  
   static const std::string ENV_GRIDSIZE     = "GRIDSIZE";
   static const std::string ENV_SUBGRIDSIZE  = "SUBGRIDSIZE";
