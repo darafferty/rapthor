@@ -1,7 +1,7 @@
-/** 
+/**
  *  \class Proxy
  *
- *  \brief Abstract base class for all "proxy clases" 
+ *  \brief Abstract base class for all "proxy clases"
  *
  *  Have a more detailed description here
  */
@@ -15,94 +15,64 @@
 #include "Parameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
 
+#define GRIDDER_PARAMETERS   unsigned nr_subgrids, float w_offset, \
+                             void *uvw, void *wavenumbers, \
+                             void *visibilities, void *spheroidal, void *aterm, \
+                             void *metadata, void *subgrids
+#define DEGRIDDER_PARAMETERS GRIDDER_PARAMETERS
+#define ADDER_PARAMETERS     unsigned nr_subgrids, void *metadata, void *subgrids, void *grid
+#define SPLITTER_PARAMETERS  ADDER_PARAMETERS
+#define FFT_PARAMETERS       void *grid, int direction
+
 namespace idg {
-
-  enum DomainAtoDomainB {
-    FourierDomainToImageDomain,
-    ImageDomainToFourierDomain
-  };
-
+    enum DomainAtoDomainB {
+        FourierDomainToImageDomain,
+        ImageDomainToFourierDomain
+    };
 }
 
 
 namespace idg {
 
-  namespace proxy {
-    
+    namespace proxy {
+
     class Proxy {
-    public:
+        public:
 
-      /** Contructors of derived classes should support 
-       * Proxy(Compiler compiler, 
-       *       Compilerflags flags,
-       *       Parameters params);
-       *       AlgorithmParameters algparams = default_algparams()); 
-       *       ProxyInfo info = default_info()); 
-       *
-       * Proxy(CompilerEnviroment cc, 
-       *       Parameters params);
-       *       AlgorithmParameters algparams = default_algparams()); 
-       *       ProxyInfo info = default_info()); 
-       */
+        /** Contructors of derived classes should support
+         * Proxy(Compiler compiler,
+         *       Compilerflags flags,
+         *       Parameters params);
+         *       ProxyInfo info = default_info());
+         *
+         * Proxy(CompilerEnviroment cc,
+         *       Parameters params);
+         *       ProxyInfo info = default_info());
+         */
 
-      /// Copy constructor, copy assigment (see below in private)
-      // te be edited
+        /// Destructor
+        virtual ~Proxy() {}; // default for now; can make purely virtual?
 
-      /// Destructor
-      virtual ~Proxy() {}; // default for now; can make purely virtual?
+        /// Inteface for methods provided by the proxy
+        /** \brief Grid the visibilities onto uniform subgrids (visibilities -> subgrids) */
+        void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS);
 
+        /** \brief Add subgrids to a gridd (subgrids -> grid) */
+        void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS);
 
-      /// Inteface for methods provided by the proxy
-      /** \brief Grid the visibilities onto a uniform grid (visibilities -> grid)
-       *  \param w_offset [in] ... what is; format
-       *  \param uvw [in] ... what is; format
-       *  \param wavenumbers [in] ... what is; format
-       *  \param visibilities [in] ... what is; format
-       *  \param spheroidal [in] ... what is; format
-       *  \param aterm [in] ... what is; format
-       *  \param grid [out] ... what is; format
-       */
-      virtual void grid_visibilities(
-                 float w_offset,
-			     void *uvw, 
-                 void *wavenumbers,
-                 void *visibilities, 
-			     void *spheroidal, 
-			     void *aterm, 
-			     void *grid) = 0;
+        /** \brief Exctract subgrids from a grid (grid -> subgrids) */
+        void split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS);
 
-      /** \brief Degrid the visibilities from a uniform grid (grid -> visibilities)
-       *  \param w_offset [in] ... what is; format
-       *  \param uvw [in] ... what is; format
-       *  \param wavenumbers [in] ... what is; format
-       *  \param visibilities [in] ... what is; format
-       *  \param spheroidal [in] ... what is; format
-       *  \param aterm [in] ... what is; format
-       *  \param metadata [in] ... what is; format
-       *  \param grid [out] ... what is; format
-       */
-      virtual void degrid_visibilities(
-                 float w_offset,
-			     void *uvw, 
-                 void *wavenumbers,
-                 void *visibilities, 
-			     void *spheroidal, 
-			     void *aterm, 
-			     void *grid) = 0;
+        /** \brief Degrid the visibilities from uniform subgrids (subgrids -> visibilities) */
+        void degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS);
 
-      /** \brief Applyies (inverse) Fourier transform to grid (grid -> grid)
-       *  \param direction [in] idg::FourierDomainToImageDomain or idg::ImageDomainToFourierDomain
-       *  \param grid [in/out] ...
-       */
-      virtual void transform(DomainAtoDomainB direction, void* grid) = 0;
-            
-    protected:  
-      // runtime::Module *module;
-      // Proxy(const Proxy&); // prevents copy for now; do somehow differently?
-      // Proxy& operator=(const Proxy&);
+        /** \brief Applyies (inverse) Fourier transform to grid (grid -> grid)
+           *  \param direction [in] idg::FourierDomainToImageDomain or idg::ImageDomainToFourierDomain
+           *  \param grid [in/out] ...
+        */
+        void transform(DomainAtoDomainB direction, void* grid);
     };
 
-    
   } // namespace proxy
 
 } // namespace idg
