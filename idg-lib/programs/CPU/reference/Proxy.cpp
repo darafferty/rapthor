@@ -99,20 +99,20 @@ namespace idg {
       string libgridder = "Gridder" + rnd_str + ".so";
       string libdegridder = "Degridder" + rnd_str + ".so";
       string libfft = "FFT" + rnd_str + ".so";
-      //string libadder = "Adder" + rnd_str + ".so";
-      //string libsplitter = "Splitter" + rnd_str + ".so";
+      string libadder = "Adder" + rnd_str + ".so";
+      string libsplitter = "Splitter" + rnd_str + ".so";
 
       p.add_lib(libgridder); 
       p.add_lib(libdegridder);
       p.add_lib(libfft);
-      //p.add_lib(libadder);
-      //p.add_lib(libsplitter);
+      p.add_lib(libadder);
+      p.add_lib(libsplitter);
       
       p.add_src_file_to_lib(libgridder, "KernelGridder.cpp");
       p.add_src_file_to_lib(libdegridder, "KernelDegridder.cpp");
       p.add_src_file_to_lib(libfft, "KernelFFT.cpp");
-      //p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
-      //p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
+      p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
+      p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
 
       p.set_delete_shared_objects(true);
       
@@ -263,6 +263,7 @@ namespace idg {
       #endif
       
       // Constants
+      auto nr_baselines = mParams.get_nr_baselines();
       auto nr_time = mParams.get_nr_timesteps();
       auto nr_channels = mParams.get_nr_channels();
       auto nr_polarizations = mParams.get_nr_polarizations();
@@ -338,6 +339,7 @@ namespace idg {
                         kernel_fft.flops(subgridsize, nr_subgrids),
                         kernel_fft.bytes(subgridsize, nr_subgrids));
       auxiliary::report_runtime(runtime);
+      auxiliary::report_visibilities(runtime, nr_baselines, nr_time, nr_channels);
       clog << endl;
       #endif
 
@@ -503,6 +505,7 @@ namespace idg {
       #endif
       
       // Constants
+      auto nr_baselines = mParams.get_nr_baselines();
       auto nr_channels = mParams.get_nr_channels();
       auto nr_time = mParams.get_nr_timesteps();
       auto nr_polarizations = mParams.get_nr_polarizations();
@@ -578,6 +581,7 @@ namespace idg {
         kernel_fft.flops(subgridsize, nr_subgrids),
         kernel_fft.bytes(subgridsize, nr_subgrids));
       auxiliary::report_runtime(runtime);
+      auxiliary::report_visibilities(runtime, nr_baselines, nr_time, nr_channels);
       clog << endl;
       #endif
     
