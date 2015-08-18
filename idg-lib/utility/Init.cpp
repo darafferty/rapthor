@@ -23,9 +23,9 @@ namespace idg {
 void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize) {
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
-    
+
     UVWType *uvw = (UVWType *) ptr;
-    
+
     // Check whether layout file exists
     char* filename;
     bool found = false;
@@ -39,7 +39,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
 
         if (uvwsim_file_exists(filename)) {
             found = true;
-            break;    
+            break;
         }
     }
 
@@ -47,13 +47,13 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
         std::cerr << "Unable to find specified layout file: " << filename << std::endl;
         exit(EXIT_FAILURE);
     }
-    
+
     // Read the number of stations in the layout file.
     int nr_stations_file = uvwsim_get_num_stations(filename);
 
     // Check wheter the requested number of station is feasible
     if (nr_stations_file < nr_stations) {
-        std::cerr << "More stations requested than present in layout file: " 
+        std::cerr << "More stations requested than present in layout file: "
                   << "(" << nr_stations_file << ")" << std::endl;
     }
 
@@ -61,13 +61,13 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
     double *x = (double*) malloc(nr_stations_file * sizeof(double));
     double *y = (double*) malloc(nr_stations_file * sizeof(double));
     double *z = (double*) malloc(nr_stations_file * sizeof(double));
-    
+
     // Load the antenna coordinates
     if (uvwsim_load_station_coords(filename, nr_stations_file, x, y, z) != nr_stations_file) {
         std::cerr << "Failed to read antenna coordinates." << std::endl;
         exit(EXIT_FAILURE);
     }
-   
+
     // Select some antennas randomly when not all antennas are requested
     if (nr_stations < nr_stations_file) {
         // Allocate memory for selection of antenna coordinates
@@ -111,7 +111,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
         free(__y);
         free(__z);
     }
-  
+
     // Define observation parameters
     double ra0  = RIGHT_ASCENSION;
     double dec0 = DECLINATION;
@@ -132,7 +132,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
             &uu[offset], &vv[offset], &ww[offset],
             nr_stations, x, y, z, ra0, dec0, time_mjd);
     }
-   
+
     // Fill UVW datastructure
     for (int bl = 0; bl < nr_baselines; bl++) {
         for (int t = 0; t < nr_time; t++) {
@@ -142,7 +142,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
         }
     }
 
-    // Free memory 
+    // Free memory
     free(x); free(y); free(z);
     free(uu); free(vv); free(ww);
 }
@@ -150,10 +150,10 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
 void init_visibilities(void *ptr, int nr_baselines, int nr_time, int nr_channels, int nr_polarizations) {
     TYPEDEF_VISIBILITIES_TYPE
 	VisibilitiesType *visibilities = (VisibilitiesType *) (ptr);
-	
+
 	// Fixed visibility
 	std::complex<float> visibility(2, 1);
-	
+
 	// Set all visibilities
 	for (int bl = 0; bl < nr_baselines; bl++) {
 		for (int time = 0; time < nr_time; time++) {
@@ -163,19 +163,19 @@ void init_visibilities(void *ptr, int nr_baselines, int nr_time, int nr_channels
 				}
 			}
 		}
-	}	
+	}
 }
 
 void init_wavenumbers(void *ptr, int nr_channels) {
 	TYPEDEF_WAVENUMBER_TYPE
     WavenumberType *wavenumbers = (WavenumberType *) ptr;
-	
+
 	// Initialize frequencies
 	float frequencies[nr_channels];
 	for (int chan = 0; chan < nr_channels; chan++) {
 		frequencies[chan] = START_FREQUENCY + FREQUENCY_INCREMENT * chan;
 	}
-	
+
 	// Initialize wavenumbers
 	for (int i = 0; i < nr_channels; i++) {
 		(*wavenumbers)[i] =  2 * M_PI * frequencies[i] / SPEED_OF_LIGHT;
@@ -185,7 +185,7 @@ void init_wavenumbers(void *ptr, int nr_channels) {
 void init_aterm(void *ptr, int nr_stations, int nr_time, int nr_polarizations, int subgridsize) {
 	TYPEDEF_ATERM_TYPE
     ATermType *aterm = (ATermType *) ptr;
-	
+
 	std::complex<float> value(1, 1);
 
 	for (int ant = 0; ant < nr_stations; ant++) {
@@ -204,9 +204,9 @@ void init_aterm(void *ptr, int nr_stations, int nr_time, int nr_polarizations, i
 void init_spheroidal(void *ptr, int subgridsize) {
     TYPEDEF_SPHEROIDAL_TYPE
     SpheroidalType *spheroidal = (SpheroidalType *) ptr;
-	
+
 	float value = 1.0;
-	
+
 	for (int y = 0; y < subgridsize; y++) {
 		for (int x = 0; x < subgridsize; x++) {
 			(*spheroidal)[y][x] = value;
@@ -220,7 +220,7 @@ void init_baselines(void *ptr, int nr_stations, int nr_baselines) {
 	BaselineType *baselines = (BaselineType *) ptr;
 
 	int bl = 0;
-	
+
 	for (int station1 = 1 ; station1 < nr_stations; station1++) {
 		for (int station2 = 0; station2 < station1; station2++) {
 			if (bl >= nr_baselines) {
@@ -265,7 +265,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
     int nr_time = nr_timesteps * nr_timeslots;
 
     // Define datatypes
-    TYPEDEF_UVW 
+    TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
     TYPEDEF_WAVENUMBER_TYPE
     TYPEDEF_BASELINE
@@ -278,7 +278,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
     UVWType *uvw = (UVWType *) _uvw;
     WavenumberType *wavenumbers = (WavenumberType *) init_wavenumbers(nr_channels);
     BaselineType *baselines = (BaselineType *) init_baselines(nr_stations, nr_baselines);
-    MetadataType *metadata = (MetadataType *) ptr; 
+    MetadataType *metadata = (MetadataType *) ptr;
 
     // Get wavenumber for first and last frequency
     float wavenumber_first = (*wavenumbers)[0];
@@ -314,7 +314,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
             // Shift center from middle of grid to top left
             u_middle_pixels += (gridsize/2);
             v_middle_pixels += (gridsize/2);
-            
+
             // Shift from middle of subgrid to top left
             u_middle_pixels += (subgridsize/2);
             v_middle_pixels += (subgridsize/2);
@@ -401,7 +401,7 @@ void *init_metadata(void *uvw, void *wavenumbers, int nr_stations, int nr_baseli
    int nr_subgrids = nr_baselines * nr_timeslots;
    TYPEDEF_BASELINE
    TYPEDEF_COORDINATE
-   TYPEDEF_METADATA 
+   TYPEDEF_METADATA
    TYPEDEF_METADATA_TYPE
    void *ptr = malloc(sizeof(MetadataType));
    init_metadata(ptr, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);

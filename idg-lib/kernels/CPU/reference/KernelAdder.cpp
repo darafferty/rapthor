@@ -31,7 +31,7 @@ void kernel_adder(
                         // Compute shifted position in subgrid
                         int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                         int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-    
+
                         // Add subgrid value to grid
                         (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
                     }
