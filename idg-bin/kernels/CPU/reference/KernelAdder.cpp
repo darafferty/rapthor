@@ -19,8 +19,8 @@ void kernel_adder(
     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
         for (int s = 0; s < jobsize; s++) {
             // Load position in grid
-            int grid_x = metadata[s]->coordinate.x - (SUBGRIDSIZE/2);
-            int grid_y = metadata[s]->coordinate.y - (SUBGRIDSIZE/2);
+            int grid_x = metadata[s]->coordinate.x;
+            int grid_y = metadata[s]->coordinate.y;
 
             // Check wheter subgrid fits in grid
             if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&

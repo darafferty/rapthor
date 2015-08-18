@@ -308,16 +308,16 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
             float v_middle_wavelenghts = (int) ((v_max + v_min) / 2);
 
             // Compute middle point in pixels
-            int u_middle_pixels = u_middle_wavelenghts * imagesize;
-            int v_middle_pixels = v_middle_wavelenghts * imagesize;
+            int u_middle_pixels = u_middle_wavelenghts * imagesize + 0.5;
+            int v_middle_pixels = v_middle_wavelenghts * imagesize + 0.5;
 
             // Shift center from middle of grid to top left
             u_middle_pixels += (gridsize/2);
             v_middle_pixels += (gridsize/2);
 
             // Shift from middle of subgrid to top left
-            u_middle_pixels += (subgridsize/2);
-            v_middle_pixels += (subgridsize/2);
+            u_middle_pixels -= (subgridsize/2);
+            v_middle_pixels -= (subgridsize/2);
 
             // Construct coordinate
             Coordinate coordinate = { u_middle_pixels, v_middle_pixels };
