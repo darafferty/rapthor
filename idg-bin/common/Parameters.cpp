@@ -166,9 +166,9 @@ namespace idg {
     const unsigned int DEFAULT_NR_TIMESLOTS = 16;
     const unsigned int DEFAULT_NR_POLARIZATIONS = 4;
     const float DEFAULT_IMAGESIZE = 0.1f;
-    const unsigned int DEFAULT_GRIDSIZE = 1024;
+    const unsigned int DEFAULT_GRIDSIZE = 4096;
     const unsigned int DEFAULT_SUBGRIDSIZE = 32;
-    const unsigned int DEFAULT_JOBSIZE = 100;
+    const unsigned int DEFAULT_JOBSIZE = 1024;
 
     // nr_stations
     char *cstr_nr_stations = getenv(ENV_NR_STATIONS.c_str());
