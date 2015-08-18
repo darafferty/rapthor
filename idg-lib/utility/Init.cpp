@@ -282,7 +282,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
 
     // Get wavenumber for first and last frequency
     float wavenumber_first = (*wavenumbers)[0];
-    float wavenumber_last  = (*wavenumbers)[nr_channels];
+    float wavenumber_last  = (*wavenumbers)[nr_channels-1];
 
     // Iterate all baselines
     for (int bl = 0; bl < nr_baselines; bl++) {
@@ -295,7 +295,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
 
             // Get first and last UVW coordinate in meters
             UVW first = (*uvw)[bl][time_offset];
-            UVW last  = (*uvw)[bl][MIN(time_offset + nr_timesteps, nr_timesteps * nr_timeslots)];
+            UVW last  = (*uvw)[bl][MIN(time_offset + nr_timesteps, nr_timesteps * nr_timeslots - 1)];
 
             // Find mininmum and maximum u and v for current chunk in wavelengths
             float u_min = min(first.u, last.u, wavenumber_first, wavenumber_last);
@@ -312,12 +312,12 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
             int v_middle_pixels = v_middle_wavelenghts * imagesize;
 
             // Shift center from middle of grid to top left
-            u_middle_pixels -= (gridsize/2);
-            v_middle_pixels -= (gridsize/2);
+            u_middle_pixels += (gridsize/2);
+            v_middle_pixels += (gridsize/2);
             
             // Shift from middle of subgrid to top left
-            u_middle_pixels -= (subgridsize/2);
-            v_middle_pixels -= (subgridsize/2);
+            u_middle_pixels += (subgridsize/2);
+            v_middle_pixels += (subgridsize/2);
 
             // Construct coordinate
             Coordinate coordinate = { u_middle_pixels, v_middle_pixels };

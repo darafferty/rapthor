@@ -35,14 +35,14 @@ int main(int argc, char *argv[])
   // Allocate and initialize data structures
   clog << ">>> Initialize data structures" << endl;
 
-  size_t size_visibilities = (size_t) nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
-  size_t size_uvw = (size_t) nr_baselines*nr_timesteps*nr_timeslots*3; 
-  size_t size_wavenumbers = (size_t) nr_channels;
-  size_t size_aterm = (size_t) nr_stations*nr_timesteps*nr_polarizations*subgridsize*subgridsize;
-  size_t size_spheroidal = (size_t) subgridsize*subgridsize;
-  size_t size_grid = (size_t) nr_polarizations*gridsize*gridsize; 
-  size_t size_metadata = (size_t) nr_subgrids*5;
-  size_t size_subgrids = (size_t) nr_subgrids*nr_polarizations*subgridsize*subgridsize;
+  uint64_t size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
+  uint64_t size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3; 
+  uint64_t size_wavenumbers = 1ULL * nr_channels;
+  uint64_t size_aterm = 1ULL * nr_stations*nr_timesteps*nr_polarizations*subgridsize*subgridsize;
+  uint64_t size_spheroidal = 1ULL * subgridsize*subgridsize;
+  uint64_t size_grid = 1ULL * nr_polarizations*gridsize*gridsize; 
+  uint64_t size_metadata = 1ULL * nr_subgrids*5;
+  uint64_t size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize;
 
   auto visibilities = new complex<float>[size_visibilities];
   auto uvw = new float[size_uvw];
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
   idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
   idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
   idg::init_wavenumbers(wavenumbers, nr_channels);
-  idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
+  idg::init_aterm(aterm, nr_stations, nr_timesteps, nr_polarizations, subgridsize);
   idg::init_spheroidal(spheroidal, subgridsize);
   idg::init_grid(grid, gridsize, nr_polarizations);
   idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
@@ -102,6 +102,7 @@ int main(int argc, char *argv[])
   delete[] spheroidal;
   delete[] grid;
   delete[] subgrids;
+  delete[] metadata;
 
   return 0;
 }

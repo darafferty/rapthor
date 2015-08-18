@@ -22,14 +22,19 @@ void kernel_adder(
             int grid_x = metadata[s]->coordinate.x - (SUBGRIDSIZE/2);
             int grid_y = metadata[s]->coordinate.y - (SUBGRIDSIZE/2);
 
-            for (int y = 0; y < SUBGRIDSIZE; y++) {
-                for (int x = 0; x < SUBGRIDSIZE; x++) {
-                    // Compute shifted position in subgrid
-                    int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                    int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            // Check wheter subgrid fits in grid
+            if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
+                grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
 
-                    // Add subgrid value to grid
-                    (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
+                for (int y = 0; y < SUBGRIDSIZE; y++) {
+                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                        // Compute shifted position in subgrid
+                        int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                        int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+    
+                        // Add subgrid value to grid
+                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
+                    }
                 }
             }
         }
