@@ -76,10 +76,14 @@ int main(int argc, char *argv[])
   idg::proxy::CPU xeon(compiler, compilerflags, params);
   clog << endl;
 
-   // Run gridder
+  // Run gridder
   clog << ">>> Run gridder" << endl;
   int jobsize_gridder = params.get_job_size_gridder();
   xeon.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+
+  clog << ">>> Run degridder" << endl;
+  int jobsize_degridder = params.get_job_size_degridder();
+  xeon.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
 #if 0
   // Run gridding

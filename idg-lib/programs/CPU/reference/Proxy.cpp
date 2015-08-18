@@ -97,7 +97,7 @@ namespace idg {
       string rnd_str = to_string( rand() );
 
       string libgridder = "Gridder" + rnd_str + ".so";
-      //string libdegridder = "Degridder" + rnd_str + ".so";
+      string libdegridder = "Degridder" + rnd_str + ".so";
       string libfft = "FFT" + rnd_str + ".so";
       //string libadder = "Adder" + rnd_str + ".so";
       //string libsplitter = "Splitter" + rnd_str + ".so";
@@ -294,8 +294,7 @@ namespace idg {
         void *spheroidal_ptr   = spheroidal;
         void *aterm_ptr        = aterm;
         void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
-        //void *metadata_ptr     = (int *) metadata + s * metadata_elements;
-        void *metadata_ptr = metadata;
+        void *metadata_ptr     = (int *) metadata + s * metadata_elements;
         
         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
         runtime_gridder = -omp_get_wtime();
