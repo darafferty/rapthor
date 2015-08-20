@@ -9,7 +9,6 @@
 #ifndef IDG_PROXY_H_
 #define IDG_PROXY_H_
 
-#include <vector>
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class

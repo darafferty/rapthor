@@ -10,6 +10,7 @@
 #ifndef IDG_CPU_H_
 #define IDG_CPU_H_
 
+#include <dlfcn.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
 #include "Kernels.h"

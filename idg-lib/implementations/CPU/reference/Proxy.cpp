@@ -6,6 +6,7 @@
 #include <memory>
 #include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
+#include <libgen.h> // dirname() and basename()
 
 #include "Proxy.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -13,6 +14,8 @@
 #endif
 
 using namespace std;
+
+void dummy() {};
 
 namespace idg {
 
@@ -86,19 +89,36 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
+            // Find library path
+            Dl_info dl_info;
+            dladdr((void *) dummy, &dl_info);
+
+            // Derive name of library and location
+            std::string libdir = dirname((char *) dl_info.dli_fname);
+            std::string bname = basename((char *) dl_info.dli_fname);
+            std::cout << "Module " << bname << " loaded from: " << libdir << std::endl;
+            std::string  srcdir = libdir + "/idg/CPU/reference";
+            #ifdef DEBUG
+            cout << "Searching for source files in: " << srcdir << std::endl;
+            #endif
+ 
+            // Create temp directory
+            char _tmpdir[] = "/tmp/idg-XXXXXX";
+            char *tmpdir = mkdtemp(_tmpdir);
+            #if DEBUG
+            std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
+            #endif
+ 
+            // Create proxy info
             ProxyInfo p;
+            p.set_path_to_src(srcdir);
+            p.set_path_to_lib(tmpdir);
 
-            p.set_path_to_src("../../../kernels/CPU/reference");
-            p.set_path_to_lib("../../../lib"); // change to use tmp dir by default
-
-            srand(time(NULL));
-            string rnd_str = to_string( rand() );
-
-            string libgridder = "Gridder" + rnd_str + ".so";
-            string libdegridder = "Degridder" + rnd_str + ".so";
-            string libfft = "FFT" + rnd_str + ".so";
-            string libadder = "Adder" + rnd_str + ".so";
-            string libsplitter = "Splitter" + rnd_str + ".so";
+            string libgridder = "Gridder.so";
+            string libdegridder = "Degridder.so";
+            string libfft = "FFT.so";
+            string libadder = "Adder.so";
+            string libsplitter = "Splitter.so";
 
             p.add_lib(libgridder);
             p.add_lib(libdegridder);
