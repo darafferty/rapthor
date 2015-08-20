@@ -1,7 +1,9 @@
 #include <iostream>
 #include <cstdlib> // size_t
 #include <complex>
-#include "Proxy.h"
+
+#include "CPU/reference/idg-cpu.h"
+
 #include "Init.h"  // Data init routines
 #include "Arguments.h"  // Parse command line arguments
 

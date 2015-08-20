@@ -8,7 +8,7 @@
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
 
-#include "Proxy.h"
+#include "CPU.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
