@@ -1,8 +1,12 @@
 project(idg-examples-utility)
 
-# external header files needed 
-include_directories (${PROJECT_SOURCE_DIR}/../external)
+# external header files needed
+include_directories (
+    ${CMAKE_SOURCE_DIR}/examples/external
+    ${CMAKE_BINARY_DIR}/examples
+)
 
+message("test: " ${CMAKE_BINARY_DIR}/examples)
 # sources and header files
 set (${PROJECT_NAME}_headers 
   Arguments.h

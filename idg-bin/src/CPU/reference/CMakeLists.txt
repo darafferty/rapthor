@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.8.11)
 
+# set cmake policy
+cmake_policy(SET CMP0022 OLD)
+
 project(idg-cpu-reference)
 
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)

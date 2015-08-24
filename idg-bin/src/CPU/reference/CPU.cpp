@@ -593,7 +593,8 @@ namespace idg {
               mParams.get_grid_size(),
               mParams.get_subgrid_size());
 
-            string parameters = " " + flags + " " + mparameters;
+            printf("TODO: CLEANUP\n");
+            string parameters = " " + flags + " " + mparameters + " -I ../src/CPU/reference";
 
             // for each shared libarary: compile the source files and put into *.so file
             // OMP parallel?!

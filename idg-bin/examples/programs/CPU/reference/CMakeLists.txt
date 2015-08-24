@@ -2,10 +2,11 @@ project(cpu-reference.x)
 
 # Set external header files
 include_directories(
-  ${CMAKE_SOURCE_DIR}/src 
-  ${CMAKE_SOURCE_DIR}/src/common  
+  ${CMAKE_SOURCE_DIR}/src
+  ${CMAKE_SOURCE_DIR}/src/common
   ${CMAKE_SOURCE_DIR}/examples/utility
   ${CMAKE_SOURCE_DIR}/examples/external
+  ${CMAKE_BINARY_DIR}/examples
  )
 
 set (${PROJECT_NAME}_sources 

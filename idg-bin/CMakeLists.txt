@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.8.11)
 
+# set cmake policy
+cmake_policy(SET CMP0022 OLD)
+
 # the project
 project(ImageDomainGridder)
 set (VERSION_MAJOR 0)
@@ -7,7 +10,7 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
-# Set compile flags 
+# Set compile flags
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -28,7 +31,9 @@ option (HAVE_CUDA "Have CUDA environment" OFF)
 add_subdirectory(src)
 
 if (BUILD_EXAMPLES)
-add_subdirectory(examples)
+    configure_file (
+        "${PROJECT_SOURCE_DIR}/examples/ExamplesConfig.h.in"
+        "${PROJECT_BINARY_DIR}/examples/ExamplesConfig.h"
+    )
+    add_subdirectory(examples)
 endif (BUILD_EXAMPLES)
-
-

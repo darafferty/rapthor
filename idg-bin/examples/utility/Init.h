@@ -11,6 +11,8 @@
 
 #include "uvwsim.h"
 
+#include "ExamplesConfig.h"
+
   /* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -20,7 +22,8 @@
 #define SPEED_OF_LIGHT      299792458.0
 
 /* Observation parameters */
-#define LAYOUT_FILE         "./utility/SKA1_low_ecef.txt"
+#define LAYOUT_DIR          "examples/utility"
+#define LAYOUT_FILE         "SKA1_low_ecef.txt"
 #define START_FREQUENCY     500.0e6
 #define FREQUENCY_INCREMENT 5.0e6
 #define RIGHT_ASCENSION     10.0 * (M_PI/180.)
