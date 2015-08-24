@@ -1,39 +1,33 @@
-cmake_minimum_required(VERSION 2.8.11)
+project(cpu-reference.x)
 
-project(ImageDomainGridder)
-
-# Set compile flags
-set(CMAKE_CXX_FLAGS "-std=c++0x -Wall -O2 -fopenmp -DREPORT_VERBOSE -g")
-
-set(UTILITY_DIR ../../../utility)
-set(EXTERNAL_DIR ../../../external)
-
-# Set header files
+# Set external header files
 include_directories(
-    ${IDG_ROOT_DIR}/include
-    ${UTILITY_DIR}
-    ${EXTERNAL_DIR}
-)
+  ${CMAKE_SOURCE_DIR}/src 
+  ${CMAKE_SOURCE_DIR}/src/common  
+  ${CMAKE_SOURCE_DIR}/examples/utility
+  ${CMAKE_SOURCE_DIR}/examples/external
+ )
 
-set(
-    HEADERS
-    ${UTILITY_DIR}/Init.h
-    ${EXTERNAL_DIR}/uvwsim.h
-)
-
-set(
-    SOURCES
-    main.cpp
-    ${UTILITY_DIR}/Init.cpp
-    ${EXTERNAL_DIR}/uvwsim.cpp
+set (${PROJECT_NAME}_sources 
+  main.cpp
 )
 
 # Set build target
-add_executable(main ${SOURCES} ${HEADERS})
+add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
-# Set library dependencies
-include_directories(${IDG_ROOT_DIR}/lib)
-target_link_libraries(main idg-cpu-reference)
+# link
+link_directories (
+  ${CMAKE_BINARY_DIR}/examples/external
+  ${CMAKE_BINARY_DIR}/examples/utility
+  ${CMAKE_BINARY_DIR}/src/CPU/reference
+  ${CMAKE_BINARY_DIR}/src/common
+  ) 
 
-find_package(LIBDL)
-target_link_libraries(main ${DL_LIBRARIES})
+target_link_libraries (
+  ${PROJECT_NAME} 
+  idg-examples-external
+  idg-examples-utility
+  idg-cpu-reference 
+  idg-common
+  ${CMAKE_DL_LIBS}
+)
