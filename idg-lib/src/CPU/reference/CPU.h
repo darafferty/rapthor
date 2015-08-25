@@ -64,16 +64,16 @@ namespace idg {
         
             // Low level routines
             protected:
-                void run_gridder(int jobsize, GRIDDER_PARAMETERS);
+                virtual void run_gridder(int jobsize, GRIDDER_PARAMETERS);
         
-                void run_adder(int jobsize, ADDER_PARAMETERS);
+                virtual void run_adder(int jobsize, ADDER_PARAMETERS);
         
-                void run_splitter(int jobsize, SPLITTER_PARAMETERS);
+                virtual void run_splitter(int jobsize, SPLITTER_PARAMETERS);
         
-                void run_degridder(int jobsize, DEGRIDDER_PARAMETERS);
+                virtual void run_degridder(int jobsize, DEGRIDDER_PARAMETERS);
         
-                void run_fft(FFT_PARAMETERS);
-        
+                virtual void run_fft(FFT_PARAMETERS);
+
             private:
                 void compile(Compiler compiler, Compilerflags flags);
                 void parameter_sanity_check();
