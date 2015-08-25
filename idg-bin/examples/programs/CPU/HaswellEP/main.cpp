@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
     // basic gcc settings
     idg::Compiler compiler = "icpc";
-    idg::Compilerflags compilerflags = "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
+    idg::Compilerflags compilerflags = "-Wall -O3 -fopenmp -mkl -lmkl_avx2 -lmkl_vml_avx2";
 
     idg::proxy::HaswellEP xeon(compiler, compilerflags, params);
     clog << endl;
