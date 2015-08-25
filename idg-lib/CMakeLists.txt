@@ -10,7 +10,7 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
-# Set compile flags
+# Set compile flags:
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -22,10 +22,18 @@ elseif(COMPILER_SUPPORTS_CXX0X)
 else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
+# make sure openmp is used if available
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
 
 # options (to be edited as not functional yet)
 option (BUILD_EXAMPLES "Build examples executables" OFF)
 option (HAVE_CUDA "Have CUDA environment" OFF)
+option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
+option (REPORT_TOTAL "Report total performance metrics" OFF)
 
 # write config file, included in all files of the project
 configure_file (
