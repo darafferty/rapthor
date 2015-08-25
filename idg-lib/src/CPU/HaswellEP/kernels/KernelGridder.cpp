@@ -7,6 +7,9 @@
 #include <string.h>
 #include <stdint.h>
 
+#define VML_PRECISION VML_LA
+#include <mkl_vml.h>
+
 #include "Types.h"
 
 extern "C" {
@@ -51,6 +54,7 @@ void kernel_gridder(
         FLOAT_COMPLEX visYY[NR_CHANNELS]             __attribute__((aligned(32)));
         float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
+        float phase[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
 
         // Iterate all timesteps
         for (int time = 0; time < NR_TIMESTEPS; time++) {
@@ -83,20 +87,20 @@ void kernel_gridder(
                 visYY[chan] = (*visibilities)[s][time][chan][3];
             }
 
-            // Compute phasor
+            // Compute phase
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        // Compute phase
-                        float wavenumber = (*wavenumbers)[chan];
-                        float phase  = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
-
-                        // Compute phasor
-                        phasor_real[y][x][chan] = cosf(phase);
-                        phasor_imag[y][x][chan] = sinf(phase);
+                        phase[y][x][chan] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
                     }
                 }
             }
+
+            // Compute phasor
+            vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS,
+                (const float *) &phase[0][0][0],
+                                &phasor_imag[0][0][0],
+                                &phasor_real[0][0][0], VML_PRECISION);
 
             // Update current subgrid
             for (int y = 0; y < SUBGRIDSIZE; y++) {
