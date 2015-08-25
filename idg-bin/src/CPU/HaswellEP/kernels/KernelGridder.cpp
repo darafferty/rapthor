@@ -105,20 +105,17 @@ void kernel_gridder(
             // Update current subgrid
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
-                    FLOAT_COMPLEX phasor[NR_CHANNELS] __attribute__((aligned(32)));
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        phasor[chan] = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
-                    }
+                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
 
-                    for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        pixels[y][x][0] += visXX[chan] * phasor[chan];
-                        pixels[y][x][1] += visXY[chan] * phasor[chan];
-                        pixels[y][x][2] += visYX[chan] * phasor[chan];
-                        pixels[y][x][3] += visYY[chan] * phasor[chan];
+                        pixels[y][x][0] += visXX[chan] * phasor;
+                        pixels[y][x][1] += visXY[chan] * phasor;
+                        pixels[y][x][2] += visYX[chan] * phasor;
+                        pixels[y][x][3] += visYY[chan] * phasor;
                     }
                 }
             }
-        }
+       }
 
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < SUBGRIDSIZE; y++) {
