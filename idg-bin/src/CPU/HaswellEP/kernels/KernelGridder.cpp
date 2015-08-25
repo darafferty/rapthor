@@ -106,16 +106,26 @@ void kernel_gridder(
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
+                        float _phasor_real = phasor_real[y][x][chan];
+                        float _phasor_imag = phasor_imag[y][x][chan];
 
-                        pixels[y][x][0] += visXX[chan] * phasor;
-                        pixels[y][x][1] += visXY[chan] * phasor;
-                        pixels[y][x][2] += visYX[chan] * phasor;
-                        pixels[y][x][3] += visYY[chan] * phasor;
+                        FLOAT_COMPLEX _vis[NR_POLARIZATIONS];
+                        _vis[0] = visXX[chan];
+                        _vis[1] = visXY[chan];
+                        _vis[2] = visYX[chan];
+                        _vis[3] = visYY[chan];
+
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            FLOAT_COMPLEX vis = _vis[pol];
+                            FLOAT_COMPLEX value = pixels[y][x][pol];
+                            float result_real = value.real() + (vis.real() * _phasor_real - vis.imag() * _phasor_imag);
+                            float result_imag = value.imag() + (vis.real() * _phasor_imag + vis.imag() * _phasor_real);
+                            pixels[y][x][pol] = FLOAT_COMPLEX(value.real(), value.imag());
+                        }
                     }
                 }
             }
-       }
+        }
 
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < SUBGRIDSIZE; y++) {
