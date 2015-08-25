@@ -36,7 +36,6 @@ namespace idg {
             cout << "Compiler: " << compiler << endl;
             cout << "Compiler flags: " << flags << endl;
             cout << params;
-            cout << algparams;
             #endif
 
             parameter_sanity_check(); // throws exception if bad parameters

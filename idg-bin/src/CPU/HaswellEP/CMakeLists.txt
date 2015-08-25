@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.11)
 # set cmake policy
 cmake_policy(SET CMP0022 OLD)
 
-project(idg-cpu-reference)
+project(idg-cpu-haswellep)
 
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
@@ -20,17 +20,16 @@ endif()
 # external header files needed 
 include_directories (
   ${CMAKE_SOURCE_DIR}/src/common
+  ${CMAKE_SOURCE_DIR}/src/CPU/reference
 )
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
-  CPU.h
-  Kernels.h
+  HaswellEP.h
 )
 
 set (${PROJECT_NAME}_sources 
-  CPU.cpp
-  Kernels.cpp
+  HaswellEP.cpp
 )
 
 # create library
@@ -40,7 +39,7 @@ add_library(
   )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-cpu-reference)
+target_link_libraries(${PROJECT_NAME} idg-cpu-haswellep)
 
 # Set installation directory
 install(TARGETS ${PROJECT_NAME} 
@@ -58,15 +57,14 @@ install(
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
     DESTINATION
-    lib/kernels/CPU/reference
+    lib/kernels/CPU/HaswellEP
 )
 
 # Copy header files
 install(
     FILES
-    CPU.h
-    idg-cpu.h
-    Kernels.h
+    idg.h
+    HaswellEP.h
     DESTINATION
-    include/CPU/reference
+    include/CPU/HaswellEP
 )
