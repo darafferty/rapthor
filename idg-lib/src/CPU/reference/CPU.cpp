@@ -142,6 +142,18 @@ namespace idg {
         }
 
 
+        string CPU::default_compiler() 
+        {
+            return "g++";
+        }
+        
+
+        string CPU::default_compiler_flags() 
+        {
+            return "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
+        }
+
+
         /// High level routines
         void CPU::transform(DomainAtoDomainB direction, void* grid)
         {

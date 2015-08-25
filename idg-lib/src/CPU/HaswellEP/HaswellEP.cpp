@@ -135,6 +135,18 @@ namespace idg {
             return p;
         }
 
-} // namespace proxy
+        
+        string HaswellEP::default_compiler() 
+        {
+            return "icpc";
+        }
+        
+
+        string HaswellEP::default_compiler_flags() 
+        {
+            return "-Wall -O3 -fopenmp -mkl -lmkl_avx2 -lmkl_vml_avx2";
+        }
+
+    } // namespace proxy
 
 } // namespace idg

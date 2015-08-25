@@ -27,7 +27,7 @@ namespace idg {
                 HaswellEP(Compiler compiler,
                           Compilerflags flags,
                           Parameters params,
-                          ProxyInfo info = default_info_haswellep());
+                          ProxyInfo info = default_info());
                 
                 // HaswellEP(CompilerEnvironment cc,
                 //           Parameters params,
@@ -37,7 +37,9 @@ namespace idg {
                 ~HaswellEP() = default;
     
                 // Get default values for ProxyInfo
-                static ProxyInfo default_info_haswellep();
+                static ProxyInfo default_info();
+                static std::string default_compiler();
+                static std::string default_compiler_flags();
                     
         }; // class HaswellEP
     
