@@ -67,8 +67,13 @@ int main(int argc, char *argv[]) {
     clog << ">>> Initialize proxy" << endl;
 
     // basic gcc settings
-    idg::Compiler compiler = "g++";
-    idg::Compilerflags compilerflags = "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
+    clog << "Setting compiler: " << idg::proxy::CPU::default_compiler() 
+         << endl;
+    idg::Compiler compiler = idg::proxy::CPU::default_compiler();
+
+    clog << "Setting compiler flags: " 
+         << idg::proxy::CPU::default_compiler_flags() << endl;    
+    idg::Compilerflags compilerflags = idg::proxy::CPU::default_compiler_flags();
     // idg::ProxyInfo info = idg::proxy::CPU::default_info();
     // printf("TODO: CLEANUP");
     // info.set_path_to_src("/home/veenboer/idg/src/CPU/reference/kernels");

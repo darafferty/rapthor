@@ -144,13 +144,33 @@ namespace idg {
 
         string CPU::default_compiler() 
         {
+#if defined(USING_GNU_CXX_COMPILER)
             return "g++";
+#elif defined(USING_INTEL_CXX_COMPILER)
+            return "icpc";
+#elif defined(USING_CLANG_CXX_COMPILER)
+            return "clang";
+#elif defined(USING_MSVC_CXX_COMPILER)
+            return "not supported so far";
+#else 
+            return "g++";
+#endif
         }
         
 
         string CPU::default_compiler_flags() 
         {
+#if defined(USING_GNU_CXX_COMPILER)
             return "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
+#elif defined(USING_INTEL_CXX_COMPILER)
+            return "TODO: set flags";
+#elif defined(USING_CLANG_CXX_COMPILER)
+            return "TODO: set flags";
+#elif defined(USING_MSVC_CXX_COMPILER)
+            return "TODO: set flags";
+#else 
+            return "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
+#endif
         }
 
 

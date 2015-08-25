@@ -10,6 +10,7 @@
 #ifndef IDG_HASWELLEP_H_
 #define IDG_HASWELLEP_H_
 
+// TODO: check which include files are really necessary
 #include <dlfcn.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
