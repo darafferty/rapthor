@@ -10,7 +10,21 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
-# Set compile flags:
+# Compiler:
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(USING_CLANG_CXX_COMPILER TRUE)
+  message("-- Using Clang compiler")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  set(USING_GNU_CXX_COMPILER TRUE)
+  message("-- Using GNU compiler")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  set(USING_INTEL_CXX_COMPILER TRUE)
+  message("-- Using Intel compiler")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  set(USING_MSVC_CXX_COMPILER TRUE)
+  message("-- Using MSVC compiler")
+endif()
+
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)

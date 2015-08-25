@@ -34,10 +34,12 @@ namespace idg {
                 /// Destructor
                 ~CPU();
     
-                // Get default values for ProxyInfo
+                // Get default values 
                 static ProxyInfo default_info();
+                static std::string default_compiler();
+                static std::string default_compiler_flags();
     
-                // get parameters
+                // Get parameters of proxy
                 const Parameters& get_parameters() const { return mParams; }
                 const ProxyInfo& get_info() const { return mInfo; }
     

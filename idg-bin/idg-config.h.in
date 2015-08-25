@@ -7,4 +7,9 @@
 #cmakedefine REPORT_VERBOSE
 #cmakedefine REPORT_TOTAL
 
+#cmakedefine USING_CLANG_CXX_COMPILER
+#cmakedefine USING_GNU_CXX_COMPILER
+#cmakedefine USING_INTEL_CXX_COMPILER
+#cmakedefine USING_MSVC_CXX_COMPILER
+
 #endif
