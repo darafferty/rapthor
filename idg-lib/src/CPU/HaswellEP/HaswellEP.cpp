@@ -77,7 +77,7 @@ namespace idg {
         // }
 
 
-        ProxyInfo HaswellEP::default_info_haswellep()
+        ProxyInfo HaswellEP::default_info()
         {
             #if defined(DEBUG)
             cout << "HaswellEP::" << __func__ << endl;
