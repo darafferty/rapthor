@@ -1,3 +1,4 @@
+// TODO: check which include files are really necessary
 #include <cstdio> // remove()
 #include <cstdlib>  // rand()
 #include <ctime> // time() to init srand()
@@ -138,12 +139,16 @@ namespace idg {
         
         string HaswellEP::default_compiler() 
         {
+            // TODO: return different ones like in CPU.cpp
+            // I guess, this is better than forcing to use one compiler
             return "icpc";
         }
         
 
         string HaswellEP::default_compiler_flags() 
         {
+            // TODO: return different ones like in CPU.cpp
+            // I guess, this is better than forcing to use one compiler
             return "-Wall -O3 -fopenmp -mkl -lmkl_avx2 -lmkl_vml_avx2";
         }
 
