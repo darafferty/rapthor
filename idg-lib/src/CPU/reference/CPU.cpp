@@ -8,6 +8,7 @@
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
 
+#include "idg-config.h"
 #include "CPU.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
@@ -94,19 +95,23 @@ namespace idg {
             dladdr((void *) dummy, &dl_info);
 
             // Derive name of library and location
-            std::string libdir = dirname((char *) dl_info.dli_fname);
-            std::string bname = basename((char *) dl_info.dli_fname);
-            std::cout << "Module " << bname << " loaded from: " << libdir << std::endl;
-            std::string  srcdir = libdir + "/idg/CPU/reference";
-            #ifdef DEBUG
-            cout << "Searching for source files in: " << srcdir << std::endl;
+            string libdir = dirname((char *) dl_info.dli_fname);
+            string bname = basename((char *) dl_info.dli_fname);
+            cout << "Module " << bname << " loaded from: " 
+                 << libdir << endl;
+            // OLD: string  srcdir = libdir + "/idg/CPU/reference";
+            string  srcdir = string(IDG_SOURCE_DIR) 
+                + "/src/CPU/reference/kernels";
+
+            #if defined(DEBUG)
+            cout << "Searching for source files in: " << srcdir << endl;
             #endif
  
             // Create temp directory
             char _tmpdir[] = "/tmp/idg-XXXXXX";
             char *tmpdir = mkdtemp(_tmpdir);
-            #if DEBUG
-            std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
+            #if defined(DEBUG)
+            cout << "Temporary files will be stored in: " << tmpdir << endl;
             #endif
  
             // Create proxy info

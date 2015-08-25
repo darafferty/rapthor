@@ -1,5 +1,7 @@
 #include <iostream>
 #include <sstream>
+
+#include "idg-config.h"
 #include "RuntimeWrapper.h"
 
 using namespace std;

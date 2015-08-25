@@ -3,6 +3,8 @@
 #include <iomanip> // setw
 #include <sstream>
 #include <cmath> // fabs
+
+#include "idg-config.h"
 #include "Parameters.h"
 
 using namespace std;

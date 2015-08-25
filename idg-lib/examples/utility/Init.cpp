@@ -28,30 +28,23 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
 
     // Check whether layout file exists
     bool found = false;
-    //std::stringstream ss;
-    printf("|%s| |%s| |%s|\n", SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
-    //ss << "" << SOURCE_DIR << "/" << LAYOUT_DIR << "/" << LAYOUT_FILE;
-    char filename[100];
-    sprintf(filename, "%s/%s/%s", SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
-    //const char* filename = ss.str().c_str();
-    printf("data file: %s\n", filename);
+    char filename[512];
+    sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
 
     if (!uvwsim_file_exists(filename)) {
-        std::cerr << "Unable to find specified layout file: " << filename << std::endl;
+        std::cerr << "Unable to find specified layout file: " 
+                  << filename << std::endl;
         exit(EXIT_FAILURE);
     }
-    printf("2 data file: %s\n", filename);
 
     // Read the number of stations in the layout file.
     int nr_stations_file = uvwsim_get_num_stations(filename);
-    //int nr_stations_file = nr_stations;
-    printf("2.5 data file: %s\n", filename);
 
     // Check wheter the requested number of station is feasible
-    //if (nr_stations_file < nr_stations) {
+    // if (nr_stations_file < nr_stations) {
     //    std::cerr << "More stations requested than present in layout file: "
     //              << "(" << nr_stations_file << ")" << std::endl;
-    //}
+    // }
 
     // Allocate memory for antenna coordinates
     double *x = (double*) malloc(nr_stations_file * sizeof(double));
@@ -61,7 +54,6 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
     // Load the antenna coordinates
     printf("looking for stations file in: %s\n", filename);
     if (uvwsim_load_station_coords(filename, nr_stations_file, x, y, z) != nr_stations_file) {
-        printf("3 data file: %s\n", filename);
         std::cerr << "Failed to read antenna coordinates." << std::endl;
         exit(EXIT_FAILURE);
     }

@@ -3,10 +3,8 @@ project(idg-examples-utility)
 # external header files needed
 include_directories (
     ${CMAKE_SOURCE_DIR}/examples/external
-    ${CMAKE_BINARY_DIR}/examples
 )
 
-message("test: " ${CMAKE_BINARY_DIR}/examples)
 # sources and header files
 set (${PROJECT_NAME}_headers 
   Arguments.h
@@ -34,12 +32,12 @@ target_link_libraries(${PROJECT_NAME} idg-examples-external)
 # )
 
 # Copy kernel source files
-install(
-    FILES
-    SKA1_low_ecef.txt
-    SKA1_mid_ecef.txt
-    SKA1_readme.txt
-    SKA1_survey.txt
-    DESTINATION
-    lib/data
-)
+# install(
+#    FILES
+#    SKA1_low_ecef.txt
+#    SKA1_mid_ecef.txt
+#    SKA1_readme.txt
+#    SKA1_survey.txt
+#    DESTINATION
+#    lib/data
+#)

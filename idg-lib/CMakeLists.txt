@@ -20,20 +20,23 @@ if(COMPILER_SUPPORTS_CXX11)
 elseif(COMPILER_SUPPORTS_CXX0X)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 else()
-  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
 # options (to be edited as not functional yet)
 option (BUILD_EXAMPLES "Build examples executables" OFF)
 option (HAVE_CUDA "Have CUDA environment" OFF)
 
+# write config file, included in all files of the project
+configure_file (
+  "${PROJECT_SOURCE_DIR}/idg-config.h.in"
+  "${PROJECT_BINARY_DIR}/idg-config.h"
+  )
+include_directories (${CMAKE_BINARY_DIR})
+
 # add subfolders
 add_subdirectory(src)
 
 if (BUILD_EXAMPLES)
-    configure_file (
-        "${PROJECT_SOURCE_DIR}/examples/ExamplesConfig.h.in"
-        "${PROJECT_BINARY_DIR}/examples/ExamplesConfig.h"
-    )
-    add_subdirectory(examples)
+add_subdirectory(examples)
 endif (BUILD_EXAMPLES)

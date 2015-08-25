@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <omp.h>
 
+#include "idg-config.h"
 #include "auxiliary.h"
 
 using namespace std;

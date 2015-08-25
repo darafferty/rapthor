@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+
+#include "idg-config.h"
 #include "ProxyInfo.h"
 
 using namespace std;
