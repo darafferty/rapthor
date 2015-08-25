@@ -69,11 +69,12 @@ int main(int argc, char *argv[]) {
     // basic gcc settings
     idg::Compiler compiler = "g++";
     idg::Compilerflags compilerflags = "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
-    idg::ProxyInfo info = idg::proxy::CPU::default_info();
-    printf("TODO: CLEANUP");
-    info.set_path_to_src("/home/veenboer/idg/src/CPU/reference/kernels");
+    // idg::ProxyInfo info = idg::proxy::CPU::default_info();
+    // printf("TODO: CLEANUP");
+    // info.set_path_to_src("/home/veenboer/idg/src/CPU/reference/kernels");
 
-    idg::proxy::CPU xeon(compiler, compilerflags, params, info);
+    // idg::proxy::CPU xeon(compiler, compilerflags, params, info);
+    idg::proxy::CPU xeon(compiler, compilerflags, params);
     clog << endl;
 
     // Run gridder

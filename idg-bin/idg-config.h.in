@@ -1,0 +1,7 @@
+#ifndef IDG_CONFIG_H_
+#define IDG_CONFIG_H_
+
+#define IDG_SOURCE_DIR "@CMAKE_SOURCE_DIR@"
+#define IDG_BINARY_DIR "@CMAKE_BINARY_DIR@"
+
+#endif

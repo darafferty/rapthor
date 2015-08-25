@@ -18,13 +18,14 @@ else()
 endif()
 
 # external header files needed 
-include_directories (${PROJECT_SOURCE_DIR}/../../common)
+include_directories (
+  ${CMAKE_SOURCE_DIR}/src/common
+)
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
   CPU.h
   Kernels.h
-  Types.h
 )
 
 set (${PROJECT_NAME}_sources 
@@ -66,7 +67,6 @@ install(
     ${HEADERS}
     CPU.h
     idg-cpu.h
-    Types.h
     Kernels.h
     DESTINATION
     include/CPU/reference

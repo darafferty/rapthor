@@ -1,4 +1,6 @@
 #include <cstdint> // unint64_t
+
+#include "idg-config.h"
 #include "Kernels.h"
 
 namespace idg {

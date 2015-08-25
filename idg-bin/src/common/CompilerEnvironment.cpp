@@ -1,5 +1,7 @@
 #include <iostream>
 #include <iomanip>
+
+#include "idg-config.h"
 #include "CompilerEnvironment.h"
 
 using namespace std;
