@@ -5,6 +5,10 @@ cmake_policy(SET CMP0022 OLD)
 
 project(idg-cpu-haswellep)
 
+# set Intel compiler
+set(CMAKE_C_COMPILER icc)
+set(CMAKE_CXX_COMPILER icpc)
+
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
