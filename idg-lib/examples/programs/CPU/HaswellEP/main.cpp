@@ -67,13 +67,9 @@ int main(int argc, char *argv[]) {
     clog << ">>> Initialize proxy" << endl;
 
     // basic gcc settings
-    idg::Compiler compiler = "g++";
+    idg::Compiler compiler = "icpc";
     idg::Compilerflags compilerflags = "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
-    // idg::ProxyInfo info = idg::proxy::HaswellEP::default_info();
-    // printf("TODO: CLEANUP");
-    // info.set_path_to_src("/home/veenboer/idg/src/HaswellEP/reference/kernels");
 
-    // idg::proxy::HaswellEP xeon(compiler, compilerflags, params, info);
     idg::proxy::HaswellEP xeon(compiler, compilerflags, params);
     clog << endl;
 
@@ -86,7 +82,7 @@ int main(int argc, char *argv[]) {
     int jobsize_adder = params.get_job_size_adder();
     xeon.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
 
-    clog << "Run fft" << endl;
+    clog << ">> Run fft" << endl;
     xeon.transform(idg::FourierDomainToImageDomain, grid);
 
     clog << ">>> Run splitter" << endl;
