@@ -197,8 +197,8 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // load kernel functions
-            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+            omp4_offload_kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
+            omp4_offload_kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();

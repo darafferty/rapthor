@@ -63,7 +63,7 @@ if (BUILD_WITH_CUDA)
     message("CUDA_CUFFT_LIBRARIES: " ${CUDA_CUFFT_LIBRARIES})
     message("CUDA_CUBLAS_LIBRARIES:" ${CUDA_CUBLAS_LIBRARIES})
     # ...
-  endif (CUDA_FOUN)
+  endif (CUDA_FOUND)
 endif (BUILD_WITH_CUDA)
 
 # set default path to build executables and libraries in BINARY_DIR
