@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdint.h>
 
+#define VML_PRECISION VML_LA
+#include <mkl_vml.h>
+
 #include "Types.h"
 
 extern "C" {
@@ -34,10 +37,11 @@ void kernel_degridder(
 
         // Storage for precomputed values
         FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
-        float phasor_real[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float phasor_imag[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phasor_real[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phasor_imag[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phase[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
 
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
@@ -114,20 +118,21 @@ void kernel_degridder(
                 }
             }
 
-            // Compute phasor
-            for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                for (int y = 0; y < SUBGRIDSIZE; y++) {
-                    for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        // Compute phase
-                        float wavenumber = (*wavenumbers)[chan];
-                        float phase  = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
-
-                        // Compute phasor
-                        phasor_real[chan][y][x] = cosf(phase);
-                        phasor_imag[chan][y][x] = sinf(phase);
+            // Compute phase
+            for (int y = 0; y < SUBGRIDSIZE; y++) {
+                for (int x = 0; x < SUBGRIDSIZE; x++) {
+                    for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                        phase[y][x][chan] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
                     }
                 }
             }
+
+            // Compute phasor
+            vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS,
+                (const float *) &phase[0][0][0],
+                                &phasor_imag[0][0][0],
+                                &phasor_real[0][0][0], VML_PRECISION);
+
 
             FLOAT_COMPLEX sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
 
@@ -136,13 +141,11 @@ void kernel_degridder(
 
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
+                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
 
-                        // Update all polarizations
-                        sum[0] += _pixels[y][x][0] * phasor;
-                        sum[1] += _pixels[y][x][1] * phasor;
-                        sum[2] += _pixels[y][x][2] * phasor;
-                        sum[3] += _pixels[y][x][3] * phasor;
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            sum[pol] += _pixels[y][x][pol] * phasor;
+                        }
                     }
                 }
 
