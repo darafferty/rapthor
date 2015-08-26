@@ -49,6 +49,10 @@ namespace idg {
         
                 virtual void run_fft(FFT_PARAMETERS);
 
+            private:
+                void run_gridder_intel_leo(int jobsize, GRIDDER_PARAMETERS);
+                void run_gridder_omp4(int jobsize, GRIDDER_PARAMETERS);
+
         
         }; // class HaswellEP
     
