@@ -7,13 +7,16 @@
 #include <string.h>
 #include <stdint.h>
 
+#if defined(USING_INTEL_CXX_COMPILER)
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
+#endif
 
 #include "Types.h"
 
 extern "C" {
-void kernel_gridder(
+#if defined(USING_INTEL_CXX_COMPILER)
+void kernel_gridder_intel(
 	const int jobsize, const float w_offset,
 	const UVWType		   __restrict__ *uvw,
 	const WavenumberType   __restrict__ *wavenumbers,
@@ -48,10 +51,6 @@ void kernel_gridder(
         // Storage for precomputed values
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        //FLOAT_COMPLEX visXX[NR_CHANNELS]             __attribute__((aligned(32)));
-        //FLOAT_COMPLEX visXY[NR_CHANNELS]             __attribute__((aligned(32)));
-        //FLOAT_COMPLEX visYX[NR_CHANNELS]             __attribute__((aligned(32)));
-        //FLOAT_COMPLEX visYY[NR_CHANNELS]             __attribute__((aligned(32)));
         FLOAT_COMPLEX vis[NR_CHANNELS][NR_POLARIZATIONS] __attribute__((aligned(32)));
         float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
@@ -170,6 +169,46 @@ void kernel_gridder(
         }
     }
     }
+}
+#endif
+
+#if defined(USING_GNU_CXX_COMPILER)
+void kernel_gridder_gnu(
+	const int jobsize, const float w_offset,
+	const UVWType		   __restrict__ *uvw,
+	const WavenumberType   __restrict__ *wavenumbers,
+	const VisibilitiesType __restrict__ *visibilities,
+	const SpheroidalType   __restrict__ *spheroidal,
+	const ATermType		   __restrict__ *aterm,
+	const MetadataType	   __restrict__ *metadata,
+	SubGridType			   __restrict__ *subgrid
+	) {
+    printf("%s not implemented yet\n", __func__);
+}
+#endif
+
+void kernel_gridder(
+	const int jobsize, const float w_offset,
+	const UVWType		   __restrict__ *uvw,
+	const WavenumberType   __restrict__ *wavenumbers,
+	const VisibilitiesType __restrict__ *visibilities,
+	const SpheroidalType   __restrict__ *spheroidal,
+	const ATermType		   __restrict__ *aterm,
+	const MetadataType	   __restrict__ *metadata,
+	SubGridType			   __restrict__ *subgrid
+	) {
+    #if defined(USING_INTEL_CXX_COMPILER)
+    kernel_gridder_intel(
+          jobsize, w_offset, uvw, wavenumbers,
+          visibilities, spheroidal, aterm, metadata, subgrid);
+    #elif defined(USING_GNU_CXX_COMPILER)
+    kernel_gridder_gnu(
+          jobsize, w_offset, uvw, wavenumbers,
+          visibilities, spheroidal, aterm, metadata, subgrid);
+    #else 
+    printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
+    return;
+    #endif
 }
 
 uint64_t kernel_gridder_flops(int jobsize) {

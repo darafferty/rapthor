@@ -66,9 +66,14 @@ int main(int argc, char *argv[]) {
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
 
-    // basic gcc settings
-    idg::Compiler compiler = "icpc";
-    idg::Compilerflags compilerflags = "-Wall -O3 -fopenmp -mkl -lmkl_avx2 -lmkl_vml_avx2";
+    // basic intel settings
+    clog << "Setting compiler: " << idg::proxy::HaswellEP::default_compiler() 
+         << endl;
+    idg::Compiler compiler = idg::proxy::HaswellEP::default_compiler();
+
+    clog << "Setting compiler flags: " 
+         << idg::proxy::HaswellEP::default_compiler_flags() << endl;    
+    idg::Compilerflags compilerflags = idg::proxy::HaswellEP::default_compiler_flags();
 
     idg::proxy::HaswellEP xeon(compiler, compilerflags, params);
     clog << endl;
