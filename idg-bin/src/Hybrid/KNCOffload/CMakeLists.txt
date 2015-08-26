@@ -26,10 +26,12 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers 
   KNCOffload.h
+  Kernels.h
 )
 
 set (${PROJECT_NAME}_sources 
   KNCOffload.cpp
+  Kernels.cpp
 )
 
 # create library
