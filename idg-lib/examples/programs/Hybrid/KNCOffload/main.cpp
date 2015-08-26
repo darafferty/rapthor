@@ -2,7 +2,7 @@
 #include <cstdlib> // size_t
 #include <complex>
 
-#include "CPU/reference/idg-cpu.h"
+#include "Hybrid/KNCOffload/idg.h"
 
 #include "Init.h"  // Data init routines
 #include "Arguments.h"  // Parse command line arguments
@@ -67,15 +67,15 @@ int main(int argc, char *argv[]) {
     clog << ">>> Initialize proxy" << endl;
 
     // basic gcc settings
-    clog << "Setting compiler: " << idg::proxy::CPU::default_compiler() 
+    clog << "Setting compiler: " << idg::proxy::KNCOffload::default_compiler()
          << endl;
-    idg::Compiler compiler = idg::proxy::CPU::default_compiler();
+    idg::Compiler compiler = idg::proxy::KNCOffload::default_compiler();
 
-    clog << "Setting compiler flags: " 
-         << idg::proxy::CPU::default_compiler_flags() << endl;    
-    idg::Compilerflags compilerflags = idg::proxy::CPU::default_compiler_flags();
+    clog << "Setting compiler flags: "
+         << idg::proxy::KNCOffload::default_compiler_flags() << endl;
+    idg::Compilerflags compilerflags = idg::proxy::KNCOffload::default_compiler_flags();
 
-    idg::proxy::CPU cpu(compiler, compilerflags, params);
+    idg::proxy::KNCOffload cpu(compiler, compilerflags, params);
     clog << endl;
 
     // Run gridder
@@ -83,20 +83,20 @@ int main(int argc, char *argv[]) {
     int jobsize_gridder = params.get_job_size_gridder();
     cpu.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
-    clog << ">> Run adder" << endl;
-    int jobsize_adder = params.get_job_size_adder();
-    cpu.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
+    //clog << ">> Run adder" << endl;
+    //int jobsize_adder = params.get_job_size_adder();
+    //cpu.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
 
-    clog << ">>> Run fft" << endl;
-    cpu.transform(idg::FourierDomainToImageDomain, grid);
+    //clog << ">>> Run fft" << endl;
+    //cpu.transform(idg::FourierDomainToImageDomain, grid);
 
-    clog << ">>> Run splitter" << endl;
-    int jobsize_splitter = params.get_job_size_splitter();
-    cpu.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
+    //clog << ">>> Run splitter" << endl;
+    //int jobsize_splitter = params.get_job_size_splitter();
+    //cpu.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
 
-    clog << ">>> Run degridder" << endl;
-    int jobsize_degridder = params.get_job_size_degridder();
-    cpu.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    //clog << ">>> Run degridder" << endl;
+    //int jobsize_degridder = params.get_job_size_degridder();
+    //cpu.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
     // free memory for data structures
     delete[] visibilities;

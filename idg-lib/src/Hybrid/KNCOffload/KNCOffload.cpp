@@ -44,7 +44,7 @@ namespace idg {
             #endif
 
             string  srcdir = string(IDG_SOURCE_DIR)
-                + "/src/Hybrid/KNC/kernels";
+                + "/src/Hybrid/KNCOffload/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
@@ -61,116 +61,17 @@ namespace idg {
 
         string KNCOffload::default_compiler()
         {
-            #if defined(USING_GNU_CXX_COMPILER)
-            return "g++";
-            #else
             return "icpc";
-            #endif
         }
 
         string KNCOffload::default_compiler_flags()
         {
-            #if defined(USING_GNU_CXX_COMPILER)
-            return "-Wall -O3 -fopenmp -lfftw3f";
-            #else
-            return "-Wall -O3 -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2";
-            #endif
+            return "-Wall -O3 -openmp -mkl";
         }
 
         /// Low level routines
         void KNCOffload::run_gridder_intel_leo(int jobsize, GRIDDER_PARAMETERS)
         {
-            #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
-            #endif
-
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime, runtime_gridder, runtime_fft;
-            double total_runtime_gridder = 0;
-            double total_runtime_fft = 0;
-            #endif
-
-            // Constants
-            auto nr_baselines = mParams.get_nr_baselines();
-            auto nr_timesteps = mParams.get_nr_timesteps();
-            auto nr_timeslots = mParams.get_nr_timeslots();
-            auto nr_channels = mParams.get_nr_channels();
-            auto nr_polarizations = mParams.get_nr_polarizations();
-            auto subgridsize = mParams.get_subgrid_size();
-
-            // load kernel functions
-            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
-
-            // Start gridder
-            for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
-                // Prevent overflow
-                jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
-
-                // Number of elements in batch
-                int uvw_elements          = nr_timesteps * 3;
-                int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
-                int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
-                int metadata_elements     = 5;
-
-                // Pointers to data for current batch
-                void *uvw_ptr          = (float *) uvw + s * uvw_elements;
-                void *wavenumbers_ptr  = wavenumbers;
-                void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
-                void *spheroidal_ptr   = spheroidal;
-                void *aterm_ptr        = aterm;
-                void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
-                void *metadata_ptr     = (int *) metadata + s * metadata_elements;
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_gridder = -omp_get_wtime();
-                #endif
-
-                kernel_gridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                                   spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_gridder += omp_get_wtime();
-                total_runtime_gridder += runtime_gridder;
-                runtime_fft = -omp_get_wtime();
-                #endif
-
-                kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft += omp_get_wtime();
-                total_runtime_fft += runtime_fft;
-                #endif
-
-                #if defined(REPORT_VERBOSE)
-                auxiliary::report("gridder", runtime_gridder,
-                                  kernel_gridder.flops(jobsize),
-                                  kernel_gridder.bytes(jobsize));
-                auxiliary::report("fft", runtime_fft,
-                                  kernel_fft.flops(subgridsize, nr_subgrids),
-                                  kernel_fft.bytes(subgridsize, nr_subgrids));
-                #endif
-            } // end for s
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
-            clog << endl;
-            clog << "Total: gridding" << endl;
-            auxiliary::report("gridder", total_runtime_gridder,
-                              kernel_gridder.flops(nr_subgrids),
-                              kernel_gridder.bytes(nr_subgrids));
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft.flops(subgridsize, nr_subgrids),
-                              kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
-            clog << endl;
-            #endif
 
         } // run_gridder_intel_leo
 
@@ -197,8 +98,13 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // load kernel functions
-            omp4_offload_kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
-            omp4_offload_kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+            //omp4_offload_kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
+            //omp4_offload_kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+
+            //(sig_gridder (void *) _run)(jobsize, w_offset, uvw, wavenumbers,
+            //visibilities, spheroidal, aterm, metadata, subgrid);
+
+            void *kernel_gridder = runtime::Function(*(modules[which_module[kernel::name_gridder]]), kernel::name_gridder.c_str());
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();
@@ -245,8 +151,10 @@ namespace idg {
                         map(to:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
                         map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
-                    kernel_gridder.run(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                                       spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
+                    (sig_gridder (void *) kernel_gridder)(jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
+                    visibilities_ptr, spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
+                    //kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+                    //                   spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     runtime_gridder += omp_get_wtime();
@@ -254,7 +162,7 @@ namespace idg {
                     runtime_fft = -omp_get_wtime();
                     #endif
 
-                    kernel_fft.run(subgridsize, current_jobsize, subgrids_ptr, FFTW_BACKWARD);
+                    //omp4_offload_kernel::fft_run(subgridsize, current_jobsize, subgrids_ptr, FFTW_BACKWARD);
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     runtime_fft += omp_get_wtime();
@@ -262,12 +170,12 @@ namespace idg {
                     #endif
 
                     #if defined(REPORT_VERBOSE)
-                    auxiliary::report("gridder", runtime_gridder,
-                                      kernel_gridder.flops(current_jobsize),
-                                      kernel_gridder.bytes(current_jobsize));
-                    auxiliary::report("fft", runtime_fft,
-                                      kernel_fft.flops(subgridsize, nr_subgrids),
-                                      kernel_fft.bytes(subgridsize, nr_subgrids));
+                    //auxiliary::report("gridder", runtime_gridder,
+                    //                  omp4_offload_kernel::gridder_flops(current_jobsize),
+                    //                  omp4_offload_kernel::gridder_bytes(current_jobsize));
+                    //auxiliary::report("fft", runtime_fft,
+                    //                  omp4_offload_kernel::fft_flops(subgridsize, nr_subgrids),
+                    //                  omp4_offload_kernel::fft_bytes(subgridsize, nr_subgrids));
                     #endif
                 } // end for s
             } // end omp target data
@@ -276,12 +184,12 @@ namespace idg {
             runtime += omp_get_wtime();
             clog << endl;
             clog << "Total: gridding" << endl;
-            auxiliary::report("gridder", total_runtime_gridder,
-                              kernel_gridder.flops(nr_subgrids),
-                              kernel_gridder.bytes(nr_subgrids));
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft.flops(subgridsize, nr_subgrids),
-                              kernel_fft.bytes(subgridsize, nr_subgrids));
+            //auxiliary::report("gridder", total_runtime_gridder,
+            //                  kernel_gridder.flops(nr_subgrids),
+            //                  kernel_gridder.bytes(nr_subgrids));
+            //auxiliary::report("fft", total_runtime_fft,
+            //                  kernel_fft.flops(subgridsize, nr_subgrids),
+            //                  kernel_fft.bytes(subgridsize, nr_subgrids));
             auxiliary::report_runtime(runtime);
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
@@ -292,16 +200,17 @@ namespace idg {
 
         void KNCOffload::run_gridder(int jobsize, GRIDDER_PARAMETERS)
         {
-            #if defined(USING_INTEL_CXX_COMPILER)
-            run_gridder_intel_leo(jobsize, GRIDDER_ARGUMENTS);
-            #else
+            //#if defined(USING_INTEL_CXX_COMPILER)
+            //run_gridder_intel_leo(jobsize, GRIDDER_ARGUMENTS);
+            //#else
             run_gridder_omp4(jobsize, GRIDDER_ARGUMENTS);
-            #endif
+            //#endif
         } // run_gridder
 
 
         void KNCOffload::run_adder(int jobsize, ADDER_PARAMETERS)
         {
+#if 0
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
             #endif
@@ -367,11 +276,13 @@ namespace idg {
             clog << endl;
             #endif
 
+#endif
         } // run_adder
 
 
         void KNCOffload::run_splitter(int jobsize, SPLITTER_PARAMETERS)
         {
+#if 0
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
             #endif
@@ -436,11 +347,13 @@ namespace idg {
             auxiliary::report_subgrids(runtime, nr_subgrids);
             clog << endl;
             #endif
+#endif
         } // run_splitter
 
 
         void KNCOffload::run_degridder(int jobsize, DEGRIDDER_PARAMETERS)
         {
+#if 0
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
             #endif
@@ -532,11 +445,13 @@ namespace idg {
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
+#endif
         } // run_degridder
 
 
         void KNCOffload::run_fft(void *grid, int sign)
         {
+#if 0
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
             #endif
@@ -572,6 +487,7 @@ namespace idg {
             auxiliary::report_runtime(runtime);
             clog << endl;
             #endif
+#endif
         } // run_fft
 
 

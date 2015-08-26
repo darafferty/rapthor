@@ -10,7 +10,16 @@
 
 namespace idg {
 
+    // Function signatures
+    #define sig_gridder   (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
+    #define sig_degridder (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
+    #define sig_fft		  (void (*)(int,int,void*,int))
+    #define sig_adder	  (void (*)(int,void*,void*,void*))
+    #define sig_splitter  (void (*)(int,void*,void*,void*))
+
+#if 0
   namespace omp4_offload_kernel {
+#if 0
 
     // define the kernel function names
     static const std::string name_gridder = "kernel_gridder";
@@ -18,13 +27,6 @@ namespace idg {
     static const std::string name_fft = "kernel_fft";
     static const std::string name_adder = "kernel_adder";
     static const std::string name_splitter = "kernel_splitter";
-
-    // Function signatures
-    #define sig_gridder   (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
-    #define sig_degridder (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
-    #define sig_fft		  (void (*)(int,int,void*,int))
-    #define sig_adder	  (void (*)(int,void*,void*,void*))
-    #define sig_splitter  (void (*)(int,void*,void*,void*))
 
     // define auxiliary function names
     static const std::string name_gridder_flops = "kernel_gridder_flops";
@@ -38,6 +40,14 @@ namespace idg {
     static const std::string name_fft_bytes = "kernel_fft_bytes";
     static const std::string name_adder_bytes = "kernel_adder_bytes";
     static const std::string name_splitter_bytes = "kernel_splitter_bytes";
+
+    void gridder_run(
+        int jobsize, float w_offset, void *uvw, void *wavenumbers,
+        void *visibilities, void *spheroidal, void *aterm,
+        void *metadata, void *subgrid);
+
+    uint64_t gridder_flops(int jobsize);
+    uint64_t gridder_bytes(int jobsize);
 
     class Gridder {
     public:
@@ -117,8 +127,10 @@ namespace idg {
       runtime::Function _bytes;
     };
 
+#endif
 
   } // namespace omp4_offload_kernel
+#endif
 
 } // namespace idg
 

@@ -7,6 +7,18 @@ namespace idg {
 
   namespace omp4_offload_kernel {
 
+#if 0
+    void gridder_run(
+        int jobsize, float w_offset, void *uvw, void *wavenumbers,
+        void *visibilities, void *spheroidal, void *aterm,
+        void *metadata, void *subgrid) {
+        
+    }
+
+    uint64_t gridder_flops(int jobsize);
+    uint64_t gridder_bytes(int jobsize);
+
+
     // Gridder class
     Gridder::Gridder(runtime::Module &module) :
       _run(module,   name_gridder.c_str()),
@@ -29,8 +41,9 @@ namespace idg {
     uint64_t Gridder::bytes(int jobsize) {
       return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
     }
+#endif
 
-
+#if 0
     // Degridder class
     Degridder::Degridder(runtime::Module &module) :
       _run(module,   name_degridder.c_str()),
@@ -113,7 +126,7 @@ namespace idg {
     uint64_t Splitter::bytes(int jobsize) {
       return ((uint64_t (*)(int)) (void *) _bytes)(jobsize);
     }
-
+#endif
   } // namespace kernel
 
 } // namespace idg
