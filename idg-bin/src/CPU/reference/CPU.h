@@ -76,6 +76,10 @@ namespace idg {
         
                 virtual void run_fft(FFT_PARAMETERS);
 
+            protected:
+                static std::string make_tempdir();
+                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+
             private:
                 void compile(Compiler compiler, Compilerflags flags);
                 void parameter_sanity_check();

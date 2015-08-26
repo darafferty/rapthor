@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
     clog << "Setting compiler flags: " 
          << idg::proxy::CPU::default_compiler_flags() << endl;    
     idg::Compilerflags compilerflags = idg::proxy::CPU::default_compiler_flags();
+
     idg::proxy::CPU cpu(compiler, compilerflags, params);
     clog << endl;
 

@@ -6,13 +6,16 @@
 #include <string.h>
 #include <stdint.h>
 
+#if defined(USING_INTEL_CXX_COMPILER)
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
+#endif
 
 #include "Types.h"
 
 extern "C" {
-void kernel_degridder(
+#if defined(USING_INTEL_CXX_COMPILER)
+void kernel_degridder_intel(
     const int jobsize, const float w_offset,
 	const UVWType		 __restrict__ *uvw,
 	const WavenumberType __restrict__ *wavenumbers,
@@ -158,6 +161,45 @@ void kernel_degridder(
         }
 	}
     }
+}
+#endif
+
+#if defined(USING_GNU_CXX_COMPILER)
+void kernel_degridder_gnu(
+	const int jobsize, const float w_offset,
+	const UVWType		   __restrict__ *uvw,
+	const WavenumberType   __restrict__ *wavenumbers,
+	VisibilitiesType       __restrict__ *visibilities,
+	const SpheroidalType   __restrict__ *spheroidal,
+	const ATermType		   __restrict__ *aterm,
+	const MetadataType	   __restrict__ *metadata,
+	const SubGridType	   __restrict__ *subgrid
+	) {
+    printf("%s not implemented yet\n", __func__);
+}
+#endif
+
+void kernel_degridder(
+	const int jobsize, const float w_offset,
+	const UVWType		   __restrict__ *uvw,
+	const WavenumberType   __restrict__ *wavenumbers,
+	VisibilitiesType       __restrict__ *visibilities,
+	const SpheroidalType   __restrict__ *spheroidal,
+	const ATermType		   __restrict__ *aterm,
+	const MetadataType	   __restrict__ *metadata,
+	const SubGridType	   __restrict__ *subgrid
+	) {
+    #if defined(USING_INTEL_CXX_COMPILER)
+    kernel_degridder_intel(
+          jobsize, w_offset, uvw, wavenumbers,
+          visibilities, spheroidal, aterm, metadata, subgrid);
+    #elif defined(USING_GNU_CXX_COMPILER)
+    kernel_degridder_gnu(
+          jobsize, w_offset, uvw, wavenumbers,
+          visibilities, spheroidal, aterm, metadata, subgrid);
+    #else 
+    printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
+    #endif
 }
 
 uint64_t kernel_degridder_flops(int jobsize) {

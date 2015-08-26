@@ -7,6 +7,7 @@
 #include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
+#include <unistd.h> // rmdir()
 
 #include "idg-config.h"
 #include "CPU.h"
@@ -15,8 +16,6 @@
 #endif
 
 using namespace std;
-
-void dummy() {};
 
 namespace idg {
 
@@ -69,51 +68,31 @@ namespace idg {
             #endif
 
             // unload shared objects by ~Module
-            for (unsigned int i=0; i<modules.size(); i++) {
+            for (unsigned int i = 0; i < modules.size(); i++) {
                 delete modules[i];
             }
 
             // Delete .so files
-            if( mInfo.delete_shared_objects() ) {
+            if (mInfo.delete_shared_objects()) {
                 for (auto libname : mInfo.get_lib_names()) {
                     string lib = mInfo.get_path_to_lib() + "/" + libname;
                     remove(lib.c_str());
                 }
+                rmdir(mInfo.get_path_to_lib().c_str());
             }
         }
 
 
-        ProxyInfo CPU::default_info()
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            // Find library path
-            Dl_info dl_info;
-            dladdr((void *) dummy, &dl_info);
-
-            // Derive name of library and location
-            string libdir = dirname((char *) dl_info.dli_fname);
-            string bname = basename((char *) dl_info.dli_fname);
-            cout << "Module " << bname << " loaded from: " 
-                 << libdir << endl;
-            // OLD: string  srcdir = libdir + "/idg/CPU/reference";
-            string  srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CPU/reference/kernels";
-
-            #if defined(DEBUG)
-            cout << "Searching for source files in: " << srcdir << endl;
-            #endif
- 
-            // Create temp directory
+        string CPU::make_tempdir() {
             char _tmpdir[] = "/tmp/idg-XXXXXX";
             char *tmpdir = mkdtemp(_tmpdir);
             #if defined(DEBUG)
             cout << "Temporary files will be stored in: " << tmpdir << endl;
             #endif
- 
-            // Create proxy info
+            return tmpdir;
+        }
+
+        ProxyInfo CPU::default_proxyinfo(string srcdir, string tmpdir) {
             ProxyInfo p;
             p.set_path_to_src(srcdir);
             p.set_path_to_lib(tmpdir);
@@ -141,36 +120,46 @@ namespace idg {
             return p;
         }
 
+        ProxyInfo CPU::default_info()
+        {
+            #if defined(DEBUG)
+            cout << "CPU::" << __func__ << endl;
+            #endif
+
+            string  srcdir = string(IDG_SOURCE_DIR) 
+                + "/src/CPU/reference/kernels";
+
+            #if defined(DEBUG)
+            cout << "Searching for source files in: " << srcdir << endl;
+            #endif
+ 
+            // Create temp directory
+            string tmpdir = make_tempdir();
+ 
+            // Create proxy info
+            ProxyInfo p = default_proxyinfo(srcdir, tmpdir);
+
+            return p;
+        }
+
 
         string CPU::default_compiler() 
         {
-#if defined(USING_GNU_CXX_COMPILER)
-            return "g++";
-#elif defined(USING_INTEL_CXX_COMPILER)
+            #if defined(USING_INTEL_CXX_COMPILER)
             return "icpc";
-#elif defined(USING_CLANG_CXX_COMPILER)
-            return "clang";
-#elif defined(USING_MSVC_CXX_COMPILER)
-            return "not supported so far";
-#else 
+            #else 
             return "g++";
-#endif
+            #endif
         }
         
 
         string CPU::default_compiler_flags() 
         {
-#if defined(USING_GNU_CXX_COMPILER)
-            return "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
-#elif defined(USING_INTEL_CXX_COMPILER)
-            return "TODO: set flags";
-#elif defined(USING_CLANG_CXX_COMPILER)
-            return "TODO: set flags";
-#elif defined(USING_MSVC_CXX_COMPILER)
-            return "TODO: set flags";
-#else 
-            return "-Wall -O3 -fopenmp -lfftw3 -lfftw3f -lfftw3f_omp";
-#endif
+            #if defined(USING_INTEL_CXX_COMPILER)
+            return "-Wall -O3 -openmp -mkl";
+            #else 
+            return "-Wall -O3 -fopenmp -lfftw3f";
+            #endif
         }
 
 
@@ -629,12 +618,20 @@ namespace idg {
               mParams.get_grid_size(),
               mParams.get_subgrid_size());
 
-            printf("TODO: CLEANUP\n");
-            string parameters = " " + flags + " " + mparameters + " -I ../src/CPU/reference";
+            string compiler_parameters;
+            #if defined(USING_GNU_CXX_COMPILER)
+            compiler_parameters = "-DUSING_GNU_CXX_COMPILER";
+            #elif defined(USING_INTEL_CXX_COMPILER)
+            compiler_parameters = "-DUSING_INTEL_CXX_COMPILER";
+            #endif
 
-            // for each shared libarary: compile the source files and put into *.so file
-            // OMP parallel?!
-            for (auto libname : mInfo.get_lib_names()) {
+            string parameters = " " + flags + " " + mparameters +
+                                " " + compiler_parameters;
+
+            vector<string> v = mInfo.get_lib_names();
+            #pragma omp parallel for
+            for (int i = 0; i < v.size(); i++) {
+                string libname = v[i];
                 // create shared object "libname"
                 string lib = mInfo.get_path_to_lib() + "/" + libname;
 
@@ -642,7 +639,7 @@ namespace idg {
 
                 string source;
                 for (auto src : source_files) {
-                  source += mInfo.get_path_to_src() + "/" + src + " ";
+                    source += mInfo.get_path_to_src() + "/" + src + " ";
                 } // source = a.cpp b.cpp c.cpp ...
 
                 cout << lib << " " << source << " " << endl;
