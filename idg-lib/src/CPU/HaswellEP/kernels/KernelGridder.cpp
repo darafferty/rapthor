@@ -48,10 +48,11 @@ void kernel_gridder(
         // Storage for precomputed values
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        FLOAT_COMPLEX visXX[NR_CHANNELS]             __attribute__((aligned(32)));
-        FLOAT_COMPLEX visXY[NR_CHANNELS]             __attribute__((aligned(32)));
-        FLOAT_COMPLEX visYX[NR_CHANNELS]             __attribute__((aligned(32)));
-        FLOAT_COMPLEX visYY[NR_CHANNELS]             __attribute__((aligned(32)));
+        //FLOAT_COMPLEX visXX[NR_CHANNELS]             __attribute__((aligned(32)));
+        //FLOAT_COMPLEX visXY[NR_CHANNELS]             __attribute__((aligned(32)));
+        //FLOAT_COMPLEX visYX[NR_CHANNELS]             __attribute__((aligned(32)));
+        //FLOAT_COMPLEX visYY[NR_CHANNELS]             __attribute__((aligned(32)));
+        FLOAT_COMPLEX vis[NR_CHANNELS][NR_POLARIZATIONS] __attribute__((aligned(32)));
         float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phase[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
@@ -81,10 +82,9 @@ void kernel_gridder(
 
             // Load visibilities
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                visXX[chan] = (*visibilities)[s][time][chan][0];
-                visXY[chan] = (*visibilities)[s][time][chan][1];
-                visYX[chan] = (*visibilities)[s][time][chan][2];
-                visYY[chan] = (*visibilities)[s][time][chan][3];
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    vis[chan][pol] = (*visibilities)[s][time][chan][pol];
+                }
             }
 
             // Compute phase
@@ -106,26 +106,15 @@ void kernel_gridder(
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        float _phasor_real = phasor_real[y][x][chan];
-                        float _phasor_imag = phasor_imag[y][x][chan];
-
-                        FLOAT_COMPLEX _vis[NR_POLARIZATIONS];
-                        _vis[0] = visXX[chan];
-                        _vis[1] = visXY[chan];
-                        _vis[2] = visYX[chan];
-                        _vis[3] = visYY[chan];
+                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
 
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            FLOAT_COMPLEX vis = _vis[pol];
-                            FLOAT_COMPLEX value = pixels[y][x][pol];
-                            float result_real = value.real() + (vis.real() * _phasor_real - vis.imag() * _phasor_imag);
-                            float result_imag = value.imag() + (vis.real() * _phasor_imag + vis.imag() * _phasor_real);
-                            pixels[y][x][pol] = FLOAT_COMPLEX(value.real(), value.imag());
+                            pixels[y][x][pol] += vis[chan][pol] * phasor;
                         }
                     }
                 }
             }
-        }
+       }
 
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < SUBGRIDSIZE; y++) {
