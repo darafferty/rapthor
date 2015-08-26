@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.11)
 # set cmake policy
 cmake_policy(SET CMP0022 OLD)
 
-project(idg-cpu-haswellep)
+project(idg-hybrid-knc)
 
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
@@ -25,11 +25,11 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
-  HaswellEP.h
+  KNCOffload.h
 )
 
 set (${PROJECT_NAME}_sources 
-  HaswellEP.cpp
+  KNCOffload.cpp
 )
 
 # create library
@@ -39,7 +39,7 @@ add_library(
   )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-cpu-haswellep)
+target_link_libraries(${PROJECT_NAME} idg-hybrid-knc)
 
 # Set installation directory
 install(TARGETS ${PROJECT_NAME} 
@@ -57,14 +57,14 @@ install(
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
     DESTINATION
-    lib/kernels/CPU/HaswellEP
+    lib/kernels/Hybrid/KNCOffload
 )
 
 # Copy header files
 install(
     FILES
     idg.h
-    HaswellEP.h
+    KNCOffload.h
     DESTINATION
-    include/CPU/HaswellEP
+    include/Hybrid/KNCOffload
 )
