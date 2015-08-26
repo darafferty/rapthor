@@ -10,19 +10,25 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
+# options (to be edited as not functional yet)
+option (BUILD_STATIC_LIBS "Build static libraries" OFF)
+option (BUILD_EXAMPLES "Build examples executables" OFF) 
+option (HAVE_CUDA "Have CUDA environment" OFF)
+option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
+option (REPORT_TOTAL "Report total performance metrics" OFF)
+
+# build shared or static libraries (default: shared)
+set (BUILD_SHARED_LIBS !${BUILD_STATIC_LIBS})
+
 # Compiler:
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(USING_CLANG_CXX_COMPILER TRUE)
-  message("-- Using Clang compiler")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(USING_GNU_CXX_COMPILER TRUE)
-  message("-- Using GNU compiler")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(USING_INTEL_CXX_COMPILER TRUE)
-  message("-- Using Intel compiler")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(USING_MSVC_CXX_COMPILER TRUE)
-  message("-- Using MSVC compiler")
 endif()
 
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
@@ -46,11 +52,9 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDEBUG")
 
-# options (to be edited as not functional yet)
-option (BUILD_EXAMPLES "Build examples executables" OFF) 
-option (HAVE_CUDA "Have CUDA environment" OFF)
-option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
-option (REPORT_TOTAL "Report total performance metrics" OFF)
+# set default path to build executables and libraries in BINARY_DIR
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # write config file, included in all files of the project
 configure_file (

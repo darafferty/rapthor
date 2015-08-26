@@ -33,9 +33,13 @@ set (${PROJECT_NAME}_sources
 )
 
 # create library
+# add_library(
+#  ${PROJECT_NAME} SHARED ${${PROJECT_NAME}_headers} 
+#  ${${PROJECT_NAME}_sources}
+#  )
 add_library(
-  ${PROJECT_NAME} SHARED ${${PROJECT_NAME}_headers} 
-  ${${PROJECT_NAME}_sources}
+  ${PROJECT_NAME} ${${PROJECT_NAME}_headers} 
+                  ${${PROJECT_NAME}_sources}
   )
 
 # linker
