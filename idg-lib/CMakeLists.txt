@@ -13,7 +13,7 @@ set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 # options (to be edited as not functional yet)
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
 option (BUILD_EXAMPLES "Build examples executables" OFF) 
-option (HAVE_CUDA "Have CUDA environment" OFF)
+option (BUILD_WITH_CUDA "Have CUDA environment" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 
@@ -51,6 +51,20 @@ endif()
 # set debug print info
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDEBUG")
+
+# find CUDA environment 
+# (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
+if (BUILD_WITH_CUDA)
+  find_package(CUDA)
+  if (CUDA_FOUND)
+    message("CUDA VERSION: " ${CUDA_VERSION})
+    message("CUDA_INCLUDE_DIRS: " ${CUDA_INCLUDE_DIRS})
+    message("CUDA_LIBRARIES: " ${CUDA_LIBRARIES})
+    message("CUDA_CUFFT_LIBRARIES: " ${CUDA_CUFFT_LIBRARIES})
+    message("CUDA_CUBLAS_LIBRARIES:" ${CUDA_CUBLAS_LIBRARIES})
+    # ...
+  endif (CUDA_FOUN)
+endif (BUILD_WITH_CUDA)
 
 # set default path to build executables and libraries in BINARY_DIR
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
