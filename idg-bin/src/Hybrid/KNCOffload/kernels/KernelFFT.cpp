@@ -11,6 +11,7 @@
 
 
 extern "C" {
+#pragma omp declare target
 void kernel_fft(
 	int size, 
 	int batch,
@@ -46,6 +47,7 @@ void kernel_fft(
     // Destroy plan
     fftwf_destroy_plan(plan);
 }
+#pragma omp end declare target
 
 uint64_t kernel_fft_flops(int size, int batch) {
 	return 1ULL * batch * NR_POLARIZATIONS * 5 * size * size * log(size * size);

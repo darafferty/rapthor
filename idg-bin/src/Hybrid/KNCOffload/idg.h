@@ -1,6 +1,6 @@
-#ifndef IDG_HASWELLEP_HEADER
-#define IDG_HASWELLEP_HEADER
+#ifndef IDG_KNCOffload_HEADER
+#define IDG_KNCOffload_HEADER
 
-#include "HaswellEP.h"
+#include "KNCOffload.h"
 
 #endif
