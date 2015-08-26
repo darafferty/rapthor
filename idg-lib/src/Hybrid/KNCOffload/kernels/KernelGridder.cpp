@@ -10,7 +10,8 @@
 #include "Types.h"
 
 extern "C" {
-void kernel_gridder(
+#pragma omp declare target
+void kernel_gridder (
 	const int jobsize, const float w_offset,
 	const UVWType		   __restrict__ *uvw,
 	const WavenumberType   __restrict__ *wavenumbers,
@@ -128,6 +129,7 @@ void kernel_gridder(
     }
     }
 }
+#pragma end declare target
 
 uint64_t kernel_gridder_flops(int jobsize) {
     return

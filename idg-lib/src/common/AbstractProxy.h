@@ -18,6 +18,8 @@
                              void *uvw, void *wavenumbers, \
                              void *visibilities, void *spheroidal, void *aterm, \
                              void *metadata, void *subgrids
+#define GRIDDER_ARGUMENTS    nr_subgrids, w_offset, uvw, wavenumbers, visibilities, \
+                             spheroidal, aterm, metadata, subgrids
 #define DEGRIDDER_PARAMETERS GRIDDER_PARAMETERS
 #define ADDER_PARAMETERS     unsigned nr_subgrids, void *metadata, void *subgrids, void *grid
 #define SPLITTER_PARAMETERS  ADDER_PARAMETERS
