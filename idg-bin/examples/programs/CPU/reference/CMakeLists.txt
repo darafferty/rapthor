@@ -3,10 +3,9 @@ project(cpu-reference.x)
 # Set external header files
 include_directories(
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/src/common
-  ${CMAKE_SOURCE_DIR}/examples/utility
   ${CMAKE_SOURCE_DIR}/examples/external
-  ${CMAKE_BINARY_DIR}/examples
+  ${CMAKE_SOURCE_DIR}/examples/utility
+  ${CMAKE_SOURCE_DIR}/src/common
  )
 
 set (${PROJECT_NAME}_sources 
@@ -17,12 +16,7 @@ set (${PROJECT_NAME}_sources
 add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
-link_directories (
-  ${CMAKE_BINARY_DIR}/examples/external
-  ${CMAKE_BINARY_DIR}/examples/utility
-  ${CMAKE_BINARY_DIR}/src/CPU/reference
-  ${CMAKE_BINARY_DIR}/src/common
-  ) 
+link_directories (${LIBRARY_OUTPUT_PATH}) 
 
 target_link_libraries (
   ${PROJECT_NAME} 
