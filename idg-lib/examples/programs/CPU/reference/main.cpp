@@ -74,33 +74,28 @@ int main(int argc, char *argv[]) {
     clog << "Setting compiler flags: " 
          << idg::proxy::CPU::default_compiler_flags() << endl;    
     idg::Compilerflags compilerflags = idg::proxy::CPU::default_compiler_flags();
-    // idg::ProxyInfo info = idg::proxy::CPU::default_info();
-    // printf("TODO: CLEANUP");
-    // info.set_path_to_src("/home/veenboer/idg/src/CPU/reference/kernels");
-
-    // idg::proxy::CPU xeon(compiler, compilerflags, params, info);
-    idg::proxy::CPU xeon(compiler, compilerflags, params);
+    idg::proxy::CPU cpu(compiler, compilerflags, params);
     clog << endl;
 
     // Run gridder
     clog << ">>> Run gridder" << endl;
     int jobsize_gridder = params.get_job_size_gridder();
-    xeon.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    cpu.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
     clog << ">> Run adder" << endl;
     int jobsize_adder = params.get_job_size_adder();
-    xeon.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
+    cpu.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
 
-    clog << "Run fft" << endl;
-    xeon.transform(idg::FourierDomainToImageDomain, grid);
+    clog << ">>> Run fft" << endl;
+    cpu.transform(idg::FourierDomainToImageDomain, grid);
 
     clog << ">>> Run splitter" << endl;
     int jobsize_splitter = params.get_job_size_splitter();
-    xeon.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
+    cpu.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
 
     clog << ">>> Run degridder" << endl;
     int jobsize_degridder = params.get_job_size_degridder();
-    xeon.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    cpu.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
     // free memory for data structures
     delete[] visibilities;
