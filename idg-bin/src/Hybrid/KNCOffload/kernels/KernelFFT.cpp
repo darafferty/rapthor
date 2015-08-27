@@ -1,3 +1,4 @@
+#pragma omp declare target
 #include <complex>
 
 #include <math.h>
@@ -10,14 +11,15 @@
 #define FFT_LAYOUT_PYX (+1)
 
 
-extern "C" {
-#pragma omp declare target
+namespace idg {
 void kernel_fft(
 	int size, 
 	int batch,
 	fftwf_complex __restrict__ *data,
-	int sign
+	int sign,
+    int nr_polarizations
 	) {
+#if 0
     // 2D FFT
     int rank = 2;
     
@@ -37,7 +39,7 @@ void kernel_fft(
     
     // Create plan
     fftwf_plan plan = fftwf_plan_many_dft(
-        rank, n, batch * NR_POLARIZATIONS, data, n,
+        rank, n, batch * nr_polarizations, data, n,
         istride, idist, data, n,
         ostride, odist, sign, flags);
 
@@ -46,14 +48,16 @@ void kernel_fft(
     
     // Destroy plan
     fftwf_destroy_plan(plan);
+#endif
+}
+
+uint64_t kernel_fft_flops(int size, int batch, int nr_polarizations) {
+	return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
+}
+
+uint64_t kernel_fft_bytes(int size, int batch, int nr_polarizations) {
+	return 1ULL * 2 * batch * nr_polarizations * size * size * sizeof(FLOAT_COMPLEX);
+}
+
 }
 #pragma omp end declare target
-
-uint64_t kernel_fft_flops(int size, int batch) {
-	return 1ULL * batch * NR_POLARIZATIONS * 5 * size * size * log(size * size);
-}
-
-uint64_t kernel_fft_bytes(int size, int batch) {
-	return 1ULL * 2 * batch * NR_POLARIZATIONS * size * size * sizeof(FLOAT_COMPLEX);
-}
-}

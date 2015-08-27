@@ -1,3 +1,4 @@
+#pragma omp declare target
 #include <complex>
 
 #include <math.h>
@@ -9,18 +10,44 @@
 
 #include "Types.h"
 
-extern "C" {
-#pragma omp declare target
+namespace idg {
+
 void kernel_gridder (
 	const int jobsize, const float w_offset,
-	const UVWType		   __restrict__ *uvw,
-	const WavenumberType   __restrict__ *wavenumbers,
-	const VisibilitiesType __restrict__ *visibilities,
-	const SpheroidalType   __restrict__ *spheroidal,
-	const ATermType		   __restrict__ *aterm,
-	const MetadataType	   __restrict__ *metadata,
-	SubGridType			   __restrict__ *subgrid
+	const void *_uvw,
+	const void *_wavenumbers,
+	const void *_visibilities,
+	const void *_spheroidal,
+	const void *_aterm,
+	const void *_metadata,
+	void	   *_subgrid,
+    const int nr_stations,
+    const int nr_timesteps,
+    const int nr_timeslots,
+    const int nr_channels,
+    const int subgridsize,
+    const float imagesize,
+    const int nr_polarizations
 	) {
+    TYPEDEF_UVW
+    TYPEDEF_UVW_TYPE
+    TYPEDEF_WAVENUMBER_TYPE
+    TYPEDEF_VISIBILITIES_TYPE
+    TYPEDEF_SPHEROIDAL_TYPE
+    TYPEDEF_ATERM_TYPE
+    TYPEDEF_BASELINE
+    TYPEDEF_COORDINATE
+    TYPEDEF_METADATA
+    TYPEDEF_METADATA_TYPE
+    TYPEDEF_SUBGRID_TYPE
+
+    UVWType *uvw = (UVWType *) _uvw;
+    WavenumberType *wavenumbers = (WavenumberType *) _wavenumbers;
+    VisibilitiesType *visibilities = (VisibilitiesType *) _visibilities;
+    SpheroidalType *spheroidal = (SpheroidalType *) _spheroidal;
+    ATermType *aterm = (ATermType *) _aterm;
+    MetadataType *metadata = (MetadataType *) _metadata;
+    SubGridType *subgrid = (SubGridType *) _subgrid;
 
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
@@ -36,23 +63,23 @@ void kernel_gridder (
         int y_coordinate = m.coordinate.y;
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float u_offset = (x_coordinate + subgridsize/2) / imagesize;
+        float v_offset = (y_coordinate + subgridsize/2) / imagesize;
 
         // Iterate all pixels in subgrid
-        for (int y = 0; y < SUBGRIDSIZE; y++) {
-            for (int x = 0; x < SUBGRIDSIZE; x++) {
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
                 // Initialize pixel for every polarization
-                FLOAT_COMPLEX pixels[NR_POLARIZATIONS];
-                memset(pixels, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+                FLOAT_COMPLEX pixels[nr_polarizations];
+                memset(pixels, 0, nr_polarizations * sizeof(FLOAT_COMPLEX));
 
                 // Compute l,m,n
-                float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
+                float m =  (y-(subgridsize/2)) * imagesize/subgridsize;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
  
                 // Iterate all timesteps
-                for (int time = 0; time < NR_TIMESTEPS; time++) {
+                for (int time = 0; time < nr_timesteps; time++) {
                     // Load UVW coordinates
                     float u = (*uvw)[s][time].u;
                     float v = (*uvw)[s][time].v;
@@ -65,7 +92,7 @@ void kernel_gridder (
                     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                     // Update pixel for every channel
-                    for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                    for (int chan = 0; chan < nr_channels; chan++) {
                         // Compute phase
                         float wavenumber = (*wavenumbers)[chan];
                         float phase  = (phase_index * wavenumber) - phase_offset;
@@ -76,7 +103,7 @@ void kernel_gridder (
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real, phasor_imag);
 
                         // Update pixel for every polarization
-                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        for (int pol = 0; pol < nr_polarizations; pol++) {
                             FLOAT_COMPLEX visibility = (*visibilities)[s][time][chan][pol];
                             pixels[pol] += visibility * phasor;
                         }
@@ -117,11 +144,11 @@ void kernel_gridder (
                 float sph = (*spheroidal)[y][x];
 
                 // Compute shifted position in subgrid
-                int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                int x_dst = (x + (subgridsize/2)) % subgridsize;
+                int y_dst = (y + (subgridsize/2)) % subgridsize;
 
                 // Set subgrid value
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                for (int pol = 0; pol < nr_polarizations; pol++) {
                     (*subgrid)[s][pol][y_dst][x_dst] = pixels[pol] * sph;
                 }
             }
@@ -129,30 +156,31 @@ void kernel_gridder (
     }
     }
 }
-#pragma end declare target
 
-uint64_t kernel_gridder_flops(int jobsize) {
+uint64_t kernel_gridder_flops(int jobsize, int nr_timesteps, int nr_channels, int subgridsize, int nr_polarizations) {
     return
-    1ULL * jobsize * NR_TIMESTEPS * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (
+    1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (
         // Phasor
         2 * 22 +
         // UV
-        NR_POLARIZATIONS * 8) +
+        nr_polarizations * 8) +
     // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 30 +
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30 +
     // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2 +
     // Shift
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6;
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6;
 }
 
-uint64_t kernel_gridder_bytes(int jobsize) {
+uint64_t kernel_gridder_bytes(int jobsize, int nr_timesteps, int nr_channels, int subgridsize, int nr_polarizations) {
     return
     // Grid
-    1ULL * jobsize * NR_TIMESTEPS * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
+    1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
     // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (2 * sizeof(unsigned)) + (2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
+    1ULL * jobsize * subgridsize * subgridsize * (2 * sizeof(unsigned)) + (2 * nr_polarizations * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
     // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(FLOAT_COMPLEX);
 }
+
 }
+#pragma omp end declare target

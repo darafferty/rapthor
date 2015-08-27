@@ -27,8 +27,7 @@ namespace idg {
             Compilerflags flags,
             Parameters params,
             ProxyInfo info)
-          : mParams(params),
-            mInfo(info)
+          : mInfo(info)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
@@ -37,29 +36,12 @@ namespace idg {
             cout << params;
             #endif
 
+            mParams = params;
             parameter_sanity_check(); // throws exception if bad parameters
             compile(compiler, flags);
             load_shared_objects();
             find_kernel_functions();
         }
-
-
-        CPU::CPU(
-            CompilerEnvironment cc,
-            Parameters params,
-            ProxyInfo info)
-           : mParams(params),
-             mInfo(info)
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            // find out which compiler to use
-            // call CPU(compiler, flags, params, algparams)
-            cerr << "Constructor not implemented yet" << endl;
-        }
-
 
         CPU::~CPU()
         {
