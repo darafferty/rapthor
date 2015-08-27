@@ -1,19 +1,16 @@
 // TODO: check which include files are really necessary
 #include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
 #include <complex>
 #include <sstream>
 #include <memory>
-#include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
 #include "KNCOffload.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
+#include "Kernels.h"
 
 using namespace std;
 
@@ -22,60 +19,81 @@ namespace idg {
     namespace proxy {
 
         /// Constructors
-        KNCOffload::KNCOffload(
-            Compiler compiler,
-            Compilerflags flags,
-            Parameters params,
-            ProxyInfo info)
-            : CPU(compiler, flags, params, info)
+        KNCOffload::KNCOffload(Parameters params)
         {
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
-            cout << "Compiler: " << compiler << endl;
-            cout << "Compiler flags: " << flags << endl;
             cout << params;
             #endif
+
+            mParams = params;
         }
 
-        ProxyInfo KNCOffload::default_info()
+        /// High level routines
+        void KNCOffload::transform(DomainAtoDomainB direction, void* grid)
+        {
+            #if defined(DEBUG)
+            cout << "KNCOffload::" << __func__ << endl;
+            cout << "Transform direction: " << direction << endl;
+            #endif
+
+            int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+            run_fft(grid, sign);
+        }
+
+
+        void KNCOffload::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
             #endif
 
-            string  srcdir = string(IDG_SOURCE_DIR)
-                + "/src/Hybrid/KNCOffload/kernels";
+            // TODO: argument checks
 
+            run_gridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
+                        spheroidal, aterm, metadata, subgrids);
+        }
+
+
+        void KNCOffload::add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS)
+        {
             #if defined(DEBUG)
-            cout << "Searching for source files in: " << srcdir << endl;
+            cout << "KNCOffload::" << __func__ << endl;
             #endif
 
-            // Create temp directory
-            string tmpdir = KNCOffload::make_tempdir();
+            // TODO: argument checks
 
-            // Create proxy info
-            ProxyInfo p = KNCOffload::default_proxyinfo(srcdir, tmpdir);
-
-            return p;
+            run_adder(jobsize, nr_subgrids, metadata, subgrids, grid);
         }
 
-        string KNCOffload::default_compiler()
+
+        void KNCOffload::split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS)
         {
-            return "icpc";
+            #if defined(DEBUG)
+            cout << "KNCOffload::" << __func__ << endl;
+            #endif
+
+            // TODO: argument checks
+
+            run_splitter(jobsize, nr_subgrids, metadata, subgrids, grid);
         }
 
-        string KNCOffload::default_compiler_flags()
+
+        void KNCOffload::degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS)
         {
-            return "-Wall -O3 -openmp -mkl";
+            #if defined(DEBUG)
+            cout << "KNCOffload::" << __func__ << endl;
+            #endif
+
+            // TODO: argument checks
+
+            run_degridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
+                      spheroidal, aterm, metadata, subgrids);
         }
+
 
         /// Low level routines
-        void KNCOffload::run_gridder_intel_leo(int jobsize, GRIDDER_PARAMETERS)
-        {
-
-        } // run_gridder_intel_leo
-
-        void KNCOffload::run_gridder_omp4(int jobsize, GRIDDER_PARAMETERS)
+        void KNCOffload::run_gridder(int jobsize, GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "KNCOffload::" << __func__ << endl;
@@ -96,15 +114,7 @@ namespace idg {
             auto nr_channels = mParams.get_nr_channels();
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
-
-            // load kernel functions
-            //omp4_offload_kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
-            //omp4_offload_kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
-
-            //(sig_gridder (void *) _run)(jobsize, w_offset, uvw, wavenumbers,
-            //visibilities, spheroidal, aterm, metadata, subgrid);
-
-            void *kernel_gridder = runtime::Function(*(modules[which_module[kernel::name_gridder]]), kernel::name_gridder.c_str());
+            auto imagesize = mParams.get_imagesize();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();
@@ -151,10 +161,10 @@ namespace idg {
                         map(to:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
                         map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
-                    (sig_gridder (void *) kernel_gridder)(jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
-                    visibilities_ptr, spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
-                    //kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                    //                   spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
+                    kernel_gridder(jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
+                    visibilities_ptr, spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr,
+                    nr_stations, nr_timesteps, nr_timeslots, nr_channels, subgridsize,
+                    imagesize, nr_polarizations);
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     runtime_gridder += omp_get_wtime();
@@ -170,12 +180,12 @@ namespace idg {
                     #endif
 
                     #if defined(REPORT_VERBOSE)
-                    //auxiliary::report("gridder", runtime_gridder,
-                    //                  omp4_offload_kernel::gridder_flops(current_jobsize),
-                    //                  omp4_offload_kernel::gridder_bytes(current_jobsize));
-                    //auxiliary::report("fft", runtime_fft,
-                    //                  omp4_offload_kernel::fft_flops(subgridsize, nr_subgrids),
-                    //                  omp4_offload_kernel::fft_bytes(subgridsize, nr_subgrids));
+                    auxiliary::report("gridder", runtime_gridder,
+                                      kernel_gridder_flops(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
+                                      kernel_gridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations));
+                    auxiliary::report("fft", runtime_fft,
+                                      kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations),
+                                      kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations));
                     #endif
                 } // end for s
             } // end omp target data
@@ -184,29 +194,18 @@ namespace idg {
             runtime += omp_get_wtime();
             clog << endl;
             clog << "Total: gridding" << endl;
-            //auxiliary::report("gridder", total_runtime_gridder,
-            //                  kernel_gridder.flops(nr_subgrids),
-            //                  kernel_gridder.bytes(nr_subgrids));
-            //auxiliary::report("fft", total_runtime_fft,
-            //                  kernel_fft.flops(subgridsize, nr_subgrids),
-            //                  kernel_fft.bytes(subgridsize, nr_subgrids));
+            auxiliary::report("gridder", total_runtime_gridder,
+                kernel_gridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
+                kernel_gridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations));
+            auxiliary::report("fft", total_runtime_fft,
+                kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations),
+                kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations));
             auxiliary::report_runtime(runtime);
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
 
         } // run_gridder_omp4
-
-
-        void KNCOffload::run_gridder(int jobsize, GRIDDER_PARAMETERS)
-        {
-            //#if defined(USING_INTEL_CXX_COMPILER)
-            //run_gridder_intel_leo(jobsize, GRIDDER_ARGUMENTS);
-            //#else
-            run_gridder_omp4(jobsize, GRIDDER_ARGUMENTS);
-            //#endif
-        } // run_gridder
-
 
         void KNCOffload::run_adder(int jobsize, ADDER_PARAMETERS)
         {

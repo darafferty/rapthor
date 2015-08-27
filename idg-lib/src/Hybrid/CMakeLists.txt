@@ -1,4 +1,6 @@
 project(idg-hybrid)
 
 # add subfolders
-add_subdirectory(KNCOffload)
+if (USING_INTEL_CXX_COMPILER)
+    add_subdirectory(KNCOffload)
+endif()

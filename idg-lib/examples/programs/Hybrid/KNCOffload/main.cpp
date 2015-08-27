@@ -65,17 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-
-    // basic gcc settings
-    clog << "Setting compiler: " << idg::proxy::KNCOffload::default_compiler()
-         << endl;
-    idg::Compiler compiler = idg::proxy::KNCOffload::default_compiler();
-
-    clog << "Setting compiler flags: "
-         << idg::proxy::KNCOffload::default_compiler_flags() << endl;
-    idg::Compilerflags compilerflags = idg::proxy::KNCOffload::default_compiler_flags();
-
-    idg::proxy::KNCOffload cpu(compiler, compilerflags, params);
+    idg::proxy::KNCOffload cpu(params);
     clog << endl;
 
     // Run gridder

@@ -27,10 +27,6 @@ namespace idg {
                 Parameters params,
                 ProxyInfo info = default_info());
     
-                CPU(CompilerEnvironment cc,
-                Parameters params,
-                ProxyInfo info = default_info());
-    
                 /// Destructor
                 ~CPU();
     
@@ -86,7 +82,6 @@ namespace idg {
                 void find_kernel_functions();
         
                 // data
-                Parameters mParams;  // store parameters passed on creation
                 ProxyInfo mInfo; // info about shared object files
         
                 // store the ptr to Module, which each loads an .so-file
