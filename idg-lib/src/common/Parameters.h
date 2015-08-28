@@ -100,7 +100,7 @@ namespace idg {
       unsigned int nr_channels;      
       unsigned int nr_timesteps;     
       unsigned int nr_timeslots;     
-      unsigned int nr_polarizations = 4;
+      static const unsigned int nr_polarizations = 4;
       float        imagesize;        // angular resolution in radians
       unsigned int grid_size;
       unsigned int subgrid_size;
