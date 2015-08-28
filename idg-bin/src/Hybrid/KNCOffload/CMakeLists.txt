@@ -2,8 +2,8 @@ project(idg-hybrid-knc)
 
 # write config file, included in all files of the project
 configure_file (
-  "${PROJECT_SOURCE_DIR}/idg-set-hybrid-knc-env.sh.in"
-  "${CMAKE_BINARY_DIR}/idg-set-hybrid-knc-env.sh"
+  "${PROJECT_SOURCE_DIR}/set-hybrid-knc-env.sh.in"
+  "${CMAKE_BINARY_DIR}/set-hybrid-knc-env.sh"
   )
 
 # external header files needed

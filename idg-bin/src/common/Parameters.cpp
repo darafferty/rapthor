@@ -11,6 +11,22 @@ using namespace std;
 
 namespace idg {
 
+    string Parameters::ENV_NR_STATIONS  = "NR_STATIONS";
+    string Parameters::ENV_NR_CHANNELS  = "NR_CHANNELS";
+    string Parameters::ENV_NR_TIMESTEPS = "NR_TIMESTEPS";
+    string Parameters::ENV_NR_TIMESLOTS = "NR_TIMESLOTS";
+    string Parameters::ENV_IMAGESIZE    = "IMAGESIZE";  
+    string Parameters::ENV_GRIDSIZE     = "GRIDSIZE";
+    string Parameters::ENV_SUBGRIDSIZE  = "SUBGRIDSIZE";
+    string Parameters::ENV_JOBSIZE      = "JOBSIZE"; // to all routines
+    string Parameters::ENV_JOBSIZE_GRIDDING   = "JOBSIZE_GRIDDING";
+    string Parameters::ENV_JOBSIZE_DEGRIDDING = "JOBSIZE_DEGRIDDING";
+    string Parameters::ENV_JOBSIZE_GRIDDER    = "JOBSIZE_GRIDDER";
+    string Parameters::ENV_JOBSIZE_ADDER      = "JOBSIZE_ADDER";
+    string Parameters::ENV_JOBSIZE_SPLITTER   = "JOBSIZE_SPLITTER";
+    string Parameters::ENV_JOBSIZE_DEGRIDDER  = "JOBSIZE_DEGRIDDER";
+
+
   // set methods
   void Parameters::set_nr_stations(unsigned int ns) 
   {
