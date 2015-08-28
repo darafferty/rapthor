@@ -207,9 +207,6 @@ namespace idg {
     char *cstr_nr_timeslots = getenv(ENV_NR_TIMESLOTS.c_str());
     nr_timeslots = cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
-    // nr_polarizations
-    nr_polarizations = DEFAULT_NR_POLARIZATIONS;
-
     // imagesize 
     char *cstr_imagesize = getenv(ENV_IMAGESIZE.c_str());
     imagesize = cstr_imagesize ? atof(cstr_imagesize) : DEFAULT_IMAGESIZE;
