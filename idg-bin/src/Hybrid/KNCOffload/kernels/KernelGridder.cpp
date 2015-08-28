@@ -1,12 +1,12 @@
 #pragma omp declare target
-#include <complex>
 
-#include <math.h>
-#include <stdio.h>
+#include <complex>
+#include <cmath>
+#include <cstdio>
 #include <immintrin.h>
 #include <omp.h>
-#include <string.h>
-#include <stdint.h>
+#include <cstring> // memset
+#include <cstdint>
 
 #include "Types.h"
 
@@ -182,5 +182,6 @@ uint64_t kernel_gridder_bytes(int jobsize, int nr_timesteps, int nr_channels, in
     1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(FLOAT_COMPLEX);
 }
 
-}
+} // end namespace idg
+
 #pragma omp end declare target

@@ -1,9 +1,9 @@
 #pragma omp declare target
-#include <complex>
 
-#include <math.h>
+#include <complex>
+#include <cmath>
 #include <fftw3.h>
-#include <stdint.h>
+#include <cstdint>
 
 #include "Types.h"
 
@@ -12,6 +12,7 @@
 
 
 namespace idg {
+
 void kernel_fft(
 	int size, 
 	int batch,
@@ -59,5 +60,6 @@ uint64_t kernel_fft_bytes(int size, int batch, int nr_polarizations) {
 	return 1ULL * 2 * batch * nr_polarizations * size * size * sizeof(FLOAT_COMPLEX);
 }
 
-}
+} // end namespace idg
+
 #pragma omp end declare target

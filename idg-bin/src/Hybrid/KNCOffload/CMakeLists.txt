@@ -24,10 +24,10 @@ set (${PROJECT_NAME}_sources
   KNCOffload.cpp
 )
 
-# create library
+# create library (HACK: only build static)
 add_library(
-  ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
-                  ${${PROJECT_NAME}_sources}
+  ${PROJECT_NAME} STATIC ${${PROJECT_NAME}_headers}
+                         ${${PROJECT_NAME}_sources}
   )
 
 # linker

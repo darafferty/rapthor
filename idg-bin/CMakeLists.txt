@@ -23,7 +23,11 @@ option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 
 # build shared or static libraries (default: shared)
-set (BUILD_SHARED_LIBS !${BUILD_STATIC_LIBS})
+if (BUILD_STATIC_LIBS)
+set (BUILD_SHARED_LIBS FALSE)
+else() 
+set (BUILD_SHARED_LIBS TRUE)
+endif()
 
 # Compiler:
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
