@@ -25,15 +25,11 @@ namespace idg {
 
             public:
                 /// Constructors
-                HaswellEP(Compiler compiler,
-                          Compilerflags flags,
-                          Parameters params,
+                HaswellEP(Parameters params,
+                          Compiler compiler = default_compiler(),
+                          Compilerflags flags = default_compiler_flags(),
                           ProxyInfo info = default_info());
                 
-                // HaswellEP(CompilerEnvironment cc,
-                //           Parameters params,
-                //           ProxyInfo info = default_info());
-    
                 /// Destructor
                 ~HaswellEP() = default;
     

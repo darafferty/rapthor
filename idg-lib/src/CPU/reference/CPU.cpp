@@ -23,9 +23,9 @@ namespace idg {
 
         /// Constructors
         CPU::CPU(
+            Parameters params,
             Compiler compiler,
             Compilerflags flags,
-            Parameters params,
             ProxyInfo info)
           : mInfo(info)
         {
