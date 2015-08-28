@@ -33,7 +33,7 @@ void kernel_gridder_intel(
     #pragma omp for
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
-        const Metadata m = (*metadata)[0];
+        const Metadata m = (*metadata)[s];
         int time_nr = m.time_nr;
         int station1 = m.baseline.station1;
         int station2 = m.baseline.station2;
