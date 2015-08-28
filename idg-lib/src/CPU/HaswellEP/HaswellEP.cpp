@@ -23,11 +23,11 @@ namespace idg {
 
         /// Constructors
         HaswellEP::HaswellEP(
+            Parameters params,
             Compiler compiler,
             Compilerflags flags,
-            Parameters params,
             ProxyInfo info)
-            : CPU(compiler, flags, params, info)
+            : CPU(params, compiler, flags, info)
         {
             #if defined(DEBUG)
             cout << "HaswellEP::" << __func__ << endl;

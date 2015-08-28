@@ -65,17 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-
-    // basic intel settings
-    clog << "Setting compiler: " << idg::proxy::HaswellEP::default_compiler() 
-         << endl;
-    idg::Compiler compiler = idg::proxy::HaswellEP::default_compiler();
-
-    clog << "Setting compiler flags: " 
-         << idg::proxy::HaswellEP::default_compiler_flags() << endl;    
-    idg::Compilerflags compilerflags = idg::proxy::HaswellEP::default_compiler_flags();
-
-    idg::proxy::HaswellEP xeon(compiler, compilerflags, params);
+    idg::proxy::HaswellEP xeon(params);
     clog << endl;
 
     // Run gridder

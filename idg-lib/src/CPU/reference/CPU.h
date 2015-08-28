@@ -22,10 +22,10 @@ namespace idg {
         class CPU : public Proxy {
             public:
                 /// Constructors
-                CPU(Compiler compiler,
-                Compilerflags flags,
-                Parameters params,
-                ProxyInfo info = default_info());
+                CPU(Parameters params,
+                    Compiler compiler = default_compiler(),
+                    Compilerflags flags = default_compiler_flags(),
+                    ProxyInfo info = default_info());
     
                 /// Destructor
                 ~CPU();
