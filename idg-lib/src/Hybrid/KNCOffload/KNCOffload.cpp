@@ -156,15 +156,16 @@ namespace idg {
                     runtime_gridder = -omp_get_wtime();
                     #endif
 
-                    #pragma omp target \
+                    #pragma omp target                                \
                         map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
                         map(to:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
                         map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
-                    kernel_gridder(jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
-                    visibilities_ptr, spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr,
-                    nr_stations, nr_timesteps, nr_timeslots, nr_channels, subgridsize,
-                    imagesize, nr_polarizations);
+                    kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
+                                   visibilities_ptr, spheroidal_ptr, aterm_ptr, 
+                                   metadata_ptr, subgrids_ptr, nr_stations, 
+                                   nr_timesteps, nr_timeslots, nr_channels, 
+                                   subgridsize, imagesize, nr_polarizations);
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     runtime_gridder += omp_get_wtime();
