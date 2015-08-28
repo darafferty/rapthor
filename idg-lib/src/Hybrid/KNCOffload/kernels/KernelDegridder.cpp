@@ -1,3 +1,5 @@
+#pragma omp declare target
+
 #include <complex>
 
 #include <math.h>
@@ -8,17 +10,45 @@
 
 #include "Types.h"
 
-extern "C" {
+namespace idg {
+
 void kernel_degridder(
     const int jobsize, const float w_offset,
-	const UVWType		 __restrict__ *uvw,
-	const WavenumberType __restrict__ *wavenumbers,
-	VisibilitiesType	 __restrict__ *visibilities,
-	const SpheroidalType __restrict__ *spheroidal,
-	const ATermType		 __restrict__ *aterm,
-	const MetadataType	 __restrict__ *metadata,
-	const SubGridType	 __restrict__ *subgrid
+	const void *_uvw,
+	const void *_wavenumbers,
+	      void *_visibilities,
+	const void *_spheroidal,
+	const void *_aterm,
+	const void *_metadata,
+	const void *_subgrid,
+    const int nr_stations,
+    const int nr_timesteps,
+    const int nr_timeslots,
+    const int nr_channels,
+    const int subgridsize,
+    const float imagesize,
+    const int nr_polarizations
 	) {
+    TYPEDEF_UVW
+    TYPEDEF_UVW_TYPE
+    TYPEDEF_WAVENUMBER_TYPE
+    TYPEDEF_VISIBILITIES_TYPE
+    TYPEDEF_SPHEROIDAL_TYPE
+    TYPEDEF_ATERM_TYPE
+    TYPEDEF_BASELINE
+    TYPEDEF_COORDINATE
+    TYPEDEF_METADATA
+    TYPEDEF_METADATA_TYPE
+    TYPEDEF_SUBGRID_TYPE
+
+    UVWType *uvw = (UVWType *) _uvw;
+    WavenumberType *wavenumbers = (WavenumberType *) _wavenumbers;
+    VisibilitiesType *visibilities = (VisibilitiesType *) _visibilities;
+    SpheroidalType *spheroidal = (SpheroidalType *) _spheroidal;
+    ATermType *aterm = (ATermType *) _aterm;
+    MetadataType *metadata = (MetadataType *) _metadata;
+    SubGridType *subgrid = (SubGridType *) _subgrid;
+
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
     // Iterate all subgrids
@@ -33,19 +63,19 @@ void kernel_degridder(
         int y_coordinate = m.coordinate.y;
 
         // Storage for precomputed values
-        FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
-        float phasor_real[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float phasor_imag[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
-        float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        FLOAT_COMPLEX _pixels[subgridsize][subgridsize][nr_polarizations] __attribute__((aligned(32)));
+        float phasor_real[nr_channels][subgridsize][subgridsize] __attribute__((aligned(32)));
+        float phasor_imag[nr_channels][subgridsize][subgridsize] __attribute__((aligned(32)));
+        float phase_index[subgridsize][subgridsize]  __attribute__((aligned(32)));
+        float phase_offset[subgridsize][subgridsize] __attribute__((aligned(32)));
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float u_offset = (x_coordinate + subgridsize/2) / imagesize;
+        float v_offset = (y_coordinate + subgridsize/2) / imagesize;
 
         // Apply aterm to subgrid
-        for (int y = 0; y < SUBGRIDSIZE; y++) {
-            for (int x = 0; x < SUBGRIDSIZE; x++) {
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
                 // Load aterm for station1
                 FLOAT_COMPLEX aXX1 = (*aterm)[station1][time_nr][0][y][x];
                 FLOAT_COMPLEX aXY1 = (*aterm)[station1][time_nr][1][y][x];
@@ -62,8 +92,8 @@ void kernel_degridder(
                 float _spheroidal = (*spheroidal)[y][x];
 
                 // Compute shifted position in subgrid
-                int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                int x_src = (x + (subgridsize/2)) % subgridsize;
+                int y_src = (y + (subgridsize/2)) % subgridsize;
 
                 // Load uv values
                 FLOAT_COMPLEX pixelsXX = _spheroidal * (*subgrid)[s][0][y_src][x_src];
@@ -92,18 +122,18 @@ void kernel_degridder(
         }
 
         // Iterate all timesteps
-        for (int time = 0; time < NR_TIMESTEPS; time++) {
+        for (int time = 0; time < nr_timesteps; time++) {
             // Load UVW coordinates
             float u = (*uvw)[s][time].u;
             float v = (*uvw)[s][time].v;
             float w = (*uvw)[s][time].w;
 
             // Compute phase indices and phase offsets
-            for (int y = 0; y < SUBGRIDSIZE; y++) {
-                for (int x = 0; x < SUBGRIDSIZE; x++) {
+            for (int y = 0; y < subgridsize; y++) {
+                for (int x = 0; x < subgridsize; x++) {
                     // Compute l,m,n
-                    float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                    float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                    float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
+                    float m =  (y-(subgridsize/2)) * imagesize/subgridsize;
                     float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
                     // Compute phase index
@@ -115,9 +145,9 @@ void kernel_degridder(
             }
 
             // Compute phasor
-            for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                for (int y = 0; y < SUBGRIDSIZE; y++) {
-                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+            for (int chan = 0; chan < nr_channels; chan++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
                         // Compute phase
                         float wavenumber = (*wavenumbers)[chan];
                         float phase  = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
@@ -129,13 +159,13 @@ void kernel_degridder(
                 }
             }
 
-            FLOAT_COMPLEX sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
+            FLOAT_COMPLEX sum[nr_polarizations] __attribute__((aligned(32)));
 
-            for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                memset(sum, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+            for (int chan = 0; chan < nr_channels; chan++) {
+                memset(sum, 0, nr_polarizations * sizeof(FLOAT_COMPLEX));
 
-                for (int y = 0; y < SUBGRIDSIZE; y++) {
-                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
 
                         // Update all polarizations
@@ -157,35 +187,39 @@ void kernel_degridder(
     }
 }
 
-uint64_t kernel_degridder_flops(int jobsize) {
+    uint64_t kernel_degridder_flops(int jobsize,  int nr_timesteps, 
+        int nr_channels, int subgridsize, int nr_polarizations) {
     return
     // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 32 +
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 32 +
     // Shift
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6 +
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6 +
     // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2 +
     // Degrid
-    1ULL * jobsize * NR_TIMESTEPS * NR_CHANNELS * SUBGRIDSIZE * SUBGRIDSIZE * (
+    1ULL * jobsize * nr_timesteps * nr_channels * subgridsize * subgridsize * (
         // Phasor
         2 * 22 +
         // UV
-        NR_POLARIZATIONS * 8);
+        nr_polarizations * 8);
 }
 
-uint64_t kernel_degridder_bytes(int jobsize) {
+    uint64_t kernel_degridder_bytes(int jobsize, int nr_timesteps, int nr_channels, int subgridsize, int nr_polarizations) {
     return
     // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * 2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
+    1ULL * jobsize * subgridsize * subgridsize * 2 * nr_polarizations * sizeof(FLOAT_COMPLEX) +
     // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float) +
+    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(float) +
     // Degrid
-    1ULL * jobsize * NR_TIMESTEPS * NR_CHANNELS * (
+    1ULL * jobsize * nr_timesteps * nr_channels * (
         // Offset
-        SUBGRIDSIZE * SUBGRIDSIZE * 3 * sizeof(float) +
+        subgridsize * subgridsize * 3 * sizeof(float) +
         // UV
-        SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
+        subgridsize * subgridsize * nr_polarizations * sizeof(FLOAT_COMPLEX) +
         // Visibilities
-        NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+        nr_polarizations * sizeof(FLOAT_COMPLEX));
 }
-}
+
+} // end namespace idg
+
+#pragma omp end declare target

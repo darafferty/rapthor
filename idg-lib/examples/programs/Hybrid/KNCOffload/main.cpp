@@ -68,25 +68,24 @@ int main(int argc, char *argv[]) {
     idg::proxy::KNCOffload cpu(params);
     clog << endl;
 
-    // Run gridder
     clog << ">>> Run gridder" << endl;
     int jobsize_gridder = params.get_job_size_gridder();
     cpu.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
-    //clog << ">> Run adder" << endl;
-    //int jobsize_adder = params.get_job_size_adder();
-    //cpu.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
+    clog << ">> Run adder" << endl;
+    int jobsize_adder = params.get_job_size_adder();
+    cpu.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
 
-    //clog << ">>> Run fft" << endl;
-    //cpu.transform(idg::FourierDomainToImageDomain, grid);
+    clog << ">>> Run fft" << endl;
+    cpu.transform(idg::FourierDomainToImageDomain, grid);
 
-    //clog << ">>> Run splitter" << endl;
-    //int jobsize_splitter = params.get_job_size_splitter();
-    //cpu.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
+    clog << ">>> Run splitter" << endl;
+    int jobsize_splitter = params.get_job_size_splitter();
+    cpu.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
 
-    //clog << ">>> Run degridder" << endl;
-    //int jobsize_degridder = params.get_job_size_degridder();
-    //cpu.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    clog << ">>> Run degridder" << endl;
+    int jobsize_degridder = params.get_job_size_degridder();
+    cpu.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
     // free memory for data structures
     delete[] visibilities;
