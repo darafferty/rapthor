@@ -19,9 +19,12 @@ set (${PROJECT_NAME}_headers
 )
 
 set (${PROJECT_NAME}_sources
-  kernels/KernelGridder.cpp
-  kernels/KernelFFT.cpp
   KNCOffload.cpp
+  kernels/KernelGridder.cpp
+  kernels/KernelDegridder.cpp
+  kernels/KernelFFT.cpp
+  kernels/KernelAdder.cpp
+  kernels/KernelSplitter.cpp
 )
 
 # create library (HACK: only build static)
