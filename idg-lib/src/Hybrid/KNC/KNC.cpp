@@ -6,7 +6,7 @@
 #include <omp.h> // omp_get_wtime
 
 #include "idg-config.h"
-#include "KNCOffload.h"
+#include "KNC.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
@@ -15,14 +15,14 @@
 using namespace std;
 
 namespace idg {
-
     namespace proxy {
+        namespace hybrid {
         
         /// Constructors
-        KNCOffload::KNCOffload(Parameters params)
+        KNC::KNC(Parameters params)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             cout << params;
             #endif
 
@@ -30,10 +30,10 @@ namespace idg {
         }
 
         /// High level routines
-        void KNCOffload::transform(DomainAtoDomainB direction, void* grid)
+        void KNC::transform(DomainAtoDomainB direction, void* grid)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             cout << "Transform direction: " << direction << endl;
             #endif
 
@@ -42,10 +42,10 @@ namespace idg {
         }
 
 
-        void KNCOffload::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
+        void KNC::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // TODO: argument checks
@@ -55,10 +55,10 @@ namespace idg {
         }
 
 
-        void KNCOffload::add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS)
+        void KNC::add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // TODO: argument checks
@@ -67,10 +67,10 @@ namespace idg {
         }
 
 
-        void KNCOffload::split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS)
+        void KNC::split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // TODO: argument checks
@@ -79,10 +79,10 @@ namespace idg {
         }
 
 
-        void KNCOffload::degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS)
+        void KNC::degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // TODO: argument checks
@@ -93,10 +93,10 @@ namespace idg {
 
 
         /// Low level routines
-        void KNCOffload::run_gridder(int jobsize, GRIDDER_PARAMETERS)
+        void KNC::run_gridder(int jobsize, GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // Performance measurements
@@ -215,10 +215,10 @@ namespace idg {
 
 
 
-        void KNCOffload::run_degridder(int jobsize, DEGRIDDER_PARAMETERS)
+        void KNC::run_degridder(int jobsize, DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // Performance measurements
@@ -346,10 +346,10 @@ namespace idg {
 
 
 
-        void KNCOffload::run_adder(int jobsize, ADDER_PARAMETERS)
+        void KNC::run_adder(int jobsize, ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // Performance measurements
@@ -415,10 +415,10 @@ namespace idg {
         } // run_adder
 
 
-        void KNCOffload::run_splitter(int jobsize, SPLITTER_PARAMETERS)
+        void KNC::run_splitter(int jobsize, SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // Performance measurements
@@ -483,10 +483,10 @@ namespace idg {
         } // run_splitter
 
 
-        void KNCOffload::run_fft(void *grid, int sign)
+        void KNC::run_fft(void *grid, int sign)
         {
             #if defined(DEBUG)
-            cout << "KNCOffload::" << __func__ << endl;
+            cout << "KNC::" << __func__ << endl;
             #endif
 
             // Performance measurements
@@ -521,6 +521,6 @@ namespace idg {
         } // run_fft
 
 
+        } // namespace hybrid
     } // namespace proxy
-
 } // namespace idg
