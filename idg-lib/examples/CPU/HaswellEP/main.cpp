@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::HaswellEP xeon(params);
+    idg::proxy::cpu::HaswellEP xeon(params);
     clog << endl;
 
     // Run gridder

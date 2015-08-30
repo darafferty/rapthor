@@ -1,7 +1,7 @@
 project(examples)
 
 # add subfolders
-add_subdirectory(external)
-add_subdirectory(utility)
-add_subdirectory(programs)
+add_subdirectory(common)
+add_subdirectory(CPU)
+add_subdirectory(Hybrid)
 
