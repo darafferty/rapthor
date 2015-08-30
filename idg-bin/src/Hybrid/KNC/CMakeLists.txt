@@ -14,12 +14,12 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  KNCOffload.h
+  KNC.h
   Kernels.h
 )
 
 set (${PROJECT_NAME}_sources
-  KNCOffload.cpp
+  KNC.cpp
   kernels/KernelGridder.cpp
   kernels/KernelDegridder.cpp
   kernels/KernelFFT.cpp
@@ -40,5 +40,14 @@ target_link_libraries(${PROJECT_NAME} idg-hybrid-knc)
 install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
+  ARCHIVE DESTINATION lib
+)
+
+# Copy header files
+install(
+    FILES
+    idg.h
+    KNC.h
+    DESTINATION
+    include/Hybrid/KNC
 )

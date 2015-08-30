@@ -2,7 +2,7 @@
 #include <cstdlib> // size_t
 #include <complex>
 
-#include "Hybrid/KNCOffload/idg.h"
+#include "Hybrid/KNC/idg.h"
 
 #include "Init.h"  // Data init routines
 #include "Arguments.h"  // Parse command line arguments
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::KNCOffload cpu(params);
+    idg::proxy::hybrid::KNC cpu(params);
     clog << endl;
 
     clog << ">>> Run gridder" << endl;

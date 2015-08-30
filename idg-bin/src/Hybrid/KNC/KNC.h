@@ -1,5 +1,5 @@
 /**
- *  \class KNCOffload
+ *  \class KNC
  *
  *  \brief Class for ...
  *
@@ -7,26 +7,24 @@
  *  This will be included by a user, so detail usage...
  */
 
-#ifndef IDG_KNCOFFLOAD_H_
-#define IDG_KNCOFFLOAD_H_
+#ifndef IDG_HYBRID_KNC_H_
+#define IDG_HYBRID_KNC_H_
 
-// TODO: check which include files are really necessary
-#include <dlfcn.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
 
 namespace idg {
-
     namespace proxy {
+        namespace hybrid {
 
-        class KNCOffload : public Proxy {
+        class KNC : public Proxy {
 
             public:
                 /// Constructors
-                KNCOffload(Parameters params);
+                KNC(Parameters params);
                 
                 /// Destructor
-                ~KNCOffload() = default;
+                ~KNC() = default;
     
             public:
                 void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS);
@@ -42,8 +40,9 @@ namespace idg {
                 void run_degridder(int jobsize, DEGRIDDER_PARAMETERS);
                 void run_fft(FFT_PARAMETERS);
         
-        }; // class KNCOffload
+        }; // class KNC
     
+        } // namespace hybrid 
     } // namespace proxy
 } // namespace idg
 
