@@ -3,17 +3,16 @@ project(idg-cpu-reference)
 # external header files needed
 include_directories (
   ${CMAKE_SOURCE_DIR}/src/common
+  ${CMAKE_SOURCE_DIR}/src/CPU/common
 )
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  CPU.h
-  Kernels.h
+  Reference.h
 )
 
 set (${PROJECT_NAME}_sources
-  CPU.cpp
-  Kernels.cpp
+  Reference.cpp
 )
 
 # create library
@@ -29,7 +28,7 @@ target_link_libraries(${PROJECT_NAME} idg-cpu-reference)
 install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
+  ARCHIVE DESTINATION lib
   )
 
 # Copy kernel source files
@@ -41,15 +40,14 @@ install(
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
     DESTINATION
-    lib/kernels/CPU/reference
+    lib/kernels/CPU/Reference
 )
 
 # Copy header files
 install(
     FILES
-    CPU.h
-    idg-cpu.h
-    Kernels.h
+    idg.h
+    Reference.h
     DESTINATION
-    include/CPU/reference
+    include/CPU/Reference
 )

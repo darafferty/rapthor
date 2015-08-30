@@ -1,18 +1,19 @@
-project(idg-cpu-haswellep)
+project(idg-cpu-common)
 
 # external header files needed
 include_directories (
   ${CMAKE_SOURCE_DIR}/src/common
-  ${CMAKE_SOURCE_DIR}/src/CPU/common
 )
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  HaswellEP.h
+  CPU.h
+  Kernels.h
 )
 
 set (${PROJECT_NAME}_sources
-  HaswellEP.cpp
+  CPU.cpp
+  Kernels.cpp
 )
 
 # create library
@@ -22,7 +23,7 @@ add_library(
   )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-cpu-haswellep)
+target_link_libraries(${PROJECT_NAME} idg-cpu-common)
 
 # Set installation directory
 install(TARGETS ${PROJECT_NAME}
@@ -31,23 +32,12 @@ install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   )
 
-# Copy kernel source files
-install(
-    FILES
-    kernels/KernelAdder.cpp
-    kernels/KernelDegridder.cpp
-    kernels/KernelFFT.cpp
-    kernels/KernelGridder.cpp
-    kernels/KernelSplitter.cpp
-    DESTINATION
-    lib/kernels/CPU/HaswellEP
-)
-
 # Copy header files
 install(
     FILES
-    idg.h
-    HaswellEP.h
+    CPU.h
+    idg-cpu.h
+    Kernels.h
     DESTINATION
-    include/CPU/HaswellEP
+    include/CPU
 )

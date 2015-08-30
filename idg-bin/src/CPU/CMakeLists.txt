@@ -1,5 +1,6 @@
 project(idg-cpu)
 
 # add subfolders
-add_subdirectory(reference)
+add_subdirectory(common)
+add_subdirectory(Reference)
 add_subdirectory(HaswellEP)

@@ -2,7 +2,7 @@
 #include <cstdlib> // size_t
 #include <complex>
 
-#include "CPU/reference/idg-cpu.h"
+#include "CPU/Reference/idg.h"
 
 #include "Init.h"  // Data init routines
 #include "Arguments.h"  // Parse command line arguments
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::CPU cpu(params);
+    idg::proxy::cpu::Reference cpu(params);
     clog << endl;
 
     // Run gridder

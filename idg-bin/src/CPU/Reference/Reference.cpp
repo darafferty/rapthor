@@ -1,16 +1,11 @@
 // TODO: check which include files are really necessary
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
 #include <complex>
 #include <sstream>
 #include <memory>
-#include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "HaswellEP.h"
+#include "Reference.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
@@ -22,7 +17,7 @@ namespace idg {
         namespace cpu {
 
         /// Constructors
-        HaswellEP::HaswellEP(
+        Reference::Reference(
             Parameters params,
             Compiler compiler,
             Compilerflags flags,
@@ -30,21 +25,22 @@ namespace idg {
             : CPU(params, compiler, flags, info)
         {
             #if defined(DEBUG)
-            cout << "HaswellEP::" << __func__ << endl;
+            cout << "Reference::" << __func__ << endl;
             cout << "Compiler: " << compiler << endl;
             cout << "Compiler flags: " << flags << endl;
             cout << params;
             #endif
         }
 
-        ProxyInfo HaswellEP::default_info()
+
+        ProxyInfo Reference::default_info()
         {
             #if defined(DEBUG)
-            cout << "HaswellEP::" << __func__ << endl;
+            cout << "Reference::" << __func__ << endl;
             #endif
 
             string  srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CPU/HaswellEP/kernels";
+                + "/src/CPU/Reference/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
@@ -60,24 +56,25 @@ namespace idg {
         }
 
         
-        string HaswellEP::default_compiler() 
+        string Reference::default_compiler() 
         {
-            #if defined(USING_GNU_CXX_COMPILER)
-            return "g++";
-            #else 
+            #if defined(USING_INTEL_CXX_COMPILER)
             return "icpc";
+            #else 
+            return "g++";
             #endif
         }
         
 
-        string HaswellEP::default_compiler_flags() 
+        string Reference::default_compiler_flags() 
         {
-            #if defined(USING_GNU_CXX_COMPILER)
-            return "-Wall -O3 -fopenmp -lfftw3f";
+            #if defined(USING_INTEL_CXX_COMPILER)
+            return "-Wall -O3 -openmp -mkl";
             #else 
-            return "-Wall -O3 -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2";
+            return "-Wall -O3 -fopenmp -lfftw3f";
             #endif
         }
+
 
         } // namespace cpu
     } // namespace proxy
