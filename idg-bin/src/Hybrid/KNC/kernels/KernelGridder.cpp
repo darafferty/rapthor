@@ -110,9 +110,11 @@ void kernel_gridder (
             }
 
             // Compute phase and phasor
-            for (int y = 0; y < subgridsize; y++) {
-                for (int x = 0; x < subgridsize; x++) {
-                    for (int chan = 0; chan < nr_channels; chan++) {
+            #pragma simd
+            #pragma unroll(16)
+            for (int chan = 0; chan < nr_channels; chan++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
                         float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
                         phasor_imag[y][x][chan] = cosf(phase);
                         phasor_real[y][x][chan] = sinf(phase);
@@ -121,9 +123,11 @@ void kernel_gridder (
             }
 
             // Update current subgrid
-            for (int y = 0; y < subgridsize; y++) {
-                for (int x = 0; x < subgridsize; x++) {
-                    for (int chan = 0; chan < nr_channels; chan++) {
+            #pragma simd
+            #pragma unroll(16)
+            for (int chan = 0; chan < nr_channels; chan++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
                         pixels[y][x][0] += vis[chan][0] * phasor;
                         pixels[y][x][1] += vis[chan][1] * phasor;
