@@ -160,6 +160,9 @@ namespace idg {
 
         void CPU::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
         {
+            cout << "CPU::" << __func__ << endl;
+            return;
+            
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
