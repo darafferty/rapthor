@@ -54,7 +54,6 @@ void kernel_gridder (
     // Iterate all subgrids
     #pragma omp for
 	for (int s = 0; s < jobsize; s++) {
-
         // Load metadata
         const Metadata m = (*metadata)[s];
         int time_nr = m.time_nr;
@@ -67,50 +66,83 @@ void kernel_gridder (
         float u_offset = (x_coordinate + subgridsize/2) / imagesize;
         float v_offset = (y_coordinate + subgridsize/2) / imagesize;
 
-        // Iterate all pixels in subgrid
-        for (int y = 0; y < subgridsize; y++) {
-            for (int x = 0; x < subgridsize; x++) {
-                // Initialize pixel for every polarization
-                FLOAT_COMPLEX pixels[nr_polarizations];
-                memset(pixels, 0, nr_polarizations * sizeof(FLOAT_COMPLEX));
+        // Initialize private subgrid
+        FLOAT_COMPLEX pixels[subgridsize][subgridsize][nr_polarizations];
+        memset(pixels, 0, subgridsize * subgridsize * nr_polarizations * sizeof(FLOAT_COMPLEX));
 
-                // Compute l,m,n
-                float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
-                float m =  (y-(subgridsize/2)) * imagesize/subgridsize;
-                float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
- 
-                // Iterate all timesteps
-                for (int time = 0; time < nr_timesteps; time++) {
-                    // Load UVW coordinates
-                    float u = (*uvw)[s][time].u;
-                    float v = (*uvw)[s][time].v;
-                    float w = (*uvw)[s][time].w;
+        // Storage for precomputed values
+        float phase_index[subgridsize][subgridsize]  __attribute__((aligned(32)));
+        float phase_offset[subgridsize][subgridsize] __attribute__((aligned(32)));
+        FLOAT_COMPLEX vis[nr_channels][nr_polarizations] __attribute__((aligned(32)));
+        float phasor_real[subgridsize][subgridsize][nr_channels] __attribute__((aligned(32)));
+        float phasor_imag[subgridsize][subgridsize][nr_channels] __attribute__((aligned(32)));
+        float phase[subgridsize][subgridsize][nr_channels] __attribute__((aligned(32)));
+
+        // Iterate all timesteps
+        for (int time = 0; time < nr_timesteps; time++) {
+            // Load UVW coordinates
+            float u = (*uvw)[s][time].u;
+            float v = (*uvw)[s][time].v;
+            float w = (*uvw)[s][time].w;
+
+            // Compute phase indices and phase offsets
+            for (int y = 0; y < subgridsize; y++) {
+                for (int x = 0; x < subgridsize; x++) {
+                    // Compute l,m,n
+                    float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
+                    float m =  (y-(subgridsize/2)) * imagesize/subgridsize;
+                    float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
                     // Compute phase index
-                    float phase_index = u*l + v*m + w*n;
+                    phase_index[y][x] = u*l + v*m + w*n;
 
                     // Compute phase offset
-                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                    phase_offset[y][x] = u_offset*l + v_offset*m + w_offset*n;
+                }
+            }
 
-                    // Update pixel for every channel
+            // Load visibilities
+            for (int chan = 0; chan < nr_channels; chan++) {
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    vis[chan][pol] = (*visibilities)[s][time][chan][pol];
+                }
+            }
+
+            // Compute phase
+            for (int y = 0; y < subgridsize; y++) {
+                for (int x = 0; x < subgridsize; x++) {
                     for (int chan = 0; chan < nr_channels; chan++) {
-                        // Compute phase
-                        float wavenumber = (*wavenumbers)[chan];
-                        float phase  = (phase_index * wavenumber) - phase_offset;
+                        phase[y][x][chan] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
+                    }
+                }
+            }
 
-                        // Compute phasor
-                        float phasor_real = cosf(phase);
-                        float phasor_imag = sinf(phase);
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real, phasor_imag);
+            // Compute phasor
+            for (int y = 0; y < subgridsize; y++) {
+                for (int x = 0; x < subgridsize; x++) {
+                    for (int chan = 0; chan < nr_channels; chan++) {
+                        phasor_imag[y][x][chan] = cosf(phase[y][x][chan]);
+                        phasor_real[y][x][chan] = sinf(phase[y][x][chan]);
+                    }
+                }
+            }
 
-                        // Update pixel for every polarization
+            // Update current subgrid
+            for (int y = 0; y < subgridsize; y++) {
+                for (int x = 0; x < subgridsize; x++) {
+                    for (int chan = 0; chan < nr_channels; chan++) {
+                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
                         for (int pol = 0; pol < nr_polarizations; pol++) {
-                            FLOAT_COMPLEX visibility = (*visibilities)[s][time][chan][pol];
-                            pixels[pol] += visibility * phasor;
+                            pixels[y][x][pol] += vis[chan][pol] * phasor;
                         }
                     }
                 }
-                
+            }
+         }
+
+        // Apply aterm and spheroidal and store result
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
                 // Load a term for station1
                 FLOAT_COMPLEX aXX1 = (*aterm)[station1][time_nr][0][y][x];
                 FLOAT_COMPLEX aXY1 = (*aterm)[station1][time_nr][1][y][x];
@@ -123,23 +155,29 @@ void kernel_gridder (
                 FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][time_nr][2][y][x]);
                 FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][time_nr][3][y][x]);
 
+                // Load uv values
+                FLOAT_COMPLEX pixelsXX = pixels[y][x][0];
+                FLOAT_COMPLEX pixelsXY = pixels[y][x][1];
+                FLOAT_COMPLEX pixelsYX = pixels[y][x][2];
+                FLOAT_COMPLEX pixelsYY = pixels[y][x][3];
+
                 // Apply aterm to subgrid
-                pixels[0]  = (pixels[0] * aXX1);
-                pixels[0] += (pixels[1] * aYX1);
-                pixels[0] += (pixels[0] * aXX2);
-                pixels[0] += (pixels[2] * aYX2);
-                pixels[1]  = (pixels[0] * aXY1);
-                pixels[1] += (pixels[1] * aYY1);
-                pixels[1] += (pixels[1] * aXX2);
-                pixels[1] += (pixels[3] * aYX2);
-                pixels[2]  = (pixels[2] * aXX1);
-                pixels[2] += (pixels[3] * aYX1);
-                pixels[2] += (pixels[0] * aXY2);
-                pixels[2] += (pixels[2] * aYY2);
-                pixels[3]  = (pixels[2] * aXY1);
-                pixels[3] += (pixels[3] * aYY1);
-                pixels[3] += (pixels[1] * aXY2);
-                pixels[3] += (pixels[3] * aYY2);
+                pixels[y][x][0]  = (pixelsXX * aXX1);
+                pixels[y][x][0] += (pixelsXY * aYX1);
+                pixels[y][x][0] += (pixelsXX * aXX2);
+                pixels[y][x][0] += (pixelsYX * aYX2);
+                pixels[y][x][1]  = (pixelsXX * aXY1);
+                pixels[y][x][1] += (pixelsXY * aYY1);
+                pixels[y][x][1] += (pixelsXY * aXX2);
+                pixels[y][x][1] += (pixelsYY * aYX2);
+                pixels[y][x][2]  = (pixelsYX * aXX1);
+                pixels[y][x][2] += (pixelsYY * aYX1);
+                pixels[y][x][2] += (pixelsXX * aXY2);
+                pixels[y][x][2] += (pixelsYX * aYY2);
+                pixels[y][x][3]  = (pixelsYX * aXY1);
+                pixels[y][x][3] += (pixelsYY * aYY1);
+                pixels[y][x][3] += (pixelsXY * aXY2);
+                pixels[y][x][3] += (pixelsYY * aYY2);
 
                 // Load spheroidal
                 float sph = (*spheroidal)[y][x];
@@ -150,13 +188,14 @@ void kernel_gridder (
 
                 // Set subgrid value
                 for (int pol = 0; pol < nr_polarizations; pol++) {
-                    (*subgrid)[s][pol][y_dst][x_dst] = pixels[pol] * sph;
+                    (*subgrid)[s][pol][y_dst][x_dst] = pixels[y][x][pol] * sph;
                 }
             }
         }
     }
     }
 }
+
 
 uint64_t kernel_gridder_flops(int jobsize, int nr_timesteps, int nr_channels, int subgridsize, int nr_polarizations) {
     return
