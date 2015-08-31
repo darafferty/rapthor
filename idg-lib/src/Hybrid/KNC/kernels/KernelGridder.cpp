@@ -120,6 +120,7 @@ void kernel_gridder (
             // Compute phasor
             for (int y = 0; y < subgridsize; y++) {
                 for (int x = 0; x < subgridsize; x++) {
+                    #pragma unroll(16)
                     for (int chan = 0; chan < nr_channels; chan++) {
                         phasor_imag[y][x][chan] = cosf(phase[y][x][chan]);
                         phasor_real[y][x][chan] = sinf(phase[y][x][chan]);
@@ -132,9 +133,10 @@ void kernel_gridder (
                 for (int x = 0; x < subgridsize; x++) {
                     for (int chan = 0; chan < nr_channels; chan++) {
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
-                        for (int pol = 0; pol < nr_polarizations; pol++) {
-                            pixels[y][x][pol] += vis[chan][pol] * phasor;
-                        }
+                        pixels[y][x][0] += vis[chan][0] * phasor;
+                        pixels[y][x][1] += vis[chan][1] * phasor;
+                        pixels[y][x][2] += vis[chan][2] * phasor;
+                        pixels[y][x][3] += vis[chan][3] * phasor;
                     }
                 }
             }
