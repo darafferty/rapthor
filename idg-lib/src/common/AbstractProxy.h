@@ -14,7 +14,7 @@
 #include "Parameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
 
-// Method parameters
+// High level method parameters
 #define GRIDDER_PARAMETERS   unsigned nr_subgrids, float w_offset, \
                              void *uvw, void *wavenumbers, \
                              void *visibilities, void *spheroidal, void *aterm, \
@@ -24,7 +24,7 @@
 #define SPLITTER_PARAMETERS  ADDER_PARAMETERS
 #define FFT_PARAMETERS       void *grid, int direction
 
-// Method arguments
+// High level method arguments
 #define GRIDDER_ARGUMENTS    nr_subgrids, w_offset, uvw, wavenumbers, visibilities, \
                              spheroidal, aterm, metadata, subgrids
 #define DEGRIDDER_ARGUMENT   GRIDDER_ARGUMENTS

@@ -4,5 +4,5 @@ project(examples)
 add_subdirectory(common)
 add_subdirectory(CPU)
 add_subdirectory(Hybrid)
-add_subdirectory(CUDA)
+#add_subdirectory(CUDA)
 

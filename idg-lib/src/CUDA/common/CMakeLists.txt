@@ -3,15 +3,20 @@ project(idg-cuda-common)
 # external header files needed
 include_directories (
   ${CMAKE_SOURCE_DIR}/src/common
+  ${CUDA_INCLUDE_DIRS}
 )
 
 # sources and header files
 set (${PROJECT_NAME}_headers
+  CU.h
+  CUFFT.h
   CUDA.h
   Kernels.h
 )
 
 set (${PROJECT_NAME}_sources
+  CU.cpp
+  CUFFT.cpp
   CUDA.cpp
   Kernels.cpp
 )
