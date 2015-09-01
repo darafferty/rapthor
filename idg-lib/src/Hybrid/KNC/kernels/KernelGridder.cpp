@@ -75,6 +75,7 @@ void kernel_gridder (
         // Storage for precomputed values
         float phase_index[subgridsize][subgridsize]  __attribute__((aligned(64)));
         float phase_offset[subgridsize][subgridsize] __attribute__((aligned(64)));
+        FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels] __attribute__((aligned(64)));
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
@@ -100,9 +101,15 @@ void kernel_gridder (
                 }
             }
 
-            // Compute phase and phasor and update current subgrid
+            // Preload visibilities
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    vis[pol][chan] = (*visibilities)[s][time][chan][pol];
+                }
+            }
+
+            // Compute phasor and update current subgrid
             #pragma simd
-            #pragma unroll(16)
             for (int chan = 0; chan < nr_channels; chan++) {
                 for (int y = 0; y < subgridsize; y++) {
                     for (int x = 0; x < subgridsize; x++) {
@@ -110,7 +117,7 @@ void kernel_gridder (
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
 
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels[y][x][pol] += (*visibilities)[s][time][chan][pol] * phasor;
+                            pixels[y][x][pol] += vis[pol][chan] * phasor;
                         }
                     }
                 }
