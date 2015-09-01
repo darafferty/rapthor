@@ -68,14 +68,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDEBUG")
 # (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
 if (BUILD_WITH_CUDA)
   find_package(CUDA)
-  if (CUDA_FOUND)
-    message("CUDA VERSION: " ${CUDA_VERSION})
-    message("CUDA_INCLUDE_DIRS: " ${CUDA_INCLUDE_DIRS})
-    message("CUDA_LIBRARIES: " ${CUDA_LIBRARIES})
-    message("CUDA_CUFFT_LIBRARIES: " ${CUDA_CUFFT_LIBRARIES})
-    message("CUDA_CUBLAS_LIBRARIES:" ${CUDA_CUBLAS_LIBRARIES})
-    # ...
-  endif (CUDA_FOUND)
+  #if (CUDA_FOUND)
+  #  message("CUDA VERSION: " ${CUDA_VERSION})
+  #  message("CUDA_INCLUDE_DIRS: " ${CUDA_INCLUDE_DIRS})
+  #  message("CUDA_LIBRARIES: " ${CUDA_LIBRARIES})
+  #  message("CUDA_CUFFT_LIBRARIES: " ${CUDA_CUFFT_LIBRARIES})
+  #  message("CUDA_CUBLAS_LIBRARIES:" ${CUDA_CUBLAS_LIBRARIES})
+  #  # ...
+  #endif (CUDA_FOUND)
 endif (BUILD_WITH_CUDA)
 
 # set default path to build executables and libraries in BINARY_DIR

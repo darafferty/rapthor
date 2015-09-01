@@ -109,7 +109,7 @@ namespace idg {
             #endif
 
             string  srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CPU/reference/kernels";
+                + "/src/CPU/Reference/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
