@@ -69,15 +69,12 @@ void kernel_gridder (
         float v_offset = (y_coordinate + subgridsize/2) / imagesize;
 
         // Initialize private subgrid
-        FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS];
+        FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS] __attribute__((aligned(64)));
         memset(pixels, 0, subgridsize * subgridsize * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
         // Storage for precomputed values
-        float phase_index[subgridsize][subgridsize]  __attribute__((aligned(32)));
-        float phase_offset[subgridsize][subgridsize] __attribute__((aligned(32)));
-        FLOAT_COMPLEX vis[nr_channels][NR_POLARIZATIONS] __attribute__((aligned(32)));
-        float phasor_real[subgridsize][subgridsize][nr_channels] __attribute__((aligned(32)));
-        float phasor_imag[subgridsize][subgridsize][nr_channels] __attribute__((aligned(32)));
+        float phase_index[subgridsize][subgridsize]  __attribute__((aligned(64)));
+        float phase_offset[subgridsize][subgridsize] __attribute__((aligned(64)));
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
@@ -88,6 +85,7 @@ void kernel_gridder (
 
             // Compute phase indices and phase offsets
             for (int y = 0; y < subgridsize; y++) {
+                #pragma vector aligned
                 for (int x = 0; x < subgridsize; x++) {
                     // Compute l,m,n
                     float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
@@ -102,41 +100,22 @@ void kernel_gridder (
                 }
             }
 
-            // Load visibilities
-            for (int chan = 0; chan < nr_channels; chan++) {
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    vis[chan][pol] = (*visibilities)[s][time][chan][pol];
-                }
-            }
-
-            // Compute phase and phasor
+            // Compute phase and phasor and update current subgrid
             #pragma simd
             #pragma unroll(16)
             for (int chan = 0; chan < nr_channels; chan++) {
                 for (int y = 0; y < subgridsize; y++) {
                     for (int x = 0; x < subgridsize; x++) {
                         float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-                        phasor_imag[y][x][chan] = cosf(phase);
-                        phasor_real[y][x][chan] = sinf(phase);
-                    }
-                }
-            }
+                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
 
-            // Update current subgrid
-            #pragma simd
-            #pragma unroll(16)
-            for (int chan = 0; chan < nr_channels; chan++) {
-                for (int y = 0; y < subgridsize; y++) {
-                    for (int x = 0; x < subgridsize; x++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
-                        pixels[y][x][0] += vis[chan][0] * phasor;
-                        pixels[y][x][1] += vis[chan][1] * phasor;
-                        pixels[y][x][2] += vis[chan][2] * phasor;
-                        pixels[y][x][3] += vis[chan][3] * phasor;
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels[y][x][pol] += (*visibilities)[s][time][chan][pol] * phasor;
+                        }
                     }
                 }
             }
-         }
+        }
 
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < subgridsize; y++) {
