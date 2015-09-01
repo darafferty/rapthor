@@ -6,7 +6,8 @@
 #include <cmath>
 #include <string>
 
-#include "RuntimeWrapper.h"
+#include "CU.h"
+#include "CUFFT.h"
 
 namespace idg {
 

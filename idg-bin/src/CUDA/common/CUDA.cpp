@@ -10,7 +10,7 @@
 #include <unistd.h> // rmdir()
 
 #include "idg-config.h"
-#include "CPU.h"
+#include "CUDA.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
@@ -24,10 +24,12 @@ namespace idg {
         /// Constructors
         CUDA::CUDA(
             Parameters params,
+            unsigned deviceNumber,
             Compiler compiler,
             Compilerflags flags,
             ProxyInfo info)
-          : mInfo(info)
+          : device(deviceNumber),
+            mInfo(info)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -54,8 +56,7 @@ namespace idg {
                 delete modules[i];
             }
 
-            // TODO: Delete .ptx files
-            /*
+            // Delete .ptx files
             if (mInfo.delete_shared_objects()) {
                 for (auto libname : mInfo.get_lib_names()) {
                     string lib = mInfo.get_path_to_lib() + "/" + libname;
@@ -63,11 +64,9 @@ namespace idg {
                 }
                 rmdir(mInfo.get_path_to_lib().c_str());
             }
-            */
         }
 
-
-        string GPU::make_tempdir() {
+        string CUDA::make_tempdir() {
             char _tmpdir[] = "/tmp/idg-XXXXXX";
             char *tmpdir = mkdtemp(_tmpdir);
             #if defined(DEBUG)
@@ -76,7 +75,7 @@ namespace idg {
             return tmpdir;
         }
 
-        ProxyInfo GPU::default_proxyinfo(string srcdir, string tmpdir) {
+        ProxyInfo CUDA::default_proxyinfo(string srcdir, string tmpdir) {
             ProxyInfo p;
             p.set_path_to_src(srcdir);
             p.set_path_to_lib(tmpdir);
@@ -111,7 +110,7 @@ namespace idg {
             #endif
 
             string srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CUDA/reference/kernels";
+                + "/src/CUDA/Reference/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
@@ -133,26 +132,18 @@ namespace idg {
         }
         
 
-        string CPU::default_compiler_flags() 
+        string CUDA::default_compiler_flags() 
         {
             #if defined(DEBUG)
             return "-use_fast_math -lineinfo -src-in-ptx";
             #else 
-            return "-use_fast_mat";
+            return "-use_fast_math";
             #endif
-            /*
-            TODO
-            cu::Device device(deviceNumber);
-            int capability = 10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-                                  device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
-            options << " -arch=compute_" << capability;
-            options << " -code=sm_" << capability;
-            */
         }
 
 
         /// High level routines
-        void CUDA::transform(DomainAtoDomainB direction, void* grid)
+        void CUDA::transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &grid)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -160,11 +151,11 @@ namespace idg {
             #endif
 
             int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
-            run_fft(grid, sign);
+            run_fft(CU_FFT_ARGUMENTS);
         }
 
 
-        void CUDA::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
+        void CUDA::grid_onto_subgrids(int jobsize, CU_GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -172,12 +163,11 @@ namespace idg {
 
             // TODO: argument checks
 
-            run_gridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
-                        spheroidal, aterm, metadata, subgrids);
+            run_gridder(jobsize, CU_GRIDDER_ARGUMENTS);
         }
 
 
-        void CUDA::add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS)
+        void CUDA::add_subgrids_to_grid(int jobsize, CU_ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -185,11 +175,11 @@ namespace idg {
 
             // TODO: argument checks
 
-            run_adder(jobsize, nr_subgrids, metadata, subgrids, grid);
+            run_adder(jobsize, CU_ADDER_ARGUMENTS);
         }
 
 
-        void CUDA::split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS)
+        void CUDA::split_grid_into_subgrids(int jobsize, CU_SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -197,11 +187,11 @@ namespace idg {
 
             // TODO: argument checks
 
-            run_splitter(jobsize, nr_subgrids, metadata, subgrids, grid);
+            run_splitter(jobsize, CU_SPLITTER_ARGUMENTS);
         }
 
 
-        void CUDA::degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS)
+        void CUDA::degrid_from_subgrids(int jobsize, CU_DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -209,23 +199,21 @@ namespace idg {
 
             // TODO: argument checks
 
-            run_degridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
-                      spheroidal, aterm, metadata, subgrids);
+            run_degridder(jobsize, CU_DEGRIDDER_ARGUMENTS);
         }
 
 
         /// Low level routines
-        void CUDA::run_gridder(int jobsize, GRIDDER_PARAMETERS)
+        void CUDA::run_gridder(int jobsize, CU_GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
-
        } // run_gridder
 
 
 
-        void CUDA::run_adder(int jobsize, ADDER_PARAMETERS)
+        void CUDA::run_adder(int jobsize, CU_ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -233,7 +221,7 @@ namespace idg {
         } // run_adder
 
 
-        void CUDA::run_splitter(int jobsize, SPLITTER_PARAMETERS)
+        void CUDA::run_splitter(int jobsize, CU_SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -241,146 +229,26 @@ namespace idg {
         } // run_splitter
 
 
-        void CPU::run_degridder(int jobsize, DEGRIDDER_PARAMETERS)
+        void CUDA::run_degridder(int jobsize, CU_DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime, runtime_degridder, runtime_fft;
-            double total_runtime_degridder = 0;
-            double total_runtime_fft = 0;
-            #endif
-
-            // Constants
-            auto nr_baselines = mParams.get_nr_baselines();
-            auto nr_channels = mParams.get_nr_channels();
-            auto nr_timesteps = mParams.get_nr_timesteps();
-            auto nr_timeslots = mParams.get_nr_timeslots();
-            auto nr_polarizations = mParams.get_nr_polarizations();
-            auto subgridsize = mParams.get_subgrid_size();
-
-            // Load kernel functions
-            kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]));
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
-
-            // Start degridder
-            for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
-                // Prevent overflow
-                jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
-
-                // Number of elements in batch
-                int uvw_elements          = nr_timesteps * 3;
-                int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
-                int metadata_elements     = 5;
-                int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
-
-                // Pointers to data for current batch
-                void *uvw_ptr          = (float *) uvw + s * uvw_elements;
-                void *wavenumbers_ptr  = wavenumbers;
-                void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
-                void *spheroidal_ptr   = spheroidal;
-                void *aterm_ptr        = aterm;
-                void *metadata_ptr     = (int *) metadata + s * metadata_elements;
-                void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft = -omp_get_wtime();
-                #endif
-
-                kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_FORWARD);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft += omp_get_wtime();
-                total_runtime_fft += runtime_fft;
-                runtime_degridder = -omp_get_wtime();
-                #endif
-
-                kernel_degridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                                     spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_degridder += omp_get_wtime();
-                total_runtime_degridder += runtime_degridder;
-                #endif
-
-                #if defined(REPORT_VERBOSE)
-                auxiliary::report("degridder", runtime_degridder,
-                kernel_degridder.flops(jobsize),
-                kernel_degridder.bytes(jobsize));
-                auxiliary::report("fft", runtime_fft,
-                kernel_fft.flops(subgridsize, nr_subgrids),
-                kernel_fft.bytes(subgridsize, nr_subgrids));
-                #endif
-            } // end for s
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
-            clog << endl;
-            clog << "Total: degridding" << endl;
-            auxiliary::report("degridder", total_runtime_degridder,
-                              kernel_degridder.flops(nr_subgrids),
-                              kernel_degridder.bytes(nr_subgrids));
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft.flops(subgridsize, nr_subgrids),
-                              kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
-            clog << endl;
+            cout << "CUDA::" << __func__ << endl;
             #endif
         } // run_degridder
 
 
-        void CPU::run_fft(void *grid, int sign)
+        void CUDA::run_fft(CU_FFT_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime;
-            #endif
-
-            // Constants
-            auto gridsize = mParams.get_grid_size();
-
-            // Load kernel function
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
-
-            // Start fft
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
-
-            kernel_fft.run(gridsize, 1, grid, sign);
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
-            #endif
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << endl;
-            clog << "Total: fft" << endl;
-            auxiliary::report("fft", runtime,
-                              kernel_fft.flops(gridsize, 1),
-                              kernel_fft.bytes(gridsize, 1));
-            auxiliary::report_runtime(runtime);
-            clog << endl;
+            cout << "CUDA::" << __func__ << endl;
             #endif
         } // run_fft
 
 
-        void CPU::compile(Compiler compiler, Compilerflags flags)
+        void CUDA::compile(Compiler compiler, Compilerflags flags)
         {
             #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
+            cout << "CUDA::" << __func__ << endl;
             #endif
 
             // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
@@ -395,12 +263,11 @@ namespace idg {
               mParams.get_grid_size(),
               mParams.get_subgrid_size());
 
-            string compiler_parameters;
-            #if defined(USING_GNU_CXX_COMPILER)
-            compiler_parameters = "-DUSING_GNU_CXX_COMPILER";
-            #elif defined(USING_INTEL_CXX_COMPILER)
-            compiler_parameters = "-DUSING_INTEL_CXX_COMPILER";
-            #endif
+            // Add device capability
+            int capability = 10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
+                                  device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
+            string compiler_parameters = " -arch=compute_" + to_string(capability) +
+                                         " -code=sm_" + to_string(capability);
 
             string parameters = " " + flags + " " + mparameters +
                                 " " + compiler_parameters;
@@ -421,16 +288,14 @@ namespace idg {
 
                 cout << lib << " " << source << " " << endl;
 
-                runtime::Source(source.c_str()).compile(compiler.c_str(),
-                                                        lib.c_str(),
-                                                        parameters.c_str());
+                cu::Source(source.c_str()).compile(lib.c_str(), parameters.c_str());
             } // for each library
         } // compile
 
-        void CPU::parameter_sanity_check()
+        void CUDA::parameter_sanity_check()
         {
             #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
+            cout << "CUDA::" << __func__ << endl;
             #endif
 
             // TODO: create assertions
@@ -440,10 +305,10 @@ namespace idg {
         }
 
 
-        void CPU::load_shared_objects()
+        void CUDA::load_shared_objects()
         {
             #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
+            cout << "CUDA::" << __func__ << endl;
             #endif
 
             for (auto libname : mInfo.get_lib_names()) {
@@ -453,37 +318,38 @@ namespace idg {
                 cout << "Loading: " << libname << endl;
                 #endif
 
-                modules.push_back(new runtime::Module(lib.c_str()));
+                modules.push_back(new cu::Module(lib.c_str()));
             }
         }
 
 
         /// maps name -> index in modules that contain that symbol
-        void CPU::find_kernel_functions()
+        void CUDA::find_kernel_functions()
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
 
+            CUfunction function;
             for (unsigned int i=0; i<modules.size(); i++) {
-                if (dlsym(*modules[i], kernel::name_gridder.c_str())) {
+                if (cuModuleGetFunction(&function, *modules[i], kernel::name_gridder.c_str()) == CUDA_SUCCESS) {
                   // found gridder kernel in module i
                   which_module[kernel::name_gridder] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_degridder.c_str())) {
+                if (cuModuleGetFunction(&function, *modules[i], kernel::name_degridder.c_str()) == CUDA_SUCCESS) {
                   // found degridder kernel in module i
                   which_module[kernel::name_degridder] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_fft.c_str())) {
+                if (cuModuleGetFunction(&function, *modules[i], kernel::name_fft.c_str()) == CUDA_SUCCESS) {
                   // found fft kernel in module i
                   which_module[kernel::name_fft] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_adder.c_str())) {
+                if (cuModuleGetFunction(&function, *modules[i], kernel::name_adder.c_str()) == CUDA_SUCCESS) {
                   // found adder kernel in module i
                   which_module[kernel::name_adder] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_splitter.c_str())) {
-                  // found gridder kernel in module i
+                if (cuModuleGetFunction(&function, *modules[i], kernel::name_splitter.c_str()) == CUDA_SUCCESS) {
+                  // found splitter kernel in module i
                   which_module[kernel::name_splitter] = i;
                 }
             } // end for
