@@ -2,8 +2,8 @@ project(idg-cuda-common)
 
 # external header files needed
 include_directories (
-  ${CMAKE_SOURCE_DIR}/src/common
   ${CUDA_INCLUDE_DIRS}
+  ${CMAKE_SOURCE_DIR}/src/common
 )
 
 # sources and header files

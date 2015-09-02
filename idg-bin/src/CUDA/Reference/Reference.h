@@ -7,20 +7,21 @@
  *  This will be included by a user, so detail usage...
  */
 
-#ifndef IDG_CPU_REFERENCE_H_
-#define IDG_CPU_REFERENCE_H_
+#ifndef IDG_CUDA_REFERENCE_H_
+#define IDG_CUDA_REFERENCE_H_
 
-#include "CPU.h"
+#include "CUDA.h"
 
 namespace idg {
     namespace proxy {
-        namespace cpu {
+        namespace cuda {
 
-            class Reference : public CPU {
+            class Reference : public CUDA {
             
             public:
                 /// Constructors
                 Reference(Parameters params,
+                          unsigned deviceNumber = 0,
                           Compiler compiler = default_compiler(),
                           Compilerflags flags = default_compiler_flags(),
                           ProxyInfo info = default_info());

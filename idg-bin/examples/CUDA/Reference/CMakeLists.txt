@@ -2,10 +2,11 @@ project(gpu-maxwell.x)
 
 # Set external header files
 include_directories(
+  ${CUDA_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}/examples/common/external
   ${CMAKE_SOURCE_DIR}/examples/common/utility
-  ${CMAKE_SOURCE_DIR}/src/GPU/common
+  ${CMAKE_SOURCE_DIR}/src/CUDA/common
   ${CMAKE_SOURCE_DIR}/src/common
  )
 

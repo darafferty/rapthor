@@ -2,8 +2,9 @@ project(idg-gpu-reference)
 
 # external header files needed
 include_directories (
+  ${CUDA_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src/common
-  ${CMAKE_SOURCE_DIR}/src/GPU/common
+  ${CMAKE_SOURCE_DIR}/src/CUDA/common
 )
 
 # sources and header files

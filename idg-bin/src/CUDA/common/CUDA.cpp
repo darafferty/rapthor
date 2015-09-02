@@ -82,19 +82,16 @@ namespace idg {
 
             string libgridder = "Gridder.ptx";
             string libdegridder = "Degridder.ptx";
-            string libfft = "FFT.ptx";
             string libadder = "Adder.ptx";
             string libsplitter = "Splitter.ptx";
 
             p.add_lib(libgridder);
             p.add_lib(libdegridder);
-            p.add_lib(libfft);
             p.add_lib(libadder);
             p.add_lib(libsplitter);
 
             p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
             p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
-            p.add_src_file_to_lib(libfft, "KernelFFT.cu");
             p.add_src_file_to_lib(libadder, "KernelAdder.cu");
             p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
 
@@ -333,24 +330,20 @@ namespace idg {
             CUfunction function;
             for (unsigned int i=0; i<modules.size(); i++) {
                 if (cuModuleGetFunction(&function, *modules[i], kernel::name_gridder.c_str()) == CUDA_SUCCESS) {
-                  // found gridder kernel in module i
-                  which_module[kernel::name_gridder] = i;
+                    // found gridder kernel in module i
+                    which_module[kernel::name_gridder] = i;
                 }
                 if (cuModuleGetFunction(&function, *modules[i], kernel::name_degridder.c_str()) == CUDA_SUCCESS) {
-                  // found degridder kernel in module i
-                  which_module[kernel::name_degridder] = i;
-                }
-                if (cuModuleGetFunction(&function, *modules[i], kernel::name_fft.c_str()) == CUDA_SUCCESS) {
-                  // found fft kernel in module i
-                  which_module[kernel::name_fft] = i;
+                    // found degridder kernel in module i
+                    which_module[kernel::name_degridder] = i;
                 }
                 if (cuModuleGetFunction(&function, *modules[i], kernel::name_adder.c_str()) == CUDA_SUCCESS) {
-                  // found adder kernel in module i
-                  which_module[kernel::name_adder] = i;
+                    // found adder kernel in module i
+                    which_module[kernel::name_adder] = i;
                 }
                 if (cuModuleGetFunction(&function, *modules[i], kernel::name_splitter.c_str()) == CUDA_SUCCESS) {
-                  // found splitter kernel in module i
-                  which_module[kernel::name_splitter] = i;
+                    // found splitter kernel in module i
+                    which_module[kernel::name_splitter] = i;
                 }
             } // end for
         } // end find_kernel_functions
