@@ -33,6 +33,19 @@ namespace idg {
                 #endif
             }
 
+           ProxyInfo Reference::default_info() {
+               return CUDA::default_info();
+           }
+
+           string Reference::default_compiler() {
+                return CUDA::default_compiler();
+           }
+
+           string Reference::default_compiler_flags() {
+               return CUDA::default_compiler_flags();
+
+           }
+
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
