@@ -14,106 +14,103 @@ namespace idg {
   namespace kernel {
 
     // define the kernel function names
-    static const std::string name_gridder = "kernel_gridder";
+    static const std::string name_gridder   = "kernel_gridder";
     static const std::string name_degridder = "kernel_degridder";
-    static const std::string name_fft = "kernel_fft";
-    static const std::string name_adder = "kernel_adder";
-    static const std::string name_splitter = "kernel_splitter";
+    static const std::string name_adder     = "kernel_adder";
+    static const std::string name_splitter  = "kernel_splitter";
 
-    // Function signatures
-    #define sig_gridder   (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
-    #define sig_degridder (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
-    #define sig_fft		  (void (*)(int,int,void*,int))
-    #define sig_adder	  (void (*)(int,void*,void*,void*))
-    #define sig_splitter  (void (*)(int,void*,void*,void*))
+    
+// TODO: remove #define and add arguments
+#define SUBGRIDSIZE 32
+#define NR_TIME 16
+#define NR_TIMESTEPS 128
+#define NR_CHANNELS 16
+#define NR_POLARIZATIONS 4
 
-    // define auxiliary function names
-    static const std::string name_gridder_flops = "kernel_gridder_flops";
-    static const std::string name_degridder_flops = "kernel_degridder_flops";
-    static const std::string name_fft_flops = "kernel_fft_flops";
-    static const std::string name_adder_flops = "kernel_adder_flops";
-    static const std::string name_splitter_flops = "kernel_splitter_flops";
-
-    static const std::string name_gridder_bytes = "kernel_gridder_bytes";
-    static const std::string name_degridder_bytes = "kernel_degridder_bytes";
-    static const std::string name_fft_bytes = "kernel_fft_bytes";
-    static const std::string name_adder_bytes = "kernel_adder_bytes";
-    static const std::string name_splitter_bytes = "kernel_splitter_bytes";
 
     class Gridder {
-    public:
-      Gridder(runtime::Module &module);
-      void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
-	       void *visibilities, void *spheroidal, void *aterm,
-	       void *metadata, void *subgrid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-      
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            Gridder(cu::Module &module);
+            void launchAsync(
+                cu::Stream &stream, int jobsize, float w_offset,
+                cu::DeviceMemory &d_uvw, cu::DeviceMemory &d_wavenumbers,
+                cu::DeviceMemory &d_visibilities, cu::DeviceMemory &d_spheroidal,
+                cu::DeviceMemory &d_aterm, cu::DeviceMemory &d_metadata,
+                cu::DeviceMemory &d_subgrid);
+        	static uint64_t flops(int jobsize);
+    		static uint64_t bytes(int jobsize);
+    	
+    	private:
+    	    cu::Function function;
     };
-
-  
+    
+    
     class Degridder {
-    public:
-      Degridder(runtime::Module &module);
-      void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
-	       void *visibilities, void *spheroidal, void *aterm,
-	       void *metadata, void *subgrid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-      
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            Degridder(cu::Module &module);
+            void launchAsync(
+                cu::Stream &stream, int jobsize, float w_offset,
+                cu::DeviceMemory &d_uvw, cu::DeviceMemory &d_wavenumbers,
+                cu::DeviceMemory &d_visibilities, cu::DeviceMemory &d_spheroidal,
+                cu::DeviceMemory &d_aterm, cu::DeviceMemory &d_metadata,
+                cu::DeviceMemory &d_subgrid);
+           	static uint64_t flops(int jobsize);
+    		static uint64_t bytes(int jobsize);
+    	
+    	private:
+    	    cu::Function function;
     };
-
+    
     
     class GridFFT {
-    public:
-      GridFFT(runtime::Module &module);
-      void run(int size, int batch, void *data, int direction);
-      uint64_t flops(int size, int batch);
-      uint64_t bytes(int size, int batch);
+    	public:
+            GridFFT();
+            void plan(int size, int batch);
+            void launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction);
+    		static uint64_t flops(int size, int batch);
+    		static uint64_t bytes(int size, int batch);
     
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        private:
+            int planned_size;
+            int planned_batch;
+            cufft::C2C_2D *fft;
     };
-
+    
     
     class Adder {
-    public:
-      Adder(runtime::Module &module);
-      void run(int jobsize, void *metadata, void *subgrid, void *grid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-    
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+    	public:
+    	    Adder(cu::Module &module);
+    		void launchAsync(
+    			cu::Stream &stream, int jobsize,
+    			cu::DeviceMemory &d_metadata,
+    			cu::DeviceMemory &d_subgrid,
+    			cu::DeviceMemory &d_grid);
+    		static uint64_t flops(int jobsize);
+    		static uint64_t bytes(int jobsize);
+    		
+    	private:
+    		cu::Function function;
     };
-
-  
+    
+    
+    /*
+        Splitter
+    */
     class Splitter {
-    public:
-      Splitter(runtime::Module &module);
-      void run(int jobsize, void *metadata, void *subgrid, void *grid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-    
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+    	public:
+    		Splitter(cu::Module &module);
+    		void launchAsync(
+    			cu::Stream &stream, int jobsize,
+    			cu::DeviceMemory &d_metadata,
+    			cu::DeviceMemory &d_subgrid,
+    			cu::DeviceMemory &d_grid);
+    		static uint64_t flops(int jobsize);
+    		static uint64_t bytes(int jobsize);
+    		
+    	private:
+    		cu::Function function;
     };
-
-
+    
   } // namespace kernel
 
 } // namespace idg
