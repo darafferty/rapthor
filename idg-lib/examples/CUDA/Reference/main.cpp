@@ -8,11 +8,27 @@
 
 using namespace std;
 
+void printDevices(int deviceNumber) {
+	std::clog << "Devices";
+	for (int device = 0; device < cu::Device::getCount(); device++) {
+		std::clog << "\t" << device << ": ";
+		std::clog << cu::Device(device).getName();
+		if (device == deviceNumber) {
+			std::clog << "\t" << "<---";
+		}
+		std::clog << std::endl;
+	}
+	std::clog << "\n";
+}
+
 int main(int argc, char *argv[]) {
     // Set constants explicitly in the parameters parameter
     clog << ">>> Configuration"  << endl;
     idg::Parameters params;
     params.set_from_env();
+
+    // Get device number
+    unsigned deviceNumber = 0;
 
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
@@ -29,6 +45,16 @@ int main(int argc, char *argv[]) {
     // Print configuration
     clog << params;
     clog << endl;
+
+    // Initialize CUDA
+    std::clog << ">>> Initialize CUDA" << std::endl;
+    cu::init();
+    cu::Device device(deviceNumber);
+    cu::Context context(device);
+    context.setCurrent();
+
+    // Show CUDA devices
+    printDevices(deviceNumber);
 
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
@@ -61,33 +87,30 @@ int main(int argc, char *argv[]) {
 
     clog << endl;
 
-    // Get device number
-    unsigned deviceNumber = 0;
-
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::cuda::Reference cpu(params, deviceNumber);
+    idg::proxy::cuda::Reference cuda(params, deviceNumber);
     clog << endl;
 
     // Run gridder
 //    clog << ">>> Run gridder" << endl;
 //    int jobsize_gridder = params.get_job_size_gridder();
-//    cpu.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+//    cuda.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 //
 //    clog << ">> Run adder" << endl;
 //    int jobsize_adder = params.get_job_size_adder();
-//    cpu.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
+//    cuda.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
 //
 //    clog << ">>> Run fft" << endl;
-//    cpu.transform(idg::FourierDomainToImageDomain, grid);
+//    cuda.transform(idg::FourierDomainToImageDomain, grid);
 //
 //    clog << ">>> Run splitter" << endl;
 //    int jobsize_splitter = params.get_job_size_splitter();
-//    cpu.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
+//    cuda.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
 //
 //    clog << ">>> Run degridder" << endl;
 //    int jobsize_degridder = params.get_job_size_degridder();
-//    cpu.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+//    cuda.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 //
     // free memory for data structures
     delete[] visibilities;

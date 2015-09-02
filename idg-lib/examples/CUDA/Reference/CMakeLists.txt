@@ -1,4 +1,4 @@
-project(gpu-maxwell.x)
+project(cuda-reference.x)
 
 # Set external header files
 include_directories(
@@ -23,8 +23,9 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-examples-common
-  idg-cpu-reference
-  idg-cpu-common
+  idg-cuda-reference
+  idg-cuda-common
   idg-common
-  ${CMAKE_DL_LIBS}
+  ${CUDA_CUFFT_LIBRARIES}
+  cuda
 )

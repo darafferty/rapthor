@@ -1,4 +1,4 @@
-project(idg-gpu-reference)
+project(idg-cuda-reference)
 
 # external header files needed
 include_directories (
@@ -23,7 +23,7 @@ add_library(
   )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-gpu-reference)
+target_link_libraries(${PROJECT_NAME} idg-cuda-reference)
 
 # Set installation directory
 install(TARGETS ${PROJECT_NAME}
