@@ -36,7 +36,7 @@ __global__ void kernel_gridder(
     __syncthreads();
 	
     // Iterate all subgrids
-	for (; s < jobsize; s++) {
+	for (; s < jobsize; s += gridDim.x * gridDim.y) {
         // Load UVW	
         for (int time = tid; time < NR_TIMESTEPS; time += blockDim.x * blockDim.y) {
 	        _uvw[time] = uvw[s][time];	    
