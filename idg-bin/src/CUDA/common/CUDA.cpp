@@ -140,7 +140,7 @@ namespace idg {
 
 
         /// High level routines
-        void CUDA::transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &grid)
+        void CUDA::transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
