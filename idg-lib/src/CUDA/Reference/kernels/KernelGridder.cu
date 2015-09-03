@@ -9,22 +9,23 @@ extern "C" {
 	Kernel
 */
 __global__ void kernel_gridder(
-	const int bl_offset,
+	const int jobsize,
+    const float w_offset,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
 	const VisibilitiesType	__restrict__ visibilities,
 	const SpheroidalType	__restrict__ spheroidal,
 	const ATermType			__restrict__ aterm,
-	const BaselineType		__restrict__ baselines,		
+	const MetadataType		__restrict__ metadata,		
 	SubGridType				__restrict__ subgrid
 	) {
 	int tidx = threadIdx.x;
 	int tidy = threadIdx.y;
 	int tid = tidx + tidy * blockDim.x;
-	int bl = blockIdx.x + blockIdx.y * gridDim.x;
+	int s = blockIdx.x + blockIdx.y;
 
     // Shared data
-	__shared__ UVW _uvw[CHUNKSIZE];
+	__shared__ UVW _uvw[NR_TIMESTEPS];
 	__shared__ float _wavenumbers[NR_CHANNELS];
 	__shared__ float2 _visibilities[NR_CHANNELS][NR_POLARIZATIONS];
 	
@@ -34,20 +35,25 @@ __global__ void kernel_gridder(
     }
     __syncthreads();
 	
-	for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
+    // Iterate all subgrids
+	for (; s < jobsize; s++) {
         // Load UVW	
-	    if (tid < CHUNKSIZE) {
-	        _uvw[tid] = uvw[bl][tid];	    
+        for (int time = tid; time < NR_TIMESTEPS; time += blockDim.x * blockDim.y) {
+	        _uvw[time] = uvw[s][time];	    
 	    }
 	    __syncthreads();
-	
-	    // Compute offset for current chunk
-	    UVW uvw_first = _uvw[0];
-        UVW uvw_last = _uvw[CHUNKSIZE-1];
-	    int u = (GRIDSIZE/2) - ((uvw_first.u + uvw_last.u) / 2);
-	    int v = (GRIDSIZE/2) - ((uvw_first.v + uvw_last.v) / 2);
-	    int w = (GRIDSIZE/2) - ((uvw_first.w + uvw_last.w) / 2);
-	    UVW _offset = {u, v, w};
+
+	    // Load metadata
+        const Metadata m = metadata[s];
+        int time_nr = m.time_nr;
+        int station1 = m.baseline.station1;
+        int station2 = m.baseline.station2;
+        int x_coordinate = m.coordinate.x;
+        int y_coordinate = m.coordinate.y;
+
+        // Compute u and v offset in wavelenghts
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
 	    
         // Iterate all pixels in subgrid
         for (int y = tidy; y < SUBGRIDSIZE; y += blockDim.y) {
@@ -63,11 +69,11 @@ __global__ void kernel_gridder(
 	            float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
-                // Iterate all timesteps in current chunk
-	            for (int time = 0; time < CHUNKSIZE && (chunk * CHUNKSIZE) < NR_TIME; time++) {
+                // Iterate all timesteps
+	            for (int time = 0; time < NR_TIMESTEPS; time++) {
             	    // Load visibilities for all channels and polarizations
                 	for (int i = tid; i < NR_CHANNELS * NR_POLARIZATIONS; i += blockDim.x * blockDim.y) {
-                	    _visibilities[0][i] = visibilities[bl][time][0][i];
+                	    _visibilities[0][i] = visibilities[s][time][0][i];
                 	}
 	            
 	                 // Load UVW coordinates
@@ -79,9 +85,7 @@ __global__ void kernel_gridder(
                 	float ulvmwn = u*l + v*m + w*n;
 
 		            // Compute phase offset
-		            float phase_offset = _offset.u*l +
-						                 _offset.v*m +
-						                 _offset.w*n;
+		            float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 						                 
 		            // Compute phasor
 		            float phasor_real[NR_CHANNELS];
@@ -112,30 +116,23 @@ __global__ void kernel_gridder(
 		            }
 	            }
 	
-	            // Load spheroidal
-	            float s = spheroidal[y][x];
-	
-	            // Stations for current baseline
-                int station1 = baselines[bl+bl_offset].station1;
-	            int station2 = baselines[bl+bl_offset].station2;
-	
                 // Get a term for station1
-	            float2 aXX1 = cuConjf(aterm[station1][0][y][x]);
-	            float2 aXY1 = cuConjf(aterm[station1][1][y][x]);
-	            float2 aYX1 = cuConjf(aterm[station1][2][y][x]);
-	            float2 aYY1 = cuConjf(aterm[station1][3][y][x]);
+	            const float2 aXX1 = aterm[station1][time_nr][0][y][x];
+	            const float2 aXY1 = aterm[station1][time_nr][1][y][x];
+	            const float2 aYX1 = aterm[station1][time_nr][2][y][x];
+	            const float2 aYY1 = aterm[station1][time_nr][3][y][x];
 
 	            // Get aterm for station2
-	            float2 aXX2 = aterm[station2][0][y][x];
-	            float2 aXY2 = aterm[station2][1][y][x];
-	            float2 aYX2 = aterm[station2][2][y][x];
-	            float2 aYY2 = aterm[station2][3][y][x];
+	            const float2 aXX2 = cuConjf(aterm[station2][time_nr][0][y][x]);
+	            const float2 aXY2 = cuConjf(aterm[station2][time_nr][1][y][x]);
+	            const float2 aYX2 = cuConjf(aterm[station2][time_nr][2][y][x]);
+	            const float2 aYY2 = cuConjf(aterm[station2][time_nr][3][y][x]);
 	
 	            // Apply aterm
-	            float2 _uvXX = uvXX;
-	            float2 _uvXY = uvXY;
-	            float2 _uvYX = uvYX;
-	            float2 _uvYY = uvYY;
+	            const float2 _uvXX = uvXX;
+	            const float2 _uvXY = uvXY;
+	            const float2 _uvYX = uvYX;
+	            const float2 _uvYY = uvYY;
 	            uvXX  = _uvXX * aXX1;
 	            uvXX += _uvXY * aYX1; 
 	            uvXX += _uvXX * aXX2;
@@ -152,19 +149,19 @@ __global__ void kernel_gridder(
 	            uvYY += _uvYY * aYY1;
 	            uvYY += _uvYY * aXY2;
 	            uvYY += _uvYY * aYY2;
+
+	            // Load spheroidal
+	            float sph = spheroidal[y][x];
 	
-	            // Apply spheroidal and update uv grid
-                #if ORDER == ORDER_BL_P_V_U
-	            subgrid[bl][chunk][0][y][x] = uvXX * s;
-	            subgrid[bl][chunk][1][y][x] = uvXY * s;
-	            subgrid[bl][chunk][2][y][x] = uvYX * s;
-	            subgrid[bl][chunk][3][y][x] = uvYY * s;
-	            #elif ORDER_BL_V_U_P
-	            subgrid[bl][chunk][y][x][0] = uvXX * s;
-	            subgrid[bl][chunk][y][x][1] = uvXY * s;
-	            subgrid[bl][chunk][y][x][2] = uvYX * s;
-	            subgrid[bl][chunk][y][x][3] = uvYY * s;
-	            #endif
+                // Compute shifted position in subgrid
+                int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+	
+	            // Set subgrid value
+	            subgrid[s][0][y_dst][x_dst] = uvXX * sph;
+	            subgrid[s][1][y_dst][x_dst] = uvXY * sph;
+	            subgrid[s][2][y_dst][x_dst] = uvYX * sph;
+	            subgrid[s][3][y_dst][x_dst] = uvYY * sph;
             }
         }
     }
