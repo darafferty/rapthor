@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
     idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_stations, nr_timesteps, nr_polarizations, subgridsize);
+    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
     idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
