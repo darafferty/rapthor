@@ -9,21 +9,22 @@ extern "C" {
 	Kernel
 */
 __global__ void kernel_degridder(
-	const int bl_offset,
-	const SubGridType	    __restrict__ subgrid,
+    const int jobsize,
+    const float w_offset,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
+	VisibilitiesType	    __restrict__ visibilities,
+	const SpheroidalType	__restrict__ spheroidal,
 	const ATermType			__restrict__ aterm,
-	const BaselineType		__restrict__ baselines,
-	const SpheroidalType    __restrict__ spheroidal,
-	VisibilitiesType	    __restrict__ visibilities
-	) {
+	const MetadataType		__restrict__ metadata,		
+	const SubGridType	    __restrict__ subgrid
+    ) {
     int tidx = threadIdx.x;
     int tid = tidx;
-    int bl = blockIdx.x + blockIdx.y * gridDim.x;
+    int s = blockIdx.x + blockIdx.y * gridDim.x;
 	 
      // Shared data
-    __shared__ UVW _uvw[CHUNKSIZE];
+    __shared__ UVW _uvw[NR_TIMESTEPS];
     __shared__ float _wavenumbers[NR_CHANNELS];
     __shared__ float2 _uv[NR_POLARIZATIONS][SUBGRIDSIZE];
     __shared__ float _ulvmwn[SUBGRIDSIZE];
@@ -33,35 +34,38 @@ __global__ void kernel_degridder(
     if (tid < NR_CHANNELS) {
         _wavenumbers[tid] = wavenumbers[tid];
     }
+    __syncthreads();
    
-	// Stations for current baseline
-	int station1 = baselines[bl+bl_offset].station1;
-	int station2 = baselines[bl+bl_offset].station2;
-   
-    for (int chunk = 0; chunk < NR_CHUNKS; chunk++) {
+    // Iterate all subgrids
+    for (; s < jobsize; s++) {
         // Load UVW	
-	    if (tid < CHUNKSIZE) {
-	        _uvw[tid] = uvw[bl][tid];    
+        for (int time = tid; time < NR_TIMESTEPS; time += blockDim.x) {
+	        _uvw[tid] = uvw[s][tid]; 
 	    }
 	    __syncthreads();
         
-        // Compute offset for current chunk
-	    UVW uvw_first = _uvw[0];
-        UVW uvw_last = _uvw[CHUNKSIZE-1];
-	    int u = (GRIDSIZE/2) - ((uvw_first.u + uvw_last.u) / 2);
-	    int v = (GRIDSIZE/2) - ((uvw_first.v + uvw_last.v) / 2);
-	    int w = (GRIDSIZE/2) - ((uvw_first.w + uvw_last.w) / 2);
-	    UVW _offset = {u, v, w};
-	  
+	    // Load metadata
+        const Metadata m = metadata[s];
+        int time_nr = m.time_nr;
+        int station1 = m.baseline.station1;
+        int station2 = m.baseline.station2;
+        int x_coordinate = m.coordinate.x;
+        int y_coordinate = m.coordinate.y;
+
+        // Compute u and v offset in wavelenghts
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+  
         // Determe work distribution 
-        int nr_compute_threads = SUBGRIDSIZE* 2;
+        int nr_compute_threads = SUBGRIDSIZE * 2;
         int nr_load_threads = 0;
         while (nr_load_threads <= 0) {
             nr_compute_threads /= 2;
             nr_load_threads = blockDim.x - nr_compute_threads;
         }
 
-        for (int i = threadIdx.x; i < CHUNKSIZE * NR_CHANNELS; i += blockDim.x) {
+        // Iterate all visibilities
+        for (int i = threadIdx.x; i < NR_TIMESTEPS * NR_CHANNELS; i += blockDim.x) {
             // Determine time and channel to be computed
             int time = (i / NR_CHANNELS);
             int chan = i % NR_CHANNELS;
@@ -94,9 +98,7 @@ __global__ void kernel_degridder(
                         _ulvmwn[x] = u*l + v*m + w*n;
 
                         // Compute phase offset
-                        _phase_offset[x] = _offset.u*l +
-                                           _offset.v*m +
-                                           _offset.w*n;
+		                _phase_offset[x] = u_offset*l + v_offset*m + w_offset*n;
                     }
                 } else {
                     // Remaining threads start preparing uvgrid values
@@ -108,23 +110,16 @@ __global__ void kernel_degridder(
                     // Preload subgrid values and apply spheroidal 
                     for (int x = tid; x < SUBGRIDSIZE; x += nr_load_threads) {
                         // Get spheroidal
-                        float s = spheroidal[y][x];
+                        float sph = spheroidal[y][x];
 
                         // Compute shifted x position in subgrid
                         int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                         // Load subrid pixels
-                        #if ORDER == ORDER_BL_P_V_U
-                        float2 uvXX = s * subgrid[bl][chunk][0][y_src][x_src];
-                        float2 uvXY = s * subgrid[bl][chunk][1][y_src][x_src];
-                        float2 uvYX = s * subgrid[bl][chunk][2][y_src][x_src];
-                        float2 uvYY = s * subgrid[bl][chunk][3][y_src][x_src];
-                        #elif ORDER == ORDER_BL_V_U_P
-                        float2 uvXX = s * subgrid[bl][chunk][y_src][x_src][0];
-                        float2 uvXY = s * subgrid[bl][chunk][y_src][x_src][1];
-                        float2 uvYX = s * subgrid[bl][chunk][y_src][x_src][2];
-                        float2 uvYY = s * subgrid[bl][chunk][y_src][x_src][3];
-                        #endif
+                        float2 uvXX = sph * subgrid[s][0][y_src][x_src];
+                        float2 uvXY = sph * subgrid[s][1][y_src][x_src];
+                        float2 uvYX = sph * subgrid[s][2][y_src][x_src];
+                        float2 uvYY = sph * subgrid[s][3][y_src][x_src];
                         
                         // Store pixels in shared memory
                         _uv[0][x] = uvXX;
@@ -142,16 +137,16 @@ __global__ void kernel_degridder(
                         float2 uvYY = _uv[3][x];
                         
                         // Get aterm for station1
-                        float2 aXX1 = aterm[station1][0][y][x];
-                        float2 aXY1 = aterm[station1][1][y][x];
-                        float2 aYX1 = aterm[station1][2][y][x];
-                        float2 aYY1 = aterm[station1][3][y][x];
+                        float2 aXX1 = aterm[station1][time_nr][0][y][x];
+                        float2 aXY1 = aterm[station1][time_nr][1][y][x];
+                        float2 aYX1 = aterm[station1][time_nr][2][y][x];
+                        float2 aYY1 = aterm[station1][time_nr][3][y][x];
 
                         // Get aterm for station2
-                        float2 aXX2 = cuConjf(aterm[station2][0][y][x]);
-                        float2 aXY2 = cuConjf(aterm[station2][1][y][x]);
-                        float2 aYX2 = cuConjf(aterm[station2][2][y][x]);
-                        float2 aYY2 = cuConjf(aterm[station2][3][y][x]);
+                        float2 aXX2 = cuConjf(aterm[station2][time_nr][0][y][x]);
+                        float2 aXY2 = cuConjf(aterm[station2][time_nr][1][y][x]);
+                        float2 aYX2 = cuConjf(aterm[station2][time_nr][2][y][x]);
+                        float2 aYY2 = cuConjf(aterm[station2][time_nr][3][y][x]);
                         
                         // Initialize corected uv values
                         float2 _uvXX = {0, 0};
@@ -204,11 +199,10 @@ __global__ void kernel_degridder(
             }
         
             // Set visibilities
-            int time_offset = chunk * CHUNKSIZE;
-            visibilities[bl][time+time_offset][chan][0] = dataXX;
-            visibilities[bl][time+time_offset][chan][1] = dataXY;
-            visibilities[bl][time+time_offset][chan][2] = dataYX;
-            visibilities[bl][time+time_offset][chan][3] = dataYY;
+            visibilities[s][time][chan][0] = dataXX;
+            visibilities[s][time][chan][1] = dataXY;
+            visibilities[s][time][chan][2] = dataYX;
+            visibilities[s][time][chan][3] = dataYY;
         }
     }
 }
