@@ -20,21 +20,20 @@ void kernel_fft(
 	int sign,
     int nr_polarizations)
     {
-
         #pragma omp parallel for
         for (int i = 0; i < batch; i++) {
-            fftwf_complex __restrict__ *data = (fftwf_complex *) _data + (nr_polarizations * size * size);
+            fftwf_complex __restrict__ *data = (fftwf_complex *) _data + i * (nr_polarizations * size * size);
 
             // 2D FFT
             int rank = 2;
-    
+
             // For grids of size*size elements
             int n[] = {size, size};
             
             // Set stride
             int istride = 1;
             int ostride = istride;
-    
+
             // Set dist
             int idist = n[0] * n[1];
             int odist = idist;

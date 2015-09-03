@@ -275,16 +275,16 @@ namespace idg {
                 complex<float> *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
                 int *metadata_ptr                = (int *) metadata + s * metadata_elements;
 
-#pragma omp target                                                      \
-    map(to:uvw_ptr[0:(current_jobsize * uvw_elements)])                 \
-    map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
-    map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)])      \
-    map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
-                {
-
-#if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft = -omp_get_wtime();
-#endif
+                #pragma omp target                                                      \
+                    map(to:uvw_ptr[0:(current_jobsize * uvw_elements)])                 \
+                    map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
+                    map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)])      \
+                    map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
+                                {
+                
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                                runtime_fft = -omp_get_wtime();
+                #endif
 
                 kernel_fft(subgridsize, current_jobsize, subgrids_ptr, 
                            FFTW_FORWARD, nr_polarizations);
@@ -370,7 +370,7 @@ namespace idg {
             // Run adder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
                 // Prevent overflow
-                jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s: jobsize;
+                int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s: jobsize;
 
                 // Number of elements in batch
                 int metadata_elements = 5;
@@ -385,7 +385,7 @@ namespace idg {
                 runtime_adder = -omp_get_wtime();
                 #endif
 
-                kernel_adder(jobsize, metadata_ptr, subgrid_ptr, grid_ptr, 
+                kernel_adder(current_jobsize, metadata_ptr, subgrid_ptr, grid_ptr, 
                              gridsize, subgridsize, nr_polarizations);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -395,8 +395,8 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE)
                 auxiliary::report("adder", runtime_adder,
-                    kernel_adder_flops(jobsize, subgridsize),
-                    kernel_adder_bytes(jobsize, subgridsize, nr_polarizations));
+                    kernel_adder_flops(current_jobsize, subgridsize),
+                    kernel_adder_bytes(current_jobsize, subgridsize, nr_polarizations));
                 #endif
             } // end for s
 
@@ -439,7 +439,7 @@ namespace idg {
             // Run splitter
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
                 // Prevent overflow
-                jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+                int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
                 // Number of elements in batch
                 int metadata_elements = 5;
@@ -454,7 +454,7 @@ namespace idg {
                 runtime_splitter = -omp_get_wtime();
                 #endif
 
-                kernel_splitter(jobsize, metadata_ptr, subgrid_ptr, grid_ptr, 
+                kernel_splitter(current_jobsize, metadata_ptr, subgrid_ptr, grid_ptr, 
                         gridsize, subgridsize, nr_polarizations);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -464,8 +464,8 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE)
                 auxiliary::report("splitter", runtime_splitter,
-                                  kernel_splitter_flops(jobsize, subgridsize),
-                                  kernel_splitter_bytes(jobsize, subgridsize, nr_polarizations));
+                                  kernel_splitter_flops(current_jobsize, subgridsize),
+                                  kernel_splitter_bytes(current_jobsize, subgridsize, nr_polarizations));
                 #endif
             } // end for bl
 
