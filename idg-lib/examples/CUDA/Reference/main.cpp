@@ -56,9 +56,8 @@ int main(int argc, char *argv[]) {
     // Show CUDA devices
     printDevices(deviceNumber);
 
-    // Allocate and initialize data structures
-    clog << ">>> Initialize data structures" << endl;
-
+    // Allocate data structures
+    clog << ">>> Allocate data structures" << endl;
     auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
     auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
     auto size_wavenumbers = 1ULL * nr_channels;
@@ -68,24 +67,26 @@ int main(int argc, char *argv[]) {
     auto size_metadata = 1ULL * nr_subgrids*5;
     auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize;
 
-    auto visibilities = new complex<float>[size_visibilities];
-    auto uvw = new float[size_uvw];
-    auto wavenumbers = new float[size_wavenumbers];
-    auto aterm = new complex<float>[size_aterm];
-    auto spheroidal = new float[size_spheroidal];
-    auto grid = new complex<float>[size_grid];
-    auto metadata = new int[size_metadata];
-    auto subgrids = new complex<float>[size_subgrids];
+    cu::HostMemory h_visibilities(sizeof(complex<float>) * size_visibilities);
+    cu::HostMemory h_uvw(sizeof(float) * size_uvw);
+    cu::DeviceMemory d_wavenumbers(sizeof(float) * size_wavenumbers);
+    cu::DeviceMemory d_aterm(sizeof(complex<float>) * size_aterm);
+    cu::DeviceMemory d_spheroidal(sizeof(float) * size_spheroidal);
+    cu::HostMemory h_grid(sizeof(complex<float>) * size_grid);
+    cu::HostMemory h_metadata(sizeof(int) * size_metadata);
+    cu::HostMemory h_subgrids(sizeof(complex<float>) * size_subgrids);
 
-    idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
-    idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
-    idg::init_spheroidal(spheroidal, subgridsize);
-    idg::init_grid(grid, gridsize, nr_polarizations);
-    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
-
-    clog << endl;
+    clog << ">>> Initialize data structures" << endl;
+    void *wavenumbers = idg::init_wavenumbers(nr_channels);
+    void *aterm       = idg::init_aterm(nr_stations, nr_timeslots, nr_polarizations, subgridsize);
+    void *spheroidal  = idg::init_spheroidal(subgridsize);
+    void *grid        = idg::init_grid(gridsize, nr_polarizations);
+    idg::init_visibilities(h_visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
+    idg::init_uvw(h_uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
+    idg::init_metadata(h_metadata, h_uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
+    d_wavenumbers.set(wavenumbers);
+    d_aterm.set(aterm);
+    d_spheroidal.set(spheroidal);
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
@@ -93,9 +94,9 @@ int main(int argc, char *argv[]) {
     clog << endl;
 
     // Run gridder
-//    clog << ">>> Run gridder" << endl;
-//    int jobsize_gridder = params.get_job_size_gridder();
-//    cuda.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    clog << ">>> Run gridder" << endl;
+    int jobsize_gridder = params.get_job_size_gridder();
+    cuda.grid_onto_subgrids(jobsize_gridder, context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 //
 //    clog << ">> Run adder" << endl;
 //    int jobsize_adder = params.get_job_size_adder();
@@ -113,14 +114,9 @@ int main(int argc, char *argv[]) {
 //    cuda.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 //
     // free memory for data structures
-    delete[] visibilities;
-    delete[] uvw;
-    delete[] wavenumbers;
-    delete[] aterm;
-    delete[] spheroidal;
-    delete[] grid;
-    delete[] subgrids;
-    delete[] metadata;
+    free(wavenumbers);
+    free(aterm);
+    free(spheroidal);
 
     return EXIT_SUCCESS;
 }

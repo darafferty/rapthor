@@ -18,21 +18,21 @@
 
 // High level method parameters
 #define CU_GRIDDER_PARAMETERS   cu::Context &context, unsigned nr_subgrids, float w_offset, \
-                                cu::HostMemory &uvw, cu::DeviceMemory &wavenumbers, \
-                                cu::HostMemory &visibilities, cu::DeviceMemory &spheroidal, cu::DeviceMemory &aterm, \
-                                cu::HostMemory &metadata, cu::HostMemory &subgrids
+                                cu::HostMemory &h_uvw, cu::DeviceMemory &d_wavenumbers, \
+                                cu::HostMemory &h_visibilities, cu::DeviceMemory &d_spheroidal, cu::DeviceMemory &d_aterm, \
+                                cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids
 #define CU_DEGRIDDER_PARAMETERS CU_GRIDDER_PARAMETERS
-#define CU_ADDER_PARAMETERS     cu::Context &context, unsigned nr_subgrids, cu::HostMemory &metadata, cu::HostMemory &subgrids, cu::HostMemory &grid
+#define CU_ADDER_PARAMETERS     cu::Context &context, unsigned nr_subgrids, cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids, cu::HostMemory &h_grid
 #define CU_SPLITTER_PARAMETERS  CU_ADDER_PARAMETERS
-#define CU_FFT_PARAMETERS       cu::Context &context, cu::HostMemory &grid, int direction
+#define CU_FFT_PARAMETERS       cu::Context &context, cu::HostMemory &h_grid, int direction
 
 // High level method arguments
-#define CU_GRIDDER_ARGUMENTS    context, nr_subgrids, w_offset, uvw, wavenumbers, visibilities, \
-                                spheroidal, aterm, metadata, subgrids
+#define CU_GRIDDER_ARGUMENTS    context, nr_subgrids, w_offset, h_uvw, d_wavenumbers, h_visibilities, \
+                                d_spheroidal, d_aterm, h_metadata, h_subgrids
 #define CU_DEGRIDDER_ARGUMENTS  CU_GRIDDER_ARGUMENTS
-#define CU_ADDER_ARGUMENTS      context, nr_subgrids, metadata, subgrids, grid
+#define CU_ADDER_ARGUMENTS      context, nr_subgrids, h_metadata, h_subgrids, h_grid
 #define CU_SPLITTER_ARGUMENTS   CU_ADDER_ARGUMENTS
-#define CU_FFT_ARGUMENTS        context, grid, direction
+#define CU_FFT_ARGUMENTS        context, h_grid, direction
 
 
 namespace idg {
@@ -83,7 +83,7 @@ namespace idg {
                                           idg::ImageDomainToFourierDomain
                  *  \param grid [in/out] ...
                  */
-                void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &grid);
+                void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid);
         
             // Low level routines
             protected:
