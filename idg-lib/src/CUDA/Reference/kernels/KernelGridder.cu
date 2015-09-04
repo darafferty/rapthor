@@ -22,7 +22,7 @@ __global__ void kernel_gridder(
 	int tidx = threadIdx.x;
 	int tidy = threadIdx.y;
 	int tid = tidx + tidy * blockDim.x;
-	int s = blockIdx.x + blockIdx.y;
+	int s = blockIdx.x;
 
     // Shared data
 	__shared__ UVW _uvw[NR_TIMESTEPS];

@@ -2,6 +2,9 @@
 #include <cstdlib> // size_t
 #include <complex>
 
+#include <cuda.h>
+#include <cudaProfiler.h>
+
 #include "CUDA/Reference/idg.h"
 
 #include "Init.h"  // Data init routines
@@ -28,7 +31,7 @@ int main(int argc, char *argv[]) {
     params.set_from_env();
 
     // Get device number
-    unsigned deviceNumber = 0;
+    unsigned deviceNumber = 1;
 
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
@@ -93,6 +96,9 @@ int main(int argc, char *argv[]) {
     idg::proxy::cuda::Reference cuda(params, deviceNumber);
     clog << endl;
 
+    // Start profiling
+    cuProfilerStart();
+
     // Run gridder
     clog << ">>> Run gridder" << endl;
     int jobsize_gridder = params.get_job_size_gridder();
@@ -113,6 +119,9 @@ int main(int argc, char *argv[]) {
 //    int jobsize_degridder = params.get_job_size_degridder();
 //    cuda.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 //
+    // Stop profiling
+    cuProfilerStop();
+
     // free memory for data structures
     free(wavenumbers);
     free(aterm);
