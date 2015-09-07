@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     params.set_from_env();
 
     // Get device number
-    unsigned deviceNumber = 1;
+    unsigned deviceNumber = 0;
 
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();

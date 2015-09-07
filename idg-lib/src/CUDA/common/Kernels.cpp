@@ -17,9 +17,8 @@ namespace idg {
         cu::DeviceMemory &d_aterm, cu::DeviceMemory &d_metadata,
         cu::DeviceMemory &d_subgrid) {
         const void *parameters[] = {
-            &w_offset, d_uvw, d_wavenumbers, d_visibilities,
+            &jobsize, &w_offset, d_uvw, d_wavenumbers, d_visibilities,
             d_spheroidal, d_aterm, d_metadata, d_subgrid };
-        printf("%s\n", __func__);
         int worksize = 128;
         stream.launchKernel(function, jobsize/worksize, 1, 1, 8, 8, 1, 0, parameters);
     }   
@@ -59,7 +58,7 @@ namespace idg {
         cu::DeviceMemory &d_aterm, cu::DeviceMemory &d_metadata,
         cu::DeviceMemory &d_subgrid) {
         const void *parameters[] = {
-            &w_offset, d_uvw, d_wavenumbers, d_visibilities,
+            &jobsize, &w_offset, d_uvw, d_wavenumbers, d_visibilities,
             d_spheroidal, d_aterm, d_metadata, d_subgrid };
     	stream.launchKernel(function, jobsize, 1, 1, 128, 1, 1, 0, parameters);
     }
