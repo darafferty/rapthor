@@ -328,8 +328,10 @@ namespace idg {
             cu::Stream htodstream;
             cu::Stream dtohstream;
 	        context.setCurrent();
-            cu::Event executeFinished;
 	        cu::Event inputFree;
+            cu::Event outputFree;
+            cu::Event inputReady;
+            cu::Event outputReady;
 
     	    // Private device memory
             int current_jobsize = jobsize;
@@ -344,8 +346,6 @@ namespace idg {
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
                 // Prevent overflow
                 current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
-
-                clog << "starting job of size " << current_jobsize << endl;
 
                 // Number of elements in batch
                 int uvw_elements          = nr_timesteps * 3;
@@ -362,11 +362,11 @@ namespace idg {
     	        // Copy input data to device
                 #pragma omp critical
                 {
-                    inputFree.synchronize();
                     htodstream.waitEvent(inputFree);
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, SIZEOF_VISIBILITIES);
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, SIZEOF_UVW);
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, SIZEOF_METADATA);
+                    htodstream.record(inputReady);
                 }
 
                 // Create FFT plan
@@ -375,26 +375,25 @@ namespace idg {
     	        #pragma omp critical
                 {
                     // Launch gridder kernel
-                    cu::Event event1;
-                    htodstream.record(event1);
-                    executestream.waitEvent(event1); 
+                    executestream.waitEvent(inputReady); 
+                    executestream.waitEvent(outputFree);
                     kernel_gridder.launchAsync(
                         executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-    	            executestream.record(inputFree);
                      
                     // Launch FFT
                     kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+    	            executestream.record(outputReady);
+                    executestream.record(inputFree);
                 }
 	        
     	        #pragma omp critical 
                 {
                     // Copy subgrid to host
-                    cu::Event event2;
-    	            dtohstream.waitEvent(event2);
-    	            dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, subgridsize);
+    	            dtohstream.waitEvent(outputReady);
+    	            dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, SIZEOF_SUBGRIDS);
+                    dtohstream.record(outputFree);
                 }
-
             } // end for s
 
             // Wait for final transfer to finish 
