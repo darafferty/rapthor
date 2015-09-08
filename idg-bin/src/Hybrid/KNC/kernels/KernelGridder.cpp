@@ -86,7 +86,6 @@ void kernel_gridder (
 
             // Compute phase indices and phase offsets
             for (int y = 0; y < subgridsize; y++) {
-                #pragma vector aligned
                 for (int x = 0; x < subgridsize; x++) {
                     // Compute l,m,n
                     float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
