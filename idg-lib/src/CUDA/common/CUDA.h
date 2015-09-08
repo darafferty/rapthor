@@ -63,19 +63,19 @@ namespace idg {
             public:
                 /** \brief Grid the visibilities onto uniform subgrids 
                            (visibilities -> subgrids). */
-                void grid_onto_subgrids(int jobsize, CU_GRIDDER_PARAMETERS);
+                void grid_onto_subgrids(CU_GRIDDER_PARAMETERS);
         
                 /** \brief Add subgrids to a gridd 
                            (subgrids -> grid). */
-                void add_subgrids_to_grid(int jobsize, CU_ADDER_PARAMETERS);
+                void add_subgrids_to_grid(CU_ADDER_PARAMETERS);
         
                 /** \brief Exctract subgrids from a grid 
                            (grid -> subgrids). */
-                void split_grid_into_subgrids(int jobsize, CU_SPLITTER_PARAMETERS);
+                void split_grid_into_subgrids(CU_SPLITTER_PARAMETERS);
         
                 /** \brief Degrid the visibilities from uniform subgrids 
                            (subgrids -> visibilities). */
-                void degrid_from_subgrids(int jobsize, CU_DEGRIDDER_PARAMETERS);
+                void degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS);
         
                 /** \brief Applyies (inverse) Fourier transform to grid 
                            (grid -> grid).
@@ -87,13 +87,13 @@ namespace idg {
         
             // Low level routines
             protected:
-                virtual void run_gridder(int jobsize, CU_GRIDDER_PARAMETERS);
+                virtual void run_gridder(CU_GRIDDER_PARAMETERS);
         
-                virtual void run_adder(int jobsize, CU_ADDER_PARAMETERS);
+                virtual void run_adder(CU_ADDER_PARAMETERS);
         
-                virtual void run_splitter(int jobsize, CU_SPLITTER_PARAMETERS);
+                virtual void run_splitter(CU_SPLITTER_PARAMETERS);
         
-                virtual void run_degridder(int jobsize, CU_DEGRIDDER_PARAMETERS);
+                virtual void run_degridder(CU_DEGRIDDER_PARAMETERS);
         
                 virtual void run_fft(CU_FFT_PARAMETERS);
 

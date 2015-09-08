@@ -152,51 +152,43 @@ namespace idg {
         }
 
 
-        void CUDA::grid_onto_subgrids(int jobsize, CU_GRIDDER_PARAMETERS)
+        void CUDA::grid_onto_subgrids(CU_GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
-            run_gridder(jobsize, CU_GRIDDER_ARGUMENTS);
+            run_gridder(CU_GRIDDER_ARGUMENTS);
         }
 
 
-        void CUDA::add_subgrids_to_grid(int jobsize, CU_ADDER_PARAMETERS)
+        void CUDA::add_subgrids_to_grid(CU_ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
-            run_adder(jobsize, CU_ADDER_ARGUMENTS);
+            run_adder(CU_ADDER_ARGUMENTS);
         }
 
 
-        void CUDA::split_grid_into_subgrids(int jobsize, CU_SPLITTER_PARAMETERS)
+        void CUDA::split_grid_into_subgrids(CU_SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
-            run_splitter(jobsize, CU_SPLITTER_ARGUMENTS);
+            run_splitter(CU_SPLITTER_ARGUMENTS);
         }
 
 
-        void CUDA::degrid_from_subgrids(int jobsize, CU_DEGRIDDER_PARAMETERS)
+        void CUDA::degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
-            run_degridder(jobsize, CU_DEGRIDDER_ARGUMENTS);
+            run_degridder(CU_DEGRIDDER_ARGUMENTS);
         }
 
         /*
@@ -212,7 +204,7 @@ namespace idg {
         /*
             Gridder
         */
-        void CUDA::run_gridder(int jobsize, CU_GRIDDER_PARAMETERS)
+        void CUDA::run_gridder(CU_GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -244,7 +236,8 @@ namespace idg {
             // Set jobsize to match available gpu memory
             uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
             uint64_t device_memory_available = device.free_memory();
-            jobsize = (device_memory_available * 0.6) / (device_memory_required * nr_streams);
+            int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
+
             // Make sure that jobsize isn't too large
             int max_jobsize = nr_subgrids / 2;
             if (jobsize >= max_jobsize) {
@@ -349,7 +342,7 @@ namespace idg {
 
 
 
-        void CUDA::run_adder(int jobsize, CU_ADDER_PARAMETERS)
+        void CUDA::run_adder(CU_ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -357,7 +350,7 @@ namespace idg {
         } // run_adder
 
 
-        void CUDA::run_splitter(int jobsize, CU_SPLITTER_PARAMETERS)
+        void CUDA::run_splitter(CU_SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
@@ -365,7 +358,7 @@ namespace idg {
         } // run_splitter
 
 
-        void CUDA::run_degridder(int jobsize, CU_DEGRIDDER_PARAMETERS)
+        void CUDA::run_degridder(CU_DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
