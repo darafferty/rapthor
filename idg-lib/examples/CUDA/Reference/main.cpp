@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     // Run gridder
     clog << ">>> Run gridder" << endl;
     cuda.grid_onto_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
-//
+
 //    clog << ">> Run adder" << endl;
 //    int jobsize_adder = params.get_job_size_adder();
 //    cuda.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
@@ -113,11 +113,10 @@ int main(int argc, char *argv[]) {
 //    clog << ">>> Run splitter" << endl;
 //    int jobsize_splitter = params.get_job_size_splitter();
 //    cuda.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
-//
-//    clog << ">>> Run degridder" << endl;
-//    int jobsize_degridder = params.get_job_size_degridder();
-//    cuda.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
-//
+
+    clog << ">>> Run degridder" << endl;
+    cuda.degrid_from_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+
     // Stop profiling
     cuProfilerStop();
 
