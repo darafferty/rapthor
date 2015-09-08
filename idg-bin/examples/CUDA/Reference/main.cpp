@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     params.set_from_env();
 
     // Get device number
-    unsigned deviceNumber = 0;
+    unsigned deviceNumber = 1;
 
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
@@ -101,8 +101,7 @@ int main(int argc, char *argv[]) {
 
     // Run gridder
     clog << ">>> Run gridder" << endl;
-    int jobsize_gridder = params.get_job_size_gridder();
-    cuda.grid_onto_subgrids(jobsize_gridder, context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+    cuda.grid_onto_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 //
 //    clog << ">> Run adder" << endl;
 //    int jobsize_adder = params.get_job_size_adder();
