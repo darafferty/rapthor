@@ -199,102 +199,14 @@ namespace idg {
             run_degridder(jobsize, CU_DEGRIDDER_ARGUMENTS);
         }
 
-#if 0
-        /*
-            State
-        */
-        class State {
-            public:
-                State();
-                int jobsize;
-                //Record startRecord;
-                //Record stopRecord;
-                double startTime;
-                double stopTime;
-                double runtime;
-                double flops;
-                double bytes;
-                //double power;
-                Parameters parameters;
-        };
-        
-        State::State() {
-            jobsize = 0;
-            runtime = 0;
-            flops   = 0;
-            bytes   = 0;
-            //power   = 0;
-        }
-#endif
-
         /*
             Size of data structures for a single job
         */
-        #define SIZEOF_SUBGRIDS current_jobsize * mParams.get_nr_polarizations() * mParams.get_subgrid_size() * mParams.get_subgrid_size() * sizeof(complex<float>)
-        #define SIZEOF_UVW     current_jobsize * mParams.get_nr_timesteps() * 3 * sizeof(float)
-        #define SIZEOF_VISIBILITIES current_jobsize * mParams.get_nr_timesteps() * mParams.get_nr_channels() * mParams.get_nr_polarizations() * sizeof(complex<float>)
-        #define SIZEOF_METADATA current_jobsize * 5 * sizeof(int)
+        #define SIZEOF_SUBGRIDS 1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
+        #define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
+        #define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
+        #define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
 
-#if 0
-        /*
-            Callbacks
-        */
-        void callback_gridder_input(CUstream, CUresult, void *userData) {
-            State *s = (State *) userData;
-            int current_jobsize = s->jobsize;
-            //s->runtime = runtime(s->startRecord, s->stopRecord);
-            s->runtime = s->stopTime - s->startTime;
-            s->flops = 0;
-            Parameters parameters = s->parameters;
-            s->bytes = SIZEOF_UVW + SIZEOF_VISIBILITIES;
-            //s->power = power(s->startRecord, s->stopRecord);
-            #ifdef REPORT_VERBOSE
-            report("  input", s->startRecord, s->stopRecord, s->flops, s->bytes);
-            #endif
-        }
-        
-        void callback_gridder_gridder(CUstream, CUresult, void *userData) {
-             State *s = (State *) userData;
-            int current_jobsize = s->jobsize;
-            //s->runtime = runtime(s->startRecord, s->stopRecord);
-            s->runtime = s->stopTime - s->startTime;
-            s->flops = KernelGridder::flops(current_jobsize);
-            s->bytes = KernelGridder::bytes(current_jobsize);
-            Parameters parameters = s->parameters;
-            //s->power = power(s->startRecord, s->stopRecord);
-            #ifdef REPORT_VERBOSE
-            report("gridder", s->startRecord, s->stopRecord, s->flops, s->bytes);
-            #endif
-        }
-        
-        void callback_gridder_fft(CUstream, CUresult, void *userData) {
-             State *s = (State *) userData;
-            int current_jobsize = s->jobsize;
-            //s->runtime = runtime(s->startRecord, s->stopRecord);
-            s->runtime = s->stopTime - s->startTime;
-            s->flops = KernelFFT::flops(SIZEOF_SUBGRIDS, current_jobsize);
-            s->bytes = KernelFFT::bytes(SIZEOF_SUBGRIDS, current_jobsize);
-            Parameters parameters = s->parameters;
-            //s->power = power(s->startRecord, s->stopRecord);
-            #ifdef REPORT_VERBOSE
-            report("    fft", s->startRecord, s->stopRecord, s->flops, s->bytes);
-            #endif
-        }
-        
-        void callback_gridder_output(CUstream, CUresult, void *userData) {
-            State *s = (State *) userData;
-            int current_jobsize = s->jobsize;
-            //s->runtime = runtime(s->startRecord, s->stopRecord);
-            s->runtime = s->stopTime - s->startTime;
-            s->flops = 0;
-            s->bytes = SIZEOF_SUBGRIDS;
-            Parameters parameters = s->parameters;
-            //s->power = power(s->startRecord, s->stopRecord);
-            #ifdef REPORT_VERBOSE
-            report(" output", s->startRecord, s->stopRecord, s->flops, s->bytes);
-            #endif
-        }
-#endif
 
         /// Low level routines
         /*
@@ -320,97 +232,114 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // load kernel functions
-            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
-            kernel::GridFFT kernel_fft;
+            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
+            kernel::GridFFT kernel_fft(mParams);
 
-	        // Initialize
+            // Initialize
             cu::Stream executestream;
             cu::Stream htodstream;
             cu::Stream dtohstream;
-	        context.setCurrent();
-	        cu::Event inputFree;
-            cu::Event outputFree;
-            cu::Event inputReady;
-            cu::Event outputReady;
+            const int nr_streams = 2;
 
-    	    // Private device memory
-            int current_jobsize = jobsize;
-        	cu::DeviceMemory d_visibilities(SIZEOF_VISIBILITIES);
-        	cu::DeviceMemory d_uvw(SIZEOF_UVW);
-    	    cu::DeviceMemory d_subgrids(SIZEOF_SUBGRIDS);
-            cu::DeviceMemory d_metadata(SIZEOF_METADATA);
+            // Set jobsize to match available gpu memory
+            uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
+            uint64_t device_memory_available = device.free_memory();
+            jobsize = (device_memory_available * 0.6) / (device_memory_required * nr_streams);
+            // Make sure that jobsize isn't too large
+            int max_jobsize = nr_subgrids / 2;
+            if (jobsize >= max_jobsize) {
+                jobsize = max_jobsize;
+            }
 
-            runtime = -omp_get_wtime();
+            #if defined (DEBUG)
+            clog << "nr_subgrids: " << nr_subgrids << endl;
+            clog << "jobsize:     " << jobsize << endl;
+            clog << "free size:   " << device_memory_available * 1e-9 << " Gb" << endl;
+            clog << "buffersize:  " << nr_streams * jobsize * device_memory_required * 1e-9 << " Gb" << endl;
+            #endif
+
+ 	        runtime = -omp_get_wtime();
 
             // Start gridder
-            for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
-                // Prevent overflow
-                current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+            #pragma omp parallel num_threads(nr_streams)
+            {
+                // Initialize
+	            context.setCurrent();
+	            cu::Event inputFree;
+                cu::Event outputFree;
+                cu::Event inputReady;
+                cu::Event outputReady;
+                int thread_num = omp_get_thread_num();
+                int current_jobsize = jobsize;
 
-                // Number of elements in batch
-                int uvw_elements          = nr_timesteps * 3;
-                int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
-                int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
-                int metadata_elements     = 5;
+        	    // Private device memory
+            	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
+            	cu::DeviceMemory d_uvw(jobsize * SIZEOF_UVW);
+        	    cu::DeviceMemory d_subgrids(jobsize * SIZEOF_SUBGRIDS);
+                cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
+    
+                for (unsigned int s = thread_num * jobsize; s < nr_subgrids; s += nr_streams * jobsize) {
+                    // Prevent overflow
+                    current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
-                // Pointers to data for current batch
-                void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
-                void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
-                void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
-                void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
+                    // Number of elements in batch
+                    int uvw_elements          = nr_timesteps * 3;
+                    int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
+                    int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                    int metadata_elements     = 5;
 
-    	        // Copy input data to device
-                #pragma omp critical
-                {
-                    htodstream.waitEvent(inputFree);
-                    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, SIZEOF_VISIBILITIES);
-                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, SIZEOF_UVW);
-                    htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, SIZEOF_METADATA);
-                    htodstream.record(inputReady);
-                }
+                    // Pointers to data for current batch
+                    void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
+                    void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
+                    void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
+                    void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
-                // Create FFT plan
-                kernel_fft.plan(subgridsize, current_jobsize);
+    	            // Copy input data to device
+                    #pragma omp critical
+                    {
+                        htodstream.waitEvent(inputFree);
+                        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
+                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
+                        htodstream.record(inputReady);
+                    }
 
-    	        #pragma omp critical
-                {
-                    // Launch gridder kernel
-                    executestream.waitEvent(inputReady); 
-                    executestream.waitEvent(outputFree);
-                    kernel_gridder.launchAsync(
-                        executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
-                        d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                     
-                    // Launch FFT
-                    kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
-    	            executestream.record(outputReady);
-                    executestream.record(inputFree);
-                }
-	        
-    	        #pragma omp critical 
-                {
-                    // Copy subgrid to host
-    	            dtohstream.waitEvent(outputReady);
-    	            dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, SIZEOF_SUBGRIDS);
-                    dtohstream.record(outputFree);
-                }
-            } // end for s
+                    // Create FFT plan
+                    kernel_fft.plan(subgridsize, current_jobsize);
 
-            // Wait for final transfer to finish 
-            dtohstream.synchronize();
+    	            #pragma omp critical
+                    {
+                        // Launch gridder kernel
+                        executestream.waitEvent(inputReady); 
+                        executestream.waitEvent(outputFree);
+                        kernel_gridder.launchAsync(
+                            executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
+                            d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                         
+                        // Launch FFT
+                        kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+    	                executestream.record(outputReady);
+                        executestream.record(inputFree);
+                    }
+	            
+    	            #pragma omp critical 
+                    {
+                        // Copy subgrid to host
+    	                dtohstream.waitEvent(outputReady);
+    	                dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, current_jobsize * SIZEOF_SUBGRIDS);
+                        dtohstream.record(outputFree);
+                    }
+                } // end for s
+
+                // Wait for final transfer to finish 
+                dtohstream.synchronize();
+            }
 
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             clog << endl;
             clog << "Total: gridding" << endl;
-            auxiliary::report("gridder", total_runtime_gridder,
-                              kernel_gridder.flops(nr_subgrids),
-                              kernel_gridder.bytes(nr_subgrids));
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft.flops(subgridsize, nr_subgrids),
-                              kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(runtime);
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
@@ -476,8 +405,9 @@ namespace idg {
             string compiler_parameters = " -arch=compute_" + to_string(capability) +
                                          " -code=sm_" + to_string(capability);
 
-            string parameters = " " + flags + " " + mparameters +
-                                " " + compiler_parameters;
+            string parameters = " " + flags + 
+                                " " + compiler_parameters +
+                                " " + mparameters;
 
             vector<string> v = mInfo.get_lib_names();
             #pragma omp parallel for
