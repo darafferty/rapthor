@@ -31,7 +31,8 @@ int main(int argc, char *argv[]) {
     params.set_from_env();
 
     // Get device number
-    unsigned deviceNumber = 1;
+    char *cstr_deviceNumber = getenv("CUDA_DEVICE");
+    unsigned deviceNumber = cstr_deviceNumber ? atoi (cstr_deviceNumber) : 0;
 
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
