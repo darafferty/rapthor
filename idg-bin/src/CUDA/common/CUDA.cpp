@@ -147,7 +147,7 @@ namespace idg {
             cout << "Transform direction: " << direction << endl;
             #endif
 
-            int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+            int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
             run_fft(CU_FFT_ARGUMENTS);
         }
 
@@ -198,6 +198,7 @@ namespace idg {
         #define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
         #define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
         #define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
+        #define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
 
 
         /// Low level routines
@@ -211,9 +212,7 @@ namespace idg {
             #endif
 
             // Performance measurements
-            double runtime, runtime_gridder, runtime_fft;
-            double total_runtime_gridder = 0;
-            double total_runtime_fft = 0;
+            double runtime = 0;
 
             // Constants
             auto nr_baselines = mParams.get_nr_baselines();
@@ -322,8 +321,8 @@ namespace idg {
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << endl;
             clog << "Total: gridding" << endl;
+            clog << "Runtime: " << runtime << " s" << endl;
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
@@ -353,9 +352,7 @@ namespace idg {
             #endif
 
             // Performance measurements
-            double runtime, runtime_gridder, runtime_fft;
-            double total_runtime_gridder = 0;
-            double total_runtime_fft = 0;
+            double runtime = 0;
 
             // Constants
             auto nr_baselines = mParams.get_nr_baselines();
@@ -434,7 +431,7 @@ namespace idg {
 
                     // Launch FFT
                     executestream.waitEvent(inputReady); 
-                    kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                    kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_FORWARD);
 
                     // Launch degridder kernel
                     executestream.waitEvent(outputFree);
@@ -458,8 +455,8 @@ namespace idg {
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << endl;
             clog << "Total: degridding" << endl;
+            clog << "Runtime: " << runtime << " s" << endl;
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
@@ -471,6 +468,45 @@ namespace idg {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
+
+            // Performance measurements
+            double runtime = 0;
+
+            // Constants
+            auto nr_polarizations = mParams.get_nr_polarizations();
+            auto gridsize = mParams.get_grid_size();
+            
+            // Initialize
+            context.setCurrent();
+            cu::Stream stream;
+
+            // Load kernel function
+            kernel::GridFFT kernel_fft(mParams);
+                   
+            // Create FFT plan
+            kernel_fft.plan(gridsize, 1);
+
+            // Copy grid to device
+            cu::DeviceMemory d_grid(SIZEOF_GRID);
+            stream.memcpyHtoDAsync(d_grid, h_grid);
+
+            // Launch FFT
+            runtime -= omp_get_wtime();
+            kernel_fft.launchAsync(stream, d_grid, sign);
+
+            // Copy grid to host
+            stream.memcpyDtoHAsync(h_grid, d_grid);
+
+            // Wait for all operations to finish
+            stream.synchronize();
+            runtime += omp_get_wtime();
+
+            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+            clog << "Runtime: " << runtime << " s" << endl;
+            clog << endl;
+            #endif
+
+
         } // run_fft
 
 
