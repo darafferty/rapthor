@@ -36,7 +36,7 @@ namespace cu {
 			std::cerr << " in function " << func;
 			std::cerr << ": " << Error(result).what();
 			std::cerr << std::endl;
-			//exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		}
 	}
 	#else
