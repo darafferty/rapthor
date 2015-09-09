@@ -148,12 +148,14 @@ namespace idg {
         int nr_polarizations = parameters.get_nr_polarizations();
 
         // Execute bulk ffts
+        (*fft_bulk).setStream(stream);
         for (; s < (planned_batch - bulk_size); s += bulk_size) {
             (*fft_bulk).execute(data_ptr, data_ptr, direction);
             data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
         }
 
         // Execute remainder ffts
+        (*fft_remainder).setStream(stream);
         (*fft_remainder).execute(data_ptr, data_ptr, direction);
     }
     

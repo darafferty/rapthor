@@ -225,7 +225,6 @@ namespace idg {
 
             // load kernel functions
             kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
-            kernel::GridFFT kernel_fft(mParams);
 
             // Initialize
             cu::Stream executestream;
@@ -264,6 +263,7 @@ namespace idg {
                 cu::Event outputReady;
                 int thread_num = omp_get_thread_num();
                 int current_jobsize = jobsize;
+                kernel::GridFFT kernel_fft(mParams);
 
         	    // Private device memory
             	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -288,40 +288,31 @@ namespace idg {
                     void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
     	            // Copy input data to device
-                    #pragma omp critical
-                    {
-                        htodstream.waitEvent(inputFree);
-                        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
-                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
-                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
-                        htodstream.record(inputReady);
-                    }
+                    htodstream.waitEvent(inputFree);
+                    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
+                    htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
+                    htodstream.record(inputReady);
 
                     // Create FFT plan
                     kernel_fft.plan(subgridsize, current_jobsize);
 
-    	            #pragma omp critical
-                    {
-                        // Launch gridder kernel
-                        executestream.waitEvent(inputReady); 
-                        executestream.waitEvent(outputFree);
-                        kernel_gridder.launchAsync(
-                            executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
-                            d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                         
-                        // Launch FFT
-                        kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
-    	                executestream.record(outputReady);
-                        executestream.record(inputFree);
-                    }
-	            
-    	            #pragma omp critical 
-                    {
-                        // Copy subgrid to host
-    	                dtohstream.waitEvent(outputReady);
-    	                dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, current_jobsize * SIZEOF_SUBGRIDS);
-                        dtohstream.record(outputFree);
-                    }
+                    // Launch gridder kernel
+                    executestream.waitEvent(inputReady); 
+                    executestream.waitEvent(outputFree);
+                    kernel_gridder.launchAsync(
+                        executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
+                        d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                     
+                    // Launch FFT
+                    kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                    executestream.record(outputReady);
+                    executestream.record(inputFree);
+
+                    // Copy subgrid to host
+                    dtohstream.waitEvent(outputReady);
+                    dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, current_jobsize * SIZEOF_SUBGRIDS);
+                    dtohstream.record(outputFree);
                 } // end for s
 
                 // Wait for final transfer to finish 
@@ -336,8 +327,7 @@ namespace idg {
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
-       } // run_gridder
-
+        } // run_gridder
 
 
         void CUDA::run_adder(CU_ADDER_PARAMETERS)
@@ -375,15 +365,14 @@ namespace idg {
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
 
-            // load kernel functions
+            // load kernel
             kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
-            kernel::GridFFT kernel_fft(mParams);
 
             // Initialize
+            const int nr_streams = 2;
             cu::Stream executestream;
             cu::Stream htodstream;
             cu::Stream dtohstream;
-            const int nr_streams = 2;
 
             // Set jobsize to match available gpu memory
             uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
@@ -409,6 +398,7 @@ namespace idg {
                 cu::Event outputReady;
                 int thread_num = omp_get_thread_num();
                 int current_jobsize = jobsize;
+                kernel::GridFFT kernel_fft(mParams);
 
         	    // Private device memory
             	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -433,42 +423,33 @@ namespace idg {
                     void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
     	            // Copy input data to device
-                    #pragma omp critical
-                    {
-                        htodstream.waitEvent(inputFree);
-                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
-    	                htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, current_jobsize * SIZEOF_SUBGRIDS);
-                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
-                        htodstream.record(inputReady);
-                    }
+                    inputFree.synchronize();
+                    htodstream.waitEvent(inputFree);
+                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
+                    htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, current_jobsize * SIZEOF_SUBGRIDS);
+                    htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
+                    htodstream.record(inputReady);
 
                     // Create FFT plan
                     kernel_fft.plan(subgridsize, current_jobsize);
 
-    	            #pragma omp critical
-                    {
-                        executestream.waitEvent(inputReady); 
-                        executestream.waitEvent(outputFree);
+                    // Launch FFT
+                    executestream.waitEvent(inputReady); 
+                    kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
 
-                        // Launch FFT
-                        kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
-
-                        // Launch degridder kernel
-                        kernel_degridder.launchAsync(
-                            executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
-                            d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                         
-    	                executestream.record(outputReady);
-                        executestream.record(inputFree);
-                   }
-	            
-    	            #pragma omp critical 
-                    {
-                        // Copy visibilities to host
-    	                dtohstream.waitEvent(outputReady);
-                        dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, current_jobsize * SIZEOF_VISIBILITIES);
-                        dtohstream.record(outputFree);
-                    }
+                    // Launch degridder kernel
+                    executestream.waitEvent(outputFree);
+                    kernel_degridder.launchAsync(
+                        executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
+                        d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                     
+                    executestream.record(outputReady);
+                    executestream.record(inputFree);
+            
+                    // Copy visibilities to host
+                    dtohstream.waitEvent(outputReady);
+                    dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, current_jobsize * SIZEOF_VISIBILITIES);
+                    dtohstream.record(outputFree);
                 } // end for s
 
                 // Wait for final transfer to finish 
