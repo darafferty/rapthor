@@ -123,8 +123,9 @@ namespace idg {
         int nr_polarizations = parameters.get_nr_polarizations();
        
         // Plan bulk fft
-        if (fft_bulk == NULL ||
-            size != planned_size) {
+        if ((fft_bulk == NULL ||
+            size != planned_size) &&
+            batch > bulk_size) {
             fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
         }
 
@@ -148,11 +149,13 @@ namespace idg {
         int s = 0;
         int nr_polarizations = parameters.get_nr_polarizations();
 
-        // Execute bulk ffts
-        (*fft_bulk).setStream(stream);
-        for (; s < (planned_batch - bulk_size); s += bulk_size) {
-            (*fft_bulk).execute(data_ptr, data_ptr, direction);
-            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+        // Execute bulk ffts (if any)
+        if (planned_batch > bulk_size) {
+            (*fft_bulk).setStream(stream);
+            for (; s < (planned_batch - bulk_size); s += bulk_size) {
+                (*fft_bulk).execute(data_ptr, data_ptr, direction);
+                data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+            }
         }
 
         // Execute remainder ffts

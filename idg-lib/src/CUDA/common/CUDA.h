@@ -24,7 +24,7 @@
 #define CU_DEGRIDDER_PARAMETERS CU_GRIDDER_PARAMETERS
 #define CU_ADDER_PARAMETERS     cu::Context &context, unsigned nr_subgrids, cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids, cu::HostMemory &h_grid
 #define CU_SPLITTER_PARAMETERS  CU_ADDER_PARAMETERS
-#define CU_FFT_PARAMETERS       cu::Context &context, cu::HostMemory &h_grid, int direction
+#define CU_FFT_PARAMETERS       cu::Context &context, cu::HostMemory &h_grid, int sign
 
 // High level method arguments
 #define CU_GRIDDER_ARGUMENTS    context, nr_subgrids, w_offset, h_uvw, d_wavenumbers, h_visibilities, \
@@ -32,7 +32,7 @@
 #define CU_DEGRIDDER_ARGUMENTS  CU_GRIDDER_ARGUMENTS
 #define CU_ADDER_ARGUMENTS      context, nr_subgrids, h_metadata, h_subgrids, h_grid
 #define CU_SPLITTER_ARGUMENTS   CU_ADDER_ARGUMENTS
-#define CU_FFT_ARGUMENTS        context, h_grid, direction
+#define CU_FFT_ARGUMENTS        context, h_grid, sign
 
 
 namespace idg {
