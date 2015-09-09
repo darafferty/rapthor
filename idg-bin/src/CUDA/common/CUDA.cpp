@@ -423,7 +423,6 @@ namespace idg {
                     void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
     	            // Copy input data to device
-                    inputFree.synchronize();
                     htodstream.waitEvent(inputFree);
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
                     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, current_jobsize * SIZEOF_SUBGRIDS);
