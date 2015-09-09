@@ -21,7 +21,7 @@ namespace idg {
         const void *parameters[] = {
             &jobsize, &w_offset, d_uvw, d_wavenumbers, d_visibilities,
             d_spheroidal, d_aterm, d_metadata, d_subgrid };
-        int worksize = 128;
+        int worksize = 16;
         stream.launchKernel(function, jobsize/worksize, 1, 1, 8, 8, 1, 0, parameters);
     }   
     
@@ -72,7 +72,8 @@ namespace idg {
         const void *parameters[] = {
             &jobsize, &w_offset, d_uvw, d_wavenumbers, d_visibilities,
             d_spheroidal, d_aterm, d_metadata, d_subgrid };
-    	stream.launchKernel(function, jobsize, 1, 1, 128, 1, 1, 0, parameters);
+        int worksize = 16;
+    	stream.launchKernel(function, jobsize/worksize, 1, 1, 128, 1, 1, 0, parameters);
     }
     
     uint64_t Degridder::flops(int jobsize) {
