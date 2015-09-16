@@ -19,6 +19,7 @@ set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
 option (BUILD_MIC_OFFLOAD "Build support for KNC offload" OFF) 
 option (BUILD_WITH_CUDA "Have CUDA environment" OFF)
+option (BUILD_WITH_OPENCL "Have OpenCL environment" OFF)
 option (BUILD_EXAMPLES "Build examples executables" OFF) 
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
@@ -68,15 +69,17 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDEBUG")
 # (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
 if (BUILD_WITH_CUDA)
   find_package(CUDA)
-  if (CUDA_FOUND)
-    message("CUDA VERSION: " ${CUDA_VERSION})
-    message("CUDA_INCLUDE_DIRS: " ${CUDA_INCLUDE_DIRS})
-    message("CUDA_LIBRARIES: " ${CUDA_LIBRARIES})
-    message("CUDA_CUFFT_LIBRARIES: " ${CUDA_CUFFT_LIBRARIES})
-    message("CUDA_CUBLAS_LIBRARIES:" ${CUDA_CUBLAS_LIBRARIES})
-    # ...
-  endif (CUDA_FOUND)
 endif (BUILD_WITH_CUDA)
+
+
+# sset cmake module path
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
+# find OpenCL environment
+# (see http://www.cmake.org/cmake/help/v3.1/module/FindOpenCL.html)
+if (BUILD_WITH_OPENCL)
+    find_package(OpenCL)
+endif (BUILD_WITH_OPENCL)
 
 # set default path to build executables and libraries in BINARY_DIR
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
