@@ -611,22 +611,24 @@ namespace idg {
                                 " " + compiler_parameters;
 
             vector<string> v = mInfo.get_lib_names();
+
             #pragma omp parallel for
             for (int i = 0; i < v.size(); i++) {
-                string libname = v[i];
+                string libname = mInfo.get_lib_names()[i];
+
                 // create shared object "libname"
                 string lib = mInfo.get_path_to_lib() + "/" + libname;
 
                 vector<string> source_files = mInfo.get_source_files(libname);
 
-                string source;
+                stringstream source;
                 for (auto src : source_files) {
-                    source += mInfo.get_path_to_src() + "/" + src + " ";
+                    source << mInfo.get_path_to_src() << "/" << src << " ";
                 } // source = a.cpp b.cpp c.cpp ...
 
-                cout << lib << " " << source << " " << endl;
+                cout << lib << " " << source.str() << " " << endl;
 
-                runtime::Source(source.c_str()).compile(compiler.c_str(),
+                runtime::Source(source.str().c_str()).compile(compiler.c_str(),
                                                         lib.c_str(),
                                                         parameters.c_str());
             } // for each library

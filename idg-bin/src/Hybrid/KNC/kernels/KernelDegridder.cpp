@@ -10,6 +10,8 @@
 
 #include "Types.h"
 
+#define NR_POLARIZATIONS 4
+
 namespace idg {
 
 void kernel_degridder(
@@ -63,11 +65,11 @@ void kernel_degridder(
         int y_coordinate = m.coordinate.y;
 
         // Storage for precomputed values
-        FLOAT_COMPLEX _pixels[subgridsize][subgridsize][nr_polarizations] __attribute__((aligned(32)));
-        float phasor_real[nr_channels][subgridsize][subgridsize] __attribute__((aligned(32)));
-        float phasor_imag[nr_channels][subgridsize][subgridsize] __attribute__((aligned(32)));
-        float phase_index[subgridsize][subgridsize]  __attribute__((aligned(32)));
-        float phase_offset[subgridsize][subgridsize] __attribute__((aligned(32)));
+        FLOAT_COMPLEX _pixels[NR_POLARIZATIONS][subgridsize][subgridsize] __attribute__((aligned(64)));
+        float phasor_real[nr_channels][subgridsize][subgridsize] __attribute__((aligned(64)));
+        float phasor_imag[nr_channels][subgridsize][subgridsize] __attribute__((aligned(64)));
+        float phase_index[subgridsize][subgridsize]  __attribute__((aligned(64)));
+        float phase_offset[subgridsize][subgridsize] __attribute__((aligned(64)));
 
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + subgridsize/2) / imagesize;
@@ -102,22 +104,22 @@ void kernel_degridder(
                 FLOAT_COMPLEX pixelsYY = _spheroidal * (*subgrid)[s][3][y_src][x_src];
 
                 // Apply aterm to subgrid
-                _pixels[y][x][0]  = pixelsXX * aXX1;
-                _pixels[y][x][0] += pixelsXY * aYX1;
-                _pixels[y][x][0] += pixelsXX * aXX2;
-                _pixels[y][x][0] += pixelsYX * aYX2;
-                _pixels[y][x][1]  = pixelsXX * aXY1;
-                _pixels[y][x][1] += pixelsXY * aYY1;
-                _pixels[y][x][1] += pixelsXY * aXX2;
-                _pixels[y][x][1] += pixelsYY * aYX2;
-                _pixels[y][x][2]  = pixelsYX * aXX1;
-                _pixels[y][x][2] += pixelsYY * aYX1;
-                _pixels[y][x][2] += pixelsXX * aXY2;
-                _pixels[y][x][2] += pixelsYX * aYY2;
-                _pixels[y][x][3]  = pixelsYX * aXY1;
-                _pixels[y][x][3] += pixelsYY * aYY1;
-                _pixels[y][x][3] += pixelsXY * aXY2;
-                _pixels[y][x][3] += pixelsYY * aYY2;
+                _pixels[0][y][x]  = pixelsXX * aXX1;
+                _pixels[0][y][x] += pixelsXY * aYX1;
+                _pixels[0][y][x] += pixelsXX * aXX2;
+                _pixels[0][y][x] += pixelsYX * aYX2;
+                _pixels[1][y][x]  = pixelsXX * aXY1;
+                _pixels[1][y][x] += pixelsXY * aYY1;
+                _pixels[1][y][x] += pixelsXY * aXX2;
+                _pixels[1][y][x] += pixelsYY * aYX2;
+                _pixels[2][y][x]  = pixelsYX * aXX1;
+                _pixels[2][y][x] += pixelsYY * aYX1;
+                _pixels[2][y][x] += pixelsXX * aXY2;
+                _pixels[2][y][x] += pixelsYX * aYY2;
+                _pixels[3][y][x]  = pixelsYX * aXY1;
+                _pixels[3][y][x] += pixelsYY * aYY1;
+                _pixels[3][y][x] += pixelsXY * aXY2;
+                _pixels[3][y][x] += pixelsYY * aYY2;
             }
         }
 
@@ -145,8 +147,8 @@ void kernel_degridder(
             }
 
             // Compute phasor
-            for (int chan = 0; chan < nr_channels; chan++) {
-                for (int y = 0; y < subgridsize; y++) {
+            for (int y = 0; y < subgridsize; y++) {
+                for (int chan = 0; chan < nr_channels; chan++) {
                     for (int x = 0; x < subgridsize; x++) {
                         // Compute phase
                         float wavenumber = (*wavenumbers)[chan];
@@ -159,28 +161,17 @@ void kernel_degridder(
                 }
             }
 
-            FLOAT_COMPLEX sum[nr_polarizations] __attribute__((aligned(32)));
-
-            for (int chan = 0; chan < nr_channels; chan++) {
-                memset(sum, 0, nr_polarizations * sizeof(FLOAT_COMPLEX));
-
-                for (int y = 0; y < subgridsize; y++) {
-                    for (int x = 0; x < subgridsize; x++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
-
-                        // Update all polarizations
-                        sum[0] += _pixels[y][x][0] * phasor;
-                        sum[1] += _pixels[y][x][1] * phasor;
-                        sum[2] += _pixels[y][x][2] * phasor;
-                        sum[3] += _pixels[y][x][3] * phasor;
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    FLOAT_COMPLEX sum;
+                    for (int y = 0; y < subgridsize; y++) {
+                        for (int x = 0; x < subgridsize; x++) {
+                            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
+                            sum += _pixels[pol][y][x] * phasor;
+                        }
                     }
+                    (*visibilities)[s][time][chan][pol] = sum;
                 }
-
-                // Set visibilities
-                (*visibilities)[s][time][chan][0] = sum[0];
-                (*visibilities)[s][time][chan][1] = sum[1];
-                (*visibilities)[s][time][chan][2] = sum[2];
-                (*visibilities)[s][time][chan][3] = sum[3];
             }
         }
 	}

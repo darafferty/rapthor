@@ -144,7 +144,7 @@ void kernel_degridder_intel(
 
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
+                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
 
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             sum[pol] += _pixels[y][x][pol] * phasor;
