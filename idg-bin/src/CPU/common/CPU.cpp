@@ -109,7 +109,7 @@ namespace idg {
             #endif
 
             string  srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CPU/reference/kernels";
+                + "/src/CPU/Reference/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
@@ -160,9 +160,6 @@ namespace idg {
 
         void CPU::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
         {
-            cout << "CPU::" << __func__ << endl;
-            return;
-            
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
