@@ -15,11 +15,12 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
-# options (to be edited as not functional yet)
+# options
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
 option (BUILD_MIC_OFFLOAD "Build support for KNC offload" OFF) 
 option (BUILD_WITH_CUDA "Have CUDA environment" OFF)
 option (BUILD_WITH_OPENCL "Have OpenCL environment" OFF)
+option (BUILD_WITH_PYTHON "Have Python environment" OFF)
 option (BUILD_EXAMPLES "Build examples executables" OFF) 
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
@@ -71,8 +72,7 @@ if (BUILD_WITH_CUDA)
   find_package(CUDA)
 endif (BUILD_WITH_CUDA)
 
-
-# sset cmake module path
+# set cmake module path
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # find OpenCL environment
