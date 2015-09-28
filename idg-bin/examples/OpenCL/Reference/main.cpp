@@ -2,8 +2,7 @@
 #include <cstdlib> // size_t
 #include <complex>
 
-#define __CL_ENABLE_EXCEPTIONS
-#include <CL/cl.h>
+#include <opencl.h>
 
 #include "OpenCL/Reference/idg.h"
 
@@ -12,17 +11,26 @@
 using namespace std;
 
 void printDevices(int deviceNumber) {
-	std::clog << "Devices";
-#if 0
-	for (int device = 0; device < cu::Device::getCount(); device++) {
-		std::clog << "\t" << device << ": ";
-		std::clog << cu::Device(device).getName();
-		if (device == deviceNumber) {
+    // Get context
+	cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
+
+	// Get devices
+	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+	
+	std::clog << "Devices" << std::endl;
+	for (int d = 0; d < devices.size(); d++) {
+		cl::Device device = devices[d];
+		device_info_t devInfo = getDeviceInfo(device);    
+		std::clog << "Device: "			  << devInfo.deviceName;
+		if (d == deviceNumber) {
 			std::clog << "\t" << "<---";
 		}
 		std::clog << std::endl;
-	}
-#endif
+		std::clog << "Driver version  : " << devInfo.driverVersion << std::endl;
+		std::clog << "Compute units   : " << devInfo.numCUs << std::endl;
+		std::clog << "Clock frequency : " << devInfo.maxClockFreq << " MHz" << std::endl;
+        std::clog << std::endl;
+    }
 	std::clog << "\n";
 }
 
@@ -32,9 +40,8 @@ int main(int argc, char *argv[]) {
     idg::Parameters params;
     params.set_from_env();
 
-#if 0
     // Get device number
-    char *cstr_deviceNumber = getenv("CUDA_DEVICE");
+    char *cstr_deviceNumber = getenv("OPENCL_DEVICE");
     unsigned deviceNumber = cstr_deviceNumber ? atoi (cstr_deviceNumber) : 0;
 
     // retrieve constants for memory allocation
@@ -53,15 +60,16 @@ int main(int argc, char *argv[]) {
     clog << params;
     clog << endl;
 
-    // Initialize CUDA
-    std::clog << ">>> Initialize CUDA" << std::endl;
-    cu::init();
-    cu::Device device(deviceNumber);
-    cu::Context context(device);
-    context.setCurrent();
+    // Initialize OpenCL
+    std::clog << ">>> Initialize OpenCL" << std::endl;
+    cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
+    std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+    cl::Device device = devices[deviceNumber];
+    cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
-    // Show CUDA devices
+    // Show OpenCL devices
     printDevices(deviceNumber);
+#if 0
 
     // Allocate data structures
     clog << ">>> Allocate data structures" << endl;

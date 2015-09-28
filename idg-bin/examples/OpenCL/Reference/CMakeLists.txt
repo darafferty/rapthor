@@ -8,6 +8,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/examples/common/utility
   ${CMAKE_SOURCE_DIR}/src/OpenCL/common
   ${CMAKE_SOURCE_DIR}/src/common
+  ${CMAKE_SOURCE_DIR}/examples/OpenCL/common
  )
 
 set (${PROJECT_NAME}_sources 
@@ -20,7 +21,6 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories (${LIBRARY_OUTPUT_PATH}) 
 
-message(${OPENCL_LIBRARIES})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-examples-common
