@@ -240,6 +240,7 @@ namespace idg {
               mParams.get_subgrid_size());
 
             string parameters = " " + flags + 
+                                " " + "-I " + mInfo.get_path_to_src() +
                                 " " + mparameters;
 
             // Create vector of devices
