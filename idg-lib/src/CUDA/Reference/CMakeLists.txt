@@ -14,6 +14,7 @@ set (${PROJECT_NAME}_headers
 
 set (${PROJECT_NAME}_sources
   Reference.cpp
+  Kernels.cpp
 )
 
 # create library
