@@ -29,10 +29,10 @@ namespace idg {
 	        stringstream command_line;
 	        command_line << compiler;
 	        command_line << " -fPIC -shared -DRW";
-	        command_line << compiler_options;
 	        command_line << " -o ";
 	        command_line << output_file_name;
 	        command_line << ' ' << input_file_name;
+	        command_line << ' ' << compiler_options;
 	        
 	        clog << command_line.str() << endl;
 	        
