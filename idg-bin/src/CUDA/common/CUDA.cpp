@@ -106,7 +106,7 @@ namespace idg {
             cout << "CUDA::" << __func__ << endl;
             #endif
 
-            string srcdir = string(IDG_SOURCE_DIR) 
+            string srcdir = string(IDG_SOURCE_DIR) + 
                 + "/src/CUDA/Reference/kernels";
 
             #if defined(DEBUG)

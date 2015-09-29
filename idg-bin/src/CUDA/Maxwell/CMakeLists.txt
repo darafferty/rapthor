@@ -1,23 +1,20 @@
-project(idg-cuda-common)
+project(idg-cuda-maxwell)
 
 # external header files needed
 include_directories (
   ${CUDA_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src/common
+  ${CMAKE_SOURCE_DIR}/src/CUDA/common
 )
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  CU.h
-  CUFFT.h
-  CUDA.h
-  Kernels.h
+  Maxwell.h
 )
 
 set (${PROJECT_NAME}_sources
-  CU.cpp
-  CUFFT.cpp
-  CUDA.cpp
+  Maxwell.cpp
+  Kernels.cpp
 )
 
 # create library
@@ -27,7 +24,7 @@ add_library(
   )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-cuda-common)
+target_link_libraries(${PROJECT_NAME} idg-cuda-maxwell)
 
 # Set installation directory
 install(TARGETS ${PROJECT_NAME}
@@ -36,12 +33,23 @@ install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   )
 
+# Copy kernel source files
+install(
+    FILES
+    kernels/KernelAdder.cpp
+    kernels/KernelDegridder.cpp
+    kernels/KernelFFT.cpp
+    kernels/KernelGridder.cpp
+    kernels/KernelSplitter.cpp
+    DESTINATION
+    lib/kernels/GPU/Maxwell
+)
+
 # Copy header files
 install(
     FILES
-    CPU.h
-    idg-cuda.h
-    Kernels.h
+    idg.h
+    Reference.h
     DESTINATION
-    include/CUDA
+    include/GPU/Maxwell
 )
