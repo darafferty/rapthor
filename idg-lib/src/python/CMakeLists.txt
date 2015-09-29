@@ -1,7 +1,9 @@
 find_package(Boost REQUIRED COMPONENTS python)
 find_package(PythonLibs)
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+message(${CMAKE_MODULE_PATH})
+
+find_package(FFTW3)
 find_package(Numpy)
 
 include_directories(
@@ -14,21 +16,27 @@ include_directories(
 
 add_library(_idg MODULE idg.cpp)
 TARGET_LINK_LIBRARIES( 
-  _idg 
+  _idg
   idg-cpu-common
   idg-common
   ${Boost_LIBRARIES} 
+  ${FFTW3_LIBRARY} 
 )
 
 set_target_properties(_idg PROPERTIES
   PREFIX ""
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/idg")
 
-add_custom_target( init ALL
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_BINARY_DIR}/lib/idg
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/testidg.py ${CMAKE_BINARY_DIR}/lib)
-  
+set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python2.7/dist-packages)
 # Install Python modules.
-# install(FILES __init__.py DESTINATION ${PYTHON_INSTALL_DIR}/idg)
+install(FILES __init__.py DESTINATION ${PYTHON_INSTALL_DIR}/idg/)
+install(TARGETS _idg DESTINATION ${PYTHON_INSTALL_DIR}/idg/)
+
+install(
+  FILES testidg.py 
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/
+  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+)
+
 
 
