@@ -259,7 +259,7 @@ namespace idg {
     parameters << " -DNR_BASELINES=" << nr_baselines;
     parameters << " -DNR_CHANNELS=" << nr_channels;
     parameters << " -DNR_TIMESTEPS=" << nr_timesteps;
-    parameters << " -DNR_TIMESLOTS=" << nr_timesteps;
+    parameters << " -DNR_TIMESLOTS=" << nr_timeslots;
     parameters << " -DIMAGESIZE=" << imagesize;
     parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
     parameters << " -DGRIDSIZE=" << grid_size;
