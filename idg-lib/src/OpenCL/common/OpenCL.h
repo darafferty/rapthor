@@ -43,7 +43,6 @@ namespace idg {
                 /// Constructors
                 OpenCL(Parameters params,
                     unsigned deviceNumber = 0,
-                    Compiler compiler = default_compiler(),
                     Compilerflags flags = default_compiler_flags(),
                     ProxyInfo info = default_info());
     
@@ -51,7 +50,6 @@ namespace idg {
     
                 // Get default values 
                 static ProxyInfo default_info();
-                static std::string default_compiler();
                 static std::string default_compiler_flags();
     
                 // Get parameters of proxy
@@ -101,7 +99,7 @@ namespace idg {
                 static std::string make_tempdir();
                 static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
 
-                void compile(Compiler compiler, Compilerflags flags);
+                void compile(Compilerflags flags);
                 void parameter_sanity_check();
                 void load_shared_objects();
                 void find_kernel_functions();
@@ -111,9 +109,8 @@ namespace idg {
                 Parameters mParams; // remove if inherited from Proxy
                 ProxyInfo mInfo; // info about shared object files
         
-                // store the ptr to Module, which each loads an .ptx-file
-                //std::vector<cu::Module*> modules;
-                std::map<std::string,int> which_module;
+                std::vector<cl::Program*> programs;
+                std::map<std::string,int> which_program;
         }; // class OpenCL
     
     } // namespace proxy

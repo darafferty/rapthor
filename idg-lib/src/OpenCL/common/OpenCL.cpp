@@ -3,6 +3,7 @@
 #include <ctime> // time() to init srand()
 #include <complex>
 #include <sstream>
+#include <fstream>
 #include <memory>
 #include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
@@ -25,22 +26,25 @@ namespace idg {
         OpenCL::OpenCL(
             Parameters params,
             unsigned deviceNumber,
-            Compiler compiler,
             Compilerflags flags,
             ProxyInfo info)
+          : mInfo(info)
         {
-//          : device(deviceNumber),
-//            mInfo(info)
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
-            cout << "Compiler: " << compiler << endl;
             cout << "Compiler flags: " << flags << endl;
             cout << params;
             #endif
+            // Get context
+        	cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
+        
+        	// Get devices
+        	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+            device = devices[deviceNumber];
 
             mParams = params;
             parameter_sanity_check(); // throws exception if bad parameters
-            compile(compiler, flags);
+            compile(flags);
             load_shared_objects();
             find_kernel_functions();
         }
@@ -68,40 +72,27 @@ namespace idg {
             #endif
         }
 
-        string OpenCL::make_tempdir() {
-            char _tmpdir[] = "/tmp/idg-XXXXXX";
-            char *tmpdir = mkdtemp(_tmpdir);
-            #if defined(DEBUG)
-            cout << "Temporary files will be stored in: " << tmpdir << endl;
-            #endif
-            return tmpdir;
-        }
-
         ProxyInfo OpenCL::default_proxyinfo(string srcdir, string tmpdir) {
             ProxyInfo p;
             p.set_path_to_src(srcdir);
             p.set_path_to_lib(tmpdir);
 
-            #if 0
-            string libgridder = "Gridder.ptx";
-            string libdegridder = "Degridder.ptx";
-            string libadder = "Adder.ptx";
-            string libsplitter = "Splitter.ptx";
+            string libgridder = "Gridder";
+            //string libdegridder = "Degridder";
 
             p.add_lib(libgridder);
-            p.add_lib(libdegridder);
-            p.add_lib(libadder);
-            p.add_lib(libsplitter);
+            //p.add_lib(libdegridder);
 
-            p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
-            p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
-            p.add_src_file_to_lib(libadder, "KernelAdder.cu");
-            p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
-            #endif
+            p.add_src_file_to_lib(libgridder, "KernelGridder.cl");
+            //p.add_src_file_to_lib(libdegridder, "KernelDegridder.cl");
 
             p.set_delete_shared_objects(true);
 
             return p;
+        }
+
+        string OpenCL::default_compiler_flags() {
+            return "-cl-fast-relaxed-math";
         }
 
         ProxyInfo OpenCL::default_info()
@@ -117,27 +108,14 @@ namespace idg {
             cout << "Searching for source files in: " << srcdir << endl;
             #endif
  
-            // Create temp directory
-            string tmpdir = make_tempdir();
+            // Temp dir is not used for OpenCL
+            string tmpdir = "";
  
             // Create proxy info
-            ProxyInfo p = default_proxyinfo(srcdir, tmpdir);
+            ProxyInfo p = default_proxyinfo(srcdir, "");
 
             return p;
         }
-
-
-        string OpenCL::default_compiler() 
-        {
-            return "";
-        }
-        
-
-        string OpenCL::default_compiler_flags() 
-        {
-            return "";
-        }
-
 
         /// High level routines
         void OpenCL::transform(DomainAtoDomainB direction, cl::Context &context, cl::Buffer &h_grid)
@@ -243,16 +221,14 @@ namespace idg {
             #endif
         } // run_fft
 
-
-        void OpenCL::compile(Compiler compiler, Compilerflags flags)
+        void OpenCL::compile(Compilerflags flags)
         {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
 
-            #if 0
             // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-            string mparameters =  Parameters::definitions(
+            string mparameters = Parameters::definitions(
               mParams.get_nr_stations(),
               mParams.get_nr_baselines(),
               mParams.get_nr_channels(),
@@ -262,38 +238,53 @@ namespace idg {
               mParams.get_nr_polarizations(),
               mParams.get_grid_size(),
               mParams.get_subgrid_size());
-            #endif
-
-            #if 0
-            // Add device capability
-            int capability = 10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-                                  device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
-            string compiler_parameters = " -arch=compute_" + to_string(capability) +
-                                         " -code=sm_" + to_string(capability);
 
             string parameters = " " + flags + 
-                                " " + compiler_parameters +
                                 " " + mparameters;
 
+            // Create vector of devices
+            std::vector<cl::Device> devices;
+            devices.push_back(device);
+
+            // Get context
+            cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
+
             vector<string> v = mInfo.get_lib_names();
+
+            // Build OpenCL programs
             #pragma omp parallel for
             for (int i = 0; i < v.size(); i++) {
                 string libname = v[i];
                 // create shared object "libname"
                 string lib = mInfo.get_path_to_lib() + "/" + libname;
 
+                // Get source filename (vector should only have one element)
                 vector<string> source_files = mInfo.get_source_files(libname);
+                string source_file_name = mInfo.get_path_to_src() + "/" + source_files[0];
 
-                string source;
-                for (auto src : source_files) {
-                    source += mInfo.get_path_to_src() + "/" + src + " ";
-                } // source = a.cpp b.cpp c.cpp ...
+                // Read source from file
+                ifstream source_file(source_file_name.c_str());
+                string source(std::istreambuf_iterator<char>(source_file),
+                                  (std::istreambuf_iterator<char>()));
+                source_file.close();
 
-                cout << lib << " " << source << " " << endl;
-
-                cu::Source(source.c_str()).compile(lib.c_str(), parameters.c_str());
+                cout << lib << " " << source_files[0] << " " << endl;
+                cl::Program program(context, source);
+                try {
+                    program.build(devices, parameters.c_str());
+                    //programs.push_back(program);
+                    std::string msg;
+                    program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+                    cout << msg;
+                } catch (cl::Error &error) {
+                    if (strcmp(error.what(), "clBuildProgram") == 0) {
+                        std::string msg;
+                        program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+                        std::cerr << msg << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                }
             } // for each library
-            #endif
         } // compile
 
         void OpenCL::parameter_sanity_check()
