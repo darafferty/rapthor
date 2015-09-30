@@ -46,7 +46,7 @@ void kernel_gridder(
                 memset(pixels, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
                 // Compute l,m,n
-                float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                 float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
  

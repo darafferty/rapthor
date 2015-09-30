@@ -64,20 +64,7 @@ void grid_onto_subgrids(
   boost::python::numeric::array subgrids
 )
 {
-  std::cout << "grid_onto_subgrids" << std::endl;
-  std::cout <<     jobsize << std::endl;
-  std::cout <<     nr_subgrids << std::endl;
-  std::cout <<     w_offset << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(uvw.ptr()))->data) << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(wavenumbers.ptr()))->data) << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(visibilities.ptr()))->data) << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(spheroidal.ptr()))->data) << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(aterm.ptr()))->data) << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(metadata.ptr()))->data) << std::endl;
-  std::cout <<     (void*)(((PyArrayObject*)(subgrids.ptr()))->data) << std::endl;
-   
-  std::cout << (void*)p << std::endl;
-
+  // TODO: check type and shape of arrays
   p->grid_onto_subgrids(
     jobsize,
     nr_subgrids,
@@ -92,30 +79,25 @@ void grid_onto_subgrids(
   );
 }
 
-// class ProxyWrap : public Proxy, public wrapper<Proxy>
-// {
-  
-//   void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
-//     {
-      // check parameters
-//       uvw
-//       wavenumbers
-//       visibilities
-//       spheroidal
-//       aterm
-//       metadata
-//       subgrids
-      
-//       this->get_override("grid_onto_subgrids")(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
-//     }
-//     
-//    void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS) {}
-//     
-//    void split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS) {}
-//     
-//    void degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS) {}
 
-// };
+void add_subgrids_to_grid(
+  Proxy *p, 
+  int jobsize, 
+  unsigned nr_subgrids, 
+  boost::python::numeric::array metadata, 
+  boost::python::numeric::array subgrids, 
+  boost::python::numeric::array grid
+)
+{
+  // TODO: check type and shape of arrays
+  p->add_subgrids_to_grid(
+    jobsize,
+    nr_subgrids,
+    ((PyArrayObject*)(metadata.ptr()))->data,
+    ((PyArrayObject*)(subgrids.ptr()))->data,
+    ((PyArrayObject*)(grid.ptr()))->data
+  );
+}
 
 BOOST_PYTHON_MODULE(_idg)
 {
@@ -147,9 +129,10 @@ BOOST_PYTHON_MODULE(_idg)
   
   class_<Proxy, boost::noncopyable>("Proxy", no_init)
   .def("grid_onto_subgrids", &grid_onto_subgrids)
+  .def("add_subgrids_to_grid", &add_subgrids_to_grid)
+  
   ;
   
-//   class_<proxy::CPU, bases<proxy::Proxy>>("CPU", init<Parameters>());
   class_<proxy::CPU, bases<proxy::Proxy>>("CPU", init<Parameters>());
 }
 
