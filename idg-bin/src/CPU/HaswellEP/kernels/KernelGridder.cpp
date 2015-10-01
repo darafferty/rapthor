@@ -41,8 +41,8 @@ void kernel_gridder_intel(
         int y_coordinate = m.coordinate.y;
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
         // Initialize private subgrid
         FLOAT_COMPLEX pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
@@ -67,7 +67,7 @@ void kernel_gridder_intel(
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     // Compute l,m,n
-                    float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                    float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 

@@ -6,6 +6,41 @@ import idg
 import pyrap.tables
 import matplotlib.pyplot as plt
 
+def func_spheroidal(nu):
+  P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
+              [ 4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
+  Q = numpy.array([[1.0000000e0, 8.212018e-1, 2.078043e-1],
+              [1.0000000e0, 9.599102e-1, 2.918724e-1]])
+  part = 0;
+  end = 0.0;
+  if (nu >= 0.0 and nu < 0.75):
+    part = 0
+    end = 0.75
+  elif (nu >= 0.75 and nu <= 1.00):
+    part = 1
+    end = 1.00
+  else:
+    return 0.0
+
+  nusq = nu * nu
+  delnusq = nusq - end * end
+  delnusqPow = delnusq
+  top = P[part][0]
+  for k in range(1,5):
+    top += P[part][k] * delnusqPow
+    delnusqPow *= delnusq
+
+  bot = Q[part][0]
+  delnusqPow = delnusq
+  for k in range(1,3):
+    bot += Q[part][k] * delnusqPow
+    delnusqPow *= delnusq
+
+  if bot == 0:
+    result = 0
+  else:
+    result = (1.0 - nusq) * (top / bot)
+  return result
 
 class BaselineBuffer :
   def __init__(self, antenna1, antenna2, parameters) :
@@ -43,14 +78,25 @@ class DataBuffer :
     self.wavelengths = numpy.array(speed_of_light / freqs, dtype=numpy.float32)
     self.wavenumbers = numpy.array(2*numpy.pi / self.wavelengths, dtype=numpy.float32)
 
-    self.visibilities =  numpy.zeros((nr_subgrids, p.nr_timesteps, p.nr_channels, p.nr_polarizations), dtype = numpy.complex64)
+    self.visibilities =  numpy.zeros((nr_subgrids, parameters.nr_timesteps, parameters.nr_channels, parameters.nr_polarizations), dtype = numpy.complex64)
 
-    self.spheroidal = numpy.ones((p.subgrid_size, p.subgrid_size), dtype = numpy.float32)
 
     self.aterm = numpy.zeros((p.nr_stations, p.nr_timeslots, p.nr_polarizations, p.subgrid_size, p.subgrid_size), dtype = numpy.complex64)
 
     self.aterm[:,:,0,:,:] = 1.0
     self.aterm[:,:,3,:,:] = 1.0
+    
+    #self.spheroidal = numpy.ones((p.subgrid_size, p.subgrid_size), dtype = numpy.float32)
+    x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(p.subgrid_size, dtype=numpy.float32) / (p.subgrid_size-1) - 1.0], dtype = numpy.float32)
+    self.spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
+    
+    s = numpy.fft.fft2(self.spheroidal)
+    s = numpy.fft.fftshift(s)
+    s1 = numpy.zeros((p.grid_size, p.grid_size), dtype = numpy.complex64)
+    s1[(p.grid_size-p.subgrid_size)/2:(p.grid_size+p.subgrid_size)/2, (p.grid_size-p.subgrid_size)/2:(p.grid_size+p.subgrid_size)/2] = s
+    s1 = numpy.fft.ifftshift(s1)
+    self.spheroidal1 = numpy.real(numpy.fft.ifft2(s1))
+
 
     self.subgrids = numpy.zeros((nr_subgrids, p.nr_polarizations, p.subgrid_size, p.subgrid_size), dtype = numpy.complex64)
 
@@ -68,8 +114,13 @@ class DataBuffer :
     for i in range(N_ant):
       for j in range(N_ant):
         self.baselinebuffers[i,j] = BaselineBuffer(i,j,parameters)
-  
+    
+  def clear(self):
+    self.grid[:] = 0
+    
   def append(self, row):
+    self.time = row['TIME']
+
     if row['ANTENNA1'] == row['ANTENNA2']:
       return
     baselinebuffer = self.baselinebuffers[row['ANTENNA1'], row['ANTENNA2']]
@@ -102,6 +153,7 @@ class DataBuffer :
   def flush(self):
     jobsize = 10000
     w_offset = 0
+
     proxy.grid_onto_subgrids(
       jobsize, 
       self.count, 
@@ -120,14 +172,22 @@ class DataBuffer :
       self.metadata,
       self.subgrids,
       self.grid)
+    
     print "***"
     plt.ion()
-    plt.figure(1)
-    plt.clf()
-    subplot(1,2,1)
-    plt.imshow(log(abs(self.grid[0,:,:])))
-    subplot(1,2,2)
-    plt.imshow(real(fft.fftshift(fft.fft2(fft.fftshift(databuffer.grid[0,:,:])))))
+    plt.figure(1, figsize=(20,10))
+    plt.subplot(1,2,1)
+    plt.cla()
+    plt.imshow(numpy.log(numpy.abs(self.grid[0,:,:])), interpolation='nearest')
+    plt.title("UV Data - tijd %2.2i:%2.2i" % (numpy.mod(int(self.time/3600 ),24), numpy.mod(int(self.time/60),60) ))
+    plt.subplot(1,2,2)
+    plt.cla()
+    img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
+    img = img/self.spheroidal1
+    img = img[int(self.parameters.grid_size*0.9):int(self.parameters.grid_size*0.1):-1,int(self.parameters.grid_size*0.9):int(self.parameters.grid_size*0.1):-1]
+    m = numpy.amax(img)
+    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=plt.get_cmap("YlGnBu_r"))
+    plt.title("Radio kaart")
     plt.show()
     plt.draw()
     
@@ -138,7 +198,7 @@ p = idg.Parameters()
 
 w_offset = 0.0
 
-nr_subgrids = 2000
+nr_subgrids = 3000
 
 #t = pyrap.tables.table('/home/vdtol/cep1home/imagtest2/COV.beam_on.one.MS')
 t = pyrap.tables.table('/data/scratch/vdtol/idg_test1/RX42_SB100-109.2ch10s.ms')
@@ -149,18 +209,16 @@ p.nr_stations = len(t_ant)
 p.nr_channels = t[0]["CORRECTED_DATA"].shape[0]
 p.nr_timesteps = 10
 p.nr_timeslots = 1
-p.imagesize = 0.1
+p.imagesize = 0.12
 p.grid_size = 1000
 p.subgrid_size = 32
 p.job_size = 10000
 
-proxy = idg.CPU(p)
+proxy = idg.HaswellEP(p)
 
 databuffer = DataBuffer(p, nr_subgrids, freqs, proxy)
 
 
-j = 0
-k = 0
 
 N = 1000
 
@@ -174,25 +232,29 @@ rowtype = numpy.dtype([
   ('DATA', complex, (p.nr_channels, p.nr_polarizations))
 ])
 
-block = numpy.zeros(N, dtype = rowtype)
 
-for i in range(t.nrows()):
-#for i in range(800000):
-  if (j == 0):
-    block = block[0:min(t.nrows() - i, N)]
-    block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
-    block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
-    block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
-    block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
-    block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
-  databuffer.append(block[j])
-  j += 1
-  if j == N:
-    j = 0
-    k += 1
-t1 = time.time()
-databuffer.flush()
-print t1-t0
+while True:
+  block = numpy.zeros(N, dtype = rowtype)
+  j = 0
+  k = 0
+  for i in range(t.nrows()):
+    if (j == 0):
+      block = block[0:min(t.nrows() - i, N)]
+      block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
+      block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
+      block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
+      block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
+      block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
+    databuffer.append(block[j])
+    j += 1
+    if j == N:
+      j = 0
+      k += 1
+  t1 = time.time()
+  databuffer.flush()
+  time.sleep(30)
+  databuffer.clear()
+  
 
 
 

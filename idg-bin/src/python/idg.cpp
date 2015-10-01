@@ -4,7 +4,8 @@
 #include <boost/python/extract.hpp>
 
 #include <AbstractProxy.h>
-#include <CPU/common/idg-cpu.h>
+// #include <CPU/Reference/idg.h>
+#include <CPU/HaswellEP/idg.h>
 
 #include <iostream>
 
@@ -133,7 +134,8 @@ BOOST_PYTHON_MODULE(_idg)
   
   ;
   
-  class_<proxy::CPU, bases<proxy::Proxy>>("CPU", init<Parameters>());
+//   class_<proxy::cpu::Reference, bases<proxy::Proxy>>("Reference", init<Parameters>());
+  class_<proxy::cpu::HaswellEP, bases<proxy::Proxy>>("HaswellEP", init<Parameters>());
 }
 
 
