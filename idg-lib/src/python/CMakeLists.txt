@@ -19,6 +19,8 @@ TARGET_LINK_LIBRARIES(
   _idg
   idg-cpu-common
   idg-common
+  idg-cpu-haswellep
+  idg-cpu-reference
   ${Boost_LIBRARIES} 
   ${FFTW3_LIBRARY} 
 )
