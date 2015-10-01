@@ -14,8 +14,8 @@
 #include <dlfcn.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
-#include "CPU.h"
-#include "Kernels.h"
+#include "../common/CPU.h"
+#include "../common/Kernels.h"
 
 namespace idg {
     namespace proxy {
