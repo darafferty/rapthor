@@ -117,6 +117,9 @@ class DataBuffer :
     
   def clear(self):
     self.grid[:] = 0
+    for i in range(self.parameters.nr_stations):
+      for j in range(self.parameters.nr_stations):
+        self.baselinebuffers[i,j].clear()
     
   def append(self, row):
     self.time = row['TIME']
@@ -174,8 +177,9 @@ class DataBuffer :
       self.grid)
     
     print "***"
-    plt.ion()
-    plt.figure(1, figsize=(20,10))
+    plt.pause(0.001)
+    #plt.figure(1, figsize=(20,10))
+    plt.figure(1)
     plt.subplot(1,2,1)
     plt.cla()
     plt.imshow(numpy.log(numpy.abs(self.grid[0,:,:])), interpolation='nearest')
