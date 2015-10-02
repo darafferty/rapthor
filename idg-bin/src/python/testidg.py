@@ -64,6 +64,7 @@ class BaselineBuffer :
 class DataBuffer :
   
   def __init__(self, parameters, nr_subgrids, freqs, proxy) :
+    self.data = []
     self.parameters = parameters
     self.proxy = proxy
     self.count = 0
@@ -120,6 +121,7 @@ class DataBuffer :
     for i in range(self.parameters.nr_stations):
       for j in range(self.parameters.nr_stations):
         self.baselinebuffers[i,j].clear()
+    self.data = []
     
   def append(self, row):
     self.time = row['TIME']
@@ -154,47 +156,10 @@ class DataBuffer :
     
   
   def flush(self):
+    print "***"
     jobsize = 10000
     w_offset = 0
-
-    proxy.grid_onto_subgrids(
-      jobsize, 
-      self.count, 
-      w_offset, 
-      self.uvw, 
-      self.wavenumbers, 
-      self.visibilities, 
-      self.spheroidal, 
-      self.aterm, 
-      self.metadata, 
-      self.subgrids)
-    
-    proxy.add_subgrids_to_grid(
-      jobsize,
-      self.count,
-      self.metadata,
-      self.subgrids,
-      self.grid)
-    
-    print "***"
-    plt.pause(0.001)
-    #plt.figure(1, figsize=(20,10))
-    plt.figure(1)
-    plt.subplot(1,2,1)
-    plt.cla()
-    plt.imshow(numpy.log(numpy.abs(self.grid[0,:,:])), interpolation='nearest')
-    plt.title("UV Data - tijd %2.2i:%2.2i" % (numpy.mod(int(self.time/3600 ),24), numpy.mod(int(self.time/60),60) ))
-    plt.subplot(1,2,2)
-    plt.cla()
-    img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
-    img = img/self.spheroidal1
-    img = img[int(self.parameters.grid_size*0.9):int(self.parameters.grid_size*0.1):-1,int(self.parameters.grid_size*0.9):int(self.parameters.grid_size*0.1):-1]
-    m = numpy.amax(img)
-    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=plt.get_cmap("YlGnBu_r"))
-    plt.title("Radio kaart")
-    plt.show()
-    plt.draw()
-    
+    self.data.append((self.time, self.count, self.uvw.copy(), self.visibilities.copy(), self.metadata.copy()))
     self.count = 0
     
   
@@ -237,59 +202,70 @@ rowtype = numpy.dtype([
 ])
 
 
+block = numpy.zeros(N, dtype = rowtype)
+j = 0
+k = 0
+for i in range(t.nrows()):
+  if (j == 0):
+    block = block[0:min(t.nrows() - i, N)]
+    block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
+    block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
+    block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
+    block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
+    block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
+  databuffer.append(block[j])
+  j += 1
+  if j == N:
+    j = 0
+    k += 1
+t1 = time.time()
+databuffer.flush()
+
+jobsize = 10000
+w_offset = 0
+
 while True:
-  block = numpy.zeros(N, dtype = rowtype)
-  j = 0
-  k = 0
-  for i in range(t.nrows()):
-    if (j == 0):
-      block = block[0:min(t.nrows() - i, N)]
-      block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
-      block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
-      block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
-      block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
-      block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
-    databuffer.append(block[j])
-    j += 1
-    if j == N:
-      j = 0
-      k += 1
-  t1 = time.time()
-  databuffer.flush()
-  time.sleep(30)
-  databuffer.clear()
+
+  for time1, count, uvw, visibilities, metadata in databuffer.data:
   
-
-
-
-#for i in range(150,160):
-  #plt.figure()
-  #plt.imshow(numpy.fft.fftshift(abs(databuffer.subgrids[i,0,:,:])), interpolation='nearest')
-#plt.show()
-
-
-
-#proxy.grid_onto_subgrids(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids)
-
-
-#typedef struct { float u, v, w; } UVW;
-#typedef struct { int x, y; } Coordinate;
-#typedef struct { int station1, station2; } Baseline;
-#typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
-
-#/*
-    #Complex numbers
-#*/
-##define FLOAT_COMPLEX std::complex<float>
-
-#/*
-    #Datatypes
-#*/
-#typedef UVW UVWType[1][NR_TIMESTEPS];
-#typedef FLOAT_COMPLEX VisibilitiesType[1][NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
-#typedef float WavenumberType[NR_CHANNELS];
-#typedef FLOAT_COMPLEX ATermType[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
-#typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
-#typedef FLOAT_COMPLEX GridType[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE];
-#typedef FLOAT_COMPLEX SubGridType[1][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
-#typedef Metadata MetadataType[1];
+    proxy.grid_onto_subgrids(
+      jobsize, 
+      count, 
+      w_offset, 
+      uvw, 
+      databuffer.wavenumbers, 
+      visibilities, 
+      databuffer.spheroidal, 
+      databuffer.aterm, 
+      metadata, 
+      databuffer.subgrids)
+    
+    proxy.add_subgrids_to_grid(
+      jobsize,
+      count,
+      metadata,
+      databuffer.subgrids,
+      databuffer.grid)
+    
+    print "+++"
+    plt.pause(0.001)
+    #plt.figure(1, figsize=(20,10))
+    plt.figure(1)
+    plt.subplot(1,2,1)
+    plt.cla()
+    plt.imshow(numpy.log(numpy.abs(databuffer.grid[0,:,:])), interpolation='nearest')
+    plt.title("UV Data - tijd %2.2i:%2.2i" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60) ))
+    plt.subplot(1,2,2)
+    plt.cla()
+    img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
+    img = img/databuffer.spheroidal1
+    img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
+    m = numpy.amax(img)
+    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=plt.get_cmap("YlGnBu_r"))
+    plt.title("Radio kaart")
+    plt.show()
+    plt.draw()
+    
+  time.sleep(3)
+  databuffer.grid[:] = 0
+  
