@@ -147,10 +147,9 @@ class DataBuffer :
     if row['ANTENNA1'] == row['ANTENNA2']:
       return
     baselinebuffer = self.baselinebuffers[row['ANTENNA1'], row['ANTENNA2']]
-    if baselinebuffer.append(row) :
-      r = self.append_subgrid(baselinebuffer)
+    if baselinebuffer.append(row):
+      self.append_subgrid(baselinebuffer)
       baselinebuffer.clear()
-      return r
 
   def append_subgrid(self, baselinebuffer):
     # Set u and v for middle channel
@@ -179,7 +178,7 @@ class DataBuffer :
         return True
 
   def flush(self):
-    jobsize = 10000
+    jobsize = 0
     w_offset = 0
     self.data.append((self.time, self.count, self.uvw.copy(), self.visibilities.copy(), self.metadata.copy()))
     self.count = 0
@@ -193,6 +192,12 @@ t_ant = pyrap.tables.table(t.getkeyword("ANTENNA"))
 t_spw = pyrap.tables.table(t.getkeyword("SPECTRAL_WINDOW"))
 freqs = t_spw[0]['CHAN_FREQ']
 
+# Set parameters
+w_offset = 0.0
+nr_subgrids = 500
+jobsize = 100
+w_offset = 0
+
 # Initialize parameters
 p = idg.Parameters()
 p.nr_stations = len(t_ant)
@@ -202,23 +207,16 @@ p.nr_timeslots = 1
 p.imagesize = 0.12
 p.grid_size = 1000
 p.subgrid_size = 32
-p.job_size = 1000
+p.job_size = jobsize
 
 # Initialize proxy
 proxy = idg.HaswellEP(p)
 
-# Set parameters
-w_offset = 0.0
-nr_subgrids = 100
-jobsize = 10000
-w_offset = 0
-
 # Initialize databuffer
 databuffer = DataBuffer(p, nr_subgrids, freqs, proxy)
 
-
 # Number of samples to read in a single block
-N = 3000
+N = 40000
 
 # Data row description
 rowtype = numpy.dtype([
@@ -231,21 +229,16 @@ rowtype = numpy.dtype([
 
 # Read measurementset one block at a time
 block = numpy.zeros(N, dtype = rowtype)
-j = 0 # TODO, elimante j and used range with increment set to N
-nr_rows = t.nrows()/30
-for i in range(nr_rows):
-  if (j == 0):
-    block = block[0:min(t.nrows() - i, N)]
+nr_rows = t.nrows() # Divide by 10 to process only 10% of the data
+for i in range(0, nr_rows, N):
+    print("Reading data: %.1f %%" % (float(i) / nr_rows * 100))
     block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
     block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
     block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
     block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
     block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
-    print("Reading data: %.1f %%" % (float(i) / nr_rows * 100))
-  databuffer.append(block[j])
-  j += 1
-  if j == N:
-    j = 0
+    for j in range(N):
+        databuffer.append(block[j])
 databuffer.flush()
 
 # Enable interactive plotting
@@ -255,6 +248,9 @@ plt.ion()
 while True:
   frame_number = 0
   for time1, count, uvw, visibilities, metadata in databuffer.data:
+    # Print progress
+    print "Imaging: %.1f%%"  %(float(frame_number) / len(databuffer.data) * 100)
+
     # Grid visibilities onto subgrids
     proxy.grid_onto_subgrids(
       jobsize,
@@ -285,9 +281,6 @@ while True:
     # Crop image
     #TODO: why is this needed?
     img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
-
-    # Print progress
-    print "Imaging: %.1f%%"  %(float(frame_number) / len(databuffer.data) * 100)
 
     # Set plot properties
     colormap=plt.get_cmap("YlGnBu_r")
