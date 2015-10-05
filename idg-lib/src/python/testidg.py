@@ -5,6 +5,23 @@ import time
 import idg
 import pyrap.tables
 import matplotlib.pyplot as plt
+import signal
+
+def signal_handler(signal, frame):
+    exit()
+signal.signal(signal.SIGINT, signal_handler)
+
+def aligned(a, alignment=32):
+    if (a.ctypes.data % alignment) == 0:
+        return a
+
+    extra = alignment / a.itemsize
+    buf = numpy.empty(a.size + extra, dtype=a.dtype)
+    ofs = (-buf.ctypes.data % alignment) / a.itemsize
+    aa = buf[ofs:ofs+a.size].reshape(a.shape)
+    numpy.copyto(aa, a)
+    assert (aa.ctypes.data % alignment) == 0
+    return aa
 
 def func_spheroidal(nu):
   P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
@@ -110,6 +127,9 @@ class DataBuffer :
 
     self.metadata = numpy.zeros(nr_subgrids, dtype=metadatatype)
 
+    self.visibilities = aligned(self.visibilities)
+    self.uvw = aligned(self.uvw)
+    self.subgrids = aligned(self.subgrids)
 
     self.baselinebuffers = numpy.zeros((N_ant, N_ant), dtype = object)
     for i in range(N_ant):
@@ -167,21 +187,21 @@ p = idg.Parameters()
 
 w_offset = 0.0
 
-nr_subgrids = 3000
+nr_subgrids = 100
 
 #t = pyrap.tables.table('/home/vdtol/cep1home/imagtest2/COV.beam_on.one.MS')
-t = pyrap.tables.table('/data/scratch/vdtol/idg_test1/RX42_SB100-109.2ch10s.ms')
+t = pyrap.tables.table('/local/data/RX42_SB100-109.2ch10s.ms')
 t_ant = pyrap.tables.table(t.getkeyword("ANTENNA"))
 t_spw = pyrap.tables.table(t.getkeyword("SPECTRAL_WINDOW"))
 freqs = t_spw[0]['CHAN_FREQ']
 p.nr_stations = len(t_ant)
 p.nr_channels = t[0]["CORRECTED_DATA"].shape[0]
-p.nr_timesteps = 10
+p.nr_timesteps = 16
 p.nr_timeslots = 1
 p.imagesize = 0.12
 p.grid_size = 1000
 p.subgrid_size = 32
-p.job_size = 10000
+p.job_size = 1000
 
 proxy = idg.HaswellEP(p)
 
@@ -205,6 +225,7 @@ rowtype = numpy.dtype([
 block = numpy.zeros(N, dtype = rowtype)
 j = 0
 k = 0
+#for i in range(t.nrows()/10):
 for i in range(t.nrows()):
   if (j == 0):
     block = block[0:min(t.nrows() - i, N)]
@@ -223,9 +244,10 @@ databuffer.flush()
 
 jobsize = 10000
 w_offset = 0
+plt.ion()
 
 while True:
-
+  frame_number = 0
   for time1, count, uvw, visibilities, metadata in databuffer.data:
   
     proxy.grid_onto_subgrids(
@@ -248,24 +270,40 @@ while True:
       databuffer.grid)
     
     print "+++"
-    plt.pause(0.001)
+    #plt.pause(0.001)
+    colormap=plt.get_cmap("YlGnBu_r")
+    font_size = 22
     #plt.figure(1, figsize=(20,10))
+    plt.figure(1, figsize=(30,15))
     plt.figure(1)
     plt.subplot(1,2,1)
     plt.cla()
+    ax = plt.gca()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_axis_bgcolor(colormap(0))
     plt.imshow(numpy.log(numpy.abs(databuffer.grid[0,:,:])), interpolation='nearest')
-    plt.title("UV Data - tijd %2.2i:%2.2i" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60) ))
+    plt.title("UV Data: %2.2i:%2.2i\n" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60) ))
+    ax.title.set_fontsize(font_size) 
     plt.subplot(1,2,2)
     plt.cla()
+    #img = numpy.real(databuffer.grid[0,:,:])
     img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
     img = img/databuffer.spheroidal1
     img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
     m = numpy.amax(img)
-    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=plt.get_cmap("YlGnBu_r"))
-    plt.title("Radio kaart")
+    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+    plt.title("Sky image\n")
+    ax = plt.gca()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.title.set_fontsize(font_size) 
+
     plt.show()
     plt.draw()
-    
-  time.sleep(3)
+    #plt.savefig("frame_%04d.png" % (frame_number))
+    frame_number += 1
+  break
+  time.sleep(30)
   databuffer.grid[:] = 0
   
