@@ -6,6 +6,14 @@ import idg
 import pyrap.tables
 import matplotlib.pyplot as plt
 import signal
+import argparse
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Run image domain gridding on a measurement set')
+parser.add_argument(dest='msin', nargs=1, type=str, help='path to measurement set')
+args = parser.parse_args()
+msin = args.msin[0]
+print(args.msin)
 
 # Set signal handler to exit when ctrl-c is pressed
 def signal_handler(signal, frame):
@@ -184,8 +192,7 @@ class DataBuffer :
     self.count = 0
 
 # Open measurementset
-#t = pyrap.tables.table('/home/vdtol/cep1home/imagtest2/COV.beam_on.one.MS')
-t = pyrap.tables.table('/local/data/RX42_SB100-109.2ch10s.ms')
+t = pyrap.tables.table(msin)
 
 # Read parameters from measurementset
 t_ant = pyrap.tables.table(t.getkeyword("ANTENNA"))
