@@ -3,27 +3,41 @@
 #include "idg-config.h"
 #include "Kernels.h"
 
+using namespace std;
+
 namespace idg {
 
   namespace kernel {
 
-#if 0
     // Gridder class
-    Gridder::Gridder(cu::Module &module, Parameters &parameters) :
-        function(module, name_gridder.c_str()),
+    Gridder::Gridder(cl::Program &program, Parameters &parameters) :
+        kernel(program, name_gridder.c_str()),
         parameters(parameters) {}
     
     void Gridder::launchAsync(
-        cu::Stream &stream, int jobsize, float w_offset,
-        cu::DeviceMemory &d_uvw, cu::DeviceMemory &d_wavenumbers,
-        cu::DeviceMemory &d_visibilities, cu::DeviceMemory &d_spheroidal,
-        cu::DeviceMemory &d_aterm, cu::DeviceMemory &d_metadata,
-        cu::DeviceMemory &d_subgrid) {
-        const void *parameters[] = {
-            &jobsize, &w_offset, d_uvw, d_wavenumbers, d_visibilities,
-            d_spheroidal, d_aterm, d_metadata, d_subgrid };
-        int worksize = 16;
-        stream.launchKernel(function, jobsize/worksize, 1, 1, 8, 8, 1, 0, parameters);
+        cl::CommandQueue &queue, int jobsize, float w_offset,
+        cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
+        cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
+        cl::Buffer &d_aterm, cl::Buffer &d_metadata,
+        cl::Buffer &d_subgrid) {
+        int wgSize = 8;
+        cl::NDRange globalSize(jobsize * wgSize, wgSize);
+        cl::NDRange localSize(wgSize, wgSize);
+        kernel.setArg(0, w_offset);
+        kernel.setArg(1, d_uvw);
+        kernel.setArg(2, d_wavenumbers);
+        kernel.setArg(3, d_visibilities);
+        kernel.setArg(4, d_spheroidal);
+        kernel.setArg(5, d_aterm);
+        kernel.setArg(6, d_metadata);
+        kernel.setArg(7, d_subgrid);
+        try {
+            cl::Event event;
+            queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+        } catch (cl::Error &error) {
+            std::cerr << "Error launching gridder: " << error.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }
     }   
     
     uint64_t Gridder::flops(int jobsize) {
@@ -51,14 +65,14 @@ namespace idg {
         int nr_polarizations = parameters.get_nr_polarizations();
     	return 1ULL * jobsize * subgridsize * subgridsize *(
         // Grid
-        (nr_polarizations * sizeof(cuFloatComplex) + sizeof(float)) +
+        (nr_polarizations * sizeof(complex<float>) + sizeof(float)) +
         // ATerm
-        ((2 * sizeof(int)) + (2 * nr_polarizations * sizeof(cuFloatComplex))) +
+        ((2 * sizeof(int)) + (2 * nr_polarizations * sizeof(complex<float>))) +
         // Spheroidal
-    	nr_polarizations * sizeof(cuFloatComplex));
+    	nr_polarizations * sizeof(complex<float>));
     }
 
-
+#if 0
     // Degridder class
     Degridder::Degridder(cu::Module &module, Parameters &parameters) :
         function(module, name_degridder.c_str()),
@@ -104,11 +118,11 @@ namespace idg {
         int nr_polarizations = parameters.get_nr_polarizations();
         return 1ULL * jobsize * (
         // ATerm
-        2 * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex) +
+        2 * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>) +
         // UV grid
-        subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex) +
+        subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>) +
         // Visibilities
-        nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex));
+        nr_time * nr_channels * nr_polarizations * sizeof(complex<float>));
     }
 
     // GridFFT class
@@ -168,7 +182,7 @@ namespace idg {
     
     uint64_t GridFFT::bytes(int size, int batch) {
         int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(cuFloatComplex);
+    	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
     }
 
 
@@ -199,7 +213,7 @@ namespace idg {
         // Coordinate
         1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
         // Grid
-        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
+        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
     }
 
    
@@ -230,7 +244,7 @@ namespace idg {
         // Coordinate
         1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
         // Grid
-        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
+        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
     }
 
 #endif
