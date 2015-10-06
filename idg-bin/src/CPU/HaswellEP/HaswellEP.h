@@ -30,9 +30,15 @@ namespace idg {
                           Compilerflags flags = default_compiler_flags(),
                           ProxyInfo info = default_info());
                 
+                /// Copy constructor
+                HaswellEP(const HaswellEP& v) = delete;
+
                 /// Destructor
-                ~HaswellEP() = default;
+                virtual ~HaswellEP() = default;
     
+                /// Assignment
+                HaswellEP& operator=(const HaswellEP& rhs) = delete;
+
                 // Get default values for ProxyInfo
                 static ProxyInfo default_info();
                 static std::string default_compiler();
