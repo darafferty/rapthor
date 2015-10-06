@@ -1,8 +1,6 @@
 find_package(Boost REQUIRED COMPONENTS python)
 find_package(PythonLibs)
 
-message(${CMAKE_MODULE_PATH})
-
 find_package(FFTW3)
 find_package(Numpy)
 
@@ -22,7 +20,7 @@ TARGET_LINK_LIBRARIES(
   idg-cpu-haswellep
   idg-cpu-reference
   ${Boost_LIBRARIES} 
-  ${FFTW3_LIBRARY} 
+#  ${FFTW3_LIBRARY} 
 )
 
 set_target_properties(_idg PROPERTIES
