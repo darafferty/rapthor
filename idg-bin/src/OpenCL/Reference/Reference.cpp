@@ -20,19 +20,14 @@ namespace idg {
             Reference::Reference(
                 Parameters params,
                 unsigned deviceNumber,
-                Compilerflags flags,
-                ProxyInfo info)
-                : OpenCL(params, deviceNumber, flags, info)
+                Compilerflags flags)
+                : OpenCL(params, deviceNumber, flags)
             {
                 #if defined(DEBUG)
                 cout << "Reference::" << __func__ << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-            }
-
-            ProxyInfo Reference::default_info() {
-                return OpenCL::default_info();
             }
 
             string Reference::default_compiler_flags() {

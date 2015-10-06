@@ -43,19 +43,15 @@ namespace idg {
                 /// Constructors
                 OpenCL(Parameters params,
                     unsigned deviceNumber = 0,
-                    Compilerflags flags = default_compiler_flags(),
-                    ProxyInfo info = default_info());
+                    Compilerflags flags = default_compiler_flags());
     
                 ~OpenCL();
     
                 // Get default values 
-                static ProxyInfo default_info();
                 static std::string default_compiler_flags();
     
                 // Get parameters of proxy
                 const Parameters& get_parameters() const { return mParams; }
-                const ProxyInfo& get_info() const { return mInfo; }
-    
     
             // High level routines
             public:
@@ -96,18 +92,14 @@ namespace idg {
                 virtual void run_fft(CL_FFT_PARAMETERS);
 
             protected:
-                static std::string make_tempdir();
-                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+                ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
 
                 void compile(Compilerflags flags);
                 void parameter_sanity_check();
-                void load_shared_objects();
-                void find_kernel_functions();
         
                 // data
                 cl::Device device;
                 Parameters mParams; // remove if inherited from Proxy
-                ProxyInfo mInfo; // info about shared object files
         
                 std::vector<cl::Program*> programs;
                 std::map<std::string,int> which_program;

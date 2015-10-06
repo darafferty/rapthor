@@ -26,9 +26,7 @@ namespace idg {
         OpenCL::OpenCL(
             Parameters params,
             unsigned deviceNumber,
-            Compilerflags flags,
-            ProxyInfo info)
-          : mInfo(info)
+            Compilerflags flags)
         {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
@@ -45,8 +43,6 @@ namespace idg {
             mParams = params;
             parameter_sanity_check(); // throws exception if bad parameters
             compile(flags);
-            load_shared_objects();
-            find_kernel_functions();
         }
 
         OpenCL::~OpenCL()
@@ -72,6 +68,7 @@ namespace idg {
             #endif
         }
 
+#if 0
         ProxyInfo OpenCL::default_proxyinfo(string srcdir, string tmpdir) {
             ProxyInfo p;
             p.set_path_to_src(srcdir);
@@ -86,35 +83,15 @@ namespace idg {
             p.add_src_file_to_lib(libgridder, "KernelGridder.cl");
             //p.add_src_file_to_lib(libdegridder, "KernelDegridder.cl");
 
-            p.set_delete_shared_objects(true);
+            which_program[kernel::name_gridder] = 0;
+            which_program[kernel::name_degridder] = 1;
 
             return p;
         }
+#endif
 
         string OpenCL::default_compiler_flags() {
             return "-cl-fast-relaxed-math";
-        }
-
-        ProxyInfo OpenCL::default_info()
-        {
-            #if defined(DEBUG)
-            cout << "OpenCL::" << __func__ << endl;
-            #endif
-
-            string srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/OpenCL/Reference/kernels";
-
-            #if defined(DEBUG)
-            cout << "Searching for source files in: " << srcdir << endl;
-            #endif
- 
-            // Temp dir is not used for OpenCL
-            string tmpdir = "";
- 
-            // Create proxy info
-            ProxyInfo p = default_proxyinfo(srcdir, "");
-
-            return p;
         }
 
         /// High level routines
@@ -187,6 +164,7 @@ namespace idg {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
+            kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
         } // run_gridder
 
 
@@ -227,6 +205,14 @@ namespace idg {
             cout << "OpenCL::" << __func__ << endl;
             #endif
 
+            // Source directory
+            string srcdir = string(IDG_SOURCE_DIR) 
+                + "/src/OpenCL/Reference/kernels";
+
+            #if defined(DEBUG)
+            cout << "Searching for source files in: " << srcdir << endl;
+            #endif
+ 
             // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
             string mparameters = Parameters::definitions(
               mParams.get_nr_stations(),
@@ -240,7 +226,7 @@ namespace idg {
               mParams.get_subgrid_size());
 
             string parameters = " " + flags + 
-                                " " + "-I " + mInfo.get_path_to_src() +
+                                " " + "-I " + srcdir +
                                 " " + mparameters;
 
             // Create vector of devices
@@ -250,18 +236,19 @@ namespace idg {
             // Get context
             cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
 
-            vector<string> v = mInfo.get_lib_names();
+            vector<string> v;
+            v.push_back("KernelGridder.cl");
 
             // Build OpenCL programs
             #pragma omp parallel for
             for (int i = 0; i < v.size(); i++) {
-                string libname = v[i];
+                //string libname = v[i];
                 // create shared object "libname"
-                string lib = mInfo.get_path_to_lib() + "/" + libname;
+                //string lib = mInfo.get_path_to_lib() + "/" + libname;
 
                 // Get source filename (vector should only have one element)
-                vector<string> source_files = mInfo.get_source_files(libname);
-                string source_file_name = mInfo.get_path_to_src() + "/" + source_files[0];
+                //vector<string> source_files = mInfo.get_source_files(libname);
+                string source_file_name = srcdir + "/" + v[i];
 
                 // Read source from file
                 ifstream source_file(source_file_name.c_str());
@@ -269,11 +256,10 @@ namespace idg {
                                   (std::istreambuf_iterator<char>()));
                 source_file.close();
 
-                cout << lib << " " << source_files[0] << " " << endl;
                 cl::Program program(context, source);
                 try {
                     program.build(devices, parameters.c_str());
-                    //programs.push_back(program);
+                    programs.push_back(&program);
                     std::string msg;
                     program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
                     cout << msg;
@@ -299,57 +285,6 @@ namespace idg {
             // assert: job_size <= ?
             // [...]
         }
-
-
-        void OpenCL::load_shared_objects()
-        {
-            #if defined(DEBUG)
-            cout << "OpenCL::" << __func__ << endl;
-            #endif
-
-            #if 0
-            for (auto libname : mInfo.get_lib_names()) {
-                string lib = mInfo.get_path_to_lib() + "/" + libname;
-
-                #if defined(DEBUG)
-                cout << "Loading: " << libname << endl;
-                #endif
-
-                modules.push_back(new cu::Module(lib.c_str()));
-            }
-            #endif
-        }
-
-
-        /// maps name -> index in modules that contain that symbol
-        void OpenCL::find_kernel_functions()
-        {
-            #if defined(DEBUG)
-            cout << "OpenCL::" << __func__ << endl;
-            #endif
-
-            #if 0
-            CUfunction function;
-            for (unsigned int i=0; i<modules.size(); i++) {
-                if (cuModuleGetFunction(&function, *modules[i], kernel::name_gridder.c_str()) == CUDA_SUCCESS) {
-                    // found gridder kernel in module i
-                    which_module[kernel::name_gridder] = i;
-                }
-                if (cuModuleGetFunction(&function, *modules[i], kernel::name_degridder.c_str()) == CUDA_SUCCESS) {
-                    // found degridder kernel in module i
-                    which_module[kernel::name_degridder] = i;
-                }
-                if (cuModuleGetFunction(&function, *modules[i], kernel::name_adder.c_str()) == CUDA_SUCCESS) {
-                    // found adder kernel in module i
-                    which_module[kernel::name_adder] = i;
-                }
-                if (cuModuleGetFunction(&function, *modules[i], kernel::name_splitter.c_str()) == CUDA_SUCCESS) {
-                    // found splitter kernel in module i
-                    which_module[kernel::name_splitter] = i;
-                }
-            } // end for
-            #endif
-        } // end find_kernel_functions
 
     } // namespace proxy
 
