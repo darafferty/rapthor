@@ -11,9 +11,10 @@ import argparse
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Run image domain gridding on a measurement set')
 parser.add_argument(dest='msin', nargs=1, type=str, help='path to measurement set')
+parser.add_argument(dest='percentage', nargs='?', type=int, help='percentage of data to process', default=100)
 args = parser.parse_args()
 msin = args.msin[0]
-print(args.msin)
+percentage = args.percentage
 
 # Set signal handler to exit when ctrl-c is pressed
 def signal_handler(signal, frame):
@@ -236,7 +237,7 @@ rowtype = numpy.dtype([
 
 # Read measurementset one block at a time
 block = numpy.zeros(N, dtype = rowtype)
-nr_rows = t.nrows() # Divide by 10 to process only 10% of the data
+nr_rows = int(t.nrows() * (percentage/100.))
 for i in range(0, nr_rows, N):
     print("Reading data: %.1f %%" % (float(i) / nr_rows * 100))
     block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
@@ -286,7 +287,6 @@ while True:
     img = img/databuffer.spheroidal1
 
     # Crop image
-    #TODO: why is this needed?
     img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
 
     # Set plot properties
