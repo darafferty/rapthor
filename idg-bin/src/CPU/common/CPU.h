@@ -25,10 +25,16 @@ namespace idg {
                     Compiler compiler = default_compiler(),
                     Compilerflags flags = default_compiler_flags(),
                     ProxyInfo info = default_info());
+
+                /// Copy constructor
+                CPU(const CPU& v) = delete;
     
                 /// Destructor
-                ~CPU();
-    
+                virtual ~CPU();
+
+                /// Assignment
+                CPU& operator=(const CPU& rhs) = delete;
+
                 // Get default values 
                 static ProxyInfo default_info();
                 static std::string default_compiler();
@@ -43,19 +49,19 @@ namespace idg {
             public:
                 /** \brief Grid the visibilities onto uniform subgrids 
                            (visibilities -> subgrids). */
-                void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS);
+                virtual void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS) override;
         
                 /** \brief Add subgrids to a gridd 
                            (subgrids -> grid). */
-                void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS);
+                virtual void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS) override;
         
                 /** \brief Exctract subgrids from a grid 
                            (grid -> subgrids). */
-                void split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS);
+                virtual void split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS) override;
         
                 /** \brief Degrid the visibilities from uniform subgrids 
                            (subgrids -> visibilities). */
-                void degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS);
+                virtual void degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS) override;
         
                 /** \brief Applyies (inverse) Fourier transform to grid 
                            (grid -> grid).
@@ -63,7 +69,7 @@ namespace idg {
                                           idg::ImageDomainToFourierDomain
                  *  \param grid [in/out] ...
                  */
-                void transform(DomainAtoDomainB direction, void* grid);
+                virtual void transform(DomainAtoDomainB direction, void* grid) override;
         
             // Low level routines
             protected:
