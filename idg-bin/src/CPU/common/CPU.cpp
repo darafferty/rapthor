@@ -612,7 +612,7 @@ namespace idg {
 
             vector<string> v = mInfo.get_lib_names();
 
-            #pragma omp parallel for
+            #pragma omp parallel for num_threads(v.size())
             for (int i = 0; i < v.size(); i++) {
                 string libname = mInfo.get_lib_names()[i];
 
