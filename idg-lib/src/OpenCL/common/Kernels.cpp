@@ -11,7 +11,7 @@ namespace idg {
 
     // Gridder class
     Gridder::Gridder(cl::Program &program, Parameters &parameters) :
-        kernel(program, name_gridder.c_str()),
+//        kernel(program, name_gridder.c_str()),
         parameters(parameters) {}
     
     void Gridder::launchAsync(
