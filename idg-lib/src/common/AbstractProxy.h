@@ -63,7 +63,7 @@ namespace idg {
                *  \param direction [in] idg::FourierDomainToImageDomain or idg::ImageDomainToFourierDomain
                *  \param grid [in/out] ...
             */
-            void transform(DomainAtoDomainB direction, void* grid);
+            virtual void transform(DomainAtoDomainB direction, void* grid) = 0;
 
         protected:
             Parameters mParams;  // store parameters passed on creation

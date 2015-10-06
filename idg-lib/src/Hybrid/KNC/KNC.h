@@ -22,16 +22,22 @@ namespace idg {
             public:
                 /// Constructors
                 KNC(Parameters params);
+
+                /// Copy constructor
+                KNC(const KNC& v) = delete;
                 
                 /// Destructor
-                ~KNC() = default;
+                virtual ~KNC() = default;
+
+                /// Assignment
+                KNC& operator=(const KNC& rhs) = delete;
     
             public:
-                void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS);
-                void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS);
-                void split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS);
-                void degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS);
-                void transform(DomainAtoDomainB direction, void* grid);
+                virtual void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS) override;
+                virtual void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS) override;
+                virtual void split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS) override;
+                virtual void degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS) override;
+                virtual void transform(DomainAtoDomainB direction, void* grid) override;
 
             protected:
                 void run_gridder(int jobsize, GRIDDER_PARAMETERS);
