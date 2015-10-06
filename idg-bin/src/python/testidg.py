@@ -282,6 +282,9 @@ while True:
 
     # Compute fft over grid
     img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
+    #img = numpy.fft.fftshift(databuffer.grid[0,:,:])
+    #proxy.transform(0, img)
+    #img = numpy.fft.fftshift(img)
 
     # Remove spheroidal from grid
     img = img/databuffer.spheroidal1
