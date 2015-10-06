@@ -1,56 +1,21 @@
+#include <iostream>
+
 #include <Python.h>
 #include <boost/python.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/extract.hpp>
 
 #include <AbstractProxy.h>
-// #include <CPU/Reference/idg.h>
 #include <CPU/HaswellEP/idg.h>
-
-#include <iostream>
 
 #include <numpy/arrayobject.h>
  
+
 using namespace boost::python;
 using namespace idg;
 using namespace idg::proxy;
 
-// Functions to demonstrate extraction
-void setArray(boost::python::numeric::array data) {
- 
-    // Access a built-in type (an array)
-    // Need to <extract> array elements because their type is unknown
-//     std::cout << "First array item: " << extract<int>(a[0][0]) << std::endl;
 
-    std::cout << "pointer: " << data.ptr() << std::endl;
-    
-    int *p = (int*)PyArray_DATA(data.ptr());
-    std::cout << "pointer: " << p << std::endl;
-    std::cout << "value: " << *p << std::endl;
-    
-    int i = extract<int>(data.attr("nbytes"));
-    std::cout << "nbytes: " << i << std::endl;
-//     std::cout << extract<int*>(data.attr("data"));
-    
-    PyArrayObject* pao = (PyArrayObject*)(data.ptr());
-    std::cout << pao->nd << std::endl;
-    for(int j = 0; j<pao->nd; j++)
-    {
-      std::cout << "  " << pao->dimensions[j] << std::endl;
-    }
-    
-    std::cout << pao->descr << std::endl;
-    std::cout << pao->descr->kind << std::endl;
-    std::cout << pao->descr->elsize << std::endl;
-    
-      //       PyArray_FROM_O(b);
-    
-//     std::cout << "pointer: " << p << std::endl;
- //     std::cout << "value: " << *p << std::endl;
-    
-}
- 
- 
 void grid_onto_subgrids(
   Proxy *p, 
   int jobsize, 
@@ -105,8 +70,6 @@ BOOST_PYTHON_MODULE(_idg)
   
   boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
  
-  def("setArray", &setArray);
-
   void (Parameters::*print0)() const = &Parameters::print;
   
   class_<Parameters>("Parameters")
@@ -134,30 +97,6 @@ BOOST_PYTHON_MODULE(_idg)
   
   ;
   
-//   class_<proxy::cpu::Reference, bases<proxy::Proxy>>("Reference", init<Parameters>());
+  //class_<proxy::cpu::Reference, bases<proxy::Proxy>>("Reference", init<Parameters>());
   class_<proxy::cpu::HaswellEP, bases<proxy::Proxy>>("HaswellEP", init<Parameters>());
 }
-
-
-
-// typedef struct { float u, v, w; } UVW;
-// typedef struct { int x, y; } Coordinate;
-// typedef struct { int station1, station2; } Baseline;
-// typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
-// 
-// /*
-//     Complex numbers
-// */
-// #define FLOAT_COMPLEX std::complex<float>
-// 
-// /*
-//     Datatypes
-// */
-// typedef UVW UVWType[1][NR_TIMESTEPS];
-// typedef FLOAT_COMPLEX VisibilitiesType[1][NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
-// typedef float WavenumberType[NR_CHANNELS];
-// typedef FLOAT_COMPLEX ATermType[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
-// typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
-// typedef FLOAT_COMPLEX GridType[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE];
-// typedef FLOAT_COMPLEX SubGridType[1][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
-// typedef Metadata MetadataType[1];
