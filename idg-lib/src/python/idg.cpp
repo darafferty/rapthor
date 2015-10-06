@@ -15,6 +15,14 @@ using namespace boost::python;
 using namespace idg;
 using namespace idg::proxy;
 
+//namespace idg {
+//    namespace proxy {
+//    enum DomainAtoDomainB {
+//        FourierDomainToImageDomain,
+//        ImageDomainToFourierDomain
+//    };
+//    }
+//}
 
 void grid_onto_subgrids(
   Proxy *p, 
@@ -45,7 +53,6 @@ void grid_onto_subgrids(
   );
 }
 
-
 void add_subgrids_to_grid(
   Proxy *p, 
   int jobsize, 
@@ -65,9 +72,23 @@ void add_subgrids_to_grid(
   );
 }
 
+void transform(
+  Proxy *p,
+  unsigned _direction,
+  boost::python::numeric::array grid
+)
+{
+    DomainAtoDomainB direction = _direction ?
+        FourierDomainToImageDomain : ImageDomainToFourierDomain;
+  // Uncommenting the following code results in a undefined symbol error
+  //p->transform(
+  //  direction,
+  //  ((PyArrayObject*)(grid.ptr()))->data
+  //);
+}
+
 BOOST_PYTHON_MODULE(_idg)
 {
-  
   boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
  
   void (Parameters::*print0)() const = &Parameters::print;
@@ -94,9 +115,9 @@ BOOST_PYTHON_MODULE(_idg)
   class_<Proxy, boost::noncopyable>("Proxy", no_init)
   .def("grid_onto_subgrids", &grid_onto_subgrids)
   .def("add_subgrids_to_grid", &add_subgrids_to_grid)
+  .def("transform", &transform)
   
   ;
   
-  //class_<proxy::cpu::Reference, bases<proxy::Proxy>>("Reference", init<Parameters>());
   class_<proxy::cpu::HaswellEP, bases<proxy::Proxy>>("HaswellEP", init<Parameters>());
 }
