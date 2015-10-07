@@ -27,7 +27,7 @@ namespace idg {
                     ProxyInfo info = default_info());
 
                 /// Copy constructor
-                CPU(const CPU& v) = delete;
+                //CPU(const CPU& v) = delete;
     
                 /// Destructor
                 virtual ~CPU();

@@ -31,7 +31,7 @@ namespace idg {
                           ProxyInfo info = default_info());
                 
                 /// Copy constructor
-                HaswellEP(const HaswellEP& v) = delete;
+                ///HaswellEP(const HaswellEP& v) = delete;
 
                 /// Destructor
                 virtual ~HaswellEP() = default;
