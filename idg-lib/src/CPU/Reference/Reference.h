@@ -26,7 +26,7 @@ namespace idg {
                           ProxyInfo info = default_info());
                 
                 /// Copy constructor
-                Reference(const Reference& v) = delete;
+                //Reference(const Reference& v) = delete;
 
                 /// Destructor
                 virtual ~Reference() = default;
