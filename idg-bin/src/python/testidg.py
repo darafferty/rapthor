@@ -281,13 +281,29 @@ while True:
       databuffer.grid)
 
     # Compute fft over grid
-    img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
+    # Using numpy#
+    #img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
+
+    # Using fft from library (not working)
+    #databuffer.grid = numpy.zeros((p.nr_polarizations, p.grid_size, p.grid_size), dtype = numpy.complex64)
+    #databuffer.grid[0,500,400]=100
+    img_ref = numpy.copy(databuffer.grid[0,:,:])
+    img_ref = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(img_ref))))
+    img = numpy.copy(databuffer.grid[:,:,:])
+    for i in range(4):
+        img[i,:,:] = numpy.fft.fftshift(img[i,:,:])
+    proxy.transform(0, img)
+    for i in range(4):
+        img[i,:,:] = numpy.fft.fftshift(img[i,:,:])
+    img = numpy.real(img[0,:,:])
 
     # Remove spheroidal from grid
     img = img/databuffer.spheroidal1
+    img_ref = img_ref/databuffer.spheroidal1
 
     # Crop image
     img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
+    img_ref = img_ref[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
 
     # Set plot properties
     colormap=plt.get_cmap("YlGnBu_r")
@@ -296,7 +312,7 @@ while True:
     # Make first plot (raw grid)
     plt.figure(1, figsize=(30,15))
     plt.figure(1)
-    plt.subplot(1,2,1)
+    plt.subplot(1,3,1)
     plt.cla()
     ax = plt.gca()
     ax.set_xticks([])
@@ -307,11 +323,24 @@ while True:
     ax.title.set_fontsize(font_size)
 
     # Make second plot (processed grid)
-    plt.subplot(1,2,2)
+    plt.subplot(1,3,2)
     plt.cla()
     m = numpy.amax(img)
+    print("    max: %f" % m)
     plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
     plt.title("Sky image\n")
+    ax = plt.gca()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.title.set_fontsize(font_size)
+
+    # Make third plot (processed grid)
+    plt.subplot(1,3,3)
+    plt.cla()
+    m = numpy.amax(img_ref)
+    print("ref max: %f" % m)
+    plt.imshow(img_ref, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+    plt.title("Sky image reference\n")
     ax = plt.gca()
     ax.set_xticks([])
     ax.set_yticks([])

@@ -15,14 +15,6 @@ using namespace boost::python;
 using namespace idg;
 using namespace idg::proxy;
 
-//namespace idg {
-//    namespace proxy {
-//    enum DomainAtoDomainB {
-//        FourierDomainToImageDomain,
-//        ImageDomainToFourierDomain
-//    };
-//    }
-//}
 
 void grid_onto_subgrids(
   Proxy *p, 
@@ -80,11 +72,10 @@ void transform(
 {
     DomainAtoDomainB direction = _direction ?
         FourierDomainToImageDomain : ImageDomainToFourierDomain;
-  // Uncommenting the following code results in a undefined symbol error
-  //p->transform(
-  //  direction,
-  //  ((PyArrayObject*)(grid.ptr()))->data
-  //);
+  p->transform(
+    direction,
+    ((PyArrayObject*)(grid.ptr()))->data
+  );
 }
 
 BOOST_PYTHON_MODULE(_idg)
