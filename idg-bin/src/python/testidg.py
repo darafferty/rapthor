@@ -58,10 +58,7 @@ def func_spheroidal(nu):
     result = (1.0 - nusq) * (top / bot)
   return result
 
-<<<<<<< HEAD
-=======
 # Class to store baseline data
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
 class BaselineBuffer :
   def __init__(self, antenna1, antenna2, parameters) :
     self.antenna1 = antenna1
@@ -100,13 +97,8 @@ class DataBuffer :
     self.wavelengths = numpy.array(speed_of_light / freqs, dtype=numpy.float32)
     self.wavenumbers = numpy.array(2*numpy.pi / self.wavelengths, dtype=numpy.float32)
 
-<<<<<<< HEAD
-    self.visibilities =  numpy.zeros((nr_subgrids, parameters.nr_timesteps, parameters.nr_channels, parameters.nr_polarizations), dtype = numpy.complex64)
-
-=======
     # Initialize visibilities to zero
     self.visibilities =  numpy.zeros((nr_subgrids, parameters.nr_timesteps, parameters.nr_channels, parameters.nr_polarizations), dtype = numpy.complex64)
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
 
     # Initialize aterm to zero
     self.aterm = numpy.zeros((p.nr_stations, p.nr_timeslots, p.nr_polarizations, p.subgrid_size, p.subgrid_size), dtype = numpy.complex64)
@@ -114,18 +106,6 @@ class DataBuffer :
     # Set aterm to one (so that it has no effect during imaging)
     self.aterm[:,:,0,:,:] = 1.0
     self.aterm[:,:,3,:,:] = 1.0
-    
-    #self.spheroidal = numpy.ones((p.subgrid_size, p.subgrid_size), dtype = numpy.float32)
-    x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(p.subgrid_size, dtype=numpy.float32) / (p.subgrid_size-1) - 1.0], dtype = numpy.float32)
-    self.spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
-    
-    s = numpy.fft.fft2(self.spheroidal)
-    s = numpy.fft.fftshift(s)
-    s1 = numpy.zeros((p.grid_size, p.grid_size), dtype = numpy.complex64)
-    s1[(p.grid_size-p.subgrid_size)/2:(p.grid_size+p.subgrid_size)/2, (p.grid_size-p.subgrid_size)/2:(p.grid_size+p.subgrid_size)/2] = s
-    s1 = numpy.fft.ifftshift(s1)
-    self.spheroidal1 = numpy.real(numpy.fft.ifft2(s1))
-
 
     # Initialize spheroidal to ones (so that it has no effect during imaging)
     #self.spheroidal = numpy.ones((p.subgrid_size, p.subgrid_size), dtype = numpy.float32)
@@ -161,23 +141,15 @@ class DataBuffer :
     for i in range(N_ant):
       for j in range(N_ant):
         self.baselinebuffers[i,j] = BaselineBuffer(i,j,parameters)
-<<<<<<< HEAD
-    
-=======
 
 
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
   def clear(self):
     self.grid[:] = 0
     for i in range(self.parameters.nr_stations):
       for j in range(self.parameters.nr_stations):
         self.baselinebuffers[i,j].clear()
     self.data = []
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
   def append(self, row):
     self.time = row['TIME']
 
@@ -215,24 +187,13 @@ class DataBuffer :
         return True
 
   def flush(self):
-<<<<<<< HEAD
-    print "***"
-    jobsize = 10000
-=======
     jobsize = 0
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
     w_offset = 0
     self.data.append((self.time, self.count, self.uvw.copy(), self.visibilities.copy(), self.metadata.copy()))
     self.count = 0
 
-<<<<<<< HEAD
-w_offset = 0.0
-
-nr_subgrids = 3000
-=======
 # Open measurementset
 t = pyrap.tables.table(msin)
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
 
 # Read parameters from measurementset
 t_ant = pyrap.tables.table(t.getkeyword("ANTENNA"))
@@ -256,10 +217,7 @@ p.grid_size = 1000
 p.subgrid_size = 32
 p.job_size = jobsize
 
-<<<<<<< HEAD
-=======
 # Initialize proxy
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
 proxy = idg.HaswellEP(p)
 
 # Initialize databuffer
@@ -268,15 +226,7 @@ databuffer = DataBuffer(p, nr_subgrids, freqs, proxy)
 # Number of samples to read in a single block
 N = 40000
 
-<<<<<<< HEAD
-
-N = 1000
-
-t0 = time.time()
-
-=======
 # Data row description
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
 rowtype = numpy.dtype([
   ('TIME', numpy.float32),
   ('ANTENNA1', int),
@@ -285,21 +235,11 @@ rowtype = numpy.dtype([
   ('DATA', complex, (p.nr_channels, p.nr_polarizations))
 ])
 
-<<<<<<< HEAD
-
-block = numpy.zeros(N, dtype = rowtype)
-j = 0
-k = 0
-for i in range(t.nrows()):
-  if (j == 0):
-    block = block[0:min(t.nrows() - i, N)]
-=======
 # Read measurementset one block at a time
 block = numpy.zeros(N, dtype = rowtype)
 nr_rows = int(t.nrows() * (percentage/100.))
 for i in range(0, nr_rows, N):
     print("Reading data: %.1f %%" % (float(i) / nr_rows * 100))
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
     block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
     block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
     block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
@@ -308,57 +248,6 @@ for i in range(0, nr_rows, N):
     for j in range(N):
         databuffer.append(block[j])
 databuffer.flush()
-<<<<<<< HEAD
-
-jobsize = 10000
-w_offset = 0
-
-while True:
-
-  for time1, count, uvw, visibilities, metadata in databuffer.data:
-  
-    proxy.grid_onto_subgrids(
-      jobsize, 
-      count, 
-      w_offset, 
-      uvw, 
-      databuffer.wavenumbers, 
-      visibilities, 
-      databuffer.spheroidal, 
-      databuffer.aterm, 
-      metadata, 
-      databuffer.subgrids)
-    
-    proxy.add_subgrids_to_grid(
-      jobsize,
-      count,
-      metadata,
-      databuffer.subgrids,
-      databuffer.grid)
-    
-    print "+++"
-    plt.pause(0.001)
-    #plt.figure(1, figsize=(20,10))
-    plt.figure(1)
-    plt.subplot(1,2,1)
-    plt.cla()
-    plt.imshow(numpy.log(numpy.abs(databuffer.grid[0,:,:])), interpolation='nearest')
-    plt.title("UV Data - tijd %2.2i:%2.2i" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60) ))
-    plt.subplot(1,2,2)
-    plt.cla()
-    img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
-    img = img/databuffer.spheroidal1
-    img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
-    m = numpy.amax(img)
-    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=plt.get_cmap("YlGnBu_r"))
-    plt.title("Radio kaart")
-    plt.show()
-    plt.draw()
-    
-  time.sleep(3)
-  databuffer.grid[:] = 0
-  
-=======
 
 # Enable interactive plotting
 plt.ion()
@@ -393,9 +282,6 @@ while True:
 
     # Compute fft over grid
     img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
-    #img = numpy.fft.fftshift(databuffer.grid[0,:,:])
-    #proxy.transform(0, img)
-    #img = numpy.fft.fftshift(img)
 
     # Remove spheroidal from grid
     img = img/databuffer.spheroidal1
@@ -441,4 +327,3 @@ while True:
 
   # Reset grid
   databuffer.grid[:] = 0
->>>>>>> 2dd9aa3759014ffaa6d141621de87228cb34a24d
