@@ -50,45 +50,7 @@ namespace idg {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
-
-            #if 0
-            // unload shared objects by ~Module
-            for (unsigned int i = 0; i < modules.size(); i++) {
-                delete modules[i];
-            }
-
-            // Delete .ptx files
-            if (mInfo.delete_shared_objects()) {
-                for (auto libname : mInfo.get_lib_names()) {
-                    string lib = mInfo.get_path_to_lib() + "/" + libname;
-                    remove(lib.c_str());
-                }
-                rmdir(mInfo.get_path_to_lib().c_str());
-            }
-            #endif
         }
-
-#if 0
-        ProxyInfo OpenCL::default_proxyinfo(string srcdir, string tmpdir) {
-            ProxyInfo p;
-            p.set_path_to_src(srcdir);
-            p.set_path_to_lib(tmpdir);
-
-            string libgridder = "Gridder";
-            //string libdegridder = "Degridder";
-
-            p.add_lib(libgridder);
-            //p.add_lib(libdegridder);
-
-            p.add_src_file_to_lib(libgridder, "KernelGridder.cl");
-            //p.add_src_file_to_lib(libdegridder, "KernelDegridder.cl");
-
-            which_program[kernel::name_gridder] = 0;
-            which_program[kernel::name_degridder] = 1;
-
-            return p;
-        }
-#endif
 
         string OpenCL::default_compiler_flags() {
             return "-cl-fast-relaxed-math";
@@ -242,12 +204,7 @@ namespace idg {
             // Build OpenCL programs
             #pragma omp parallel for
             for (int i = 0; i < v.size(); i++) {
-                //string libname = v[i];
-                // create shared object "libname"
-                //string lib = mInfo.get_path_to_lib() + "/" + libname;
-
-                // Get source filename (vector should only have one element)
-                //vector<string> source_files = mInfo.get_source_files(libname);
+                // Get source filename
                 string source_file_name = srcdir + "/" + v[i];
 
                 // Read source from file
@@ -279,11 +236,6 @@ namespace idg {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
-
-            // TODO: create assertions
-            // assert: subgrid_size <= grid_size
-            // assert: job_size <= ?
-            // [...]
         }
 
     } // namespace proxy
