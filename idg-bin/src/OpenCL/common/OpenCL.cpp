@@ -169,7 +169,7 @@ namespace idg {
                     // Offsets
                     size_t uvw_offset          = s * nr_timesteps * 3 * sizeof(float);
                     size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
-                    size_t subgrid_offset      = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
+                    size_t subgrids_offset      = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
                     #pragma omp critical (GPU)
@@ -187,7 +187,7 @@ namespace idg {
                             //TODO
 
     						// Copy subgrid to host
-                            //TODO
+                            queue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
                     }
 
                     // Wait for device to host transfer to finish
