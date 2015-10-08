@@ -126,7 +126,72 @@ namespace idg {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
+
+            // Load kernel functions
             kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
+
+            // Performance measurements
+            double runtime = 0;
+
+            // Constants
+            auto nr_baselines = mParams.get_nr_baselines();
+            auto nr_timesteps = mParams.get_nr_timesteps();
+            auto nr_timeslots = mParams.get_nr_timeslots();
+            auto nr_channels = mParams.get_nr_channels();
+            auto nr_polarizations = mParams.get_nr_polarizations();
+            auto subgridsize = mParams.get_subgrid_size();
+  
+            // Set jobsize
+            //TODO: set jobsize according to available memory
+            const int jobsize = 8192;
+
+            // Start gridder
+            runtime -= omp_get_wtime();
+            const int nr_streams = 1;
+            #pragma omp parallel num_threads(nr_streams)
+            {
+                #pragma omp for schedule(dynamic)
+                for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
+                    // Prevent overflow
+                    int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+
+                    // Offsets
+                    size_t uvw_offset          = s * nr_timesteps * 3 * sizeof(float);
+                    size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
+                    size_t subgrid_offset      = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
+                    size_t metadata_offset     = s * 5 * sizeof(int);
+
+                    #pragma omp critical (GPU)
+                    {
+    						// Copy input data to device
+                            //TODO
+
+    						// Create FFT plan
+                            //TODO
+
+    						// Launch gridder kernel
+
+    						// Launch FFT
+                            //TODO
+
+    						// Copy subgrid to host
+                            //TODO
+                    }
+
+                    // Wait for device to host transfer to finish
+                    //TODO
+                }
+            }
+            runtime += omp_get_wtime();
+
+            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+            clog << "Total: gridding" << endl;
+            clog << "Runtime: " << runtime << " s" << endl;
+            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            clog << endl;
+            #endif
+ 
+            
         } // run_gridder
 
 
