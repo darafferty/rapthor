@@ -130,6 +130,10 @@ namespace idg {
             // Load kernel functions
             kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
 
+            // Command queue
+            //TODO: seperate queues for htod, dtoh and compute
+            cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+
             // Performance measurements
             double runtime = 0;
 
@@ -150,6 +154,13 @@ namespace idg {
             const int nr_streams = 1;
             #pragma omp parallel num_threads(nr_streams)
             {
+
+                // Private device memory
+                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
+                cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_UVW);
+                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_WRITE_ONLY, jobsize * SIZEOF_SUBGRIDS);
+                cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
+	
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                     // Prevent overflow
@@ -164,8 +175,9 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            //TODO
-
+                            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
+                            queue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
     						// Create FFT plan
                             //TODO
 
