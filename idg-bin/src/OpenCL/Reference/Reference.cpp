@@ -19,9 +19,10 @@ namespace idg {
             /// Constructors
             Reference::Reference(
                 Parameters params,
+                cl::Context &context,
                 unsigned deviceNumber,
                 Compilerflags flags)
-                : OpenCL(params, deviceNumber, flags)
+                : OpenCL(params, context, deviceNumber, flags)
             {
                 #if defined(DEBUG)
                 cout << "Reference::" << __func__ << endl;
