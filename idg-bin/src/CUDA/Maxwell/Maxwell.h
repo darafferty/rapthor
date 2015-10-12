@@ -32,6 +32,7 @@ namespace idg {
 
                 // Get default values for ProxyInfo
                 static ProxyInfo default_info();
+                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
                 static std::string default_compiler();
                 static std::string default_compiler_flags();
 
