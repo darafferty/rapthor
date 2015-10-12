@@ -15,14 +15,6 @@
 #include "auxiliary.h"
 #endif
 
-#include "Power.h"
-#if defined(MEASURE_POWER)
-#define _QUOTE(str) #str
-#define QUOTE(str) _QUOTE(str)
-#define STR_POWER_SENSOR QUOTE(POWER_SENSOR)
-#define STR_POWER_FILE QUOTE(POWER_FILE)
-#endif
-
 using namespace std;
 
 namespace idg {
@@ -46,12 +38,6 @@ namespace idg {
             cout << params;
             #endif
 
-            #if defined(MEASURE_POWER)
-            cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
-            cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
-            powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
-            #endif
- 
             mParams = params;
             parameter_sanity_check(); // throws exception if bad parameters
             compile(compiler, flags);

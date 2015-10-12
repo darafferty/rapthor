@@ -51,8 +51,3 @@ class PowerSensor
     void	  *IOthread();
     void	  doMeasurement();
 };
-
-#if defined MEASURE_POWER
-static PowerSensor *powerSensor;
-#endif
-

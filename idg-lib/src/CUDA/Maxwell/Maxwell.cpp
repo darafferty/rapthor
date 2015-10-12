@@ -1,4 +1,3 @@
-// TODO: check which include files are really necessary
 #include <complex>
 #include <sstream>
 #include <memory>
@@ -10,11 +9,21 @@
 #include "auxiliary.h"
 #endif
 
+#if defined(MEASURE_POWER)
+#define _QUOTE(str) #str
+#define QUOTE(str) _QUOTE(str)
+#define STR_POWER_SENSOR QUOTE(POWER_SENSOR)
+#define STR_POWER_FILE QUOTE(POWER_FILE)
+#endif
+
 using namespace std;
 
 namespace idg {
     namespace proxy {
         namespace cuda {
+            // Power sensor
+            static PowerSensor *powerSensor;
+     
 
             /// Constructors
             Maxwell::Maxwell(
@@ -31,7 +40,13 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-           }
+
+                #if defined(MEASURE_POWER)
+                cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
+                cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
+                powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
+                #endif
+            }
 
             /*
                 Size of data structures for a single job
@@ -88,6 +103,9 @@ namespace idg {
                 #endif
     
      	        runtime = -omp_get_wtime();
+                #if defined(MEASURE_POWER)
+                PowerSensor::State startState = powerSensor->read();
+                #endif
     
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -160,11 +178,19 @@ namespace idg {
                 }
     
                 runtime += omp_get_wtime();
+                #if defined(MEASURE_POWER)
+                PowerSensor::State stopState = powerSensor->read();
+                #endif
     
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 clog << "Total: gridding" << endl;
                 clog << "Runtime: " << runtime << " s" << endl;
                 auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+                #if defined(MEASURE_POWER)
+                auxiliary::report_power(PowerSensor::seconds(startState, stopState),
+                                        PowerSensor::Watt(startState, stopState),
+                                        PowerSensor::Joules(startState, stopState));
+                #endif
                 clog << endl;
                 #endif
             } // run_gridder
