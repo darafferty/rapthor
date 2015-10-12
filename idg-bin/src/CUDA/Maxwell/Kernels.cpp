@@ -3,6 +3,8 @@
 #include "idg-config.h"
 #include "Kernels.h"
 
+#define USE_CUFFT 0
+
 namespace idg {
 
   namespace kernel {
@@ -106,31 +108,35 @@ namespace idg {
     }
 
     // GridFFT class
-    GridFFT::GridFFT(Parameters &parameters) : parameters(parameters) {
+    GridFFT::GridFFT(cu::Module &module, Parameters &parameters) :
+        parameters(parameters),
+        function(module, name_fft.c_str()) {
         fft_bulk = NULL;
         fft_remainder = NULL;
     }
 
     void GridFFT::plan(int size, int batch) {
-        // Parameters
-        int stride = 1;
-        int dist = size * size;
-        int nr_polarizations = parameters.get_nr_polarizations();
+        if (size != 32 || USE_CUFFT) {
+            // Parameters
+            int stride = 1;
+            int dist = size * size;
+            int nr_polarizations = parameters.get_nr_polarizations();
 
-        // Plan bulk fft
-        if ((fft_bulk == NULL ||
-            size != planned_size) &&
-            batch > bulk_size) {
-            fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
-        }
+            // Plan bulk fft
+            if ((fft_bulk == NULL ||
+                size != planned_size) &&
+                batch > bulk_size) {
+                fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
+            }
 
-        // Plan remainder fft
-        if (fft_remainder == NULL ||
-            size != planned_size ||
-            batch != planned_batch ||
-            size < bulk_size) {
-            int remainder = batch % bulk_size;
-            fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
+            // Plan remainder fft
+            if (fft_remainder == NULL ||
+                size != planned_size ||
+                batch != planned_batch ||
+                size < bulk_size) {
+                int remainder = batch % bulk_size;
+                fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
+            }
         }
 
         // Set parameters
@@ -139,23 +145,35 @@ namespace idg {
     }
 
     void GridFFT::launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction) {
-        // Initialize
-        cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-        int s = 0;
-        int nr_polarizations = parameters.get_nr_polarizations();
+        if (planned_size != 32 || USE_CUFFT) {
+            // Initialize
+            cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
+            int s = 0;
+            int nr_polarizations = parameters.get_nr_polarizations();
 
-        // Execute bulk ffts (if any)
-        if (planned_batch > bulk_size) {
-            (*fft_bulk).setStream(stream);
-            for (; s < (planned_batch - bulk_size); s += bulk_size) {
-                (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+            // Execute bulk ffts (if any)
+            if (planned_batch > bulk_size) {
+                (*fft_bulk).setStream(stream);
+                for (; s < (planned_batch - bulk_size); s += bulk_size) {
+                    (*fft_bulk).execute(data_ptr, data_ptr, direction);
+                    data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+                }
             }
-        }
 
-        // Execute remainder ffts
-        (*fft_remainder).setStream(stream);
-        (*fft_remainder).execute(data_ptr, data_ptr, direction);
+            // Execute remainder ffts
+            (*fft_remainder).setStream(stream);
+            (*fft_remainder).execute(data_ptr, data_ptr, direction);
+        } else {
+            cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
+            int nr_polarizations = parameters.get_nr_polarizations();
+            //for (int i = 0; i < planned_batch * nr_polarizations; i++) {
+                //printf("fft %d, size=%d\n", i, planned_size);
+                const int S = 0;
+                const void *parameters[] = { &data_ptr, &data_ptr, &direction, &S};
+                stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1, 128, 1, 1, 0, parameters);
+                //data_ptr += planned_size * planned_size;
+            //}
+        }
     }
 
     uint64_t GridFFT::flops(int size, int batch) {

@@ -5,6 +5,7 @@
 
 #include "idg-config.h"
 #include "Maxwell.h"
+#include "Kernels.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
@@ -45,6 +46,8 @@ namespace idg {
                 cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
                 powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
                 #endif
+
+                find_kernel_functions();
             }
 
             /*
@@ -135,7 +138,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    kernel::GridFFT kernel_fft(mParams);
+                    kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
             	    // Private device memory
                 	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -242,10 +245,10 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << "Maxwell::" << __func__ << endl;
                 #endif
-    
+
                 // Performance measurements
                 double runtime = 0;
-    
+
                 // Constants
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timesteps = mParams.get_nr_timesteps();
@@ -253,29 +256,29 @@ namespace idg {
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-    
+
                 // load kernel
                 kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
-    
+
                 // Initialize
                 const int nr_streams = 3;
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
-    
+
                 // Set jobsize to match available gpu memory
                 uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
                 uint64_t device_memory_available = device.free_memory();
                 int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
-    
+
                 // Make sure that jobsize isn't too large
                 int max_jobsize = nr_subgrids / 8;
                 if (jobsize >= max_jobsize) {
                     jobsize = max_jobsize;
                 }
-    
+
      	        runtime = -omp_get_wtime();
-    
+
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
@@ -287,31 +290,31 @@ namespace idg {
                     cu::Event outputReady;
                     //int thread_num = omp_get_thread_num();
                     int current_jobsize = jobsize;
-                    kernel::GridFFT kernel_fft(mParams);
-    
+                    kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
+
             	    // Private device memory
                 	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
                 	cu::DeviceMemory d_uvw(jobsize * SIZEOF_UVW);
             	    cu::DeviceMemory d_subgrids(jobsize * SIZEOF_SUBGRIDS);
                     cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
-        
+
                     #pragma omp for schedule(dynamic)
                     for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                         // Prevent overflow
                         current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
-    
+
                         // Number of elements in batch
                         int uvw_elements          = nr_timesteps * 3;
                         int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
                         int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
                         int metadata_elements     = 5;
-    
+
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
                         void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
-    
+
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
     					{
     						// Copy input data to device
@@ -320,35 +323,35 @@ namespace idg {
     						htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, current_jobsize * SIZEOF_SUBGRIDS);
     						htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
     						htodstream.record(inputReady);
-    
+
     						// Create FFT plan
     						kernel_fft.plan(subgridsize, current_jobsize);
-    
+
     						// Launch FFT
-    						executestream.waitEvent(inputReady); 
+    						executestream.waitEvent(inputReady);
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_FORWARD);
-    
+
     						// Launch degridder kernel
     						executestream.waitEvent(outputFree);
     						kernel_degridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-    						 
+
     						executestream.record(outputReady);
     						executestream.record(inputFree);
-    				
+
     						// Copy visibilities to host
     						dtohstream.waitEvent(outputReady);
     						dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, current_jobsize * SIZEOF_VISIBILITIES);
     						dtohstream.record(outputFree);
     					}
-    
+
     					outputFree.synchronize();
                     } // end for s
                 }
-    
+
                 runtime += omp_get_wtime();
-    
+
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 clog << "Total: degridding" << endl;
                 clog << "Runtime: " << runtime << " s" << endl;
@@ -364,7 +367,7 @@ namespace idg {
                 cout << "CUDA::" << __func__ << endl;
                 #endif
 
-                string srcdir = string(IDG_SOURCE_DIR) 
+                string srcdir = string(IDG_SOURCE_DIR)
                     + "/src/CUDA/Maxwell/kernels";
 
                 #if defined(DEBUG)
@@ -379,7 +382,7 @@ namespace idg {
 
                 return p;
 
-               return CUDA::default_info();
+                return CUDA::default_info();
             }
 
             ProxyInfo Maxwell::default_proxyinfo(string srcdir, string tmpdir) {
@@ -389,26 +392,51 @@ namespace idg {
 
                 string libgridder = "Gridder.ptx";
                 string libdegridder = "Degridder.ptx";
+                string libfft = "FFT.ptx";
 
                 p.add_lib(libgridder);
                 p.add_lib(libdegridder);
+                p.add_lib(libfft);
 
                 p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
+                p.add_src_file_to_lib(libfft, "KernelFFT.cu");
 
                 p.set_delete_shared_objects(true);
 
                 return p;
-           }
+            }
 
-           string Maxwell::default_compiler() {
+            string Maxwell::default_compiler() {
                 return CUDA::default_compiler();
-           }
+            }
 
-           string Maxwell::default_compiler_flags() {
-               return CUDA::default_compiler_flags();
+            string Maxwell::default_compiler_flags() {
+                return CUDA::default_compiler_flags();
+            }
 
-           }
+            void Maxwell::find_kernel_functions()
+            {
+                #if defined(DEBUG)
+                cout << "Maxwell::" << __func__ << endl;
+                #endif
+
+                CUfunction function;
+                for (unsigned int i=0; i<modules.size(); i++) {
+                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_gridder.c_str()) == CUDA_SUCCESS) {
+                        // found gridder kernel in module i
+                        which_module[kernel::name_gridder] = i;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_degridder.c_str()) == CUDA_SUCCESS) {
+                        // found degridder kernel in module i
+                        which_module[kernel::name_degridder] = i;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_fft.c_str()) == CUDA_SUCCESS) {
+                        // found fft kernel in module i
+                        which_module[kernel::name_fft] = i;
+                    }
+                } // end for
+            } // end find_kernel_functions
 
         } // namespace cuda
     } // namespace proxy

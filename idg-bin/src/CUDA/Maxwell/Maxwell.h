@@ -30,17 +30,19 @@ namespace idg {
                 /// Destructor
                 ~Maxwell() = default;
 
-                // Get default values for ProxyInfo
                 static ProxyInfo default_info();
                 static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
                 static std::string default_compiler();
                 static std::string default_compiler_flags();
 
-
-            // Low level routines
+            /// Low level routines
             protected:
                 virtual void run_gridder(CU_GRIDDER_PARAMETERS);
                 virtual void run_degridder(CU_DEGRIDDER_PARAMETERS);
+
+            /// Compilation
+            protected:
+                void find_kernel_functions();
 
             }; // class Maxwell
 
