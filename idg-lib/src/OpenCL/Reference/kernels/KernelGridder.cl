@@ -19,7 +19,7 @@ __kernel void kernel_gridder(
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
 	int tid = tidx + tidy * get_local_size(0);;
-    int blocksize = tidx + tidy * get_local_size(0);
+    int blocksize = get_local_size(0) * get_local_size(1);
     int s = get_global_id(0);
 
     // Shared data

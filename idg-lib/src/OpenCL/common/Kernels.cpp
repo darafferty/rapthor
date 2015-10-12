@@ -11,7 +11,7 @@ namespace idg {
 
     // Gridder class
     Gridder::Gridder(cl::Program &program, Parameters &parameters) :
-//        kernel(program, name_gridder.c_str()),
+        kernel(program, name_gridder.c_str()),
         parameters(parameters) {}
     
     void Gridder::launchAsync(
@@ -21,8 +21,9 @@ namespace idg {
         cl::Buffer &d_aterm, cl::Buffer &d_metadata,
         cl::Buffer &d_subgrid) {
         int wgSize = 8;
-        cl::NDRange globalSize(jobsize * wgSize, wgSize);
+        cl::NDRange globalSize(jobsize);
         cl::NDRange localSize(wgSize, wgSize);
+        std::cout << "wgsize: " << wgSize << " jobsize: " << jobsize << std::endl;
         kernel.setArg(0, w_offset);
         kernel.setArg(1, d_uvw);
         kernel.setArg(2, d_wavenumbers);

@@ -25,17 +25,16 @@ namespace idg {
         /// Constructors
         OpenCL::OpenCL(
             Parameters params,
+            cl::Context &context,
             unsigned deviceNumber,
-            Compilerflags flags)
+            Compilerflags flags) :
+            context(context)
         {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             cout << "Compiler flags: " << flags << endl;
             cout << params;
             #endif
-            // Get context
-        	cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
-        
         	// Get devices
         	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
             device = devices[deviceNumber];
@@ -57,7 +56,7 @@ namespace idg {
         }
 
         /// High level routines
-        void OpenCL::transform(DomainAtoDomainB direction, cl::Context &context, cl::Buffer &h_grid)
+        void OpenCL::transform(DomainAtoDomainB direction, cl::Buffer &h_grid)
         {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
@@ -154,6 +153,11 @@ namespace idg {
             const int nr_streams = 1;
             #pragma omp parallel num_threads(nr_streams)
             {
+                // Events
+                cl::Event inputFree;
+                cl::Event outputFree;
+                cl::Event inputReady;
+                cl::Event outputReady;
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
@@ -163,13 +167,14 @@ namespace idg {
 	
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
+                    cout << "processing from subgrid: " << s << endl;
                     // Prevent overflow
                     int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
                     // Offsets
                     size_t uvw_offset          = s * nr_timesteps * 3 * sizeof(float);
                     size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
-                    size_t subgrids_offset      = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
+                    size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
                     #pragma omp critical (GPU)
@@ -182,16 +187,21 @@ namespace idg {
                             //TODO
 
     						// Launch gridder kernel
+                            kernel_gridder.launchAsync(queue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
 
     						// Launch FFT
                             //TODO
 
     						// Copy subgrid to host
-                            queue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
+                            cout << "copy subgrid to host 1" << endl;
+                            queue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady);
+                            cout << "copy subgrid to host 2" << endl;
                     }
 
                     // Wait for device to host transfer to finish
-                    //TODO
+                    cout << "waiting for output" << endl;
+                    outputReady.wait();
+                    cout << "output ready" << endl;
                 }
             }
             runtime += omp_get_wtime();
@@ -272,9 +282,7 @@ namespace idg {
             std::vector<cl::Device> devices;
             devices.push_back(device);
 
-            // Get context
-            cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
-
+            // Add all kernels to build
             vector<string> v;
             v.push_back("KernelGridder.cl");
 
@@ -290,17 +298,17 @@ namespace idg {
                                   (std::istreambuf_iterator<char>()));
                 source_file.close();
 
-                cl::Program program(context, source);
+                cl::Program *program =  new cl::Program(context, source);
                 try {
-                    program.build(devices, parameters.c_str());
-                    programs.push_back(&program);
+                    (*program).build(devices, parameters.c_str());
+                    programs.push_back(program);
                     std::string msg;
-                    program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+                    (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
                     cout << msg;
                 } catch (cl::Error &error) {
                     if (strcmp(error.what(), "clBuildProgram") == 0) {
                         std::string msg;
-                        program.getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+                        (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
                         std::cerr << msg << std::endl;
                         exit(EXIT_FAILURE);
                     }
