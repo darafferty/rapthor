@@ -11,6 +11,7 @@
 #define IDG_CUDA_MAXWELL_H_
 
 #include "CUDA.h"
+#include "Power.h"
 
 namespace idg {
     namespace proxy {
@@ -34,15 +35,15 @@ namespace idg {
                 static std::string default_compiler();
                 static std::string default_compiler_flags();
 
+
             // Low level routines
             protected:
                 virtual void run_gridder(CU_GRIDDER_PARAMETERS);
                 virtual void run_degridder(CU_DEGRIDDER_PARAMETERS);
                     
             }; // class Maxwell
-    
+
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
-
 #endif

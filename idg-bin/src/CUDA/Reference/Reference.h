@@ -33,8 +33,8 @@ namespace idg {
                 static ProxyInfo default_info();
                 static std::string default_compiler();
                 static std::string default_compiler_flags();
-                    
-        }; // class Reference
+
+         }; // class Reference
     
         } // namespace cpu
     } // namespace proxy
