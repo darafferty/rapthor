@@ -15,7 +15,8 @@ namespace idg {
         void report(const char *name,
               double runtime,
               uint64_t flops,
-              uint64_t bytes)
+              uint64_t bytes,
+              double watt)
         {
             const int fw1 = 12;
             const int fw2 = 10;
@@ -37,8 +38,12 @@ namespace idg {
                 clog << ", ";
                 clog << setw(fw3) << right << fixed << setprecision(2)
                                   << bytes / runtime * 1e-9 << " GB/s";
-                clog << endl;
+            if  (watt != 0)
+                clog << ", ";
+                clog << setw(fw3) << right << fixed << setprecision(2)
+                                  << watt << " Watt";
             }
+            clog << endl;
         }
 
         void report_runtime(double runtime)
@@ -79,8 +84,8 @@ namespace idg {
                           double joules)
         {
             clog << fixed
-                 << "Power: " << runtime << "s, "
-                 << watt << " W, Energy: "
+                 << "   runtime: " << runtime << "s, "
+                 << watt << " W, energy: "
                  << joules << " J" << endl;
         }
     } // namespace auxiliary

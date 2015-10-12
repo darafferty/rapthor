@@ -18,7 +18,7 @@ namespace idg {
         namespace cuda {
 
             class Maxwell : public CUDA {
-            
+
             public:
                 /// Constructors
                 Maxwell(Parameters params,
@@ -26,10 +26,10 @@ namespace idg {
                           Compiler compiler = default_compiler(),
                           Compilerflags flags = default_compiler_flags(),
                           ProxyInfo info = default_info());
-                
+
                 /// Destructor
                 ~Maxwell() = default;
-    
+
                 // Get default values for ProxyInfo
                 static ProxyInfo default_info();
                 static std::string default_compiler();
@@ -40,7 +40,7 @@ namespace idg {
             protected:
                 virtual void run_gridder(CU_GRIDDER_PARAMETERS);
                 virtual void run_degridder(CU_DEGRIDDER_PARAMETERS);
-                    
+
             }; // class Maxwell
 
         } // namespace cuda
