@@ -35,7 +35,6 @@ PowerSensor::PowerSensor(const char *device, const char *dumpFileName) :
     /* Flush anything already in the serial buffer */
     tcflush(fd, TCIFLUSH);
 
-    printf("init mutex!\n");
     if ((errno = pthread_mutex_init(&mutex, 0)) != 0) {
         perror("pthread_mutex_init");
         exit(1);

@@ -9,7 +9,8 @@ namespace idg {
     void report(const char *name,
          		double runtime,
          		uint64_t flops,
-         		uint64_t bytes);
+         		uint64_t bytes,
+                double watt=0);
 
     void report_runtime(double runtime);
 

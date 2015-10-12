@@ -32,14 +32,14 @@ namespace idg {
                 cu::DeviceMemory &d_subgrid);
         	uint64_t flops(int jobsize);
     		uint64_t bytes(int jobsize);
-    	
+
     	private:
     	    cu::Function function;
             Parameters &parameters;
-            
+
     };
-    
-    
+
+
     class Degridder {
         public:
             Degridder(cu::Module &module, Parameters &parameters);
@@ -51,13 +51,13 @@ namespace idg {
                 cu::DeviceMemory &d_subgrid);
            	uint64_t flops(int jobsize);
     		uint64_t bytes(int jobsize);
-    	
+
     	private:
     	    cu::Function function;
             Parameters &parameters;
     };
-    
-    
+
+
     class GridFFT {
     	public:
             GridFFT(Parameters &parameters);
@@ -65,7 +65,7 @@ namespace idg {
             void launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction);
     		uint64_t flops(int size, int batch);
     		uint64_t bytes(int size, int batch);
-    
+
         private:
             Parameters &parameters;
             int planned_size;
@@ -74,8 +74,8 @@ namespace idg {
             cufft::C2C_2D *fft_bulk;
             cufft::C2C_2D *fft_remainder;
     };
-    
-    
+
+
     class Adder {
     	public:
     	    Adder(cu::Module &module, Parameters &parameters);
@@ -86,13 +86,13 @@ namespace idg {
     			cu::DeviceMemory &d_grid);
     		uint64_t flops(int jobsize);
     		uint64_t bytes(int jobsize);
-    		
+
     	private:
     		cu::Function function;
             Parameters &parameters;
     };
-    
-    
+
+
     /*
         Splitter
     */
@@ -106,12 +106,11 @@ namespace idg {
     			cu::DeviceMemory &d_grid);
     		uint64_t flops(int jobsize);
     		uint64_t bytes(int jobsize);
-    		
+
     	private:
     		cu::Function function;
             Parameters &parameters;
     };
-    
   } // namespace kernel
 
 } // namespace idg

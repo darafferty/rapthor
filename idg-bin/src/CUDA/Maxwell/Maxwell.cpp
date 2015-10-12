@@ -23,7 +23,6 @@ namespace idg {
         namespace cuda {
             // Power sensor
             static PowerSensor *powerSensor;
-     
 
             /// Constructors
             Maxwell::Maxwell(
@@ -47,6 +46,25 @@ namespace idg {
                 powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
                 #endif
             }
+            /*
+                Power measurement
+            */
+            class PowerRecord {
+                public:
+                    void enqueue(cu::Stream &stream) {
+                        stream.record(event);
+                        stream.addCallback(&PowerRecord::getPower, &state);
+                    }
+
+                    PowerSensor::State state;
+
+                private:
+                    cu::Event event;
+
+                    static void getPower(CUstream, CUresult, void *userData) {
+                        *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
+                    }
+            };
 
             /*
                 Size of data structures for a single job
@@ -63,10 +81,10 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << "Maxwell::" << __func__ << endl;
                 #endif
-    
+
                 // Performance measurements
                 double runtime = 0;
-    
+
                 // Constants
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timesteps = mParams.get_nr_timesteps();
@@ -74,39 +92,39 @@ namespace idg {
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-    
+
                 // load kernel functions
                 kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
-    
+
                 // Initialize
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
                 const int nr_streams = 3;
-    
+
                 // Set jobsize to match available gpu memory
                 uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
                 uint64_t device_memory_available = device.free_memory();
                 int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
-    
+
                 // Make sure that jobsize isn't too large
                 int max_jobsize = nr_subgrids / 8;
                 if (jobsize >= max_jobsize) {
                     jobsize = max_jobsize;
                 }
-    
+
                 #if defined (DEBUG)
                 clog << "nr_subgrids: " << nr_subgrids << endl;
                 clog << "jobsize:     " << jobsize << endl;
                 clog << "free size:   " << device_memory_available * 1e-9 << " Gb" << endl;
                 clog << "buffersize:  " << nr_streams * jobsize * device_memory_required * 1e-9 << " Gb" << endl;
                 #endif
-    
+
      	        runtime = -omp_get_wtime();
                 #if defined(MEASURE_POWER)
                 PowerSensor::State startState = powerSensor->read();
                 #endif
-    
+
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
@@ -116,33 +134,36 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    //int thread_num = omp_get_thread_num();
-                    //int current_jobsize = jobsize;
                     kernel::GridFFT kernel_fft(mParams);
-    
+
             	    // Private device memory
                 	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
                 	cu::DeviceMemory d_uvw(jobsize * SIZEOF_UVW);
             	    cu::DeviceMemory d_subgrids(jobsize * SIZEOF_SUBGRIDS);
                     cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
-        
+
                     #pragma omp for schedule(dynamic)
                     for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                         // Prevent overflow
                         int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
-    
+
                         // Number of elements in batch
                         int uvw_elements          = nr_timesteps * 3;
                         int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
                         int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
                         int metadata_elements     = 5;
-    
+
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
                         void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
-    
+
+                        // Power measurement
+                        #if defined(MEASURE_POWER)
+                        PowerRecord powerRecords[3];
+                        #endif
+
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
     					{
     						// Copy input data to device
@@ -151,46 +172,66 @@ namespace idg {
     						htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
     						htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
     						htodstream.record(inputReady);
-    
+
     						// Create FFT plan
     						kernel_fft.plan(subgridsize, current_jobsize);
-    
+
     						// Launch gridder kernel
-    						executestream.waitEvent(inputReady); 
+    						executestream.waitEvent(inputReady);
     						executestream.waitEvent(outputFree);
+                            #if defined(MEASURE_POWER)
+                            powerRecords[0].enqueue(executestream);
+                            #endif
     						kernel_gridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-    						 
+                            #if defined(MEASURE_POWER)
+                            powerRecords[1].enqueue(executestream);
+                            #endif
+
     						// Launch FFT
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                            #if defined(MEASURE_POWER)
+                            powerRecords[2].enqueue(executestream);
+                            #endif
     						executestream.record(outputReady);
     						executestream.record(inputFree);
-    
+
     						// Copy subgrid to host
     						dtohstream.waitEvent(outputReady);
     						dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, current_jobsize * SIZEOF_SUBGRIDS);
     						dtohstream.record(outputFree);
     					}
-    
+
     					outputFree.synchronize();
+
+                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER)
+                        auxiliary::report("gridder", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                                                     kernel_gridder.flops(current_jobsize),
+                                                     kernel_gridder.bytes(current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                        auxiliary::report("    fft", PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
+                                                     kernel_fft.flops(subgridsize, current_jobsize),
+                                                     kernel_fft.bytes(subgridsize, current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                        #endif
                     } // end for s
                 }
-    
+
                 runtime += omp_get_wtime();
                 #if defined(MEASURE_POWER)
                 PowerSensor::State stopState = powerSensor->read();
                 #endif
-    
+
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                clog << "Total: gridding" << endl;
-                clog << "Runtime: " << runtime << " s" << endl;
-                auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 #if defined(MEASURE_POWER)
                 auxiliary::report_power(PowerSensor::seconds(startState, stopState),
                                         PowerSensor::Watt(startState, stopState),
                                         PowerSensor::Joules(startState, stopState));
+                #else
+                clog << "   runtime: " << runtime << " s" << endl;
                 #endif
+                auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
             } // run_gridder
