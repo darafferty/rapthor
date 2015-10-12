@@ -31,7 +31,7 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-            }
+           }
 
             /*
                 Size of data structures for a single job
