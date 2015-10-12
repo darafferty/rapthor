@@ -46,6 +46,7 @@ namespace idg {
                 powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
                 #endif
             }
+
             /*
                 Power measurement
             */
@@ -362,23 +363,42 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << "CUDA::" << __func__ << endl;
                 #endif
-                
+
                 string srcdir = string(IDG_SOURCE_DIR) 
                     + "/src/CUDA/Maxwell/kernels";
-                
+
                 #if defined(DEBUG)
                 cout << "Searching for source files in: " << srcdir << endl;
                 #endif
-                
+
                 // Create temp directory
                 string tmpdir = make_tempdir();
-                
+
                 // Create proxy info
                 ProxyInfo p = default_proxyinfo(srcdir, tmpdir);
-                
+
                 return p;
 
                return CUDA::default_info();
+            }
+
+            ProxyInfo Maxwell::default_proxyinfo(string srcdir, string tmpdir) {
+                ProxyInfo p;
+                p.set_path_to_src(srcdir);
+                p.set_path_to_lib(tmpdir);
+
+                string libgridder = "Gridder.ptx";
+                string libdegridder = "Degridder.ptx";
+
+                p.add_lib(libgridder);
+                p.add_lib(libdegridder);
+
+                p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
+                p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
+
+                p.set_delete_shared_objects(true);
+
+                return p;
            }
 
            string Maxwell::default_compiler() {
