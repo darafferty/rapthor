@@ -58,7 +58,6 @@ namespace idg {
                 const Parameters& get_parameters() const { return mParams; }
                 const ProxyInfo& get_info() const { return mInfo; }
     
-    
             // High level routines
             public:
                 /** \brief Grid the visibilities onto uniform subgrids 
