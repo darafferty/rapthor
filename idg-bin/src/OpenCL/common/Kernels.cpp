@@ -128,12 +128,25 @@ namespace idg {
 
     // GridFFT class
     GridFFT::GridFFT(Parameters &parameters) : parameters(parameters) {
+        uninitialized = true;
     }
     
     void GridFFT::plan(cl::Context &context, int size, int batch) {
-        // Set parameters
-        planned_size = size;
-        planned_batch = batch;
+        // Check wheter a new plan has to be created
+        if (uninitialized ||
+           size  != planned_size ||
+           batch != planned_batch) { 
+            // Create new plan
+            size_t lengths[2] = {(size_t) size, (size_t) size};
+            clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
+            clfftSetPlanBatchSize(fft, batch);
+            size_t dist = size * size;
+            clfftSetPlanDistance(fft, dist, dist);
+
+            // Update parameters
+            planned_size = size;
+            planned_batch = batch;
+        }
     }
    
     void GridFFT::launchAsync(
