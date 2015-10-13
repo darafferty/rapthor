@@ -23,13 +23,22 @@ inline __device__ float2 operator * (float a, float2 b)
 #define conj(a) (make_float2((a).x, -(a).y))
 #define conjTransp(a) (make_float2(-(a).y, (a).x))
 
+#if 0
 #define fftKernel2S(d1,d2,dir) \
 { \
     float2 c = (d1);   \
     (d1) = c + (d2);   \
     (d2) = c - (d2);   \
 }
+#else
+inline __device__ void fftKernel2S(float2 d1, float2 d2, int dir) {
+    float2 c = (d1);
+    (d1) = c + (d2);
+    (d2) = c - (d2);
+}
+#endif
 
+#if 0
 #define fftKernel4(a,dir) \
 { \
     fftKernel2S((a)[0], (a)[2], dir); \
@@ -41,7 +50,20 @@ inline __device__ float2 operator * (float a, float2 b)
     (a)[1] = (a)[2]; \
     (a)[2] = c; \
 }
+#else
+inline __device__ void fftKernel4(float2 *a, int dir) {
+    fftKernel2S((a)[0], (a)[2], dir);
+    fftKernel2S((a)[1], (a)[3], dir);
+    fftKernel2S((a)[0], (a)[1], dir);
+    (a)[3] = (dir)*(conjTransp((a)[3]));
+    fftKernel2S((a)[2], (a)[3], dir);
+    float2 c = (a)[1];
+    (a)[1] = (a)[2];
+    (a)[2] = c;
+}
+#endif
 
+#if 0
 #define bitreverse8(a) \
 { \
     float2 c; \
@@ -52,7 +74,19 @@ inline __device__ float2 operator * (float a, float2 b)
     (a)[3] = (a)[6]; \
     (a)[6] = c; \
 }
+#else
+inline __device__ void bitreverse8(float2 *a) {
+    float2 c;
+    c = (a)[1];
+    (a)[1] = (a)[4];
+    (a)[4] = c;
+    c = (a)[3];
+    (a)[3] = (a)[6];
+    (a)[6] = c;
+}
+#endif
 
+#if 0
 #define fftKernel8(a,dir) \
 { \
 	const float2 w1  = make_float2(0x1.6a09e6p-1f,  dir*0x1.6a09e6p-1f);  \
@@ -77,6 +111,31 @@ inline __device__ float2 operator * (float a, float2 b)
 	fftKernel2S((a)[6], (a)[7], dir); \
 	bitreverse8((a)); \
 }
+#else
+inline __device__ void fftKernel8(float2 *a, int dir) {
+	const float2 w1  = make_float2(0x1.6a09e6p-1f,  dir*0x1.6a09e6p-1f); 
+	const float2 w3  = make_float2(-0x1.6a09e6p-1f, dir*0x1.6a09e6p-1f); 
+	float2 c;
+	fftKernel2S((a)[0], (a)[4], dir);
+	fftKernel2S((a)[1], (a)[5], dir);
+	fftKernel2S((a)[2], (a)[6], dir);
+	fftKernel2S((a)[3], (a)[7], dir);
+	(a)[5] = complexMul(w1, (a)[5]);
+	(a)[6] = (dir)*(conjTransp((a)[6]));
+	(a)[7] = complexMul(w3, (a)[7]);
+	fftKernel2S((a)[0], (a)[2], dir);
+	fftKernel2S((a)[1], (a)[3], dir);
+	fftKernel2S((a)[4], (a)[6], dir);
+	fftKernel2S((a)[5], (a)[7], dir);
+	(a)[3] = (dir)*(conjTransp((a)[3]));
+	(a)[7] = (dir)*(conjTransp((a)[7]));
+	fftKernel2S((a)[0], (a)[1], dir);
+	fftKernel2S((a)[2], (a)[3], dir);
+	fftKernel2S((a)[4], (a)[5], dir);
+	fftKernel2S((a)[6], (a)[7], dir);
+	bitreverse8((a));
+}
+#endif
 
 
 __global__ void kernel_fft(float2 *in, float2 *out, int dir)
