@@ -79,6 +79,35 @@ namespace idg {
             #define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
             #define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
 
+            int get_jobsize(int nr_subgrids, Parameters mParams, cu::Device &device, int nr_streams) {
+                // Get parameters
+                auto nr_timesteps = mParams.get_nr_timesteps();
+                auto nr_channels = mParams.get_nr_channels();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgridsize = mParams.get_subgrid_size();
+
+                // Set jobsize to match available gpu memory
+                uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
+                uint64_t device_memory_available = device.free_memory();
+                int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
+
+                // Make sure that jobsize isn't too large
+                int max_jobsize = nr_subgrids / 8;
+                if (jobsize >= max_jobsize) {
+                    jobsize = max_jobsize;
+                }
+
+                #if defined (DEBUG) || 1
+                clog << "nr_subgrids: " << nr_subgrids << endl;
+                clog << "jobsize:     " << jobsize << endl;
+                clog << "free size:   " << device_memory_available * 1e-9 << " Gb" << endl;
+                clog << "buffersize:  " << nr_streams * jobsize * device_memory_required * 1e-9 << " Gb" << endl;
+                #endif
+
+                return jobsize;
+            }
+
+
             /// Low level routines
             void Maxwell::run_gridder(CU_GRIDDER_PARAMETERS)
             {
@@ -105,24 +134,7 @@ namespace idg {
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
                 const int nr_streams = 3;
-
-                // Set jobsize to match available gpu memory
-                uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
-                uint64_t device_memory_available = device.free_memory();
-                int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
-
-                // Make sure that jobsize isn't too large
-                int max_jobsize = nr_subgrids / 8;
-                if (jobsize >= max_jobsize) {
-                    jobsize = max_jobsize;
-                }
-
-                #if defined (DEBUG)
-                clog << "nr_subgrids: " << nr_subgrids << endl;
-                clog << "jobsize:     " << jobsize << endl;
-                clog << "free size:   " << device_memory_available * 1e-9 << " Gb" << endl;
-                clog << "buffersize:  " << nr_streams * jobsize * device_memory_required * 1e-9 << " Gb" << endl;
-                #endif
+                const int jobsize = get_jobsize(nr_subgrids, mParams, device, nr_streams);
 
      	        runtime = -omp_get_wtime();
                 #if defined(MEASURE_POWER)
@@ -266,17 +278,7 @@ namespace idg {
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
                 const int nr_streams = 3;
-
-                // Set jobsize to match available gpu memory
-                uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
-                uint64_t device_memory_available = device.free_memory();
-                int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
-
-                // Make sure that jobsize isn't too large
-                int max_jobsize = nr_subgrids / 8;
-                if (jobsize >= max_jobsize) {
-                    jobsize = max_jobsize;
-                }
+                const int jobsize = get_jobsize(nr_subgrids, mParams, device, nr_streams);
 
      	        runtime = -omp_get_wtime();
                 #if defined(MEASURE_POWER)
