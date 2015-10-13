@@ -166,13 +166,8 @@ namespace idg {
         } else {
             cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
             int nr_polarizations = parameters.get_nr_polarizations();
-            //for (int i = 0; i < planned_batch * nr_polarizations; i++) {
-                //printf("fft %d, size=%d\n", i, planned_size);
-                const int S = 0;
-                const void *parameters[] = { &data_ptr, &data_ptr, &direction, &S};
-                stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1, 128, 1, 1, 0, parameters);
-                //data_ptr += planned_size * planned_size;
-            //}
+            const void *parameters[] = { &data_ptr, &data_ptr, &direction};
+            stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1, 128, 1, 1, 0, parameters);
         }
     }
 

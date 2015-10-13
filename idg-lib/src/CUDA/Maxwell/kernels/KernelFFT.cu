@@ -207,7 +207,7 @@ clFFT_1DTwistInterleaved(__global float2 *in, unsigned int startRow, unsigned in
 } \
 
 #endif
-__global__ void kernel_fft(float2 *in, float2 *out, int dir, int S)
+__global__ void kernel_fft(float2 *in, float2 *out, int dir)
 {
 float2 *orig_in = in, *orig_out = out;
     __shared__ float2 tmp[32 * 32];
@@ -221,7 +221,7 @@ float2 *orig_in = in, *orig_out = out;
     float2 a[8];
     int lId = threadIdx.x;
     int groupId = blockIdx.x;
-        s = S & 31;
+        s = 0 & 31;
     ii = lId & 31;
     jj = lId >> 5;
     lMemStore = sMem + mad24( jj, 36, ii );
