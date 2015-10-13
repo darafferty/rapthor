@@ -240,6 +240,7 @@ namespace idg {
                 #endif
             } // run_gridder
 
+
             void Maxwell::run_degridder(CU_DEGRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
@@ -261,10 +262,10 @@ namespace idg {
                 kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
 
                 // Initialize
-                const int nr_streams = 3;
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
+                const int nr_streams = 3;
 
                 // Set jobsize to match available gpu memory
                 uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
@@ -278,6 +279,9 @@ namespace idg {
                 }
 
      	        runtime = -omp_get_wtime();
+                #if defined(MEASURE_POWER)
+                PowerSensor::State startState = powerSensor->read();
+                #endif
 
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -315,6 +319,11 @@ namespace idg {
                         void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
+                        // Power measurement
+                        #if defined(MEASURE_POWER)
+                        PowerRecord powerRecords[3];
+                        #endif
+
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
     					{
     						// Copy input data to device
@@ -329,14 +338,22 @@ namespace idg {
 
     						// Launch FFT
     						executestream.waitEvent(inputReady);
+                            #if defined(MEASURE_POWER)
+                            powerRecords[0].enqueue(executestream);
+                            #endif
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_FORWARD);
+                            #if defined(MEASURE_POWER)
+                            powerRecords[1].enqueue(executestream);
+                            #endif
 
     						// Launch degridder kernel
     						executestream.waitEvent(outputFree);
     						kernel_degridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-
+                            #if defined(MEASURE_POWER)
+                            powerRecords[2].enqueue(executestream);
+                            #endif
     						executestream.record(outputReady);
     						executestream.record(inputFree);
 
@@ -347,19 +364,36 @@ namespace idg {
     					}
 
     					outputFree.synchronize();
+                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER)
+                        auxiliary::report("      fft", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                                                       kernel_fft.flops(subgridsize, current_jobsize),
+                                                       kernel_fft.bytes(subgridsize, current_jobsize),
+                                                       PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                        auxiliary::report("degridder", PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
+                                                       kernel_degridder.flops(current_jobsize),
+                                                       kernel_degridder.bytes(current_jobsize),
+                                                       PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                        #endif
+
                     } // end for s
                 }
 
                 runtime += omp_get_wtime();
-
+                #if defined(MEASURE_POWER)
+                PowerSensor::State stopState = powerSensor->read();
+                #endif
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                clog << "Total: degridding" << endl;
-                clog << "Runtime: " << runtime << " s" << endl;
+                #if defined(MEASURE_POWER)
+                auxiliary::report_power(PowerSensor::seconds(startState, stopState),
+                                        PowerSensor::Watt(startState, stopState),
+                                        PowerSensor::Joules(startState, stopState));
+                #else
+                clog << "   runtime: " << runtime << " s" << endl;
+                #endif
                 auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
             } // run_degridder
-
 
 
             ProxyInfo Maxwell::default_info() {
