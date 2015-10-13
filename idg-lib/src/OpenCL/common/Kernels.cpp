@@ -150,7 +150,9 @@ namespace idg {
     }
    
     void GridFFT::launchAsync(
-        cl::CommandQueue &queue, cl::Buffer &d_data, int direction) {
+        cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
+        cl::Event event;
+        clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event(), &d_data(), NULL, NULL);
     }
     
     uint64_t GridFFT::flops(int size, int batch) {
