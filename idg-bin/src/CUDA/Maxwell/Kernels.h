@@ -20,6 +20,7 @@ namespace idg {
     static const std::string name_degridder = "kernel_degridder";
     static const std::string name_adder     = "kernel_adder";
     static const std::string name_splitter  = "kernel_splitter";
+    static const std::string name_fft       = "kernel_fft";
 
     class Gridder {
         public:
@@ -60,13 +61,14 @@ namespace idg {
 
     class GridFFT {
     	public:
-            GridFFT(Parameters &parameters);
+            GridFFT(cu::Module &module, Parameters &parameters);
             void plan(int size, int batch);
             void launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction);
     		uint64_t flops(int size, int batch);
     		uint64_t bytes(int size, int batch);
 
         private:
+            cu::Function function;
             Parameters &parameters;
             int planned_size;
             int planned_batch;
