@@ -143,7 +143,7 @@ namespace idg {
             auto nr_channels = mParams.get_nr_channels();
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
-  
+
             // Set jobsize
             //TODO: set jobsize according to available memory
             const int jobsize = 8192;
@@ -167,7 +167,6 @@ namespace idg {
 	
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
-                    cout << "processing from subgrid: " << s << endl;
                     // Prevent overflow
                     int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
@@ -193,15 +192,11 @@ namespace idg {
                             //TODO
 
     						// Copy subgrid to host
-                            cout << "copy subgrid to host 1" << endl;
                             queue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady);
-                            cout << "copy subgrid to host 2" << endl;
                     }
 
                     // Wait for device to host transfer to finish
-                    cout << "waiting for output" << endl;
                     outputReady.wait();
-                    cout << "output ready" << endl;
                 }
             }
             runtime += omp_get_wtime();
@@ -212,8 +207,6 @@ namespace idg {
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
- 
-            
         } // run_gridder
 
 

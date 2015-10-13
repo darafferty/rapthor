@@ -23,7 +23,6 @@ namespace idg {
         int wgSize = 8;
         cl::NDRange globalSize(jobsize);
         cl::NDRange localSize(wgSize, wgSize);
-        std::cout << "wgsize: " << wgSize << " jobsize: " << jobsize << std::endl;
         kernel.setArg(0, w_offset);
         kernel.setArg(1, d_uvw);
         kernel.setArg(2, d_wavenumbers);
