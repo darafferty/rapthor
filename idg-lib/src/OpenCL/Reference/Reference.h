@@ -21,17 +21,14 @@ namespace idg {
             public:
                 /// Constructors
                 Reference(Parameters params,
+                          cl::Context &context,
                           unsigned deviceNumber = 0,
-                          Compiler compiler = default_compiler(),
-                          Compilerflags flags = default_compiler_flags(),
-                          ProxyInfo info = default_info());
+                          Compilerflags flags = default_compiler_flags());
                 
                 /// Destructor
                 ~Reference() = default;
     
                 // Get default values for ProxyInfo
-                static ProxyInfo default_info();
-                static std::string default_compiler();
                 static std::string default_compiler_flags();
                     
             }; // class Reference

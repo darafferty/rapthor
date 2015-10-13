@@ -11,7 +11,7 @@ typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metada
 /*
     Complex numbers
 */
-#define FLOAT_COMPLEX float2
+#define FLOAT_COMPLEX fcomplex
 
 
 /*
