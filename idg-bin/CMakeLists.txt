@@ -79,6 +79,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 # (see http://www.cmake.org/cmake/help/v3.1/module/FindOpenCL.html)
 if (BUILD_WITH_OPENCL)
     find_package(OpenCL)
+    find_package(clFFT)
 endif (BUILD_WITH_OPENCL)
 
 # set default path to build executables and libraries in BINARY_DIR
