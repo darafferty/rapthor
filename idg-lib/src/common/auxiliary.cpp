@@ -42,6 +42,10 @@ namespace idg {
                 clog << ", ";
                 clog << setw(fw3) << right << fixed << setprecision(2)
                                   << watt << " Watt";
+            if (flops != 0 && watt != 0) 
+                clog << ", ";
+                clog << setw(fw3) << right << fixed << setprecision(2)
+                                  << (flops /runtime * 1e-9) / watt << " GFLOPS/W";
             }
             clog << endl;
         }
