@@ -124,55 +124,20 @@ namespace idg {
         // Visibilities
         nr_time * nr_channels * nr_polarizations * sizeof(complex<float>));
     }
+#endif
 
     // GridFFT class
     GridFFT::GridFFT(Parameters &parameters) : parameters(parameters) {
-        fft_bulk = NULL;
-        fft_remainder = NULL;
     }
     
-    void GridFFT::plan(int size, int batch) {
-        // Parameters
-        int stride = 1;
-        int dist = size * size;
-        int nr_polarizations = parameters.get_nr_polarizations();
-       
-        // Plan bulk fft
-        if (fft_bulk == NULL ||
-            size != planned_size) {
-            fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
-        }
-
-        // Plan remainder fft
-        if (fft_remainder == NULL ||
-            size != planned_size ||
-            batch != planned_batch ||
-            size < bulk_size) {
-            int remainder = batch % bulk_size;
-            fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
-        }
-
+    void GridFFT::plan(cl::Context &context, int size, int batch) {
         // Set parameters
         planned_size = size;
         planned_batch = batch;
     }
    
-    void GridFFT::launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction) {
-        // Initialize
-        cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-        int s = 0;
-        int nr_polarizations = parameters.get_nr_polarizations();
-
-        // Execute bulk ffts
-        (*fft_bulk).setStream(stream);
-        for (; s < (planned_batch - bulk_size); s += bulk_size) {
-            (*fft_bulk).execute(data_ptr, data_ptr, direction);
-            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
-        }
-
-        // Execute remainder ffts
-        (*fft_remainder).setStream(stream);
-        (*fft_remainder).execute(data_ptr, data_ptr, direction);
+    void GridFFT::launchAsync(
+        cl::CommandQueue &queue, cl::Buffer &d_data, int direction) {
     }
     
     uint64_t GridFFT::flops(int size, int batch) {
@@ -186,6 +151,7 @@ namespace idg {
     }
 
 
+#if 0
     // Adder class
     Adder::Adder(cu::Module &module, Parameters &parameters) :
         function(module, name_adder.c_str()),

@@ -153,6 +153,9 @@ namespace idg {
             const int nr_streams = 1;
             #pragma omp parallel num_threads(nr_streams)
             {
+                // Initialize
+                kernel::GridFFT kernel_fft(mParams);
+
                 // Events
                 cl::Event inputFree;
                 cl::Event outputFree;
@@ -183,13 +186,13 @@ namespace idg {
                             queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
                             queue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
     						// Create FFT plan
-                            //TODO
+                            kernel_fft.plan(context, subgridsize, current_jobsize);
 
     						// Launch gridder kernel
                             kernel_gridder.launchAsync(queue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
 
     						// Launch FFT
-                            //TODO
+                            kernel_fft.launchAsync(queue, d_subgrids, CLFFT_BACKWARD);
 
     						// Copy subgrid to host
                             queue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady);

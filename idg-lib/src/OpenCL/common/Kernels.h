@@ -57,13 +57,15 @@ namespace idg {
     	    cu::Function function;
             Parameters &parameters;
     };
-    
+#endif
     
     class GridFFT {
     	public:
             GridFFT(Parameters &parameters);
-            void plan(int size, int batch);
-            void launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction);
+            void plan(
+                cl::Context &context, int size, int batch);
+            void launchAsync(
+                cl::CommandQueue &queue, cl::Buffer &d_data, int direction);
     		uint64_t flops(int size, int batch);
     		uint64_t bytes(int size, int batch);
     
@@ -71,12 +73,9 @@ namespace idg {
             Parameters &parameters;
             int planned_size;
             int planned_batch;
-            const int bulk_size = 8192;
-            cufft::C2C_2D *fft_bulk;
-            cufft::C2C_2D *fft_remainder;
     };
     
-    
+#if 0
     class Adder {
     	public:
     	    Adder(cu::Module &module, Parameters &parameters);
