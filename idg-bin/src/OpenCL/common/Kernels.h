@@ -65,7 +65,7 @@ namespace idg {
             void plan(
                 cl::Context &context, int size, int batch);
             void launchAsync(
-                cl::CommandQueue &queue, cl::Buffer &d_data, int direction);
+                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction);
     		uint64_t flops(int size, int batch);
     		uint64_t bytes(int size, int batch);
     

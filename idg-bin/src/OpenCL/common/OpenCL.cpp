@@ -210,6 +210,9 @@ namespace idg {
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
+
+            // Terminate clfft
+            clfftTeardown();   
         } // run_gridder
 
 
