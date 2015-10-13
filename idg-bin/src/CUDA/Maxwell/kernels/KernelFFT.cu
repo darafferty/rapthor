@@ -17,8 +17,14 @@ inline __device__ float2 operator * (float a, float2 b)
     return make_float2(a * b.x, a * b.y);
 }
 
+#define USE_CUDA_PI 1
 #undef M_PI
+#if USE_CUDA_PI
+#include "math_constants.h"
+#define M_PI CUDART_PI_F
+#else
 #define M_PI 0x1.921fb54442d18p+1f
+#endif
 
 #define mad(A,B,C) ((A)*(B)+(C))
 #define mad24(A,B,C) ((A)*(B)+(C))
