@@ -13,9 +13,9 @@ inline __device__ float2 operator * (float a, float2 b)
 {
     return make_float2(a * b.x, a * b.y);
 }
-#ifndef M_PI
-#define M_PI 0x1.921fb54442d18p+1
-#endif
+
+#undef M_PI
+#define M_PI 0x1.921fb54442d18p+1f
 
 #define mad(A,B,C) ((A)*(B)+(C))
 #define mad24(A,B,C) ((A)*(B)+(C))
@@ -210,9 +210,9 @@ clFFT_1DTwistInterleaved(__global float2 *in, unsigned int startRow, unsigned in
 __global__ void kernel_fft(float2 *in, float2 *out, int dir, int S)
 {
 float2 *orig_in = in, *orig_out = out;
-__shared__ float2 tmp[32 * 32];
-{
+    __shared__ float2 tmp[32 * 32];
     __shared__ float sMem[1280];
+{
     int i, j, r, indexIn, indexOut, index, tid, bNum, xNum, k, l;
     int s, ii, jj, offset;
     float2 w;
@@ -469,7 +469,6 @@ else {
 //__global__ void fft1(float2 *in, float2 *out, int dir, int S)
 out = orig_out;
 {
-    __shared__ float sMem[1024];
     int i, j, r, indexIn, indexOut, index, tid, bNum, xNum, k, l;
     int s, ii, jj, offset;
     float2 w;
