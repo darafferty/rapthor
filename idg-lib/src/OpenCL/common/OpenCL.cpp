@@ -130,8 +130,9 @@ namespace idg {
             kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
 
             // Command queue
-            //TODO: seperate queues for htod, dtoh and compute
-            cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+            cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+            cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+            cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
             // Performance measurements
             double runtime = 0;
@@ -162,12 +163,16 @@ namespace idg {
                 cl::Event inputReady;
                 cl::Event outputReady;
 
+                // Wait lists
+                vector<cl::Event> inputWaitList = {inputFree};
+                vector<cl::Event> executeWaitList = {inputReady};
+
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
                 cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_UVW);
                 cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_WRITE_ONLY, jobsize * SIZEOF_SUBGRIDS);
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
-	
+
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                     // Prevent overflow
@@ -182,20 +187,24 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            queue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
-                            queue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
-                            queue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                            htodqueue.enqueueBarrierWithWaitList(&inputWaitList, NULL);
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
     						// Launch gridder kernel
-                            kernel_gridder.launchAsync(queue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                            executequeue.enqueueBarrierWithWaitList(&executeWaitList, NULL);
+                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
 
     						// Launch FFT
-                            kernel_fft.launchAsync(queue, d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            executequeue.enqueueBarrierWithWaitList(NULL, &outputReady);
+                            executequeue.enqueueBarrierWithWaitList(NULL, &inputFree);
 
     						// Copy subgrid to host
-                            queue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady);
+                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady);
                     }
 
                     // Wait for device to host transfer to finish
