@@ -70,9 +70,11 @@ namespace idg {
     		uint64_t bytes(int size, int batch);
     
         private:
+            bool uninitialized;
             Parameters &parameters;
             int planned_size;
             int planned_batch;
+            clfftPlanHandle fft;
     };
     
 #if 0

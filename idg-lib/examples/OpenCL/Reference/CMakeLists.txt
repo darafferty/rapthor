@@ -29,4 +29,5 @@ target_link_libraries (
   idg-opencl-common
   idg-common
   ${OPENCL_LIBRARIES}
+  ${CLFFT_LIBRARIES}
 )
