@@ -182,31 +182,6 @@ inline __device__ float2 operator * (float a, float2 b)
     bitreverse32((a)); \
 }
 
-#if 0
-__kernel void \
-clFFT_1DTwistInterleaved(__global float2 *in, unsigned int startRow, unsigned int numCols, unsigned int N, unsigned int numRowsToProcess, int dir) \
-{ \
-   float2 a, w; \
-   float ang; \
-   unsigned int j; \
-	unsigned int i = get_global_id(0); \
-	unsigned int startIndex = i; \
-	 \
-	if(i < numCols) \
-	{ \
-	    for(j = 0; j < numRowsToProcess; j++) \
-	    { \
-	        a = in[startIndex]; \
-	        ang = 2.0f * M_PI * dir * i * (startRow + j) / N; \
-	        w = (float2)(cos(ang), sin(ang)); \
-	        a = complexMul(a, w); \
-	        in[startIndex] = a; \
-	        startIndex += numCols; \
-	    } \
-	}	 \
-} \
-
-#endif
 __global__ void kernel_fft(float2 *in, float2 *out, int dir)
 {
 float2 *orig_in = in, *orig_out = out;
@@ -230,42 +205,6 @@ float2 *orig_in = in, *orig_out = out;
         in += offset;
         //out += offset;
         out = tmp + mad24( jj, 32, ii );
-#if 0
-if((groupId == get_num_groups(0)-1) && s) {
-    if( jj < s ) {
-        a[0] = in[0];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[1] = in[128];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[2] = in[256];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[3] = in[384];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[4] = in[512];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[5] = in[640];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[6] = in[768];
-    }
-    jj += 4;
-    if( jj < s ) {
-        a[7] = in[896];
-    }
-}
- else {
-#endif
         a[0] = in[0];
         a[1] = in[128];
         a[2] = in[256];
@@ -274,7 +213,6 @@ if((groupId == get_num_groups(0)-1) && s) {
         a[5] = in[640];
         a[6] = in[768];
         a[7] = in[896];
-//}
     ii = lId & 3;
     jj = lId >> 2;
     lMemLoad  = sMem + mad24( jj, 36, ii);
@@ -420,42 +358,6 @@ if((groupId == get_num_groups(0)-1) && s) {
     a[6].y = lMemStore[864];
     a[7].y = lMemStore[1008];
     __syncthreads();
-#if 0
-if((groupId == get_num_groups(0)-1) && s) {
-    if( jj < s ) {
-        out[0] = a[0];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[128] = a[1];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[256] = a[2];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[384] = a[3];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[512] = a[4];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[640] = a[5];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[768] = a[6];
-    }
-    jj += 4;
-    if( jj < s ) {
-        out[896] = a[7];
-    }
-}
-else {
-#endif
         out[0] = a[0];
         out[128] = a[1];
         out[256] = a[2];
@@ -464,7 +366,6 @@ else {
         out[640] = a[5];
         out[768] = a[6];
         out[896] = a[7];
-//}
 }
 //__global__ void fft1(float2 *in, float2 *out, int dir, int S)
 out = orig_out;
