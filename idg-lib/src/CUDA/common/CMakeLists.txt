@@ -11,7 +11,6 @@ set (${PROJECT_NAME}_headers
   CU.h
   CUFFT.h
   CUDA.h
-  Kernels.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -41,7 +40,6 @@ install(
     FILES
     CPU.h
     idg-cuda.h
-    Kernels.h
     DESTINATION
     include/CUDA
 )
