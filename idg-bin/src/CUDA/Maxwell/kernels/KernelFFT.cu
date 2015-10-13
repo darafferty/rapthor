@@ -115,7 +115,6 @@ inline __device__ void bitreverse8(float2 *a) {
 inline __device__ void fftKernel8(float2 *a, int dir) {
 	const float2 w1  = make_float2(0x1.6a09e6p-1f,  dir*0x1.6a09e6p-1f); 
 	const float2 w3  = make_float2(-0x1.6a09e6p-1f, dir*0x1.6a09e6p-1f); 
-	float2 c;
 	fftKernel2S((a)[0], (a)[4], dir);
 	fftKernel2S((a)[1], (a)[5], dir);
 	fftKernel2S((a)[2], (a)[6], dir);
@@ -140,19 +139,18 @@ inline __device__ void fftKernel8(float2 *a, int dir) {
 
 __global__ void kernel_fft(float2 *in, float2 *out, int dir)
 {
-float2 *orig_in = in, *orig_out = out;
+float2 *orig_out = out;
     __shared__ float2 tmp[32 * 32];
     __shared__ float sMem[1280];
 {
-    int i, j, r, indexIn, indexOut, index, tid, bNum, xNum, k, l;
-    int s, ii, jj, offset;
+    int i, j;
+    int ii, jj, offset;
     float2 w;
-    float ang, angf, ang1;
+    float ang, angf;
     float *lMemStore, *lMemLoad;
     float2 a[8];
     int lId = threadIdx.x;
     int groupId = blockIdx.x;
-        s = 0 & 31;
     ii = lId & 31;
     jj = lId >> 5;
     lMemStore = sMem + mad24( jj, 36, ii );
@@ -326,10 +324,9 @@ float2 *orig_in = in, *orig_out = out;
 //__global__ void fft1(float2 *in, float2 *out, int dir, int S)
 out = orig_out;
 {
-    int i, j, r, indexIn, indexOut, index, tid, bNum, xNum, k, l;
-    int s, ii, jj, offset;
+    int i, j, indexIn, indexOut, tid, xNum;
     float2 w;
-    float ang, angf, ang1;
+    float ang;
     float *lMemStore, *lMemLoad;
     float2 a[8];
     int lId = threadIdx.x;
@@ -341,7 +338,6 @@ tid = groupId * 32;
 i = tid >> 5;
 j = tid & 31;
 indexOut = mad24(i, 1024, j + (xNum << 10));
-bNum = groupId;
 tid = lId;
 i = tid & 31;
 j = tid >> 5;
