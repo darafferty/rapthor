@@ -7,10 +7,10 @@
 #include <string>
 
 #include "RuntimeWrapper.h"
+#include "Parameters.h"
 
 namespace idg {
-
-  namespace kernel {
+    namespace kernel {
 
     // define the kernel function names
     static const std::string name_gridder = "kernel_gridder";
@@ -40,81 +40,74 @@ namespace idg {
     static const std::string name_splitter_bytes = "kernel_splitter_bytes";
 
     class Gridder {
-    public:
-      Gridder(runtime::Module &module);
-      void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
-	       void *visibilities, void *spheroidal, void *aterm,
-	       void *metadata, void *subgrid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-      
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            Gridder(runtime::Module &module, Parameters &parameters);
+            void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
+                     void *visibilities, void *spheroidal, void *aterm,
+                     void *metadata, void *subgrid);
+            uint64_t flops(int jobsize);
+            uint64_t bytes(int jobsize);
+
+        private:
+            runtime::Function _run;
+            Parameters &parameters;
     };
 
-  
+
     class Degridder {
-    public:
-      Degridder(runtime::Module &module);
-      void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
-	       void *visibilities, void *spheroidal, void *aterm,
-	       void *metadata, void *subgrid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-      
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            Degridder(runtime::Module &module, Parameters &parameters);
+            void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
+                     void *visibilities, void *spheroidal, void *aterm,
+                     void *metadata, void *subgrid);
+            uint64_t flops(int jobsize);
+            uint64_t bytes(int jobsize);
+
+        private:
+            runtime::Function _run;
+            Parameters &parameters;
     };
 
-    
+
     class GridFFT {
-    public:
-      GridFFT(runtime::Module &module);
-      void run(int size, int batch, void *data, int direction);
-      uint64_t flops(int size, int batch);
-      uint64_t bytes(int size, int batch);
-    
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            GridFFT(runtime::Module &module, Parameters &parameters);
+            void run(int size, int batch, void *data, int direction);
+            uint64_t flops(int size, int batch);
+            uint64_t bytes(int size, int batch);
+
+        private:
+            runtime::Function _run;
+            Parameters &parameters;
     };
 
-    
+
     class Adder {
-    public:
-      Adder(runtime::Module &module);
-      void run(int jobsize, void *metadata, void *subgrid, void *grid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-    
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            Adder(runtime::Module &module, Parameters &parameters);
+            void run(int jobsize, void *metadata, void *subgrid, void *grid);
+            uint64_t flops(int jobsize);
+            uint64_t bytes(int jobsize);
+
+        private:
+            runtime::Function _run;
+            Parameters &parameters;
     };
 
-  
+
     class Splitter {
-    public:
-      Splitter(runtime::Module &module);
-      void run(int jobsize, void *metadata, void *subgrid, void *grid);
-      uint64_t flops(int jobsize);
-      uint64_t bytes(int jobsize);
-    
-    private:
-      runtime::Function _run;
-      runtime::Function _flops;
-      runtime::Function _bytes;
+        public:
+            Splitter(runtime::Module &module, Parameters &parameters);
+            void run(int jobsize, void *metadata, void *subgrid, void *grid);
+            uint64_t flops(int jobsize);
+            uint64_t bytes(int jobsize);
+
+        private:
+            runtime::Function _run;
+            Parameters &parameters;
     };
 
-
-  } // namespace kernel
-
+    } // namespace kernel
 } // namespace idg
 
 #endif
