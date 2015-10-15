@@ -22,7 +22,7 @@ namespace idg {
         static const std::string name_degridder = "kernel_degridder";
         static const std::string name_adder     = "kernel_adder";
         static const std::string name_splitter  = "kernel_splitter";
-    
+
         class Gridder {
             public:
                 Gridder(cl::Program &program, Parameters &parameters);
@@ -34,13 +34,15 @@ namespace idg {
                     cl::Buffer &d_subgrid);
             	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
-    
+                double runtime();
+
         	private:
         	    cl::Kernel kernel;
                 Parameters &parameters;
+                cl::Event event;
         };
-    
-    
+
+
         class Degridder {
             public:
                 Degridder(cl::Program &program, Parameters &parameters);
@@ -52,13 +54,15 @@ namespace idg {
                     cl::Buffer &d_subgrid);
                	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
-    
+                double runtime();
+
         	private:
                 cl::Kernel kernel;
                 Parameters &parameters;
+                cl::Event event;
         };
-    
-    
+
+
         class GridFFT {
         	public:
                 GridFFT(Parameters &parameters);
@@ -68,13 +72,15 @@ namespace idg {
                     cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction);
         		uint64_t flops(int size, int batch);
         		uint64_t bytes(int size, int batch);
-    
+                double runtime();
+
             private:
                 bool uninitialized;
                 Parameters &parameters;
                 int planned_size;
                 int planned_batch;
                 clfftPlanHandle fft;
+                cl_event event;
         };
     } // namespace kernel
 } // namespace idg

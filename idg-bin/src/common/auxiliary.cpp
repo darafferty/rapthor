@@ -24,28 +24,31 @@ namespace idg {
 
             string name_str(name);
 
-
             #pragma omp critical (clog)
             {
-            clog << setw(fw1) << left << name_str + ": "
-                 << setw(fw2) << right << scientific << setprecision(4)
-                 << runtime << " s";
-            if (flops != 0)
-                clog << ", ";
-                clog << setw(fw2) << right << fixed << setprecision(2)
-                                  << flops / runtime * 1e-9 << " GFLOPS";
-            if (bytes != 0)
-                clog << ", ";
-                clog << setw(fw3) << right << fixed << setprecision(2)
-                                  << bytes / runtime * 1e-9 << " GB/s";
-            if  (watt != 0)
-                clog << ", ";
-                clog << setw(fw3) << right << fixed << setprecision(2)
-                                  << watt << " Watt";
-            if (flops != 0 && watt != 0) 
-                clog << ", ";
-                clog << setw(fw3) << right << fixed << setprecision(2)
-                                  << (flops /runtime * 1e-9) / watt << " GFLOPS/W";
+                clog << setw(fw1) << left << name_str + ": "
+                     << setw(fw2) << right << scientific << setprecision(4)
+                     << runtime << " s";
+                if (flops != 0) {
+                    clog << ", ";
+                    clog << setw(fw2) << right << fixed << setprecision(2)
+                                      << flops / runtime * 1e-9 << " GFLOPS";
+                }
+                if (bytes != 0) {
+                    clog << ", ";
+                    clog << setw(fw3) << right << fixed << setprecision(2)
+                                      << bytes / runtime * 1e-9 << " GB/s";
+                }
+                if  (watt != 0) {
+                    clog << ", ";
+                    clog << setw(fw3) << right << fixed << setprecision(2)
+                                      << watt << " Watt";
+                }
+                if (flops != 0 && watt != 0) {
+                    clog << ", ";
+                    clog << setw(fw3) << right << fixed << setprecision(2)
+                                      << (flops /runtime * 1e-9) / watt << " GFLOPS/W";
+                }
             }
             clog << endl;
         }
