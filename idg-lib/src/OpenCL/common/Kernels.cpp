@@ -9,21 +9,21 @@ namespace idg {
 
     namespace kernel {
 
-        double compute_runtime(cl_event event) {
-            cl_ulong start, end;
+        double compute_runtime(cl::Event &event_start, cl::Event &event_end) {
             double runtime = 0;
-            if (clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
-                clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
+            cl_ulong start, end;
+            if (clGetEventProfilingInfo(event_start(), CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
+                clGetEventProfilingInfo(event_end(), CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
                 runtime = (end - start) * 1e-9;
             }
             return runtime;
         }
 
-       double compute_runtime(cl::Event &event) {
-            return compute_runtime(event());
+        double compute_runtime(cl::Event &event) {
+            return compute_runtime(event, event);
         }
 
-        // Gridder class
+       // Gridder class
         Gridder::Gridder(cl::Program &program, Parameters &parameters) :
             kernel(program, name_gridder.c_str()),
             parameters(parameters) {}
@@ -187,7 +187,9 @@ namespace idg {
 
         void GridFFT::launchAsync(
             cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-            clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event, &d_data(), NULL, NULL);
+            queue.enqueueMarkerWithWaitList(NULL, &event_start);
+            clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+            queue.enqueueMarkerWithWaitList(NULL, &event_end);
         }
 
         uint64_t GridFFT::flops(int size, int batch) {
@@ -201,8 +203,8 @@ namespace idg {
         }
 
         double GridFFT::runtime() {
-            //TODO: find out why the runtime is always zero
-            return compute_runtime(event);
+            //TODO: find out why the runtime is so strange
+            return compute_runtime(event_start, event_end);
         }
 
     } // namespace kernel
