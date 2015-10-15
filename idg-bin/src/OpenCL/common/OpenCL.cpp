@@ -221,7 +221,7 @@ namespace idg {
             #endif
 
             // Terminate clfft
-            clfftTeardown();   
+            clfftTeardown();
         } // run_gridder
 
 
@@ -246,6 +246,100 @@ namespace idg {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
+
+            // Load kernel functions
+            kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams);
+
+            // Command queue
+            cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+            cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+            cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+
+            // Performance measurements
+            double runtime = 0;
+
+            // Constants
+            auto nr_baselines = mParams.get_nr_baselines();
+            auto nr_timesteps = mParams.get_nr_timesteps();
+            auto nr_timeslots = mParams.get_nr_timeslots();
+            auto nr_channels = mParams.get_nr_channels();
+            auto nr_polarizations = mParams.get_nr_polarizations();
+            auto subgridsize = mParams.get_subgrid_size();
+
+            // Set jobsize
+            //TODO: set jobsize according to available memory
+            const int jobsize = 8192;
+
+            // Start gridder
+            runtime -= omp_get_wtime();
+            const int nr_streams = 1;
+            #pragma omp parallel num_threads(nr_streams)
+            {
+                // Initialize
+                kernel::GridFFT kernel_fft(mParams);
+
+                // Events
+                cl::Event inputFree;
+                cl::Event outputFree;
+                cl::Event inputReady;
+                cl::Event outputReady;
+
+                // Wait lists
+                vector<cl::Event> inputWaitList = {inputFree};
+                vector<cl::Event> executeWaitList = {inputReady};
+
+                // Private device memory
+                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
+                cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_UVW);
+                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_WRITE_ONLY, jobsize * SIZEOF_SUBGRIDS);
+                cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
+
+                #pragma omp for schedule(dynamic)
+                for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
+                    // Prevent overflow
+                    int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+
+                    // Offsets
+                    size_t uvw_offset          = s * nr_timesteps * 3 * sizeof(float);
+                    size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
+                    size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
+                    size_t metadata_offset     = s * 5 * sizeof(int);
+
+                    #pragma omp critical (GPU)
+                    {
+    						// Copy input data to device
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrids_offset, 0, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
+
+    						// Create FFT plan
+                            kernel_fft.plan(context, subgridsize, current_jobsize);
+
+    						// Launch degridder kernel
+                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+
+    						// Launch FFT
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+
+    						// Copy visibilities to host
+                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady);
+                    }
+
+                    // Wait for device to host transfer to finish
+                    outputReady.wait();
+                }
+            }
+            runtime += omp_get_wtime();
+
+            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+            clog << "Total: degridding" << endl;
+            clog << "Runtime: " << runtime << " s" << endl;
+            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            clog << endl;
+            #endif
+
+            // Terminate clfft
+            clfftTeardown();
         } // run_degridder
 
 
@@ -263,13 +357,13 @@ namespace idg {
             #endif
 
             // Source directory
-            string srcdir = string(IDG_SOURCE_DIR) 
+            string srcdir = string(IDG_SOURCE_DIR)
                 + "/src/OpenCL/Reference/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
             #endif
- 
+
             // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
             string mparameters = Parameters::definitions(
               mParams.get_nr_stations(),
@@ -282,7 +376,7 @@ namespace idg {
               mParams.get_grid_size(),
               mParams.get_subgrid_size());
 
-            string parameters = " " + flags + 
+            string parameters = " " + flags +
                                 " " + "-I " + srcdir +
                                 " " + mparameters;
 
@@ -293,6 +387,7 @@ namespace idg {
             // Add all kernels to build
             vector<string> v;
             v.push_back("KernelGridder.cl");
+            v.push_back("KernelDegridder.cl");
 
             // Build OpenCL programs
             #pragma omp parallel for
@@ -306,7 +401,7 @@ namespace idg {
                                   (std::istreambuf_iterator<char>()));
                 source_file.close();
 
-                cl::Program *program =  new cl::Program(context, source);
+                cl::Program *program = new cl::Program(context, source);
                 try {
                     (*program).build(devices, parameters.c_str());
                     programs.push_back(program);
@@ -322,6 +417,10 @@ namespace idg {
                     }
                 }
             } // for each library
+
+            // Fill which_program structure
+            which_program[kernel::name_gridder] = 0;
+            which_program[kernel::name_degridder] = 1;
         } // compile
 
         void OpenCL::parameter_sanity_check()
