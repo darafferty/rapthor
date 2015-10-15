@@ -46,12 +46,4 @@ void kernel_fft(
     // Destroy plan
     fftwf_destroy_plan(plan);
 }
-
-uint64_t kernel_fft_flops(int size, int batch) {
-	return 1ULL * batch * NR_POLARIZATIONS * 5 * size * size * log(size * size);
-}
-
-uint64_t kernel_fft_bytes(int size, int batch) {
-	return 1ULL * 2 * batch * NR_POLARIZATIONS * size * size * sizeof(FLOAT_COMPLEX);
-}
 }
