@@ -126,10 +126,7 @@ namespace idg {
             cout << "OpenCL::" << __func__ << endl;
             #endif
 
-            // Load kernel functions
-            kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
-
-            // Command queue
+            // Command queues
             cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
             cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
             cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
@@ -154,18 +151,12 @@ namespace idg {
             const int nr_streams = 1;
             #pragma omp parallel num_threads(nr_streams)
             {
-                // Initialize
+                // Load kernel functions
+                kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
-                cl::Event inputFree;
-                cl::Event outputFree;
-                cl::Event inputReady;
-                cl::Event outputReady;
-
-                // Wait lists
-                vector<cl::Event> inputWaitList = {inputFree};
-                vector<cl::Event> executeWaitList = {inputReady};
+                vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
@@ -190,28 +181,29 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            //htodqueue.enqueueBarrierWithWaitList(&inputWaitList, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
+
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
     						// Launch gridder kernel
-                            //executequeue.enqueueBarrierWithWaitList(&executeWaitList, NULL);
+                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
                             kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
 
     						// Launch FFT
                             kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                            executequeue.enqueueBarrierWithWaitList(NULL, &outputReady);
-                            executequeue.enqueueBarrierWithWaitList(NULL, &inputFree);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
     						// Copy subgrid to host
-                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady);
+                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
+                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
 
                     // Wait for device to host transfer to finish
-                    outputReady.wait();
+                    outputReady[0].wait();
 
                     // Report performance
                     #if defined(REPORT_VERBOSE)
@@ -291,14 +283,7 @@ namespace idg {
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
-                cl::Event inputFree;
-                cl::Event outputFree;
-                cl::Event inputReady;
-                cl::Event outputReady;
-
-                // Wait lists
-                vector<cl::Event> inputWaitList = {inputFree};
-                vector<cl::Event> executeWaitList = {inputReady};
+                vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
@@ -323,22 +308,26 @@ namespace idg {
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrids_offset, 0, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
-    						// Launch degridder kernel
-                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-
     						// Launch FFT
+                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
                             kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
+    						// Launch degridder kernel
+                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+
     						// Copy visibilities to host
-                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady);
+                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
+                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
 
                     // Wait for device to host transfer to finish
-                    outputReady.wait();
+                    outputReady[0].wait();
 
                     // Report performance
                     #if defined(REPORT_VERBOSE)

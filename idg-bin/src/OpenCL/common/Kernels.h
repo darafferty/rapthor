@@ -80,7 +80,8 @@ namespace idg {
                 int planned_size;
                 int planned_batch;
                 clfftPlanHandle fft;
-                cl_event event;
+                cl::Event event_start;
+                cl::Event event_end;
         };
     } // namespace kernel
 } // namespace idg
