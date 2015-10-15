@@ -7,248 +7,203 @@ using namespace std;
 
 namespace idg {
 
-  namespace kernel {
+    namespace kernel {
 
-    // Gridder class
-    Gridder::Gridder(cl::Program &program, Parameters &parameters) :
-        kernel(program, name_gridder.c_str()),
-        parameters(parameters) {}
-    
-    void Gridder::launchAsync(
-        cl::CommandQueue &queue, int jobsize, float w_offset,
-        cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
-        cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
-        cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-        cl::Buffer &d_subgrid) {
-        int wgSize = 8;
-        cl::NDRange globalSize(jobsize);
-        cl::NDRange localSize(wgSize, wgSize);
-        std::cout << "wgsize: " << wgSize << " jobsize: " << jobsize << std::endl;
-        kernel.setArg(0, w_offset);
-        kernel.setArg(1, d_uvw);
-        kernel.setArg(2, d_wavenumbers);
-        kernel.setArg(3, d_visibilities);
-        kernel.setArg(4, d_spheroidal);
-        kernel.setArg(5, d_aterm);
-        kernel.setArg(6, d_metadata);
-        kernel.setArg(7, d_subgrid);
-        try {
-            cl::Event event;
-            queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
-        } catch (cl::Error &error) {
-            std::cerr << "Error launching gridder: " << error.what() << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }   
-    
-    uint64_t Gridder::flops(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_timesteps();
-        int nr_channels = parameters.get_nr_channels();
-        int nr_polarizations = parameters.get_nr_polarizations();
-        return 1ULL * jobsize * subgridsize * subgridsize * (
-        // LMN
-        14 +
-        // Phase
-        nr_time * 10 +
-        // Phasor
-        nr_time * nr_channels * 4 +
-        // ATerm
-        nr_polarizations * 32 +
-        // Spheroidal
-        nr_polarizations * 2);
-    }
-    
-    uint64_t Gridder::bytes(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_timesteps();
-        int nr_channels = parameters.get_nr_channels();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * jobsize * subgridsize * subgridsize *(
-        // Grid
-        (nr_polarizations * sizeof(complex<float>) + sizeof(float)) +
-        // ATerm
-        ((2 * sizeof(int)) + (2 * nr_polarizations * sizeof(complex<float>))) +
-        // Spheroidal
-    	nr_polarizations * sizeof(complex<float>));
-    }
-
-#if 0
-    // Degridder class
-    Degridder::Degridder(cu::Module &module, Parameters &parameters) :
-        function(module, name_degridder.c_str()),
-        parameters(parameters) {}
-
-    void Degridder::launchAsync(
-        cu::Stream &stream, int jobsize, float w_offset,
-        cu::DeviceMemory &d_uvw, cu::DeviceMemory &d_wavenumbers,
-        cu::DeviceMemory &d_visibilities, cu::DeviceMemory &d_spheroidal,
-        cu::DeviceMemory &d_aterm, cu::DeviceMemory &d_metadata,
-        cu::DeviceMemory &d_subgrid) {
-        const void *parameters[] = {
-            &jobsize, &w_offset, d_uvw, d_wavenumbers, d_visibilities,
-            d_spheroidal, d_aterm, d_metadata, d_subgrid };
-        int worksize = 16;
-    	stream.launchKernel(function, jobsize/worksize, 1, 1, 128, 1, 1, 0, parameters);
-    }
-    
-    uint64_t Degridder::flops(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_timesteps();
-        int nr_channels = parameters.get_nr_channels();
-        int nr_polarizations = parameters.get_nr_polarizations();
-        return 1ULL * jobsize * subgridsize * subgridsize * (
-        // ATerm
-        nr_polarizations * 32 +
-        // Spheroidal
-        nr_polarizations * 2 +
-        // LMN
-        14 +
-        // Phase
-        10 +
-        // Phasor
-        nr_time * nr_channels * 4 +
-        // Degrid
-        nr_time * nr_channels * nr_polarizations * 8);
-    }
-    
-    uint64_t Degridder::bytes(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_timesteps();
-        int nr_channels = parameters.get_nr_channels();
-        int nr_polarizations = parameters.get_nr_polarizations();
-        return 1ULL * jobsize * (
-        // ATerm
-        2 * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>) +
-        // UV grid
-        subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>) +
-        // Visibilities
-        nr_time * nr_channels * nr_polarizations * sizeof(complex<float>));
-    }
-
-    // GridFFT class
-    GridFFT::GridFFT(Parameters &parameters) : parameters(parameters) {
-        fft_bulk = NULL;
-        fft_remainder = NULL;
-    }
-    
-    void GridFFT::plan(int size, int batch) {
-        // Parameters
-        int stride = 1;
-        int dist = size * size;
-        int nr_polarizations = parameters.get_nr_polarizations();
-       
-        // Plan bulk fft
-        if (fft_bulk == NULL ||
-            size != planned_size) {
-            fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
+        double compute_runtime(cl_event event) {
+            cl_ulong start, end;
+            double runtime = 0;
+            if (clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
+                clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
+                runtime = (end - start) * 1e-9;
+            }
+            return runtime;
         }
 
-        // Plan remainder fft
-        if (fft_remainder == NULL ||
-            size != planned_size ||
-            batch != planned_batch ||
-            size < bulk_size) {
-            int remainder = batch % bulk_size;
-            fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
+       double compute_runtime(cl::Event &event) {
+            return compute_runtime(event());
         }
 
-        // Set parameters
-        planned_size = size;
-        planned_batch = batch;
-    }
-   
-    void GridFFT::launchAsync(cu::Stream &stream, cu::DeviceMemory &data, int direction) {
-        // Initialize
-        cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-        int s = 0;
-        int nr_polarizations = parameters.get_nr_polarizations();
+        // Gridder class
+        Gridder::Gridder(cl::Program &program, Parameters &parameters) :
+            kernel(program, name_gridder.c_str()),
+            parameters(parameters) {}
 
-        // Execute bulk ffts
-        (*fft_bulk).setStream(stream);
-        for (; s < (planned_batch - bulk_size); s += bulk_size) {
-            (*fft_bulk).execute(data_ptr, data_ptr, direction);
-            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+        void Gridder::launchAsync(
+            cl::CommandQueue &queue, int jobsize, float w_offset,
+            cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
+            cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
+            cl::Buffer &d_aterm, cl::Buffer &d_metadata,
+            cl::Buffer &d_subgrid) {
+            int wgSize = 8;
+            cl::NDRange globalSize(jobsize);
+            cl::NDRange localSize(wgSize, wgSize);
+            kernel.setArg(0, w_offset);
+            kernel.setArg(1, d_uvw);
+            kernel.setArg(2, d_wavenumbers);
+            kernel.setArg(3, d_visibilities);
+            kernel.setArg(4, d_spheroidal);
+            kernel.setArg(5, d_aterm);
+            kernel.setArg(6, d_metadata);
+            kernel.setArg(7, d_subgrid);
+            try {
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+            } catch (cl::Error &error) {
+                std::cerr << "Error launching gridder: " << error.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
         }
 
-        // Execute remainder ffts
-        (*fft_remainder).setStream(stream);
-        (*fft_remainder).execute(data_ptr, data_ptr, direction);
-    }
-    
-    uint64_t GridFFT::flops(int size, int batch) {
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
-    }
-    
-    uint64_t GridFFT::bytes(int size, int batch) {
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
-    }
+        uint64_t Gridder::flops(int jobsize) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_time = parameters.get_nr_timesteps();
+            int nr_channels = parameters.get_nr_channels();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            return 1ULL * jobsize * subgridsize * subgridsize * (
+            // LMN
+            14 +
+            // Phase
+            nr_time * 10 +
+            // Phasor
+            nr_time * nr_channels * 4 +
+            // ATerm
+            nr_polarizations * 32 +
+            // Spheroidal
+            nr_polarizations * 2);
+        }
+
+        uint64_t Gridder::bytes(int jobsize) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_time = parameters.get_nr_timesteps();
+            int nr_channels = parameters.get_nr_channels();
+            int nr_polarizations = parameters.get_nr_polarizations();
+        	return 1ULL * jobsize * subgridsize * subgridsize *(
+            // Grid
+            (nr_polarizations * sizeof(complex<float>) + sizeof(float)) +
+            // ATerm
+            ((2 * sizeof(int)) + (2 * nr_polarizations * sizeof(complex<float>))) +
+            // Spheroidal
+        	nr_polarizations * sizeof(complex<float>));
+        }
+
+        double Gridder::runtime() {
+            //TODO: improve performance, it is very slow
+            return compute_runtime(event);
+        }
 
 
-    // Adder class
-    Adder::Adder(cu::Module &module, Parameters &parameters) :
-        function(module, name_adder.c_str()),
-        parameters(parameters) {}
-    
-    void Adder::launchAsync(
-    	cu::Stream &stream, int jobsize,
-    	cu::DeviceMemory &d_metadata,
-    	cu::DeviceMemory &d_subgrid,
-    	cu::DeviceMemory &d_grid) {
-    	const void *parameters[] = { &jobsize, d_metadata, d_subgrid, d_grid };
-    	stream.launchKernel(function, jobsize, 1, 1, 64, 1, 1, 0, parameters);
-    }
-    
-    uint64_t Adder::flops(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
-    }
-    
-    uint64_t Adder::bytes(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return
-        // Coordinate
-        1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
-        // Grid
-        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
-    }
+        // Degridder class
+        Degridder::Degridder(cl::Program &program, Parameters &parameters) :
+            kernel(program, name_degridder.c_str()),
+            parameters(parameters) {}
 
-   
-    // Splitter class
-    Splitter::Splitter(cu::Module &module, Parameters &parameters) :
-        function(module, name_splitter.c_str()),
-        parameters(parameters) {}
-    
-    void Splitter::launchAsync(
-     	cu::Stream &stream, int jobsize,
-    	cu::DeviceMemory &d_metadata,
-    	cu::DeviceMemory &d_subgrid,
-    	cu::DeviceMemory &d_grid) {
-    	const void *parameters[] = { &jobsize, d_metadata, d_subgrid, d_grid };
-    	stream.launchKernel(function, jobsize, 1, 1, 64, 1, 1, 0, parameters);
-    }
-    
-    uint64_t Splitter::flops(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
-    }
-    
-    uint64_t Splitter::bytes(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return
-        // Coordinate
-        1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
-        // Grid
-        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
-    }
+        void Degridder::launchAsync(
+            cl::CommandQueue &queue, int jobsize, float w_offset,
+            cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
+            cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
+            cl::Buffer &d_aterm, cl::Buffer &d_metadata,
+            cl::Buffer &d_subgrid) {
+            // IF wgSize IS MODIFIED, ALSO MODIFY NR_THREADS in KernelDegridder.cl
+            int wgSize = 256;
+            cl::NDRange globalSize(jobsize);
+            cl::NDRange localSize(wgSize);
+            kernel.setArg(0, w_offset);
+            kernel.setArg(1, d_uvw);
+            kernel.setArg(2, d_wavenumbers);
+            kernel.setArg(3, d_visibilities);
+            kernel.setArg(4, d_spheroidal);
+            kernel.setArg(5, d_aterm);
+            kernel.setArg(6, d_metadata);
+            kernel.setArg(7, d_subgrid);
+            try {
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+            } catch (cl::Error &error) {
+                std::cerr << "Error launching degridder: " << error.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
 
-#endif
-  } // namespace kernel
+        uint64_t Degridder::flops(int jobsize) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_time = parameters.get_nr_timesteps();
+            int nr_channels = parameters.get_nr_channels();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            return 1ULL * jobsize * subgridsize * subgridsize * (
+            // ATerm
+            nr_polarizations * 32 +
+            // Spheroidal
+            nr_polarizations * 2 +
+            // LMN
+            14 +
+            // Phase
+            10 +
+            // Phasor
+            nr_time * nr_channels * 4 +
+            // Degrid
+            nr_time * nr_channels * nr_polarizations * 8);
+        }
 
+        uint64_t Degridder::bytes(int jobsize) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_time = parameters.get_nr_timesteps();
+            int nr_channels = parameters.get_nr_channels();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            return 1ULL * jobsize * (
+            // ATerm
+            2 * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>) +
+            // UV grid
+            subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>) +
+            // Visibilities
+            nr_time * nr_channels * nr_polarizations * sizeof(complex<float>));
+        }
+
+        double Degridder::runtime() {
+            //TODO: find out why the runtime is extremely low
+            return compute_runtime(event);
+        }
+
+
+        // GridFFT class
+        GridFFT::GridFFT(Parameters &parameters) : parameters(parameters) {
+            uninitialized = true;
+        }
+
+        void GridFFT::plan(cl::Context &context, int size, int batch) {
+            // Check wheter a new plan has to be created
+            if (uninitialized ||
+               size  != planned_size ||
+               batch != planned_batch) {
+                // Create new plan
+                size_t lengths[2] = {(size_t) size, (size_t) size};
+                clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
+                clfftSetPlanBatchSize(fft, batch);
+                size_t dist = size * size;
+                clfftSetPlanDistance(fft, dist, dist);
+
+                // Update parameters
+                planned_size = size;
+                planned_batch = batch;
+            }
+        }
+
+        void GridFFT::launchAsync(
+            cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
+            clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event, &d_data(), NULL, NULL);
+        }
+
+        uint64_t GridFFT::flops(int size, int batch) {
+            int nr_polarizations = parameters.get_nr_polarizations();
+        	return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
+        }
+
+        uint64_t GridFFT::bytes(int size, int batch) {
+            int nr_polarizations = parameters.get_nr_polarizations();
+        	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
+        }
+
+        double GridFFT::runtime() {
+            //TODO: find out why the runtime is always zero
+            return compute_runtime(event);
+        }
+
+    } // namespace kernel
 } // namespace idg
