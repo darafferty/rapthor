@@ -32,7 +32,6 @@ __kernel void kernel_degridder(
 	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 
-
     // Shared data
     __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__local float4 _lmn_phaseoffset[NR_THREADS];
@@ -153,7 +152,7 @@ __kernel void kernel_degridder(
 					visYY.y += apYY.y * phasor.x;
 				}
 			}
-		}
+        }
 
         if (time < NR_TIMESTEPS) {
             visibilities[s][time][chan][0] = visXX;

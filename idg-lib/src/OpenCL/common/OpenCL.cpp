@@ -184,6 +184,9 @@ namespace idg {
                     size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
+                    // Events
+                    cl_event events[3];
+
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
@@ -209,13 +212,22 @@ namespace idg {
 
                     // Wait for device to host transfer to finish
                     outputReady.wait();
+
+                    // Report performance
+                    #if defined(REPORT_VERBOSE)
+                    auxiliary::report("gridder", kernel_gridder.runtime(),
+                                                 kernel_gridder.flops(current_jobsize),
+                                                 kernel_gridder.bytes(current_jobsize), 0);
+                    auxiliary::report("    fft", kernel_fft.runtime(),
+                                                 kernel_fft.flops(subgridsize, current_jobsize),
+                                                 kernel_fft.bytes(subgridsize, current_jobsize), 0);
+                    #endif
                 }
             }
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << "Total: gridding" << endl;
-            clog << "Runtime: " << runtime << " s" << endl;
+            clog << "   runtime: " << runtime << " s" << endl;
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
@@ -327,13 +339,22 @@ namespace idg {
 
                     // Wait for device to host transfer to finish
                     outputReady.wait();
+
+                    // Report performance
+                    #if defined(REPORT_VERBOSE)
+                    auxiliary::report("      fft", kernel_fft.runtime(),
+                                                   kernel_fft.flops(subgridsize, current_jobsize),
+                                                   kernel_fft.bytes(subgridsize, current_jobsize), 0);
+                    auxiliary::report("degridder", kernel_degridder.runtime(),
+                                                   kernel_degridder.flops(current_jobsize),
+                                                   kernel_degridder.bytes(current_jobsize), 0);
+                    #endif
                 }
             }
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << "Total: degridding" << endl;
-            clog << "Runtime: " << runtime << " s" << endl;
+            clog << "   runtime: " << runtime << " s" << endl;
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
