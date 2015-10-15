@@ -40,21 +40,4 @@ void kernel_adder(
         }
     }
 }
-
-uint64_t kernel_adder_flops(int jobsize) {
-    return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (
-    // Shift
-    8 +
-    // Add
-    4
-    );
-}
-
-uint64_t kernel_adder_bytes(int jobsize) {
-    return 1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (
-    // Coordinate
-    2 * sizeof(unsigned) +
-    // Pixels
-    3 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
-}
 }

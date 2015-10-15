@@ -18,7 +18,6 @@
 using namespace std;
 
 namespace idg {
-
     namespace proxy {
 
         /// Constructors
@@ -108,16 +107,16 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            string  srcdir = string(IDG_SOURCE_DIR) 
+            string  srcdir = string(IDG_SOURCE_DIR)
                 + "/src/CPU/Reference/kernels";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
             #endif
- 
+
             // Create temp directory
             string tmpdir = make_tempdir();
- 
+
             // Create proxy info
             ProxyInfo p = default_proxyinfo(srcdir, tmpdir);
 
@@ -125,21 +124,21 @@ namespace idg {
         }
 
 
-        string CPU::default_compiler() 
+        string CPU::default_compiler()
         {
             #if defined(USING_INTEL_CXX_COMPILER)
             return "icpc";
-            #else 
+            #else
             return "g++";
             #endif
         }
-        
 
-        string CPU::default_compiler_flags() 
+
+        string CPU::default_compiler_flags()
         {
             #if defined(USING_INTEL_CXX_COMPILER)
             return "-Wall -O3 -openmp -mkl";
-            #else 
+            #else
             return "-Wall -O3 -fopenmp -lfftw3f";
             #endif
         }
@@ -164,8 +163,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
             run_gridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
                         spheroidal, aterm, metadata, subgrids);
         }
@@ -177,8 +174,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
             run_adder(jobsize, nr_subgrids, metadata, subgrids, grid);
         }
 
@@ -189,8 +184,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // TODO: argument checks
-
             run_splitter(jobsize, nr_subgrids, metadata, subgrids, grid);
         }
 
@@ -200,8 +193,6 @@ namespace idg {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
-
-            // TODO: argument checks
 
             run_degridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
                       spheroidal, aterm, metadata, subgrids);
@@ -231,8 +222,8 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // load kernel functions
-            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]));
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
+            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();
@@ -306,7 +297,6 @@ namespace idg {
         } // run_gridder
 
 
-
         void CPU::run_adder(int jobsize, ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
@@ -324,7 +314,7 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Load kernel function
-            kernel::Adder kernel_adder(*(modules[which_module[kernel::name_adder]]));
+            kernel::Adder kernel_adder(*(modules[which_module[kernel::name_adder]]), mParams);
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();
@@ -394,7 +384,7 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Load kernel function
-            kernel::Splitter kernel_splitter(*(modules[which_module[kernel::name_splitter]]));
+            kernel::Splitter kernel_splitter(*(modules[which_module[kernel::name_splitter]]), mParams);
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();
@@ -468,8 +458,8 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Load kernel functions
-            kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]));
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+            kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
+            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime = -omp_get_wtime();
@@ -557,7 +547,7 @@ namespace idg {
             auto gridsize = mParams.get_grid_size();
 
             // Load kernel function
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]));
+            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
             // Start fft
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -639,11 +629,6 @@ namespace idg {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
-
-            // TODO: create assertions
-            // assert: subgrid_size <= grid_size
-            // assert: job_size <= ?
-            // [...]
         }
 
 
@@ -696,6 +681,5 @@ namespace idg {
             } // end for
         } // end find_kernel_functions
 
-} // namespace proxy
-
+    } // namespace proxy
 } // namespace idg

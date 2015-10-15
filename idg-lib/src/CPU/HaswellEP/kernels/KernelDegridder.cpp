@@ -201,36 +201,4 @@ void kernel_degridder(
     printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
     #endif
 }
-
-uint64_t kernel_degridder_flops(int jobsize) {
-    return
-    // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 32 +
-    // Shift
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6 +
-    // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
-    // Degrid
-    1ULL * jobsize * NR_TIMESTEPS * NR_CHANNELS * SUBGRIDSIZE * SUBGRIDSIZE * (
-        // Phasor
-        2 * 22 +
-        // UV
-        NR_POLARIZATIONS * 8);
-}
-
-uint64_t kernel_degridder_bytes(int jobsize) {
-    return
-    // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * 2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
-    // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(float) +
-    // Degrid
-    1ULL * jobsize * NR_TIMESTEPS * NR_CHANNELS * (
-        // Offset
-        SUBGRIDSIZE * SUBGRIDSIZE * 3 * sizeof(float) +
-        // UV
-        SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) +
-        // Visibilities
-        NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
-}
 }

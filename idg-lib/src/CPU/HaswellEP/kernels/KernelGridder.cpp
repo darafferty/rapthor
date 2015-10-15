@@ -210,29 +210,4 @@ void kernel_gridder(
     return;
     #endif
 }
-
-uint64_t kernel_gridder_flops(int jobsize) {
-    return
-    1ULL * jobsize * NR_TIMESTEPS * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (
-        // Phasor
-        2 * 22 +
-        // UV
-        NR_POLARIZATIONS * 8) +
-    // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 30 +
-    // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 2 +
-    // Shift
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * 6;
-}
-
-uint64_t kernel_gridder_bytes(int jobsize) {
-    return
-    // Grid
-    1ULL * jobsize * NR_TIMESTEPS * SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS * (NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
-    // ATerm
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * (2 * sizeof(unsigned)) + (2 * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX) + sizeof(float)) +
-    // Spheroidal
-    1ULL * jobsize * SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX);
-}
 }
