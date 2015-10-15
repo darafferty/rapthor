@@ -187,7 +187,7 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            htodqueue.enqueueBarrierWithWaitList(&inputWaitList, NULL);
+                            //htodqueue.enqueueBarrierWithWaitList(&inputWaitList, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
@@ -195,7 +195,7 @@ namespace idg {
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
     						// Launch gridder kernel
-                            executequeue.enqueueBarrierWithWaitList(&executeWaitList, NULL);
+                            //executequeue.enqueueBarrierWithWaitList(&executeWaitList, NULL);
                             kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
 
     						// Launch FFT
