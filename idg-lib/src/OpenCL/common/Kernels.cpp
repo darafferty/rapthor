@@ -23,7 +23,7 @@ namespace idg {
             return compute_runtime(event, event);
         }
 
-       // Gridder class
+        // Gridder class
         Gridder::Gridder(cl::Program &program, Parameters &parameters) :
             kernel(program, name_gridder.c_str()),
             parameters(parameters) {}
