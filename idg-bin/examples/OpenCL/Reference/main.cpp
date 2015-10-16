@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     queue.enqueueWriteBuffer(h_metadata,     CL_TRUE, 0, size_metadata,     metadata,      0, NULL);
     queue.enqueueWriteBuffer(h_visibilities, CL_TRUE, 0, size_visibilities, visibilities,  0, NULL);
     queue.enqueueWriteBuffer(h_uvw,          CL_TRUE, 0, size_uvw,          uvw,           0, NULL);
- 
+
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::opencl::Reference opencl(params, context, deviceNumber);

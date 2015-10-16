@@ -155,14 +155,25 @@ namespace idg {
                 kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
                 kernel::GridFFT kernel_fft(mParams);
 
-                // Events
-                vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
-
                 // Private device memory
-                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
-                cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_UVW);
-                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_WRITE_ONLY, jobsize * SIZEOF_SUBGRIDS);
-                cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
+                #if 0
+                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
+                cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_UVW);
+                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
+                cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
+                #else
+                cl::Buffer *d_visibilities;
+                cl::Buffer *d_uvw;
+                cl::Buffer *d_subgrids;
+                cl::Buffer *d_metadata;
+                #pragma omp critical (GPU)
+                {
+                d_visibilities = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
+                d_uvw          = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_UVW);
+                d_subgrids     = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
+                d_metadata     = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
+                }
+                #endif
 
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
@@ -176,33 +187,36 @@ namespace idg {
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
                     // Events
-                    cl_event events[3];
+                    vector<cl::Event> inputReady(1), gridderReady(1), fftReady(1), outputReady(1);
 
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_uvw, *d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_visibilities, *d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_metadata, *d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
     						// Launch gridder kernel
-                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, *d_uvw, d_wavenumbers, *d_visibilities, d_spheroidal, d_aterm, *d_metadata, *d_subgrids);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
 
     						// Launch FFT
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+                            gridderReady[0].wait();
+                            kernel_fft.launchAsync(executequeue, *d_subgrids, CLFFT_BACKWARD);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &fftReady[0]);
 
     						// Copy subgrid to host
-                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
+                            dtohqueue.enqueueMarkerWithWaitList(&fftReady, NULL);
+                            dtohqueue.enqueueCopyBuffer(*d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
 
                     // Wait for device to host transfer to finish
+                    fftReady[0].wait();
                     outputReady[0].wait();
 
                     // Report performance
@@ -283,7 +297,7 @@ namespace idg {
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
-                vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
+                vector<cl::Event> inputReady(1), fftReady(1), degridderReady(1), outputReady(1);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
@@ -316,13 +330,15 @@ namespace idg {
     						// Launch FFT
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
                             kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &fftReady[0]);
 
     						// Launch degridder kernel
+                            fftReady[0].wait();
                             kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &degridderReady[0]);
 
     						// Copy visibilities to host
-                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
+                            dtohqueue.enqueueBarrierWithWaitList(&degridderReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
 
@@ -400,26 +416,33 @@ namespace idg {
             v.push_back("KernelDegridder.cl");
 
             // Build OpenCL programs
-            #pragma omp parallel for
             for (int i = 0; i < v.size(); i++) {
                 // Get source filename
-                string source_file_name = srcdir + "/" + v[i];
+                stringstream _source_file_name;
+                _source_file_name << srcdir << "/" << v[i];
+                const char *source_file_name = _source_file_name.str().c_str();
 
                 // Read source from file
-                ifstream source_file(source_file_name.c_str());
+                ifstream source_file(source_file_name);
                 string source(std::istreambuf_iterator<char>(source_file),
-                                  (std::istreambuf_iterator<char>()));
+                             (std::istreambuf_iterator<char>()));
                 source_file.close();
 
+                // Create OpenCL program
                 cl::Program *program = new cl::Program(context, source);
                 try {
+                    // Build the program
                     (*program).build(devices, parameters.c_str());
                     programs.push_back(program);
+
+                    // Print information about compilation
                     std::string msg;
                     (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
-                    cout << msg;
+                    cout << "Compiling " << _source_file_name.str() << ":"
+                         << endl << parameters << endl << msg;
                 } catch (cl::Error &error) {
                     if (strcmp(error.what(), "clBuildProgram") == 0) {
+                        // Print error message
                         std::string msg;
                         (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
                         std::cerr << msg << std::endl;
