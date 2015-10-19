@@ -156,24 +156,10 @@ namespace idg {
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Private device memory
-                #if 0
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
                 cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_UVW);
                 cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
-                #else
-                cl::Buffer *d_visibilities;
-                cl::Buffer *d_uvw;
-                cl::Buffer *d_subgrids;
-                cl::Buffer *d_metadata;
-                #pragma omp critical (GPU)
-                {
-                d_visibilities = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
-                d_uvw          = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_UVW);
-                d_subgrids     = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
-                d_metadata     = new cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
-                }
-                #endif
 
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
@@ -192,9 +178,9 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            htodqueue.enqueueCopyBuffer(h_uvw, *d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, *d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, *d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
     						// Create FFT plan
@@ -202,17 +188,17 @@ namespace idg {
 
     						// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, *d_uvw, d_wavenumbers, *d_visibilities, d_spheroidal, d_aterm, *d_metadata, *d_subgrids);
+                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             executequeue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
 
     						// Launch FFT
                             gridderReady[0].wait();
-                            kernel_fft.launchAsync(executequeue, *d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                             executequeue.enqueueMarkerWithWaitList(NULL, &fftReady[0]);
 
     						// Copy subgrid to host
                             dtohqueue.enqueueMarkerWithWaitList(&fftReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(*d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
+                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
 
                     // Wait for device to host transfer to finish

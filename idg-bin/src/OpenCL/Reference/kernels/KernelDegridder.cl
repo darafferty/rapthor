@@ -1,9 +1,9 @@
 #include "math.cl"
-
 #include "Types.cl"
 
+
 #define NR_THREADS 256
-#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
+
 
 /*
 	Kernel
@@ -18,7 +18,8 @@ __kernel void kernel_degridder(
 	__global const MetadataType		metadata,
 	__global const SubGridType		subgrid
 	) {
-	int s = get_global_id(0);
+	int s = get_group_id(0);
+    int tid = get_local_id(0);
 
     // Load metadata
 	Metadata m = metadata[s];
@@ -36,7 +37,7 @@ __kernel void kernel_degridder(
     __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__local float4 _lmn_phaseoffset[NR_THREADS];
 
- 	for (int i = get_local_id(0); i < ALIGN(NR_TIMESTEPS * NR_CHANNELS, NR_THREADS); i += NR_THREADS) {
+ 	for (int i = tid; i < NR_TIMESTEPS * NR_CHANNELS; i += NR_THREADS) {
 		int time = i / NR_CHANNELS;
 		int chan = i % NR_CHANNELS;
 
@@ -57,7 +58,7 @@ __kernel void kernel_degridder(
 			wavenumber = wavenumbers[chan];
 		}
 
-		for (int j = get_local_id(0); j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
+		for (int j = tid; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
@@ -97,14 +98,14 @@ __kernel void kernel_degridder(
 				float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
 				float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
 
-				_pix[0][get_local_id(0)] = (float4) (pixXX.x, pixXX.y, pixXY.x, pixXY.y);
-				_pix[1][get_local_id(0)] = (float4) (pixYX.x, pixYX.y, pixYY.x, pixYY.y);
+				_pix[0][tid] = (float4) (pixXX.x, pixXX.y, pixXY.x, pixXY.y);
+				_pix[1][tid] = (float4) (pixYX.x, pixYX.y, pixYY.x, pixYY.y);
 
 				float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
 				float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
 				float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 				float phase_offset = u_offset * l + v_offset * m + w_offset * n;
-				_lmn_phaseoffset[get_local_id(0)] = (float4) (l, m, n, phase_offset);
+				_lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
 			}
 
             barrier(CLK_LOCAL_MEM_FENCE);
