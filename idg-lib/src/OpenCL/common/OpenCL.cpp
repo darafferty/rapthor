@@ -49,6 +49,10 @@ namespace idg {
             #if defined(DEBUG)
             cout << "OpenCL::" << __func__ << endl;
             #endif
+
+            for (int i = 0; i < programs.size(); i++) {
+                delete programs[i];
+            }
         }
 
         string OpenCL::default_compiler_flags() {
@@ -144,7 +148,7 @@ namespace idg {
 
             // Set jobsize
             //TODO: set jobsize according to available memory
-            const int jobsize = 8192;
+            int jobsize = mParams.get_job_size_gridder();
 
             // Start gridder
             runtime -= omp_get_wtime();
@@ -272,7 +276,7 @@ namespace idg {
 
             // Set jobsize
             //TODO: set jobsize according to available memory
-            const int jobsize = 8192;
+            const int jobsize = mParams.get_job_size_degridder();
 
             // Start gridder
             runtime -= omp_get_wtime();
@@ -369,8 +373,10 @@ namespace idg {
             #endif
 
             // Source directory
-            string srcdir = string(IDG_SOURCE_DIR)
-                + "/src/OpenCL/Reference/kernels";
+            stringstream _srcdir;
+            _srcdir << string(IDG_SOURCE_DIR);
+            _srcdir << "/src/OpenCL/Reference/kernels";
+            string srcdir = _srcdir.str();
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
@@ -378,19 +384,22 @@ namespace idg {
 
             // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
             string mparameters = Parameters::definitions(
-              mParams.get_nr_stations(),
-              mParams.get_nr_baselines(),
-              mParams.get_nr_channels(),
-              mParams.get_nr_timesteps(),
-              mParams.get_nr_timeslots(),
-              mParams.get_imagesize(),
-              mParams.get_nr_polarizations(),
-              mParams.get_grid_size(),
-              mParams.get_subgrid_size());
+                mParams.get_nr_stations(),
+                mParams.get_nr_baselines(),
+                mParams.get_nr_channels(),
+                mParams.get_nr_timesteps(),
+                mParams.get_nr_timeslots(),
+                mParams.get_imagesize(),
+                mParams.get_nr_polarizations(),
+                mParams.get_grid_size(),
+                mParams.get_subgrid_size());
 
-            string parameters = " " + flags +
-                                " " + "-I " + srcdir +
-                                " " + mparameters;
+            // Build parameters tring
+            stringstream _parameters;
+            _parameters << " " << flags;
+            _parameters << " " << "-I " << srcdir;
+            _parameters << " " << mparameters;
+            string parameters = _parameters.str();
 
             // Create vector of devices
             std::vector<cl::Device> devices;
@@ -406,10 +415,10 @@ namespace idg {
                 // Get source filename
                 stringstream _source_file_name;
                 _source_file_name << srcdir << "/" << v[i];
-                const char *source_file_name = _source_file_name.str().c_str();
+                string source_file_name = _source_file_name.str();
 
                 // Read source from file
-                ifstream source_file(source_file_name);
+                ifstream source_file(source_file_name.c_str());
                 string source(std::istreambuf_iterator<char>(source_file),
                              (std::istreambuf_iterator<char>()));
                 source_file.close();
