@@ -13,25 +13,25 @@ __kernel void kernel_gridder(
 	__global const VisibilitiesType	visibilities,
 	__global const SpheroidalType	spheroidal,
 	__global const ATermType		aterm,
-	__global const MetadataType		metadata,		
+	__global const MetadataType		metadata,
 	__global SubGridType			subgrid
 	) {
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
 	int tid = tidx + tidy * get_local_size(0);;
     int blocksize = get_local_size(0) * get_local_size(1);
-    int s = get_global_id(0);
+    int s = get_group_id(0);
 
     // Shared data
 	__local fcomplex _visibilities[NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
 	__local UVW _uvw[NR_TIMESTEPS];
 	__local float _wavenumbers[NR_CHANNELS];
-	
+
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS; i+= blocksize) {
         _wavenumbers[tid] = wavenumbers[tid];
     }
-    
+
     // Load UVW
     for (int time = tid; time < NR_TIMESTEPS; time += blocksize) {
         _uvw[time] = uvw[s][time];
@@ -55,7 +55,7 @@ __kernel void kernel_gridder(
 	// Compute u and v offset in wavelenghts
 	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
-	
+
     // Iterate all pixels in subgrid
     for (int y = tidy; y < SUBGRIDSIZE; y += get_local_size(1)) {
         for (int x = tidx; x < SUBGRIDSIZE; x += get_local_size(0)) {
@@ -64,7 +64,7 @@ __kernel void kernel_gridder(
             fcomplex uvXY = (fcomplex) (0, 0);
             fcomplex uvYX = (fcomplex) (0, 0);
             fcomplex uvYY = (fcomplex) (0, 0);
-        
+
             // Compute l,m,n
             float l = -(x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
             float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
@@ -76,13 +76,13 @@ __kernel void kernel_gridder(
                 float u = _uvw[time].u;
                 float v = _uvw[time].v;
                 float w = _uvw[time].w;
-    
+
                 // Compute phase index
                 float ulvmwn = u*l + v*m + w*n;
 
                 // Compute phase offset
 				float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                                     
+
                 // Compute phasor
                 for (int chan = 0; chan < NR_CHANNELS; chan++) {
                     float phase = (ulvmwn * _wavenumbers[chan]) - phase_offset;
@@ -93,7 +93,7 @@ __kernel void kernel_gridder(
                     fcomplex visXY = _visibilities[time][chan][1];
                     fcomplex visYX = _visibilities[time][chan][2];
                     fcomplex visYY = _visibilities[time][chan][3];
-        
+
                     // Multiply visibility by phasor
                     //uvXX += cmul(phasor, visXX);
                     //uvXY += cmul(phasor, visXY);
