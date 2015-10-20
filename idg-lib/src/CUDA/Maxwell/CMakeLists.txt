@@ -1,12 +1,5 @@
 project(idg-cuda-maxwell)
 
-# Power sensor 
-option (MEASURE_POWER "Measure power" OFF)
-if (MEASURE_POWER)
-    set(POWER_SENSOR "/dev/ttyUSB0" CACHE FILEPATH "Power sensor")
-    set(POWER_FILE "power" CACHE FILEPATH "File to dump power consumption")
-endif()
-
 # external header files needed
 include_directories (
   ${CUDA_INCLUDE_DIRS}
