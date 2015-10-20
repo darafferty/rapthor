@@ -16,6 +16,8 @@
 #include "auxiliary.h"
 #endif
 
+#define DISABLE_FFT
+
 using namespace std;
 
 namespace idg {
@@ -152,12 +154,16 @@ namespace idg {
 
             // Start gridder
             runtime -= omp_get_wtime();
-            const int nr_streams = 1;
+            const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
                 // Load kernel functions
                 kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
                 kernel::GridFFT kernel_fft(mParams);
+
+                // Events
+                vector<cl::Event> inputReady(1), gridderReady(1), fftReady(1), outputReady(1);
+                htodqueue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
@@ -176,25 +182,26 @@ namespace idg {
                     size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
-                    // Events
-                    vector<cl::Event> inputReady(1), gridderReady(1), fftReady(1), outputReady(1);
-
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
+                            htodqueue.enqueueMarkerWithWaitList(&gridderReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
+#if !defined(DISABLE_FFT)
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
+#endif
 
     						// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             executequeue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
 
+#if !defined(DISABLE_FFT)
     						// Launch FFT
                             gridderReady[0].wait();
                             kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
@@ -202,23 +209,28 @@ namespace idg {
 
     						// Copy subgrid to host
                             dtohqueue.enqueueMarkerWithWaitList(&fftReady, NULL);
+#else
+                            dtohqueue.enqueueMarkerWithWaitList(&gridderReady, NULL);
+
+#endif
                             dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
-
-                    // Wait for device to host transfer to finish
-                    fftReady[0].wait();
-                    outputReady[0].wait();
 
                     // Report performance
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("gridder", kernel_gridder.runtime(),
                                                  kernel_gridder.flops(current_jobsize),
                                                  kernel_gridder.bytes(current_jobsize), 0);
+#if !defined(DISABLE_FFT)
                     auxiliary::report("    fft", kernel_fft.runtime(),
                                                  kernel_fft.flops(subgridsize, current_jobsize),
                                                  kernel_fft.bytes(subgridsize, current_jobsize), 0);
+#endif
                     #endif
                 }
+
+                // Wait for device to host transfer to finish
+                outputReady[0].wait();
             }
             runtime += omp_get_wtime();
 
@@ -255,9 +267,6 @@ namespace idg {
             cout << "OpenCL::" << __func__ << endl;
             #endif
 
-            // Load kernel functions
-            kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams);
-
             // Command queue
             cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
             cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
@@ -280,14 +289,16 @@ namespace idg {
 
             // Start gridder
             runtime -= omp_get_wtime();
-            const int nr_streams = 1;
+            const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
-                // Initialize
+                // Load kernel functions
+                kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams);
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
                 vector<cl::Event> inputReady(1), fftReady(1), degridderReady(1), outputReady(1);
+                htodqueue.enqueueMarkerWithWaitList(NULL, &degridderReady[0]);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
@@ -309,11 +320,13 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
+                            htodqueue.enqueueMarkerWithWaitList(&degridderReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrids_offset, 0, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
+#if !defined(DISABLE_FFT)
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
@@ -324,6 +337,9 @@ namespace idg {
 
     						// Launch degridder kernel
                             fftReady[0].wait();
+#else
+                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
+#endif
                             kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             executequeue.enqueueMarkerWithWaitList(NULL, &degridderReady[0]);
 
@@ -332,19 +348,21 @@ namespace idg {
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
 
-                    // Wait for device to host transfer to finish
-                    outputReady[0].wait();
-
                     // Report performance
                     #if defined(REPORT_VERBOSE)
+#if !defined(DISABLE_FFT)
                     auxiliary::report("      fft", kernel_fft.runtime(),
                                                    kernel_fft.flops(subgridsize, current_jobsize),
                                                    kernel_fft.bytes(subgridsize, current_jobsize), 0);
+#endif
                     auxiliary::report("degridder", kernel_degridder.runtime(),
                                                    kernel_degridder.flops(current_jobsize),
                                                    kernel_degridder.bytes(current_jobsize), 0);
                     #endif
                 }
+
+                // Wait for device to host transfer to finish
+                outputReady[0].wait();
             }
             runtime += omp_get_wtime();
 
