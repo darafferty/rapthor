@@ -34,9 +34,8 @@ namespace idg {
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_metadata,
             cl::Buffer &d_subgrid) {
-            int wgSize = 8;
-            cl::NDRange globalSize(wgSize * jobsize, wgSize);
-            cl::NDRange localSize(wgSize, wgSize);
+            cl::NDRange globalSize(32 * jobsize, 4);
+            cl::NDRange localSize(32, 4);
             kernel.setArg(0, w_offset);
             kernel.setArg(1, d_uvw);
             kernel.setArg(2, d_wavenumbers);
