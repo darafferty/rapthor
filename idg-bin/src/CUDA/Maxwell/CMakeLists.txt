@@ -1,12 +1,5 @@
 project(idg-cuda-maxwell)
 
-# Power sensor 
-option (MEASURE_POWER "Measure power" OFF)
-if (MEASURE_POWER)
-    set(POWER_SENSOR "/dev/ttyUSB0" CACHE FILEPATH "Power sensor")
-    set(POWER_FILE "power" CACHE FILEPATH "File to dump power consumption")
-endif()
-
 # external header files needed
 include_directories (
   ${CUDA_INCLUDE_DIRS}
@@ -18,26 +11,18 @@ include_directories (
 set (${PROJECT_NAME}_headers
   Maxwell.h
   Kernels.h
-  ${CMAKE_SOURCE_DIR}/src/CUDA/common/Power.h
 )
 
 set (${PROJECT_NAME}_sources
   Maxwell.cpp
   Kernels.cpp
-  ${CMAKE_SOURCE_DIR}/src/CUDA/common/Power.cpp
 )
 
 # create library
 add_library(
   ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                   ${${PROJECT_NAME}_sources}
-  )
-
-if (MEASURE_POWER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_SENSOR=${POWER_SENSOR}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_FILE=${POWER_FILE}")
-endif()
+)
 
 # linker
 target_link_libraries(${PROJECT_NAME} idg-cuda-maxwell)

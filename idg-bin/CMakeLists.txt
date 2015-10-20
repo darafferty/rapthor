@@ -24,6 +24,16 @@ option (BUILD_WITH_PYTHON "Have Python environment" OFF)
 option (BUILD_EXAMPLES "Build examples executables" OFF) 
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
+option (BUILD_WITH_POWER_SENSOR "Measure power using power sensor" OFF)
+
+# Power sensor
+if (BUILD_WITH_POWER_SENSOR)
+    set(POWER_SENSOR "/dev/ttyUSB0" CACHE FILEPATH "Power sensor")
+    set(POWER_FILE "power" CACHE FILEPATH "File to dump power consumption")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_SENSOR=${POWER_SENSOR}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_FILE=${POWER_FILE}")
+endif()
 
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
