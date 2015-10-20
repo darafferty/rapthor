@@ -18,13 +18,13 @@ include_directories (
 set (${PROJECT_NAME}_headers
   Maxwell.h
   Kernels.h
-  ${CMAKE_SOURCE_DIR}/src/CUDA/common/Power.h
+  ${CMAKE_SOURCE_DIR}/src/common/PowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources
   Maxwell.cpp
   Kernels.cpp
-  ${CMAKE_SOURCE_DIR}/src/CUDA/common/Power.cpp
+  ${CMAKE_SOURCE_DIR}/src/common/PowerSensor.cpp
 )
 
 # create library
