@@ -16,8 +16,6 @@
 #include "auxiliary.h"
 #endif
 
-#define DISABLE_FFT
-
 using namespace std;
 
 namespace idg {
@@ -55,6 +53,8 @@ namespace idg {
             for (int i = 0; i < programs.size(); i++) {
                 delete programs[i];
             }
+
+            clfftTeardown();
         }
 
         string OpenCL::default_compiler_flags() {
@@ -162,8 +162,8 @@ namespace idg {
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
-                vector<cl::Event> inputReady(1), gridderReady(1), fftReady(1), outputReady(1);
-                htodqueue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
+                vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
+                htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
@@ -186,39 +186,30 @@ namespace idg {
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
                     // Performance counters
-                    counters_gridder.push_back(new PerformanceCounter("     gridder"));
+                    counters_gridder.push_back(new PerformanceCounter("   gridder"));
 
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&gridderReady, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-#if !defined(DISABLE_FFT)
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
-#endif
 
     						// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, *counters_gridder.back());
-                            executequeue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
 
-#if !defined(DISABLE_FFT)
     						// Launch FFT
-                            gridderReady[0].wait();
                             kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &fftReady[0]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
     						// Copy subgrid to host
-                            dtohqueue.enqueueMarkerWithWaitList(&fftReady, NULL);
-#else
-                            dtohqueue.enqueueMarkerWithWaitList(&gridderReady, NULL);
-
-#endif
+                            dtohqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
                 }
@@ -233,9 +224,6 @@ namespace idg {
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
-
-            // Terminate clfft
-            clfftTeardown();
         } // run_gridder
 
 
@@ -291,8 +279,8 @@ namespace idg {
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
-                vector<cl::Event> inputReady(1), fftReady(1), degridderReady(1), outputReady(1);
-                htodqueue.enqueueMarkerWithWaitList(NULL, &degridderReady[0]);
+                vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
+                htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                 // Private device memory
                 cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
@@ -320,31 +308,25 @@ namespace idg {
                     #pragma omp critical (GPU)
                     {
     						// Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&degridderReady, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrids_offset, 0, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-#if !defined(DISABLE_FFT)
     						// Create FFT plan
                             kernel_fft.plan(context, subgridsize, current_jobsize);
 
     						// Launch FFT
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
                             kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &fftReady[0]);
 
     						// Launch degridder kernel
-                            fftReady[0].wait();
-#else
-                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-#endif
                             kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, *counters_degridder.back());
-                            executequeue.enqueueMarkerWithWaitList(NULL, &degridderReady[0]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
     						// Copy visibilities to host
-                            dtohqueue.enqueueBarrierWithWaitList(&degridderReady, NULL);
+                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
                 }
@@ -359,9 +341,6 @@ namespace idg {
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
-
-            // Terminate clfft
-            clfftTeardown();
         } // run_degridder
 
 
