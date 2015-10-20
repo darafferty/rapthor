@@ -13,6 +13,7 @@
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
+#include <CL/cl.h>
 #include "AbstractProxy.h"
 #include "Kernels.h"
 

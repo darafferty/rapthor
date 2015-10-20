@@ -12,6 +12,7 @@
 #include <clFFT.h>
 
 #include "Parameters.h"
+#include "PerformanceCounter.h"
 
 namespace idg {
 
@@ -31,15 +32,14 @@ namespace idg {
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-                    cl::Buffer &d_subgrid);
+                    cl::Buffer &d_subgrid,
+                    PerformanceCounter &counter);
             	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
-                double runtime();
 
         	private:
         	    cl::Kernel kernel;
                 Parameters &parameters;
-                cl::Event event;
         };
 
 
@@ -51,15 +51,14 @@ namespace idg {
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-                    cl::Buffer &d_subgrid);
+                    cl::Buffer &d_subgrid,
+                    PerformanceCounter &counter);
                	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
-                double runtime();
 
         	private:
                 cl::Kernel kernel;
                 Parameters &parameters;
-                cl::Event event;
         };
 
 
@@ -80,7 +79,8 @@ namespace idg {
                 int planned_size;
                 int planned_batch;
                 clfftPlanHandle fft;
-                cl_event event;
+                cl::Event event_start;
+                cl::Event event_end;
         };
     } // namespace kernel
 } // namespace idg

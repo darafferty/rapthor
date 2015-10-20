@@ -1,9 +1,7 @@
 #include "math.cl"
-
 #include "Types.cl"
 
 #define NR_THREADS 256
-#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 /*
 	Kernel
@@ -18,7 +16,8 @@ __kernel void kernel_degridder(
 	__global const MetadataType		metadata,
 	__global const SubGridType		subgrid
 	) {
-	int s = get_global_id(0);
+	int s = get_group_id(0);
+    int tid = get_local_id(0);
 
     // Load metadata
 	Metadata m = metadata[s];
@@ -36,28 +35,20 @@ __kernel void kernel_degridder(
     __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__local float4 _lmn_phaseoffset[NR_THREADS];
 
- 	for (int i = get_local_id(0); i < ALIGN(NR_TIMESTEPS * NR_CHANNELS, NR_THREADS); i += NR_THREADS) {
+ 	for (int i = tid; i < NR_TIMESTEPS * NR_CHANNELS; i += NR_THREADS) {
 		int time = i / NR_CHANNELS;
 		int chan = i % NR_CHANNELS;
 
-		float2 visXX, visXY, visYX, visYY;
-		float  u, v, w;
-		float  wavenumber;
+        float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
+        float4 _uvw;
+		float wavenumber;
 
 		if (time < NR_TIMESTEPS) {
-			visXX = (float2) (0, 0);
-			visXY = (float2) (0, 0);
-			visYX = (float2) (0, 0);
-			visYY = (float2) (0, 0);
-
-			u = uvw[s][time].u;
-			v = uvw[s][time].v;
-			w = uvw[s][time].w;
-
+            _uvw = (float4) (uvw[s][time].u, uvw[s][time].v, uvw[s][time].w, 0);
 			wavenumber = wavenumbers[chan];
 		}
 
-		for (int j = get_local_id(0); j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
+		for (int j = tid; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
@@ -97,14 +88,14 @@ __kernel void kernel_degridder(
 				float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
 				float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
 
-				_pix[0][get_local_id(0)] = (float4) (pixXX.x, pixXX.y, pixXY.x, pixXY.y);
-				_pix[1][get_local_id(0)] = (float4) (pixYX.x, pixYX.y, pixYY.x, pixYY.y);
+				_pix[0][tid] = (float4) (pixXX.x, pixXX.y, pixXY.x, pixXY.y);
+				_pix[1][tid] = (float4) (pixYX.x, pixYX.y, pixYY.x, pixYY.y);
 
 				float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
 				float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
 				float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 				float phase_offset = u_offset * l + v_offset * m + w_offset * n;
-				_lmn_phaseoffset[get_local_id(0)] = (float4) (l, m, n, phase_offset);
+				_lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
 			}
 
             barrier(CLK_LOCAL_MEM_FENCE);
@@ -117,12 +108,13 @@ __kernel void kernel_degridder(
 				int last_k =  first_j + NR_THREADS < SUBGRIDSIZE * SUBGRIDSIZE ? NR_THREADS : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
                 #endif
 
+                #pragma unroll 2
 				for (int k = 0; k < last_k; k ++) {
 					float  l = _lmn_phaseoffset[k].x;
 					float  m = _lmn_phaseoffset[k].y;
 					float  n = _lmn_phaseoffset[k].z;
 					float  phase_offset = _lmn_phaseoffset[k].w;
-					float  phase_index = u * l + v * m + w * n;
+					float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
 					float  phase  = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
@@ -131,34 +123,34 @@ __kernel void kernel_degridder(
 					float2 apYX = (float2) (_pix[1][k].x, _pix[1][k].y);
 					float2 apYY = (float2) (_pix[1][k].z, _pix[1][k].w);
 
-					visXX.x += apXX.x * phasor.x;
-					visXX.x -= apXX.y * phasor.y;
-					visXX.y += apXX.x * phasor.y;
-					visXX.y += apXX.y * phasor.x;
+					vis.s0 += apXX.x * phasor.x;
+					vis.s0 -= apXX.y * phasor.y;
+					vis.s1 += apXX.x * phasor.y;
+					vis.s1 += apXX.y * phasor.x;
 
-					visXY.x += apXY.x * phasor.x;
-					visXY.x -= apXY.y * phasor.y;
-					visXY.y += apXY.x * phasor.y;
-					visXY.y += apXY.y * phasor.x;
+					vis.s2 += apXY.x * phasor.x;
+					vis.s2 -= apXY.y * phasor.y;
+					vis.s3 += apXY.x * phasor.y;
+					vis.s3 += apXY.y * phasor.x;
 
-					visYX.x += apYX.x * phasor.x;
-					visYX.x -= apYX.y * phasor.y;
-					visYX.y += apYX.x * phasor.y;
-					visYX.y += apYX.y * phasor.x;
+					vis.s4 += apYX.x * phasor.x;
+					vis.s4 -= apYX.y * phasor.y;
+					vis.s5 += apYX.x * phasor.y;
+					vis.s5 += apYX.y * phasor.x;
 
-					visYY.x += apYY.x * phasor.x;
-					visYY.x -= apYY.y * phasor.y;
-					visYY.y += apYY.x * phasor.y;
-					visYY.y += apYY.y * phasor.x;
+					vis.s6 += apYY.x * phasor.x;
+					vis.s6 -= apYY.y * phasor.y;
+					vis.s7 += apYY.x * phasor.y;
+					vis.s7 += apYY.y * phasor.x;
 				}
 			}
         }
 
         if (time < NR_TIMESTEPS) {
-            visibilities[s][time][chan][0] = visXX;
-            visibilities[s][time][chan][1] = visXY;
-            visibilities[s][time][chan][2] = visYX;
-            visibilities[s][time][chan][3] = visYY;
+            visibilities[s][time][chan][0] = (float2) (vis.s0, vis.s1);
+            visibilities[s][time][chan][1] = (float2) (vis.s2, vis.s3);
+            visibilities[s][time][chan][2] = (float2) (vis.s4, vis.s5);
+            visibilities[s][time][chan][3] = (float2) (vis.s6, vis.s7);
 		}
 	}
 }
