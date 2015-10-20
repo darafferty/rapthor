@@ -11,10 +11,13 @@ namespace idg {
 
         double compute_runtime(cl::Event &event_start, cl::Event &event_end) {
             double runtime = 0;
-            cl_ulong start, end;
-            if (clGetEventProfilingInfo(event_start(), CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
-                clGetEventProfilingInfo(event_end(), CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
-                runtime = (end - start) * 1e-9;
+            #pragma omp critical (RUNTIME)
+            {
+                cl_ulong start, end;
+                if (clGetEventProfilingInfo(event_start(), CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
+                    clGetEventProfilingInfo(event_end(), CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
+                    runtime = (end - start) * 1e-9;
+                }
             }
             return runtime;
         }
