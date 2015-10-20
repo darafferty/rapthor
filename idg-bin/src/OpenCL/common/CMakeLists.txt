@@ -11,11 +11,13 @@ include_directories (
 set (${PROJECT_NAME}_headers
   OpenCL.h
   Kernels.h
+  PerformanceCounter.h
 )
 
 set (${PROJECT_NAME}_sources
   OpenCL.cpp
   Kernels.cpp
+  PerformanceCounter.cpp
 )
 
 # create library

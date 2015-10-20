@@ -10,10 +10,7 @@
 
 using namespace std;
 
-void printDevices(int deviceNumber) {
-    // Get context
-	cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
-
+void printDevices(cl::Context &context, int deviceNumber) {
 	// Get devices
 	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	
@@ -68,7 +65,7 @@ int main(int argc, char *argv[]) {
     cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
     // Show OpenCL devices
-    printDevices(deviceNumber);
+    printDevices(context, deviceNumber);
 
     // Allocate data structures
     clog << ">>> Allocate data structures" << endl;
@@ -98,13 +95,14 @@ int main(int argc, char *argv[]) {
     void *aterm        = idg::init_aterm(nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     void *spheroidal   = idg::init_spheroidal(subgridsize);
     void *metadata     = idg::init_metadata(uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
-    queue.enqueueWriteBuffer(d_wavenumbers,  CL_TRUE, 0, size_wavenumbers,  wavenumbers,   0, NULL);
-    queue.enqueueWriteBuffer(d_aterm,        CL_TRUE, 0, size_aterm,        aterm,         0, NULL);
-    queue.enqueueWriteBuffer(d_spheroidal,   CL_TRUE, 0, size_spheroidal,   spheroidal,    0, NULL);
-    queue.enqueueWriteBuffer(h_metadata,     CL_TRUE, 0, size_metadata,     metadata,      0, NULL);
-    queue.enqueueWriteBuffer(h_visibilities, CL_TRUE, 0, size_visibilities, visibilities,  0, NULL);
-    queue.enqueueWriteBuffer(h_uvw,          CL_TRUE, 0, size_uvw,          uvw,           0, NULL);
- 
+    queue.enqueueWriteBuffer(d_wavenumbers,  CL_FALSE, 0, size_wavenumbers,  wavenumbers,  0, NULL);
+    queue.enqueueWriteBuffer(d_aterm,        CL_FALSE, 0, size_aterm,        aterm,        0, NULL);
+    queue.enqueueWriteBuffer(d_spheroidal,   CL_FALSE, 0, size_spheroidal,   spheroidal,   0, NULL);
+    queue.enqueueWriteBuffer(h_metadata,     CL_FALSE, 0, size_metadata,     metadata,     0, NULL);
+    queue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, size_visibilities, visibilities, 0, NULL);
+    queue.enqueueWriteBuffer(h_uvw,          CL_FALSE, 0, size_uvw,          uvw,          0, NULL);
+    queue.finish();
+
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::opencl::Reference opencl(params, context, deviceNumber);
