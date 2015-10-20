@@ -26,39 +26,39 @@ namespace idg {
 
         class Gridder {
             public:
-                Gridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter);
+                Gridder(cl::Program &program, Parameters &parameters);
                 void launchAsync(
                     cl::CommandQueue &queue, int jobsize, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-                    cl::Buffer &d_subgrid);
+                    cl::Buffer &d_subgrid,
+                    PerformanceCounter &counter);
             	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
 
         	private:
         	    cl::Kernel kernel;
                 Parameters &parameters;
-                PerformanceCounter &counter;
         };
 
 
         class Degridder {
             public:
-                Degridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter);
+                Degridder(cl::Program &program, Parameters &parameters);
                 void launchAsync(
                     cl::CommandQueue &queue, int jobsize, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-                    cl::Buffer &d_subgrid);
+                    cl::Buffer &d_subgrid,
+                    PerformanceCounter &counter);
                	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
 
         	private:
                 cl::Kernel kernel;
                 Parameters &parameters;
-                PerformanceCounter &counter;
         };
 
 
