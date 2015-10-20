@@ -6,6 +6,7 @@
 #include <CL/cl.hpp>
 
 #include "auxiliary.h"
+#include "PowerSensor.h"
 
 class PerformanceCounter {
     public:
@@ -15,10 +16,17 @@ class PerformanceCounter {
 
     private:
         static void eventCompleteCallBack(cl_event, cl_int, void *counter);
+        #if defined(MEASURE_POWER)
+        PowerSensor::State powerStates[2];
+        #endif
 
     public:
         const char *name;
         cl::Event event;
+        #if defined(MEASURE_POWER)
+        PowerSensor *powerSensor;
+        void setPowerSensor(PowerSensor *_powerSensor);
+        #endif
 
    private:
        std::function<void (cl_event)> callback;

@@ -173,9 +173,9 @@ namespace idg {
 
         void GridFFT::launchAsync(
             cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-            queue.enqueueMarkerWithWaitList(NULL, &event_start);
+            //queue.enqueueMarkerWithWaitList(NULL, &event_start);
             //clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
-            queue.enqueueMarkerWithWaitList(NULL, &event_end);
+            //queue.enqueueMarkerWithWaitList(NULL, &event_end);
         }
 
         uint64_t GridFFT::flops(int size, int batch) {

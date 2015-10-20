@@ -10,13 +10,6 @@
 #include "auxiliary.h"
 #endif
 
-#if defined(MEASURE_POWER)
-#define _QUOTE(str) #str
-#define QUOTE(str) _QUOTE(str)
-#define STR_POWER_SENSOR QUOTE(POWER_SENSOR)
-#define STR_POWER_FILE QUOTE(POWER_FILE)
-#endif
-
 using namespace std;
 
 namespace idg {
