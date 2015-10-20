@@ -27,17 +27,17 @@ namespace idg {
         }
 
         // Gridder class
-        Gridder::Gridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter) :
+        Gridder::Gridder(cl::Program &program, Parameters &parameters) :
             kernel(program, name_gridder.c_str()),
-            parameters(parameters),
-            counter(counter) {}
+            parameters(parameters) {}
 
         void Gridder::launchAsync(
             cl::CommandQueue &queue, int jobsize, float w_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-            cl::Buffer &d_subgrid) {
+            cl::Buffer &d_subgrid,
+            PerformanceCounter &counter) {
             cl::NDRange globalSize(32 * jobsize, 4);
             cl::NDRange localSize(32, 4);
             kernel.setArg(0, w_offset);
@@ -49,9 +49,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                cl::Event event;
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
-                counter.doOperation(event, flops(jobsize), bytes(jobsize));
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &counter.event);
+                counter.doOperation(flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -88,17 +87,17 @@ namespace idg {
 
 
         // Degridder class
-        Degridder::Degridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter) :
+        Degridder::Degridder(cl::Program &program, Parameters &parameters) :
             kernel(program, name_degridder.c_str()),
-            parameters(parameters),
-            counter(counter) {}
+            parameters(parameters) {}
 
         void Degridder::launchAsync(
             cl::CommandQueue &queue, int jobsize, float w_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-            cl::Buffer &d_subgrid) {
+            cl::Buffer &d_subgrid,
+            PerformanceCounter &counter) {
             // IF wgSize IS MODIFIED, ALSO MODIFY NR_THREADS in KernelDegridder.cl
             int wgSize = 256;
             cl::NDRange globalSize(jobsize * wgSize);
@@ -112,9 +111,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                cl::Event event;
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
-                counter.doOperation(event, flops(jobsize), bytes(jobsize));
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &counter.event);
+                counter.doOperation(flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);

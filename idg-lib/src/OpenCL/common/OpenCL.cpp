@@ -157,11 +157,8 @@ namespace idg {
             const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
-                // Performance counters
-                PerformanceCounter counter_gridder("     gridder");
-
-                // Load kernel functions
-                kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams, counter_gridder);
+               // Load kernel functions
+                kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
@@ -174,6 +171,9 @@ namespace idg {
                 cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
 
+                // Performance counters
+                vector<PerformanceCounter*> counters_gridder;
+
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                     // Prevent overflow
@@ -184,6 +184,9 @@ namespace idg {
                     size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
                     size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
+
+                    // Performance counters
+                    counters_gridder.push_back(new PerformanceCounter("     gridder"));
 
                     #pragma omp critical (GPU)
                     {
@@ -201,7 +204,7 @@ namespace idg {
 
     						// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, *counters_gridder.back());
                             executequeue.enqueueMarkerWithWaitList(NULL, &gridderReady[0]);
 
 #if !defined(DISABLE_FFT)
@@ -283,11 +286,8 @@ namespace idg {
             const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
-                // Performance counters
-                PerformanceCounter counter_degridder(" degridder");
-
                 // Load kernel functions
-                kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams, counter_degridder);
+                kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams);
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
@@ -300,6 +300,9 @@ namespace idg {
                 cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_WRITE_ONLY, jobsize * SIZEOF_SUBGRIDS);
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
 
+                // Performance counters
+                vector<PerformanceCounter*> counters_degridder;
+
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                     // Prevent overflow
@@ -310,6 +313,9 @@ namespace idg {
                     size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
                     size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
+
+                    // Performance counters
+                    counters_degridder.push_back(new PerformanceCounter(" degridder"));
 
                     #pragma omp critical (GPU)
                     {
@@ -334,7 +340,7 @@ namespace idg {
 #else
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
 #endif
-                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, *counters_degridder.back());
                             executequeue.enqueueMarkerWithWaitList(NULL, &degridderReady[0]);
 
     						// Copy visibilities to host

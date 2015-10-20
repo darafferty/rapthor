@@ -6,8 +6,7 @@ namespace idg {
         PerformanceCounter::PerformanceCounter(const char *name) :
             name(name) {}
 
-        void PerformanceCounter::doOperation(cl::Event &event, uint64_t flops, uint64_t bytes) {
-            usleep(1000);
+        void PerformanceCounter::doOperation(uint64_t flops, uint64_t bytes) {
             callback = [=] (cl_event _event) {
                     cl_ulong start, end;
                         if (clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&

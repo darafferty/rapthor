@@ -10,14 +10,15 @@
 class PerformanceCounter {
     public:
         PerformanceCounter(const char *name);
-        void doOperation(cl::Event &event, uint64_t flops, uint64_t bytes);
+        void doOperation(uint64_t flops, uint64_t bytes);
         static void report(const char *name, double runtime, uint64_t flops, uint64_t bytes);
 
     private:
         static void eventCompleteCallBack(cl_event, cl_int, void *counter);
 
     public:
-       const char *name;
+        const char *name;
+        cl::Event event;
 
    private:
        std::function<void (cl_event)> callback;
