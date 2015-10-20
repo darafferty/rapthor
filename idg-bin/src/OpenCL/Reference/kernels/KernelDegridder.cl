@@ -1,9 +1,7 @@
 #include "math.cl"
 #include "Types.cl"
 
-
 #define NR_THREADS 256
-
 
 /*
 	Kernel
@@ -41,20 +39,12 @@ __kernel void kernel_degridder(
 		int time = i / NR_CHANNELS;
 		int chan = i % NR_CHANNELS;
 
-		float2 visXX, visXY, visYX, visYY;
-		float  u, v, w;
-		float  wavenumber;
+        float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
+        float4 _uvw;
+		float wavenumber;
 
 		if (time < NR_TIMESTEPS) {
-			visXX = (float2) (0, 0);
-			visXY = (float2) (0, 0);
-			visYX = (float2) (0, 0);
-			visYY = (float2) (0, 0);
-
-			u = uvw[s][time].u;
-			v = uvw[s][time].v;
-			w = uvw[s][time].w;
-
+            _uvw = (float4) (uvw[s][time].u, uvw[s][time].v, uvw[s][time].w, 0);
 			wavenumber = wavenumbers[chan];
 		}
 
@@ -118,12 +108,13 @@ __kernel void kernel_degridder(
 				int last_k =  first_j + NR_THREADS < SUBGRIDSIZE * SUBGRIDSIZE ? NR_THREADS : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
                 #endif
 
+                #pragma unroll 2
 				for (int k = 0; k < last_k; k ++) {
 					float  l = _lmn_phaseoffset[k].x;
 					float  m = _lmn_phaseoffset[k].y;
 					float  n = _lmn_phaseoffset[k].z;
 					float  phase_offset = _lmn_phaseoffset[k].w;
-					float  phase_index = u * l + v * m + w * n;
+					float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
 					float  phase  = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
@@ -132,34 +123,34 @@ __kernel void kernel_degridder(
 					float2 apYX = (float2) (_pix[1][k].x, _pix[1][k].y);
 					float2 apYY = (float2) (_pix[1][k].z, _pix[1][k].w);
 
-					visXX.x += apXX.x * phasor.x;
-					visXX.x -= apXX.y * phasor.y;
-					visXX.y += apXX.x * phasor.y;
-					visXX.y += apXX.y * phasor.x;
+					vis.s0 += apXX.x * phasor.x;
+					vis.s0 -= apXX.y * phasor.y;
+					vis.s1 += apXX.x * phasor.y;
+					vis.s1 += apXX.y * phasor.x;
 
-					visXY.x += apXY.x * phasor.x;
-					visXY.x -= apXY.y * phasor.y;
-					visXY.y += apXY.x * phasor.y;
-					visXY.y += apXY.y * phasor.x;
+					vis.s2 += apXY.x * phasor.x;
+					vis.s2 -= apXY.y * phasor.y;
+					vis.s3 += apXY.x * phasor.y;
+					vis.s3 += apXY.y * phasor.x;
 
-					visYX.x += apYX.x * phasor.x;
-					visYX.x -= apYX.y * phasor.y;
-					visYX.y += apYX.x * phasor.y;
-					visYX.y += apYX.y * phasor.x;
+					vis.s4 += apYX.x * phasor.x;
+					vis.s4 -= apYX.y * phasor.y;
+					vis.s5 += apYX.x * phasor.y;
+					vis.s5 += apYX.y * phasor.x;
 
-					visYY.x += apYY.x * phasor.x;
-					visYY.x -= apYY.y * phasor.y;
-					visYY.y += apYY.x * phasor.y;
-					visYY.y += apYY.y * phasor.x;
+					vis.s6 += apYY.x * phasor.x;
+					vis.s6 -= apYY.y * phasor.y;
+					vis.s7 += apYY.x * phasor.y;
+					vis.s7 += apYY.y * phasor.x;
 				}
 			}
         }
 
         if (time < NR_TIMESTEPS) {
-            visibilities[s][time][chan][0] = visXX;
-            visibilities[s][time][chan][1] = visXY;
-            visibilities[s][time][chan][2] = visYX;
-            visibilities[s][time][chan][3] = visYY;
+            visibilities[s][time][chan][0] = (float2) (vis.s0, vis.s1);
+            visibilities[s][time][chan][1] = (float2) (vis.s2, vis.s3);
+            visibilities[s][time][chan][2] = (float2) (vis.s4, vis.s5);
+            visibilities[s][time][chan][3] = (float2) (vis.s6, vis.s7);
 		}
 	}
 }
