@@ -27,9 +27,10 @@ namespace idg {
         }
 
         // Gridder class
-        Gridder::Gridder(cl::Program &program, Parameters &parameters) :
+        Gridder::Gridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter) :
             kernel(program, name_gridder.c_str()),
-            parameters(parameters) {}
+            parameters(parameters),
+            counter(counter) {}
 
         void Gridder::launchAsync(
             cl::CommandQueue &queue, int jobsize, float w_offset,
@@ -48,7 +49,9 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
+                cl::Event event;
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -83,15 +86,12 @@ namespace idg {
             return bytes;
         }
 
-        double Gridder::runtime() {
-            return compute_runtime(event);
-        }
-
 
         // Degridder class
-        Degridder::Degridder(cl::Program &program, Parameters &parameters) :
+        Degridder::Degridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter) :
             kernel(program, name_degridder.c_str()),
-            parameters(parameters) {}
+            parameters(parameters),
+            counter(counter) {}
 
         void Degridder::launchAsync(
             cl::CommandQueue &queue, int jobsize, float w_offset,
@@ -112,7 +112,9 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
+                cl::Event event;
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -145,10 +147,6 @@ namespace idg {
             bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
             bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
             return bytes;
-        }
-
-        double Degridder::runtime() {
-            return compute_runtime(event);
         }
 
 

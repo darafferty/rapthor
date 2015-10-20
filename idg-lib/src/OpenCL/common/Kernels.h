@@ -12,6 +12,7 @@
 #include <clFFT.h>
 
 #include "Parameters.h"
+#include "PerformanceCounter.h"
 
 namespace idg {
 
@@ -25,7 +26,7 @@ namespace idg {
 
         class Gridder {
             public:
-                Gridder(cl::Program &program, Parameters &parameters);
+                Gridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter);
                 void launchAsync(
                     cl::CommandQueue &queue, int jobsize, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
@@ -34,18 +35,17 @@ namespace idg {
                     cl::Buffer &d_subgrid);
             	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
-                double runtime();
 
         	private:
         	    cl::Kernel kernel;
                 Parameters &parameters;
-                cl::Event event;
+                PerformanceCounter &counter;
         };
 
 
         class Degridder {
             public:
-                Degridder(cl::Program &program, Parameters &parameters);
+                Degridder(cl::Program &program, Parameters &parameters, PerformanceCounter &counter);
                 void launchAsync(
                     cl::CommandQueue &queue, int jobsize, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
@@ -54,12 +54,11 @@ namespace idg {
                     cl::Buffer &d_subgrid);
                	uint64_t flops(int jobsize);
         		uint64_t bytes(int jobsize);
-                double runtime();
 
         	private:
                 cl::Kernel kernel;
                 Parameters &parameters;
-                cl::Event event;
+                PerformanceCounter &counter;
         };
 
 
