@@ -8,6 +8,7 @@ set (${PROJECT_NAME}_headers
   ProxyInfo.h
   RuntimeWrapper.h
   auxiliary.h
+  PowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources 
@@ -15,7 +16,8 @@ set (${PROJECT_NAME}_sources
   Parameters.cpp 
   ProxyInfo.cpp 
   RuntimeWrapper.cpp 
-  auxiliary.cpp 
+  auxiliary.cpp
+  PowerSensor.cpp
 )
 
 # create a common library 
