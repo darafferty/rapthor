@@ -157,8 +157,11 @@ namespace idg {
             const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
+                // Performance counters
+                PerformanceCounter counter_gridder("     gridder");
+
                 // Load kernel functions
-                kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
+                kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams, counter_gridder);
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
@@ -215,18 +218,6 @@ namespace idg {
 #endif
                             dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
-
-                    // Report performance
-                    #if defined(REPORT_VERBOSE)
-                    auxiliary::report("gridder", kernel_gridder.runtime(),
-                                                 kernel_gridder.flops(current_jobsize),
-                                                 kernel_gridder.bytes(current_jobsize), 0);
-#if !defined(DISABLE_FFT)
-                    auxiliary::report("    fft", kernel_fft.runtime(),
-                                                 kernel_fft.flops(subgridsize, current_jobsize),
-                                                 kernel_fft.bytes(subgridsize, current_jobsize), 0);
-#endif
-                    #endif
                 }
 
                 // Wait for device to host transfer to finish
@@ -292,8 +283,11 @@ namespace idg {
             const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
+                // Performance counters
+                PerformanceCounter counter_degridder(" degridder");
+
                 // Load kernel functions
-                kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams);
+                kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams, counter_degridder);
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Events
@@ -347,18 +341,6 @@ namespace idg {
                             dtohqueue.enqueueBarrierWithWaitList(&degridderReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
-
-                    // Report performance
-                    #if defined(REPORT_VERBOSE)
-#if !defined(DISABLE_FFT)
-                    auxiliary::report("      fft", kernel_fft.runtime(),
-                                                   kernel_fft.flops(subgridsize, current_jobsize),
-                                                   kernel_fft.bytes(subgridsize, current_jobsize), 0);
-#endif
-                    auxiliary::report("degridder", kernel_degridder.runtime(),
-                                                   kernel_degridder.flops(current_jobsize),
-                                                   kernel_degridder.bytes(current_jobsize), 0);
-                    #endif
                 }
 
                 // Wait for device to host transfer to finish
