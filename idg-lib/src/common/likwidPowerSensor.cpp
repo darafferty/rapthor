@@ -1,4 +1,4 @@
-#include "libPowerSensor.h"
+#include "likwidPowerSensor.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -15,7 +15,7 @@
 #include <likwid.h>
 
 
-PowerSensor::PowerSensor(const char *dumpFileName)
+LikwidPowerSensor::LikwidPowerSensor(const char *dumpFileName)
 :
   dumpFile(dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName)),
   stop(false)
@@ -41,7 +41,7 @@ PowerSensor::PowerSensor(const char *dumpFileName)
       exit(1);
     }
 
-    if ((errno = pthread_create(&thread, 0, &PowerSensor::IOthread, this)) != 0) {
+    if ((errno = pthread_create(&thread, 0, &LikwidPowerSensor::IOthread, this)) != 0) {
       perror("pthread_create");
       exit(1);
     }
@@ -49,7 +49,7 @@ PowerSensor::PowerSensor(const char *dumpFileName)
 }
 
 
-PowerSensor::~PowerSensor()
+LikwidPowerSensor::~LikwidPowerSensor()
 {
   if (dumpFile != 0) {
     stop = true;
@@ -65,7 +65,7 @@ PowerSensor::~PowerSensor()
 }
 
 
-void PowerSensor::lock()
+void LikwidPowerSensor::lock()
 {
   if ((errno = pthread_mutex_lock(&mutex)) != 0) {
     perror("pthread_mutex_lock");
@@ -74,7 +74,7 @@ void PowerSensor::lock()
 }
 
 
-void PowerSensor::unlock()
+void LikwidPowerSensor::unlock()
 {
   if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
     perror("pthread_mutex_unlock");
@@ -83,13 +83,13 @@ void PowerSensor::unlock()
 }
 
 
-void *PowerSensor::IOthread(void *arg)
+void *LikwidPowerSensor::IOthread(void *arg)
 {
-  return static_cast<PowerSensor *>(arg)->IOthread();
+  return static_cast<LikwidPowerSensor *>(arg)->IOthread();
 }
 
 
-void *PowerSensor::IOthread()
+void *LikwidPowerSensor::IOthread()
 {
   State firstState = read(), currentState = firstState, previousState;
 
@@ -107,7 +107,7 @@ void *PowerSensor::IOthread()
 }
 
 
-void PowerSensor::mark(const State &state, const char *name, unsigned tag)
+void LikwidPowerSensor::mark(const State &state, const char *name, unsigned tag)
 {
   if (dumpFile != 0) {
     lock();
@@ -117,7 +117,7 @@ void PowerSensor::mark(const State &state, const char *name, unsigned tag)
 }
 
 
-void PowerSensor::mark(const State &startState, const State &stopState, const char *name, unsigned tag)
+void LikwidPowerSensor::mark(const State &startState, const State &stopState, const char *name, unsigned tag)
 {
   if (dumpFile != 0) {
     lock();
@@ -127,7 +127,7 @@ void PowerSensor::mark(const State &startState, const State &stopState, const ch
 }
 
 
-PowerSensor::State PowerSensor::read()
+LikwidPowerSensor::State LikwidPowerSensor::read()
 {
   State state;
 
@@ -155,7 +155,7 @@ PowerSensor::State PowerSensor::read()
 }
 
 
-double PowerSensor::Joules(const State &firstState, const State &secondState)
+double LikwidPowerSensor::Joules(const State &firstState, const State &secondState)
 {
   // multiply with energy unit in this function and not in read(), to be tolerant to counter overflows
   return (secondState.consumedPKGenergy  - firstState.consumedPKGenergy ) * power_info.domains[PKG].energyUnit +
@@ -163,13 +163,13 @@ double PowerSensor::Joules(const State &firstState, const State &secondState)
 }
 
 
-double PowerSensor::seconds(const State &firstState, const State &secondState)
+double LikwidPowerSensor::seconds(const State &firstState, const State &secondState)
 {
   return secondState.timeAtRead - firstState.timeAtRead;
 }
 
 
-double PowerSensor::Watt(const State &firstState, const State &secondState)
+double LikwidPowerSensor::Watt(const State &firstState, const State &secondState)
 {
   return Joules(firstState, secondState) / seconds(firstState, secondState);
 }

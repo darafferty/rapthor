@@ -8,7 +8,7 @@
 #include <vector>
 
 
-class PowerSensor
+class LikwidPowerSensor
 {
   public:
     struct State
@@ -17,8 +17,8 @@ class PowerSensor
       double timeAtRead;
     };
 
-    PowerSensor(const char *dumpFileName = 0);
-    ~PowerSensor();
+    LikwidPowerSensor(const char *dumpFileName = 0);
+    ~LikwidPowerSensor();
 
     State read();
     void mark(const State &, const char *name = 0, unsigned tag = 0);
