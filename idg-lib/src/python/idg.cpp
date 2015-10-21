@@ -9,7 +9,7 @@
 #include <CPU/HaswellEP/idg.h>
 
 #include <numpy/arrayobject.h>
- 
+
 
 using namespace boost::python;
 using namespace idg;
@@ -17,12 +17,12 @@ using namespace idg::proxy;
 
 
 void grid_onto_subgrids(
-  Proxy *p, 
-  int jobsize, 
-  int nr_subgrids, 
-  float w_offset, 
-  boost::python::numeric::array uvw, 
-  boost::python::numeric::array wavenumbers, 
+  Proxy *p,
+  int jobsize,
+  int nr_subgrids,
+  float w_offset,
+  boost::python::numeric::array uvw,
+  boost::python::numeric::array wavenumbers,
   boost::python::numeric::array visibilities,
   boost::python::numeric::array spheroidal,
   boost::python::numeric::array aterm,
@@ -46,11 +46,11 @@ void grid_onto_subgrids(
 }
 
 void add_subgrids_to_grid(
-  Proxy *p, 
-  int jobsize, 
-  unsigned nr_subgrids, 
-  boost::python::numeric::array metadata, 
-  boost::python::numeric::array subgrids, 
+  Proxy *p,
+  int jobsize,
+  unsigned nr_subgrids,
+  boost::python::numeric::array metadata,
+  boost::python::numeric::array subgrids,
   boost::python::numeric::array grid
 )
 {
@@ -78,12 +78,60 @@ void transform(
   );
 }
 
+void split_grid_into_subgrids(
+  Proxy *p,
+  int jobsize,
+  unsigned nr_subgrids,
+  boost::python::numeric::array metadata,
+  boost::python::numeric::array subgrids,
+  boost::python::numeric::array grid
+)
+{
+  // TODO: check type and shape of arrays
+  p->split_grid_into_subgrids(
+    jobsize,
+    nr_subgrids,
+    ((PyArrayObject*)(metadata.ptr()))->data,
+    ((PyArrayObject*)(subgrids.ptr()))->data,
+    ((PyArrayObject*)(grid.ptr()))->data
+  );
+}
+
+void degrid_from_subgrids(
+  Proxy *p,
+  int jobsize,
+  int nr_subgrids,
+  float w_offset,
+  boost::python::numeric::array uvw,
+  boost::python::numeric::array wavenumbers,
+  boost::python::numeric::array visibilities,
+  boost::python::numeric::array spheroidal,
+  boost::python::numeric::array aterm,
+  boost::python::numeric::array metadata,
+  boost::python::numeric::array subgrids
+)
+{
+  // TODO: check type and shape of arrays
+  p->degrid_from_subgrids(
+    jobsize,
+    nr_subgrids,
+    w_offset,
+    ((PyArrayObject*)(uvw.ptr()))->data,
+    ((PyArrayObject*)(wavenumbers.ptr()))->data,
+    ((PyArrayObject*)(visibilities.ptr()))->data,
+    ((PyArrayObject*)(spheroidal.ptr()))->data,
+    ((PyArrayObject*)(aterm.ptr()))->data,
+    ((PyArrayObject*)(metadata.ptr()))->data,
+    ((PyArrayObject*)(subgrids.ptr()))->data
+  );
+}
+
 BOOST_PYTHON_MODULE(_idg)
 {
   boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
- 
+
   void (Parameters::*print0)() const = &Parameters::print;
-  
+
   class_<Parameters>("Parameters")
   .add_property("nr_stations", &Parameters::get_nr_stations, &Parameters::set_nr_stations)
   .add_property("nr_baselines", &Parameters::get_nr_baselines)
@@ -102,13 +150,15 @@ BOOST_PYTHON_MODULE(_idg)
   .add_property("job_size_degridder", &Parameters::get_job_size_degridder, &Parameters::set_job_size_degridder)
   .add_property("nr_polarizations", &Parameters::get_nr_polarizations)
   .def("print0", print0);
-  
+
   class_<Proxy, boost::noncopyable>("Proxy", no_init)
   .def("grid_onto_subgrids", &grid_onto_subgrids)
   .def("add_subgrids_to_grid", &add_subgrids_to_grid)
   .def("transform", &transform)
-  
+  .def("split_grid_into_subgrids", &split_grid_into_subgrids)
+  .def("degrid_from_subgrids", &degrid_from_subgrids)
+
   ;
-  
+
   class_<proxy::cpu::HaswellEP, bases<proxy::Proxy>>("HaswellEP", init<Parameters>());
 }
