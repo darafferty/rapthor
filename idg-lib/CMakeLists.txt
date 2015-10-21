@@ -42,6 +42,7 @@ endif()
 # Likwid power sensor
 if (BUILD_WITH_LIKWID_POWER_SENSOR)
     find_package(Numa)
+    find_package(Likwid)
     if (NOT BUILD_WITH_POWER_SENSOR)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
     endif()

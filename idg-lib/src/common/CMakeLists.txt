@@ -42,7 +42,7 @@ if (${BUILD_WITH_LIKWID_POWER_SENSOR})
 target_link_libraries(
     ${PROJECT_NAME}
     ${NUMA_LIBRARY}
-    /cm/shared/package/likwid-4.0.0/lib/liblikwid.so
+    ${LIKWID_LIBRARIES}
     idg-common
 )
 endif()
