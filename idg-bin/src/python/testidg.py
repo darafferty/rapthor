@@ -291,6 +291,27 @@ while True:
     img = numpy.fft.fftshift(img)
     img = numpy.real(img[0,:,:])
 
+    # Extract subgrids from grid
+    proxy.split_grid_into_subgrids(
+      jobsize,
+      count,
+      metadata,
+      databuffer.subgrids,
+      databuffer.grid)
+
+    # Degrid visibilities from subgrids
+    proxy.degrid_from_subgrids(
+      jobsize,
+      count,
+      w_offset,
+      uvw,
+      databuffer.wavenumbers,
+      visibilities,
+      databuffer.spheroidal,
+      databuffer.aterm,
+      metadata,
+      databuffer.subgrids)
+
     # Remove spheroidal from grid
     img = img/databuffer.spheroidal1
 
