@@ -25,6 +25,7 @@ option (BUILD_EXAMPLES "Build examples executables" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (BUILD_WITH_POWER_SENSOR "Measure power using power sensor" OFF)
+option (BUILD_WITH_LIKWID_POWER_SENSOR "Measure power using likiwd library" OFF)
 
 # Power sensor
 if (BUILD_WITH_POWER_SENSOR)
@@ -33,6 +34,11 @@ if (BUILD_WITH_POWER_SENSOR)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_SENSOR=${POWER_SENSOR}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_FILE=${POWER_FILE}")
+endif()
+
+# Likwid power sensor
+if (BUILD_WITH_LIKWID_POWER_SENSOR AND NOT BUILD_WITH_POWER_SENSOR)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
 endif()
 
 # build shared or static libraries (default: shared)
