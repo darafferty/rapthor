@@ -33,7 +33,14 @@ add_library(
 )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-common)
+target_link_libraries(
+    ${PROJECT_NAME}
+    idg-common
+    if (BUILD_WITH_LIKIWD_POWER_SENSOR)
+        numa
+        /cm/shared/package/likwid-4.0.0/lib/liblikwid.so
+    endif()
+)
 
 # installer
 install(TARGETS ${PROJECT_NAME} 
