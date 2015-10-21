@@ -9,6 +9,7 @@ set (${PROJECT_NAME}_headers
   RuntimeWrapper.h
   auxiliary.h
   PowerSensor.h
+  likwidPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources 
@@ -18,6 +19,7 @@ set (${PROJECT_NAME}_sources
   RuntimeWrapper.cpp 
   auxiliary.cpp
   PowerSensor.cpp
+  likwidPowerSensor.cpp
 )
 
 # create a common library 
