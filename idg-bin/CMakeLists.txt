@@ -15,6 +15,9 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
+# set cmake module path
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 # options
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
 option (BUILD_MIC_OFFLOAD "Build support for KNC offload" OFF) 
@@ -25,6 +28,7 @@ option (BUILD_EXAMPLES "Build examples executables" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (BUILD_WITH_POWER_SENSOR "Measure power using power sensor" OFF)
+option (BUILD_WITH_LIKWID_POWER_SENSOR "Measure power using likiwd library" OFF)
 
 # Power sensor
 if (BUILD_WITH_POWER_SENSOR)
@@ -33,6 +37,16 @@ if (BUILD_WITH_POWER_SENSOR)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_SENSOR=${POWER_SENSOR}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_FILE=${POWER_FILE}")
+endif()
+
+# Likwid power sensor
+if (BUILD_WITH_LIKWID_POWER_SENSOR)
+    find_package(Numa)
+    find_package(Likwid)
+    if (NOT BUILD_WITH_POWER_SENSOR)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMEASURE_POWER")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOWER_FILE=${POWER_FILE}")
+    endif()
 endif()
 
 # build shared or static libraries (default: shared)
@@ -81,9 +95,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDEBUG")
 if (BUILD_WITH_CUDA)
   find_package(CUDA)
 endif (BUILD_WITH_CUDA)
-
-# set cmake module path
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # find OpenCL environment
 # (see http://www.cmake.org/cmake/help/v3.1/module/FindOpenCL.html)
