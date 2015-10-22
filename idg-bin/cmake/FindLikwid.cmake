@@ -1,0 +1,34 @@
+# - Try to find likwid
+# This module tries to find the likwid library on your system
+#
+# Once done this will define
+#  LIKWID_FOUND        - system has likwid
+#  LIKWID_INCLUDE_DIRS - the likwid include directory
+#  LIKWID_LIBRARIES    - link these to use likwid
+
+FIND_PACKAGE( PackageHandleStandardArgs )
+
+# Unix style platforms
+FIND_LIBRARY(LIKWID_LIBRARIES likwid
+    ENV LD_LIBRARY_PATH
+)
+
+GET_FILENAME_COMPONENT(LIKWID_LIB_DIR ${LIKWID_LIBRARIES} PATH)
+GET_FILENAME_COMPONENT(_LIKWID_INC_DIR ${LIKWID_LIB_DIR}/../include ABSOLUTE)
+
+# search for headers relative to the library
+FIND_PATH(LIKWID_INCLUDE_DIRS likwid.h PATHS ${_LIKWID_INC_DIR})
+FIND_PATH(_LIKWID_CPP_INCLUDE_DIRS likwid.h PATHS ${_LIKWID_INC_DIR})
+
+FIND_PACKAGE_HANDLE_STANDARD_ARGS( likwid DEFAULT_MSG LIKWID_LIBRARIES LIKWID_INCLUDE_DIRS )
+
+IF( _LIKWID_CPP_INCLUDE_DIRS )
+	SET( LIKWID_HAS_CPP_BINDINGS TRUE )
+	LIST( APPEND LIKWID_INCLUDE_DIRS ${_LIKWID_CPP_INCLUDE_DIRS} )
+	# This is often the same, so clean up
+	LIST( REMOVE_DUPLICATES LIKWID_INCLUDE_DIRS )
+ENDIF( _LIKWID_CPP_INCLUDE_DIRS )
+
+MARK_AS_ADVANCED(
+    LIKWID_INCLUDE_DIRS
+)
