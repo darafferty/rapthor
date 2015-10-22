@@ -19,6 +19,8 @@ using namespace std;
 
 namespace idg {
     namespace proxy {
+        // Power sensor
+        static LikwidPowerSensor *powerSensor;
 
         /// Constructors
         CPU::CPU(
@@ -40,6 +42,8 @@ namespace idg {
             compile(compiler, flags);
             load_shared_objects();
             find_kernel_functions();
+
+            powerSensor = new LikwidPowerSensor(STR_POWER_FILE);
         }
 
         CPU::~CPU()
@@ -229,6 +233,8 @@ namespace idg {
             runtime = -omp_get_wtime();
             #endif
 
+            LikwidPowerSensor::State powerStates[4];
+
             // Start gridder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
                 // Prevent overflow
@@ -253,8 +259,10 @@ namespace idg {
                 runtime_gridder = -omp_get_wtime();
                 #endif
 
+                powerStates[0] = powerSensor->read();
                 kernel_gridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
                                    spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
+                powerStates[1] = powerSensor->read();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_gridder += omp_get_wtime();
@@ -262,7 +270,9 @@ namespace idg {
                 runtime_fft = -omp_get_wtime();
                 #endif
 
+                powerStates[2] = powerSensor->read();
                 kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD);
+                powerStates[3] = powerSensor->read();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_fft += omp_get_wtime();
@@ -272,10 +282,12 @@ namespace idg {
                 #if defined(REPORT_VERBOSE)
                 auxiliary::report("gridder", runtime_gridder,
                                   kernel_gridder.flops(jobsize),
-                                  kernel_gridder.bytes(jobsize));
+                                  kernel_gridder.bytes(jobsize),
+                                  LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                 auxiliary::report("fft", runtime_fft,
                                   kernel_fft.flops(subgridsize, nr_subgrids),
-                                  kernel_fft.bytes(subgridsize, nr_subgrids));
+                                  kernel_fft.bytes(subgridsize, nr_subgrids),
+                                  LikwidPowerSensor::Watt(powerStates[2], powerStates[3]));
                 #endif
             } // end for s
 
