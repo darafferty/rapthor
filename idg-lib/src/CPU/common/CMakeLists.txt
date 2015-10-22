@@ -9,6 +9,7 @@ include_directories (
 set (${PROJECT_NAME}_headers
   CPU.h
   Kernels.h
+  ${CMAKE_SOURCE_DIR}/src/common/LikwidPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources

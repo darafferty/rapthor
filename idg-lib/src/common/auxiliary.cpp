@@ -31,13 +31,13 @@ namespace idg {
                      << runtime << " s";
                 if (flops != 0) {
                     clog << ", ";
-                    uint64_t gflops = flops / runtime * 1e-9;
+                    double gflops = (flops / runtime) * 1e-9;
                     if (gflops < 1000) {
                         clog << setw(fw2) << right << fixed << setprecision(2)
-                                          << gflops * 1e-9 << " GFLOPS";
+                                          << gflops << " GFLOPS";
                     } else {
                         clog << setw(fw2) << right << fixed << setprecision(2)
-                                          << gflops / 1000. << " TFLOPS";
+                                          << gflops * 1e-3 << " TFLOPS";
                     }
                 }
                 if (bytes != 0) {
@@ -53,7 +53,7 @@ namespace idg {
                 if (flops != 0 && watt != 0) {
                     clog << ", ";
                     clog << setw(fw3) << right << fixed << setprecision(2)
-                                      << (flops /runtime * 1e-9) / watt << " GFLOPS/W";
+                                      << (flops / runtime * 1e-9) / watt << " GFLOPS/W";
                 }
             }
             clog << endl;

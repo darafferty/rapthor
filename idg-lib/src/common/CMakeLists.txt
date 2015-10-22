@@ -9,6 +9,7 @@ set (${PROJECT_NAME}_headers
   RuntimeWrapper.h
   auxiliary.h
   PowerSensor.h
+  LikwidPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources 
@@ -18,6 +19,7 @@ set (${PROJECT_NAME}_sources
   RuntimeWrapper.cpp 
   auxiliary.cpp
   PowerSensor.cpp
+  LikwidPowerSensor.cpp
 )
 
 # create a common library 
@@ -31,7 +33,19 @@ add_library(
 )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-common)
+target_link_libraries(
+    ${PROJECT_NAME}
+    idg-common
+)
+
+if (${BUILD_WITH_LIKWID_POWER_SENSOR})
+target_link_libraries(
+    ${PROJECT_NAME}
+    ${NUMA_LIBRARY}
+    ${LIKWID_LIBRARIES}
+    idg-common
+)
+endif()
 
 # installer
 install(TARGETS ${PROJECT_NAME} 

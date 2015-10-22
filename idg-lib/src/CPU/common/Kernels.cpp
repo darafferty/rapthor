@@ -3,6 +3,11 @@
 #include "idg-config.h"
 #include "Kernels.h"
 
+#define COUNT_SINCOS_AS_FLOPS
+#if defined(COUNT_SINCOS_AS_FLOPS)
+#define FLOPS_PER_SINCOS 8
+#endif
+
 namespace idg {
     namespace kernel {
 
@@ -24,10 +29,13 @@ namespace idg {
         int nr_timesteps = parameters.get_nr_timesteps();
         int nr_channels = parameters.get_nr_channels();
         int nr_polarizations = parameters.get_nr_polarizations();
-        uint64_t flops = 0;
+       uint64_t flops = 0;
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
+        #if defined(COUNT_SINCOS_AS_FLOPS)
+        flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
+        #endif
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
         flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
         flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
@@ -70,6 +78,9 @@ namespace idg {
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
+        #if defined(COUNT_SINCOS_AS_FLOPS)
+        flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
+        #endif
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
         flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
         flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
