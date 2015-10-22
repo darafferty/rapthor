@@ -14,6 +14,7 @@
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
 #include "Kernels.h"
+#include "LikwidPowerSensor.h"
 
 namespace idg {
     namespace proxy {
