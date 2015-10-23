@@ -19,10 +19,8 @@ using namespace std;
 
 namespace idg {
     namespace proxy {
-        #if defined(MEASURE_POWER)
         // Power sensor
         static LikwidPowerSensor *powerSensor;
-        #endif
 
         /// Constructors
         CPU::CPU(
@@ -45,9 +43,7 @@ namespace idg {
             load_shared_objects();
             find_kernel_functions();
 
-            #if defined(MEASURE_POWER)
-            powerSensor = new LikwidPowerSensor(STR_POWER_FILE);
-            #endif
+            powerSensor = new LikwidPowerSensor();
         }
 
         CPU::~CPU()
@@ -214,14 +210,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime, runtime_gridder, runtime_fft;
-            double power_gridder, power_fft;
-            double total_runtime_gridder = 0;
-            double total_runtime_fft = 0;
-            #endif
-
             // Constants
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_timesteps = mParams.get_nr_timesteps();
@@ -234,13 +222,12 @@ namespace idg {
             kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
             kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
-
-            #if defined(MEASURE_POWER)
+            // Performance measurement
+            double total_runtime;
+            double total_runtime_gridder = 0;
+            double total_runtime_fft = 0;
             LikwidPowerSensor::State powerStates[4];
-            #endif
+            total_runtime -= omp_get_wtime();
 
             // Start gridder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
@@ -262,60 +249,40 @@ namespace idg {
                 void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
                 void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_gridder = -omp_get_wtime();
-                #endif
-
-                #if defined(MEASURE_POWER)
+                // Gridder kernel
                 powerStates[0] = powerSensor->read();
-                #endif
                 kernel_gridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
                                    spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
-                #if defined(MEASURE_POWER)
                 powerStates[1] = powerSensor->read();
-                #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_gridder += omp_get_wtime();
-                total_runtime_gridder += runtime_gridder;
-                runtime_fft = -omp_get_wtime();
-                #endif
-
-                #if defined(MEASURE_POWER)
+                // FFT kernel
                 powerStates[2] = powerSensor->read();
-                #endif
                 kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD);
-                #if defined(MEASURE_POWER)
                 powerStates[3] = powerSensor->read();
-                #endif
 
-                #if defined(MEASURE_POWER)
-                power_gridder = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
-                power_fft     = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
-                #else
-                power_gridder = 0;
-                power_fft = 0;
-                #endif
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft += omp_get_wtime();
-                total_runtime_fft += runtime_fft;
-                #endif
-
+                // Performance reporting
+                double runtime_gridder = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
+                double runtime_fft     = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
                 #if defined(REPORT_VERBOSE)
+                double power_gridder   = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
+                double power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
                 auxiliary::report("gridder", runtime_gridder,
                                   kernel_gridder.flops(jobsize),
                                   kernel_gridder.bytes(jobsize),
                                   power_gridder);
                 auxiliary::report("fft", runtime_fft,
-                                  kernel_fft.flops(subgridsize, nr_subgrids),
-                                  kernel_fft.bytes(subgridsize, nr_subgrids),
+                                  kernel_fft.flops(subgridsize, jobsize),
+                                  kernel_fft.bytes(subgridsize, jobsize),
                                   power_fft);
+                #endif
+                #if defined(REPORT_TOTAL)
+                total_runtime_gridder += runtime_gridder;
+                total_runtime_fft += runtime_fft;
                 #endif
             } // end for s
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
+            total_runtime += omp_get_wtime();
             clog << endl;
             clog << "Total: gridding" << endl;
             auxiliary::report("gridder", total_runtime_gridder,
@@ -324,8 +291,8 @@ namespace idg {
             auxiliary::report("fft", total_runtime_fft,
                               kernel_fft.flops(subgridsize, nr_subgrids),
                               kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report_runtime(total_runtime);
+            auxiliary::report_visibilities(total_runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
 
@@ -477,14 +444,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime, runtime_degridder, runtime_fft;
-            double power_degridder, power_fft;
-            double total_runtime_degridder = 0;
-            double total_runtime_fft = 0;
-            #endif
-
             // Constants
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_channels = mParams.get_nr_channels();
@@ -497,13 +456,12 @@ namespace idg {
             kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
             kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
-
-            #if defined(MEASURE_POWER)
+            // Performance measurements
+            double total_runtime = 0;
+            double total_runtime_degridder = 0;
+            double total_runtime_fft = 0;
             LikwidPowerSensor::State powerStates[4];
-            #endif
+            total_runtime = -omp_get_wtime();
 
             // Start degridder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
@@ -525,60 +483,41 @@ namespace idg {
                 void *metadata_ptr     = (int *) metadata + s * metadata_elements;
                 void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft = -omp_get_wtime();
-                #endif
-
-                #if defined(MEASURE_POWER)
+                // FFT kernel
                 powerStates[0] = powerSensor->read();
-                #endif
                 kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_FORWARD);
-                #if defined(MEASURE_POWER)
                 powerStates[1] = powerSensor->read();
-                #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_fft += omp_get_wtime();
-                total_runtime_fft += runtime_fft;
-                runtime_degridder = -omp_get_wtime();
-                #endif
-
-                #if defined(MEASURE_POWER)
+                // Degridder kernel
                 powerStates[2] = powerSensor->read();
-                #endif
                 kernel_degridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
                                      spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
-                #if defined(MEASURE_POWER)
                 powerStates[3] = powerSensor->read();
-                #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_degridder += omp_get_wtime();
-                total_runtime_degridder += runtime_degridder;
-                #endif
-
-                #if defined(MEASURE_POWER)
-                power_degridder = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
-                power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
-                #else
-                power_degridder = 0;
-                power_fft = 0;
-                #endif
-
+                // Performance reporting
+                double runtime_fft         = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
+                double runtime_degridder   = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
                 #if defined(REPORT_VERBOSE)
+                double power_fft           = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
+                double power_degridder     = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
+
                 auxiliary::report("degridder", runtime_degridder,
                                   kernel_degridder.flops(jobsize),
                                   kernel_degridder.bytes(jobsize),
                                   power_degridder);
                 auxiliary::report("fft", runtime_fft,
-                                  kernel_fft.flops(subgridsize, nr_subgrids),
-                                  kernel_fft.bytes(subgridsize, nr_subgrids),
+                                  kernel_fft.flops(subgridsize, jobsize),
+                                  kernel_fft.bytes(subgridsize, jobsize),
                                   power_fft);
+                #endif
+                #if defined(REPORT_TOTAL)
+                total_runtime_fft += runtime_fft;
+                total_runtime_degridder += runtime_degridder;
                 #endif
             } // end for s
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
+            total_runtime += omp_get_wtime();
             clog << endl;
             clog << "Total: degridding" << endl;
             auxiliary::report("degridder", total_runtime_degridder,
@@ -587,8 +526,8 @@ namespace idg {
             auxiliary::report("fft", total_runtime_fft,
                               kernel_fft.flops(subgridsize, nr_subgrids),
                               kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report_runtime(total_runtime);
+            auxiliary::report_visibilities(total_runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_degridder
