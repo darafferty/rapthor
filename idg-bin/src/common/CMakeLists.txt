@@ -22,20 +22,9 @@ set (${PROJECT_NAME}_sources
   LikwidPowerSensor.cpp
 )
 
-# create a common library 
-# add_library(
-#    ${PROJECT_NAME} SHARED ${${PROJECT_NAME}_headers}
-#                           ${${PROJECT_NAME}_sources}
-#)
 add_library(
     ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                     ${${PROJECT_NAME}_sources}
-)
-
-# linker
-target_link_libraries(
-    ${PROJECT_NAME}
-    idg-common
 )
 
 if (${BUILD_WITH_LIKWID_POWER_SENSOR})
@@ -43,7 +32,6 @@ target_link_libraries(
     ${PROJECT_NAME}
     ${NUMA_LIBRARY}
     ${LIKWID_LIBRARIES}
-    idg-common
 )
 endif()
 

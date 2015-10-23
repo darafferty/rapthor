@@ -12,8 +12,9 @@
 #include </usr/include/numa.h>
 #endif
 
+#if defined(MEASURE_POWER)
 #include <likwid.h>
-
+#endif
 
 LikwidPowerSensor::LikwidPowerSensor(const char *dumpFileName)
 :
