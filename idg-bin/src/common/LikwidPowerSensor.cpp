@@ -135,13 +135,13 @@ LikwidPowerSensor::State LikwidPowerSensor::read()
 {
   State state;
 
+  state.timeAtRead = omp_get_wtime();
+  state.consumedPKGenergy = 0;
+  state.consumedDRAMenergy = 0;
+
 #if defined(MEASURE_POWER)
 #pragma omp critical (power)
   {
-    state.timeAtRead = omp_get_wtime();
-    state.consumedPKGenergy = 0;
-    state.consumedDRAMenergy = 0;
-
 #if !defined __MIC__
 #define MSR_PKG_ENERGY_STATUS  0x611
 #define MSR_DRAM_ENERGY_STATUS 0x619
