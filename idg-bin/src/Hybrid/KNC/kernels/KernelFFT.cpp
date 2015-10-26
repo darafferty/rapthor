@@ -7,10 +7,6 @@
 
 #include "Types.h"
 
-#define FFT_LAYOUT_YXP (-1)
-#define FFT_LAYOUT_PYX (+1)
-
-
 namespace idg {
 
 void kernel_fft(

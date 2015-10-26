@@ -6,17 +6,20 @@
 
 #include "idg-config.h"
 #include "KNC.h"
+#include "../common/Kernels.h"
+#include "Kernels.h"
 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
 #include "auxiliary.h"
 #endif
-#include "../common/Kernels.h"
-#include "Kernels.h"
 
 using namespace std;
 
 namespace idg {
     namespace proxy {
         namespace hybrid {
+
+        // Power sensor
+        static PowerSensor *powerSensor;
 
         /// Constructors
         KNC::KNC(Parameters params)
@@ -27,6 +30,14 @@ namespace idg {
             #endif
 
             mParams = params;
+
+            #if defined(MEASURE_POWER)
+            cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
+            cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
+            powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
+            #else
+            powerSensor = new PowerSensor();
+            #endif
         }
 
         /// High level routines
@@ -144,6 +155,13 @@ namespace idg {
                     complex<float> *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
                     int *metadata_ptr                = (int *) metadata + s * metadata_elements;
 
+                    // Power measurement
+                    PowerSensor::State powerStates[3];
+
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    runtime_gridder = -omp_get_wtime();
+                    powerStates[0] = powerSensor->read();
+                    #endif
 
                     #pragma omp target \
                         map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
@@ -151,39 +169,45 @@ namespace idg {
                         map(from:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
-                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    runtime_gridder = -omp_get_wtime();
-                    #endif
-
-                    kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
-                                   visibilities_ptr, spheroidal_ptr, aterm_ptr,
-                                   metadata_ptr, subgrids_ptr, nr_stations,
-                                   nr_timesteps, nr_timeslots, nr_channels,
-                                   subgridsize, imagesize, nr_polarizations);
+                        kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
+                                       visibilities_ptr, spheroidal_ptr, aterm_ptr,
+                                       metadata_ptr, subgrids_ptr, nr_stations,
+                                       nr_timesteps, nr_timeslots, nr_channels,
+                                       subgridsize, imagesize, nr_polarizations);
+                    }
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     runtime_gridder += omp_get_wtime();
                     total_runtime_gridder += runtime_gridder;
                     runtime_fft = -omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
                     #endif
 
-                    kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
-                        FFTW_BACKWARD, nr_polarizations);
+                    #pragma omp target \
+                        map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
+                        map(to:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
+                        map(from:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
+                        map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
+                    {
+                        kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
+                                   FFTW_BACKWARD, nr_polarizations);
+                    }
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     runtime_fft += omp_get_wtime();
                     total_runtime_fft += runtime_fft;
+                    powerStates[2] = powerSensor->read();
                     #endif
-
-                    }
 
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("gridder", runtime_gridder,
                                       kernel_gridder_flops(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
-                                      kernel_gridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations));
+                                      kernel_gridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
+                                      PowerSensor::Watt(powerStates[0], powerStates[1]));
                     auxiliary::report("fft", runtime_fft,
                                       kernel_fft_flops(subgridsize, current_jobsize, nr_polarizations),
-                                      kernel_fft_bytes(subgridsize, current_jobsize, nr_polarizations));
+                                      kernel_fft_bytes(subgridsize, current_jobsize, nr_polarizations),
+                                      PowerSensor::Watt(powerStates[1], powerStates[2]));
                     #endif
                 } // end for s
             } // end omp target data

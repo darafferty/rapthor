@@ -2,10 +2,10 @@ project(idg-hybrid)
 
 # add subfolders
 add_subdirectory(common)
-if (BUILD_MIC_OFFLOAD)
+if (BUILD_WITH_MIC)
    if (USING_INTEL_CXX_COMPILER)
        add_subdirectory(KNC)
    else (USING_INTEL_CXX_COMPILER)
-        message("Need Intel compiler to build MIC offload code.")
+        message("Need Intel compiler to build for Xeon Phi")
    endif(USING_INTEL_CXX_COMPILER)
-endif(BUILD_MIC_OFFLOAD) 
+endif(BUILD_WITH_MIC) 
