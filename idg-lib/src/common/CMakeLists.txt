@@ -19,7 +19,7 @@ set (${PROJECT_NAME}_sources
 )
 
 # add files for PowerSensor
-if (${BUILD_WITH_POWER_SENSOR})
+#if (${BUILD_WITH_POWER_SENSOR})
 set (${PROJECT_NAME}_headers
     ${${PROJECT_NAME}_headers}
     PowerSensor.h
@@ -28,11 +28,10 @@ set (${PROJECT_NAME}_sources
     ${${PROJECT_NAME}_sources}
     PowerSensor.cpp
 )
-endif()
+#endif()
 
 # add files for LikwidPowerSensor
 #if (${BUILD_WITH_LIKWID_POWER_SENSOR})
-if (${BUILD_WITH_LIKWID_POWER_SENSOR})
 set (${PROJECT_NAME}_headers
     ${${PROJECT_NAME}_headers}
     LikwidPowerSensor.h
@@ -41,7 +40,7 @@ set (${PROJECT_NAME}_sources
     ${${PROJECT_NAME}_sources}
     LikwidPowerSensor.cpp
 )
-endif()
+#endif()
 
 add_library(
     ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
