@@ -164,11 +164,13 @@ namespace idg {
                         map(from:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
+                        runtime_gridder = -omp_get_wtime();
                         kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
                                        visibilities_ptr, spheroidal_ptr, aterm_ptr,
                                        metadata_ptr, subgrids_ptr, nr_stations,
                                        nr_timesteps, nr_timeslots, nr_channels,
                                        subgridsize, imagesize, nr_polarizations);
+                        runtime_gridder += omp_get_wtime();
                     }
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -181,14 +183,16 @@ namespace idg {
                         map(from:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
+                        runtime_fft = -omp_get_wtime();
                         kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
                                    FFTW_BACKWARD, nr_polarizations);
+                        runtime_fft += omp_get_wtime();
                     }
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     powerStates[2] = powerSensor->read();
-                    runtime_gridder = PowerSensor::seconds(powerStates[0], powerStates[1]);
-                    runtime_fft = PowerSensor::seconds(powerStates[1], powerStates[2]);
+                    //runtime_gridder = PowerSensor::seconds(powerStates[0], powerStates[1]);
+                    //runtime_fft = PowerSensor::seconds(powerStates[1], powerStates[2]);
                     total_runtime_gridder += runtime_gridder;
                     total_runtime_fft += runtime_fft;
                     #endif
@@ -216,7 +220,6 @@ namespace idg {
             auxiliary::report("fft", total_runtime_fft,
                 kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations),
                 kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations));
-            auxiliary::report_runtime(runtime);
             runtime = total_runtime_gridder + total_runtime_fft;
             auxiliary::report_runtime(runtime);
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
@@ -292,8 +295,10 @@ namespace idg {
                         map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
+                        runtime_fft = -omp_get_wtime();
                         kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
                                    FFTW_FORWARD, nr_polarizations);
+                        runtime_fft += omp_get_wtime();
                     }
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -306,16 +311,18 @@ namespace idg {
                         map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
+                        runtime_degridder = -omp_get_wtime();
                         kernel_degridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
                             visibilities_ptr, spheroidal_ptr, aterm_ptr,
                             metadata_ptr, subgrids_ptr, nr_stations, nr_timesteps, nr_timeslots,
                             nr_channels, subgridsize, imagesize, nr_polarizations);
+                        runtime_degridder += omp_get_wtime();
                     }
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     powerStates[2] = powerSensor->read();
-                    runtime_fft = PowerSensor::seconds(powerStates[0], powerStates[1]);
-                    runtime_degridder = PowerSensor::seconds(powerStates[1], powerStates[2]);
+                    //runtime_fft = PowerSensor::seconds(powerStates[0], powerStates[1]);
+                    //runtime_degridder = PowerSensor::seconds(powerStates[1], powerStates[2]);
                     total_runtime_fft += runtime_fft;
                     total_runtime_degridder += runtime_degridder;
                     #endif
@@ -350,7 +357,6 @@ namespace idg {
                               kernel_degridder_bytes(nr_subgrids, nr_timesteps,
                                                      nr_channels, subgridsize,
                                                      nr_polarizations));
-            auxiliary::report_runtime(runtime);
             runtime = total_runtime_degridder + total_runtime_fft;
             auxiliary::report_runtime(runtime);
             auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
