@@ -8,8 +8,6 @@ set (${PROJECT_NAME}_headers
   ProxyInfo.h
   RuntimeWrapper.h
   auxiliary.h
-  PowerSensor.h
-  LikwidPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources 
@@ -18,9 +16,32 @@ set (${PROJECT_NAME}_sources
   ProxyInfo.cpp 
   RuntimeWrapper.cpp 
   auxiliary.cpp
-  PowerSensor.cpp
-  LikwidPowerSensor.cpp
 )
+
+# add files for PowerSensor
+if (${BUILD_WITH_POWER_SENSOR})
+set (${PROJECT_NAME}_headers
+    ${${PROJECT_NAME}_headers}
+    PowerSensor.h
+)
+set (${PROJECT_NAME}_sources
+    ${${PROJECT_NAME}_sources}
+    PowerSensor.cpp
+)
+endif()
+
+# add files for LikwidPowerSensor
+#if (${BUILD_WITH_LIKWID_POWER_SENSOR})
+if (${BUILD_WITH_LIKWID_POWER_SENSOR})
+set (${PROJECT_NAME}_headers
+    ${${PROJECT_NAME}_headers}
+    LikwidPowerSensor.h
+)
+set (${PROJECT_NAME}_sources
+    ${${PROJECT_NAME}_sources}
+    LikwidPowerSensor.cpp
+)
+endif()
 
 add_library(
     ${PROJECT_NAME} ${${PROJECT_NAME}_headers}

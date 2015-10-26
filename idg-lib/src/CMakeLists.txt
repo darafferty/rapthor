@@ -2,7 +2,11 @@ project(src)
 
 # add subfolders
 add_subdirectory(common)
-add_subdirectory(CPU)
+
+if (BUILD_WITH_CPU)
+    add_subdirectory(CPU)
+endif()
+
 add_subdirectory(Hybrid)
 
 if (BUILD_WITH_CUDA)

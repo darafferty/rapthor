@@ -12,6 +12,7 @@
 
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "AbstractProxy.h"
+#include "PowerSensor.h"
 
 namespace idg {
     namespace proxy {
@@ -25,13 +26,13 @@ namespace idg {
 
                 /// Copy constructor
                 KNC(const KNC& v) = delete;
-                
+
                 /// Destructor
                 virtual ~KNC() = default;
 
                 /// Assignment
                 KNC& operator=(const KNC& rhs) = delete;
-    
+
             public:
                 virtual void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS) override;
                 virtual void add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS) override;
@@ -45,10 +46,10 @@ namespace idg {
                 void run_splitter(int jobsize, SPLITTER_PARAMETERS);
                 void run_degridder(int jobsize, DEGRIDDER_PARAMETERS);
                 void run_fft(FFT_PARAMETERS);
-        
+
         }; // class KNC
-    
-        } // namespace hybrid 
+
+        } // namespace hybrid
     } // namespace proxy
 } // namespace idg
 
