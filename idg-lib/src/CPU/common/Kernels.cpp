@@ -29,7 +29,7 @@ namespace idg {
         int nr_timesteps = parameters.get_nr_timesteps();
         int nr_channels = parameters.get_nr_channels();
         int nr_polarizations = parameters.get_nr_polarizations();
-       uint64_t flops = 0;
+        uint64_t flops = 0;
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
         flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase

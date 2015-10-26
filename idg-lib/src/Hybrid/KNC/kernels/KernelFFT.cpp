@@ -14,7 +14,7 @@
 namespace idg {
 
 void kernel_fft(
-	int size, 
+	int size,
 	int batch,
 	void *_data,
 	int sign,
@@ -29,7 +29,7 @@ void kernel_fft(
 
             // For grids of size*size elements
             int n[] = {size, size};
-            
+
             // Set stride
             int istride = 1;
             int ostride = istride;
@@ -40,7 +40,7 @@ void kernel_fft(
 
             // Planner flags
             int flags = FFTW_ESTIMATE;
-            
+
             // Create plan
             fftwf_plan plan = fftwf_plan_many_dft(
                 rank, n, nr_polarizations, data, n,
@@ -49,20 +49,11 @@ void kernel_fft(
 
             // Execute FFTs
             fftwf_execute_dft(plan, data, data);
-            
+
             // Destroy plan
             fftwf_destroy_plan(plan);
         }
     }
-
-    uint64_t kernel_fft_flops(int size, int batch, int nr_polarizations) {
-        return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
-    }
-
-    uint64_t kernel_fft_bytes(int size, int batch, int nr_polarizations) {
-        return 1ULL * 2 * batch * nr_polarizations * size * size * sizeof(FLOAT_COMPLEX);
-    }
-
 } // end namespace idg
 
 #pragma omp end declare target

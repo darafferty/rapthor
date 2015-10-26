@@ -19,6 +19,7 @@ set (${PROJECT_NAME}_headers
 )
 
 set (${PROJECT_NAME}_sources
+  ${CMAKE_SOURCE_DIR}/src/Hybrid/common/Kernels.cpp
   KNC.cpp
   kernels/KernelGridder.cpp
   kernels/KernelDegridder.cpp
@@ -27,14 +28,11 @@ set (${PROJECT_NAME}_sources
   kernels/KernelSplitter.cpp
 )
 
-# create library (HACK: only build static)
+# create library
 add_library(
   ${PROJECT_NAME} STATIC ${${PROJECT_NAME}_headers}
                          ${${PROJECT_NAME}_sources}
-  )
-
-# linker
-target_link_libraries(${PROJECT_NAME} idg-hybrid-knc)
+)
 
 # Set installation directory
 install(TARGETS ${PROJECT_NAME}

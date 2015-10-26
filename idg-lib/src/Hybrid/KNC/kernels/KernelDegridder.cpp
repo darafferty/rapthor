@@ -177,40 +177,6 @@ void kernel_degridder(
 	}
     }
 }
-
-    uint64_t kernel_degridder_flops(int jobsize,  int nr_timesteps, 
-        int nr_channels, int subgridsize, int nr_polarizations) {
-    return
-    // ATerm
-    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 32 +
-    // Shift
-    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6 +
-    // Spheroidal
-    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2 +
-    // Degrid
-    1ULL * jobsize * nr_timesteps * nr_channels * subgridsize * subgridsize * (
-        // Phasor
-        2 * 22 +
-        // UV
-        nr_polarizations * 8);
-}
-
-    uint64_t kernel_degridder_bytes(int jobsize, int nr_timesteps, int nr_channels, int subgridsize, int nr_polarizations) {
-    return
-    // ATerm
-    1ULL * jobsize * subgridsize * subgridsize * 2 * nr_polarizations * sizeof(FLOAT_COMPLEX) +
-    // Spheroidal
-    1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(float) +
-    // Degrid
-    1ULL * jobsize * nr_timesteps * nr_channels * (
-        // Offset
-        subgridsize * subgridsize * 3 * sizeof(float) +
-        // UV
-        subgridsize * subgridsize * nr_polarizations * sizeof(FLOAT_COMPLEX) +
-        // Visibilities
-        nr_polarizations * sizeof(FLOAT_COMPLEX));
-}
-
 } // end namespace idg
 
 #pragma omp end declare target
