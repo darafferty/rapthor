@@ -5,7 +5,7 @@ PowerSensor::PowerSensor(const char *device, const char *dumpFileName) :
     stop(false) {
     lastState.microSeconds = 0;
 
-    #if defined (MEASURE_POWER)
+    #if defined (MEASURE_POWER_ARDUINO)
     if ((fd = open(device, O_RDWR)) < 0) {
         perror("open device");
         exit(1);
@@ -71,7 +71,7 @@ void *PowerSensor::IOthread() {
 void PowerSensor::doMeasurement() {
     State::MC_State currentState;
 
-    #if defined(MEASURE_POWER)
+    #if defined(MEASURE_POWER_ARDUINO)
     ssize_t retval, bytesRead = 0;
 
     if (write(fd, "s", 1) != 1) {
@@ -96,7 +96,7 @@ void PowerSensor::doMeasurement() {
         previousState = lastState;
         lastState = currentState;
 
-        #if defined(MEASURE_POWER)
+        #if defined(MEASURE_POWER_ARDUINO)
         if (dumpFile != 0)
             *dumpFile << "S " << currentState.microSeconds / 1e6 << ' '
                               << (currentState.consumedEnergy - previousState.consumedEnergy) * (65536.0 / 511) /
@@ -112,7 +112,7 @@ void PowerSensor::doMeasurement() {
 
 
 void PowerSensor::mark(const State &state, const char *name, unsigned tag) {
-    #if defined(MEASURE_POWER)
+    #if defined(MEASURE_POWER_ARDUINO)
     if (dumpFile != 0) {
         if ((errno = pthread_mutex_lock(&mutex)) != 0) {
             perror("pthread_mutex_lock");
@@ -132,7 +132,7 @@ void PowerSensor::mark(const State &state, const char *name, unsigned tag) {
 
 
 void PowerSensor::mark(const State &startState, const State &stopState, const char *name, unsigned tag) {
-    #if defined(MEASURE_POWER)
+    #if defined(MEASURE_POWER_ARDUINO)
     if (dumpFile != 0) {
         if ((errno = pthread_mutex_lock(&mutex)) != 0) {
             perror("pthread_mutex_lock");
@@ -155,7 +155,7 @@ void PowerSensor::mark(const State &startState, const State &stopState, const ch
 PowerSensor::State PowerSensor::read() {
     State state;
 
-    #if defined (MEASURE_POWER)
+    #if defined (MEASURE_POWER_ARDUINO)
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
@@ -166,7 +166,7 @@ PowerSensor::State PowerSensor::read() {
     state.lastState = lastState;
     state.timeAtRead = omp_get_wtime();
 
-    #if defined(MEASURE_POWER)
+    #if defined(MEASURE_POWER_ARDUINO)
     if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
         perror("pthread_mutex_unlock");
         exit(1);
@@ -187,7 +187,7 @@ double PowerSensor::seconds(const State &firstState, const State &secondState) {
 }
 
 double PowerSensor::Watt(const State &firstState, const State &secondState) {
-    #if defined(MEASURE_POWER)
+    #if defined(MEASURE_POWER_ARDUINO)
     uint32_t microSeconds = secondState.lastState.microSeconds - firstState.lastState.microSeconds;
 
     if (microSeconds != 0)

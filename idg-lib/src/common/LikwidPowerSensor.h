@@ -8,7 +8,7 @@
 #include <vector>
 
 
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_LIKWID)
 #define _QUOTE(str) #str
 #define QUOTE(str) _QUOTE(str)
 #define STR_POWER_SENSOR QUOTE(POWER_SENSOR)

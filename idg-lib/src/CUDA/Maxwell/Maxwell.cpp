@@ -34,7 +34,7 @@ namespace idg {
                 cout << params;
                 #endif
 
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
                 cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
                 powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
@@ -130,7 +130,7 @@ namespace idg {
                 const int jobsize = get_jobsize(nr_subgrids, mParams, device, nr_streams);
 
      	        runtime = -omp_get_wtime();
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 PowerSensor::State startState = powerSensor->read();
                 #endif
 
@@ -169,7 +169,7 @@ namespace idg {
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
                         // Power measurement
-                        #if defined(MEASURE_POWER)
+                        #if defined(MEASURE_POWER_ARDUINO)
                         PowerRecord powerRecords[3];
                         #endif
 
@@ -188,19 +188,19 @@ namespace idg {
     						// Launch gridder kernel
     						executestream.waitEvent(inputReady);
     						executestream.waitEvent(outputFree);
-                            #if defined(MEASURE_POWER)
+                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[0].enqueue(executestream);
                             #endif
     						kernel_gridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            #if defined(MEASURE_POWER)
+                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[1].enqueue(executestream);
                             #endif
 
     						// Launch FFT
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
-                            #if defined(MEASURE_POWER)
+                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[2].enqueue(executestream);
                             #endif
     						executestream.record(outputReady);
@@ -214,7 +214,7 @@ namespace idg {
 
     					outputFree.synchronize();
 
-                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER)
+                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER_ARDUINO)
                         auxiliary::report("gridder", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                                      kernel_gridder.flops(current_jobsize),
                                                      kernel_gridder.bytes(current_jobsize),
@@ -228,12 +228,12 @@ namespace idg {
                 }
 
                 runtime += omp_get_wtime();
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 PowerSensor::State stopState = powerSensor->read();
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 auxiliary::report_power(PowerSensor::seconds(startState, stopState),
                                         PowerSensor::Watt(startState, stopState),
                                         PowerSensor::Joules(startState, stopState));
@@ -274,7 +274,7 @@ namespace idg {
                 const int jobsize = get_jobsize(nr_subgrids, mParams, device, nr_streams);
 
      	        runtime = -omp_get_wtime();
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 PowerSensor::State startState = powerSensor->read();
                 #endif
 
@@ -315,7 +315,7 @@ namespace idg {
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
                         // Power measurement
-                        #if defined(MEASURE_POWER)
+                        #if defined(MEASURE_POWER_ARDUINO)
                         PowerRecord powerRecords[3];
                         #endif
 
@@ -333,11 +333,11 @@ namespace idg {
 
     						// Launch FFT
     						executestream.waitEvent(inputReady);
-                            #if defined(MEASURE_POWER)
+                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[0].enqueue(executestream);
                             #endif
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_FORWARD);
-                            #if defined(MEASURE_POWER)
+                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[1].enqueue(executestream);
                             #endif
 
@@ -346,7 +346,7 @@ namespace idg {
     						kernel_degridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            #if defined(MEASURE_POWER)
+                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[2].enqueue(executestream);
                             #endif
     						executestream.record(outputReady);
@@ -359,7 +359,7 @@ namespace idg {
     					}
 
     					outputFree.synchronize();
-                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER)
+                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER_ARDUINO)
                         auxiliary::report("      fft", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                                        kernel_fft.flops(subgridsize, current_jobsize),
                                                        kernel_fft.bytes(subgridsize, current_jobsize),
@@ -374,11 +374,11 @@ namespace idg {
                 }
 
                 runtime += omp_get_wtime();
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 PowerSensor::State stopState = powerSensor->read();
                 #endif
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                #if defined(MEASURE_POWER)
+                #if defined(MEASURE_POWER_ARDUINO)
                 auxiliary::report_power(PowerSensor::seconds(startState, stopState),
                                         PowerSensor::Watt(startState, stopState),
                                         PowerSensor::Joules(startState, stopState));
