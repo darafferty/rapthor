@@ -25,7 +25,7 @@ void kernel_adder(
     TYPEDEF_METADATA_TYPE
     TYPEDEF_SUBGRID_TYPE
     TYPEDEF_GRID_TYPE
-    
+
     MetadataType *metadata = (MetadataType *) _metadata;
     SubGridType *subgrid = (SubGridType *) _subgrid;
     GridType *grid = (GridType *) _grid;
@@ -55,24 +55,6 @@ void kernel_adder(
         }
     }
 }
-
-    uint64_t kernel_adder_flops(int jobsize, int subgridsize) {
-    return 1ULL * jobsize * subgridsize * subgridsize * (
-    // Shift
-    8 +
-    // Add
-    4
-    );
-}
-
-    uint64_t kernel_adder_bytes(int jobsize, int subgridsize, int nr_polarizations) {
-    return 1ULL * jobsize * subgridsize * subgridsize * (
-    // Coordinate
-    2 * sizeof(unsigned) +
-    // Pixels
-    3 * nr_polarizations * sizeof(FLOAT_COMPLEX));
-}
-
 } // end namespace idg
 
 #pragma omp end declare target
