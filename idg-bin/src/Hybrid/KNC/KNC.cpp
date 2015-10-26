@@ -31,7 +31,7 @@ namespace idg {
 
             mParams = params;
 
-            #if defined(MEASURE_POWER)
+            #if defined(MEASURE_POWER_ARDUINO)
             cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
             cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
             powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);

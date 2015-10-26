@@ -12,7 +12,7 @@
 #include </usr/include/numa.h>
 #endif
 
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_LIKWID)
 #include <likwid.h>
 #endif
 
@@ -21,7 +21,7 @@ LikwidPowerSensor::LikwidPowerSensor(const char *dumpFileName)
   dumpFile(dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName)),
   stop(false)
 {
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_LIKWID)
 #if !defined __MIC__
   if (numa_init() != 0) {
     std::cerr << "numa_init() fails" << std::endl;
@@ -57,7 +57,7 @@ LikwidPowerSensor::~LikwidPowerSensor()
   if (dumpFile != 0) {
     stop = true;
 
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_LIKWID)
     if ((errno = pthread_join(thread, 0)) != 0)
       perror("pthread_join");
 
@@ -140,7 +140,7 @@ LikwidPowerSensor::State LikwidPowerSensor::read()
   state.consumedPKGenergy = 0;
   state.consumedDRAMenergy = 0;
 
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_LIKWID)
 #pragma omp critical (power)
   {
 #if !defined __MIC__
@@ -164,7 +164,7 @@ LikwidPowerSensor::State LikwidPowerSensor::read()
 
 double LikwidPowerSensor::Joules(const State &firstState, const State &secondState)
 {
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_LIKWID)
   // multiply with energy unit in this function and not in read(), to be tolerant to counter overflows
   return (secondState.consumedPKGenergy  - firstState.consumedPKGenergy ) * power_info.domains[PKG].energyUnit +
 	 (secondState.consumedDRAMenergy - firstState.consumedDRAMenergy) * power_info.domains[DRAM].energyUnit;
