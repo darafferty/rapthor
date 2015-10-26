@@ -20,7 +20,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # options
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
-option (BUILD_MIC_OFFLOAD "Build support for KNC offload" OFF) 
+option (BUILD_WITH_CPU "Build CPU libraries" OFF)
+option (BUILD_WITH_MIC "Have Xeon Phi environment" OFF) 
 option (BUILD_WITH_CUDA "Have CUDA environment" OFF)
 option (BUILD_WITH_OPENCL "Have OpenCL environment" OFF)
 option (BUILD_WITH_PYTHON "Have Python environment" OFF)
