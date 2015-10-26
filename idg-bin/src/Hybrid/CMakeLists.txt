@@ -1,6 +1,7 @@
 project(idg-hybrid)
 
 # add subfolders
+add_subdirectory(common)
 if (BUILD_MIC_OFFLOAD)
    if (USING_INTEL_CXX_COMPILER)
        add_subdirectory(KNC)
