@@ -16,14 +16,14 @@ class PerformanceCounter {
 
     private:
         static void eventCompleteCallBack(cl_event, cl_int, void *counter);
-        #if defined(MEASURE_POWER)
+        #if defined(MEASURE_POWER_ARDUINO)
         PowerSensor::State powerStates[2];
         #endif
 
     public:
         const char *name;
         cl::Event event;
-        #if defined(MEASURE_POWER)
+        #if defined(MEASURE_POWER_ARDUINO)
         PowerSensor *powerSensor;
         void setPowerSensor(PowerSensor *_powerSensor);
         #endif

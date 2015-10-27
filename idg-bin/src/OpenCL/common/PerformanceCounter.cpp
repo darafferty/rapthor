@@ -6,7 +6,7 @@ PerformanceCounter::PerformanceCounter(const char *name) :
     name(name) {}
 
 void PerformanceCounter::doOperation(uint64_t flops, uint64_t bytes) {
-    #if defined(MEASURE_POWER)
+    #if defined(MEASURE_POWER_ARDUINO)
     powerStates[0] = powerSensor->read();
     #endif
     callback = [=] (cl_event _event) {
@@ -14,7 +14,7 @@ void PerformanceCounter::doOperation(uint64_t flops, uint64_t bytes) {
                 if (clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
                     clGetEventProfilingInfo(_event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
                     double runtime = (end - start) * 1e-9;
-                    #if defined(MEASURE_POWER)
+                    #if defined(MEASURE_POWER_ARDUINO)
                     powerStates[1] = powerSensor->read();
                     double watts = PowerSensor::Watt(powerStates[0], powerStates[1]);
                     auxiliary::report(name, runtime, flops, bytes, watts);
@@ -30,7 +30,7 @@ void PerformanceCounter::eventCompleteCallBack(cl_event event, cl_int, void *use
     static_cast<PerformanceCounter *>(user_data)->callback(event);
 }
 
-#if defined(MEASURE_POWER)
+#if defined(MEASURE_POWER_ARDUINO)
 void PerformanceCounter::setPowerSensor(PowerSensor *_powerSensor) {
     powerSensor = _powerSensor;
 }

@@ -41,7 +41,7 @@ namespace idg {
         	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
             device = devices[deviceNumber];
 
-            #if defined(MEASURE_POWER)
+            #if defined(MEASURE_POWER_ARDUINO)
             cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
             cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
             powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
@@ -195,7 +195,7 @@ namespace idg {
 
                     // Performance counters
                     PerformanceCounter *counter_gridder = new PerformanceCounter("   gridder");
-                    #if defined(MEASURE_POWER)
+                    #if defined(MEASURE_POWER_ARDUINO)
                     counter_gridder->setPowerSensor(powerSensor);
                     #endif
                     counters_gridder.push_back(counter_gridder);
@@ -316,7 +316,7 @@ namespace idg {
 
                     // Performance counters
                     PerformanceCounter *counter_degridder = new PerformanceCounter(" degridder");
-                    #if defined(MEASURE_POWER)
+                    #if defined(MEASURE_POWER_ARDUINO)
                     counter_degridder->setPowerSensor(powerSensor);
                     #endif
                     counters_degridder.push_back(counter_degridder);
