@@ -19,7 +19,7 @@ set (${PROJECT_NAME}_sources
 )
 
 # add files for PowerSensor (TODO: don't add when not used)
-#if (${BUILD_WITH_POWER_SENSOR})
+#if (${BUILD_WITH_ARDUINO_POWER_SENSOR})
 set (${PROJECT_NAME}_headers
     ${${PROJECT_NAME}_headers}
     PowerSensor.h

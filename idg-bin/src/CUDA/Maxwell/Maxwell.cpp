@@ -38,6 +38,8 @@ namespace idg {
                 cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
                 cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
                 powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
+                #else
+                powerSensor = new PowerSensor();
                 #endif
 
                 find_kernel_functions();
@@ -90,7 +92,7 @@ namespace idg {
                     jobsize = max_jobsize;
                 }
 
-                #if defined (DEBUG) || 1
+                #if defined (DEBUG)
                 clog << "nr_subgrids: " << nr_subgrids << endl;
                 clog << "jobsize:     " << jobsize << endl;
                 clog << "free size:   " << device_memory_available * 1e-9 << " Gb" << endl;
@@ -169,9 +171,9 @@ namespace idg {
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
                         // Power measurement
-                        #if defined(MEASURE_POWER_ARDUINO)
+                        //#if defined(MEASURE_POWER_ARDUINO)
                         PowerRecord powerRecords[3];
-                        #endif
+                        //#endif
 
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
     					{
@@ -188,21 +190,15 @@ namespace idg {
     						// Launch gridder kernel
     						executestream.waitEvent(inputReady);
     						executestream.waitEvent(outputFree);
-                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[0].enqueue(executestream);
-                            #endif
     						kernel_gridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[1].enqueue(executestream);
-                            #endif
 
     						// Launch FFT
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
-                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[2].enqueue(executestream);
-                            #endif
     						executestream.record(outputReady);
     						executestream.record(inputFree);
 
@@ -214,7 +210,7 @@ namespace idg {
 
     					outputFree.synchronize();
 
-                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER_ARDUINO)
+                        #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                                      kernel_gridder.flops(current_jobsize),
                                                      kernel_gridder.bytes(current_jobsize),
@@ -315,9 +311,7 @@ namespace idg {
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
                         // Power measurement
-                        #if defined(MEASURE_POWER_ARDUINO)
                         PowerRecord powerRecords[3];
-                        #endif
 
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
     					{
@@ -333,22 +327,16 @@ namespace idg {
 
     						// Launch FFT
     						executestream.waitEvent(inputReady);
-                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[0].enqueue(executestream);
-                            #endif
     						kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_FORWARD);
-                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[1].enqueue(executestream);
-                            #endif
 
     						// Launch degridder kernel
     						executestream.waitEvent(outputFree);
     						kernel_degridder.launchAsync(
     							executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
     							d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            #if defined(MEASURE_POWER_ARDUINO)
                             powerRecords[2].enqueue(executestream);
-                            #endif
     						executestream.record(outputReady);
     						executestream.record(inputFree);
 
@@ -359,7 +347,7 @@ namespace idg {
     					}
 
     					outputFree.synchronize();
-                        #if defined(REPORT_VERBOSE) && defined(MEASURE_POWER_ARDUINO)
+                        #if defined(REPORT_VERBOSE)
                         auxiliary::report("      fft", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                                        kernel_fft.flops(subgridsize, current_jobsize),
                                                        kernel_fft.bytes(subgridsize, current_jobsize),
