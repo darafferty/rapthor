@@ -75,22 +75,18 @@ namespace idg {
 
     uint64_t Degridder::flops(int jobsize) {
         int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_timesteps();
+        int nr_timesteps = parameters.get_nr_timesteps();
         int nr_channels = parameters.get_nr_channels();
         int nr_polarizations = parameters.get_nr_polarizations();
-        return 1ULL * jobsize * subgridsize * subgridsize * (
-        // ATerm
-        nr_polarizations * 32 +
-        // Spheroidal
-        nr_polarizations * 2 +
-        // LMN
-        14 +
-        // Phase
-        10 +
-        // Phasor
-        nr_time * nr_channels * 4 +
-        // Degrid
-        nr_time * nr_channels * nr_polarizations * 8);
+        uint64_t flops = 0;
+        flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
+        flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
+        flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
+        flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+        flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+        flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+        flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+        return flops;
     }
 
     uint64_t Degridder::bytes(int jobsize) {
