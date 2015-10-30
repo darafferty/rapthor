@@ -15,6 +15,8 @@ class PerformanceCounter {
         static void report(const char *name, double runtime, uint64_t flops, uint64_t bytes);
 
     private:
+        static void eventSubmittedCallBack(cl_event, cl_int, void *counter);
+        static void eventRunningCallBack(cl_event, cl_int, void *counter);
         static void eventCompleteCallBack(cl_event, cl_int, void *counter);
         #if defined(MEASURE_POWER_ARDUINO)
         PowerSensor::State powerStates[2];
@@ -29,5 +31,7 @@ class PerformanceCounter {
         #endif
 
    private:
-       std::function<void (cl_event)> callback;
+       std::function<void (cl_event)> callback_submitted;
+       std::function<void (cl_event)> callback_running;
+       std::function<void (cl_event)> callback_completed;
 };
