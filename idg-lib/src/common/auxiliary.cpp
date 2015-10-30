@@ -32,13 +32,8 @@ namespace idg {
                 if (flops != 0) {
                     clog << ", ";
                     double gflops = (flops / runtime) * 1e-9;
-                    if (gflops < 1000) {
                         clog << setw(fw2) << right << fixed << setprecision(2)
                                           << gflops << " GFLOPS";
-                    } else {
-                        clog << setw(fw2) << right << fixed << setprecision(2)
-                                          << gflops * 1e-3 << " TFLOPS";
-                    }
                 }
                 if (bytes != 0) {
                     clog << ", ";
