@@ -3,7 +3,7 @@
 #include "idg-config.h"
 #include "Kernels.h"
 
-#define COUNT_SINCOS_AS_FLOPS
+//#define COUNT_SINCOS_AS_FLOPS
 #if defined(COUNT_SINCOS_AS_FLOPS)
 #define FLOPS_PER_SINCOS 8
 #endif
