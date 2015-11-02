@@ -222,12 +222,12 @@ namespace idg {
             kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
             kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
-            // Performance measurement
-            double total_runtime;
+            // Performance measurements
+            double total_runtime_gridding = 0;
             double total_runtime_gridder = 0;
             double total_runtime_fft = 0;
             LikwidPowerSensor::State powerStates[4];
-            total_runtime -= omp_get_wtime();
+            total_runtime_gridding -= omp_get_wtime();
 
             // Start gridder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
@@ -282,17 +282,18 @@ namespace idg {
             } // end for s
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            total_runtime += omp_get_wtime();
+            total_runtime_gridding += omp_get_wtime();
             clog << endl;
-            clog << "Total: gridding" << endl;
-            auxiliary::report("gridder", total_runtime_gridder,
-                              kernel_gridder.flops(nr_subgrids),
-                              kernel_gridder.bytes(nr_subgrids));
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft.flops(subgridsize, nr_subgrids),
-                              kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(total_runtime);
-            auxiliary::report_visibilities(total_runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
+            uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
+            uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
+            uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
+            uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
+            uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
+            auxiliary::report(">gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
+            auxiliary::report(">fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report(">gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
+            auxiliary::report_visibilities(">gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
 
@@ -305,12 +306,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime, runtime_adder;
-            double total_runtime_adder = 0;
-            #endif
-
             // Constants
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
@@ -318,9 +313,10 @@ namespace idg {
             // Load kernel function
             kernel::Adder kernel_adder(*(modules[which_module[kernel::name_adder]]), mParams);
 
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
+            // Performance measurements
+            double total_runtime_adding = 0;
+            double total_runtime_adder = 0;
+            total_runtime_adding = -omp_get_wtime();
 
             // Run adder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
@@ -336,36 +332,30 @@ namespace idg {
                 void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
                 void *grid_ptr     = grid;
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_adder = -omp_get_wtime();
-                #endif
-
+                double runtime_adder = -omp_get_wtime();
                 kernel_adder.run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_adder += omp_get_wtime();
-                total_runtime_adder += runtime_adder;
-                #endif
 
                 #if defined(REPORT_VERBOSE)
                 auxiliary::report("adder", runtime_adder,
                                   kernel_adder.flops(jobsize),
                                   kernel_adder.bytes(jobsize));
                 #endif
+                #if defined(REPORT_TOTAL)
+                total_runtime_adder += runtime_adder;
+                #endif
             } // end for s
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
+            total_runtime_adding += omp_get_wtime();
             clog << endl;
-            clog << "Total: adding" << endl;
-            auxiliary::report("adder", total_runtime_adder,
-                              kernel_adder.flops(nr_subgrids),
-                              kernel_adder.bytes(nr_subgrids));
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_subgrids(runtime, nr_subgrids);
+            uint64_t total_flops_adder = kernel_adder.flops(nr_subgrids);
+            uint64_t total_bytes_adder = kernel_adder.bytes(nr_subgrids);
+            auxiliary::report(">adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
+            auxiliary::report(">adding", total_runtime_adding, total_flops_adder, total_bytes_adder);
+            auxiliary::report_subgrids(">adding", total_runtime_adding, nr_subgrids);
             clog << endl;
             #endif
-
         } // run_adder
 
 
@@ -375,12 +365,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime, runtime_splitter;
-            double total_runtime_splitter = 0;
-            #endif
-
             // Constants
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
@@ -388,9 +372,10 @@ namespace idg {
             // Load kernel function
             kernel::Splitter kernel_splitter(*(modules[which_module[kernel::name_splitter]]), mParams);
 
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
+            // Performance measurements
+            double total_runtime_splitting = 0;
+            double total_runtime_splitter = 0;
+            total_runtime_splitting = -omp_get_wtime();
 
             // Run splitter
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
@@ -406,33 +391,28 @@ namespace idg {
                 void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
                 void *grid_ptr     = grid;
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime_splitter = -omp_get_wtime();
-                #endif
-
+                double runtime_splitter = -omp_get_wtime();
                 kernel_splitter.run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_splitter += omp_get_wtime();
-                total_runtime_splitter += runtime_splitter;
-                #endif
 
                 #if defined(REPORT_VERBOSE)
                 auxiliary::report("splitter", runtime_splitter,
                                   kernel_splitter.flops(jobsize),
                                   kernel_splitter.bytes(jobsize));
                 #endif
+                #if defined(REPORT_TOTAL)
+                total_runtime_splitter += runtime_splitter;
+                #endif
             } // end for bl
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
+            total_runtime_splitting += omp_get_wtime();
             clog << endl;
-            clog << "Total: splitting" << endl;
-            auxiliary::report("splitter", total_runtime_splitter,
-                              kernel_splitter.flops(nr_subgrids),
-                              kernel_splitter.bytes(nr_subgrids));
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_subgrids(runtime, nr_subgrids);
+            uint64_t total_flops_splitter = kernel_splitter.flops(nr_subgrids);
+            uint64_t total_bytes_splitter = kernel_splitter.bytes(nr_subgrids);
+            auxiliary::report(">splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
+            auxiliary::report(">splitting", total_runtime_splitting, total_flops_splitter, total_bytes_splitter);
+            auxiliary::report_subgrids(">splitting", total_runtime_splitting, nr_subgrids);
             clog << endl;
             #endif
         } // run_splitter
@@ -457,11 +437,11 @@ namespace idg {
             kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
             // Performance measurements
-            double total_runtime = 0;
+            double total_runtime_degridding = 0;
             double total_runtime_degridder = 0;
             double total_runtime_fft = 0;
             LikwidPowerSensor::State powerStates[4];
-            total_runtime = -omp_get_wtime();
+            total_runtime_degridding = -omp_get_wtime();
 
             // Start degridder
             for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
@@ -517,17 +497,18 @@ namespace idg {
             } // end for s
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            total_runtime += omp_get_wtime();
+            total_runtime_degridding += omp_get_wtime();
             clog << endl;
-            clog << "Total: degridding" << endl;
-            auxiliary::report("degridder", total_runtime_degridder,
-                              kernel_degridder.flops(nr_subgrids),
-                              kernel_degridder.bytes(nr_subgrids));
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft.flops(subgridsize, nr_subgrids),
-                              kernel_fft.bytes(subgridsize, nr_subgrids));
-            auxiliary::report_runtime(total_runtime);
-            auxiliary::report_visibilities(total_runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
+            uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
+            uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
+            uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
+            uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
+            uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
+            auxiliary::report(">degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+            auxiliary::report(">fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report(">degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
+            auxiliary::report_visibilities(">degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_degridder
@@ -539,11 +520,6 @@ namespace idg {
             cout << "CPU::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            double runtime;
-            #endif
-
             // Constants
             auto gridsize = mParams.get_grid_size();
 
@@ -551,23 +527,14 @@ namespace idg {
             kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
 
             // Start fft
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime = -omp_get_wtime();
-            #endif
-
+            double runtime = -omp_get_wtime();
             kernel_fft.run(gridsize, 1, grid, sign);
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
             runtime += omp_get_wtime();
-            #endif
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << endl;
-            clog << "Total: fft" << endl;
-            auxiliary::report("fft", runtime,
+            auxiliary::report(">grid_fft", runtime,
                               kernel_fft.flops(gridsize, 1),
                               kernel_fft.bytes(gridsize, 1));
-            auxiliary::report_runtime(runtime);
             clog << endl;
             #endif
         } // run_fft
