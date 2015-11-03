@@ -12,8 +12,7 @@
 #include "Parameters.h"
 
 namespace idg {
-
-  namespace kernel {
+    namespace kernel {
 
     // define the kernel function names
     static const std::string name_gridder   = "kernel_gridder";
@@ -146,8 +145,21 @@ namespace idg {
     			cu::DeviceMemory &d_metadata,
     			cu::DeviceMemory &d_subgrid,
     			cu::DeviceMemory &d_grid);
-    		uint64_t flops(int jobsize);
-    		uint64_t bytes(int jobsize);
+            uint64_t flops(int jobsize) {
+                int subgridsize = parameters.get_subgrid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+            	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
+            }
+        
+            uint64_t bytes(int jobsize) {
+                int subgridsize = parameters.get_subgrid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+            	return
+                // Coordinate
+                1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
+                // Grid
+                1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
+            }
 
     	private:
     		cu::Function function;
@@ -166,15 +178,27 @@ namespace idg {
     			cu::DeviceMemory &d_metadata,
     			cu::DeviceMemory &d_subgrid,
     			cu::DeviceMemory &d_grid);
-    		uint64_t flops(int jobsize);
-    		uint64_t bytes(int jobsize);
+
+            uint64_t flops(int jobsize) {
+                int subgridsize = parameters.get_subgrid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+            	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
+            }
+
+            uint64_t bytes(int jobsize) {
+                int subgridsize = parameters.get_subgrid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+            	return
+                // Coordinate
+                1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
+                // Grid
+                1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
+            }
 
     	private:
     		cu::Function function;
             Parameters &parameters;
     };
-  } // namespace kernel
-
+    } // namespace kernel
 } // namespace idg
-
 #endif
