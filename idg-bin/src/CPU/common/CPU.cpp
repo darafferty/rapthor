@@ -290,10 +290,10 @@ namespace idg {
             uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
             uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
             uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
-            auxiliary::report(">gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-            auxiliary::report(">fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-            auxiliary::report(">gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
-            auxiliary::report_visibilities(">gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
+            auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
 
@@ -351,9 +351,9 @@ namespace idg {
             clog << endl;
             uint64_t total_flops_adder = kernel_adder.flops(nr_subgrids);
             uint64_t total_bytes_adder = kernel_adder.bytes(nr_subgrids);
-            auxiliary::report(">adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
-            auxiliary::report(">adding", total_runtime_adding, total_flops_adder, total_bytes_adder);
-            auxiliary::report_subgrids(">adding", total_runtime_adding, nr_subgrids);
+            auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
+            auxiliary::report("|adding", total_runtime_adding, total_flops_adder, total_bytes_adder);
+            auxiliary::report_subgrids("|adding", total_runtime_adding, nr_subgrids);
             clog << endl;
             #endif
         } // run_adder
@@ -410,9 +410,9 @@ namespace idg {
             clog << endl;
             uint64_t total_flops_splitter = kernel_splitter.flops(nr_subgrids);
             uint64_t total_bytes_splitter = kernel_splitter.bytes(nr_subgrids);
-            auxiliary::report(">splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
-            auxiliary::report(">splitting", total_runtime_splitting, total_flops_splitter, total_bytes_splitter);
-            auxiliary::report_subgrids(">splitting", total_runtime_splitting, nr_subgrids);
+            auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
+            auxiliary::report("|splitting", total_runtime_splitting, total_flops_splitter, total_bytes_splitter);
+            auxiliary::report_subgrids("|splitting", total_runtime_splitting, nr_subgrids);
             clog << endl;
             #endif
         } // run_splitter
@@ -505,10 +505,10 @@ namespace idg {
             uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
             uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
             uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
-            auxiliary::report(">degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-            auxiliary::report(">fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-            auxiliary::report(">degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
-            auxiliary::report_visibilities(">degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
+            auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_degridder
