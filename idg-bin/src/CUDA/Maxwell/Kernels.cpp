@@ -6,8 +6,7 @@
 #define USE_CUFFT 0
 
 namespace idg {
-
-  namespace kernel {
+    namespace kernel {
 
     // Gridder class
     Gridder::Gridder(cu::Module &module, Parameters &parameters) :
@@ -124,22 +123,6 @@ namespace idg {
     	stream.launchKernel(function, jobsize, 1, 1, 64, 1, 1, 0, parameters);
     }
 
-    uint64_t Adder::flops(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
-    }
-
-    uint64_t Adder::bytes(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return
-        // Coordinate
-        1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
-        // Grid
-        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
-    }
-
 
     // Splitter class
     Splitter::Splitter(cu::Module &module, Parameters &parameters) :
@@ -154,23 +137,5 @@ namespace idg {
     	const void *parameters[] = { &jobsize, d_metadata, d_subgrid, d_grid };
     	stream.launchKernel(function, jobsize, 1, 1, 64, 1, 1, 0, parameters);
     }
-
-    uint64_t Splitter::flops(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
-    }
-
-    uint64_t Splitter::bytes(int jobsize) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
-    	return
-        // Coordinate
-        1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
-        // Grid
-        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
-    }
-
-  } // namespace kernel
-
+    } // namespace kernel
 } // namespace idg
