@@ -32,7 +32,6 @@
 #include "Kernels.h"
 #include "auxiliary.h"
 
-
 namespace idg {
     namespace proxy {
         // High level method parameters
