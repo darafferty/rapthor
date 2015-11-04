@@ -11,7 +11,6 @@
 #define IDG_CUDA_MAXWELL_H_
 
 #include "CUDA.h"
-#include "PowerSensor.h"
 
 namespace idg {
     namespace proxy {
