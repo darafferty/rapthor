@@ -2,6 +2,7 @@
 #include "Maxwell.h"
 
 using namespace std;
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -41,14 +42,6 @@ namespace idg {
                 cout << "Compiler: " << compiler << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
-                #endif
-
-                #if defined(MEASURE_POWER_ARDUINO)
-                cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
-                cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
-                powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
-                #else
-                powerSensor = new PowerSensor();
                 #endif
 
                 find_kernel_functions();
