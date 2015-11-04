@@ -14,10 +14,9 @@ using namespace std;
 
 namespace idg {
     namespace proxy {
-        namespace cuda {
-            // Power sensor
-            static PowerSensor *powerSensor;
+        extern PowerSensor *powerSensor;
 
+        namespace cuda {
             /// Constructors
             Maxwell::Maxwell(
                 Parameters params,
@@ -34,38 +33,10 @@ namespace idg {
                 cout << params;
                 #endif
 
-                #if defined(MEASURE_POWER_ARDUINO)
-                cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
-                cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
-                powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
-                #else
-                powerSensor = new PowerSensor();
-                #endif
-
                 find_kernel_functions();
             }
 
-            /*
-                Power measurement
-            */
-            class PowerRecord {
-                public:
-                    void enqueue(cu::Stream &stream) {
-                        stream.record(event);
-                        stream.addCallback(&PowerRecord::getPower, &state);
-                    }
-
-                    PowerSensor::State state;
-
-                private:
-                    cu::Event event;
-
-                    static void getPower(CUstream, CUresult, void *userData) {
-                        *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-                    }
-            };
-
-            /*
+           /*
                 Size of data structures for a single job
             */
             #define SIZEOF_SUBGRIDS 1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)

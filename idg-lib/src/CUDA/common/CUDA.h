@@ -10,10 +10,12 @@
 #ifndef IDG_CUDA_H_
 #define IDG_CUDA_H_
 
+#include <functional>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include <cuda.h>
 #include "CU.h"
 #include "AbstractProxy.h"
+#include "PowerSensor.h"
 
 // High level method parameters
 #define CU_GRIDDER_PARAMETERS   cu::Context &context, unsigned nr_subgrids, float w_offset, \
@@ -36,6 +38,17 @@
 
 namespace idg {
     namespace proxy {
+
+        /*
+            Power measurement
+        */
+        class PowerRecord {
+            public:
+                void enqueue(cu::Stream &stream);
+                static void getPower(CUstream, CUresult, void *userData);
+                PowerSensor::State state;
+                cu::Event event;
+        };
 
         class CUDA {
             public:
