@@ -22,17 +22,6 @@ namespace idg {
 
     namespace proxy {
 
-        static PowerSensor *powerSensor;
-
-        void PowerRecord::enqueue(cu::Stream &stream) {
-            stream.record(event);
-            stream.addCallback((CUstreamCallback) &idg::proxy::PowerRecord::getPower, &state);
-        }
-
-        void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-            *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-        }
-
         /// Constructors
         CUDA::CUDA(
             Parameters params,
@@ -55,14 +44,6 @@ namespace idg {
             compile(compiler, flags);
             load_shared_objects();
             find_kernel_functions();
-
-            #if defined(MEASURE_POWER_ARDUINO)
-            cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
-            cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
-            powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
-            #else
-            powerSensor = new PowerSensor();
-            #endif
         }
 
         CUDA::~CUDA()

@@ -35,20 +35,8 @@
 #define CU_SPLITTER_ARGUMENTS   CU_ADDER_ARGUMENTS
 #define CU_FFT_ARGUMENTS        context, h_grid, sign
 
-
 namespace idg {
     namespace proxy {
-
-        /*
-            Power measurement
-        */
-        class PowerRecord {
-            public:
-                void enqueue(cu::Stream &stream);
-                static void getPower(CUstream, CUresult, void *userData);
-                PowerSensor::State state;
-                cu::Event event;
-        };
 
         class CUDA {
             public:
