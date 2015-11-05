@@ -42,7 +42,6 @@ __global__ void kernel_gridder(
 
 	syncthreads();
 
-	// Private subgrid points
 	// Load metadata
 	const Metadata &m = metadata[blockIdx.x];
 	int time_nr = m.time_nr;
@@ -58,7 +57,7 @@ __global__ void kernel_gridder(
 	// Iterate all pixels in subgrid
 	for (int y = tidy; y < SUBGRIDSIZE; y += blockDim.y) {
 		for (int x = tidx; x < SUBGRIDSIZE; x += blockDim.x) {
-			// Load visibilities for all channels and polarizations
+	        // Private subgrid points
 			float2 uvXX = {0, 0};
 			float2 uvXY = {0, 0};
 			float2 uvYX = {0, 0};
@@ -71,7 +70,7 @@ __global__ void kernel_gridder(
 
 			// Iterate all timesteps
 			for (int time = 0; time < NR_TIMESTEPS; time++) {
-				 // Load UVW coordinates
+                // Load UVW coordinates
 				float u = _uvw[time].u;
 				float v = _uvw[time].v;
 				float w = _uvw[time].w;
