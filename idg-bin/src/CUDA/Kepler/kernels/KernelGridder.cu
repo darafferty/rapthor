@@ -130,17 +130,11 @@ __global__ void kernel_gridder(
 			float2 aYX2 = aterm[station2][time_nr][2][y][x];
 			float2 aYY2 = aterm[station2][time_nr][3][y][x];
 
-			// Apply aterm
-            #if 0
-			float2 auvXX  = uvXX * aXX1 + uvXY * aYX1 + uvXX * aXX2 + uvXY * aYX2;
-			float2 auvXY  = uvXX * aXY1 + uvXY * aYY1 + uvXX * aXY2 + uvXY * aYY2;
-			float2 auvYX  = uvYX * aXX1 + uvYY * aYX1 + uvYX * aXX2 + uvYY * aYX2;
-			float2 auvYY  = uvYY * aXY1 + uvYY * aYY1 + uvYY * aXY2 + uvYY * aYY2;
-            #else
-			float2 tXX, tXY, tYX, tYY;
-			Matrix2x2mul(tXX, tXY, tYX, tYY, cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1), uvXX, uvXY, uvYX, uvYY);
-			Matrix2x2mul(tXX, tXY, tYX, tYY, tXX, tXY, tYX, tYY, aXX2, aXY2, aYX2, aYY2);
-            #endif
+            // Apply aterm
+			float2 auvXX = uvXX * aXX1 + uvXY * aYX1 + uvXX * aXX2 + uvXY * aYX2;
+			float2 auvXY = uvXX * aXY1 + uvXY * aYY1 + uvXX * aXY2 + uvXY * aYY2;
+			float2 auvYX = uvYX * aXX1 + uvYY * aYX1 + uvYX * aXX2 + uvYY * aYX2;
+			float2 auvYY = uvYY * aXY1 + uvYY * aYY1 + uvYY * aXY2 + uvYY * aYY2;
 
 			// Load spheroidal
 			float sph = spheroidal[y][x];
@@ -149,11 +143,11 @@ __global__ void kernel_gridder(
 			int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 			int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-			// Set subgrid value
-			subgrid[blockIdx.x][0][y_dst][x_dst] = tXX * sph;
-			subgrid[blockIdx.x][1][y_dst][x_dst] = tXY * sph;
-			subgrid[blockIdx.x][2][y_dst][x_dst] = tYX * sph;
-			subgrid[blockIdx.x][3][y_dst][x_dst] = tYY * sph;
+            // Set subgrid value
+			subgrid[blockIdx.x][0][y_dst][x_dst] = auvXX * sph;
+			subgrid[blockIdx.x][1][y_dst][x_dst] = auvXY * sph;
+			subgrid[blockIdx.x][2][y_dst][x_dst] = auvYX * sph;
+			subgrid[blockIdx.x][3][y_dst][x_dst] = auvYY * sph;
 		}
 	}
 }
