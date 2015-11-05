@@ -22,7 +22,7 @@ namespace idg {
         const void *parameters[] = {
             &w_offset, d_uvw, d_wavenumbers, d_visibilities,
             d_spheroidal, d_aterm, d_metadata, d_subgrid };
-        stream.launchKernel(function, jobsize, 1, 1, 8, 8, 1, 0, parameters);
+        stream.launchKernel(function, jobsize, 1, 1, 16, 16, 1, 0, parameters);
     }
 
     // Degridder class
