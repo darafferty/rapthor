@@ -25,16 +25,11 @@ __global__ void kernel_gridder(
 
     // Shared data
 	__shared__ float2 _visibilities[NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
-	__shared__ UVW _uvw[NR_TIMESTEPS];
 	__shared__ float _wavenumbers[NR_CHANNELS];
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS; i += blockSize)
         _wavenumbers[i] = wavenumbers[i];
-
-	// Load UVW
-	for (int time = tid; time < NR_TIMESTEPS; time += blockSize)
-		_uvw[time] = uvw[blockIdx.x][time];
 
 	// Load visibilities
 	for (int i = tid; i < NR_TIMESTEPS * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize)
@@ -71,9 +66,9 @@ __global__ void kernel_gridder(
 			// Iterate all timesteps
 			for (int time = 0; time < NR_TIMESTEPS; time++) {
                 // Load UVW coordinates
-				float u = _uvw[time].u;
-				float v = _uvw[time].v;
-				float w = _uvw[time].w;
+				float u = uvw[blockIdx.x][time].u;
+				float v = uvw[blockIdx.x][time].v;
+				float w = uvw[blockIdx.x][time].w;
 
 				// Compute phase index
 				float ulvmwn = u*l + v*m + w*n;
