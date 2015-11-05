@@ -1,6 +1,6 @@
-#ifndef IDG_CPU_REFERENCE_HEADER
-#define IDG_CPU_REFERENCE_HEADER
+#ifndef IDG_CUDA_KEPLER_HEADER
+#define IDG_CUDA_KEPLER_HEADER
 
-#include "Maxwell.h"
+#include "Kepler.h"
 
 #endif
