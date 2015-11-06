@@ -35,6 +35,7 @@ __global__ void kernel_degridder(
 	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 
+    // Shared memory
     __shared__ float2 _pix[NR_POLARIZATIONS][NR_THREADS];
 
     // Map every visibility to one thread
@@ -59,12 +60,14 @@ __global__ void kernel_degridder(
 			wavenumber = wavenumbers[chan];
 		}
 
+        // Iterate all pixels in subgrid
 		for (int j = threadIdx.x; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
 			__syncthreads();
 
+            // Preprocess pixels and store in shared memory
 			if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
 				float2 aXX1 = aterm[station1][time_nr][0][y][x];
@@ -106,6 +109,7 @@ __global__ void kernel_degridder(
 
 			__syncthreads();
 
+            // Iterate all pixels in subgrid
 			if (time < NR_TIMESTEPS) {
                 #if SUBGRIDSIZE * SUBGRIDSIZE % NR_THREADS == 0
 				int last_k = NR_THREADS;
