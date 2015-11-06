@@ -32,8 +32,8 @@ void run(
     clog << ">>> Run gridder" << endl;
     cuda.grid_onto_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 
-    //clog << ">>> Run degridder" << endl;
-    //cuda.degrid_from_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+    clog << ">>> Run degridder" << endl;
+    cuda.degrid_from_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 
     // Stop profiling
     cuProfilerStop();
