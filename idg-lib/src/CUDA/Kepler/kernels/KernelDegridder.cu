@@ -18,7 +18,7 @@ __global__ void kernel_degridder(
 	VisibilitiesType	    __restrict__ visibilities,
 	const SpheroidalType	__restrict__ spheroidal,
 	const ATermType			__restrict__ aterm,
-	const MetadataType		__restrict__ metadata,		
+	const MetadataType		__restrict__ metadata,
 	const SubGridType	    __restrict__ subgrid
     ) {
 	int s = blockIdx.x;
@@ -36,7 +36,6 @@ __global__ void kernel_degridder(
 	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 
     __shared__ float2 _pix[NR_POLARIZATIONS][NR_THREADS];
-	__shared__ float4 _lmn_phaseoffset[NR_THREADS];
 
     // Map every visibility to one thread
     for (int i = threadIdx.x; i < ALIGN(NR_TIMESTEPS * NR_CHANNELS, NR_THREADS); i += NR_THREADS) {
@@ -46,7 +45,7 @@ __global__ void kernel_degridder(
 		float2 visXX, visXY, visYX, visYY;
 		float  u, v, w;
 		float  wavenumber;
-		
+
 		if (time < NR_TIMESTEPS) {
 			visXX = make_float2(0, 0);
 			visXY = make_float2(0, 0);
@@ -92,7 +91,7 @@ __global__ void kernel_degridder(
 				float2 pixelsYX = _spheroidal * subgrid[s][2][y_src][x_src];
 				float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
 
-				// Apply aterm to subgrid
+				// Apply aterm to pixel
 				float2 pixXX = pixelsXX * aXX1 + pixelsXY * aYX1 + pixelsXX * aXX2 + pixelsYX * aYX2;
 				float2 pixXY = pixelsXX * aXY1 + pixelsXY * aYY1 + pixelsXY * aXX2 + pixelsYY * aYX2;
 				float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
@@ -103,13 +102,6 @@ __global__ void kernel_degridder(
                 _pix[1][threadIdx.x] = pixXY;
                 _pix[2][threadIdx.x] = pixYX;
                 _pix[3][threadIdx.x] = pixYY;
-
-                // Compute l,m,n and phase offset
-				float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
-				float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
-				float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
-				float phase_offset = u_offset * l + v_offset * m + w_offset * n;
-				_lmn_phaseoffset[threadIdx.x] = make_float4(l, m, n, phase_offset);
 			}
 
 			__syncthreads();
@@ -124,19 +116,26 @@ __global__ void kernel_degridder(
 
                 // Sum pixel values
 				for (int k = 0; k < last_k; k ++) {
-					float  l = _lmn_phaseoffset[k].x;
-					float  m = _lmn_phaseoffset[k].y;
-					float  n = _lmn_phaseoffset[k].z;
-					float  phase_offset = _lmn_phaseoffset[k].w;
+                    // Compute l,m,n
+				    float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
+				    float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
+				    float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+
+                    // Compute phase offset
+				    float phase_offset = u_offset * l + v_offset * m + w_offset * n;
+
+                    // Compute phasor
 					float  phase_index = u * l + v * m + w * n;
 					float  phase  = (phase_index * wavenumber) - phase_offset;
 					float2 phasor = make_float2(cosf(phase), sinf(phase));
 
+                    // Load pixels
 					float2 apXX = _pix[0][k];
 					float2 apXY = _pix[1][k];
 					float2 apYX = _pix[2][k];
 					float2 apYY = _pix[3][k];
 
+                    // Update visibilities
 					visXX.x += apXX.x * phasor.x;
 					visXX.x -= apXX.y * phasor.y;
 					visXX.y += apXX.x * phasor.y;
@@ -162,10 +161,10 @@ __global__ void kernel_degridder(
 
         // Store visibilities
 		if (time < NR_TIMESTEPS) {
-		  visibilities[s][time][chan][0] = visXX;
-		  visibilities[s][time][chan][1] = visXY;
-		  visibilities[s][time][chan][2] = visYX;
-		  visibilities[s][time][chan][3] = visYY;
+            visibilities[s][time][chan][0] = visXX;
+            visibilities[s][time][chan][1] = visXY;
+            visibilities[s][time][chan][2] = visYX;
+            visibilities[s][time][chan][3] = visYY;
 		}
 	}
 }
