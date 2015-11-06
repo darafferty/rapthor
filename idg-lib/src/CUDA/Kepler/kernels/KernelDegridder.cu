@@ -35,7 +35,7 @@ __global__ void kernel_degridder(
 	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 
-    __shared__ float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
+    __shared__ float2 _pix[NR_POLARIZATIONS][NR_THREADS];
 	__shared__ float4 _lmn_phaseoffset[NR_THREADS];
 
     // Map every visibility to one thread
@@ -99,8 +99,10 @@ __global__ void kernel_degridder(
 				float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
 
                 // Store pixels in shared memory
-				_pix[0][threadIdx.x] = make_float4(pixXX.x, pixXX.y, pixXY.x, pixXY.y);
-				_pix[1][threadIdx.x] = make_float4(pixYX.x, pixYX.y, pixYY.x, pixYY.y);
+                _pix[0][threadIdx.x] = pixXX;
+                _pix[1][threadIdx.x] = pixXY;
+                _pix[2][threadIdx.x] = pixYX;
+                _pix[3][threadIdx.x] = pixYY;
 
                 // Compute l,m,n and phase offset
 				float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
@@ -130,10 +132,10 @@ __global__ void kernel_degridder(
 					float  phase  = (phase_index * wavenumber) - phase_offset;
 					float2 phasor = make_float2(cosf(phase), sinf(phase));
 
-					float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
-					float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
-					float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
-					float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
+					float2 apXX = _pix[0][k];
+					float2 apXY = _pix[1][k];
+					float2 apYX = _pix[2][k];
+					float2 apYY = _pix[3][k];
 
 					visXX.x += apXX.x * phasor.x;
 					visXX.x -= apXX.y * phasor.y;
