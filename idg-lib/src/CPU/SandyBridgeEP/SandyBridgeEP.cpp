@@ -75,7 +75,7 @@ namespace idg {
             #if defined(USING_GNU_CXX_COMPILER)
             return "-Wall -O3 -fopenmp -lfftw3f";
             #else 
-            return "-Wall -O3 -openmp -mkl -lmkl_avx -lmkl_vml_avx -march=core-avx";
+            return "-Wall -O3 -openmp -mkl -lmkl_avx -lmkl_vml_avx -march=core-avx-i";
             #endif
         }
 
