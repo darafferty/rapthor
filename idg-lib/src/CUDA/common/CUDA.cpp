@@ -8,7 +8,7 @@ namespace idg {
             Power measurement
         */
         static PowerSensor *powerSensor;
-        
+
         class PowerRecord {
             public:
                 void enqueue(cu::Stream &stream);
@@ -16,12 +16,12 @@ namespace idg {
                 PowerSensor::State state;
                 cu::Event event;
         };
-        
+
         void PowerRecord::enqueue(cu::Stream &stream) {
             stream.record(event);
             stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
         }
-        
+
         void PowerRecord::getPower(CUstream, CUresult, void *userData) {
             *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
         }
@@ -161,10 +161,7 @@ namespace idg {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
-            
-            // Performance measurements
-            double runtime = 0;
-            
+
             // Constants
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_timesteps = mParams.get_nr_timesteps();
@@ -173,21 +170,24 @@ namespace idg {
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
             auto jobsize = mParams.get_job_size_gridder();
-            
-            // load kernel functions
+
+            // Load kernels
             kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
-            
+            cu::Module *module_fft = (modules[which_module[kernel::name_fft]]);
+
             // Initialize
             cu::Stream executestream;
             cu::Stream htodstream;
             cu::Stream dtohstream;
             const int nr_streams = 3;
-            
-            runtime = -omp_get_wtime();
-            #if defined(MEASURE_POWER_ARDUINO)
+
+            // Performance measurements
+            double total_runtime_gridding = 0;
+            double total_runtime_gridder = 0;
+            double total_runtime_fft = 0;
+            total_runtime_gridding = -omp_get_wtime();
             PowerSensor::State startState = powerSensor->read();
-            #endif
-            
+
             // Start gridder
             #pragma omp parallel num_threads(nr_streams)
             {
@@ -197,36 +197,34 @@ namespace idg {
                 cu::Event outputFree;
                 cu::Event inputReady;
                 cu::Event outputReady;
-                kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
-            
+                kernel::GridFFT kernel_fft(*module_fft, mParams);
+
                 // Private device memory
             	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
             	cu::DeviceMemory d_uvw(jobsize * SIZEOF_UVW);
                 cu::DeviceMemory d_subgrids(jobsize * SIZEOF_SUBGRIDS);
                 cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
-            
+
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                     // Prevent overflow
                     int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
-            
+
                     // Number of elements in batch
                     int uvw_elements          = nr_timesteps * 3;
                     int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
                     int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
                     int metadata_elements     = 5;
-            
+
                     // Pointers to data for current batch
                     void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
                     void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
                     void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
                     void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
-            
+
                     // Power measurement
-                    //#if defined(MEASURE_POWER_ARDUINO)
                     PowerRecord powerRecords[3];
-                    //#endif
-            
+
                     #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
             		{
             			// Copy input data to device
@@ -235,10 +233,10 @@ namespace idg {
             			htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, current_jobsize * SIZEOF_UVW);
             			htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
             			htodstream.record(inputReady);
-            
+
             			// Create FFT plan
             			kernel_fft.plan(subgridsize, current_jobsize);
-            
+
             			// Launch gridder kernel
             			executestream.waitEvent(inputReady);
             			executestream.waitEvent(outputFree);
@@ -247,51 +245,57 @@ namespace idg {
             				executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
             				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                         powerRecords[1].enqueue(executestream);
-            
+
             			// Launch FFT
             			kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
                         powerRecords[2].enqueue(executestream);
             			executestream.record(outputReady);
             			executestream.record(inputFree);
-            
+
             			// Copy subgrid to host
             			dtohstream.waitEvent(outputReady);
             			dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, current_jobsize * SIZEOF_SUBGRIDS);
             			dtohstream.record(outputFree);
             		}
-            
+
             		outputFree.synchronize();
-            
+
+                    double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+                    double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
                     #if defined(REPORT_VERBOSE)
-                    auxiliary::report("gridder", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                    auxiliary::report("gridder", runtime_gridder,
                                                  kernel_gridder.flops(current_jobsize),
                                                  kernel_gridder.bytes(current_jobsize),
                                                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
-                    auxiliary::report("    fft", PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
+                    auxiliary::report("    fft", runtime_fft,
                                                  kernel_fft.flops(subgridsize, current_jobsize),
                                                  kernel_fft.bytes(subgridsize, current_jobsize),
                                                  PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                     #endif
+                    #if defined(REPORT_TOTAL)
+                    total_runtime_gridder += runtime_gridder;
+                    total_runtime_fft     += runtime_fft;
+                    #endif
                 } // end for s
             }
-            
-            runtime += omp_get_wtime();
-            #if defined(MEASURE_POWER_ARDUINO)
-            PowerSensor::State stopState = powerSensor->read();
-            #endif
-            
+
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            #if defined(MEASURE_POWER_ARDUINO)
-            auxiliary::report_power(PowerSensor::seconds(startState, stopState),
-                                    PowerSensor::Watt(startState, stopState),
-                                    PowerSensor::Joules(startState, stopState));
-            #else
-            clog << "   runtime: " << runtime << " s" << endl;
-            #endif
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            total_runtime_gridding += omp_get_wtime();
+            PowerSensor::State stopState = powerSensor->read();
+            kernel::GridFFT kernel_fft(*module_fft, mParams);
+            uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
+            uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
+            uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
+            uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
+            uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
+            uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
+            double   total_watt_gridding  = PowerSensor::Watt(startState, stopState);
+            auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
+            auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
- 
         } // run_gridder
 
 
@@ -316,9 +320,6 @@ namespace idg {
             #if defined(DEBUG)
             cout << "CUDA::" << __func__ << endl;
             #endif
-            // Performance measurements
-            double runtime = 0;
-
             // Constants
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_timesteps = mParams.get_nr_timesteps();
@@ -330,6 +331,7 @@ namespace idg {
 
             // load kernel
             kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
+            cu::Module *module_fft = (modules[which_module[kernel::name_fft]]);
 
             // Initialize
             cu::Stream executestream;
@@ -337,10 +339,12 @@ namespace idg {
             cu::Stream dtohstream;
             const int nr_streams = 3;
 
-     	    runtime = -omp_get_wtime();
-            #if defined(MEASURE_POWER_ARDUINO)
+            // Performance measurements
+            double total_runtime_degridding = 0;
+            double total_runtime_degridder = 0;
+            double total_runtime_fft = 0;
+     	    total_runtime_degridding = -omp_get_wtime();
             PowerSensor::State startState = powerSensor->read();
-            #endif
 
             // Start degridder
             #pragma omp parallel num_threads(nr_streams)
@@ -351,9 +355,8 @@ namespace idg {
                 cu::Event outputFree;
                 cu::Event inputReady;
                 cu::Event outputReady;
-                //int thread_num = omp_get_thread_num();
                 int current_jobsize = jobsize;
-                kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
+                kernel::GridFFT kernel_fft(*module_fft, mParams);
 
             	// Private device memory
                 cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -415,6 +418,8 @@ namespace idg {
     				}
 
     				outputFree.synchronize();
+                    double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+                    double runtime_degridder = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("      fft", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                                    kernel_fft.flops(subgridsize, current_jobsize),
@@ -425,26 +430,30 @@ namespace idg {
                                                    kernel_degridder.bytes(current_jobsize),
                                                    PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                     #endif
-
+                    #if defined(REPORT_TOTAL)
+                    total_runtime_degridder += runtime_degridder;
+                    total_runtime_fft       += runtime_fft;
+                    #endif
                 } // end for s
             }
 
-            runtime += omp_get_wtime();
-            #if defined(MEASURE_POWER_ARDUINO)
-            PowerSensor::State stopState = powerSensor->read();
-            #endif
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            #if defined(MEASURE_POWER_ARDUINO)
-            auxiliary::report_power(PowerSensor::seconds(startState, stopState),
-                                    PowerSensor::Watt(startState, stopState),
-                                    PowerSensor::Joules(startState, stopState));
-            #else
-            clog << "   runtime: " << runtime << " s" << endl;
+            total_runtime_degridding += omp_get_wtime();
+            PowerSensor::State stopState = powerSensor->read();
+            kernel::GridFFT kernel_fft(*module_fft, mParams);
+            uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
+            uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
+            uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
+            uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
+            uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
+            uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
+            double   total_watt_degridding  = PowerSensor::Watt(startState, stopState);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+            auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
+            auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+             clog << endl;
             #endif
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
-            clog << endl;
-            #endif
- 
        } // run_degridder
 
 
