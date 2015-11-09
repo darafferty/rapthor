@@ -102,16 +102,5 @@ namespace idg {
                  << 1e-3 * nr_baselines / runtime
                  << " Ksubgrids/s" << endl;
         }
-
-        void report_power(
-            double runtime,
-            double watt,
-            double joules)
-        {
-            clog << fixed
-                 << "   runtime: " << runtime << "s, "
-                 << watt << " W, energy: "
-                 << joules << " J" << endl;
-        }
     } // namespace auxiliary
 } // namespace idg
