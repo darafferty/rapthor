@@ -186,9 +186,7 @@ namespace idg {
             double total_runtime_gridder = 0;
             double total_runtime_fft = 0;
             total_runtime_gridding = -omp_get_wtime();
-            #if defined(MEASURE_POWER_ARDUINO)
             PowerSensor::State startState = powerSensor->read();
-            #endif
 
             // Start gridder
             #pragma omp parallel num_threads(nr_streams)
@@ -346,9 +344,7 @@ namespace idg {
             double total_runtime_degridder = 0;
             double total_runtime_fft = 0;
      	    total_runtime_degridding = -omp_get_wtime();
-            #if defined(MEASURE_POWER_ARDUINO)
             PowerSensor::State startState = powerSensor->read();
-            #endif
 
             // Start degridder
             #pragma omp parallel num_threads(nr_streams)
