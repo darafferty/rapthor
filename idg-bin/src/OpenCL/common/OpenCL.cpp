@@ -194,7 +194,7 @@ namespace idg {
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
                     // Performance counters
-                    PerformanceCounter *counter_gridder = new PerformanceCounter("   gridder");
+                    PerformanceCounter *counter_gridder = new PerformanceCounter("gridder");
                     #if defined(MEASURE_POWER_ARDUINO)
                     counter_gridder->setPowerSensor(powerSensor);
                     #endif
@@ -232,8 +232,8 @@ namespace idg {
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << "   runtime: " << runtime << " s" << endl;
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report("|gridding", runtime, 0, 0, 0);
+            auxiliary::report_visibilities("|gridding", runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_gridder
@@ -278,7 +278,6 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Set jobsize
-            //TODO: set jobsize according to available memory
             const int jobsize = mParams.get_job_size_degridder();
 
             // Start gridder
@@ -315,7 +314,7 @@ namespace idg {
                     size_t metadata_offset     = s * 5 * sizeof(int);
 
                     // Performance counters
-                    PerformanceCounter *counter_degridder = new PerformanceCounter(" degridder");
+                    PerformanceCounter *counter_degridder = new PerformanceCounter("degridder");
                     #if defined(MEASURE_POWER_ARDUINO)
                     counter_degridder->setPowerSensor(powerSensor);
                     #endif
@@ -354,8 +353,8 @@ namespace idg {
             runtime += omp_get_wtime();
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            clog << "   runtime: " << runtime << " s" << endl;
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report("|degridding", runtime, 0, 0, 0);
+            auxiliary::report_visibilities("|degridding", runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_degridder
