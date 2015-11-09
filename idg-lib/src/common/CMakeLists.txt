@@ -18,7 +18,6 @@ set (${PROJECT_NAME}_sources
   auxiliary.cpp
 )
 
-# add files for PowerSensor (TODO: don't add when not used)
 #if (${BUILD_WITH_ARDUINO_POWER_SENSOR})
 set (${PROJECT_NAME}_headers
     ${${PROJECT_NAME}_headers}
@@ -28,10 +27,8 @@ set (${PROJECT_NAME}_sources
     ${${PROJECT_NAME}_sources}
     PowerSensor.cpp
 )
-#endif()
 
 # add files for LikwidPowerSensor
-if (${BUILD_WITH_LIKWID_POWER_SENSOR})
 set (${PROJECT_NAME}_headers
     ${${PROJECT_NAME}_headers}
     LikwidPowerSensor.h
@@ -40,7 +37,6 @@ set (${PROJECT_NAME}_sources
     ${${PROJECT_NAME}_sources}
     LikwidPowerSensor.cpp
 )
-endif()
 
 add_library(
     ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
