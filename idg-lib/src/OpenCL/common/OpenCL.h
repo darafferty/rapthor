@@ -14,7 +14,7 @@
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 #include <CL/cl.h>
-#include "AbstractProxy.h"
+#include "Proxy.h"
 #include "Kernels.h"
 
 // High level method parameters

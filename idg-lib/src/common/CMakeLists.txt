@@ -2,7 +2,7 @@ project(idg-common)
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
-  AbstractProxy.h
+  Proxy.h
   CompilerEnvironment.h
   Parameters.h
   ProxyInfo.h

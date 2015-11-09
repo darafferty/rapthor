@@ -12,7 +12,7 @@
 
 #include <dlfcn.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
-#include "AbstractProxy.h"
+#include "Proxy.h"
 #include "Kernels.h"
 #include "LikwidPowerSensor.h"
 
