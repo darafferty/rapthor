@@ -1,4 +1,4 @@
-project(cpu-haswellep.x)
+project(cpu-sandybridgeep.x)
 
 # Set external header files
 include_directories(
@@ -23,7 +23,7 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-examples-common
-  idg-cpu-haswellep
+  idg-cpu-sandybridgeep
   idg-cpu-common 
   idg-common
   ${CMAKE_DL_LIBS}

@@ -1,4 +1,4 @@
-#include "CPU/HaswellEP/idg.h"
+#include "CPU/SandyBridgeEP/idg.h"
 
 #include "common.h"
 
@@ -16,7 +16,7 @@ void run(
 ) {
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::cpu::HaswellEP xeon(params);
+    idg::proxy::cpu::SandyBridgeEP xeon(params);
     clog << endl;
 
     // Run gridder

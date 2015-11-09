@@ -1,4 +1,4 @@
-project(idg-cpu-haswellep)
+project(idg-cpu-sandybridgeep)
 
 # external header files needed
 include_directories (
@@ -8,11 +8,11 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  HaswellEP.h
+  SandyBridgeEP.h
 )
 
 set (${PROJECT_NAME}_sources
-  HaswellEP.cpp
+  SandyBridgeEP.cpp
 )
 
 # create library
@@ -37,7 +37,7 @@ install(
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
     DESTINATION
-    lib/kernels/CPU/HaswellEP
+    lib/kernels/CPU/SandyBridgeEP
 )
 
 # Copy header files
@@ -46,5 +46,5 @@ install(
     idg.h
     HaswellEP.h
     DESTINATION
-    include/CPU/HaswellEP
+    include/CPU/SandyBridgeEP
 )
