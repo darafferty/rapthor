@@ -321,7 +321,8 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
         }
     }
 
-    // Free baselines
+    // Free memory
+    free(wavenumbers);
     free(baselines);
 }
 
