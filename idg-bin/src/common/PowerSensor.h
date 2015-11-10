@@ -29,8 +29,8 @@ class PowerSensor
     {
       struct MC_State
       {
-	int32_t  consumedEnergy;
-	uint32_t microSeconds;
+	int32_t  consumedEnergy = 0;
+	uint32_t microSeconds = 0;
       } previousState, lastState;
 
       double timeAtRead;

@@ -63,8 +63,9 @@ void *PowerSensor::IOthread(void *arg) {
 void *PowerSensor::IOthread() {
     while (!stop)
         doMeasurement();
-
-    return 0;
+    void *retval;
+    pthread_exit(retval);
+    return retval;
 }
 
 
