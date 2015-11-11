@@ -50,6 +50,9 @@ namespace idg {
             mParams = params;
             parameter_sanity_check(); // throws exception if bad parameters
             compile(flags);
+            
+            clfftSetupData setup;
+            clfftSetup(&setup);
         }
 
         OpenCL::~OpenCL()
@@ -162,7 +165,7 @@ namespace idg {
 
             // Start gridder
             runtime -= omp_get_wtime();
-            const int nr_streams = 3;
+            const int nr_streams = 1;
             #pragma omp parallel num_threads(nr_streams)
             {
                // Load kernel functions
@@ -180,8 +183,13 @@ namespace idg {
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
 
                 // Performance counters
-                vector<PerformanceCounter*> counters_gridder;
-
+                PerformanceCounter counter_gridder;
+                PerformanceCounter counter_fft;
+                #if defined(MEASURE_POWER_ARDUINO)
+                counter_gridder.setPowerSensor(powerSensor);
+                counter_fft.setPowerSensor(powerSensor);
+                #endif
+ 
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
                     // Prevent overflow
@@ -192,13 +200,6 @@ namespace idg {
                     size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
                     size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
-
-                    // Performance counters
-                    PerformanceCounter *counter_gridder = new PerformanceCounter("gridder");
-                    #if defined(MEASURE_POWER_ARDUINO)
-                    counter_gridder->setPowerSensor(powerSensor);
-                    #endif
-                    counters_gridder.push_back(counter_gridder);
 
                     #pragma omp critical (GPU)
                     {
@@ -214,20 +215,20 @@ namespace idg {
 
     						// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, *counters_gridder.back());
+                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_gridder);
 
     						// Launch FFT
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counter_fft);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
     						// Copy subgrid to host
                             dtohqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
-                }
 
-                // Wait for device to host transfer to finish
-                outputReady[0].wait();
+                    // Wait for device to host transfer to finish
+                    outputReady[0].wait();
+                }
             }
             runtime += omp_get_wtime();
 
@@ -300,7 +301,12 @@ namespace idg {
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
 
                 // Performance counters
-                vector<PerformanceCounter*> counters_degridder;
+                PerformanceCounter counter_degridder;
+                PerformanceCounter counter_fft;
+                #if defined(MEASURE_POWER_ARDUINO)
+                counter_degridder.setPowerSensor(powerSensor);
+                counter_fft.setPowerSensor(powerSensor);
+                #endif
 
                 #pragma omp for schedule(dynamic)
                 for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
@@ -312,14 +318,6 @@ namespace idg {
                     size_t visibilities_offset = s * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>);
                     size_t subgrids_offset     = s * subgridsize * subgridsize * nr_polarizations * sizeof(complex<float>);
                     size_t metadata_offset     = s * 5 * sizeof(int);
-
-                    // Performance counters
-                    PerformanceCounter *counter_degridder = new PerformanceCounter("degridder");
-                    #if defined(MEASURE_POWER_ARDUINO)
-                    counter_degridder->setPowerSensor(powerSensor);
-                    #endif
-                    counters_degridder.push_back(counter_degridder);
-
 
                     #pragma omp critical (GPU)
                     {
@@ -335,20 +333,20 @@ namespace idg {
 
     						// Launch FFT
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counter_fft);
 
     						// Launch degridder kernel
-                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, *counters_degridder.back());
+                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_degridder);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
     						// Copy visibilities to host
                             dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
-                }
 
-                // Wait for device to host transfer to finish
-                outputReady[0].wait();
+                    // Wait for device to host transfer to finish
+                    outputReady[0].wait();
+                }
             }
             runtime += omp_get_wtime();
 

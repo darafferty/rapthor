@@ -28,7 +28,7 @@ namespace idg {
         class Gridder {
             public:
                 Gridder(cl::Program &program, Parameters &parameters);
-                void launchAsync(
+                 void launchAsync(
                     cl::CommandQueue &queue, int jobsize, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
@@ -39,6 +39,7 @@ namespace idg {
         		uint64_t bytes(int jobsize);
 
         	private:
+                cl::Event event;
         	    cl::Kernel kernel;
                 Parameters &parameters;
         };
@@ -58,6 +59,7 @@ namespace idg {
         		uint64_t bytes(int jobsize);
 
         	private:
+                cl::Event event;
                 cl::Kernel kernel;
                 Parameters &parameters;
         };
@@ -69,19 +71,20 @@ namespace idg {
                 void plan(
                     cl::Context &context, int size, int batch);
                 void launchAsync(
-                    cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction);
+                    cl::CommandQueue &queue,
+                    cl::Buffer &d_data,
+                    clfftDirection direction,
+                    PerformanceCounter &counter);
         		uint64_t flops(int size, int batch);
         		uint64_t bytes(int size, int batch);
-                double runtime();
 
             private:
+                cl::Event event;
                 bool uninitialized;
                 Parameters &parameters;
                 int planned_size;
                 int planned_batch;
                 clfftPlanHandle fft;
-                cl::Event event_start;
-                cl::Event event_end;
         };
     } // namespace kernel
 } // namespace idg

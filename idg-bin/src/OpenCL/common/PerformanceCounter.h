@@ -9,29 +9,26 @@
 #include "PowerSensor.h"
 
 class PerformanceCounter {
-    public:
-        PerformanceCounter(const char *name);
-        void doOperation(uint64_t flops, uint64_t bytes);
-        static void report(const char *name, double runtime, uint64_t flops, uint64_t bytes);
-
-    private:
-        static void eventSubmittedCallBack(cl_event, cl_int, void *counter);
-        static void eventRunningCallBack(cl_event, cl_int, void *counter);
-        static void eventCompleteCallBack(cl_event, cl_int, void *counter);
-        #if defined(MEASURE_POWER_ARDUINO)
-        PowerSensor::State powerStates[2];
-        #endif
-
-    public:
+    struct Descriptor
+    {
         const char *name;
-        cl::Event event;
+        uint64_t flops;
+        uint64_t bytes;
+        #if defined(MEASURE_POWER_ARDUINO)
+        PowerSensor *powerSensor;
+        PowerSensor::State startState, stopState;
+        #endif
+    };
+
+    public:
+        void doOperation(cl::Event &event, const char *name, uint64_t flops, uint64_t bytes);
         #if defined(MEASURE_POWER_ARDUINO)
         PowerSensor *powerSensor;
         void setPowerSensor(PowerSensor *_powerSensor);
         #endif
 
    private:
-       std::function<void (cl_event)> callback_submitted;
-       std::function<void (cl_event)> callback_running;
-       std::function<void (cl_event)> callback_completed;
+        static void startPowerMeasurement(cl_event event, cl_int, void *user_data);
+        static void stopPowerMeasurement(cl_event event, cl_int, void *user_data);
+        static void report(cl_event, cl_int, void *user_data);
 };
