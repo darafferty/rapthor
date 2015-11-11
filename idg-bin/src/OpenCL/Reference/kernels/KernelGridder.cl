@@ -149,9 +149,6 @@ __kernel void kernel_gridder(
 			int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Apply spheroidal and update uv grid
-            //if (s == 0 && tidx == 0 && tidy == 0) {
-            //    printf("%d: %f\n", tidx, auvXX);
-            //}
             subgrid[s][0][y_dst][x_dst] = auvXX * sph;
             subgrid[s][1][y_dst][x_dst] = auvXY * sph;
             subgrid[s][2][y_dst][x_dst] = auvYX * sph;
