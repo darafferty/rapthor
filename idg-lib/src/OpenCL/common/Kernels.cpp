@@ -153,11 +153,20 @@ namespace idg {
             uninitialized = true;
         }
 
-        void GridFFT::plan(cl::Context &context, int size, int batch) {
+        GridFFT::~GridFFT() {
+            clfftDestroyPlan(&fft);
+        }
+
+        void GridFFT::plan(cl::Context &context, cl::CommandQueue &queue, int size, int batch) {
             // Check wheter a new plan has to be created
             if (uninitialized ||
                size  != planned_size ||
                batch != planned_batch) {
+                // Destroy old plan (if any)
+                if (!uninitialized) {
+                    clfftDestroyPlan(&fft);
+                }
+
                 // Create new plan
                 size_t lengths[2] = {(size_t) size, (size_t) size};
                 clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
@@ -168,6 +177,13 @@ namespace idg {
                 // Update parameters
                 planned_size = size;
                 planned_batch = batch;
+
+                // Bake plan
+                clfftStatus status = clfftBakePlan(fft, 1, &queue(), NULL, NULL);
+                if (status != CL_SUCCESS) {
+                    std::cerr << "Error baking fft plan" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
             }
             uninitialized = false;
         }
@@ -175,7 +191,11 @@ namespace idg {
         void GridFFT::launchAsync(
             cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
             counter.doOperation(event, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
-            clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event(), &d_data(), NULL, NULL);
+            clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event(), &d_data(), NULL, NULL);
+            if (status != CL_SUCCESS) {
+                std::cerr << "Error launching fft" << std::endl;
+                exit(EXIT_FAILURE);
+            }
         }
 
 

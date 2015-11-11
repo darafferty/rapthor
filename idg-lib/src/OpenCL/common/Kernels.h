@@ -68,8 +68,10 @@ namespace idg {
         class GridFFT {
         	public:
                 GridFFT(Parameters &parameters);
+                ~GridFFT();
                 void plan(
-                    cl::Context &context, int size, int batch);
+                    cl::Context &context, cl::CommandQueue &queue,
+                    int size, int batch);
                 void launchAsync(
                     cl::CommandQueue &queue,
                     cl::Buffer &d_data,
