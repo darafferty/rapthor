@@ -165,7 +165,7 @@ namespace idg {
 
             // Start gridder
             runtime -= omp_get_wtime();
-            const int nr_streams = 1;
+            const int nr_streams = 3;
             #pragma omp parallel num_threads(nr_streams)
             {
                // Load kernel functions
