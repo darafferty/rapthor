@@ -177,10 +177,10 @@ namespace idg {
                 htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                 // Private device memory
-                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
-                cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_UVW);
+                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY, jobsize * SIZEOF_VISIBILITIES);
+                cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY, jobsize * SIZEOF_UVW);
                 cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
-                cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_METADATA);
+                cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY, jobsize * SIZEOF_METADATA);
 
                 // Performance counters
                 PerformanceCounter counter_gridder;
@@ -211,7 +211,7 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
     						// Create FFT plan
-                            kernel_fft.plan(context, subgridsize, current_jobsize);
+                            kernel_fft.plan(context, executequeue, subgridsize, current_jobsize);
 
     						// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
@@ -295,9 +295,9 @@ namespace idg {
                 htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                 // Private device memory
-                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_VISIBILITIES);
+                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE,  jobsize * SIZEOF_VISIBILITIES);
                 cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_UVW);
-                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_WRITE_ONLY, jobsize * SIZEOF_SUBGRIDS);
+                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_ONLY, jobsize * SIZEOF_SUBGRIDS);
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
 
                 // Performance counters
@@ -329,7 +329,7 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
     						// Create FFT plan
-                            kernel_fft.plan(context, subgridsize, current_jobsize);
+                            kernel_fft.plan(context, executequeue, subgridsize, current_jobsize);
 
     						// Launch FFT
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
