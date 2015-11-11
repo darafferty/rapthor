@@ -62,12 +62,10 @@ __kernel void kernel_degridder(
 				float2 aYY1 = aterm[station1][time_nr][3][y][x];
 
 				// Load aterm for station2
-				float2 aXX2 = aterm[station2][time_nr][0][y][x];
-				float2 aXY2 = aterm[station2][time_nr][1][y][x];
-				float2 aYX2 = aterm[station2][time_nr][2][y][x];
-				float2 aYY2 = aterm[station2][time_nr][3][y][x];
-
-                //TODO: add conj to one of the stations
+				float2 aXX2 = conj(aterm[station2][time_nr][0][y][x]);
+				float2 aXY2 = conj(aterm[station2][time_nr][1][y][x]);
+				float2 aYX2 = conj(aterm[station2][time_nr][2][y][x]);
+				float2 aYY2 = conj(aterm[station2][time_nr][3][y][x]);
 
 				// Load spheroidal
 				float _spheroidal = spheroidal[y][x];

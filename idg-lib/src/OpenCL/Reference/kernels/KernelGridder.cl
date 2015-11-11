@@ -124,10 +124,10 @@ __kernel void kernel_gridder(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[station1][time_nr][0][y][x];
-            float2 aXY1 = aterm[station1][time_nr][1][y][x];
-            float2 aYX1 = aterm[station1][time_nr][2][y][x];
-            float2 aYY1 = aterm[station1][time_nr][3][y][x];
+            float2 aXX1 = conj(aterm[station1][time_nr][0][y][x]);
+            float2 aXY1 = conj(aterm[station1][time_nr][1][y][x]);
+            float2 aYX1 = conj(aterm[station1][time_nr][2][y][x]);
+            float2 aYY1 = conj(aterm[station1][time_nr][3][y][x]);
 
             // Get aterm for station2
             float2 aXX2 = aterm[station2][time_nr][0][y][x];
@@ -135,7 +135,7 @@ __kernel void kernel_gridder(
             float2 aYX2 = aterm[station2][time_nr][2][y][x];
             float2 aYY2 = aterm[station2][time_nr][3][y][x];
 
-            // Apply aterm TODO: add matrix2x2mul template and conj one of the stations
+            // Apply aterm 
 			float2 auvXX = uvXX * aXX1 + uvXY * aYX1 + uvXX * aXX2 + uvXY * aYX2;
 			float2 auvXY = uvXX * aXY1 + uvXY * aYY1 + uvXX * aXY2 + uvXY * aYY2;
 			float2 auvYX = uvYX * aXX1 + uvYY * aYX1 + uvYX * aXX2 + uvYY * aYX2;
@@ -149,9 +149,6 @@ __kernel void kernel_gridder(
 			int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Apply spheroidal and update uv grid
-            //if (s == 0 && tidx == 0 && tidy == 0) {
-            //    printf("%d: %f\n", tidx, auvXX);
-            //}
             subgrid[s][0][y_dst][x_dst] = auvXX * sph;
             subgrid[s][1][y_dst][x_dst] = auvXY * sph;
             subgrid[s][2][y_dst][x_dst] = auvYX * sph;
