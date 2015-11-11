@@ -49,8 +49,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &counter.event);
-                counter.doOperation(flops(jobsize), bytes(jobsize));
+                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -111,8 +111,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &counter.event);
-                counter.doOperation(flops(jobsize), bytes(jobsize));
+                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, NULL);
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -169,14 +169,15 @@ namespace idg {
                 planned_size = size;
                 planned_batch = batch;
             }
+            uninitialized = false;
         }
 
         void GridFFT::launchAsync(
-            cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-            //queue.enqueueMarkerWithWaitList(NULL, &event_start);
-            //clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
-            //queue.enqueueMarkerWithWaitList(NULL, &event_end);
+            cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
+            counter.doOperation(event, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+            clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event(), &d_data(), NULL, NULL);
         }
+
 
         uint64_t GridFFT::flops(int size, int batch) {
             int nr_polarizations = parameters.get_nr_polarizations();
@@ -187,10 +188,5 @@ namespace idg {
             int nr_polarizations = parameters.get_nr_polarizations();
         	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
         }
-
-        double GridFFT::runtime() {
-            return compute_runtime(event_start, event_end);
-        }
-
     } // namespace kernel
 } // namespace idg

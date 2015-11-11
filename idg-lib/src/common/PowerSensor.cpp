@@ -86,12 +86,12 @@ void PowerSensor::doMeasurement() {
             exit(1);
         }
     } while ((bytesRead += retval) < sizeof(State::MC_State));
+    #endif
 
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
     }
-    #endif
 
     if (lastState.microSeconds != currentState.microSeconds) {
         previousState = lastState;

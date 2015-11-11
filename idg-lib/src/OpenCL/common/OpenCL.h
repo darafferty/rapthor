@@ -106,6 +106,7 @@ namespace idg {
 
                 std::vector<cl::Program*> programs;
                 std::map<std::string,int> which_program;
+
         }; // class OpenCL
     } // namespace proxy
 } // namespace idg
