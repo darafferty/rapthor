@@ -106,19 +106,19 @@ int main(int argc, char *argv[]) {
     queue.finish();
 
     // Initialize interface to kernels
-    //clog << ">>> Initialize proxy" << endl;
-    //idg::proxy::opencl::Reference opencl(params, context, deviceNumber);
-    //clog << endl;
+    clog << ">>> Initialize proxy" << endl;
+    idg::proxy::opencl::Reference opencl(params, context, deviceNumber);
+    clog << endl;
 
     // Run gridder
-    //clog << ">>> Run gridder" << endl;
-    //opencl.grid_onto_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+    clog << ">>> Run gridder" << endl;
+    opencl.grid_onto_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 
     // Run degridder
-    //clog << ">>> Run degridder" << endl;
-    //opencl.degrid_from_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+    clog << ">>> Run degridder" << endl;
+    opencl.degrid_from_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 
-    // free memory for data structures
+    // Free memory for data structures
     free(wavenumbers);
     free(aterm);
     free(spheroidal);

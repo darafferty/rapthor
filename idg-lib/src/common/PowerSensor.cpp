@@ -5,7 +5,7 @@ PowerSensor::PowerSensor(const char *device, const char *dumpFileName) :
     stop(false) {
     lastState.microSeconds = 0;
 
-    #if defined (MEASURE_POWER_ARDUINO)
+    #if defined(MEASURE_POWER_ARDUINO)
     if ((fd = open(device, O_RDWR)) < 0) {
         perror("open device");
         exit(1);
@@ -156,7 +156,7 @@ void PowerSensor::mark(const State &startState, const State &stopState, const ch
 PowerSensor::State PowerSensor::read() {
     State state;
 
-    #if defined (MEASURE_POWER_ARDUINO)
+    #if defined(MEASURE_POWER_ARDUINO)
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
