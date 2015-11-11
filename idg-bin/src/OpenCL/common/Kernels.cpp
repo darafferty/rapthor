@@ -49,8 +49,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &counter.event);
-                counter.doOperation(flops(jobsize), bytes(jobsize));
+                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -111,8 +111,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &counter.event);
-                counter.doOperation(flops(jobsize), bytes(jobsize));
+                counter.doOperation(event, "degridder", flops(jobsize), bytes(jobsize));
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -153,11 +153,20 @@ namespace idg {
             uninitialized = true;
         }
 
-        void GridFFT::plan(cl::Context &context, int size, int batch) {
+        GridFFT::~GridFFT() {
+            clfftDestroyPlan(&fft);
+        }
+
+        void GridFFT::plan(cl::Context &context, cl::CommandQueue &queue, int size, int batch) {
             // Check wheter a new plan has to be created
             if (uninitialized ||
                size  != planned_size ||
                batch != planned_batch) {
+                // Destroy old plan (if any)
+                if (!uninitialized) {
+                    clfftDestroyPlan(&fft);
+                }
+
                 // Create new plan
                 size_t lengths[2] = {(size_t) size, (size_t) size};
                 clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
@@ -168,15 +177,27 @@ namespace idg {
                 // Update parameters
                 planned_size = size;
                 planned_batch = batch;
+
+                // Bake plan
+                clfftStatus status = clfftBakePlan(fft, 1, &queue(), NULL, NULL);
+                if (status != CL_SUCCESS) {
+                    std::cerr << "Error baking fft plan" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
             }
+            uninitialized = false;
         }
 
         void GridFFT::launchAsync(
-            cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-            //queue.enqueueMarkerWithWaitList(NULL, &event_start);
-            //clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
-            //queue.enqueueMarkerWithWaitList(NULL, &event_end);
+            cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
+            counter.doOperation(event, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+            clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event(), &d_data(), NULL, NULL);
+            if (status != CL_SUCCESS) {
+                std::cerr << "Error launching fft" << std::endl;
+                exit(EXIT_FAILURE);
+            }
         }
+
 
         uint64_t GridFFT::flops(int size, int batch) {
             int nr_polarizations = parameters.get_nr_polarizations();
@@ -187,10 +208,5 @@ namespace idg {
             int nr_polarizations = parameters.get_nr_polarizations();
         	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
         }
-
-        double GridFFT::runtime() {
-            return compute_runtime(event_start, event_end);
-        }
-
     } // namespace kernel
 } // namespace idg
