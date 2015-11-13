@@ -11,7 +11,7 @@
 #define IDG_HYBRID_KNC_H_
 
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
-#include "AbstractProxy.h"
+#include "Proxy.h"
 #include "PowerSensor.h"
 
 namespace idg {
