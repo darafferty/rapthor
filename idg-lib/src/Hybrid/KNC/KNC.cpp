@@ -235,11 +235,6 @@ namespace idg {
             cout << "KNC::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            double runtime, runtime_degridder, runtime_fft;
-            double total_runtime_degridder = 0;
-            double total_runtime_fft = 0;
-
             // Constants
             auto nr_stations = mParams.get_nr_stations();
             auto nr_baselines = mParams.get_nr_baselines();
@@ -260,8 +255,14 @@ namespace idg {
             float *spheroidal_ptr   = (float *) spheroidal;
             complex<float> *aterm_ptr = (complex<float> *) aterm;
 
+            // Performance measurements
+            double total_runtime_degridding = 0;
+            double total_runtime_degridder = 0;
+            double total_runtime_fft = 0;
+            total_runtime_degridding = -omp_get_wtime();
+
+
             // Start degridder
-            runtime = -omp_get_wtime();
             #pragma omp target data \
                 map(to:wavenumbers_ptr[0:wavenumbers_elements]) \
                 map(to:spheroidal_ptr[0:spheroidal_elements]) \
@@ -285,10 +286,12 @@ namespace idg {
 
                     // Power measurement
                     PowerSensor::State powerStates[3];
-
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     powerStates[0] = powerSensor->read();
                     #endif
+
+                    // Performance measurement
+                    double runtime_degridder, runtime_fft;
 
                     #pragma omp target \
                         map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
@@ -322,8 +325,6 @@ namespace idg {
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     powerStates[2] = powerSensor->read();
-                    //runtime_fft = PowerSensor::seconds(powerStates[0], powerStates[1]);
-                    //runtime_degridder = PowerSensor::seconds(powerStates[1], powerStates[2]);
                     total_runtime_fft += runtime_fft;
                     total_runtime_degridder += runtime_degridder;
                     #endif
@@ -338,29 +339,23 @@ namespace idg {
                         kernel_degridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
                         PowerSensor::Watt(powerStates[1], powerStates[2]));
                     #endif
-
                 } // end for s
             } // end pragma omp target data
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
+            total_runtime_degridding += omp_get_wtime();
+            total_runtime_degridding = total_runtime_degridder + total_runtime_fft;
             clog << endl;
-            clog << "Total: degridding" << endl;
-            auxiliary::report("fft", total_runtime_fft,
-                              kernel_fft_flops(subgridsize, nr_subgrids,
-                                               nr_polarizations),
-                              kernel_fft_bytes(subgridsize, nr_subgrids,
-                                               nr_polarizations));
-            auxiliary::report("degridder", total_runtime_degridder,
-                              kernel_degridder_flops(nr_subgrids, nr_timesteps,
-                                                     nr_channels, subgridsize,
-                                                     nr_polarizations),
-                              kernel_degridder_bytes(nr_subgrids, nr_timesteps,
-                                                     nr_channels, subgridsize,
-                                                     nr_polarizations));
-            runtime = total_runtime_degridder + total_runtime_fft;
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            uint64_t total_flops_degridder  = kernel_degridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_bytes_degridder  = kernel_degridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_flops_fft      = kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_bytes_fft      = kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
+            uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
+            auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
+            auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_degridder
