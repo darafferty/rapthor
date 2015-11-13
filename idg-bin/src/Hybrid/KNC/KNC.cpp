@@ -102,11 +102,6 @@ namespace idg {
             cout << "KNC::" << __func__ << endl;
             #endif
 
-            // Performance measurements
-            double runtime, runtime_gridder, runtime_fft;
-            double total_runtime_gridder = 0;
-            double total_runtime_fft = 0;
-
             // Constants
             auto nr_stations = mParams.get_nr_stations();
             auto nr_baselines = mParams.get_nr_baselines();
@@ -128,8 +123,13 @@ namespace idg {
             float *spheroidal_ptr    = (float *) spheroidal;
             complex<float> *aterm_ptr = (complex<float> *) aterm;
 
+            // Performance measurements
+            double total_runtime_gridding = 0;
+            double total_runtime_gridder = 0;
+            double total_runtime_fft = 0;
+            total_runtime_gridding = -omp_get_wtime();
+
             // Start gridder
-            runtime = -omp_get_wtime();
             #pragma omp target data \
                 map(to:wavenumbers_ptr[0:wavenumbers_elements]) \
                 map(to:spheroidal_ptr[0:spheroidal_elements]) \
@@ -153,10 +153,12 @@ namespace idg {
 
                     // Power measurement
                     PowerSensor::State powerStates[3];
-
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     powerStates[0] = powerSensor->read();
                     #endif
+
+                    // Performance measurement
+                    double runtime_gridder, runtime_fft;
 
                     #pragma omp target \
                         map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
@@ -191,8 +193,6 @@ namespace idg {
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     powerStates[2] = powerSensor->read();
-                    //runtime_gridder = PowerSensor::seconds(powerStates[0], powerStates[1]);
-                    //runtime_fft = PowerSensor::seconds(powerStates[1], powerStates[2]);
                     total_runtime_gridder += runtime_gridder;
                     total_runtime_fft += runtime_fft;
                     #endif
@@ -201,7 +201,7 @@ namespace idg {
                     auxiliary::report("gridder", runtime_gridder,
                         kernel_gridder_flops(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
                         kernel_gridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
-                        PowerSensor::Watt(powerStates[0], powerStates[1]));
+                    PowerSensor::Watt(powerStates[0], powerStates[1]));
                     auxiliary::report("fft", runtime_fft,
                         kernel_fft_flops(subgridsize, current_jobsize, nr_polarizations),
                         kernel_fft_bytes(subgridsize, current_jobsize, nr_polarizations),
@@ -211,18 +211,19 @@ namespace idg {
             } // end omp target data
 
             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            runtime += omp_get_wtime();
+            total_runtime_gridding += omp_get_wtime();
+            total_runtime_gridding = total_runtime_gridder + total_runtime_fft;
             clog << endl;
-            clog << "Total: gridding" << endl;
-            auxiliary::report("gridder", total_runtime_gridder,
-                kernel_gridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
-                kernel_gridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations));
-            auxiliary::report("fft", total_runtime_fft,
-                kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations),
-                kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations));
-            runtime = total_runtime_gridder + total_runtime_fft;
-            auxiliary::report_runtime(runtime);
-            auxiliary::report_visibilities(runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            uint64_t total_flops_gridder  = kernel_gridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_bytes_gridder  = kernel_gridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_flops_fft      = kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_bytes_fft      = kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
+            uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
+            auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
+            auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         } // run_gridder
