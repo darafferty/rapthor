@@ -10,6 +10,7 @@
 #include <CL/cl.hpp>
 
 #include <clFFT.h>
+#include "clFFT/src/library/repo.h"
 
 #include "Parameters.h"
 #include "PerformanceCounter.h"
@@ -81,7 +82,8 @@ namespace idg {
         		uint64_t bytes(int size, int batch);
 
             private:
-                cl::Event event;
+                cl::Event start;
+                cl::Event end;
                 bool uninitialized;
                 Parameters &parameters;
                 int planned_size;

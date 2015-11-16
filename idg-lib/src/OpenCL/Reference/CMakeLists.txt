@@ -6,6 +6,7 @@ include_directories (
   ${_CLFFT_CPP_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src/common
   ${CMAKE_SOURCE_DIR}/src/OpenCL/common
+  ${CMAKE_SOURCE_DIR}/src//external
 )
 
 # sources and header files
