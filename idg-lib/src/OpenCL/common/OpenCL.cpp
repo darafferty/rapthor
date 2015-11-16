@@ -160,7 +160,6 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Set jobsize
-            //TODO: set jobsize according to available memory
             int jobsize = mParams.get_job_size_gridder();
 
             // Start gridder
