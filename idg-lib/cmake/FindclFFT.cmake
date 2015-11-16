@@ -10,6 +10,7 @@ FIND_PACKAGE( PackageHandleStandardArgs )
 
 # Unix style platforms
 FIND_LIBRARY(CLFFT_LIBRARIES clFFT
+    ${CMAKE_SOURCE_DIR}/lib/clFFT/lib64
     ENV LD_LIBRARY_PATH
 )
 
