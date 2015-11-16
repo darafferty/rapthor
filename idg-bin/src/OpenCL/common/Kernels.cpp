@@ -190,14 +190,36 @@ namespace idg {
 
         void GridFFT::launchAsync(
             cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
-            counter.doOperation(event, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
-            clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, &event(), &d_data(), NULL, NULL);
+            counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+
+            // Retrieve fft plan from handle
+	        FFTRepo &fftRepo   = FFTRepo::getInstance();
+	        FFTPlan* fftPlan   = NULL;
+	        lockRAII* planLock = NULL;
+            fftRepo.getPlan(fft, fftPlan, planLock);
+            clfftStatus status;
+
+            // Create intermediate buffer
+		    fftPlan->intBuffer = clCreateBuffer(fftPlan->context, CL_MEM_READ_WRITE, fftPlan->tmpBufSize, 0, NULL);
+		    fftPlan->libCreatedIntBuffer = true;
+		    if (status != CL_SUCCESS) {
+                std::cerr << "Creating the intermediate buffer failed" << std::endl;
+            }
+
+            // Enqueue row transformation
+            status = clfftEnqueueTransform(fftPlan->planX, direction, 1, &queue(), 0, NULL, &start(), &fftPlan->intBuffer, &d_data(), NULL);
             if (status != CL_SUCCESS) {
-                std::cerr << "Error launching fft" << std::endl;
+			    std::cerr << "clfftEnqueueTransform for row failed" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            // Enqueue column transformation
+            status = clfftEnqueueTransform(fftPlan->planY, direction, 1, &queue(), 1, &start(),	&end(), &fftPlan->intBuffer, &d_data(), NULL);
+            if (status != CL_SUCCESS) {
+                std::cerr << "clfftEnqueueTransform for column failed" << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
-
 
         uint64_t GridFFT::flops(int size, int batch) {
             int nr_polarizations = parameters.get_nr_polarizations();
