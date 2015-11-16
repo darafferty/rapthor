@@ -9,6 +9,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/examples/common/utility
   ${CMAKE_SOURCE_DIR}/src/OpenCL/common
   ${CMAKE_SOURCE_DIR}/src/common
+  ${CMAKE_SOURCE_DIR}/src/external
   ${CMAKE_SOURCE_DIR}/examples/OpenCL/common
  )
 
