@@ -42,9 +42,13 @@ namespace idg {
             device = devices[deviceNumber];
 
             #if defined(MEASURE_POWER_ARDUINO)
-            cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
-            cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
-            powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
+            const char *str_power_sensor = getenv("POWER_SENSOR");
+            if (!str_power_sensor) str_power_sensor = STR_POWER_SENSOR;
+            const char *str_power_file = getenv("POWER_FILE");
+            if (!str_power_file) str_power_file = STR_POWER_FILE;
+            cout << "Opening power sensor: " << str_power_sensor << endl;
+            cout << "Writing power consumption to file: " << str_power_file << endl;
+            powerSensor = new PowerSensor(str_power_sensor, str_power_file);
             #endif
 
             mParams = params;
