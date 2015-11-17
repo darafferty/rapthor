@@ -35,6 +35,10 @@ namespace idg {
             cout << "Opening power sensor: " << STR_POWER_SENSOR << endl;
             cout << "Writing power consumption to file: " << STR_POWER_FILE << endl;
             powerSensor = new PowerSensor(STR_POWER_SENSOR, STR_POWER_FILE);
+            const char *str_power_sensor = getenv("POWER_SENSOR");
+            if (!str_power_sensor) str_power_sensor = STR_POWER_SENSOR;
+            const char *str_power_file = getenv("POWER_FILE");
+            if (!str_power_file) str_power_file = STR_POWER_FILE;
             #else
             powerSensor = new PowerSensor();
             #endif
