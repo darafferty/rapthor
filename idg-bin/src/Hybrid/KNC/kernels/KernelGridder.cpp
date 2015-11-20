@@ -11,209 +11,79 @@
 #include "Types.h"
 
 #define NR_POLARIZATIONS 4
-#define UPDATE_1 \
-    const int subgridsize, \
-    const int nr_channels, \
-    const float wavenumbers[nr_channels], \
-    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels], \
-    const float phase_index[subgridsize][subgridsize], \
-    const float phase_offset[subgridsize][subgridsize], \
-    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]) {
-
-#define UPDATE_2 \
-        for (int y = 0; y < subgridsize; y++) { \
-            for (int x = 0; x < subgridsize; x++) { \
-                float phase = (phase_index[y][x] * wavenumbers[chan]) - phase_offset[y][x]; \
-                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase)); \
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) { \
-                    pixels[y][x][pol] += vis[pol][chan] * phasor; \
-                } \
-            } \
-        } \
-    }
 
 namespace idg {
 
 void update_4(
-    UPDATE_1
+    const int subgridsize,
+    const int nr_channels,
+    const float wavenumbers[nr_channels],
+    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels],
+    const float phase_index[subgridsize][subgridsize],
+    const float phase_offset[subgridsize][subgridsize],
+    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]
+    ) {
     #pragma simd
     for (int chan = 0; chan < 4; chan++) {
-    UPDATE_2
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                float phase = (phase_index[y][x] * wavenumbers[chan]) - phase_offset[y][x];
+                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
+
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    pixels[y][x][pol] += vis[pol][chan] * phasor;
+                }
+            }
+        }
+    }
 }
 
 void update_8(
-    UPDATE_1
+    const int subgridsize,
+    const int nr_channels,
+    const float wavenumbers[nr_channels],
+    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels],
+    const float phase_index[subgridsize][subgridsize],
+    const float phase_offset[subgridsize][subgridsize],
+    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]
+    ) {
     #pragma simd
     for (int chan = 0; chan < 8; chan++) {
-    UPDATE_2
-}
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                float phase = (phase_index[y][x] * wavenumbers[chan]) - phase_offset[y][x];
+                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
 
-void update_9(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 9; chan++) {
-    UPDATE_2
-}
-
-void update_10(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 10; chan++) {
-    UPDATE_2
-}
-
-void update_11(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 11; chan++) {
-    UPDATE_2
-}
-
-void update_12(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 12; chan++) {
-    UPDATE_2
-}
-
-void update_13(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 13; chan++) {
-    UPDATE_2
-}
-
-void update_14(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 14; chan++) {
-    UPDATE_2
-}
-
-void update_15(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 15; chan++) {
-    UPDATE_2
-}
-
-void update_16(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 16; chan++) {
-    UPDATE_2
-}
-
-void update_17(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 17; chan++) {
-    UPDATE_2
-}
-
-void update_18(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 18; chan++) {
-    UPDATE_2
-}
-
-void update_19(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 19; chan++) {
-    UPDATE_2
-}
-
-void update_20(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 20; chan++) {
-    UPDATE_2
-}
-
-void update_21(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 21; chan++) {
-    UPDATE_2
-}
-
-void update_22(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 22; chan++) {
-    UPDATE_2
-}
-
-void update_23(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 23; chan++) {
-    UPDATE_2
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    pixels[y][x][pol] += vis[pol][chan] * phasor;
+                }
+            }
+        }
+    }
 }
 
 void update_24(
-    UPDATE_1
+    const int subgridsize,
+    const int nr_channels,
+    const float wavenumbers[nr_channels],
+    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels],
+    const float phase_index[subgridsize][subgridsize],
+    const float phase_offset[subgridsize][subgridsize],
+    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]
+    ) {
     #pragma simd
     for (int chan = 0; chan < 24; chan++) {
-    UPDATE_2
-}
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                float phase = (phase_index[y][x] * wavenumbers[chan]) - phase_offset[y][x];
+                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
 
-void update_25(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 25; chan++) {
-    UPDATE_2
-}
-
-void update_26(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 26; chan++) {
-    UPDATE_2
-}
-
-void update_27(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 27; chan++) {
-    UPDATE_2
-}
-
-void update_28(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 28; chan++) {
-    UPDATE_2
-}
-
-void update_29(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 29; chan++) {
-    UPDATE_2
-}
-
-void update_30(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 30; chan++) {
-    UPDATE_2
-}
-
-void update_31(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 31; chan++) {
-    UPDATE_2
-}
-
-void update_32(
-    UPDATE_1
-    #pragma simd
-    for (int chan = 0; chan < 32; chan++) {
-    UPDATE_2
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    pixels[y][x][pol] += vis[pol][chan] * phasor;
+                }
+            }
+        }
+    }
 }
 
 void update_n(
@@ -334,33 +204,19 @@ void kernel_gridder (
             }
 
             // Compute phasor and update current subgrid
-            #define UPDATE_PARAMETERS subgridsize, nr_channels, *wavenumbers, vis, phase_index, phase_offset, pixels
-            if (nr_channels ==  4) { update_4(UPDATE_PARAMETERS);  continue; }
-            if (nr_channels ==  8) { update_8(UPDATE_PARAMETERS);  continue; }
-            if (nr_channels ==  9) { update_9(UPDATE_PARAMETERS);  continue; }
-            if (nr_channels == 10) { update_10(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 11) { update_11(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 12) { update_12(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 13) { update_13(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 14) { update_14(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 15) { update_15(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 16) { update_16(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 17) { update_17(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 18) { update_18(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 19) { update_19(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 20) { update_20(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 21) { update_21(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 22) { update_22(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 23) { update_23(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 24) { update_24(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 25) { update_25(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 26) { update_26(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 27) { update_27(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 28) { update_28(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 29) { update_29(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 30) { update_30(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 31) { update_31(UPDATE_PARAMETERS); continue; }
-            if (nr_channels == 32) { update_31(UPDATE_PARAMETERS); continue; }
+            if (nr_channels == 4) {
+                update_4(subgridsize, nr_channels,  *wavenumbers, vis, phase_index, phase_offset, pixels);
+                continue;
+            }
+            if (nr_channels == 8) {
+                update_8(subgridsize, nr_channels, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                continue;
+            }
+            if (nr_channels == 24) {
+                update_24(subgridsize, nr_channels, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                continue;
+            }
+
             update_n(subgridsize, nr_channels, *wavenumbers, vis, phase_index, phase_offset, pixels);
         }
 
