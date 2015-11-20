@@ -191,7 +191,26 @@ void kernel_gridder (
                 update_8(subgridsize, nr_channels, 0, *wavenumbers, vis, phase_index, phase_offset, pixels);
                 continue;
             }
-            update_n(subgridsize, nr_channels, 0, *wavenumbers, vis, phase_index, phase_offset, pixels);
+            if (nr_channels == 16 || nr_channels == 32) {
+                update_n(subgridsize, nr_channels, 0, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                continue;
+            }
+
+            // Any other nr_channels is computed in chunks
+            int channels_left = nr_channels;
+            while (channels_left > 16) {
+                update_n(subgridsize, nr_channels, nr_channels - channels_left, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                channels_left -= 16;
+            }
+            while (channels_left > 8) {
+                update_8(subgridsize, nr_channels, nr_channels - channels_left, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                channels_left -= 8;
+            }
+            while (channels_left > 4) {
+                update_4(subgridsize, nr_channels, nr_channels - channels_left, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                channels_left -= 4;
+            }
+            update_n(subgridsize, nr_channels, nr_channels - channels_left, *wavenumbers, vis, phase_index, phase_offset, pixels);
         }
 
         // Apply aterm and spheroidal and store result
