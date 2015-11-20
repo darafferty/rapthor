@@ -108,15 +108,32 @@ void kernel_gridder (
             }
 
             // Compute phasor and update current subgrid
-            #pragma simd
-            for (int chan = 0; chan < nr_channels; chan++) {
-                for (int y = 0; y < subgridsize; y++) {
-                    for (int x = 0; x < subgridsize; x++) {
-                        float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
+            if (nr_channels == 8) {
+                #pragma simd
+                for (int chan = 0; chan < 8; chan++) {
+                    for (int y = 0; y < subgridsize; y++) {
+                        for (int x = 0; x < subgridsize; x++) {
+                            float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
+                            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
 
-                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels[y][x][pol] += vis[pol][chan] * phasor;
+                            #pragma unroll_and_jam(NR_POLARIZATIONS)
+                            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                pixels[y][x][pol] += vis[pol][chan] * phasor;
+                            }
+                        }
+                    }
+                }
+            } else {
+                #pragma simd
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    for (int y = 0; y < subgridsize; y++) {
+                        for (int x = 0; x < subgridsize; x++) {
+                            float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
+                            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
+
+                            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                pixels[y][x][pol] += vis[pol][chan] * phasor;
+                            }
                         }
                     }
                 }
