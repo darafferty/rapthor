@@ -14,6 +14,81 @@
 
 namespace idg {
 
+void update_4(
+    const int subgridsize,
+    const int nr_channels,
+    const int channel_offset,
+    const float wavenumbers[nr_channels],
+    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels],
+    const float phase_index[subgridsize][subgridsize],
+    const float phase_offset[subgridsize][subgridsize],
+    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]
+    ) {
+    #pragma simd
+    for (int chan = 0; chan < 4; chan++) {
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                float phase = (phase_index[y][x] * wavenumbers[chan+channel_offset]) - phase_offset[y][x];
+                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
+    
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    pixels[y][x][pol] += vis[pol][chan+channel_offset] * phasor;
+                }
+            }
+        }
+    }
+}
+
+void update_8(
+    const int subgridsize,
+    const int nr_channels,
+    const int channel_offset,
+    const float wavenumbers[nr_channels],
+    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels],
+    const float phase_index[subgridsize][subgridsize],
+    const float phase_offset[subgridsize][subgridsize],
+    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]
+    ) {
+    #pragma simd
+    for (int chan = 0; chan < 8; chan++) {
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                float phase = (phase_index[y][x] * wavenumbers[chan+channel_offset]) - phase_offset[y][x];
+                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
+    
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    pixels[y][x][pol] += vis[pol][chan+channel_offset] * phasor;
+                }
+            }
+        }
+    }
+}
+
+void update_n(
+    const int subgridsize,
+    const int nr_channels,
+    const int channel_offset,
+    const float wavenumbers[nr_channels],
+    const FLOAT_COMPLEX vis[NR_POLARIZATIONS][nr_channels],
+    const float phase_index[subgridsize][subgridsize],
+    const float phase_offset[subgridsize][subgridsize],
+    FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS]
+    ) {
+    #pragma simd
+    for (int chan = 0; chan < nr_channels; chan++) {
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                float phase = (phase_index[y][x] * wavenumbers[chan+channel_offset]) - phase_offset[y][x];
+                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
+    
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    pixels[y][x][pol] += vis[pol][chan+channel_offset] * phasor;
+                }
+            }
+        }
+    }
+}
+
 void kernel_gridder (
 	const int jobsize, const float w_offset,
 	const void *_uvw,
@@ -108,36 +183,15 @@ void kernel_gridder (
             }
 
             // Compute phasor and update current subgrid
-            if (nr_channels == 8) {
-                #pragma simd
-                for (int chan = 0; chan < 8; chan++) {
-                    for (int y = 0; y < subgridsize; y++) {
-                        for (int x = 0; x < subgridsize; x++) {
-                            float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-                            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
-
-                            #pragma unroll_and_jam(NR_POLARIZATIONS)
-                            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                pixels[y][x][pol] += vis[pol][chan] * phasor;
-                            }
-                        }
-                    }
-                }
-            } else {
-                #pragma simd
-                for (int chan = 0; chan < nr_channels; chan++) {
-                    for (int y = 0; y < subgridsize; y++) {
-                        for (int x = 0; x < subgridsize; x++) {
-                            float phase = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-                            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(cosf(phase), sinf(phase));
-
-                            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                pixels[y][x][pol] += vis[pol][chan] * phasor;
-                            }
-                        }
-                    }
-                }
+            if (nr_channels == 4) {
+                update_4(subgridsize, nr_channels, 0, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                continue;
             }
+            if (nr_channels == 8) {
+                update_8(subgridsize, nr_channels, 0, *wavenumbers, vis, phase_index, phase_offset, pixels);
+                continue;
+            }
+            update_n(subgridsize, nr_channels, 0, *wavenumbers, vis, phase_index, phase_offset, pixels);
         }
 
         // Apply aterm and spheroidal and store result
