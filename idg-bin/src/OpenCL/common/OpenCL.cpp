@@ -84,7 +84,7 @@ namespace idg {
             cout << "Transform direction: " << direction << endl;
             #endif
 
-            int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+            clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
             run_fft(CL_FFT_ARGUMENTS);
         }
 
@@ -135,6 +135,7 @@ namespace idg {
         #define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
         #define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
         #define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
+        #define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
 
 
         /// Low level routines
@@ -206,27 +207,27 @@ namespace idg {
 
                     #pragma omp critical (GPU)
                     {
-    						// Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
-                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
+                        // Copy input data to device
+                        htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
+                        htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                        htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, current_jobsize * SIZEOF_VISIBILITIES, NULL, NULL);
+                        htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                        htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-    						// Create FFT plan
-                            kernel_fft.plan(context, executequeue, subgridsize, current_jobsize);
+    					// Create FFT plan
+                        kernel_fft.plan(context, executequeue, subgridsize, current_jobsize * nr_polarizations);
 
-    						// Launch gridder kernel
-                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_gridder);
+    					// Launch gridder kernel
+                        executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                        kernel_gridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_gridder);
 
-    						// Launch FFT
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counter_fft);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+    					// Launch FFT
+                        kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counter_fft);
+                        executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
-    						// Copy subgrid to host
-                            dtohqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
+    					// Copy subgrid to host
+                        dtohqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
+                        dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrids_offset, current_jobsize * SIZEOF_SUBGRIDS, NULL, &outputReady[0]);
                     }
 
                     // Wait for device to host transfer to finish
@@ -298,9 +299,9 @@ namespace idg {
                 htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                 // Private device memory
-                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE,  jobsize * SIZEOF_VISIBILITIES);
+                cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_VISIBILITIES);
                 cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_UVW);
-                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_ONLY, jobsize * SIZEOF_SUBGRIDS);
+                cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, jobsize * SIZEOF_SUBGRIDS);
                 cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  jobsize * SIZEOF_METADATA);
 
                 // Performance counters
@@ -324,27 +325,27 @@ namespace idg {
 
                     #pragma omp critical (GPU)
                     {
-    						// Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrids_offset, 0, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
-                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
+    					// Copy input data to device
+                        htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
+                        htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, current_jobsize * SIZEOF_UVW, NULL, NULL);
+                        htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, current_jobsize * SIZEOF_METADATA, NULL, NULL);
+                        htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrids_offset, 0, current_jobsize * SIZEOF_SUBGRIDS, NULL, NULL);
+                        htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-    						// Create FFT plan
-                            kernel_fft.plan(context, executequeue, subgridsize, current_jobsize);
+    					// Create FFT plan
+                        kernel_fft.plan(context, executequeue, subgridsize, current_jobsize * nr_polarizations);
 
-    						// Launch FFT
-                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counter_fft);
+    					// Launch FFT
+                        executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
+                        kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counter_fft);
 
-    						// Launch degridder kernel
-                            kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_degridder);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+    					// Launch degridder kernel
+                        kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_degridder);
+                        executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
-    						// Copy visibilities to host
-                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
+    					// Copy visibilities to host
+                        dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
+                        dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, current_jobsize * SIZEOF_VISIBILITIES, NULL, &outputReady[0]);
                     }
 
                     // Wait for device to host transfer to finish
@@ -364,8 +365,46 @@ namespace idg {
         void OpenCL::run_fft(CL_FFT_PARAMETERS)
         {
             #if defined(DEBUG)
-            cout << "CUDA::" << __func__ << endl;
+            cout << "OpenCL::" << __func__ << endl;
             #endif
+
+            // Constants
+            auto nr_polarizations = mParams.get_nr_polarizations();
+            auto gridsize = mParams.get_grid_size();
+
+            // Command queue
+            cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+
+            // Events
+            vector<cl::Event> outputReady(1);
+
+            // Device memory
+            cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, SIZEOF_GRID);
+
+            // Performance counter
+            PerformanceCounter counter_fft;
+            #if defined(MEASURE_POWER_ARDUINO)
+            counter_fft.setPowerSensor(powerSensor);
+            #endif
+
+            // Load kernel function
+            kernel::GridFFT kernel_fft(mParams);
+
+            // Copy grid to device
+            queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, SIZEOF_GRID, NULL, NULL);
+
+            // Create FFT plan
+            kernel_fft.plan(context, queue, gridsize, nr_polarizations);
+
+    		// Launch FFT
+            kernel_fft.launchAsync(queue, d_grid, direction, counter_fft);
+
+            // Copy grid to host
+            queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, SIZEOF_GRID, NULL, &outputReady[0]);
+
+            // Wait for fft to finish
+            outputReady[0].wait();
+            clog << endl;
         } // run_fft
 
         void OpenCL::compile(Compilerflags flags)

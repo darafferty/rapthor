@@ -114,6 +114,9 @@ int main(int argc, char *argv[]) {
     idg::proxy::opencl::Reference opencl(params, context, deviceNumber);
     clog << endl;
 
+    clog << ">>> Run fft" << endl;
+    opencl.transform(idg::FourierDomainToImageDomain, h_grid);
+
     // Run gridder
     clog << ">>> Run gridder" << endl;
     opencl.grid_onto_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);

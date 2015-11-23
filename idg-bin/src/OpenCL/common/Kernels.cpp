@@ -166,11 +166,10 @@ namespace idg {
                 if (!uninitialized) {
                     clfftDestroyPlan(&fft);
                 }
-
                 // Create new plan
                 size_t lengths[2] = {(size_t) size, (size_t) size};
                 clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
-                clfftSetPlanBatchSize(fft, batch * 4);
+                clfftSetPlanBatchSize(fft, batch);
                 size_t dist = size * size;
                 clfftSetPlanDistance(fft, dist, dist);
 
@@ -215,13 +214,11 @@ namespace idg {
         }
 
         uint64_t GridFFT::flops(int size, int batch) {
-            int nr_polarizations = parameters.get_nr_polarizations();
-        	return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);
+        	return 1ULL * batch * 5 * size * size * log(size * size) / log(2.0);
         }
 
         uint64_t GridFFT::bytes(int size, int batch) {
-            int nr_polarizations = parameters.get_nr_polarizations();
-        	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
+        	return 1ULL * 2 * batch * size * size * sizeof(complex<float>);
         }
     } // namespace kernel
 } // namespace idg

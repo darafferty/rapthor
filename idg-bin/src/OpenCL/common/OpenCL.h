@@ -25,7 +25,7 @@
 #define CL_DEGRIDDER_PARAMETERS CL_GRIDDER_PARAMETERS
 #define CL_ADDER_PARAMETERS     unsigned nr_subgrids, cl::Buffer &h_metadata, cl::Buffer &h_subgrids, cl::Buffer &h_grid
 #define CL_SPLITTER_PARAMETERS  CL_ADDER_PARAMETERS
-#define CL_FFT_PARAMETERS       cl::Buffer &h_grid, int direction
+#define CL_FFT_PARAMETERS       cl::Buffer &h_grid, clfftDirection direction
 
 // High level method arguments
 #define CL_GRIDDER_ARGUMENTS    nr_subgrids, w_offset, h_uvw, d_wavenumbers, h_visibilities, \
@@ -33,7 +33,7 @@
 #define CL_DEGRIDDER_ARGUMENTS  CL_GRIDDER_ARGUMENTS
 #define CL_ADDER_ARGUMENTS      nr_subgrids, h_metadata, h_subgrids, h_grid
 #define CL_SPLITTER_ARGUMENTS   CL_ADDER_ARGUMENTS
-#define CL_FFT_ARGUMENTS        h_grid, direction
+#define CL_FFT_ARGUMENTS        h_grid, sign
 
 
 namespace idg {
