@@ -49,8 +49,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -111,8 +111,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                counter.doOperation(event, "degridder", flops(jobsize), bytes(jobsize));
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "degridder", flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
