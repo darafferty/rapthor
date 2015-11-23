@@ -49,8 +49,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -111,8 +111,8 @@ namespace idg {
             kernel.setArg(6, d_metadata);
             kernel.setArg(7, d_subgrid);
             try {
-                counter.doOperation(event, "degridder", flops(jobsize), bytes(jobsize));
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "degridder", flops(jobsize), bytes(jobsize));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -166,7 +166,6 @@ namespace idg {
                 if (!uninitialized) {
                     clfftDestroyPlan(&fft);
                 }
-
                 // Create new plan
                 size_t lengths[2] = {(size_t) size, (size_t) size};
                 clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
@@ -199,22 +198,15 @@ namespace idg {
             fftRepo.getPlan(fft, fftPlan, planLock);
             clfftStatus status;
 
-            // Create intermediate buffer
-		    fftPlan->intBuffer = clCreateBuffer(fftPlan->context, CL_MEM_READ_WRITE, fftPlan->tmpBufSize, 0, NULL);
-		    fftPlan->libCreatedIntBuffer = true;
-		    if (status != CL_SUCCESS) {
-                std::cerr << "Creating the intermediate buffer failed" << std::endl;
-            }
-
             // Enqueue row transformation
-            status = clfftEnqueueTransform(fftPlan->planX, direction, 1, &queue(), 0, NULL, &start(), &fftPlan->intBuffer, &d_data(), NULL);
+            status = clfftEnqueueTransform(fftPlan->planX, direction, 1, &queue(), 0, NULL, &start(), &d_data(), &d_data(), NULL);
             if (status != CL_SUCCESS) {
 			    std::cerr << "clfftEnqueueTransform for row failed" << std::endl;
                 exit(EXIT_FAILURE);
             }
 
             // Enqueue column transformation
-            status = clfftEnqueueTransform(fftPlan->planY, direction, 1, &queue(), 1, &start(),	&end(), &fftPlan->intBuffer, &d_data(), NULL);
+            status = clfftEnqueueTransform(fftPlan->planY, direction, 1, &queue(), 1, &start(),	&end(), &d_data(), &d_data(), NULL);
             if (status != CL_SUCCESS) {
                 std::cerr << "clfftEnqueueTransform for column failed" << std::endl;
                 exit(EXIT_FAILURE);
@@ -222,13 +214,11 @@ namespace idg {
         }
 
         uint64_t GridFFT::flops(int size, int batch) {
-            int nr_polarizations = parameters.get_nr_polarizations();
-        	return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
+        	return 1ULL * batch * 5 * size * size * log(size * size) / log(2.0);
         }
 
         uint64_t GridFFT::bytes(int size, int batch) {
-            int nr_polarizations = parameters.get_nr_polarizations();
-        	return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(complex<float>);
+        	return 1ULL * 2 * batch * size * size * sizeof(complex<float>);
         }
     } // namespace kernel
 } // namespace idg
