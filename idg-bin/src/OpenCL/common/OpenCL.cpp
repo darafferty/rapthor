@@ -336,7 +336,7 @@ namespace idg {
 
     						// Launch FFT
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counter_fft);
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counter_fft);
 
     						// Launch degridder kernel
                             kernel_degridder.launchAsync(executequeue, current_jobsize, w_offset, d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_degridder);
