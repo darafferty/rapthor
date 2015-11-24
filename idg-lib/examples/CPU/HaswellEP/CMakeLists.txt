@@ -1,10 +1,10 @@
-project(cpu-haswellep.x)
+project(example-cpu-haswellep.x)
 
 # Set external header files
 include_directories(
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/examples/common/external
-  ${CMAKE_SOURCE_DIR}/examples/common/utility
+  ${CMAKE_SOURCE_DIR}/external
+  ${CMAKE_SOURCE_DIR}/utility
   ${CMAKE_SOURCE_DIR}/examples/CPU/common
   ${CMAKE_SOURCE_DIR}/src/CPU/common
   ${CMAKE_SOURCE_DIR}/src/common
@@ -22,7 +22,8 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 
 target_link_libraries (
   ${PROJECT_NAME} 
-  idg-examples-common
+  idg-external
+  idg-utility
   idg-cpu-haswellep
   idg-cpu-common 
   idg-common
