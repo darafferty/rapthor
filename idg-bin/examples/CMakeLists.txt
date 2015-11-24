@@ -1,7 +1,6 @@
 project(examples)
 
 # add subfolders
-add_subdirectory(common)
 if (BUILD_WITH_CPU)
     add_subdirectory(CPU)
 endif()
