@@ -1,12 +1,12 @@
-project(opencl-reference.x)
+project(example-opencl-reference.x)
 
 # Set external header files
 include_directories(
   ${_OPENCL_CPP_INCLUDE_DIRS}
   ${_CLFFT_CPP_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/examples/common/external
-  ${CMAKE_SOURCE_DIR}/examples/common/utility
+  ${CMAKE_SOURCE_DIR}/external
+  ${CMAKE_SOURCE_DIR}/utility
   ${CMAKE_SOURCE_DIR}/src/OpenCL/common
   ${CMAKE_SOURCE_DIR}/src/common
   ${CMAKE_SOURCE_DIR}/src/external
@@ -25,7 +25,8 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 
 target_link_libraries (
   ${PROJECT_NAME} 
-  idg-examples-common
+  idg-external
+  idg-utility
   idg-opencl-reference
   idg-opencl-common
   idg-common
