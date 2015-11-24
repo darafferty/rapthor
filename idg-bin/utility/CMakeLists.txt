@@ -1,21 +1,19 @@
-project(idg-examples-common)
+project(idg-utility)
 
 # external header files needed
 include_directories (
-    ${CMAKE_SOURCE_DIR}/examples/common/external
-    ${CMAKE_SOURCE_DIR}/examples/common/utility
+    ${CMAKE_SOURCE_DIR}/external
+    ${CMAKE_SOURCE_DIR}/utility
 )
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
-  utility/Arguments.h
-  utility/Init.h
-  external/uvwsim.h
+  Arguments.h
+  Init.h
 )
 
 set (${PROJECT_NAME}_sources 
-  utility/Init.cpp
-  external/uvwsim.cpp
+  Init.cpp
 )
 
 # create a common library 
@@ -25,5 +23,5 @@ add_library(
 )
 
 # linker
-target_link_libraries(${PROJECT_NAME} idg-examples-common)
+target_link_libraries(${PROJECT_NAME} idg-utility)
 
