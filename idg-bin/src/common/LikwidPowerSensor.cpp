@@ -8,8 +8,10 @@
 #include <omp.h>
 #include <unistd.h>
 
+#if defined(MEASURE_POWER_LIKWID)
 #if !defined __MIC__
 #include </usr/include/numa.h>
+#endif
 #endif
 
 #if defined(MEASURE_POWER_LIKWID)
