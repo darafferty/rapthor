@@ -25,8 +25,8 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 
 target_link_libraries (
   ${PROJECT_NAME} 
-  idg-external
   idg-utility
+  idg-external
   idg-opencl-reference
   idg-opencl-common
   idg-common
