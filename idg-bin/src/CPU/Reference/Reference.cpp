@@ -69,7 +69,7 @@ namespace idg {
         string Reference::default_compiler_flags() 
         {
             #if defined(USING_INTEL_CXX_COMPILER)
-            return "-Wall -O3 -openmp -mkl";
+            return "-Wall -O3 -openmp -mkl -lmkl_def";
             #else 
             return "-Wall -O3 -fopenmp -lfftw3f";
             #endif
