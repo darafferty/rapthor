@@ -23,6 +23,12 @@ int main(int argc, char *argv[]) {
     // Set constants explicitly in the parameters parameter
     clog << ">>> Configuration"  << endl;
     idg::Parameters params;
+    // Read the following from ENV: 
+    // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE, 
+    // GRIDSIZE 
+    // if non-default jobsize wanted, set JOBSIZE (all routines), 
+    // JOBSIZE_GRIDDING, JOBSIZE_DEGRIDDING, JOBSIZE_GRIDDER, 
+    // JOBSIZE_ADDER, JOBSIZE_SPLITTER, JOBSIZE_DEGRIDDER
     params.set_from_env();
 
     // retrieve constants for memory allocation
