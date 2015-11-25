@@ -5,7 +5,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/extract.hpp>
 
-#include <AbstractProxy.h>
+#include <Proxy.h>
 #include <CPU/HaswellEP/idg.h>
 
 #include <numpy/arrayobject.h>
