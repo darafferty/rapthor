@@ -44,7 +44,7 @@ install(
 install(
     FILES
     idg.h
-    HaswellEP.h
+    SandyBridgeEP.h
     DESTINATION
     include/CPU/SandyBridgeEP
 )
