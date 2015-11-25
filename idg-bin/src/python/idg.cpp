@@ -6,7 +6,7 @@
 #include <boost/python/extract.hpp>
 
 #include <Proxy.h>
-#include <CPU/HaswellEP/idg.h>
+#include <CPU/SandyBridgeEP/idg.h>
 
 #include <numpy/arrayobject.h>
 
@@ -160,5 +160,5 @@ BOOST_PYTHON_MODULE(_idg)
 
   ;
 
-  class_<proxy::cpu::HaswellEP, bases<proxy::Proxy>>("HaswellEP", init<Parameters>());
+  class_<proxy::cpu::SandyBridgeEP, bases<proxy::Proxy>>("SandyBridgeEP", init<Parameters>());
 }
