@@ -47,7 +47,17 @@ namespace idg {
     class Proxy {
         public:
             /// Inteface for methods provided by the proxy
-            /** \brief Grid the visibilities onto uniform subgrids (visibilities -> subgrids) */
+            /** \brief Grid the visibilities onto uniform subgrids 
+                (visibilities -> subgrids) 
+                TODO: specify parameters, what is input, output, 
+                input and output, and what does it mean
+                \param wavenumbers [in]
+                \param visibilities [in] 
+                \param spheroidal [in]
+                \param aterm [in]
+                \param metadata [in]
+                \param subgrids [out]
+            */
             virtual void grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS) = 0;
     
             /** \brief Add subgrids to a gridd (subgrids -> grid) */
