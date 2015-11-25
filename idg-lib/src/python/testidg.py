@@ -218,7 +218,7 @@ p.subgrid_size = 32
 p.job_size = jobsize
 
 # Initialize proxy
-proxy = idg.HaswellEP(p)
+proxy = idg.SandyBridgeEP(p)
 
 # Initialize databuffer
 databuffer = DataBuffer(p, nr_subgrids, freqs, proxy)
