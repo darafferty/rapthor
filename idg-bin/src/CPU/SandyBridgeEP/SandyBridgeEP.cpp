@@ -72,10 +72,24 @@ namespace idg {
 
         string SandyBridgeEP::default_compiler_flags() 
         {
+            string debug = "Debug";
+            string relwithdebinfo = "RelWithDebInfo";
+
             #if defined(USING_GNU_CXX_COMPILER)
-            return "-Wall -O3 -fopenmp -lfftw3f";
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -g -fopenmp -lfftw3f";
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -g -fopenmp -lfftw3f";
+            else
+                return "-Wall -O3 -fopenmp -lfftw3f";
             #else 
-            return "-Wall -O3 -openmp -mkl -lmkl_avx -lmkl_vml_avx -march=core-avx-i";
+            // Settings (general, assuming intel as default) 
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -openmp -g -DDEBUG -mkl -lmkl_avx -lmkl_vml_avx -march=core-avx-i";
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -g -openmp -mkl -lmkl_avx -lmkl_vml_avx -march=core-avx-i";
+            else
+                return "-Wall -O3 -openmp -mkl -lmkl_avx -lmkl_vml_avx -march=core-avx-i";
             #endif
         }
 

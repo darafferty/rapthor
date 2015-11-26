@@ -72,10 +72,25 @@ namespace idg {
 
         string HaswellEP::default_compiler_flags() 
         {
+            string debug = "Debug";
+            string relwithdebinfo = "RelWithDebInfo";
+
             #if defined(USING_GNU_CXX_COMPILER)
-            return "-Wall -O3 -fopenmp -lfftw3f";
+            // Settings for gcc
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -g -fopenmp -lfftw3f";
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -g -fopenmp -lfftw3f";
+            else
+                return "-Wall -O3 -fopenmp -lfftw3f";
             #else 
-            return "-Wall -O3 -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
+            // Settings (general, assuming intel as default) 
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -g -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -g -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
+            else
+                return "-Wall -O3 -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
             #endif
         }
 
