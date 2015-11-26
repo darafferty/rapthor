@@ -57,15 +57,20 @@ else()
 set (BUILD_SHARED_LIBS TRUE)
 endif()
 
-# Compiler:
+# Compiler stettings:
+if (NOT CMAKE_BUILD_TYPE)
+   set(CMAKE_BUILD_TYPE "Release")
+endif()
+# set debug print info
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(USING_CLANG_CXX_COMPILER TRUE)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(USING_GNU_CXX_COMPILER TRUE)
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(USING_INTEL_CXX_COMPILER TRUE)
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -mkl")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(USING_MSVC_CXX_COMPILER TRUE)
 endif()
@@ -87,9 +92,6 @@ if (OPENMP_FOUND)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
-# set debug print info
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDEBUG")
 
 # find CUDA environment 
 # (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
