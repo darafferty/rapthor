@@ -68,10 +68,25 @@ namespace idg {
 
         string Reference::default_compiler_flags() 
         {
+            string debug = "Debug";
+            string relwithdebinfo = "RelWithDebInfo";
+
             #if defined(USING_INTEL_CXX_COMPILER)
-            return "-Wall -O3 -openmp -mkl -lmkl_def";
+            // Settings for the intel compiler
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -g -DDEBUG -openmp -mkl -lmkl_def";
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -openmp -g -mkl -lmkl_def";
+            else
+                return "-Wall -O3 -openmp -mkl -lmkl_def";
             #else 
-            return "-Wall -O3 -fopenmp -lfftw3f";
+            // Settings (general, assuming gcc as default) 
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -g -DDEBUG -fopenmp -lfftw3f";
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -g -fopenmp -lfftw3f";
+            else
+                return "-Wall -O3 -fopenmp -lfftw3f";
             #endif
         }
 
