@@ -94,23 +94,29 @@ void kernel_gridder(
                 FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][time_nr][2][y][x]);
                 FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][time_nr][3][y][x]);
 
+                // Load uv values
+                FLOAT_COMPLEX pixelsXX = pixels[0];
+                FLOAT_COMPLEX pixelsXY = pixels[1];
+                FLOAT_COMPLEX pixelsYX = pixels[2];
+                FLOAT_COMPLEX pixelsYY = pixels[3];
+
                 // Apply aterm to subgrid
-                pixels[0]  = (pixels[0] * aXX1);
-                pixels[0] += (pixels[1] * aYX1);
-                pixels[0] += (pixels[0] * aXX2);
-                pixels[0] += (pixels[2] * aYX2);
-                pixels[1]  = (pixels[0] * aXY1);
-                pixels[1] += (pixels[1] * aYY1);
-                pixels[1] += (pixels[1] * aXX2);
-                pixels[1] += (pixels[3] * aYX2);
-                pixels[2]  = (pixels[2] * aXX1);
-                pixels[2] += (pixels[3] * aYX1);
-                pixels[2] += (pixels[0] * aXY2);
-                pixels[2] += (pixels[2] * aYY2);
-                pixels[3]  = (pixels[2] * aXY1);
-                pixels[3] += (pixels[3] * aYY1);
-                pixels[3] += (pixels[1] * aXY2);
-                pixels[3] += (pixels[3] * aYY2);
+                pixels[0]  = (pixelsXX * aXX1);
+                pixels[0] += (pixelsXY * aYX1);
+                pixels[0] += (pixelsXX * aXX2);
+                pixels[0] += (pixelsYX * aYX2);
+                pixels[1]  = (pixelsXX * aXY1);
+                pixels[1] += (pixelsXY * aYY1);
+                pixels[1] += (pixelsXY * aXX2);
+                pixels[1] += (pixelsYY * aYX2);
+                pixels[2]  = (pixelsYX * aXX1);
+                pixels[2] += (pixelsYY * aYX1);
+                pixels[2] += (pixelsXX * aXY2);
+                pixels[2] += (pixelsYX * aYY2);
+                pixels[3]  = (pixelsYX * aXY1);
+                pixels[3] += (pixelsYY * aYY1);
+                pixels[3] += (pixelsXY * aXY2);
+                pixels[3] += (pixelsYY * aYY2);
 
                 // Load spheroidal
                 float sph = (*spheroidal)[y][x];
