@@ -17,30 +17,29 @@ namespace idg {
         namespace cpu {
 
             class Reference : public CPU {
-            
-            public:
-                /// Constructors
-                Reference(Parameters params,
-                          Compiler compiler = default_compiler(),
-                          Compilerflags flags = default_compiler_flags(),
-                          ProxyInfo info = default_info());
-                
-                /// Copy constructor
-                //Reference(const Reference& v) = delete;
 
-                /// Destructor
-                virtual ~Reference() = default;
+                public:
+                    /// Constructors
+                    Reference(Parameters params,
+                              Compiler compiler = default_compiler(),
+                              Compilerflags flags = default_compiler_flags(),
+                              ProxyInfo info = default_info());
 
-                /// Assignment
-                Reference& operator=(const Reference& rhs) = delete;
-    
-                // Get default values for ProxyInfo
-                static ProxyInfo default_info();
-                static std::string default_compiler();
-                static std::string default_compiler_flags();
-                    
-        }; // class Reference
-    
+                    /// Copy constructor
+                    //Reference(const Reference& v) = delete;
+
+                    /// Destructor
+                    virtual ~Reference() = default;
+
+                    /// Assignment
+                    Reference& operator=(const Reference& rhs) = delete;
+
+                    // Get default values for ProxyInfo
+                    static ProxyInfo default_info();
+                    static std::string default_compiler();
+                    static std::string default_compiler_flags();
+
+            }; // class Reference
         } // namespace cpu
     } // namespace proxy
 } // namespace idg
