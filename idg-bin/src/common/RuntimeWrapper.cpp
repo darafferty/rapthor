@@ -23,7 +23,9 @@ namespace idg {
     {
         #pragma omp critical(clog)
         {
+            #if defined(DEBUG)
 	        clog << "Compiling " << output_file_name << endl;
+            #endif
 	        
 	        // Build command
 	        stringstream command_line;
@@ -33,8 +35,10 @@ namespace idg {
 	        command_line << output_file_name;
 	        command_line << ' ' << input_file_name;
 	        command_line << ' ' << compiler_options;
-	        
+
+            #if defined(DEBUG)
 	        clog << command_line.str() << endl;
+            #endif
 	        
 	        int retval = system(command_line.str().c_str());
 	        
