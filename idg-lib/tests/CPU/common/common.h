@@ -162,8 +162,9 @@ int run_test()
                                    metadata, subgrids_ref);
     std::clog << std::endl;
 
-
-    float degrid_error = get_accucary(size_grid, visibilities, visibilities_ref);
+    float degrid_error = get_accucary(size_visibilities,
+                                      visibilities,
+                                      visibilities_ref);
 
 
     // Report results
