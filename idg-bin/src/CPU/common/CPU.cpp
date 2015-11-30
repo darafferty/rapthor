@@ -556,7 +556,9 @@ namespace idg {
                     source << mInfo.get_path_to_src() << "/" << src << " ";
                 } // source = a.cpp b.cpp c.cpp ...
 
+                #if defined(DEBUG)
                 cout << lib << " " << source.str() << " " << endl;
+                #endif
 
                 runtime::Source(source.str().c_str()).compile(compiler.c_str(),
                                                         lib.c_str(),
