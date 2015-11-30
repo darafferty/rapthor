@@ -23,6 +23,20 @@ void run_gridding_test(
 
 
 
+void run_degridding_test(
+    const idg::Parameters& params,
+    const int nr_subgrids,
+    const float* uvw,
+    const float* wavenumbers,
+    std::complex<float>* visibilities,
+    std::complex<float>* visibilities_ref,
+    const float* spheroidal,
+    const std::complex<float>* aterm,
+    const int* metadata,
+    std::complex<float>* subgrids,
+    const std::complex<float>* grid);
+
+
 // compute max|A[i]-A_ref[i]| / max|A_ref[i]|
 float get_accucary(
     const int size,
@@ -63,6 +77,7 @@ float get_accucary(
 int main(int argc, char *argv[])
 {
     int info = 0;
+    float tol = 100*std::numeric_limits<float>::epsilon();
 
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;
@@ -115,15 +130,18 @@ int main(int argc, char *argv[])
     auto subgrids = new std::complex<float>[size_subgrids];
     auto subgrids_ref = new std::complex<float>[size_subgrids];
 
-    idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
-    idg::init_visibilities(visibilities_ref, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
+    idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots,
+                           nr_channels, nr_polarizations);
+    idg::init_visibilities(visibilities_ref, nr_baselines, nr_timesteps*nr_timeslots,
+                           nr_channels, nr_polarizations);
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
     idg::init_wavenumbers(wavenumbers, nr_channels);
     idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
     idg::init_grid(grid_ref, gridsize, nr_polarizations);
-    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
+    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines,
+                       nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
     std::clog << std::endl;
 
     // Compare gridding (onto subgrids and adding to grid) to reference
@@ -134,14 +152,31 @@ int main(int argc, char *argv[])
     // TODO: use data types, so that grid knows its size and we can write 
     // stuff like "grid_ref -= grid"; "grid_ref.maxabs()", ...
     float grid_error = get_accucary(size_grid, grid, grid_ref);
-    std::cout << "grid_error = " << std::scientific << grid_error << std::endl;
-    float tol = 100*std::numeric_limits<float>::epsilon();
     if (grid_error < tol) {
         std::cout << "Gridding test PASSED!" << std::endl;
     } else {
         std::cout << "Gridding test FAILED!" << std::endl;
         info = 1;
     }
+
+
+    // Compare degridding to reference
+    run_degridding_test(params, nr_subgrids, uvw, wavenumbers, visibilities,
+                        visibilities_ref, spheroidal, aterm, metadata,
+                        subgrids, grid);
+
+    // TODO: use data types, so that grid knows its size and we can write
+    // stuff like "grid_ref -= grid"; "grid_ref.maxabs()", ...
+    float degrid_error = get_accucary(size_grid, visibilities, visibilities_ref);
+    if (degrid_error < tol) {
+        std::cout << "Degridding test PASSED!" << std::endl;
+    } else {
+        std::cout << "Degridding test FAILED!" << std::endl;
+        info = 2;
+    }
+
+    std::cout << "grid_error = " << std::scientific << grid_error << std::endl;
+    std::cout << "degrid_error = " << std::scientific << degrid_error << std::endl;
 
 
     // Free memory for data structures

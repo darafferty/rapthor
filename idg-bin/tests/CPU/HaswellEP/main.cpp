@@ -62,6 +62,52 @@ void run_gridding_test(
 
 
 
+void run_degridding_test(
+    const idg::Parameters& params,
+    const int nr_subgrids,
+    const float* uvw,
+    const float* wavenumbers,
+    std::complex<float>* visibilities,
+    std::complex<float>* visibilities_ref,
+    const float* spheroidal,
+    const std::complex<float>* aterm,
+    const int* metadata,
+    std::complex<float>* subgrids,
+    const std::complex<float>* grid)
+{
+    // Initialize interface to kernels
+    clog << ">>> Initialize proxy" << endl;
+    idg::proxy::cpu::HaswellEP haswellEP(params);
+    idg::proxy::cpu::Reference reference(params);
+    clog << endl;
+
+    clog << ">>> Run splitter" << endl;
+    haswellEP.split_grid_into_subgrids(nr_subgrids, const_cast<int*>(metadata),
+                                       subgrids, const_cast<complex<float>*>(grid));
+
+    clog << ">>> Run degridder" << endl;
+    haswellEP.degrid_from_subgrids(nr_subgrids, 0, const_cast<float*>(uvw),
+                                   const_cast<float*>(wavenumbers), visibilities,
+                                   const_cast<float*>(spheroidal),
+                                   const_cast<complex<float>*>(aterm),
+                                   const_cast<int*>(metadata),
+                                   subgrids);
+
+    clog << ">>> Run splitter" << endl;
+    reference.split_grid_into_subgrids(nr_subgrids, const_cast<int*>(metadata),
+                                       subgrids, const_cast<complex<float>*>(grid));
+
+    clog << ">>> Run degridder" << endl;
+    reference.degrid_from_subgrids(nr_subgrids, 0, const_cast<float*>(uvw),
+                                   const_cast<float*>(wavenumbers), visibilities_ref,
+                                   const_cast<float*>(spheroidal),
+                                   const_cast<complex<float>*>(aterm),
+                                   const_cast<int*>(metadata),
+                                   subgrids);
+}
+
+
+
 
 // void run_gridding_ref(
 //     idg::Parameters params,
