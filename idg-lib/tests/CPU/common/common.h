@@ -4,60 +4,30 @@
 #include <complex>
 #include <limits>
 
+#include "CPU/Reference/idg.h" // Reference proxy
 #include "Init.h"  // Data init routines
 
 
-void run_gridding_test(
-    const idg::Parameters& params,
-    const int nr_subgrids,
-    const float* uvw,
-    const float* wavenumbers,
-    const std::complex<float>* visibilities,
-    const float* spheroidal,
-    const std::complex<float>* aterm,
-    const int* metadata,
-    std::complex<float>* subgrids,
-    std::complex<float>* subgrids_ref,
-    std::complex<float>* grid,
-    std::complex<float>* grid_ref);
-
-
-
-void run_degridding_test(
-    const idg::Parameters& params,
-    const int nr_subgrids,
-    const float* uvw,
-    const float* wavenumbers,
-    std::complex<float>* visibilities,
-    std::complex<float>* visibilities_ref,
-    const float* spheroidal,
-    const std::complex<float>* aterm,
-    const int* metadata,
-    std::complex<float>* subgrids,
-    const std::complex<float>* grid);
-
-
-// compute max|A[i]-A_ref[i]| / max|A_ref[i]|
+// computes max|A[i]-B[i]| / max|B[i]|
 float get_accucary(
     const int size,
     const std::complex<float>* A,
-    const std::complex<float>* A_ref)
+    const std::complex<float>* B)
 {
     float max_abs_error = 0.0f;
     float max_ref_val = 0.0f;
     float max_val = 0.0f;
     for (int i=0; i<size; i++) {
-        float abs_error = abs(A[i] - A_ref[i]);
+        float abs_error = abs(A[i] - B[i]);
         if ( abs_error > max_abs_error ) {
             max_abs_error = abs_error;
         }
-        if (abs(A_ref[i]) > max_ref_val) {
-            max_ref_val = abs(A_ref[i]);
+        if (abs(B[i]) > max_ref_val) {
+            max_ref_val = abs(B[i]);
         }
         if (abs(A[i]) > max_val) {
             max_val = abs(A[i]);
         }
-
     }
     if (max_ref_val == 0.0f) {
         if (max_val == 0.0f)
@@ -72,9 +42,10 @@ float get_accucary(
 }
 
 
-
-
-int main(int argc, char *argv[])
+// run gridding and degridding for ProxyType and reference CPU
+// proxy and compare the outcome; usage run_test<proxy::cpu::HaswellEP>();
+template <typename ProxyType>
+int run_test()
 {
     int info = 0;
     float tol = 100*std::numeric_limits<float>::epsilon();
@@ -84,10 +55,7 @@ int main(int argc, char *argv[])
     idg::Parameters params;
     // Read the following from ENV: 
     // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE, 
-    // GRIDSIZE 
-    // if non-default jobsize wanted, set JOBSIZE (all routines), 
-    // JOBSIZE_GRIDDING, JOBSIZE_DEGRIDDING, JOBSIZE_GRIDDER, 
-    // JOBSIZE_ADDER, JOBSIZE_SPLITTER, JOBSIZE_DEGRIDDER
+    // GRIDSIZE; if non-default jobsize wanted, set jobsizes!
     params.set_from_env();
 
     // retrieve constants for memory allocation
@@ -144,14 +112,62 @@ int main(int argc, char *argv[])
                        nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
     std::clog << std::endl;
 
-    // Compare gridding (onto subgrids and adding to grid) to reference
-    run_gridding_test(params, nr_subgrids, uvw, wavenumbers, visibilities,  
-                      spheroidal, aterm, metadata, subgrids, subgrids_ref, 
-                      grid, grid_ref);
+    // Initialize interface to kernels
+    std::clog << ">>> Initialize proxy" << std::endl;
+    ProxyType optimized(params);
+    idg::proxy::cpu::Reference reference(params);
+    std::clog << std::endl;
 
-    // TODO: use data types, so that grid knows its size and we can write 
-    // stuff like "grid_ref -= grid"; "grid_ref.maxabs()", ...
+
+    // Run gridder
+    std::clog << ">>> Run gridder" << std::endl;
+    optimized.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers,
+                                 visibilities, spheroidal, aterm,
+                                 metadata, subgrids);
+
+    std::clog << ">>> Run adder" << std::endl;
+    optimized.add_subgrids_to_grid(nr_subgrids, metadata,
+                                   subgrids, grid);
+
+    std::clog << ">>> Run reference gridder" << std::endl;
+    reference.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers,
+                                 visibilities, spheroidal, aterm,
+                                 metadata, subgrids_ref);
+
+    std::clog << ">>> Run reference adder" << std::endl;
+    reference.add_subgrids_to_grid(nr_subgrids, metadata,
+                                   subgrids_ref, grid_ref);
+
     float grid_error = get_accucary(size_grid, grid, grid_ref);
+
+
+    // Run degridder
+    std::clog << ">>> Run splitter" << std::endl;
+    // uses reference grid
+    optimized.split_grid_into_subgrids(nr_subgrids, metadata,
+                                       subgrids, grid_ref);
+
+    std::clog << ">>> Run degridder" << std::endl;
+    optimized.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers,
+                                   visibilities, spheroidal, aterm,
+                                   metadata, subgrids);
+
+    std::clog << ">>> Run reference splitter" << std::endl;
+    reference.split_grid_into_subgrids(nr_subgrids, metadata,
+                                       subgrids_ref, grid_ref);
+
+    std::clog << ">>> Run reference degridder" << std::endl;
+    reference.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers,
+                                   visibilities_ref, spheroidal, aterm,
+                                   metadata, subgrids_ref);
+    std::clog << std::endl;
+
+
+    float degrid_error = get_accucary(size_grid, visibilities, visibilities_ref);
+
+
+    // Report results
+
     if (grid_error < tol) {
         std::cout << "Gridding test PASSED!" << std::endl;
     } else {
@@ -159,15 +175,6 @@ int main(int argc, char *argv[])
         info = 1;
     }
 
-
-    // Compare degridding to reference
-    run_degridding_test(params, nr_subgrids, uvw, wavenumbers, visibilities,
-                        visibilities_ref, spheroidal, aterm, metadata,
-                        subgrids, grid);
-
-    // TODO: use data types, so that grid knows its size and we can write
-    // stuff like "grid_ref -= grid"; "grid_ref.maxabs()", ...
-    float degrid_error = get_accucary(size_grid, visibilities, visibilities_ref);
     if (degrid_error < tol) {
         std::cout << "Degridding test PASSED!" << std::endl;
     } else {

@@ -52,7 +52,10 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gri
     double *z = (double*) malloc(nr_stations_file * sizeof(double));
 
     // Load the antenna coordinates
+    #if defined(DEBUG)
     printf("looking for stations file in: %s\n", filename);
+    #endif
+
     if (uvwsim_load_station_coords(filename, nr_stations_file, x, y, z) != nr_stations_file) {
         std::cerr << "Failed to read antenna coordinates." << std::endl;
         exit(EXIT_FAILURE);
