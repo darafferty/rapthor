@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+using namespace std;
+
 
 void run_gridding_test(
     const idg::Parameters& params,
@@ -26,8 +28,7 @@ void run_gridding_test(
 
     // Run gridder
     clog << ">>> Run gridder" << endl;
-    int jobsize_gridder = params.get_job_size_gridder();
-    haswellEP.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, 
+    haswellEP.grid_onto_subgrids(nr_subgrids, 0,
                                  const_cast<float*>(uvw), 
                                  const_cast<float*>(wavenumbers), 
                                  const_cast<complex<float>*>(visibilities), 
@@ -37,14 +38,13 @@ void run_gridding_test(
                                  subgrids);
 
     clog << ">> Run adder" << endl;
-    int jobsize_adder = params.get_job_size_adder();
-    haswellEP.add_subgrids_to_grid(jobsize_adder, nr_subgrids, 
+    haswellEP.add_subgrids_to_grid(nr_subgrids,
                                    const_cast<int*>(metadata), 
                                    subgrids, grid);
 
     // Run gridder (reference)
     clog << ">>> Run gridder (reference)" << endl;
-    reference.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, 
+    reference.grid_onto_subgrids(nr_subgrids, 0,
                                  const_cast<float*>(uvw), 
                                  const_cast<float*>(wavenumbers), 
                                  const_cast<complex<float>*>(visibilities), 
@@ -54,17 +54,9 @@ void run_gridding_test(
                                  subgrids_ref);
 
     clog << ">> Run adder (reference)" << endl;
-    reference.add_subgrids_to_grid(jobsize_adder, nr_subgrids, 
+    reference.add_subgrids_to_grid(nr_subgrids,
                                    const_cast<int*>(metadata), 
                                    subgrids_ref, grid_ref);
-
-    int subgridsize = params.get_subgrid_size();
-    int nr_polarizations = params.get_nr_polarizations();
-    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
-        subgridsize*subgridsize;
-    float subgrid_error = get_accucary(size_subgrids, subgrids, subgrids_ref);
-    cout << "Subgrid_error = " << scientific << subgrid_error << endl;
-
 }
 
 
