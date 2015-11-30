@@ -148,7 +148,25 @@ namespace idg {
         }
 
 
-        /// High level routines
+        /*
+            High level routines
+        */
+        void CPU::grid_visibilities(GRIDDING_PARAMETERS) {
+            #if defined(DEBUG)
+            cout << "CPU::" << __func__ << endl;
+            cout << "Not implemented" << endl;
+            #endif
+
+        };
+
+        void CPU::degrid_visibilities(DEGRIDDING_PARAMETERS) {
+            #if defined(DEBUG)
+            cout << "CPU::" << __func__ << endl;
+            cout << "Not implemented" << endl;
+            #endif
+
+        };
+
         void CPU::transform(DomainAtoDomainB direction, void* grid)
         {
             #if defined(DEBUG)
@@ -157,60 +175,39 @@ namespace idg {
             #endif
 
             int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
-            run_fft(grid, sign);
-        }
 
+            // Constants
+            auto gridsize = mParams.get_grid_size();
 
-        void CPU::grid_onto_subgrids(int jobsize, GRIDDER_PARAMETERS)
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
+            // Load kernel function
+            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
+
+            // Start fft
+            double runtime = -omp_get_wtime();
+            kernel_fft.run(gridsize, 1, grid, sign);
+            runtime += omp_get_wtime();
+
+            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+            auxiliary::report(">grid_fft", runtime,
+                              kernel_fft.flops(gridsize, 1),
+                              kernel_fft.bytes(gridsize, 1));
+            clog << endl;
             #endif
 
-            run_gridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
-                        spheroidal, aterm, metadata, subgrids);
         }
 
 
-        void CPU::add_subgrids_to_grid(int jobsize, ADDER_PARAMETERS)
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            run_adder(jobsize, nr_subgrids, metadata, subgrids, grid);
-        }
-
-
-        void CPU::split_grid_into_subgrids(int jobsize, SPLITTER_PARAMETERS)
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            run_splitter(jobsize, nr_subgrids, metadata, subgrids, grid);
-        }
-
-
-        void CPU::degrid_from_subgrids(int jobsize, DEGRIDDER_PARAMETERS)
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            run_degridder(jobsize, nr_subgrids, w_offset, uvw, wavenumbers, visibilities,
-                      spheroidal, aterm, metadata, subgrids);
-        }
-
-
-        /// Low level routines
-        void CPU::run_gridder(int jobsize, GRIDDER_PARAMETERS)
+        /*
+            Low level routines
+        */
+        void CPU::grid_onto_subgrids(GRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
 
             // Constants
+            auto jobsize = mParams.get_job_size_gridder();
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_timesteps = mParams.get_nr_timesteps();
             auto nr_timeslots = mParams.get_nr_timeslots();
@@ -296,17 +293,17 @@ namespace idg {
             auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
+        }
 
-        } // run_gridder
 
-
-        void CPU::run_adder(int jobsize, ADDER_PARAMETERS)
+        void CPU::add_subgrids_to_grid(ADDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
 
             // Constants
+            auto jobsize = mParams.get_job_size_adder();
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
 
@@ -356,16 +353,17 @@ namespace idg {
             auxiliary::report_subgrids("|adding", total_runtime_adding, nr_subgrids);
             clog << endl;
             #endif
-        } // run_adder
+        }
 
 
-        void CPU::run_splitter(int jobsize, SPLITTER_PARAMETERS)
+        void CPU::split_grid_into_subgrids(SPLITTER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
 
             // Constants
+            auto jobsize = mParams.get_job_size_splitter();
             auto nr_polarizations = mParams.get_nr_polarizations();
             auto subgridsize = mParams.get_subgrid_size();
 
@@ -415,16 +413,17 @@ namespace idg {
             auxiliary::report_subgrids("|splitting", total_runtime_splitting, nr_subgrids);
             clog << endl;
             #endif
-        } // run_splitter
+        }
 
 
-        void CPU::run_degridder(int jobsize, DEGRIDDER_PARAMETERS)
+        void CPU::degrid_from_subgrids(DEGRIDDER_PARAMETERS)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             #endif
 
             // Constants
+            auto jobsize = mParams.get_job_size_degridder();
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_channels = mParams.get_nr_channels();
             auto nr_timesteps = mParams.get_nr_timesteps();
@@ -511,34 +510,7 @@ namespace idg {
             auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
-        } // run_degridder
-
-
-        void CPU::run_fft(void *grid, int sign)
-        {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            #endif
-
-            // Constants
-            auto gridsize = mParams.get_grid_size();
-
-            // Load kernel function
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
-
-            // Start fft
-            double runtime = -omp_get_wtime();
-            kernel_fft.run(gridsize, 1, grid, sign);
-            runtime += omp_get_wtime();
-
-            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            auxiliary::report(">grid_fft", runtime,
-                              kernel_fft.flops(gridsize, 1),
-                              kernel_fft.bytes(gridsize, 1));
-            clog << endl;
-            #endif
-        } // run_fft
-
+        }
 
         void CPU::compile(Compiler compiler, Compilerflags flags)
         {
