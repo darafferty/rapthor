@@ -22,13 +22,13 @@ void run_gridding_test(
 ) {
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::cpu::SandyBridgeEP haswellEP(params);
+    idg::proxy::cpu::SandyBridgeEP sandybridge(params);
     idg::proxy::cpu::Reference reference(params);
     clog << endl;
 
     // Run gridder
     clog << ">>> Run gridder" << endl;
-    haswellEP.grid_onto_subgrids(nr_subgrids, 0,
+    sandybridge.grid_onto_subgrids(nr_subgrids, 0,
                                  const_cast<float*>(uvw), 
                                  const_cast<float*>(wavenumbers), 
                                  const_cast<complex<float>*>(visibilities), 
@@ -38,7 +38,7 @@ void run_gridding_test(
                                  subgrids);
 
     clog << ">> Run adder" << endl;
-    haswellEP.add_subgrids_to_grid(nr_subgrids,
+    sandybridge.add_subgrids_to_grid(nr_subgrids,
                                    const_cast<int*>(metadata), 
                                    subgrids, grid);
 
@@ -57,6 +57,52 @@ void run_gridding_test(
     reference.add_subgrids_to_grid(nr_subgrids,
                                    const_cast<int*>(metadata), 
                                    subgrids_ref, grid_ref);
+}
+
+
+
+void run_degridding_test(
+    const idg::Parameters& params,
+    const int nr_subgrids,
+    const float* uvw,
+    const float* wavenumbers,
+    std::complex<float>* visibilities,
+    std::complex<float>* visibilities_ref,
+    const float* spheroidal,
+    const std::complex<float>* aterm,
+    const int* metadata,
+    std::complex<float>* subgrids,
+    const std::complex<float>* grid)
+{
+    // Initialize interface to kernels
+    clog << ">>> Initialize proxy" << endl;
+    idg::proxy::cpu::SandyBridgeEP sandybridge(params);
+    idg::proxy::cpu::Reference reference(params);
+    clog << endl;
+
+    clog << ">>> Run splitter" << endl;
+    sandybridge.split_grid_into_subgrids(nr_subgrids, const_cast<int*>(metadata),
+                                       subgrids, const_cast<complex<float>*>(grid));
+
+    clog << ">>> Run degridder" << endl;
+    sandybridge.degrid_from_subgrids(nr_subgrids, 0, const_cast<float*>(uvw),
+                                   const_cast<float*>(wavenumbers), visibilities,
+                                   const_cast<float*>(spheroidal),
+                                   const_cast<complex<float>*>(aterm),
+                                   const_cast<int*>(metadata),
+                                   subgrids);
+
+    clog << ">>> Run splitter" << endl;
+    reference.split_grid_into_subgrids(nr_subgrids, const_cast<int*>(metadata),
+                                       subgrids, const_cast<complex<float>*>(grid));
+
+    clog << ">>> Run degridder" << endl;
+    reference.degrid_from_subgrids(nr_subgrids, 0, const_cast<float*>(uvw),
+                                   const_cast<float*>(wavenumbers), visibilities_ref,
+                                   const_cast<float*>(spheroidal),
+                                   const_cast<complex<float>*>(aterm),
+                                   const_cast<int*>(metadata),
+                                   subgrids);
 }
 
 
@@ -104,26 +150,26 @@ void run_gridding_test(
 //     // Initialize interface to kernels
 //     clog << ">>> Initialize proxy" << endl;
 //     idg::proxy::cpu::Reference reference(params);
-//     idg::proxy::cpu::SandyBridgeEP haswellEP(params);
+//     idg::proxy::cpu::SandyBridgeEP sandybridge(params);
 //     clog << endl;
 
 //     // Run gridder
 //     clog << ">>> Run gridder" << endl;
 //     int jobsize_gridder = params.get_job_size_gridder();
-//     haswellEP.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+//     sandybridge.grid_onto_subgrids(jobsize_gridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
 //     // clog << ">> Run adder" << endl;
 //     // int jobsize_adder = params.get_job_size_adder();
-//     // haswellEP.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
+//     // sandybridge.add_subgrids_to_grid(jobsize_adder, nr_subgrids, metadata, subgrids, grid);
 
 //     // clog << ">> Run fft" << endl;
-//     // haswellEP.transform(idg::FourierDomainToImageDomain, grid);
+//     // sandybridge.transform(idg::FourierDomainToImageDomain, grid);
 
 //     // clog << ">>> Run splitter" << endl;
 //     // int jobsize_splitter = params.get_job_size_splitter();
-//     // haswellEP.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
+//     // sandybridge.split_grid_into_subgrids(jobsize_splitter, nr_subgrids, metadata, subgrids, grid);
 
 //     // clog << ">>> Run degridder" << endl;
 //     // int jobsize_degridder = params.get_job_size_degridder();
-//     // haswellEP.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+//     // sandybridge.degrid_from_subgrids(jobsize_degridder, nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 // }
