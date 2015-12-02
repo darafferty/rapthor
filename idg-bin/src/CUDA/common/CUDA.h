@@ -113,6 +113,11 @@ namespace idg {
                      */
                     void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid);
 
+                public:
+                    kernel::cuda::Gridder get_kernel_gridder() {
+                        return kernel::cuda::Gridder(*(modules[which_module[kernel::cuda::name_gridder]]), mParams);
+                    }
+
                 protected:
                     static std::string make_tempdir();
                     static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);

@@ -2,6 +2,7 @@
 #include "Maxwell.h"
 
 using namespace std;
+using namespace idg::kernel::cuda;
 
 namespace idg {
     namespace proxy {
@@ -126,17 +127,17 @@ namespace idg {
 
                 CUfunction function;
                 for (unsigned int i=0; i<modules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_gridder.c_str()) == CUDA_SUCCESS) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
                         // found gridder kernel in module i
-                        which_module[kernel::name_gridder] = i;
+                        which_module[name_gridder] = i;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_degridder.c_str()) == CUDA_SUCCESS) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
                         // found degridder kernel in module i
-                        which_module[kernel::name_degridder] = i;
+                        which_module[name_degridder] = i;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_fft.c_str()) == CUDA_SUCCESS) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
                         // found fft kernel in module i
-                        which_module[kernel::name_fft] = i;
+                        which_module[name_fft] = i;
                     }
                 } // end for
             } // end find_kernel_functions

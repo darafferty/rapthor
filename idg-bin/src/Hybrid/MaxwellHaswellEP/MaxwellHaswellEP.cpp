@@ -15,6 +15,7 @@
 #endif
 
 using namespace std;
+using namespace idg::kernel;
 
 namespace idg {
     namespace proxy {
@@ -48,6 +49,10 @@ namespace idg {
             #if defined(DEBUG)
             cout << "MaxwellHaswellEP::" << __func__ << endl;
             #endif
+            
+            // Load kernels 
+            kernel::cuda::Gridder kernel_gridder = cuda.get_kernel_gridder();
+            cout << kernel_gridder.flops(1) << endl;
         }
         
         void MaxwellHaswellEP::degrid_visibilities(

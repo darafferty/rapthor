@@ -1,6 +1,7 @@
 #include "CUDA.h"
 
 using namespace std;
+using namespace idg::kernel::cuda;
 
 namespace idg {
     namespace proxy {
@@ -143,8 +144,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
-                cu::Module *module_fft = (modules[which_module[kernel::name_fft]]);
+                Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
+                cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
                 cu::Stream executestream;
@@ -168,7 +169,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    kernel::GridFFT kernel_fft(*module_fft, mParams);
+                    GridFFT kernel_fft(*module_fft, mParams);
 
                     // Private device memory
                 	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -253,7 +254,7 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor->read();
-                kernel::GridFFT kernel_fft(*module_fft, mParams);
+                GridFFT kernel_fft(*module_fft, mParams);
                 uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
@@ -304,8 +305,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size();
 
                 // load kernel
-                kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
-                cu::Module *module_fft = (modules[which_module[kernel::name_fft]]);
+                Degridder kernel_degridder(*(modules[which_module[name_degridder]]), mParams);
+                cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
                 cu::Stream executestream;
@@ -330,7 +331,7 @@ namespace idg {
                     cu::Event inputReady;
                     cu::Event outputReady;
                     int current_jobsize = jobsize;
-                    kernel::GridFFT kernel_fft(*module_fft, mParams);
+                    GridFFT kernel_fft(*module_fft, mParams);
 
                 	// Private device memory
                     cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -414,7 +415,7 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor->read();
-                kernel::GridFFT kernel_fft(*module_fft, mParams);
+                GridFFT kernel_fft(*module_fft, mParams);
                 uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
                 uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
