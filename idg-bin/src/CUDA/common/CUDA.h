@@ -27,6 +27,8 @@
 
 #include <cuda.h>
 
+#include "CU.h"
+
 #include "Proxy.h"
 #include "PowerSensor.h"
 #include "Kernels.h"

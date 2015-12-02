@@ -22,12 +22,14 @@ namespace idg {
 
         /// Constructors
         MaxwellHaswellEP::MaxwellHaswellEP(
-            Parameters params)
+            Parameters params) :
+            xeon(params), cuda(params)
         {
             #if defined(DEBUG)
             cout << "Maxwell-HaswellEP::" << __func__ << endl;
             cout << params;
             #endif
+
         }
 
         } // namespace hybrid
