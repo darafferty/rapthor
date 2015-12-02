@@ -27,41 +27,44 @@
 
 #include <cuda.h>
 
+#include "CU.h"
+#include "CUFFT.h"
+
 #include "Proxy.h"
 #include "PowerSensor.h"
 #include "Kernels.h"
 #include "auxiliary.h"
 
+// Low level routine parameters
+#define CU_GRIDDER_PARAMETERS   cu::Context &context, unsigned nr_subgrids, float w_offset, \
+                                cu::HostMemory &h_uvw, cu::DeviceMemory &d_wavenumbers, \
+                                cu::HostMemory &h_visibilities, cu::DeviceMemory &d_spheroidal, cu::DeviceMemory &d_aterm, \
+                                cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids
+#define CU_DEGRIDDER_PARAMETERS CU_GRIDDER_PARAMETERS
+#define CU_ADDER_PARAMETERS     cu::Context &context, unsigned nr_subgrids, cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids, cu::HostMemory &h_grid
+#define CU_SPLITTER_PARAMETERS  CU_ADDER_PARAMETERS
+#define CU_FFT_PARAMETERS       cu::Context &context, cu::HostMemory &h_grid, int sign
+
+// Low level routine arguments
+#define CU_GRIDDER_ARGUMENTS    context, nr_subgrids, w_offset, h_uvw, d_wavenumbers, h_visibilities, \
+                                d_spheroidal, d_aterm, h_metadata, h_subgrids
+#define CU_DEGRIDDER_ARGUMENTS  CU_GRIDDER_ARGUMENTS
+#define CU_ADDER_ARGUMENTS      context, nr_subgrids, h_metadata, h_subgrids, h_grid
+#define CU_SPLITTER_ARGUMENTS   CU_ADDER_ARGUMENTS
+#define CU_FFT_ARGUMENTS        context, h_grid, sign
+
+/*
+    Size of data structures for a single job
+*/
+#define SIZEOF_SUBGRIDS 1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
+#define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
+#define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
+#define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
+#define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
+
 namespace idg {
     namespace proxy {
         namespace cuda {
-            // High level method parameters
-            #define CU_GRIDDER_PARAMETERS   cu::Context &context, unsigned nr_subgrids, float w_offset, \
-                                            cu::HostMemory &h_uvw, cu::DeviceMemory &d_wavenumbers, \
-                                            cu::HostMemory &h_visibilities, cu::DeviceMemory &d_spheroidal, cu::DeviceMemory &d_aterm, \
-                                            cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids
-            #define CU_DEGRIDDER_PARAMETERS CU_GRIDDER_PARAMETERS
-            #define CU_ADDER_PARAMETERS     cu::Context &context, unsigned nr_subgrids, cu::HostMemory &h_metadata, cu::HostMemory &h_subgrids, cu::HostMemory &h_grid
-            #define CU_SPLITTER_PARAMETERS  CU_ADDER_PARAMETERS
-            #define CU_FFT_PARAMETERS       cu::Context &context, cu::HostMemory &h_grid, int sign
-            
-            // High level method arguments
-            #define CU_GRIDDER_ARGUMENTS    context, nr_subgrids, w_offset, h_uvw, d_wavenumbers, h_visibilities, \
-                                            d_spheroidal, d_aterm, h_metadata, h_subgrids
-            #define CU_DEGRIDDER_ARGUMENTS  CU_GRIDDER_ARGUMENTS
-            #define CU_ADDER_ARGUMENTS      context, nr_subgrids, h_metadata, h_subgrids, h_grid
-            #define CU_SPLITTER_ARGUMENTS   CU_ADDER_ARGUMENTS
-            #define CU_FFT_ARGUMENTS        context, h_grid, sign
-    
-            /*
-                Size of data structures for a single job
-            */
-            #define SIZEOF_SUBGRIDS 1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
-            #define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
-            #define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
-            #define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
-            #define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
-    
             class CUDA {
                 public:
                     /// Constructors
