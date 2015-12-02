@@ -5,15 +5,15 @@
 void run(
     idg::Parameters params,
     int nr_subgrids,
-    void *uvw,
-    void *wavenumbers,
-    void *visibilities,
-    void *spheroidal,
-    void *aterm,
-    void *metadata,
-    void *subgrids,
-    void *grid
-) {
+    float *uvw,
+    float *wavenumbers,
+    complex<float> *visibilities,
+    float *spheroidal,
+    complex<float> *aterm,
+    int *metadata,
+    complex<float> *subgrids,
+    complex<float> *grid)
+{
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::cpu::SandyBridgeEP xeon(params);
