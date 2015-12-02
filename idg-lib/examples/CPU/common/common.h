@@ -7,16 +7,16 @@
 using namespace std;
 
 void run(
-    idg::Parameters,
+    idg::Parameters p,
     int nr_subgrids,
-    void *uvw,
-    void *wavenumbers,
-    void *visibilities,
-    void *spheroidal,
-    void *aterm,
-    void *metadata,
-    void *subgrids,
-    void *grid
+    float *uvw,
+    float *wavenumbers,
+    complex<float> *visibilities,
+    float *spheroidal,
+    complex<float> *aterm,
+    int *metadata,
+    complex<float> *subgrids,
+    complex<float> *grid
 );
 
 int main(int argc, char *argv[]) {
@@ -78,7 +78,8 @@ int main(int argc, char *argv[]) {
     clog << endl;
 
     // Run
-    run(params, nr_subgrids, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids, grid);
+    run(params, nr_subgrids, uvw, wavenumbers, visibilities, spheroidal,
+        aterm, metadata, subgrids, grid);
 
     // Free memory for data structures
     delete[] visibilities;
