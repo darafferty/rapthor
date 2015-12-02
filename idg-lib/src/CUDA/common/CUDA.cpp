@@ -34,8 +34,7 @@ namespace idg {
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info)
-              : device(deviceNumber),
-                mInfo(info)
+              : mInfo(info)
             {
                 #if defined(DEBUG)
                 cout << "CUDA::" << __func__ << endl;
@@ -44,11 +43,21 @@ namespace idg {
                 cout << params;
                 #endif
 
+                // Initialize CUDA
+                cu::init();
+                device = new cu::Device(deviceNumber);
+                context = new cu::Context(*device);
+                context->setCurrent();
+
+                // Set/check parameters
                 mParams = params;
                 parameter_sanity_check(); // throws exception if bad parameters
+
+                // Compile kernels
                 compile(compiler, flags);
                 load_shared_objects();
 
+                // Initialize power sensor
                 #if defined(MEASURE_POWER_ARDUINO)
                 const char *str_power_sensor = getenv("POWER_SENSOR");
                 if (!str_power_sensor) str_power_sensor = STR_POWER_SENSOR;
@@ -441,8 +450,8 @@ namespace idg {
                   mParams.get_subgrid_size());
 
                 // Add device capability
-                int capability = 10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-                                      device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
+                int capability = 10 * device->getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
+                                      device->getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
                 string compiler_parameters = " -arch=compute_" + to_string(capability) +
                                              " -code=sm_" + to_string(capability);
 

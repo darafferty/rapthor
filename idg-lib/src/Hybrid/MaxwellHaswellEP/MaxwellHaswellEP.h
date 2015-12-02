@@ -10,7 +10,6 @@
 #ifndef IDG_MAXWELLHASWELLEP_H_
 #define IDG_MAXWELLHASWELLEP_H_
 
-// TODO: check which include files are really necessary
 #include <dlfcn.h>
 #include <cuda.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
@@ -34,6 +33,33 @@ namespace idg {
 
                 /// Assignment
                 MaxwellHaswellEP& operator=(const MaxwellHaswellEP& rhs) = delete;
+
+            /*
+                High level routines
+                These routines operate on grids
+            */
+            virtual void grid_visibilities(
+                const std::complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *metadata,
+                std::complex<float> *grid,
+                const float w_offset,
+                const std::complex<float> *aterm,
+                const float *spheroidal) override;
+
+            virtual void degrid_visibilities(
+                std::complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *metadata,
+                const std::complex<float> *grid,
+                const float w_offset,
+                const std::complex<float> *aterm,
+                const float *spheroidal) override;
+
+            virtual void transform(DomainAtoDomainB direction,
+                std::complex<float>* grid) override;
 
             private:
                 idg::proxy::cpu::HaswellEP xeon;
