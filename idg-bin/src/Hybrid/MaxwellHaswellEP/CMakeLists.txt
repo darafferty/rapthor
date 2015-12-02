@@ -1,4 +1,4 @@
-project(idg-hybrid-maxwell-haswellep)
+project(idg-hybrid-maxwellhaswellep)
 
 # external header files needed
 include_directories (

@@ -32,6 +32,45 @@ namespace idg {
 
         }
 
+        /*
+            High level routines
+            These routines operate on grids
+        */
+        void MaxwellHaswellEP::grid_visibilities(
+            const std::complex<float> *visibilities,
+            const float *uvw,
+            const float *wavenumbers,
+            const int *metadata,
+            std::complex<float> *grid,
+            const float w_offset,
+            const std::complex<float> *aterm,
+            const float *spheroidal) {
+            #if defined(DEBUG)
+            cout << "MaxwellHaswellEP::" << __func__ << endl;
+            #endif
+        }
+        
+        void MaxwellHaswellEP::degrid_visibilities(
+            std::complex<float> *visibilities,
+            const float *uvw,
+            const float *wavenumbers,
+            const int *metadata,
+            const std::complex<float> *grid,
+            const float w_offset,
+            const std::complex<float> *aterm,
+            const float *spheroidal) {
+            #if defined(DEBUG)
+            cout << "MaxwellHaswellEP::" << __func__ << endl;
+            #endif
+        }
+        
+        void MaxwellHaswellEP::transform(DomainAtoDomainB direction,
+            std::complex<float>* grid) {
+            #if defined(DEBUG)
+            cout << "MaxwellHaswellEP::" << __func__ << endl;
+            #endif
+        }
+
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
