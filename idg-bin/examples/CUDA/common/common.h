@@ -37,7 +37,8 @@ void run(
     cu::HostMemory &h_grid
 );
 
-int main(int argc, char *argv[]) {
+template <typename PROXYNAME>
+void run() {
     // Set constants explicitly in the parameters parameter
     clog << ">>> Configuration"  << endl;
     idg::Parameters params;
@@ -63,12 +64,13 @@ int main(int argc, char *argv[]) {
     clog << params;
     clog << endl;
 
-    // Initialize CUDA
-    std::clog << ">>> Initialize CUDA" << std::endl;
-    cu::init();
-    cu::Device device(deviceNumber);
-    cu::Context context(device);
-    context.setCurrent();
+    // Initialize interface to kernels
+    clog << ">>> Initialize proxy" << endl;
+    PROXYNAME proxy(params, deviceNumber);
+    clog << endl;
+
+    // Get context from proxy
+    cu::Context &context = proxy.get_context();
 
     // Show CUDA devices
     printDevices(deviceNumber);
@@ -105,8 +107,18 @@ int main(int argc, char *argv[]) {
     d_aterm.set(aterm);
     d_spheroidal.set(spheroidal);
     
-    // Run
-    run(params, deviceNumber, context, nr_subgrids, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids, h_grid);
+    // Start profiling
+    cuProfilerStart();
+
+    // Run gridder
+    clog << ">>> Run gridder" << endl;
+    proxy.grid_onto_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+
+    clog << ">>> Run degridder" << endl;
+    proxy.degrid_from_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+
+    // Stop profiling
+    cuProfilerStop();
 
     // Cleanup
     free(wavenumbers);

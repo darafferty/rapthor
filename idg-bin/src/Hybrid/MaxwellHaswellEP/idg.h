@@ -1,6 +1,6 @@
-#ifndef IDG_HASWELLEP_HEADER
-#define IDG_HASWELLEP_HEADER
+#ifndef IDG_MAXWELLHASWELLEP_HEADER
+#define IDG_MAXWELLHASWELLEP_HEADER
 
-#include "Maxwell-HaswellEP.h"
+#include "MaxwellHaswellEP.h"
 
 #endif

@@ -61,6 +61,8 @@ namespace cu {
 				return nrDevices;
 			}
 
+			Device() {}
+
 			Device(int ordinal) {
 				checkCudaCall(cuDeviceGet(&_device, ordinal));
 			}
@@ -102,12 +104,16 @@ namespace cu {
 
 	class Context {
 		public:
+            Context() {
+                _context = NULL;
+            }
+
 			Context(Device device, int flags = 0) {
 				checkCudaCall(cuCtxCreate(&_context, flags, device));
 			}
 
 			~Context() {
-				checkCudaCall(cuCtxDestroy(_context));
+    				checkCudaCall(cuCtxDestroy(_context));
 			}
 
 			void setCurrent() const {
