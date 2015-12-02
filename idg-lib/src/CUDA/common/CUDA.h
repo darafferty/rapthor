@@ -84,6 +84,10 @@ namespace idg {
                     const Parameters& get_parameters() const { return mParams; }
                     const ProxyInfo& get_info() const { return mInfo; }
 
+                    cu::Context& get_context() const {
+                        return *context;
+                    }
+
                 public:
                     /** \brief Grid the visibilities onto uniform subgrids
                                (visibilities -> subgrids). */
@@ -118,7 +122,8 @@ namespace idg {
                     void load_shared_objects();
 
                     // data
-                    cu::Device device;
+                    cu::Device *device;
+                    cu::Context *context;
                     Parameters mParams; // remove if inherited from Proxy
                     ProxyInfo mInfo; // info about shared object files
 
