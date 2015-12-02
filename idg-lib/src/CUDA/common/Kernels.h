@@ -8,7 +8,6 @@
 
 #include "CU.h"
 #include "CUFFT.h"
-
 #include "Parameters.h"
 
 namespace idg {
@@ -90,7 +89,7 @@ namespace idg {
                 flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
                 return flops;
             }
-        
+
             uint64_t bytes(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_time = parameters.get_nr_timesteps();
@@ -104,6 +103,7 @@ namespace idg {
                 // Visibilities
                 nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex));
             }
+
     	private:
     	    cu::Function function;
             Parameters &parameters;
@@ -145,12 +145,13 @@ namespace idg {
     			cu::DeviceMemory &d_metadata,
     			cu::DeviceMemory &d_subgrid,
     			cu::DeviceMemory &d_grid);
+
             uint64_t flops(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_polarizations = parameters.get_nr_polarizations();
             	return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
             }
-        
+
             uint64_t bytes(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_polarizations = parameters.get_nr_polarizations();
