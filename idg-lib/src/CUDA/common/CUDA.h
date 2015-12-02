@@ -27,9 +27,6 @@
 
 #include <cuda.h>
 
-#include "CU.h"
-#include "CUFFT.h"
-
 #include "Proxy.h"
 #include "PowerSensor.h"
 #include "Kernels.h"
@@ -73,36 +70,35 @@ namespace idg {
                         Compiler compiler = default_compiler(),
                         Compilerflags flags = default_compiler_flags(),
                         ProxyInfo info = default_info());
-    
+
                     ~CUDA();
-    
+
                     // Get default values
                     static ProxyInfo default_info();
                     static std::string default_compiler();
                     static std::string default_compiler_flags();
-    
+
                     // Get parameters of proxy
                     const Parameters& get_parameters() const { return mParams; }
                     const ProxyInfo& get_info() const { return mInfo; }
-    
-                // High level routines
+
                 public:
                     /** \brief Grid the visibilities onto uniform subgrids
                                (visibilities -> subgrids). */
                     void grid_onto_subgrids(CU_GRIDDER_PARAMETERS);
-    
+
                     /** \brief Add subgrids to a grid
                                (subgrids -> grid). */
                     void add_subgrids_to_grid(CU_ADDER_PARAMETERS);
-    
+
                     /** \brief Exctract subgrids from a grid
                                (grid -> subgrids). */
                     void split_grid_into_subgrids(CU_SPLITTER_PARAMETERS);
-    
+
                     /** \brief Degrid the visibilities from uniform subgrids
                                (subgrids -> visibilities). */
                     void degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS);
-    
+
                     /** \brief Applyies (inverse) Fourier transform to grid
                                (grid -> grid).
                      *  \param direction [in] idg::FourierDomainToImageDomain or
@@ -110,32 +106,24 @@ namespace idg {
                      *  \param grid [in/out] ...
                      */
                     void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid);
-    
-                // Low level routines
-                protected:
-                    virtual void run_gridder(CU_GRIDDER_PARAMETERS);
-                    virtual void run_adder(CU_ADDER_PARAMETERS);
-                    virtual void run_splitter(CU_SPLITTER_PARAMETERS);
-                    virtual void run_degridder(CU_DEGRIDDER_PARAMETERS);
-                    virtual void run_fft(CU_FFT_PARAMETERS);
-    
+
                 protected:
                     static std::string make_tempdir();
                     static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
-    
+
                     void compile(Compiler compiler, Compilerflags flags);
                     void parameter_sanity_check();
                     void load_shared_objects();
-    
+
                     // data
                     cu::Device device;
                     Parameters mParams; // remove if inherited from Proxy
                     ProxyInfo mInfo; // info about shared object files
-    
+
                     // store the ptr to Module, which each loads an .ptx-file
                     std::vector<cu::Module*> modules;
                     std::map<std::string,int> which_module;
-    
+
                 protected:
                     std::string name_gridder   = "kernel_gridder";
                     std::string name_degridder = "kernel_degridder";
