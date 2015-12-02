@@ -4,29 +4,29 @@ using namespace std;
 
 namespace idg {
     namespace proxy {
+        /*
+            Power measurement
+        */
+        static PowerSensor *powerSensor;
+
+        class PowerRecord {
+            public:
+                void enqueue(cu::Stream &stream);
+                static void getPower(CUstream, CUresult, void *userData);
+                PowerSensor::State state;
+                cu::Event event;
+        };
+
+        void PowerRecord::enqueue(cu::Stream &stream) {
+            stream.record(event);
+            stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
+        }
+
+        void PowerRecord::getPower(CUstream, CUresult, void *userData) {
+            *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
+        }
+
         namespace cuda {
-            /*
-                Power measurement
-            */
-            static PowerSensor *powerSensor;
-
-            class PowerRecord {
-                public:
-                    void enqueue(cu::Stream &stream);
-                    static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor::State state;
-                    cu::Event event;
-            };
-
-            void PowerRecord::enqueue(cu::Stream &stream) {
-                stream.record(event);
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-            }
-
-            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-                *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-            }
-
             /// Constructors
             CUDA::CUDA(
                 Parameters params,
