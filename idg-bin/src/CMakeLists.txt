@@ -1,4 +1,4 @@
-project(src)
+project(idg)
 
 # add subfolders
 add_subdirectory(common)
@@ -18,3 +18,11 @@ endif()
 if (BUILD_WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+add_library(${PROJECT_NAME}
+  $<TARGET_OBJECTS:common-objects>
+  $<TARGET_OBJECTS:idg-cpu-common>
+  $<TARGET_OBJECTS:idg-cpu-reference>
+  $<TARGET_OBJECTS:idg-cpu-haswellep>
+  $<TARGET_OBJECTS:idg-cpu-sandybridgeep>
+  )

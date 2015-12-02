@@ -38,10 +38,17 @@ set (${PROJECT_NAME}_sources
     LikwidPowerSensor.cpp
 )
 
+
 add_library(
     ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                     ${${PROJECT_NAME}_sources}
 )
+
+add_library(
+  common-objects OBJECT ${${PROJECT_NAME}_headers}
+                        ${${PROJECT_NAME}_sources}
+)
+set_target_properties(common-objects PROPERTIES COMPILE_FLAGS "-fPIC")
 
 if (${BUILD_WITH_LIKWID_POWER_SENSOR})
 target_link_libraries(

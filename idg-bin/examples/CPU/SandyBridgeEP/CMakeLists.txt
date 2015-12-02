@@ -24,8 +24,7 @@ target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
   idg-external
-  idg-cpu-sandybridgeep
-  idg-cpu-common 
+  idg-cpu
   idg-common
   ${CMAKE_DL_LIBS}
 )
