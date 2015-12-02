@@ -45,29 +45,72 @@ namespace idg {
                 const Parameters& get_parameters() const { return mParams; }
                 const ProxyInfo& get_info() const { return mInfo; }
 
-            // High level routines
-            public:
-                virtual void grid_visibilities(GRIDDING_PARAMETERS);
-                virtual void degrid_visibilities(DEGRIDDING_PARAMETERS);
-                virtual void transform(DomainAtoDomainB direction, void* grid);
+                // High level interface, inherited from Proxy
+
+                virtual void grid_visibilities(
+                    const std::complex<float> *visibilities,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const int *metadata,
+                    std::complex<float> *grid,
+                    const float w_offset,
+                    const std::complex<float> *aterm,
+                    const float *spheroidal) override;
+
+                virtual void degrid_visibilities(
+                    std::complex<float> *visibilities,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const int *metadata,
+                    const std::complex<float> *grid,
+                    const float w_offset,
+                    const std::complex<float> *aterm,
+                    const float *spheroidal) override;
+
+                virtual void transform(DomainAtoDomainB direction,
+                                       std::complex<float>* grid) override;
 
             // Low level routines
             public:
-                /** \brief Grid the visibilities onto uniform subgrids
-                           (visibilities -> subgrids). */
-                virtual void grid_onto_subgrids(GRIDDER_PARAMETERS) override;
+                // virtual void grid_onto_subgrids(GRIDDER_PARAMETERS) override;
+                // virtual void add_subgrids_to_grid(ADDER_PARAMETERS) override;
+                // virtual void split_grid_into_subgrids(SPLITTER_PARAMETERS) override;
+                // virtual void degrid_from_subgrids(DEGRIDDER_PARAMETERS) override;
 
-                /** \brief Add subgrids to a grid
-                           (subgrids -> grid). */
-                virtual void add_subgrids_to_grid(ADDER_PARAMETERS) override;
+                virtual void grid_onto_subgrids(
+                    unsigned nr_subgrids,
+                    float w_offset,
+                    float *uvw,
+                    float *wavenumbers,
+                    std::complex<float> *visibilities,
+                    float *spheroidal,
+                    std::complex<float> *aterm,
+                    int *metadata,
+                    std::complex<float> *subgrids);
 
-                /** \brief Exctract subgrids from a grid
-                           (grid -> subgrids). */
-                virtual void split_grid_into_subgrids(SPLITTER_PARAMETERS) override;
+                virtual void add_subgrids_to_grid(
+                    unsigned nr_subgrids,
+                    int *metadata,
+                    std::complex<float> *subgrids,
+                    std::complex<float> *grid);
 
-                /** \brief Degrid the visibilities from uniform subgrids
-                           (subgrids -> visibilities). */
-                virtual void degrid_from_subgrids(DEGRIDDER_PARAMETERS) override;
+                virtual void split_grid_into_subgrids(
+                    unsigned nr_subgrids,
+                    int *metadata,
+                    std::complex<float> *subgrids,
+                    std::complex<float> *grid);
+
+                virtual void degrid_from_subgrids(
+                    unsigned nr_subgrids,
+                    float w_offset,
+                    float *uvw,
+                    float *wavenumbers,
+                    std::complex<float> *visibilities,
+                    float *spheroidal,
+                    std::complex<float> *aterm,
+                    int *metadata,
+                    std::complex<float> *subgrids);
+
 
             protected:
                 static std::string make_tempdir();

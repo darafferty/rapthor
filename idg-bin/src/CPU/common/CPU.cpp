@@ -77,6 +77,7 @@ namespace idg {
             return tmpdir;
         }
 
+
         ProxyInfo CPU::default_proxyinfo(string srcdir, string tmpdir) {
             ProxyInfo p;
             p.set_path_to_src(srcdir);
@@ -104,6 +105,7 @@ namespace idg {
 
             return p;
         }
+
 
         ProxyInfo CPU::default_info()
         {
@@ -148,10 +150,57 @@ namespace idg {
         }
 
 
-        /*
-            High level routines
-        */
-        void CPU::grid_visibilities(GRIDDING_PARAMETERS) {
+        /* High level routines */
+        void CPU::grid_visibilities(
+            const complex<float> *visibilities,
+            const float *uvw,
+            const float *wavenumbers,
+            const int *metadata,
+            complex<float> *grid,
+            const float w_offset,
+            const complex<float> *aterm,
+            const float *spheroidal) {
+
+            #if defined(DEBUG)
+            cout << "CPU::" << __func__ << endl;
+            cout << "Not implemented" << endl;
+            #endif
+
+            // allocate 'subgrids' memory for subgrids
+            auto nr_baselines = mParams.get_nr_baselines();
+            auto nr_timeslots = mParams.get_nr_timeslots();
+            auto nr_subgrids = nr_baselines * nr_timeslots;
+            auto nr_polarizations = mParams.get_nr_polarizations();;
+            auto subgridsize = mParams.get_subgrid_size();
+            auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
+                                 subgridsize*subgridsize;
+            auto subgrids = new complex<float>[size_subgrids];
+
+            grid_onto_subgrids(nr_subgrids,
+                w_offset,
+                const_cast<float*>(uvw),
+                const_cast<float*>(wavenumbers),
+                const_cast<complex<float>*>(visibilities),
+                const_cast<float*>(spheroidal),
+                const_cast<complex<float>*>(aterm),
+                const_cast<int*>(metadata),
+                subgrids);
+
+            // add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid)
+
+            delete[] subgrids;
+        };
+
+
+        void CPU::degrid_visibilities(
+            std::complex<float> *visibilities,
+            const float *uvw,
+            const float *wavenumbers,
+            const int *metadata,
+            const std::complex<float> *grid,
+            const float w_offset,
+            const std::complex<float> *aterm,
+            const float *spheroidal) {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
             cout << "Not implemented" << endl;
@@ -159,15 +208,9 @@ namespace idg {
 
         };
 
-        void CPU::degrid_visibilities(DEGRIDDING_PARAMETERS) {
-            #if defined(DEBUG)
-            cout << "CPU::" << __func__ << endl;
-            cout << "Not implemented" << endl;
-            #endif
 
-        };
-
-        void CPU::transform(DomainAtoDomainB direction, void* grid)
+        void CPU::transform(DomainAtoDomainB direction,
+                            complex<float>* grid)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
@@ -200,7 +243,16 @@ namespace idg {
         /*
             Low level routines
         */
-        void CPU::grid_onto_subgrids(GRIDDER_PARAMETERS)
+        void CPU::grid_onto_subgrids(
+            unsigned nr_subgrids,
+            float w_offset,
+            float *uvw,
+            float *wavenumbers,
+            complex<float> *visibilities,
+            float *spheroidal,
+            complex<float> *aterm,
+            int *metadata,
+            complex<float> *subgrids)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
@@ -296,7 +348,11 @@ namespace idg {
         }
 
 
-        void CPU::add_subgrids_to_grid(ADDER_PARAMETERS)
+        void CPU::add_subgrids_to_grid(
+            unsigned nr_subgrids,
+            int *metadata,
+            complex<float> *subgrids,
+            complex<float> *grid)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
@@ -356,7 +412,11 @@ namespace idg {
         }
 
 
-        void CPU::split_grid_into_subgrids(SPLITTER_PARAMETERS)
+        void CPU::split_grid_into_subgrids(
+            unsigned nr_subgrids,
+            int *metadata,
+            complex<float> *subgrids,
+            complex<float> *grid)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
@@ -416,7 +476,16 @@ namespace idg {
         }
 
 
-        void CPU::degrid_from_subgrids(DEGRIDDER_PARAMETERS)
+        void CPU::degrid_from_subgrids(
+            unsigned nr_subgrids,
+            float w_offset,
+            float *uvw,
+            float *wavenumbers,
+            std::complex<float> *visibilities,
+            float *spheroidal,
+            std::complex<float> *aterm,
+            int *metadata,
+            std::complex<float> *subgrids)
         {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
@@ -511,6 +580,7 @@ namespace idg {
             clog << endl;
             #endif
         }
+
 
         void CPU::compile(Compiler compiler, Compilerflags flags)
         {
