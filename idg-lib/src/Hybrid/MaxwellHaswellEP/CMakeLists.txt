@@ -3,6 +3,7 @@ project(idg-hybrid-maxwellhaswellep)
 # external header files needed
 include_directories (
     ${CUDA_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/common
     ${CMAKE_SOURCE_DIR}/src/CPU/common
     ${CMAKE_SOURCE_DIR}/src/CUDA/common
