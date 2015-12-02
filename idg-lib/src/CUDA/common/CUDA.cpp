@@ -7,7 +7,7 @@ namespace idg {
         /*
             Power measurement
         */
-        static PowerSensor *powerSensor;
+        static PowerSensor *powerSensor = NULL;
 
         class PowerRecord {
             public:
