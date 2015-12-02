@@ -17,16 +17,12 @@ set (${PROJECT_NAME}_sources
 
 # create library
 add_library(
-  ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
-                  ${${PROJECT_NAME}_sources}
+  ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
+                         ${${PROJECT_NAME}_sources}
 )
-
-# Set installation directory
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-)
+if (NOT BUILD_STATIC_LIBS)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
 
 # Copy kernel source files
 install(
