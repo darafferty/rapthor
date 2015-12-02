@@ -4,29 +4,29 @@ using namespace std;
 
 namespace idg {
     namespace proxy {
+        /*
+            Power measurement
+        */
+        static PowerSensor *powerSensor;
+
+        class PowerRecord {
+            public:
+                void enqueue(cu::Stream &stream);
+                static void getPower(CUstream, CUresult, void *userData);
+                PowerSensor::State state;
+                cu::Event event;
+        };
+
+        void PowerRecord::enqueue(cu::Stream &stream) {
+            stream.record(event);
+            stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
+        }
+
+        void PowerRecord::getPower(CUstream, CUresult, void *userData) {
+            *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
+        }
+
         namespace cuda {
-            /*
-                Power measurement
-            */
-            static PowerSensor *powerSensor;
-
-            class PowerRecord {
-                public:
-                    void enqueue(cu::Stream &stream);
-                    static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor::State state;
-                    cu::Event event;
-            };
-
-            void PowerRecord::enqueue(cu::Stream &stream) {
-                stream.record(event);
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-            }
-
-            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-                *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-            }
-
             /// Constructors
             CUDA::CUDA(
                 Parameters params,
@@ -114,54 +114,11 @@ namespace idg {
                 #endif
 
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
-                run_fft(CU_FFT_ARGUMENTS);
+                cout << "Not implemented" << endl;
             }
 
 
             void CUDA::grid_onto_subgrids(CU_GRIDDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-
-                run_gridder(CU_GRIDDER_ARGUMENTS);
-            }
-
-
-            void CUDA::add_subgrids_to_grid(CU_ADDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-
-                run_adder(CU_ADDER_ARGUMENTS);
-            }
-
-
-            void CUDA::split_grid_into_subgrids(CU_SPLITTER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-
-                run_splitter(CU_SPLITTER_ARGUMENTS);
-            }
-
-
-            void CUDA::degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-
-                run_degridder(CU_DEGRIDDER_ARGUMENTS);
-            }
-
-            /// Low level routines
-            /*
-                Gridder
-            */
-            void CUDA::run_gridder(CU_GRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
                 cout << "CUDA::" << __func__ << endl;
@@ -301,30 +258,33 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
-            } // run_gridder
+            }
 
 
-            void CUDA::run_adder(CU_ADDER_PARAMETERS)
+            void CUDA::add_subgrids_to_grid(CU_ADDER_PARAMETERS)
+            {
+                #if defined(DEBUG)
+                cout << "CUDA::" << __func__ << endl;
+                cout << "Not implemented" << endl;
+                #endif
+            }
+
+
+            void CUDA::split_grid_into_subgrids(CU_SPLITTER_PARAMETERS)
+            {
+                #if defined(DEBUG)
+                cout << "CUDA::" << __func__ << endl;
+                cout << "Not implemented" << endl;
+                #endif
+            }
+
+
+            void CUDA::degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
                 cout << "CUDA::" << __func__ << endl;
                 #endif
-            } // run_adder
 
-
-            void CUDA::run_splitter(CU_SPLITTER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-            } // run_splitter
-
-
-            void CUDA::run_degridder(CU_DEGRIDDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
                 // Constants
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timesteps = mParams.get_nr_timesteps();
@@ -459,15 +419,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                  clog << endl;
                 #endif
-           } // run_degridder
-
-
-            void CUDA::run_fft(CU_FFT_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-            } // run_fft
+            }
 
 
             void CUDA::compile(Compiler compiler, Compilerflags flags)
