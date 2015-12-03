@@ -118,6 +118,14 @@ namespace idg {
                         return kernel::cuda::Gridder(*(modules[which_module[kernel::cuda::name_gridder]]), mParams);
                     }
 
+                    kernel::cuda::Degridder get_kernel_degridder() {
+                        return kernel::cuda::Degridder(*(modules[which_module[kernel::cuda::name_degridder]]), mParams);
+                    }
+
+                    kernel::cuda::GridFFT get_kernel_fft() {
+                        return kernel::cuda::GridFFT(*(modules[which_module[kernel::cuda::name_fft]]), mParams);
+                    }
+
                 protected:
                     static std::string make_tempdir();
                     static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);

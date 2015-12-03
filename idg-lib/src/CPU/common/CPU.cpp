@@ -16,6 +16,7 @@
 #endif
 
 using namespace std;
+using namespace idg::kernel::cpu;
 
 namespace idg {
     namespace proxy {
@@ -223,7 +224,7 @@ namespace idg {
             auto gridsize = mParams.get_grid_size();
 
             // Load kernel function
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
+            GridFFT kernel_fft(*(modules[which_module[name_fft]]), mParams);
 
             // Start fft
             double runtime = -omp_get_wtime();
@@ -268,8 +269,8 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // load kernel functions
-            kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
+            Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
+            GridFFT kernel_fft(*(modules[which_module[name_fft]]), mParams);
 
             // Performance measurements
             double total_runtime_gridding = 0;
@@ -364,7 +365,7 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Load kernel function
-            kernel::Adder kernel_adder(*(modules[which_module[kernel::name_adder]]), mParams);
+            Adder kernel_adder(*(modules[which_module[name_adder]]), mParams);
 
             // Performance measurements
             double total_runtime_adding = 0;
@@ -428,7 +429,7 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Load kernel function
-            kernel::Splitter kernel_splitter(*(modules[which_module[kernel::name_splitter]]), mParams);
+            Splitter kernel_splitter(*(modules[which_module[name_splitter]]), mParams);
 
             // Performance measurements
             double total_runtime_splitting = 0;
@@ -501,8 +502,8 @@ namespace idg {
             auto subgridsize = mParams.get_subgrid_size();
 
             // Load kernel functions
-            kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
-            kernel::GridFFT kernel_fft(*(modules[which_module[kernel::name_fft]]), mParams);
+            Degridder kernel_degridder(*(modules[which_module[name_degridder]]), mParams);
+            GridFFT kernel_fft(*(modules[which_module[name_fft]]), mParams);
 
             // Performance measurements
             double total_runtime_degridding = 0;
@@ -670,25 +671,25 @@ namespace idg {
             #endif
 
             for (unsigned int i=0; i<modules.size(); i++) {
-                if (dlsym(*modules[i], kernel::name_gridder.c_str())) {
+                if (dlsym(*modules[i], name_gridder.c_str())) {
                   // found gridder kernel in module i
-                  which_module[kernel::name_gridder] = i;
+                  which_module[name_gridder] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_degridder.c_str())) {
+                if (dlsym(*modules[i], name_degridder.c_str())) {
                   // found degridder kernel in module i
-                  which_module[kernel::name_degridder] = i;
+                  which_module[name_degridder] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_fft.c_str())) {
+                if (dlsym(*modules[i], name_fft.c_str())) {
                   // found fft kernel in module i
-                  which_module[kernel::name_fft] = i;
+                  which_module[name_fft] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_adder.c_str())) {
+                if (dlsym(*modules[i], name_adder.c_str())) {
                   // found adder kernel in module i
-                  which_module[kernel::name_adder] = i;
+                  which_module[name_adder] = i;
                 }
-                if (dlsym(*modules[i], kernel::name_splitter.c_str())) {
+                if (dlsym(*modules[i], name_splitter.c_str())) {
                   // found gridder kernel in module i
-                  which_module[kernel::name_splitter] = i;
+                  which_module[name_splitter] = i;
                 }
             } // end for
         } // end find_kernel_functions
