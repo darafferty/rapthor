@@ -111,6 +111,19 @@ namespace idg {
                     int *metadata,
                     std::complex<float> *subgrids);
 
+            public:
+                kernel::cpu::GridFFT get_kernel_fft() {
+                    return kernel::cpu::GridFFT(*(modules[which_module[kernel::cpu::name_fft]]), mParams);
+
+                }
+
+                kernel::cpu::Adder get_kernel_adder() {
+                    return kernel::cpu::Adder(*(modules[which_module[kernel::cpu::name_adder]]), mParams);
+                }
+
+                kernel::cpu::Splitter get_kernel_splitter() {
+                    return kernel::cpu::Splitter(*(modules[which_module[kernel::cpu::name_splitter]]), mParams);
+                }
 
             protected:
                 static std::string make_tempdir();

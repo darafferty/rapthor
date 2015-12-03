@@ -63,7 +63,7 @@ namespace idg {
                 std::complex<float>* grid) override;
 
             private:
-                idg::proxy::cpu::HaswellEP xeon;
+                idg::proxy::cpu::HaswellEP cpu;
                 idg::proxy::cuda::Maxwell cuda;
 
         }; // class MaxwellHaswellEP
