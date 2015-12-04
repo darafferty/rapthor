@@ -87,9 +87,6 @@ namespace idg {
                 d_aterm.set((void *) aterm);
                 d_spheroidal.set((void *) spheroidal);
 
-                // Shared host memory
-			    //cu::HostMemory h_grid(sizeof(complex<float>) * size_grid);
-
                 // Initialize
                 cu::Stream executestream;
                 cu::Stream htodstream;
@@ -111,7 +108,6 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    //GridFFT kernel_fft(*module_fft, mParams);
 
                     // Private host memory
 			        cu::HostMemory h_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -139,7 +135,6 @@ namespace idg {
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) uvw + s * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
-                        //void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
                         void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                         // Copy memory to host memory
