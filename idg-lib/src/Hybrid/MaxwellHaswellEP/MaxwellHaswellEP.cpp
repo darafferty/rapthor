@@ -97,6 +97,7 @@ namespace idg {
                 double total_runtime_gridding = 0;
                 double total_runtime_gridder = 0;
                 double total_runtime_fft = 0;
+                double total_runtime_adder = 0;
                 total_runtime_gridding = -omp_get_wtime();
 
                 // Start gridder
@@ -144,6 +145,7 @@ namespace idg {
 
                         // Power measurement
                         cuda::PowerRecord powerRecords[3];
+                        LikwidPowerSensor::State powerStates[2];
 
                         #pragma omp critical (GPU)
                 		{
@@ -181,15 +183,16 @@ namespace idg {
                 		outputFree.synchronize();
 
                         // Add subgrid to grid
-                        double runtime_adder = -omp_get_wtime();
+                        powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
                         {
                             kernel_adder.run(jobsize, h_metadata, h_subgrids, grid);
                         }
-                        runtime_adder += omp_get_wtime();
+                        powerStates[1] = cpu.read_power();
 
                         double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_adder   = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
                                                      kernel_gridder.flops(current_jobsize),
@@ -202,11 +205,12 @@ namespace idg {
                         auxiliary::report("  adder", runtime_adder,
                                                      kernel_adder.flops(current_jobsize),
                                                      kernel_adder.bytes(current_jobsize),
-                                                     0);
+                                                     LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                         #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_gridder += runtime_gridder;
                         total_runtime_fft     += runtime_fft;
+                        total_runtime_adder   += runtime_adder;
                         #endif
                     } // end for s
                 }
@@ -217,10 +221,13 @@ namespace idg {
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft_small.flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft      = kernel_fft_small.bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_adder    = kernel_adder.flops(nr_subgrids);
+                uint64_t total_bytes_adder    = kernel_adder.bytes(nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, 0);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
