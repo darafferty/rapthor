@@ -180,6 +180,14 @@ namespace idg {
 
                 		outputFree.synchronize();
 
+                        // Add subgrid to grid
+                        double runtime_adder = -omp_get_wtime();
+                        #pragma omp critical (CPU)
+                        {
+                            kernel_adder.run(jobsize, h_metadata, h_subgrids, grid);
+                        }
+                        runtime_adder += omp_get_wtime();
+
                         double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
                         #if defined(REPORT_VERBOSE)
@@ -191,6 +199,10 @@ namespace idg {
                                                      kernel_fft_small.flops(subgridsize, current_jobsize),
                                                      kernel_fft_small.bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                        auxiliary::report("  adder", runtime_adder,
+                                                     kernel_adder.flops(current_jobsize),
+                                                     kernel_adder.bytes(current_jobsize),
+                                                     0);
                         #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_gridder += runtime_gridder;
