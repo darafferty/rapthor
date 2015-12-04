@@ -22,52 +22,50 @@
 namespace idg {
     namespace proxy {
         namespace hybrid {
+            class MaxwellHaswellEP : public Proxy {
 
-        class MaxwellHaswellEP : public Proxy {
+                public:
+                    /// Constructors
+                    MaxwellHaswellEP(Parameters params);
 
-            public:
-                /// Constructors
-                MaxwellHaswellEP(Parameters params);
+                    /// Destructor
+                    virtual ~MaxwellHaswellEP() = default;
 
-                /// Destructor
-                virtual ~MaxwellHaswellEP() = default;
+                    /// Assignment
+                    MaxwellHaswellEP& operator=(const MaxwellHaswellEP& rhs) = delete;
 
-                /// Assignment
-                MaxwellHaswellEP& operator=(const MaxwellHaswellEP& rhs) = delete;
+                /*
+                    High level routines
+                    These routines operate on grids
+                */
+                virtual void grid_visibilities(
+                    const std::complex<float> *visibilities,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const int *metadata,
+                    std::complex<float> *grid,
+                    const float w_offset,
+                    const std::complex<float> *aterm,
+                    const float *spheroidal) override;
 
-            /*
-                High level routines
-                These routines operate on grids
-            */
-            virtual void grid_visibilities(
-                const std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *metadata,
-                std::complex<float> *grid,
-                const float w_offset,
-                const std::complex<float> *aterm,
-                const float *spheroidal) override;
+                virtual void degrid_visibilities(
+                    std::complex<float> *visibilities,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const int *metadata,
+                    const std::complex<float> *grid,
+                    const float w_offset,
+                    const std::complex<float> *aterm,
+                    const float *spheroidal) override;
 
-            virtual void degrid_visibilities(
-                std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *metadata,
-                const std::complex<float> *grid,
-                const float w_offset,
-                const std::complex<float> *aterm,
-                const float *spheroidal) override;
+                virtual void transform(DomainAtoDomainB direction,
+                    std::complex<float>* grid) override;
 
-            virtual void transform(DomainAtoDomainB direction,
-                std::complex<float>* grid) override;
+                private:
+                    idg::proxy::cpu::HaswellEP cpu;
+                    idg::proxy::cuda::Maxwell cuda;
 
-            private:
-                idg::proxy::cpu::HaswellEP cpu;
-                idg::proxy::cuda::Maxwell cuda;
-
-        }; // class MaxwellHaswellEP
-
+            }; // class MaxwellHaswellEP
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
