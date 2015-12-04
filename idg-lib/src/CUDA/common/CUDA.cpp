@@ -5,29 +5,16 @@ using namespace idg::kernel::cuda;
 
 namespace idg {
     namespace proxy {
-        /*
-            Power measurement
-        */
-        static PowerSensor *powerSensor = NULL;
-
-        class PowerRecord {
-            public:
-                void enqueue(cu::Stream &stream);
-                static void getPower(CUstream, CUresult, void *userData);
-                PowerSensor::State state;
-                cu::Event event;
-        };
-
-        void PowerRecord::enqueue(cu::Stream &stream) {
-            stream.record(event);
-            stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-        }
-
-        void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-            *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-        }
-
         namespace cuda {
+            void PowerRecord::enqueue(cu::Stream &stream) {
+                stream.record(event);
+                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
+            }
+
+            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
+                *static_cast<PowerSensor::State *>(userData) = powerSensor.read();
+            }
+
             /// Constructors
             CUDA::CUDA(
                 Parameters params,
@@ -66,9 +53,11 @@ namespace idg {
                 if (!str_power_file) str_power_file = STR_POWER_FILE;
                 cout << "Opening power sensor: " << str_power_sensor << endl;
                 cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor = new PowerSensor(str_power_sensor, str_power_file);
+                //powerSensor = new PowerSensor(str_power_sensor, str_power_file);
+                powerSensor.init(str_power_sensor, str_power_file);
                 #else
-                powerSensor = new PowerSensor();
+                //powerSensor = new PowerSensor();
+                powerSensor.init();
                 #endif
             }
 
@@ -158,7 +147,7 @@ namespace idg {
                 double total_runtime_gridder = 0;
                 double total_runtime_fft = 0;
                 total_runtime_gridding = -omp_get_wtime();
-                PowerSensor::State startState = powerSensor->read();
+                PowerSensor::State startState = powerSensor.read();
 
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -253,7 +242,7 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
-                PowerSensor::State stopState = powerSensor->read();
+                PowerSensor::State stopState = powerSensor.read();
                 GridFFT kernel_fft(*module_fft, mParams);
                 uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
@@ -319,7 +308,7 @@ namespace idg {
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
          	    total_runtime_degridding = -omp_get_wtime();
-                PowerSensor::State startState = powerSensor->read();
+                PowerSensor::State startState = powerSensor.read();
 
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -414,7 +403,7 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
-                PowerSensor::State stopState = powerSensor->read();
+                PowerSensor::State stopState = powerSensor.read();
                 GridFFT kernel_fft(*module_fft, mParams);
                 uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
