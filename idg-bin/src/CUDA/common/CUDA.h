@@ -64,6 +64,19 @@
 namespace idg {
     namespace proxy {
         namespace cuda {
+            /*
+                Power measurement
+            */
+            static PowerSensor powerSensor;
+
+            class PowerRecord {
+                public:
+                    void enqueue(cu::Stream &stream);
+                    static void getPower(CUstream, CUresult, void *userData);
+                    PowerSensor::State state;
+                    cu::Event event;
+            };
+
             class CUDA {
                 public:
                     /// Constructors
