@@ -20,7 +20,8 @@ namespace idg {
 /*
     Methos where pointed to allocated memory is provided
 */
-void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize) {
+void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time,
+              int gridsize, int subgridsize) {
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
 
@@ -301,8 +302,8 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
             float v_middle_wavelenghts = (int) ((v_max + v_min) / 2);
 
             // Compute middle point in pixels
-            int u_middle_pixels = u_middle_wavelenghts * imagesize + 0.5;
-            int v_middle_pixels = v_middle_wavelenghts * imagesize + 0.5;
+            int u_middle_pixels = roundf(u_middle_wavelenghts * imagesize);
+            int v_middle_pixels = roundf(v_middle_wavelenghts * imagesize);
 
             // Shift center from middle of grid to top left
             u_middle_pixels += (gridsize/2);

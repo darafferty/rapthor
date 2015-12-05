@@ -3,7 +3,12 @@
  *
  *  \brief Abstract base class for all "proxy clases"
  *
- *  Have a more detailed description here
+ *  All classes inherited from Proxy will adhere to a common
+ *  inteface. All instances P have the common functionality of:
+ *  P.grid_visibilities(arguments)
+ *  P.degrid_visibilities(arguments)
+ *  P.transform(arguments)
+ *  as well as a set of getter and setter routines for parameters.
  */
 
 #ifndef IDG_PROXY_H_
@@ -15,26 +20,6 @@
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
-
-
-// Low level method parameters
-// TODO: remove these defines, or at least move them somewhere else
-/* #define GRIDDER_PARAMETERS   unsigned nr_subgrids, float w_offset, \ */
-/*                              void *uvw, void *wavenumbers, \ */
-/*                              void *visibilities, void *spheroidal, void *aterm, \ */
-/*                              void *metadata, void *subgrids */
-/* #define DEGRIDDER_PARAMETERS GRIDDER_PARAMETERS */
-/* #define ADDER_PARAMETERS     unsigned nr_subgrids, void *metadata, void *subgrids, void *grid */
-/* #define SPLITTER_PARAMETERS  ADDER_PARAMETERS */
-// #define FFT_PARAMETERS       void *grid, int direction
-
-// Low level method arguments
-/* #define GRIDDER_ARGUMENTS    nr_subgrids, w_offset, uvw, wavenumbers, visibilities, \ */
-/*                              spheroidal, aterm, metadata, subgrids */
-/* #define DEGRIDDER_ARGUMENT   GRIDDER_ARGUMENTS */
-/* #define ADDER_ARGUMENTS      nr_subgrids, metadata, subgrids, grid */
-/* #define SPLITTER_ARGUMENTS   ADDER_ARGUMENTS */
-// #define FFT_ARGUMENTS        grid, direction
 
 
 namespace idg {
@@ -53,7 +38,6 @@ namespace idg {
         public:
             /*
                 High level routines
-                These routines operate on grids
             */
             /** \brief Grid the visibilities onto a uniform grid
              * Using:
@@ -117,6 +101,50 @@ namespace idg {
              */
             virtual void transform(DomainAtoDomainB direction,
                                    std::complex<float>* grid) = 0;
+
+
+            // Auxiliary: set and get methods
+            unsigned int get_nr_stations() const {
+                return mParams.get_nr_stations(); }
+            unsigned int get_nr_baselines() const {
+                return mParams.get_nr_baselines(); }
+            unsigned int get_nr_channels() const {
+                return mParams.get_nr_channels(); }
+            unsigned int get_nr_timesteps() const {
+                return mParams.get_nr_timesteps(); }
+            unsigned int get_nr_timeslots() const {
+                return mParams.get_nr_timeslots(); }
+            float get_imagesize() const {
+                return mParams.get_imagesize(); }
+            unsigned int get_grid_size() const {
+                return mParams.get_grid_size(); }
+            unsigned int get_subgrid_size() const {
+                return mParams.get_subgrid_size(); }
+            unsigned int get_job_size() const {
+                return mParams.get_job_size(); }
+            unsigned int get_job_size_gridding() const {
+                return mParams.get_job_size_gridding(); }
+            unsigned int get_job_size_degridding() const {
+                return mParams.get_job_size_degridding(); }
+            unsigned int get_job_size_gridder() const {
+                return mParams.get_job_size_gridder(); }
+            unsigned int get_job_size_adder() const {
+                return mParams.get_job_size_adder(); }
+            unsigned int get_job_size_splitter() const {
+                return mParams.get_job_size_splitter(); }
+            unsigned int get_job_size_degridder() const {
+                return mParams.get_job_size_degridder(); }
+            unsigned int get_nr_polarizations() const {
+                return mParams.get_nr_polarizations(); }
+            unsigned int get_nr_subgrids() const {
+                return mParams.get_nr_subgrids(); }
+
+            void set_job_size(unsigned int js) {
+                mParams.set_job_size(js); }
+            void set_job_size_gridding(unsigned int js) {
+                mParams.set_job_size_gridding(js); }
+            void set_job_size_degridding(unsigned int js) {
+                mParams.set_job_size_degridding(js); }
 
         protected:
             Parameters mParams;  // store parameters passed on creation

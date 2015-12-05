@@ -72,10 +72,6 @@ namespace idg {
 
             // Low level routines
             public:
-                // virtual void grid_onto_subgrids(GRIDDER_PARAMETERS) override;
-                // virtual void add_subgrids_to_grid(ADDER_PARAMETERS) override;
-                // virtual void split_grid_into_subgrids(SPLITTER_PARAMETERS) override;
-                // virtual void degrid_from_subgrids(DEGRIDDER_PARAMETERS) override;
 
                 virtual void grid_onto_subgrids(
                     unsigned nr_subgrids,
@@ -112,9 +108,25 @@ namespace idg {
                     std::complex<float> *subgrids);
 
 
+                // Auxiliary: additional set and get methods
+                // Note: the abstract proxy provides less,
+                // as it does not know that how the high level
+                // routines are split up in subroutines
+                void set_job_size_gridder(unsigned int js) {
+                    mParams.set_job_size_gridder(js); }
+                void set_job_size_adder(unsigned int js) {
+                    mParams.set_job_size_adder(js); }
+                void set_job_size_splitter(unsigned int js) {
+                    mParams.set_job_size_splitter(js); }
+                void set_job_size_degridder(unsigned int js) {
+                    mParams.set_job_size_degridder(js);
+                }
+
+
             protected:
                 static std::string make_tempdir();
-                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+                static ProxyInfo default_proxyinfo(std::string srcdir,
+                                                   std::string tmpdir);
 
                 void compile(Compiler compiler, Compilerflags flags);
                 void parameter_sanity_check();
