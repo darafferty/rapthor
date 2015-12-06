@@ -163,13 +163,12 @@ namespace idg {
 
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
-            cout << "Not implemented" << endl;
             #endif
 
             // allocate 'subgrids' memory for subgrids
             auto nr_baselines = mParams.get_nr_baselines();
             auto nr_timeslots = mParams.get_nr_timeslots();
-            auto nr_subgrids = nr_baselines * nr_timeslots;
+            auto nr_subgrids = mParams.get_nr_subgrids();
             auto nr_polarizations = mParams.get_nr_polarizations();;
             auto subgridsize = mParams.get_subgrid_size();
             auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
@@ -186,7 +185,10 @@ namespace idg {
                 const_cast<int*>(metadata),
                 subgrids);
 
-            // add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid)
+            add_subgrids_to_grid(nr_subgrids,
+                const_cast<int*>(metadata),
+                subgrids,
+                grid);
 
             delete[] subgrids;
         };
@@ -203,9 +205,34 @@ namespace idg {
             const float *spheroidal) {
             #if defined(DEBUG)
             cout << "CPU::" << __func__ << endl;
-            cout << "Not implemented" << endl;
             #endif
 
+            // allocate 'subgrids' memory for subgrids
+            auto nr_baselines = mParams.get_nr_baselines();
+            auto nr_timeslots = mParams.get_nr_timeslots();
+            auto nr_subgrids = nr_baselines * nr_timeslots;
+            auto nr_polarizations = mParams.get_nr_polarizations();;
+            auto subgridsize = mParams.get_subgrid_size();
+            auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
+                                 subgridsize*subgridsize;
+            auto subgrids = new complex<float>[size_subgrids];
+
+            split_grid_into_subgrids(nr_subgrids,
+                const_cast<int*>(metadata),
+                subgrids,
+                const_cast<complex<float>*>(grid));
+
+            degrid_from_subgrids(nr_subgrids,
+                w_offset,
+                const_cast<float*>(uvw),
+                const_cast<float*>(wavenumbers),
+                visibilities,
+                const_cast<float*>(spheroidal),
+                const_cast<complex<float>*>(aterm),
+                const_cast<int*>(metadata),
+                subgrids);
+
+            delete[] subgrids;
         };
 
 
