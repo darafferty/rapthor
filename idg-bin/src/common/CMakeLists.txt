@@ -11,7 +11,8 @@ set (${PROJECT_NAME}_headers
 )
 
 set (${PROJECT_NAME}_sources 
-  CompilerEnvironment.cpp 
+  Proxy.cpp
+  CompilerEnvironment.cpp
   Parameters.cpp 
   ProxyInfo.cpp 
   RuntimeWrapper.cpp 

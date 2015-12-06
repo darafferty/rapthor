@@ -3,9 +3,6 @@ import ctypes
 import numpy
 from ctypes.util import find_library
 
-# lib = ctypes.cdll.LoadLibrary(find_library('idg'))
-# lib = ctypes.cdll.LoadLibrary('/home/matthias/Work/image-domain-gridder/build/lib/libidg.so')
-
 visibilitiestype = numpy.complex64
 uvwtype = numpy.float32
 wavenumberstype = numpy.float32
