@@ -180,53 +180,8 @@ extern "C" {
                     (std::complex<float>*) grid);
     }
 
-    int CPU_Reference_get_nr_stations(CPU_Reference* p) {
-        return p->get_nr_stations(); }
-    int CPU_Reference_get_nr_baselines(CPU_Reference* p) {
-        return p->get_nr_baselines(); }
-    int CPU_Reference_get_nr_channels(CPU_Reference* p) {
-        return p->get_nr_channels(); }
-    int CPU_Reference_get_nr_timesteps(CPU_Reference* p) {
-        return p->get_nr_timesteps(); }
-    int CPU_Reference_get_nr_timeslots(CPU_Reference* p) {
-        return p->get_nr_timeslots(); }
-    int CPU_Reference_get_nr_polarizations(CPU_Reference* p) {
-        return p->get_nr_polarizations(); }
-    float CPU_Reference_get_imagesize(CPU_Reference* p) {
-        return p->get_imagesize(); }
-    int CPU_Reference_get_grid_size(CPU_Reference* p) {
-        return p->get_grid_size(); }
-    int CPU_Reference_get_subgrid_size(CPU_Reference* p) {
-        return p->get_subgrid_size(); }
-    int CPU_Reference_get_nr_subgrids(CPU_Reference* p) {
-        return p->get_nr_subgrids(); }
-    int CPU_Reference_get_job_size(CPU_Reference* p) {
-        return p->get_job_size(); }
-    int CPU_Reference_get_job_size_gridding(CPU_Reference* p) {
-        return p->get_job_size_gridding(); }
-    int CPU_Reference_get_job_size_degridding(CPU_Reference* p) {
-        return p->get_job_size_degridding(); }
-    int CPU_Reference_get_job_size_gridder(CPU_Reference* p) {
-        return p->get_job_size_gridder(); }
-    int CPU_Reference_get_job_size_adder(CPU_Reference* p) {
-        return p->get_job_size_adder(); }
-    int CPU_Reference_get_job_size_splitter(CPU_Reference* p) {
-        return p->get_job_size_splitter(); }
-    int CPU_Reference_get_job_size_degridder(CPU_Reference* p) {
-        return p->get_job_size_degridder(); }
-    void CPU_Reference_set_job_size(CPU_Reference* p, int n) {
-        p->set_job_size(n); }
-    void CPU_Reference_set_job_size_gridding(CPU_Reference* p, int n) {
-        p->set_job_size_gridding(n); }
-    void CPU_Reference_set_job_size_degridding(CPU_Reference* p, int n) {
-        p->set_job_size_degridding(n); }
-    void CPU_Reference_set_job_size_gridder(CPU_Reference* p, int n) {
-        p->set_job_size_gridder(n); }
-    void CPU_Reference_set_job_size_adder(CPU_Reference* p, int n) {
-        p->set_job_size_adder(n); }
-    void CPU_Reference_set_job_size_splitter(CPU_Reference* p, int n) {
-        p->set_job_size_splitter(n); }
-    void CPU_Reference_set_job_size_degridder(CPU_Reference* p, int n) {
-        p->set_job_size_degridder(n); }
+    void CPU_Reference_destroy(CPU_Reference* p) {
+       delete p;
+    }
 
 }  // end extern "C"
