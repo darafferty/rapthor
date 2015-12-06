@@ -722,3 +722,24 @@ namespace idg {
 
     } // namespace proxy
 } // namespace idg
+
+
+
+
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+    typedef idg::proxy::CPU CPU;
+
+    void CPU_set_job_size_gridder(CPU* p, int n) {
+        p->set_job_size_gridder(n); }
+    void CPU_set_job_size_adder(CPU* p, int n) {
+        p->set_job_size_adder(n); }
+    void CPU_set_job_size_splitter(CPU* p, int n) {
+        p->set_job_size_splitter(n); }
+    void CPU_set_job_size_degridder(CPU* p, int n) {
+        p->set_job_size_degridder(n); }
+}  // end extern "C"
