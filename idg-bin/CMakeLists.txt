@@ -25,6 +25,7 @@ option (BUILD_WITH_MIC "Have Xeon Phi environment" OFF)
 option (BUILD_WITH_CUDA "Have CUDA environment" OFF)
 option (BUILD_WITH_OPENCL "Have OpenCL environment" OFF)
 option (BUILD_WITH_PYTHON "Have Python environment" OFF)
+option (BUILD_WITH_BOOST_PYTHON "Have Python environment" OFF)
 option (BUILD_EXAMPLES "Build example executables" OFF) 
 option (BUILD_TESTS "Build test executables" OFF) 
 option (REPORT_VERBOSE "Report detailed performance metrics" ON)
@@ -116,6 +117,12 @@ configure_file (
   "${PROJECT_BINARY_DIR}/idg-config.h"
   )
 include_directories (${CMAKE_BINARY_DIR})
+
+# write file to initialize enoviroment
+configure_file (
+  "${PROJECT_SOURCE_DIR}/init-environment.sh.in"
+  "${PROJECT_BINARY_DIR}/init-environment.sh"
+  )
 
 # add subfolders
 add_subdirectory(src)

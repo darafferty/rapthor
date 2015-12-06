@@ -33,7 +33,7 @@ install(
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
     DESTINATION
-    lib/idg/kernels/CPU/Reference
+    lib/kernels/CPU/Reference
 )
 
 # Copy header files
@@ -42,5 +42,5 @@ install(
     idg.h
     Reference.h
     DESTINATION
-    include/idg/CPU/Reference
+    include/CPU/Reference
 )
