@@ -64,6 +64,19 @@
 namespace idg {
     namespace proxy {
         namespace cuda {
+            /*
+                Power measurement
+            */
+            static PowerSensor powerSensor;
+
+            class PowerRecord {
+                public:
+                    void enqueue(cu::Stream &stream);
+                    static void getPower(CUstream, CUresult, void *userData);
+                    PowerSensor::State state;
+                    cu::Event event;
+            };
+
             class CUDA {
                 public:
                     /// Constructors
@@ -112,6 +125,19 @@ namespace idg {
                      *  \param grid [in/out] ...
                      */
                     void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid);
+
+                public:
+                    kernel::cuda::Gridder get_kernel_gridder() {
+                        return kernel::cuda::Gridder(*(modules[which_module[kernel::cuda::name_gridder]]), mParams);
+                    }
+
+                    kernel::cuda::Degridder get_kernel_degridder() {
+                        return kernel::cuda::Degridder(*(modules[which_module[kernel::cuda::name_degridder]]), mParams);
+                    }
+
+                    kernel::cuda::GridFFT get_kernel_fft() {
+                        return kernel::cuda::GridFFT(*(modules[which_module[kernel::cuda::name_fft]]), mParams);
+                    }
 
                 protected:
                     static std::string make_tempdir();
