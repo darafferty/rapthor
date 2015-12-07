@@ -113,10 +113,6 @@ if (BUILD_WITH_OPENCL)
     find_package(clFFT)
 endif (BUILD_WITH_OPENCL)
 
-# set default path to build executables and libraries in BINARY_DIR
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
-
 # write config file, included in all files of the project
 configure_file (
   "${PROJECT_SOURCE_DIR}/idg-config.h.in"
