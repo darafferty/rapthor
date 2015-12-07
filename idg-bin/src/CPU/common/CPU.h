@@ -18,129 +18,145 @@
 
 namespace idg {
     namespace proxy {
+        namespace cpu {
+            // Power sensor
+            static LikwidPowerSensor *powerSensor;
 
-        class CPU : public Proxy {
-            public:
-                /// Constructors
-                CPU(Parameters params,
-                    Compiler compiler = default_compiler(),
-                    Compilerflags flags = default_compiler_flags(),
-                    ProxyInfo info = default_info());
+            class CPU : public Proxy {
+                public:
+                    /// Constructors
+                    CPU(Parameters params,
+                        Compiler compiler = default_compiler(),
+                        Compilerflags flags = default_compiler_flags(),
+                        ProxyInfo info = default_info());
 
-                /// Copy constructor
-                //CPU(const CPU& v) = delete;
+                    /// Copy constructor
+                    //CPU(const CPU& v) = delete;
 
-                /// Destructor
-                virtual ~CPU();
+                    /// Destructor
+                    virtual ~CPU();
 
-                /// Assignment
-                CPU& operator=(const CPU& rhs) = delete;
+                    /// Assignment
+                    CPU& operator=(const CPU& rhs) = delete;
 
-                // Get default values
-                static ProxyInfo default_info();
-                static std::string default_compiler();
-                static std::string default_compiler_flags();
+                    // Get default values
+                    static ProxyInfo default_info();
+                    static std::string default_compiler();
+                    static std::string default_compiler_flags();
 
-                // Get parameters of proxy
-                const Parameters& get_parameters() const { return mParams; }
-                const ProxyInfo& get_info() const { return mInfo; }
+                    // Get parameters of proxy
+                    const Parameters& get_parameters() const { return mParams; }
+                    const ProxyInfo& get_info() const { return mInfo; }
 
-                // High level interface, inherited from Proxy
+                    // High level interface, inherited from Proxy
+                    virtual void grid_visibilities(
+                        const std::complex<float> *visibilities,
+                        const float *uvw,
+                        const float *wavenumbers,
+                        const int *metadata,
+                        std::complex<float> *grid,
+                        const float w_offset,
+                        const std::complex<float> *aterm,
+                        const float *spheroidal) override;
 
-                virtual void grid_visibilities(
-                    const std::complex<float> *visibilities,
-                    const float *uvw,
-                    const float *wavenumbers,
-                    const int *metadata,
-                    std::complex<float> *grid,
-                    const float w_offset,
-                    const std::complex<float> *aterm,
-                    const float *spheroidal) override;
+                    virtual void degrid_visibilities(
+                        std::complex<float> *visibilities,
+                        const float *uvw,
+                        const float *wavenumbers,
+                        const int *metadata,
+                        const std::complex<float> *grid,
+                        const float w_offset,
+                        const std::complex<float> *aterm,
+                        const float *spheroidal) override;
 
-                virtual void degrid_visibilities(
-                    std::complex<float> *visibilities,
-                    const float *uvw,
-                    const float *wavenumbers,
-                    const int *metadata,
-                    const std::complex<float> *grid,
-                    const float w_offset,
-                    const std::complex<float> *aterm,
-                    const float *spheroidal) override;
+                    virtual void transform(DomainAtoDomainB direction,
+                                           std::complex<float>* grid) override;
 
-                virtual void transform(DomainAtoDomainB direction,
-                                       std::complex<float>* grid) override;
+                    // Low level routines
+                    virtual void grid_onto_subgrids(
+                        unsigned nr_subgrids,
+                        float w_offset,
+                        float *uvw,
+                        float *wavenumbers,
+                        std::complex<float> *visibilities,
+                        float *spheroidal,
+                        std::complex<float> *aterm,
+                        int *metadata,
+                        std::complex<float> *subgrids);
 
-            // Low level routines
-            public:
+                    virtual void add_subgrids_to_grid(
+                        unsigned nr_subgrids,
+                        int *metadata,
+                        std::complex<float> *subgrids,
+                        std::complex<float> *grid);
 
-                virtual void grid_onto_subgrids(
-                    unsigned nr_subgrids,
-                    float w_offset,
-                    float *uvw,
-                    float *wavenumbers,
-                    std::complex<float> *visibilities,
-                    float *spheroidal,
-                    std::complex<float> *aterm,
-                    int *metadata,
-                    std::complex<float> *subgrids);
+                    virtual void split_grid_into_subgrids(
+                        unsigned nr_subgrids,
+                        int *metadata,
+                        std::complex<float> *subgrids,
+                        std::complex<float> *grid);
 
-                virtual void add_subgrids_to_grid(
-                    unsigned nr_subgrids,
-                    int *metadata,
-                    std::complex<float> *subgrids,
-                    std::complex<float> *grid);
+                    virtual void degrid_from_subgrids(
+                        unsigned nr_subgrids,
+                        float w_offset,
+                        float *uvw,
+                        float *wavenumbers,
+                        std::complex<float> *visibilities,
+                        float *spheroidal,
+                        std::complex<float> *aterm,
+                        int *metadata,
+                        std::complex<float> *subgrids);
 
-                virtual void split_grid_into_subgrids(
-                    unsigned nr_subgrids,
-                    int *metadata,
-                    std::complex<float> *subgrids,
-                    std::complex<float> *grid);
+                public:
+                    kernel::cpu::GridFFT get_kernel_fft() {
+                        return kernel::cpu::GridFFT(*(modules[which_module[kernel::cpu::name_fft]]), mParams);
 
-                virtual void degrid_from_subgrids(
-                    unsigned nr_subgrids,
-                    float w_offset,
-                    float *uvw,
-                    float *wavenumbers,
-                    std::complex<float> *visibilities,
-                    float *spheroidal,
-                    std::complex<float> *aterm,
-                    int *metadata,
-                    std::complex<float> *subgrids);
+                    }
 
+                    kernel::cpu::Adder get_kernel_adder() {
+                        return kernel::cpu::Adder(*(modules[which_module[kernel::cpu::name_adder]]), mParams);
+                    }
 
-                // Auxiliary: additional set and get methods
-                // Note: the abstract proxy provides less,
-                // as it does not know that how the high level
-                // routines are split up in subroutines
-                void set_job_size_gridder(unsigned int js) {
-                    mParams.set_job_size_gridder(js); }
-                void set_job_size_adder(unsigned int js) {
-                    mParams.set_job_size_adder(js); }
-                void set_job_size_splitter(unsigned int js) {
-                    mParams.set_job_size_splitter(js); }
-                void set_job_size_degridder(unsigned int js) {
-                    mParams.set_job_size_degridder(js);
-                }
+                    kernel::cpu::Splitter get_kernel_splitter() {
+                        return kernel::cpu::Splitter(*(modules[which_module[kernel::cpu::name_splitter]]), mParams);
+                    }
 
+                    LikwidPowerSensor::State read_power() {
+                        return cpu::powerSensor->read();
+                    }
 
-            protected:
-                static std::string make_tempdir();
-                static ProxyInfo default_proxyinfo(std::string srcdir,
-                                                   std::string tmpdir);
+                public:
+                    // Auxiliary: additional set and get methods
+                    // Note: the abstract proxy provides less,
+                    // as it does not know that how the high level
+                    // routines are split up in subroutines
+                    void set_job_size_gridder(unsigned int js) {
+                        mParams.set_job_size_gridder(js); }
+                    void set_job_size_adder(unsigned int js) {
+                        mParams.set_job_size_adder(js); }
+                    void set_job_size_splitter(unsigned int js) {
+                        mParams.set_job_size_splitter(js); }
+                    void set_job_size_degridder(unsigned int js) {
+                        mParams.set_job_size_degridder(js);
+                    }
 
-                void compile(Compiler compiler, Compilerflags flags);
-                void parameter_sanity_check();
-                void load_shared_objects();
-                void find_kernel_functions();
+                protected:
+                    static std::string make_tempdir();
+                    static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
 
-                // data
-                ProxyInfo mInfo; // info about shared object files
+                    void compile(Compiler compiler, Compilerflags flags);
+                    void parameter_sanity_check();
+                    void load_shared_objects();
+                    void find_kernel_functions();
 
-                // store the ptr to Module, which each loads an .so-file
-                std::vector<runtime::Module*> modules;
-                std::map<std::string,int> which_module;
-        }; // class CPU
+                    // data
+                    ProxyInfo mInfo; // info about shared object files
 
+                    // store the ptr to Module, which each loads an .so-file
+                    std::vector<runtime::Module*> modules;
+                    std::map<std::string,int> which_module;
+            }; // class CPU
+        } // namespace cpu
     } // namespace proxy
 } // namespace idg
 

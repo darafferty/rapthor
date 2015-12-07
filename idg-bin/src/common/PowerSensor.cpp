@@ -1,8 +1,8 @@
 #include "PowerSensor.h"
 
-PowerSensor::PowerSensor(const char *device, const char *dumpFileName) :
-    dumpFile(dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName)),
-    stop(false) {
+void PowerSensor::init(const char *device, const char *dumpFileName) {
+    dumpFile = (dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName));
+    stop = false; 
     lastState.microSeconds = 0;
 
     #if defined(MEASURE_POWER_ARDUINO)
