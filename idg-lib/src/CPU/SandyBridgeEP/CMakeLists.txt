@@ -32,6 +32,7 @@ install(
     kernels/KernelFFT.cpp
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
+    kernels/Types.h
     DESTINATION
     lib/kernels/CPU/SandyBridgeEP
 )

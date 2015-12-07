@@ -43,8 +43,8 @@ namespace idg {
             cout << "SandyBridgeEP::" << __func__ << endl;
             #endif
 
-            string  srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CPU/SandyBridgeEP/kernels";
+            string  srcdir = string(IDG_INSTALL_DIR)
+                + "/lib/kernels/CPU/SandyBridgeEP";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;

@@ -27,3 +27,10 @@ target_link_libraries (
   idg-common
   ${CMAKE_DL_LIBS}
 )
+
+# install
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
