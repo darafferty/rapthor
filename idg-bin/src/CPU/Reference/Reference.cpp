@@ -38,8 +38,8 @@ namespace idg {
                 cout << "Reference::" << __func__ << endl;
                 #endif
 
-                string  srcdir = string(IDG_SOURCE_DIR)
-                    + "/src/CPU/Reference/kernels";
+                string  srcdir = string(IDG_INSTALL_DIR)
+                    + "/lib/kernels/CPU/Reference";
 
                 #if defined(DEBUG)
                 cout << "Searching for source files in: " << srcdir << endl;

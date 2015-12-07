@@ -25,3 +25,9 @@ add_library(
 # linker
 target_link_libraries(${PROJECT_NAME} idg-utility)
 
+# install
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)

@@ -43,8 +43,8 @@ namespace idg {
             cout << "HaswellEP::" << __func__ << endl;
             #endif
 
-            string  srcdir = string(IDG_SOURCE_DIR) 
-                + "/src/CPU/HaswellEP/kernels";
+            string  srcdir = string(IDG_INSTALL_DIR)
+                + "/lib/kernels/CPU/HaswellEP";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
