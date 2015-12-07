@@ -30,6 +30,13 @@ namespace idg {
                 cout << "Maxwell-HaswellEP::" << __func__ << endl;
                 cout << params;
                 #endif
+
+                cuProfilerStart();
+            }
+
+            /// Destructor
+            MaxwellHaswellEP::~MaxwellHaswellEP() {
+                cuProfilerStop();
             }
 
             /*
@@ -51,8 +58,7 @@ namespace idg {
 
                 // Load kernels
                 kernel::cuda::Gridder kernel_gridder = cuda.get_kernel_gridder();
-                kernel::cuda::GridFFT kernel_fft_small = cuda.get_kernel_fft();
-                kernel::cpu::GridFFT kernel_fft_big = cpu.get_kernel_fft();
+                kernel::cuda::GridFFT kernel_fft = cuda.get_kernel_fft();
                 kernel::cpu::Adder kernel_adder = cpu.get_kernel_adder();
 
 				// Load context
@@ -157,7 +163,7 @@ namespace idg {
                 			htodstream.record(inputReady);
 
                 			// Create FFT plan
-                			kernel_fft_small.plan(subgridsize, current_jobsize);
+                			kernel_fft.plan(subgridsize, current_jobsize);
 
                 			// Launch gridder kernel
                 			executestream.waitEvent(inputReady);
@@ -169,7 +175,7 @@ namespace idg {
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch FFT
-                			kernel_fft_small.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                			kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
@@ -199,8 +205,8 @@ namespace idg {
                                                      kernel_gridder.bytes(current_jobsize),
                                                      PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
-                                                     kernel_fft_small.flops(subgridsize, current_jobsize),
-                                                     kernel_fft_small.bytes(subgridsize, current_jobsize),
+                                                     kernel_fft.flops(subgridsize, current_jobsize),
+                                                     kernel_fft.bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report("  adder", runtime_adder,
                                                      kernel_adder.flops(current_jobsize),
@@ -219,8 +225,8 @@ namespace idg {
                 total_runtime_gridding += omp_get_wtime();
                 uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft_small.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft_small.bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
                 uint64_t total_flops_adder    = kernel_adder.flops(nr_subgrids);
                 uint64_t total_bytes_adder    = kernel_adder.bytes(nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
@@ -249,8 +255,7 @@ namespace idg {
 
                 // Load kernels
                 kernel::cuda::Degridder kernel_degridder = cuda.get_kernel_degridder();
-                kernel::cuda::GridFFT kernel_fft_small = cuda.get_kernel_fft();
-                kernel::cpu::GridFFT kernel_fft_big = cpu.get_kernel_fft();
+                kernel::cuda::GridFFT kernel_fft = cuda.get_kernel_fft();
                 kernel::cpu::Splitter kernel_splitter = cpu.get_kernel_splitter();
 
 				// Load context
@@ -364,12 +369,12 @@ namespace idg {
                 			htodstream.record(inputReady);
 
                 			// Create FFT plan
-                			kernel_fft_small.plan(subgridsize, current_jobsize);
+                			kernel_fft.plan(subgridsize, current_jobsize);
 
                 			// Launch FFT
                 			executestream.waitEvent(inputReady);
                             powerRecords[0].enqueue(executestream);
-                			kernel_fft_small.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                			kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch degridder kernel
@@ -398,8 +403,8 @@ namespace idg {
                                                        kernel_splitter.bytes(current_jobsize),
                                                        LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                         auxiliary::report("      fft", runtime_fft,
-                                                       kernel_fft_small.flops(subgridsize, current_jobsize),
-                                                       kernel_fft_small.bytes(subgridsize, current_jobsize),
+                                                       kernel_fft.flops(subgridsize, current_jobsize),
+                                                       kernel_fft.bytes(subgridsize, current_jobsize),
                                                        PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("degridder", runtime_degridder,
                                                        kernel_degridder.flops(current_jobsize),
@@ -418,8 +423,8 @@ namespace idg {
                 total_runtime_degridding += omp_get_wtime();
                 uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft_small.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft_small.bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
                 uint64_t total_flops_splitter   = kernel_splitter.flops(nr_subgrids);
                 uint64_t total_bytes_splitter   = kernel_splitter.bytes(nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
@@ -438,6 +443,32 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << "MaxwellHaswellEP::" << __func__ << endl;
                 #endif
+
+                int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+
+                // Load kernel
+                kernel::cpu::GridFFT kernel_fft = cpu.get_kernel_fft();
+
+                // Constants
+				auto gridsize = mParams.get_grid_size();
+
+                // Power measurement
+                LikwidPowerSensor::State powerStates[2];
+
+                // Start fft
+                powerStates[0] = cpu.read_power();
+                kernel_fft.run(gridsize, 1, grid, sign);
+                powerStates[1] = cpu.read_power();
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                auxiliary::report("|grid_fft",
+                                  LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
+                                  kernel_fft.flops(gridsize, 1),
+                                  kernel_fft.bytes(gridsize, 1),
+                                  LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
+                clog << endl;
+                #endif
+
             }
 
         } // namespace hybrid
