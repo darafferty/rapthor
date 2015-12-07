@@ -1,32 +1,20 @@
 #include "CUDA.h"
 
 using namespace std;
+using namespace idg::kernel::cuda;
 
 namespace idg {
     namespace proxy {
-        /*
-            Power measurement
-        */
-        static PowerSensor *powerSensor = NULL;
-
-        class PowerRecord {
-            public:
-                void enqueue(cu::Stream &stream);
-                static void getPower(CUstream, CUresult, void *userData);
-                PowerSensor::State state;
-                cu::Event event;
-        };
-
-        void PowerRecord::enqueue(cu::Stream &stream) {
-            stream.record(event);
-            stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-        }
-
-        void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-            *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-        }
-
         namespace cuda {
+            void PowerRecord::enqueue(cu::Stream &stream) {
+                stream.record(event);
+                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
+            }
+
+            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
+                *static_cast<PowerSensor::State *>(userData) = powerSensor.read();
+            }
+
             /// Constructors
             CUDA::CUDA(
                 Parameters params,
@@ -65,9 +53,11 @@ namespace idg {
                 if (!str_power_file) str_power_file = STR_POWER_FILE;
                 cout << "Opening power sensor: " << str_power_sensor << endl;
                 cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor = new PowerSensor(str_power_sensor, str_power_file);
+                //powerSensor = new PowerSensor(str_power_sensor, str_power_file);
+                powerSensor.init(str_power_sensor, str_power_file);
                 #else
-                powerSensor = new PowerSensor();
+                //powerSensor = new PowerSensor();
+                powerSensor.init();
                 #endif
             }
 
@@ -143,8 +133,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                kernel::Gridder kernel_gridder(*(modules[which_module[kernel::name_gridder]]), mParams);
-                cu::Module *module_fft = (modules[which_module[kernel::name_fft]]);
+                Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
+                cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
                 cu::Stream executestream;
@@ -157,7 +147,7 @@ namespace idg {
                 double total_runtime_gridder = 0;
                 double total_runtime_fft = 0;
                 total_runtime_gridding = -omp_get_wtime();
-                PowerSensor::State startState = powerSensor->read();
+                PowerSensor::State startState = powerSensor.read();
 
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -168,7 +158,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    kernel::GridFFT kernel_fft(*module_fft, mParams);
+                    GridFFT kernel_fft(*module_fft, mParams);
 
                     // Private device memory
                 	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -252,8 +242,8 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
-                PowerSensor::State stopState = powerSensor->read();
-                kernel::GridFFT kernel_fft(*module_fft, mParams);
+                PowerSensor::State stopState = powerSensor.read();
+                GridFFT kernel_fft(*module_fft, mParams);
                 uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
@@ -304,8 +294,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size();
 
                 // load kernel
-                kernel::Degridder kernel_degridder(*(modules[which_module[kernel::name_degridder]]), mParams);
-                cu::Module *module_fft = (modules[which_module[kernel::name_fft]]);
+                Degridder kernel_degridder(*(modules[which_module[name_degridder]]), mParams);
+                cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
                 cu::Stream executestream;
@@ -318,7 +308,7 @@ namespace idg {
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
          	    total_runtime_degridding = -omp_get_wtime();
-                PowerSensor::State startState = powerSensor->read();
+                PowerSensor::State startState = powerSensor.read();
 
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -330,7 +320,7 @@ namespace idg {
                     cu::Event inputReady;
                     cu::Event outputReady;
                     int current_jobsize = jobsize;
-                    kernel::GridFFT kernel_fft(*module_fft, mParams);
+                    GridFFT kernel_fft(*module_fft, mParams);
 
                 	// Private device memory
                     cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -413,8 +403,8 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
-                PowerSensor::State stopState = powerSensor->read();
-                kernel::GridFFT kernel_fft(*module_fft, mParams);
+                PowerSensor::State stopState = powerSensor.read();
+                GridFFT kernel_fft(*module_fft, mParams);
                 uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
                 uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);

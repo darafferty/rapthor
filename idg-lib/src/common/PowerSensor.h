@@ -36,8 +36,9 @@ class PowerSensor
       double timeAtRead;
     };
 
-    PowerSensor(const char *device = "/dev/ttyUSB0", const char *dumpFileName = 0);
     ~PowerSensor();
+
+    void init(const char *device = "/dev/ttyUSB0", const char *dumpFileName = 0);
 
     State read();
     void mark(const State &, const char *name = 0, unsigned tag = 0);

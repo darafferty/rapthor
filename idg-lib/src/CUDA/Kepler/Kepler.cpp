@@ -2,32 +2,11 @@
 #include "Kepler.h"
 
 using namespace std;
+using namespace idg::kernel::cuda;
 
 namespace idg {
     namespace proxy {
         namespace cuda {
-            /*
-                Power measurement
-            */
-            static PowerSensor *powerSensor;
-
-            class PowerRecord {
-                public:
-                    void enqueue(cu::Stream &stream);
-                    static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor::State state;
-                    cu::Event event;
-            };
-            
-            void PowerRecord::enqueue(cu::Stream &stream) {
-                stream.record(event);
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-            }
-            
-            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-                *static_cast<PowerSensor::State *>(userData) = powerSensor->read();
-            }
-
             /// Constructors
             Kepler::Kepler(
                 Parameters params,
@@ -97,17 +76,17 @@ namespace idg {
 
                 CUfunction function;
                 for (unsigned int i=0; i<modules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_gridder.c_str()) == CUDA_SUCCESS) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
                         // found gridder kernel in module i
-                        which_module[kernel::name_gridder] = i;
+                        which_module[name_gridder] = i;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_degridder.c_str()) == CUDA_SUCCESS) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
                         // found degridder kernel in module i
-                        which_module[kernel::name_degridder] = i;
+                        which_module[name_degridder] = i;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::name_fft.c_str()) == CUDA_SUCCESS) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
                         // found fft kernel in module i
-                        which_module[kernel::name_fft] = i;
+                        which_module[name_fft] = i;
                     }
                 } // end for
             } // end find_kernel_functions
