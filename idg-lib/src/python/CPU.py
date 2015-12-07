@@ -43,6 +43,15 @@ class Reference(Proxy):
         except AttributeError:
             print "The chosen proxy was not built into the library"
 
+
+    @classmethod
+    def from_parameters(cls,p):
+        """Another constructor form an instance of the Parameters class."""
+        return cls(p.nr_stations, p.nr_channels, p.nr_timesteps, \
+                   p.nr_timeslots, p.imagesize, p.grid_size, \
+                   p.subgrid_size)
+
+
     def grid_visibilities(self,
                           visibilities,
                           uvw,
@@ -50,7 +59,7 @@ class Reference(Proxy):
                           metadata,
                           grid,
                           w_offset,
-                          aterm,
+                          aterms,
                           spheroidal):
         """Grid visibilities onto grid.
 
@@ -58,25 +67,51 @@ class Reference(Proxy):
         visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
                                             nr_channels, nr_polarizations),
                                             dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_timesteps, 3), dtype = idg.uvwtype)
+        uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                            dtype = idg.uvwtype)
         wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
         metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                              dtype = idg.gridtype)
-        aterm - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
+        aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
                              subgrid_size, subgrid_size), dtype = idg.atermtype)
         spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
                      dtype = idg.spheroidaltype)
         """
-        lib.CPU_Reference_grid(self.obj,
-                               visibilities.ctypes.data_as(ctypes.c_void_p),
-                               uvw.ctypes.data_as(ctypes.c_void_p),
-                               wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                               metadata.ctypes.data_as(ctypes.c_void_p),
-                               grid.ctypes.data_as(ctypes.c_void_p),
-                               ctypes.c_float(w_offset),
-                               aterm.ctypes.data_as(ctypes.c_void_p),
-                               spheroidal.ctypes.data_as(ctypes.c_void_p))
+        # check dimensions
+        if visibilities.shape != (self.get_nr_subgrids(),
+                                  self.get_nr_timesteps(),
+                                  self.get_nr_channels(),
+                                  self.get_nr_polarizations()):
+            raise ValueError('Visibilities dimension missmatch.')
+        if uvw.shape != (self.get_nr_subgrids(),
+                         self.get_nr_timesteps(), 3):
+             raise ValueError('UVW dimension missmatch.')
+        if wavenumbers.shape != (self.get_nr_channels(), ):
+            raise ValueError('Wavenumbers dimension missmatch.')
+        if metadata.shape != (self.get_nr_subgrids(), ):
+            raise ValueError('Metadata dimension missmatch.')
+        if grid.shape != (self.get_nr_polarizations(),
+                          self.get_grid_size(),
+                          self.get_grid_size()):
+            raise ValueError('Grid dimension missmatch.')
+        if aterms.shape != (self.get_nr_stations(),
+                            self.get_nr_timeslots(),
+                            self.get_nr_polarizations(),
+                            self.get_subgrid_size(),
+                            self.get_subgrid_size()):
+            raise ValueError('Aterms dimension missmatch.')
+        if spheroidal.shape != (self.get_subgrid_size(),
+                                self.get_subgrid_size()):
+            raise ValueError('Spheroidal dimension missmatch.')
+
+        # call C function to do the work
+        self._cwrap_grid_visibilities(visibilities, uvw, wavenumbers,
+                                      metadata, grid, w_offset, aterms,
+                                      spheroidal)
+
+
+
 
     def degrid_visibilities(self,
                             visibilities,
@@ -93,7 +128,8 @@ class Reference(Proxy):
         visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
                                             nr_channels, nr_polarizations),
                                             dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_timesteps, 3), dtype = idg.uvwtype)
+        uvw - numpy.ndarray(shape=(nr_subgrids,nr_timesteps, 3),
+                            dtype = idg.uvwtype)
         wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
         metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
@@ -103,15 +139,39 @@ class Reference(Proxy):
         spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
                      dtype = idg.spheroidaltype)
         """
-        lib.CPU_Reference_degrid(self.obj,
-                                 visibilities.ctypes.data_as(ctypes.c_void_p),
-                                 uvw.ctypes.data_as(ctypes.c_void_p),
-                                 wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                                 metadata.ctypes.data_as(ctypes.c_void_p),
-                                 grid.ctypes.data_as(ctypes.c_void_p),
-                                 ctypes.c_float(w_offset),
-                                 aterm.ctypes.data_as(ctypes.c_void_p),
-                                 spheroidal.ctypes.data_as(ctypes.c_void_p))
+        # check dimensions
+        if visibilities.shape != (self.get_nr_subgrids(),
+                                  self.get_nr_timesteps(),
+                                  self.get_nr_channels(),
+                                  self.get_nr_polarizations()):
+            raise ValueError('Visibilities dimension missmatch.')
+        if uvw.shape != (self.get_nr_subgrids(),
+                         self.get_nr_timesteps(), 3):
+             raise ValueError('UVW dimension missmatch.')
+        if wavenumbers.shape != (self.get_nr_channels(), ):
+            raise ValueError('Wavenumbers dimension missmatch.')
+        if metadata.shape != (self.get_nr_subgrids(), ):
+            raise ValueError('Metadata dimension missmatch.')
+        if grid.shape != (self.get_nr_polarizations(),
+                          self.get_grid_size(),
+                          self.get_grid_size()):
+            raise ValueError('Grid dimension missmatch.')
+        if aterms.shape != (self.get_nr_stations(),
+                            self.get_nr_timeslots(),
+                            self.get_nr_polarizations(),
+                            self.get_subgrid_size(),
+                            self.get_subgrid_size()):
+            raise ValueError('Aterms dimension missmatch.')
+        if spheroidal.shape != (self.get_subgrid_size(),
+                                self.get_subgrid_size()):
+            raise ValueError('Spheroidal dimension missmatch.')
+
+        # call C function to do the work
+        self._cwrap_degrid_visibilities(visibilities, uvw, wavenumbers,
+                                        metadata, grid, w_offset, aterms,
+                                        spheroidal)
+
+
 
     def transform(self,
                   direction,
@@ -123,6 +183,18 @@ class Reference(Proxy):
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                              dtype = idg.gridtype)
         """
+        # check argument dimesions
+        if grid.shape != (self.get_nr_polarizations(),
+                          self.get_grid_size(),
+                          self.get_grid_size()):
+            raise ValueError('Grid dimension missmatch.')
+
+        # call C function to do the work
+        self._cwrap_transform(direction, grid)
+
+
+    # Wrapper to C function (override for each class inheriting from this)
+    def _cwrap_transform(self, direction, grid):
         lib.CPU_Reference_transform(self.obj,
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))
@@ -150,6 +222,35 @@ class Reference(Proxy):
 
     def set_job_size_degridder(self, n = 8192):
         lib.CPU_set_job_size_degridder(self.obj, ctypes.c_int(n))
+
+    # Wrapper to C function (override for each class inheriting from this)
+    def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,
+                                metadata, grid, w_offset, aterms,
+                                spheroidal):
+        lib.CPU_Reference_grid(self.obj,
+                               visibilities.ctypes.data_as(ctypes.c_void_p),
+                               uvw.ctypes.data_as(ctypes.c_void_p),
+                               wavenumbers.ctypes.data_as(ctypes.c_void_p),
+                               metadata.ctypes.data_as(ctypes.c_void_p),
+                               grid.ctypes.data_as(ctypes.c_void_p),
+                               ctypes.c_float(w_offset),
+                               aterms.ctypes.data_as(ctypes.c_void_p),
+                               spheroidal.ctypes.data_as(ctypes.c_void_p))
+
+    # Wrapper to C function (override for each class inheriting from this)
+    def _cwrap_degrid_visibilities(self, visibilities, uvw,
+                                   wavenumbers, metadata,
+                                   grid, w_offset, aterms,
+                                   spheroidal):
+        lib.CPU_Reference_degrid(self.obj,
+                                 visibilities.ctypes.data_as(ctypes.c_void_p),
+                                 uvw.ctypes.data_as(ctypes.c_void_p),
+                                 wavenumbers.ctypes.data_as(ctypes.c_void_p),
+                                 metadata.ctypes.data_as(ctypes.c_void_p),
+                                 grid.ctypes.data_as(ctypes.c_void_p),
+                                 ctypes.c_float(w_offset),
+                                 aterms.ctypes.data_as(ctypes.c_void_p),
+                                 spheroidal.ctypes.data_as(ctypes.c_void_p))
 
 
 
@@ -181,31 +282,10 @@ class SandyBridgeEP(Reference):
         except AttributeError:
             print "The chosen proxy was not built into the library"
 
-    def grid_visibilities(self,
-                          visibilities,
-                          uvw,
-                          wavenumbers,
-                          metadata,
-                          grid,
-                          w_offset,
-                          aterm,
-                          spheroidal):
-        """Grid visibilities onto grid.
-
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
-                                            nr_channels, nr_polarizations),
-                                            dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_timesteps, 3), dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterm - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
-                             subgrid_size, subgrid_size), dtype = idg.atermtype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                     dtype = idg.spheroidaltype)
-        """
+    def _cwrap_grid_visibilities(self, visibilities, uvw,
+                                 wavenumbers, metadata,
+                                 grid, w_offset,
+                                 aterms, spheroidal):
         lib.CPU_SandyBridgeEP_grid(self.obj,
                                    visibilities.ctypes.data_as(ctypes.c_void_p),
                                    uvw.ctypes.data_as(ctypes.c_void_p),
@@ -213,34 +293,14 @@ class SandyBridgeEP(Reference):
                                    metadata.ctypes.data_as(ctypes.c_void_p),
                                    grid.ctypes.data_as(ctypes.c_void_p),
                                    ctypes.c_float(w_offset),
-                                   aterm.ctypes.data_as(ctypes.c_void_p),
+                                   aterms.ctypes.data_as(ctypes.c_void_p),
                                    spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    def degrid_visibilities(self,
-                            visibilities,
-                            uvw,
-                            wavenumbers,
-                            metadata,
-                            grid,
-                            w_offset,
-                            aterm,
-                            spheroidal):
-        """Degrid visibilities onto grid.
-
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
-                                            nr_channels, nr_polarizations),
-                                            dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_timesteps, 3), dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterm - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
-                             subgrid_size, subgrid_size), dtype = idg.atermtype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                     dtype = idg.spheroidaltype)
-        """
+    def _cwrap_degrid_visibilities(self, visibilities,
+                                  uvw, wavenumbers,
+                                  metadata, grid,
+                                  w_offset, aterms,
+                                  spheroidal):
         lib.CPU_SandyBridgeEP_degrid(self.obj,
                                      visibilities.ctypes.data_as(ctypes.c_void_p),
                                      uvw.ctypes.data_as(ctypes.c_void_p),
@@ -248,19 +308,10 @@ class SandyBridgeEP(Reference):
                                      metadata.ctypes.data_as(ctypes.c_void_p),
                                      grid.ctypes.data_as(ctypes.c_void_p),
                                      ctypes.c_float(w_offset),
-                                     aterm.ctypes.data_as(ctypes.c_void_p),
+                                     aterms.ctypes.data_as(ctypes.c_void_p),
                                      spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    def transform(self,
-                  direction,
-                  grid):
-        """Transform Fourier Domain<->Image Domain.
-
-        Arguments:
-        direction - idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        """
+    def _cwarp_transform(self, direction, grid):
         lib.CPU_SandyBridgeEP_transform(self.obj,
                                         ctypes.c_int(direction),
                                         grid.ctypes.data_as(ctypes.c_void_p))
@@ -295,31 +346,15 @@ class HaswellEP(Reference):
         except AttributeError:
             print "The chosen proxy was not built into the library"
 
-    def grid_visibilities(self,
+    def _cwrap_grid_visibilities(self,
                           visibilities,
                           uvw,
                           wavenumbers,
                           metadata,
                           grid,
                           w_offset,
-                          aterm,
+                          aterms,
                           spheroidal):
-        """Grid visibilities onto grid.
-
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
-                                            nr_channels, nr_polarizations),
-                                            dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_timesteps, 3), dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterm - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
-                             subgrid_size, subgrid_size), dtype = idg.atermtype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                     dtype = idg.spheroidaltype)
-        """
         lib.CPU_HaswellEP_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
@@ -327,34 +362,18 @@ class HaswellEP(Reference):
                                metadata.ctypes.data_as(ctypes.c_void_p),
                                grid.ctypes.data_as(ctypes.c_void_p),
                                ctypes.c_float(w_offset),
-                               aterm.ctypes.data_as(ctypes.c_void_p),
+                               aterms.ctypes.data_as(ctypes.c_void_p),
                                spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    def degrid_visibilities(self,
-                            visibilities,
-                            uvw,
-                            wavenumbers,
-                            metadata,
-                            grid,
-                            w_offset,
-                            aterm,
-                            spheroidal):
-        """Degrid visibilities onto grid.
-
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
-                                            nr_channels, nr_polarizations),
-                                            dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_timesteps, 3), dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterm - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
-                             subgrid_size, subgrid_size), dtype = idg.atermtype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                     dtype = idg.spheroidaltype)
-        """
+    def _cwrap_degrid_visibilities(self,
+                                   visibilities,
+                                   uvw,
+                                   wavenumbers,
+                                   metadata,
+                                   grid,
+                                   w_offset,
+                                   aterms,
+                                   spheroidal):
         lib.CPU_HaswellEP_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
                                  uvw.ctypes.data_as(ctypes.c_void_p),
@@ -362,19 +381,10 @@ class HaswellEP(Reference):
                                  metadata.ctypes.data_as(ctypes.c_void_p),
                                  grid.ctypes.data_as(ctypes.c_void_p),
                                  ctypes.c_float(w_offset),
-                                 aterm.ctypes.data_as(ctypes.c_void_p),
+                                 aterms.ctypes.data_as(ctypes.c_void_p),
                                  spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    def transform(self,
-                  direction,
-                  grid):
-        """Transform Fourier Domain<->Image Domain.
-
-        Arguments:
-        direction - idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        """
+    def _cwrap_transform(self, direction, grid):
         lib.CPU_HaswellEP_transform(self.obj,
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))

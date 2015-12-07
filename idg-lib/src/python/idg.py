@@ -2,6 +2,7 @@ import os
 import ctypes
 import numpy
 from ctypes.util import find_library
+import CPU
 
 visibilitiestype = numpy.complex64
 uvwtype = numpy.float32
@@ -20,4 +21,18 @@ spheroidaltype = numpy.float32
 FourierDomainToImageDomain = 0
 ImageDomainToFourierDomain = 1
 
-import CPU
+
+class Parameters(object):
+
+    def __init__(self, **kwargs):
+        print kwargs
+        for a in kwargs:
+            self.nr_stations = kwargs.get('nr_stations')
+            self.nr_channels = kwargs.get('nr_channels')
+            self.nr_timeslots = kwargs.get('nr_timeslots')
+            self.nr_timesteps = kwargs.get('nr_timesteps')
+            self.nr_polarizations = kwargs.get('nr_polarizations')
+            self.image_size = kwargs.get('image_size')
+            self.grid_size = kwargs.get('grid_size')
+            self.subgrid_size = kwargs.get('subgrid_size')
+            self.job_size = kwargs.get('job_size')
