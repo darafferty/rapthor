@@ -1,5 +1,5 @@
 /**
- *  \class Maxwell-HaswellEP
+ *  \class MaxwellHaswellEP
  *
  *  \brief Class for ...
  *
@@ -12,7 +12,8 @@
 
 #include <dlfcn.h>
 #include <cuda.h>
-#include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
+#include <cudaProfiler.h>
+
 #include "Proxy.h"
 #include "HaswellEP.h"
 #include "Maxwell.h"
@@ -29,7 +30,7 @@ namespace idg {
                     MaxwellHaswellEP(Parameters params);
 
                     /// Destructor
-                    virtual ~MaxwellHaswellEP() = default;
+                    ~MaxwellHaswellEP();
 
                     /// Assignment
                     MaxwellHaswellEP& operator=(const MaxwellHaswellEP& rhs) = delete;
