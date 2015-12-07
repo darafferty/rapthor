@@ -23,10 +23,10 @@ void run(
     clog << ">>> Run gridder" << endl;
     xeon.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
-    clog << ">> Run adder" << endl;
+    clog << ">>> Run adder" << endl;
     xeon.add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid);
 
-    clog << ">> Run fft" << endl;
+    clog << ">>> Run fft" << endl;
     xeon.transform(idg::FourierDomainToImageDomain, grid);
 
     clog << ">>> Run splitter" << endl;
