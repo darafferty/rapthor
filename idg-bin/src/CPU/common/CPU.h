@@ -72,7 +72,8 @@ namespace idg {
                     virtual void transform(DomainAtoDomainB direction,
                                            std::complex<float>* grid) override;
 
-                    // Low level routines
+                // Low level routines
+                public:
                     virtual void grid_onto_subgrids(
                         unsigned nr_subgrids,
                         float w_offset,
@@ -107,6 +108,22 @@ namespace idg {
                         int *metadata,
                         std::complex<float> *subgrids);
 
+
+                    // Auxiliary: additional set and get methods
+                    // Note: the abstract proxy provides less,
+                    // as it does not know that how the high level
+                    // routines are split up in subroutines
+                public:
+                    void set_job_size_gridder(unsigned int js) {
+                        mParams.set_job_size_gridder(js); }
+                    void set_job_size_adder(unsigned int js) {
+                        mParams.set_job_size_adder(js); }
+                    void set_job_size_splitter(unsigned int js) {
+                        mParams.set_job_size_splitter(js); }
+                    void set_job_size_degridder(unsigned int js) {
+                        mParams.set_job_size_degridder(js);
+                    }
+
                 public:
                     kernel::cpu::GridFFT get_kernel_fft() {
                         return kernel::cpu::GridFFT(*(modules[which_module[kernel::cpu::name_fft]]), mParams);
@@ -125,24 +142,11 @@ namespace idg {
                         return cpu::powerSensor->read();
                     }
 
-                public:
-                    // Auxiliary: additional set and get methods
-                    // Note: the abstract proxy provides less,
-                    // as it does not know that how the high level
-                    // routines are split up in subroutines
-                    void set_job_size_gridder(unsigned int js) {
-                        mParams.set_job_size_gridder(js); }
-                    void set_job_size_adder(unsigned int js) {
-                        mParams.set_job_size_adder(js); }
-                    void set_job_size_splitter(unsigned int js) {
-                        mParams.set_job_size_splitter(js); }
-                    void set_job_size_degridder(unsigned int js) {
-                        mParams.set_job_size_degridder(js);
-                    }
 
                 protected:
                     static std::string make_tempdir();
-                    static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+                    static ProxyInfo default_proxyinfo(std::string srcdir,
+                                                       std::string tmpdir);
 
                     void compile(Compiler compiler, Compilerflags flags);
                     void parameter_sanity_check();
