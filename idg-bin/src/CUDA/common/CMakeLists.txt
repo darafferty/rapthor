@@ -35,8 +35,6 @@ install(TARGETS ${PROJECT_NAME}
 # Copy header files
 install(
     FILES
-    CPU.h
-    idg-cuda.h
     DESTINATION
     include/CUDA
 )
