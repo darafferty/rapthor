@@ -9,6 +9,7 @@ if (BUILD_WITH_MIC)
         message("Need Intel compiler to build for Xeon Phi")
    endif(USING_INTEL_CXX_COMPILER)
 endif(BUILD_WITH_MIC) 
+
 if (BUILD_WITH_CPU AND BUILD_WITH_CUDA)
-    add_subdirectory(MaxwellHaswellEP)
+   add_subdirectory(MaxwellHaswellEP)
 endif()

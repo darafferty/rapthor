@@ -10,12 +10,11 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers
     Maxwell.h
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common/Kernels.h
+    KernelsMaxwell.h
 )
 
 set (${PROJECT_NAME}_sources
     Maxwell.cpp
-    Kernels.cpp
 )
 
 # create library

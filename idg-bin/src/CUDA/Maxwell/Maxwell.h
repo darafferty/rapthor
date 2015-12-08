@@ -11,30 +11,33 @@
 #define IDG_CUDA_MAXWELL_H_
 
 #include "CUDA.h"
+#include "KernelsMaxwell.h"
 
 namespace idg {
     namespace proxy {
         namespace cuda {
             class Maxwell : public CUDA {
-                public:
-                    /// Constructors
-                    Maxwell(Parameters params,
-                              unsigned deviceNumber = 0,
-                              Compiler compiler = default_compiler(),
-                              Compilerflags flags = default_compiler_flags(),
-                              ProxyInfo info = default_info());
+            public:
+                /// Constructors
+                Maxwell(Parameters params,
+                        unsigned deviceNumber = 0,
+                        Compiler compiler = default_compiler(),
+                        Compilerflags flags = default_compiler_flags(),
+                        ProxyInfo info = default_info());
 
-                    /// Destructor
-                    ~Maxwell() = default;
+                /// Destructor
+                ~Maxwell() = default;
 
-                    static ProxyInfo default_info();
-                    static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+                static ProxyInfo default_info();
+                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
 
-                /// Compilation
-                protected:
-                    void find_kernel_functions();
+            public:
+                virtual std::unique_ptr<idg::kernel::cuda::Gridder> get_kernel_gridder() const override;
+                virtual std::unique_ptr<idg::kernel::cuda::Degridder> get_kernel_degridder() const override;
+                virtual std::unique_ptr<idg::kernel::cuda::GridFFT> get_kernel_fft() const override;
+                // TODO: add Adder and Splitter
 
-                }; // class Maxwell
+            }; // class Maxwell
         } // namespace cuda
     } // namespace proxy
 } // namespace idg

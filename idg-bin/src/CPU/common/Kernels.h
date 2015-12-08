@@ -42,7 +42,7 @@ namespace idg {
 
             class Gridder {
                 public:
-                    Gridder(runtime::Module &module, Parameters &parameters);
+                    Gridder(runtime::Module &module, const Parameters &parameters);
                     void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
                              void *visibilities, void *spheroidal, void *aterm,
                              void *metadata, void *subgrid);
@@ -51,13 +51,13 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters &parameters;
+                    Parameters parameters;
             };
 
 
             class Degridder {
                 public:
-                    Degridder(runtime::Module &module, Parameters &parameters);
+                    Degridder(runtime::Module &module, const Parameters &parameters);
                     void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
                              void *visibilities, void *spheroidal, void *aterm,
                              void *metadata, void *subgrid);
@@ -66,46 +66,46 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters &parameters;
+                    Parameters parameters;
             };
 
 
             class GridFFT {
                 public:
-                    GridFFT(runtime::Module &module, Parameters &parameters);
+                    GridFFT(runtime::Module &module, const Parameters &parameters);
                     void run(int size, int batch, void *data, int direction);
                     uint64_t flops(int size, int batch);
                     uint64_t bytes(int size, int batch);
 
                 private:
                     runtime::Function _run;
-                    Parameters &parameters;
+                    Parameters parameters;
             };
 
 
             class Adder {
                 public:
-                    Adder(runtime::Module &module, Parameters &parameters);
+                    Adder(runtime::Module &module, const Parameters &parameters);
                     void run(int jobsize, void *metadata, void *subgrid, void *grid);
                     uint64_t flops(int jobsize);
                     uint64_t bytes(int jobsize);
 
                 private:
                     runtime::Function _run;
-                    Parameters &parameters;
+                    Parameters parameters;
             };
 
 
             class Splitter {
                 public:
-                    Splitter(runtime::Module &module, Parameters &parameters);
+                    Splitter(runtime::Module &module, const Parameters &parameters);
                     void run(int jobsize, void *metadata, void *subgrid, void *grid);
                     uint64_t flops(int jobsize);
                     uint64_t bytes(int jobsize);
 
                 private:
                     runtime::Function _run;
-                    Parameters &parameters;
+                    Parameters parameters;
             };
 
         } // namespace cpu
