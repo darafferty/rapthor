@@ -36,3 +36,10 @@ target_link_libraries (
     ${CUDA_CUFFT_LIBRARIES}
     cuda
 )
+
+# install
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)

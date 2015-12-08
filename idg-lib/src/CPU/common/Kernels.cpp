@@ -13,7 +13,7 @@ namespace idg {
         namespace cpu {
 
             // Gridder class
-            Gridder::Gridder(runtime::Module &module, Parameters &parameters) :
+            Gridder::Gridder(runtime::Module &module, const Parameters &parameters) :
                 _run(module, name_gridder.c_str()),
                 parameters(parameters) {}
 
@@ -58,7 +58,7 @@ namespace idg {
 
 
             // Degridder class
-            Degridder::Degridder(runtime::Module &module, Parameters &parameters) :
+            Degridder::Degridder(runtime::Module &module, const Parameters &parameters) :
                 _run(module, name_degridder.c_str()),
                 parameters(parameters) {}
 
@@ -103,7 +103,7 @@ namespace idg {
 
 
             // GridFFT class
-            GridFFT::GridFFT(runtime::Module &module, Parameters &parameters) :
+            GridFFT::GridFFT(runtime::Module &module, const Parameters &parameters) :
                 _run(module, name_fft.c_str()),
                 parameters(parameters) {}
 
@@ -123,7 +123,7 @@ namespace idg {
 
 
             // Adder class
-            Adder::Adder(runtime::Module &module, Parameters &parameters) :
+            Adder::Adder(runtime::Module &module, const Parameters &parameters) :
                 _run(module, name_adder.c_str()),
                 parameters(parameters) {}
 
@@ -151,7 +151,7 @@ namespace idg {
 
 
             // Splitter class
-            Splitter::Splitter(runtime::Module &module, Parameters &parameters) :
+            Splitter::Splitter(runtime::Module &module, const Parameters &parameters) :
                 _run(module, name_splitter.c_str()),
                 parameters(parameters) {}
 

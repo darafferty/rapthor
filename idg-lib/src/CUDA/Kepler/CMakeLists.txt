@@ -10,12 +10,11 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers
     Kepler.h
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common/Kernels.h
+    KernelsKepler.h
 )
 
 set (${PROJECT_NAME}_sources
     Kepler.cpp
-    Kernels.cpp
 )
 
 # create library

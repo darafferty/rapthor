@@ -11,6 +11,7 @@
 #define IDG_CPU_H_
 
 #include <dlfcn.h>
+#include <memory>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #include "Proxy.h"
 #include "Kernels.h"
@@ -125,18 +126,11 @@ namespace idg {
                     }
 
                 public:
-                    kernel::cpu::GridFFT get_kernel_fft() {
-                        return kernel::cpu::GridFFT(*(modules[which_module[kernel::cpu::name_fft]]), mParams);
-
-                    }
-
-                    kernel::cpu::Adder get_kernel_adder() {
-                        return kernel::cpu::Adder(*(modules[which_module[kernel::cpu::name_adder]]), mParams);
-                    }
-
-                    kernel::cpu::Splitter get_kernel_splitter() {
-                        return kernel::cpu::Splitter(*(modules[which_module[kernel::cpu::name_splitter]]), mParams);
-                    }
+                    virtual std::unique_ptr<idg::kernel::cpu::Gridder> get_kernel_gridder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Degridder> get_kernel_degridder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Adder> get_kernel_adder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
 
                     LikwidPowerSensor::State read_power() {
                         return cpu::powerSensor->read();

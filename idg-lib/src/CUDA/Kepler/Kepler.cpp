@@ -1,5 +1,6 @@
 #include "idg-config.h"
 #include "Kepler.h"
+#include "KernelsKepler.h"
 
 using namespace std;
 using namespace idg::kernel::cuda;
@@ -22,8 +23,6 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-
-                find_kernel_functions();
             }
 
             ProxyInfo Kepler::default_info() {
@@ -69,27 +68,17 @@ namespace idg {
                 return p;
             }
 
-            void Kepler::find_kernel_functions() {
-                #if defined(DEBUG)
-                cout << "Kepler::" << __func__ << endl;
-                #endif
+            unique_ptr<Gridder> Kepler::get_kernel_gridder() const {
+                return unique_ptr<Gridder>(new GridderKepler(*(modules[which_module.at(name_gridder)]), mParams));
+            }
 
-                CUfunction function;
-                for (unsigned int i=0; i<modules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
-                        // found gridder kernel in module i
-                        which_module[name_gridder] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
-                        // found degridder kernel in module i
-                        which_module[name_degridder] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
-                        // found fft kernel in module i
-                        which_module[name_fft] = i;
-                    }
-                } // end for
-            } // end find_kernel_functions
+            unique_ptr<Degridder> Kepler::get_kernel_degridder() const {
+                return unique_ptr<Degridder>(new DegridderKepler(*(modules[which_module.at(name_degridder)]), mParams));
+            }
+
+            unique_ptr<GridFFT> Kepler::get_kernel_fft() const {
+                return unique_ptr<GridFFT>(new GridFFTKepler(*(modules[which_module.at(name_fft)]), mParams));
+            }
 
         } // namespace cuda
     } // namespace proxy
