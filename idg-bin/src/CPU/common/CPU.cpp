@@ -718,6 +718,27 @@ namespace idg {
                     }
                 } // end for
             } // end find_kernel_functions
+
+            unique_ptr<Gridder> CPU::get_kernel_gridder() const {
+                return unique_ptr<Gridder>(new Gridder(*(modules[which_module.at(name_gridder)]), mParams));
+            }
+
+            unique_ptr<Degridder> CPU::get_kernel_degridder() const {
+                return unique_ptr<Degridder>(new Degridder(*(modules[which_module.at(name_degridder)]), mParams));
+            }
+
+            unique_ptr<Adder> CPU::get_kernel_adder() const {
+                return unique_ptr<Adder>(new Adder(*(modules[which_module.at(name_adder)]), mParams));
+            }
+
+            unique_ptr<Splitter> CPU::get_kernel_splitter() const {
+                return unique_ptr<Splitter>(new Splitter(*(modules[which_module.at(name_splitter)]), mParams));
+            }
+
+            unique_ptr<GridFFT> CPU::get_kernel_fft() const {
+                return unique_ptr<GridFFT>(new GridFFT(*(modules[which_module.at(name_fft)]), mParams));
+            }
+
         } // namespace cpu
     } // namespace proxy
 } // namespace idg

@@ -17,6 +17,7 @@ set (${PROJECT_NAME}_sources
     CU.cpp
     CUFFT.cpp
     CUDA.cpp
+    Kernels.cpp
 )
 
 # create library

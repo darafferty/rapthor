@@ -15,7 +15,6 @@
 #endif
 
 using namespace std;
-using namespace idg::kernel;
 
 namespace idg {
     namespace proxy {
@@ -57,9 +56,9 @@ namespace idg {
                 #endif
 
                 // Load kernels
-                kernel::cuda::Gridder kernel_gridder = cuda.get_kernel_gridder();
-                kernel::cuda::GridFFT kernel_fft = cuda.get_kernel_fft();
-                kernel::cpu::Adder kernel_adder = cpu.get_kernel_adder();
+                unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = cuda.get_kernel_gridder();
+                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
+                unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
 
 				// Load context
 				cu::Context &context = cuda.get_context();
@@ -163,19 +162,19 @@ namespace idg {
                 			htodstream.record(inputReady);
 
                 			// Create FFT plan
-                			kernel_fft.plan(subgridsize, current_jobsize);
+                            kernel_fft->plan(subgridsize, current_jobsize);
 
                 			// Launch gridder kernel
                 			executestream.waitEvent(inputReady);
                 			executestream.waitEvent(outputFree);
                             powerRecords[0].enqueue(executestream);
-                			kernel_gridder.launchAsync(
+                            kernel_gridder->launch(
                 				executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
                 				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch FFT
-                			kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
@@ -192,7 +191,7 @@ namespace idg {
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
                         {
-                            kernel_adder.run(jobsize, h_metadata, h_subgrids, grid);
+                            kernel_adder->run(jobsize, h_metadata, h_subgrids, grid);
                         }
                         powerStates[1] = cpu.read_power();
 
@@ -201,16 +200,16 @@ namespace idg {
                         double runtime_adder   = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
-                                                     kernel_gridder.flops(current_jobsize),
-                                                     kernel_gridder.bytes(current_jobsize),
+                                                     kernel_gridder->flops(current_jobsize),
+                                                     kernel_gridder->bytes(current_jobsize),
                                                      PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
-                                                     kernel_fft.flops(subgridsize, current_jobsize),
-                                                     kernel_fft.bytes(subgridsize, current_jobsize),
+                                                     kernel_fft->flops(subgridsize, current_jobsize),
+                                                     kernel_fft->bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report("  adder", runtime_adder,
-                                                     kernel_adder.flops(current_jobsize),
-                                                     kernel_adder.bytes(current_jobsize),
+                                                     kernel_adder->flops(current_jobsize),
+                                                     kernel_adder->bytes(current_jobsize),
                                                      LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -223,12 +222,12 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
-                uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_adder    = kernel_adder.flops(nr_subgrids);
-                uint64_t total_bytes_adder    = kernel_adder.bytes(nr_subgrids);
+                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_adder    = kernel_adder->flops(nr_subgrids);
+                uint64_t total_bytes_adder    = kernel_adder->bytes(nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
@@ -254,9 +253,9 @@ namespace idg {
                 #endif
 
                 // Load kernels
-                kernel::cuda::Degridder kernel_degridder = cuda.get_kernel_degridder();
-                kernel::cuda::GridFFT kernel_fft = cuda.get_kernel_fft();
-                kernel::cpu::Splitter kernel_splitter = cpu.get_kernel_splitter();
+                unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = cuda.get_kernel_degridder();
+                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
+                unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
 
 				// Load context
 				cu::Context &context = cuda.get_context();
@@ -354,7 +353,7 @@ namespace idg {
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
                         {
-                            kernel_splitter.run(jobsize, h_metadata, h_subgrids, (void *) grid);
+                            kernel_splitter->run(jobsize, h_metadata, h_subgrids, (void *) grid);
                         }
                         powerStates[1] = cpu.read_power();
 
@@ -369,17 +368,17 @@ namespace idg {
                 			htodstream.record(inputReady);
 
                 			// Create FFT plan
-                			kernel_fft.plan(subgridsize, current_jobsize);
+                            kernel_fft->plan(subgridsize, current_jobsize);
 
                 			// Launch FFT
                 			executestream.waitEvent(inputReady);
                             powerRecords[0].enqueue(executestream);
-                			kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch degridder kernel
                 			executestream.waitEvent(outputFree);
-                			kernel_degridder.launchAsync(
+                            kernel_degridder->launch(
                 				executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
                 				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[2].enqueue(executestream);
@@ -399,16 +398,16 @@ namespace idg {
                         double runtime_splitter  = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,
-                                                       kernel_splitter.flops(current_jobsize),
-                                                       kernel_splitter.bytes(current_jobsize),
+                                                       kernel_splitter->flops(current_jobsize),
+                                                       kernel_splitter->bytes(current_jobsize),
                                                        LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                         auxiliary::report("      fft", runtime_fft,
-                                                       kernel_fft.flops(subgridsize, current_jobsize),
-                                                       kernel_fft.bytes(subgridsize, current_jobsize),
+                                                       kernel_fft->flops(subgridsize, current_jobsize),
+                                                       kernel_fft->bytes(subgridsize, current_jobsize),
                                                        PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("degridder", runtime_degridder,
-                                                       kernel_degridder.flops(current_jobsize),
-                                                       kernel_degridder.bytes(current_jobsize),
+                                                       kernel_degridder->flops(current_jobsize),
+                                                       kernel_degridder->bytes(current_jobsize),
                                                        PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -421,12 +420,12 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
-                uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_splitter   = kernel_splitter.flops(nr_subgrids);
-                uint64_t total_bytes_splitter   = kernel_splitter.bytes(nr_subgrids);
+                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_splitter   = kernel_splitter->flops(nr_subgrids);
+                uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
@@ -447,7 +446,7 @@ namespace idg {
                 int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
 
                 // Load kernel
-                kernel::cpu::GridFFT kernel_fft = cpu.get_kernel_fft();
+                unique_ptr<idg::kernel::cpu::GridFFT> kernel_fft = cpu.get_kernel_fft();
 
                 // Constants
 				auto gridsize = mParams.get_grid_size();
@@ -457,14 +456,14 @@ namespace idg {
 
                 // Start fft
                 powerStates[0] = cpu.read_power();
-                kernel_fft.run(gridsize, 1, grid, sign);
+                kernel_fft->run(gridsize, 1, grid, sign);
                 powerStates[1] = cpu.read_power();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auxiliary::report("|grid_fft",
                                   LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
-                                  kernel_fft.flops(gridsize, 1),
-                                  kernel_fft.bytes(gridsize, 1),
+                                  kernel_fft->flops(gridsize, 1),
+                                  kernel_fft->bytes(gridsize, 1),
                                   LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                 clog << endl;
                 #endif

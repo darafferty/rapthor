@@ -20,6 +20,8 @@
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
 #include <unistd.h> // rmdir()
+#include <vector>
+#include <map>
 
 #include "idg-config.h"
 
@@ -71,97 +73,91 @@ namespace idg {
 
             class PowerRecord {
                 public:
-                    void enqueue(cu::Stream &stream);
-                    static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor::State state;
-                    cu::Event event;
+                void enqueue(cu::Stream &stream);
+                static void getPower(CUstream, CUresult, void *userData);
+                PowerSensor::State state;
+                cu::Event event;
             };
 
             class CUDA {
-                public:
-                    /// Constructors
-                    CUDA(Parameters params,
-                        unsigned deviceNumber = 0,
-                        Compiler compiler = default_compiler(),
-                        Compilerflags flags = default_compiler_flags(),
-                        ProxyInfo info = default_info());
+            public:
+                /// Constructors
+                CUDA(Parameters params,
+                     unsigned deviceNumber = 0,
+                     Compiler compiler = default_compiler(),
+                     Compilerflags flags = default_compiler_flags(),
+                     ProxyInfo info = default_info());
 
-                    ~CUDA();
+                ~CUDA();
 
-                    // Get default values
-                    static ProxyInfo default_info();
-                    static std::string default_compiler();
-                    static std::string default_compiler_flags();
+                // Get default values
+                static ProxyInfo default_info();
+                static std::string default_compiler();
+                static std::string default_compiler_flags();
 
-                    // Get parameters of proxy
-                    const Parameters& get_parameters() const { return mParams; }
-                    const ProxyInfo& get_info() const { return mInfo; }
+                // Get parameters of proxy
+                const Parameters& get_parameters() const { return mParams; }
+                const ProxyInfo& get_info() const { return mInfo; }
 
-                    cu::Context& get_context() const {
-                        return *context;
-                    }
+                cu::Context& get_context() const {
+                    return *context;
+                }
 
-                public:
-                    /** \brief Grid the visibilities onto uniform subgrids
-                               (visibilities -> subgrids). */
-                    void grid_onto_subgrids(CU_GRIDDER_PARAMETERS);
+            public:
+                /** \brief Grid the visibilities onto uniform subgrids
+                    (visibilities -> subgrids). */
+                void grid_onto_subgrids(CU_GRIDDER_PARAMETERS);
 
-                    /** \brief Add subgrids to a grid
-                               (subgrids -> grid). */
-                    void add_subgrids_to_grid(CU_ADDER_PARAMETERS);
+                /** \brief Add subgrids to a grid
+                    (subgrids -> grid). */
+                void add_subgrids_to_grid(CU_ADDER_PARAMETERS);
 
-                    /** \brief Exctract subgrids from a grid
-                               (grid -> subgrids). */
-                    void split_grid_into_subgrids(CU_SPLITTER_PARAMETERS);
+                /** \brief Exctract subgrids from a grid
+                    (grid -> subgrids). */
+                void split_grid_into_subgrids(CU_SPLITTER_PARAMETERS);
 
-                    /** \brief Degrid the visibilities from uniform subgrids
-                               (subgrids -> visibilities). */
-                    void degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS);
+                /** \brief Degrid the visibilities from uniform subgrids
+                    (subgrids -> visibilities). */
+                void degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS);
 
-                    /** \brief Applyies (inverse) Fourier transform to grid
-                               (grid -> grid).
-                     *  \param direction [in] idg::FourierDomainToImageDomain or
-                                              idg::ImageDomainToFourierDomain
-                     *  \param grid [in/out] ...
-                     */
-                    void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid);
+                /** \brief Applyies (inverse) Fourier transform to grid
+                    (grid -> grid).
+                  *  \param direction [in] idg::FourierDomainToImageDomain or
+                                           idg::ImageDomainToFourierDomain
+                  *  \param grid [in/out] ...
+                  */
+                void transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid);
 
-                public:
-                    kernel::cuda::Gridder get_kernel_gridder() {
-                        return kernel::cuda::Gridder(*(modules[which_module[kernel::cuda::name_gridder]]), mParams);
-                    }
+            public:
+                virtual std::unique_ptr<kernel::cuda::Gridder> get_kernel_gridder() const = 0;
+                virtual std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const = 0;
+                virtual std::unique_ptr<kernel::cuda::GridFFT> get_kernel_fft() const = 0;
 
-                    kernel::cuda::Degridder get_kernel_degridder() {
-                        return kernel::cuda::Degridder(*(modules[which_module[kernel::cuda::name_degridder]]), mParams);
-                    }
+            protected:
+                static std::string make_tempdir();
+                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
 
-                    kernel::cuda::GridFFT get_kernel_fft() {
-                        return kernel::cuda::GridFFT(*(modules[which_module[kernel::cuda::name_fft]]), mParams);
-                    }
+                void compile(Compiler compiler, Compilerflags flags);
+                void parameter_sanity_check();
+                void load_shared_objects();
+                void find_kernel_functions();
 
-                protected:
-                    static std::string make_tempdir();
-                    static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+                // data
+                cu::Device *device;
+                cu::Context *context;
+                Parameters mParams; // remove if inherited from Proxy
+                ProxyInfo mInfo; // info about shared object files
 
-                    void compile(Compiler compiler, Compilerflags flags);
-                    void parameter_sanity_check();
-                    void load_shared_objects();
+                // store the ptr to Module, which each loads an .ptx-file
+                std::vector<cu::Module*> modules;
+                std::map<std::string,int> which_module;
 
-                    // data
-                    cu::Device *device;
-                    cu::Context *context;
-                    Parameters mParams; // remove if inherited from Proxy
-                    ProxyInfo mInfo; // info about shared object files
-
-                    // store the ptr to Module, which each loads an .ptx-file
-                    std::vector<cu::Module*> modules;
-                    std::map<std::string,int> which_module;
-
-                protected:
-                    std::string name_gridder   = "kernel_gridder";
-                    std::string name_degridder = "kernel_degridder";
-                    std::string name_adder     = "kernel_adder";
-                    std::string name_splitter  = "kernel_splitter";
+            // protected:
+            //     std::string name_gridder   = "kernel_gridder";
+            //     std::string name_degridder = "kernel_degridder";
+            //     std::string name_adder     = "kernel_adder";
+            //     std::string name_splitter  = "kernel_splitter";
+            //     std::string name_fft       = "kernel_fft";
             }; // class CUDA
         } // namespace cuda
     } // namespace proxy
