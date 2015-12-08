@@ -6,6 +6,7 @@ using namespace idg::kernel::cuda;
 namespace idg {
     namespace proxy {
         namespace cuda {
+
             void PowerRecord::enqueue(cu::Stream &stream) {
                 stream.record(event);
                 stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
@@ -25,7 +26,7 @@ namespace idg {
               : mInfo(info)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Compiler: " << compiler << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
@@ -44,6 +45,7 @@ namespace idg {
                 // Compile kernels
                 compile(compiler, flags);
                 load_shared_objects();
+                find_kernel_functions();
 
                 // Initialize power sensor
                 #if defined(MEASURE_POWER_ARDUINO)
@@ -64,7 +66,7 @@ namespace idg {
             CUDA::~CUDA()
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // unload shared objects by ~Module
@@ -108,7 +110,7 @@ namespace idg {
             void CUDA::transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
 
@@ -120,7 +122,7 @@ namespace idg {
             void CUDA::grid_onto_subgrids(CU_GRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Constants
@@ -133,7 +135,9 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
+                // Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
+                // cu::Module *module_fft = (modules[which_module[name_fft]]);
+                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
@@ -158,7 +162,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    GridFFT kernel_fft(*module_fft, mParams);
+                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                     // Private device memory
                 	cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -196,19 +200,20 @@ namespace idg {
                 			htodstream.record(inputReady);
 
                 			// Create FFT plan
-                			kernel_fft.plan(subgridsize, current_jobsize);
+                            kernel_fft->plan(subgridsize, current_jobsize);
 
                 			// Launch gridder kernel
                 			executestream.waitEvent(inputReady);
                 			executestream.waitEvent(outputFree);
                             powerRecords[0].enqueue(executestream);
-                			kernel_gridder.launchAsync(
+
+                            kernel_gridder->launch(
                 				executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
                 				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch FFT
-                			kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_INVERSE);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
@@ -225,12 +230,12 @@ namespace idg {
                         double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
-                                                     kernel_gridder.flops(current_jobsize),
-                                                     kernel_gridder.bytes(current_jobsize),
+                                                     kernel_gridder->flops(current_jobsize),
+                                                     kernel_gridder->bytes(current_jobsize),
                                                      PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
-                                                     kernel_fft.flops(subgridsize, current_jobsize),
-                                                     kernel_fft.bytes(subgridsize, current_jobsize),
+                                                     kernel_fft->flops(subgridsize, current_jobsize),
+                                                     kernel_fft->bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -243,11 +248,11 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor.read();
-                GridFFT kernel_fft(*module_fft, mParams);
-                uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
                 double   total_watt_gridding  = PowerSensor::Watt(startState, stopState);
@@ -263,7 +268,7 @@ namespace idg {
             void CUDA::add_subgrids_to_grid(CU_ADDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Not implemented" << endl;
                 #endif
             }
@@ -272,7 +277,7 @@ namespace idg {
             void CUDA::split_grid_into_subgrids(CU_SPLITTER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Not implemented" << endl;
                 #endif
             }
@@ -281,7 +286,7 @@ namespace idg {
             void CUDA::degrid_from_subgrids(CU_DEGRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Constants
@@ -294,7 +299,7 @@ namespace idg {
                 auto jobsize = mParams.get_job_size();
 
                 // load kernel
-                Degridder kernel_degridder(*(modules[which_module[name_degridder]]), mParams);
+                unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
@@ -320,7 +325,7 @@ namespace idg {
                     cu::Event inputReady;
                     cu::Event outputReady;
                     int current_jobsize = jobsize;
-                    GridFFT kernel_fft(*module_fft, mParams);
+                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                 	// Private device memory
                     cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -358,17 +363,17 @@ namespace idg {
         					htodstream.record(inputReady);
 
         					// Create FFT plan
-        					kernel_fft.plan(subgridsize, current_jobsize);
+                            kernel_fft->plan(subgridsize, current_jobsize);
 
         					// Launch FFT
         					executestream.waitEvent(inputReady);
                             powerRecords[0].enqueue(executestream);
-        					kernel_fft.launchAsync(executestream, d_subgrids, CUFFT_FORWARD);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
                             powerRecords[1].enqueue(executestream);
 
         					// Launch degridder kernel
         					executestream.waitEvent(outputFree);
-        					kernel_degridder.launchAsync(
+                            kernel_degridder->launch(
         						executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
         						d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[2].enqueue(executestream);
@@ -386,12 +391,12 @@ namespace idg {
                         double runtime_degridder = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("      fft", PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
-                                                       kernel_fft.flops(subgridsize, current_jobsize),
-                                                       kernel_fft.bytes(subgridsize, current_jobsize),
+                                                       kernel_fft->flops(subgridsize, current_jobsize),
+                                                       kernel_fft->bytes(subgridsize, current_jobsize),
                                                        PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("degridder", PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
-                                                       kernel_degridder.flops(current_jobsize),
-                                                       kernel_degridder.bytes(current_jobsize),
+                                                       kernel_degridder->flops(current_jobsize),
+                                                       kernel_degridder->bytes(current_jobsize),
                                                        PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -404,11 +409,11 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor.read();
-                GridFFT kernel_fft(*module_fft, mParams);
-                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
                 double   total_watt_degridding  = PowerSensor::Watt(startState, stopState);
@@ -424,7 +429,7 @@ namespace idg {
             void CUDA::compile(Compiler compiler, Compilerflags flags)
             {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
@@ -471,14 +476,14 @@ namespace idg {
 
             void CUDA::parameter_sanity_check() {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
             }
 
 
             void CUDA::load_shared_objects() {
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 for (auto libname : mInfo.get_lib_names()) {
@@ -491,6 +496,31 @@ namespace idg {
                     modules.push_back(new cu::Module(lib.c_str()));
                 }
             }
-		}
+
+
+            void CUDA::find_kernel_functions() {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+                CUfunction function;
+                for (unsigned int i=0; i<modules.size(); i++) {
+                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
+                        // found gridder kernel in module i
+                        which_module[name_gridder] = i;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
+                        // found degridder kernel in module i
+                        which_module[name_degridder] = i;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
+                        // found fft kernel in module i
+                        which_module[name_fft] = i;
+                    }
+                } // end for
+            } // end find_kernel_functions
+
+
+         } // namespace cuda
     } // namespace proxy
 } // namespace idg

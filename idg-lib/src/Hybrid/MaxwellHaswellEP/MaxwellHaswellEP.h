@@ -17,7 +17,6 @@
 #include "Proxy.h"
 #include "HaswellEP.h"
 #include "Maxwell.h"
-#include "CUDA/common/Kernels.h"
 
 
 namespace idg {
