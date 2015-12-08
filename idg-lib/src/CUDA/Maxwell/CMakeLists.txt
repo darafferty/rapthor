@@ -34,20 +34,18 @@ install(TARGETS ${PROJECT_NAME}
 # Copy kernel source files
 install(
     FILES
-    kernels/KernelAdder.cpp
-    kernels/KernelDegridder.cpp
-    kernels/KernelFFT.cpp
-    kernels/KernelGridder.cpp
-    kernels/KernelSplitter.cpp
+    kernels/KernelDegridder.cu
+    kernels/KernelGridder.cu
+    kernels/KernelFFT.cu
+    kernels/math.cu
+    kernels/Types.h
     DESTINATION
     lib/kernels/GPU/Maxwell
 )
 
 # Copy header files
-install(
-    FILES
-    idg.h
-    Reference.h
-    DESTINATION
-    include/GPU/Maxwell
-)
+#install(
+#    FILES
+#    DESTINATION
+#    include/GPU/Maxwell
+#)
