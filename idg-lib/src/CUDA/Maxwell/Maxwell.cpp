@@ -60,8 +60,8 @@ namespace idg {
                 cout << "CUDA::" << __func__ << endl;
                 #endif
 
-                string srcdir = string(IDG_SOURCE_DIR)
-                    + "/src/CUDA/Maxwell/kernels";
+                string srcdir = string(IDG_INSTALL_DIR)
+                    + "/lib/kernels/CUDA/Maxwell";
 
                 #if defined(DEBUG)
                 cout << "Searching for source files in: " << srcdir << endl;
