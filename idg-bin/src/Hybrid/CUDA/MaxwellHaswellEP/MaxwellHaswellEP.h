@@ -7,8 +7,8 @@
  *  This will be included by a user, so detail usage...
  */
 
-#ifndef IDG_MAXWELLHASWELLEP_H_
-#define IDG_MAXWELLHASWELLEP_H_
+#ifndef IDG_HYBRID_CUDA_MAXWELLHASWELLEP_H_
+#define IDG_HYBRID_CUDA_MAXWELLHASWELLEP_H_
 
 #include <dlfcn.h>
 #include <cuda.h>

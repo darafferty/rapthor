@@ -1,12 +1,11 @@
-project(idg-opencl-reference)
+project(opencl-reference)
 
 # external header files needed
 include_directories (
   ${_OPENCL_CPP_INCLUDE_DIRS}
   ${_CLFFT_CPP_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/src/common
-  ${CMAKE_SOURCE_DIR}/src/OpenCL/common
-  ${CMAKE_SOURCE_DIR}/src//external
+  ${CMAKE_SOURCE_DIR}/src
+  ${CMAKE_SOURCE_DIR}/src/external
 )
 
 # sources and header files
@@ -20,15 +19,19 @@ set (${PROJECT_NAME}_sources
 
 # create library
 add_library(
-  ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
-                  ${${PROJECT_NAME}_sources}
+  ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
+                         ${${PROJECT_NAME}_sources}
 )
+if (NOT BUILD_STATIC_LIBS)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
 
-# Set installation directory
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+# Copy header files
+install(
+   FILES
+   ${${PROJECT_NAME}_headers}
+   DESTINATION
+   include/OpenCL/Reference
 )
 
 # Copy kernel source files
@@ -39,5 +42,5 @@ install(
     kernels/math.cl
     kernels/Types.cl
     DESTINATION
-    lib/kernels/GPU/OpenCL
+    lib/kernels/OpenCL/Reference
 )

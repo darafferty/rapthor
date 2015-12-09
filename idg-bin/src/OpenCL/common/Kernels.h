@@ -1,5 +1,5 @@
-#ifndef IDG_KERNELS_H_
-#define IDG_KERNELS_H_
+#ifndef IDG_OPENCL_KERNELS_H_
+#define IDG_OPENCL_KERNELS_H_
 
 #include <cstdint>
 #include <ccomplex>
@@ -12,9 +12,7 @@
 #include <clFFT.h>
 #include "clFFT/src/library/repo.h"
 
-#include "Parameters.h"
 #include "PerformanceCounter.h"
-
 
 namespace idg {
 

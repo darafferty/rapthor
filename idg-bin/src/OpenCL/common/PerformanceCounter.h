@@ -1,3 +1,6 @@
+#ifndef IDG_OPENCL_PERFORMANCECOUNTER_H_
+#define IDG_OPENCL_PERFORMANCECOUNTER_H_
+
 #include <iostream>
 #include <iomanip>
 #include <functional>
@@ -5,8 +8,7 @@
 
 #include <CL/cl.hpp>
 
-#include "auxiliary.h"
-#include "PowerSensor.h"
+#include "idg-common.h"
 
 class PerformanceCounter {
     struct Descriptor
@@ -37,3 +39,5 @@ class PerformanceCounter {
         static void report(cl_event, cl_int, void *user_data);
         static void report2(cl_event, cl_int, void *user_data);
 };
+
+#endif
