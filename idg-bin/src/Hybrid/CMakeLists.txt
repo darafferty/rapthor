@@ -1,7 +1,6 @@
 project(hybrid)
 
 # add subfolders
-add_subdirectory(common)
 if (BUILD_WITH_MIC)
    if (USING_INTEL_CXX_COMPILER)
        add_subdirectory(KNC)
