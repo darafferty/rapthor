@@ -1,4 +1,4 @@
-project(idg-gpu)
+project(opencl)
 
 # add subfolders
 add_subdirectory(common)

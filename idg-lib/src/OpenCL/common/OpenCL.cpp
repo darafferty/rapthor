@@ -12,9 +12,6 @@
 
 #include "idg-config.h"
 #include "OpenCL.h"
-#if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-#include "auxiliary.h"
-#endif
 
 using namespace std;
 
@@ -30,7 +27,7 @@ namespace idg {
                 context(context)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
@@ -64,7 +61,7 @@ namespace idg {
             OpenCL::~OpenCL()
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 for (int i = 0; i < programs.size(); i++) {
@@ -82,7 +79,7 @@ namespace idg {
             void OpenCL::transform(DomainAtoDomainB direction, cl::Buffer &h_grid)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
     
@@ -94,7 +91,7 @@ namespace idg {
             void OpenCL::grid_onto_subgrids(CL_GRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 run_gridder(CL_GRIDDER_ARGUMENTS);
@@ -104,7 +101,7 @@ namespace idg {
             void OpenCL::add_subgrids_to_grid(CL_ADDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 run_adder(CL_ADDER_ARGUMENTS);
@@ -114,7 +111,7 @@ namespace idg {
             void OpenCL::split_grid_into_subgrids(CL_SPLITTER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 run_splitter(CL_SPLITTER_ARGUMENTS);
@@ -124,7 +121,7 @@ namespace idg {
             void OpenCL::degrid_from_subgrids(CL_DEGRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 run_degridder(CL_DEGRIDDER_ARGUMENTS);
@@ -147,7 +144,7 @@ namespace idg {
             void OpenCL::run_gridder(CL_GRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Command queues
@@ -249,7 +246,7 @@ namespace idg {
             void OpenCL::run_adder(CL_ADDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
             } // run_adder
     
@@ -257,7 +254,7 @@ namespace idg {
             void OpenCL::run_splitter(CL_SPLITTER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
             } // run_splitter
     
@@ -265,7 +262,7 @@ namespace idg {
             void OpenCL::run_degridder(CL_DEGRIDDER_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Command queue
@@ -367,7 +364,7 @@ namespace idg {
             void OpenCL::run_fft(CL_FFT_PARAMETERS)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Constants
@@ -412,7 +409,7 @@ namespace idg {
             void OpenCL::compile(Compilerflags flags)
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Source directory
@@ -497,7 +494,7 @@ namespace idg {
             void OpenCL::parameter_sanity_check()
             {
                 #if defined(DEBUG)
-                cout << "OpenCL::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
             }
         } // namespace opencl

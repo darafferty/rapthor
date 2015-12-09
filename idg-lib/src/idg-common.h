@@ -3,5 +3,12 @@
 
 #include "idg-config.h"
 #include "common/Proxy.h"
+#include "common/ProxyInfo.h"
+#include "common/RuntimeWrapper.h"
+#include "common/Parameters.h"
+#include "common/PowerSensor.h"
+#include "common/LikwidPowerSensor.h"
+#include "common/auxiliary.h"
+#include "common/CompilerEnvironment.h"
 
 #endif

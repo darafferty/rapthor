@@ -13,10 +13,11 @@
 #include <dlfcn.h>
 #include <memory>
 
-#include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
+#include <fftw3.h> // FFTW_BACKWARD, FFTW_FORWARD
+
+#include "idg-common.h"
 #include "Kernels.h"
-#include "../../common/Proxy.h"
-#include "../../common/LikwidPowerSensor.h"
+
 
 namespace idg {
     namespace proxy {

@@ -102,7 +102,7 @@ endif(BUILD_WITH_CUDA)
 ##############################################################
 # build libidg-hybrid-cuda: containing all for CPU/CUDA code #
 ##############################################################
-if (BUILD_WITH_CUDA)
+if (BUILD_WITH_CPU AND BUILD_WITH_CUDA)
 add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cpu-common>
@@ -120,4 +120,37 @@ install(TARGETS idg-hybrid-cuda
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
-endif(BUILD_WITH_CUDA)
+
+install(
+    FILES
+    idg-hybrid-cuda.h
+    DESTINATION
+    include
+)
+endif()
+
+
+
+###################################################
+# build libidg-opencl, containing all common code #
+###################################################
+if (BUILD_WITH_OPENCL)
+add_library(idg-opencl
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:opencl-common>
+  $<TARGET_OBJECTS:opencl-reference>
+)
+
+install(TARGETS idg-opencl
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
+
+install(
+    FILES
+    idg-opencl.h
+    DESTINATION
+    include
+)
+endif(BUILD_WITH_OPENCL)

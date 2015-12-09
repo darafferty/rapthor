@@ -5,8 +5,7 @@
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
-
-#include "Init.h"  // Data init routines
+#include "idg-utility.h"  // Data init routines
 
 using namespace std;
 
