@@ -7,7 +7,7 @@ import ctypes
 path = os.path.dirname(os.path.realpath(__file__))
 path, junk = os.path.split(path)
 path, junk = os.path.split(path)
-libpath = os.path.join(path, 'libidg-cpu.so') # libidg-common?
+libpath = os.path.join(path, 'libidg-common.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
 
