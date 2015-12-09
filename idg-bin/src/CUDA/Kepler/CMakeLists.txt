@@ -3,8 +3,7 @@ project(cuda-kepler)
 # external header files needed
 include_directories (
     ${CUDA_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/src/common
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common
+    ${CMAKE_SOURCE_DIR}/src
 )
 
 # sources and header files
@@ -26,29 +25,10 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
 
-
-# Set installation directory
-# install(TARGETS ${PROJECT_NAME}
-#    RUNTIME DESTINATION bin
-#    LIBRARY DESTINATION lib
-#    ARCHIVE DESTINATION lib
-# )
-
-# Copy kernel source files
-# install(
-#     FILES
-#     kernels/KernelDegridder.cu
-#     kernels/KernelGridder.cu
-#     kernels/KernelFFT.cu
-#    kernels/math.cu
-#    kernels/Types.h
-#    DESTINATION
-#    lib/kernels/GPU/Kepler
-# )
-
 # Copy header files
-# install(
-#    FILES
-#    DESTINATION
-#    include/GPU/Kepler
-#)
+install(
+   FILES
+   ${${PROJECT_NAME}_headers}
+   DESTINATION
+   include/CUDA/Kepler
+)

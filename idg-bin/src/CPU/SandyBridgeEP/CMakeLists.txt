@@ -2,8 +2,7 @@ project(cpu-sandybridgeep)
 
 # external header files needed
 include_directories (
-  ${CMAKE_SOURCE_DIR}/src/common
-  ${CMAKE_SOURCE_DIR}/src/CPU/common
+  ${CMAKE_SOURCE_DIR}/src
 )
 
 # sources and header files
@@ -40,7 +39,7 @@ install(
 # Copy header files
 install(
     FILES
-    SandyBridgeEP.h
+    ${${PROJECT_NAME}_headers}
     DESTINATION
     include/CPU/SandyBridgeEP
 )

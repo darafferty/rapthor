@@ -4,11 +4,6 @@ project(hybrid-cuda-maxwellhaswellep)
 include_directories (
     ${CUDA_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/common
-    ${CMAKE_SOURCE_DIR}/src/CPU/common
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common
-    ${CMAKE_SOURCE_DIR}/src/CPU/HaswellEP
-    ${CMAKE_SOURCE_DIR}/src/CUDA/Maxwell
 )
 
 # sources and header files
@@ -29,9 +24,3 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
 
-# install
-# install(TARGETS ${PROJECT_NAME}
-#  RUNTIME DESTINATION bin
-#  LIBRARY DESTINATION lib
-#  ARCHIVE DESTINATION lib/static
-#)
