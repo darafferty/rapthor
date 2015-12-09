@@ -27,5 +27,9 @@ add_library(
                   ${${PROJECT_NAME}_sources}
 )
 
-# linker
-target_link_libraries(${PROJECT_NAME} idg-opencl-common)
+# Set installation directory
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
