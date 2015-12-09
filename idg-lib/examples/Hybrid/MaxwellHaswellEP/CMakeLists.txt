@@ -27,11 +27,7 @@ target_link_libraries (
     ${PROJECT_NAME} 
     idg-utility
     idg-external
-    idg-common
-    idg-cpu
-    idg-cuda-maxwell
-    idg-cuda-common
-    idg-hybrid-maxwellhaswellep
+    idg-hybrid-cuda
     ${CMAKE_DL_LIBS}
     ${CUDA_CUFFT_LIBRARIES}
     cuda

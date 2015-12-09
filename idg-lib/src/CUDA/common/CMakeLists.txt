@@ -1,4 +1,4 @@
-project(idg-cuda-common)
+project(cuda-common)
 
 # external header files needed
 include_directories (
@@ -22,20 +22,23 @@ set (${PROJECT_NAME}_sources
 
 # create library
 add_library(
-    ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
-                    ${${PROJECT_NAME}_sources}
+    ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
+                           ${${PROJECT_NAME}_sources}
 )
+if (NOT BUILD_STATIC_LIBS)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
 
 # Set installation directory
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-)
+# install(TARGETS ${PROJECT_NAME}
+#    RUNTIME DESTINATION bin
+#    LIBRARY DESTINATION lib
+#    ARCHIVE DESTINATION lib
+# )
 
 # Copy header files
-install(
-    FILES
-    DESTINATION
-    include/CUDA
-)
+# install(
+#    FILES
+#    DESTINATION
+#    include/CUDA
+# )

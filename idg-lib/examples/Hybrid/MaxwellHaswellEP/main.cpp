@@ -1,4 +1,4 @@
-#include "Hybrid/MaxwellHaswellEP/idg.h"
+#include "Hybrid/CUDA/MaxwellHaswellEP/idg.h"
 
 #include "common.h"
 
