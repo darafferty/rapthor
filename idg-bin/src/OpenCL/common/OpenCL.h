@@ -38,78 +38,79 @@
 
 namespace idg {
     namespace proxy {
-
-        static PowerSensor powerSensor;
-
-        class OpenCL {
-            public:
-                /// Constructors
-                OpenCL(Parameters params,
-                    cl::Context &context,
-                    unsigned deviceNumber = 0,
-                    Compilerflags flags = default_compiler_flags());
-
-                ~OpenCL();
-
-                // Get default values
-                static std::string default_compiler_flags();
-
-                // Get parameters of proxy
-                const Parameters& get_parameters() const { return mParams; }
-
-            // High level routines
-            public:
-                /** \brief Grid the visibilities onto uniform subgrids
-                           (visibilities -> subgrids). */
-                void grid_onto_subgrids(CL_GRIDDER_PARAMETERS);
-
-                /** \brief Add subgrids to a grid
-                           (subgrids -> grid). */
-                void add_subgrids_to_grid(CL_ADDER_PARAMETERS);
-
-                /** \brief Exctract subgrids from a grid
-                           (grid -> subgrids). */
-                void split_grid_into_subgrids(CL_SPLITTER_PARAMETERS);
-
-                /** \brief Degrid the visibilities from uniform subgrids
-                           (subgrids -> visibilities). */
-                void degrid_from_subgrids(CL_DEGRIDDER_PARAMETERS);
-
-                /** \brief Applyies (inverse) Fourier transform to grid
-                           (grid -> grid).
-                 *  \param direction [in] idg::FourierDomainToImageDomain or
-                                          idg::ImageDomainToFourierDomain
-                 *  \param grid [in/out] ...
-                 */
-                void transform(DomainAtoDomainB direction, cl::Buffer &h_grid);
-
-            // Low level routines
-            protected:
-                virtual void run_gridder(CL_GRIDDER_PARAMETERS);
-
-                virtual void run_adder(CL_ADDER_PARAMETERS);
-
-                virtual void run_splitter(CL_SPLITTER_PARAMETERS);
-
-                virtual void run_degridder(CL_DEGRIDDER_PARAMETERS);
-
-                virtual void run_fft(CL_FFT_PARAMETERS);
-
-            protected:
-                ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
-
-                void compile(Compilerflags flags);
-                void parameter_sanity_check();
-
-                // data
-                cl::Context context;
-                cl::Device device;
-                Parameters mParams; // remove if inherited from Proxy
-
-                std::vector<cl::Program*> programs;
-                std::map<std::string,int> which_program;
-
-        }; // class OpenCL
+        namespace opencl {
+            static PowerSensor powerSensor;
+    
+            class OpenCL {
+                public:
+                    /// Constructors
+                    OpenCL(Parameters params,
+                        cl::Context &context,
+                        unsigned deviceNumber = 0,
+                        Compilerflags flags = default_compiler_flags());
+    
+                    ~OpenCL();
+    
+                    // Get default values
+                    static std::string default_compiler_flags();
+    
+                    // Get parameters of proxy
+                    const Parameters& get_parameters() const { return mParams; }
+    
+                // High level routines
+                public:
+                    /** \brief Grid the visibilities onto uniform subgrids
+                               (visibilities -> subgrids). */
+                    void grid_onto_subgrids(CL_GRIDDER_PARAMETERS);
+    
+                    /** \brief Add subgrids to a grid
+                               (subgrids -> grid). */
+                    void add_subgrids_to_grid(CL_ADDER_PARAMETERS);
+    
+                    /** \brief Exctract subgrids from a grid
+                               (grid -> subgrids). */
+                    void split_grid_into_subgrids(CL_SPLITTER_PARAMETERS);
+    
+                    /** \brief Degrid the visibilities from uniform subgrids
+                               (subgrids -> visibilities). */
+                    void degrid_from_subgrids(CL_DEGRIDDER_PARAMETERS);
+    
+                    /** \brief Applyies (inverse) Fourier transform to grid
+                               (grid -> grid).
+                     *  \param direction [in] idg::FourierDomainToImageDomain or
+                                              idg::ImageDomainToFourierDomain
+                     *  \param grid [in/out] ...
+                     */
+                    void transform(DomainAtoDomainB direction, cl::Buffer &h_grid);
+    
+                // Low level routines
+                protected:
+                    virtual void run_gridder(CL_GRIDDER_PARAMETERS);
+    
+                    virtual void run_adder(CL_ADDER_PARAMETERS);
+    
+                    virtual void run_splitter(CL_SPLITTER_PARAMETERS);
+    
+                    virtual void run_degridder(CL_DEGRIDDER_PARAMETERS);
+    
+                    virtual void run_fft(CL_FFT_PARAMETERS);
+    
+                protected:
+                    ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+    
+                    void compile(Compilerflags flags);
+                    void parameter_sanity_check();
+    
+                    // data
+                    cl::Context context;
+                    cl::Device device;
+                    Parameters mParams; // remove if inherited from Proxy
+    
+                    std::vector<cl::Program*> programs;
+                    std::map<std::string,int> which_program;
+    
+            }; // class OpenCL
+        } // namespace opencl
     } // namespace proxy
 } // namespace idg
 
