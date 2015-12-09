@@ -22,18 +22,65 @@ if (BUILD_WITH_BOOST_PYTHON)
     add_subdirectory(boost-python)
 endif()
 
+
+########################################################
+# build libidg-cpu, containing all needed for CPU code #
+########################################################
 if (BUILD_WITH_CPU)
-add_library(${PROJECT_NAME}
-  $<TARGET_OBJECTS:common-objects>
-  $<TARGET_OBJECTS:idg-cpu-common>
-  $<TARGET_OBJECTS:idg-cpu-reference>
-  $<TARGET_OBJECTS:idg-cpu-haswellep>
-  $<TARGET_OBJECTS:idg-cpu-sandybridgeep>
+add_library(idg-cpu
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:cpu-common>
+  $<TARGET_OBJECTS:cpu-reference>
+  $<TARGET_OBJECTS:cpu-haswellep>
+  $<TARGET_OBJECTS:cpu-sandybridgeep>
 )
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS idg-cpu
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
 endif()
+
+
+##########################################################
+# build libidg-cuda, containing all needed for CUDA code #
+##########################################################
+if (BUILD_WITH_CUDA)
+add_library(idg-cuda
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:cuda-common>
+  $<TARGET_OBJECTS:cuda-kepler>
+  $<TARGET_OBJECTS:cuda-maxwell>
+)
+
+install(TARGETS idg-cuda
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
+endif(BUILD_WITH_CUDA)
+
+
+##############################################################
+# build libidg-hybrid-cuda: containing all for CPU/CUDA code #
+##############################################################
+if (BUILD_WITH_CUDA)
+add_library(idg-hybrid-cuda
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:cpu-common>
+  $<TARGET_OBJECTS:cpu-reference>
+  $<TARGET_OBJECTS:cpu-haswellep>
+  $<TARGET_OBJECTS:cpu-sandybridgeep>
+  $<TARGET_OBJECTS:cuda-common>
+  $<TARGET_OBJECTS:cuda-kepler>
+  $<TARGET_OBJECTS:cuda-maxwell>
+  $<TARGET_OBJECTS:hybrid-cuda-maxwellhaswellep>
+)
+
+install(TARGETS idg-hybrid-cuda
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
+endif(BUILD_WITH_CUDA)

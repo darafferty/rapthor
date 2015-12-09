@@ -1,4 +1,4 @@
-project(idg-cpu-haswellep)
+project(cpu-haswellep)
 
 # external header files needed
 include_directories (

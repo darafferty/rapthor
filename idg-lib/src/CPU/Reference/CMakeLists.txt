@@ -1,4 +1,4 @@
-project(idg-cpu-reference)
+project(cpu-reference)
 
 # external header files needed
 include_directories (

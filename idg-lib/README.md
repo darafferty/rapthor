@@ -3,7 +3,7 @@
 git clone https://gitlab.com/astron-dome/image-domain-gridder.git     
 cd image-domain-gridder     
 mkdir build; cd build           
-cmake -DCMAKE_INSTALL_PREFIX=<installpath> ..     
+cmake -DCMAKE_INSTALL_PREFIX=\<installpath\> ..
 make install            
 source init-environment.sh         
 
