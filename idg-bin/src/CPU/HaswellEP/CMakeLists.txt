@@ -40,7 +40,6 @@ install(
 # Copy header files
 install(
     FILES
-    idg.h
     HaswellEP.h
     DESTINATION
     include/CPU/HaswellEP
