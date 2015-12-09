@@ -2,7 +2,7 @@
 #include <cstdlib> // size_t
 #include <complex>
 
-#include "Init.h"  // Data init routines
+#include "idg-utility.h"  // Data init routines
 
 using namespace std;
 

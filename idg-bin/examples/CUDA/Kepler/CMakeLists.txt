@@ -4,7 +4,6 @@ project(example-cuda-kepler.x)
 include_directories(
   ${CUDA_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/utility
  )
 
@@ -21,7 +20,6 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
-  idg-external
   idg-cuda
   ${CUDA_CUFFT_LIBRARIES}
   cuda

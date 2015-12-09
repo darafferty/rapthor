@@ -5,7 +5,7 @@
 #include <cuda.h>
 #include <cudaProfiler.h>
 
-#include "Init.h"  // Data init routines
+#include "idg-utility.h"  // Data init routines
 
 using namespace std;
 
