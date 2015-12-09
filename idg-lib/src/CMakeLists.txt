@@ -89,6 +89,13 @@ install(TARGETS idg-cuda
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
+
+install(
+    FILES
+    idg-cuda.h
+    DESTINATION
+    include
+)
 endif(BUILD_WITH_CUDA)
 
 

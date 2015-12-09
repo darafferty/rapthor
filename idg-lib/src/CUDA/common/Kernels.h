@@ -8,7 +8,7 @@
 
 #include "CU.h"
 #include "CUFFT.h"
-#include "Parameters.h"
+#include "../../common/Parameters.h"
 
 #define USE_CUFFT 0
 

@@ -31,10 +31,10 @@
 
 #include "CU.h"
 
-#include "Proxy.h"
-#include "PowerSensor.h"
+#include "../../common/Proxy.h"
+#include "../../common/PowerSensor.h"
+#include "../../common/auxiliary.h"
 #include "Kernels.h"
-#include "auxiliary.h"
 
 // Low level routine parameters
 #define CU_GRIDDER_PARAMETERS   cu::Context &context, unsigned nr_subgrids, float w_offset, \

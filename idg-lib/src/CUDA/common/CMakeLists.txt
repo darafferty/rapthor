@@ -29,16 +29,10 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
 
-# Set installation directory
-# install(TARGETS ${PROJECT_NAME}
-#    RUNTIME DESTINATION bin
-#    LIBRARY DESTINATION lib
-#    ARCHIVE DESTINATION lib
-# )
-
 # Copy header files
-# install(
-#    FILES
-#    DESTINATION
-#    include/CUDA
-# )
+install(
+   FILES
+   ${${PROJECT_NAME}_headers}
+   DESTINATION
+   include/CUDA/common
+)

@@ -10,11 +10,7 @@
 #ifndef IDG_SANDYBRIDGEEP_H_
 #define IDG_SANDYBRIDGEEP_H_
 
-#include <dlfcn.h>
-#include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
-#include "../../common/Proxy.h"
-#include "../common/CPU.h"
-#include "../common/Kernels.h"
+#include "idg-cpu.h"
 
 namespace idg {
     namespace proxy {

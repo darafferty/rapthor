@@ -10,7 +10,7 @@
 #ifndef IDG_CPU_REFERENCE_H_
 #define IDG_CPU_REFERENCE_H_
 
-#include "../common/CPU.h"
+#include "idg-cpu.h"
 
 namespace idg {
     namespace proxy {

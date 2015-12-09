@@ -1,7 +1,7 @@
 #ifndef IDG_KERNELS_CUDA_MAXWELL_H_
 #define IDG_KERNELS_CUDA_MAXWELL_H_
 
-#include "Kernels.h"
+#include "../common/Kernels.h"
 
 #define USE_CUFFT 0
 
