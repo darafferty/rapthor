@@ -6,8 +6,8 @@
 #include <cmath>
 #include <string>
 
-#include "RuntimeWrapper.h"
-#include "Parameters.h"
+#include "../../common/RuntimeWrapper.h"
+#include "../../common/Parameters.h"
 
 namespace idg {
     namespace kernel {

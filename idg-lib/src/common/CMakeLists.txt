@@ -46,23 +46,16 @@ add_library(
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 
 
-# (start) to be removed: build libidg-common.so
-# add_library(
-#    idg-common ${${PROJECT_NAME}_headers}
-#               ${${PROJECT_NAME}_sources}
-#)
-#if (${BUILD_WITH_LIKWID_POWER_SENSOR})
-#target_link_libraries(
-#    idg-common
-#    ${NUMA_LIBRARY}
-#    ${LIKWID_LIBRARIES}
-#)
-#endif()
-#
-## installer
-#install(TARGETS idg-common
-#  RUNTIME DESTINATION bin
-#  LIBRARY DESTINATION lib
-#  ARCHIVE DESTINATION lib/static
-#)
-# (end) to be removed: build libidg-common.so
+# Copy header files
+install(
+    FILES
+    Proxy.h
+    CompilerEnvironment.h
+    Parameters.h
+    ProxyInfo.h
+    RuntimeWrapper.h
+    auxiliary.h
+    LikwidPowerSensor.h
+    DESTINATION
+    include/common
+)

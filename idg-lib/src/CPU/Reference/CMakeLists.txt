@@ -40,7 +40,6 @@ install(
 # Copy header files
 install(
     FILES
-    idg.h
     Reference.h
     DESTINATION
     include/CPU/Reference

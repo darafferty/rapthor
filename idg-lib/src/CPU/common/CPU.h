@@ -12,10 +12,11 @@
 
 #include <dlfcn.h>
 #include <memory>
+
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
-#include "Proxy.h"
 #include "Kernels.h"
-#include "LikwidPowerSensor.h"
+#include "../../common/Proxy.h"
+#include "../../common/LikwidPowerSensor.h"
 
 namespace idg {
     namespace proxy {
