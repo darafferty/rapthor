@@ -24,9 +24,14 @@ target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
   idg-external
-  idg-cpu-haswellep
-  idg-cpu-reference
-  idg-cpu-common 
+  idg-cpu
   idg-common
   ${CMAKE_DL_LIBS}
+)
+
+# install
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
 )
