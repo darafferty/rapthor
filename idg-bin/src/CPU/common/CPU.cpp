@@ -21,6 +21,7 @@ using namespace idg::kernel::cpu;
 namespace idg {
     namespace proxy {
         namespace cpu {
+
             /// Constructors
             CPU::CPU(
                 Parameters params,
@@ -30,7 +31,7 @@ namespace idg {
               : mInfo(info)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Compiler: " << compiler << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
@@ -44,11 +45,12 @@ namespace idg {
     
                 powerSensor = new LikwidPowerSensor();
             }
+
     
             CPU::~CPU()
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // unload shared objects by ~Module
@@ -67,7 +69,8 @@ namespace idg {
             }
     
     
-            string CPU::make_tempdir() {
+            string CPU::make_tempdir()
+            {
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
                 char *tmpdir = mkdtemp(_tmpdir);
                 #if defined(DEBUG)
@@ -77,7 +80,12 @@ namespace idg {
             }
     
     
-            ProxyInfo CPU::default_proxyinfo(string srcdir, string tmpdir) {
+            ProxyInfo CPU::default_proxyinfo(string srcdir, string tmpdir)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
                 ProxyInfo p;
                 p.set_path_to_src(srcdir);
                 p.set_path_to_lib(tmpdir);
@@ -109,12 +117,12 @@ namespace idg {
             ProxyInfo CPU::default_info()
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
-                string  srcdir = string(IDG_SOURCE_DIR)
-                    + "/src/CPU/Reference/kernels";
-    
+                string  srcdir = string(IDG_INSTALL_DIR)
+                    + "/lib/kernels/CPU/Reference";
+
                 #if defined(DEBUG)
                 cout << "Searching for source files in: " << srcdir << endl;
                 #endif
@@ -141,10 +149,23 @@ namespace idg {
     
             string CPU::default_compiler_flags()
             {
+                string debug = "Debug";
+                string relwithdebinfo = "RelWithDebInfo";
+
                 #if defined(USING_INTEL_CXX_COMPILER)
-                return "-Wall -O3 -openmp -mkl";
+                if (debug == IDG_BUILD_TYPE)
+                    return "-Wall -g -DDEBUG -openmp -mkl -lmkl_def";
+                else if (relwithdebinfo == IDG_BUILD_TYPE)
+                    return "-O3 -openmp -g -mkl -lmkl_def";
+                else
+                    return "-Wall -O3 -openmp -mkl -lmkl_def";
                 #else
-                return "-Wall -O3 -fopenmp -lfftw3f";
+                if (debug == IDG_BUILD_TYPE)
+                    return "-Wall -g -DDEBUG -fopenmp -lfftw3f";
+                else if (relwithdebinfo == IDG_BUILD_TYPE)
+                    return "-O3 -g -fopenmp -lfftw3f";
+                else
+                    return "-Wall -O3 -fopenmp -lfftw3f";
                 #endif
             }
     
@@ -158,10 +179,10 @@ namespace idg {
                 complex<float> *grid,
                 const float w_offset,
                 const complex<float> *aterm,
-                const float *spheroidal) {
-    
+                const float *spheroidal)
+            {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // allocate 'subgrids' memory for subgrids
@@ -201,9 +222,10 @@ namespace idg {
                 const std::complex<float> *grid,
                 const float w_offset,
                 const std::complex<float> *aterm,
-                const float *spheroidal) {
+                const float *spheroidal)
+            {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // allocate 'subgrids' memory for subgrids
@@ -239,7 +261,7 @@ namespace idg {
                                 complex<float>* grid)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
     
@@ -281,7 +303,7 @@ namespace idg {
                 complex<float> *subgrids)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Constants
@@ -311,23 +333,36 @@ namespace idg {
     
                     // Number of elements in batch
                     int uvw_elements          = nr_timesteps * 3;
-                    int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
-                    int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                    int visibilities_elements = nr_timesteps * nr_channels
+                                                * nr_polarizations;
+                    int subgrid_elements      = subgridsize * subgridsize
+                                                * nr_polarizations;
                     int metadata_elements     = 5;
     
                     // Pointers to data for current batch
                     void *uvw_ptr          = (float *) uvw + s * uvw_elements;
                     void *wavenumbers_ptr  = wavenumbers;
-                    void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
+                    void *visibilities_ptr = (complex<float>*) visibilities
+                                             + s * visibilities_elements;
                     void *spheroidal_ptr   = spheroidal;
                     void *aterm_ptr        = aterm;
-                    void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
+                    void *subgrids_ptr     = (complex<float>*) subgrids
+                                             + s * subgrid_elements;
                     void *metadata_ptr     = (int *) metadata + s * metadata_elements;
     
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
-                    kernel_gridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                                       spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
+                    kernel_gridder.run(
+                        jobsize,
+                        w_offset,
+                        uvw_ptr,
+                        wavenumbers_ptr,
+                        visibilities_ptr,
+                        spheroidal_ptr,
+                        aterm_ptr,
+                        metadata_ptr,
+                        subgrids_ptr
+                        );
                     powerStates[1] = powerSensor->read();
     
                     // FFT kernel
@@ -336,11 +371,15 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
     
                     // Performance reporting
-                    double runtime_gridder = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
-                    double runtime_fft     = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
+                    double runtime_gridder = LikwidPowerSensor::seconds(
+                        powerStates[0], powerStates[1] );
+                    double runtime_fft     = LikwidPowerSensor::seconds(
+                        powerStates[2], powerStates[3] );
                     #if defined(REPORT_VERBOSE)
-                    double power_gridder   = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
-                    double power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
+                    double power_gridder   = LikwidPowerSensor::Watt(
+                        powerStates[0], powerStates[1] );
+                    double power_fft       = LikwidPowerSensor::Watt(
+                        powerStates[2], powerStates[3] );
                     auxiliary::report("gridder", runtime_gridder,
                                       kernel_gridder.flops(jobsize),
                                       kernel_gridder.bytes(jobsize),
@@ -361,14 +400,22 @@ namespace idg {
                 clog << endl;
                 uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize,
+                                                                 nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize,
+                                                                 nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
-                auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-                auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+                auxiliary::report("|gridder", total_runtime_gridder,
+                                  total_flops_gridder, total_bytes_gridder);
+                auxiliary::report("|fft", total_runtime_fft, total_flops_fft,
+                                  total_bytes_fft);
+                auxiliary::report("|gridding", total_runtime_gridding,
+                                  total_flops_gridding, total_bytes_gridding);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding,
+                                               nr_baselines,
+                                               nr_timesteps * nr_timeslots,
+                                               nr_channels);
                 clog << endl;
                 #endif
             }
@@ -381,7 +428,7 @@ namespace idg {
                 complex<float> *grid)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Constants
@@ -404,11 +451,13 @@ namespace idg {
     
                     // Number of elements in batch
                     int metadata_elements = 5;
-                    int subgrid_elements  = subgridsize * subgridsize * nr_polarizations;
+                    int subgrid_elements  = subgridsize * subgridsize
+                                            * nr_polarizations;
     
                     // Pointer to data for current jobs
                     void *metadata_ptr = (int *) metadata + s * metadata_elements;
-                    void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
+                    void *subgrid_ptr  = (complex<float>*) subgrids
+                                         + s * subgrid_elements;
                     void *grid_ptr     = grid;
     
                     double runtime_adder = -omp_get_wtime();
@@ -430,9 +479,12 @@ namespace idg {
                 clog << endl;
                 uint64_t total_flops_adder = kernel_adder.flops(nr_subgrids);
                 uint64_t total_bytes_adder = kernel_adder.bytes(nr_subgrids);
-                auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
-                auxiliary::report("|adding", total_runtime_adding, total_flops_adder, total_bytes_adder);
-                auxiliary::report_subgrids("|adding", total_runtime_adding, nr_subgrids);
+                auxiliary::report("|adder", total_runtime_adder, total_flops_adder,
+                                  total_bytes_adder);
+                auxiliary::report("|adding", total_runtime_adding, total_flops_adder,
+                                  total_bytes_adder);
+                auxiliary::report_subgrids("|adding", total_runtime_adding,
+                                           nr_subgrids);
                 clog << endl;
                 #endif
             }
@@ -445,7 +497,7 @@ namespace idg {
                 complex<float> *grid)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Constants
@@ -468,11 +520,13 @@ namespace idg {
     
                     // Number of elements in batch
                     int metadata_elements = 5;
-                    int subgrid_elements  = subgridsize * subgridsize * nr_polarizations;
+                    int subgrid_elements  = subgridsize * subgridsize
+                                            * nr_polarizations;
     
                     // Pointer to data for current jobs
                     void *metadata_ptr = (int *) metadata + s * metadata_elements;
-                    void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
+                    void *subgrid_ptr  = (complex<float>*) subgrids
+                                         + s * subgrid_elements;
                     void *grid_ptr     = grid;
     
                     double runtime_splitter = -omp_get_wtime();
@@ -494,9 +548,12 @@ namespace idg {
                 clog << endl;
                 uint64_t total_flops_splitter = kernel_splitter.flops(nr_subgrids);
                 uint64_t total_bytes_splitter = kernel_splitter.bytes(nr_subgrids);
-                auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
-                auxiliary::report("|splitting", total_runtime_splitting, total_flops_splitter, total_bytes_splitter);
-                auxiliary::report_subgrids("|splitting", total_runtime_splitting, nr_subgrids);
+                auxiliary::report("|splitter", total_runtime_splitter,
+                                  total_flops_splitter, total_bytes_splitter);
+                auxiliary::report("|splitting", total_runtime_splitting,
+                                  total_flops_splitter, total_bytes_splitter);
+                auxiliary::report_subgrids("|splitting", total_runtime_splitting,
+                                           nr_subgrids);
                 clog << endl;
                 #endif
             }
@@ -514,7 +571,7 @@ namespace idg {
                 std::complex<float> *subgrids)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Constants
@@ -544,18 +601,22 @@ namespace idg {
     
                     // Number of elements in batch
                     int uvw_elements          = nr_timesteps * 3;
-                    int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
+                    int visibilities_elements = nr_timesteps * nr_channels
+                                                * nr_polarizations;
                     int metadata_elements     = 5;
-                    int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                    int subgrid_elements      = subgridsize * subgridsize
+                                                * nr_polarizations;
     
                     // Pointers to data for current batch
                     void *uvw_ptr          = (float *) uvw + s * uvw_elements;
                     void *wavenumbers_ptr  = wavenumbers;
-                    void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
+                    void *visibilities_ptr = (complex<float>*) visibilities
+                                             + s * visibilities_elements;
                     void *spheroidal_ptr   = spheroidal;
                     void *aterm_ptr        = aterm;
                     void *metadata_ptr     = (int *) metadata + s * metadata_elements;
-                    void *subgrids_ptr     = (complex<float>*) subgrids + s * subgrid_elements;
+                    void *subgrids_ptr     = (complex<float>*) subgrids
+                                             + s * subgrid_elements;
     
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
@@ -564,16 +625,28 @@ namespace idg {
     
                     // Degridder kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_degridder.run(jobsize, w_offset, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-                                         spheroidal_ptr, aterm_ptr, metadata_ptr, subgrids_ptr);
+                    kernel_degridder.run(
+                        jobsize,
+                        w_offset,
+                        uvw_ptr,
+                        wavenumbers_ptr,
+                        visibilities_ptr,
+                        spheroidal_ptr,
+                        aterm_ptr,
+                        metadata_ptr,
+                        subgrids_ptr);
                     powerStates[3] = powerSensor->read();
     
                     // Performance reporting
-                    double runtime_fft         = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
-                    double runtime_degridder   = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
+                    double runtime_fft         = LikwidPowerSensor::seconds(
+                        powerStates[0], powerStates[1] );
+                    double runtime_degridder   = LikwidPowerSensor::seconds(
+                        powerStates[2], powerStates[3] );
                     #if defined(REPORT_VERBOSE)
-                    double power_fft           = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
-                    double power_degridder     = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
+                    double power_fft           = LikwidPowerSensor::Watt(
+                        powerStates[0], powerStates[1] );
+                    double power_degridder     = LikwidPowerSensor::Watt(
+                        powerStates[2], powerStates[3] );
     
                     auxiliary::report("degridder", runtime_degridder,
                                       kernel_degridder.flops(jobsize),
@@ -595,14 +668,24 @@ namespace idg {
                 clog << endl;
                 uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
-                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
-                auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-                auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize,
+                                                                   nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize,
+                                                                   nr_subgrids);
+                uint64_t total_flops_degridding = total_flops_degridder
+                                                  + total_flops_fft;
+                uint64_t total_bytes_degridding = total_bytes_degridder
+                                                  + total_bytes_fft;
+                auxiliary::report("|degridder", total_runtime_degridder,
+                                  total_flops_degridder, total_bytes_degridder);
+                auxiliary::report("|fft", total_runtime_fft, total_flops_fft,
+                                  total_bytes_fft);
+                auxiliary::report("|degridding", total_runtime_degridding,
+                                  total_flops_degridding, total_bytes_degridding);
+                auxiliary::report_visibilities("|degridding", total_runtime_degridding,
+                                               nr_baselines,
+                                               nr_timesteps * nr_timeslots,
+                                               nr_channels);
                 clog << endl;
                 #endif
             }
@@ -611,7 +694,7 @@ namespace idg {
             void CPU::compile(Compiler compiler, Compilerflags flags)
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
@@ -665,7 +748,7 @@ namespace idg {
             void CPU::parameter_sanity_check()
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
             }
     
@@ -673,7 +756,7 @@ namespace idg {
             void CPU::load_shared_objects()
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 for (auto libname : mInfo.get_lib_names()) {
@@ -692,7 +775,7 @@ namespace idg {
             void CPU::find_kernel_functions()
             {
                 #if defined(DEBUG)
-                cout << "CPU::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
     
                 for (unsigned int i=0; i<modules.size(); i++) {
@@ -719,13 +802,16 @@ namespace idg {
                 } // end for
             } // end find_kernel_functions
 
+
             unique_ptr<Gridder> CPU::get_kernel_gridder() const {
                 return unique_ptr<Gridder>(new Gridder(*(modules[which_module.at(name_gridder)]), mParams));
             }
 
+
             unique_ptr<Degridder> CPU::get_kernel_degridder() const {
                 return unique_ptr<Degridder>(new Degridder(*(modules[which_module.at(name_degridder)]), mParams));
             }
+
 
             unique_ptr<Adder> CPU::get_kernel_adder() const {
                 return unique_ptr<Adder>(new Adder(*(modules[which_module.at(name_adder)]), mParams));
@@ -734,6 +820,7 @@ namespace idg {
             unique_ptr<Splitter> CPU::get_kernel_splitter() const {
                 return unique_ptr<Splitter>(new Splitter(*(modules[which_module.at(name_splitter)]), mParams));
             }
+
 
             unique_ptr<GridFFT> CPU::get_kernel_fft() const {
                 return unique_ptr<GridFFT>(new GridFFT(*(modules[which_module.at(name_fft)]), mParams));

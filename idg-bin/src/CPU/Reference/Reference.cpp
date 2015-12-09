@@ -24,7 +24,7 @@ namespace idg {
                 : CPU(params, compiler, flags, info)
             {
                 #if defined(DEBUG)
-                cout << "Reference::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << "Compiler: " << compiler << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
@@ -35,7 +35,7 @@ namespace idg {
             ProxyInfo Reference::default_info()
             {
                 #if defined(DEBUG)
-                cout << "Reference::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 string  srcdir = string(IDG_INSTALL_DIR)
