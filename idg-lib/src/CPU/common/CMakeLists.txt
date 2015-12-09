@@ -9,7 +9,6 @@ include_directories (
 set (${PROJECT_NAME}_headers
   CPU.h
   Kernels.h
-  ${CMAKE_SOURCE_DIR}/src/common/LikwidPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -28,9 +27,8 @@ endif()
 
 # Copy header files
 install(
-    FILES
-    CPU.h
-    Kernels.h
-    DESTINATION
-    include/CPU/common
+  FILES
+  ${${PROJECT_NAME}_headers}
+  DESTINATION
+  include/CPU/common
 )

@@ -6,9 +6,6 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/utility
-  ${CMAKE_SOURCE_DIR}/examples/CUDA/common
-  ${CMAKE_SOURCE_DIR}/src/CUDA/common
-  ${CMAKE_SOURCE_DIR}/src/common
  )
 
 set (${PROJECT_NAME}_sources 

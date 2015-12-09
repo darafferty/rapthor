@@ -1,3 +1,6 @@
+#ifndef IDG_CUFFT_H_
+#define IDG_CUFFT_H_
+
 #include <exception>
 
 #include <cuda.h>
@@ -93,3 +96,5 @@ namespace cufft {
 	};
 	
 }
+
+#endif

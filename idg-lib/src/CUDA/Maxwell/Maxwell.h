@@ -10,7 +10,7 @@
 #ifndef IDG_CUDA_MAXWELL_H_
 #define IDG_CUDA_MAXWELL_H_
 
-#include "CUDA.h"
+#include "idg-cuda.h"
 #include "KernelsMaxwell.h"
 
 namespace idg {

@@ -115,8 +115,8 @@ endif (BUILD_WITH_OPENCL)
 
 # write config file, included in all files of the project
 configure_file (
-  "${PROJECT_SOURCE_DIR}/idg-config.h.in"
-  "${PROJECT_BINARY_DIR}/idg-config.h"
+  "${PROJECT_SOURCE_DIR}/src/idg-config.h.in"
+  "${PROJECT_BINARY_DIR}/src/idg-config.h"
   )
 include_directories (${CMAKE_BINARY_DIR})
 

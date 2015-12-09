@@ -1,6 +1,4 @@
-#include "idg-config.h"
 #include "Kepler.h"
-#include "KernelsKepler.h"
 
 using namespace std;
 using namespace idg::kernel::cuda;
