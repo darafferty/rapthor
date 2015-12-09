@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "idg-config.h"
-#include "uvwsim.h"
+#include "idg-utility.h"
 
   /* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))

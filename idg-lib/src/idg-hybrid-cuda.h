@@ -3,5 +3,6 @@
 
 #include "idg-cpu.h"
 #include "idg-cuda.h"
+#include "Hybrid/CUDA/MaxwellHaswellEP/MaxwellHaswellEP.h"
 
 #endif
