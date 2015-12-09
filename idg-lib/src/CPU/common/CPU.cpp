@@ -16,7 +16,7 @@
 #endif
 
 using namespace std;
-using namespace idg::kernel::cpu;
+using namespace idg;
 
 namespace idg {
     namespace proxy {
@@ -271,17 +271,17 @@ namespace idg {
                 auto gridsize = mParams.get_grid_size();
     
                 // Load kernel function
-                GridFFT kernel_fft(*(modules[which_module[name_fft]]), mParams);
+                unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
     
                 // Start fft
                 double runtime = -omp_get_wtime();
-                kernel_fft.run(gridsize, 1, grid, sign);
+                kernel_fft->run(gridsize, 1, grid, sign);
                 runtime += omp_get_wtime();
     
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auxiliary::report(">grid_fft", runtime,
-                                  kernel_fft.flops(gridsize, 1),
-                                  kernel_fft.bytes(gridsize, 1));
+                                  kernel_fft->flops(gridsize, 1),
+                                  kernel_fft->bytes(gridsize, 1));
                 clog << endl;
                 #endif
     
@@ -316,8 +316,8 @@ namespace idg {
                 auto subgridsize = mParams.get_subgrid_size();
     
                 // load kernel functions
-                Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
-                GridFFT kernel_fft(*(modules[which_module[name_fft]]), mParams);
+                unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
+                unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
     
                 // Performance measurements
                 double total_runtime_gridding = 0;
@@ -352,7 +352,7 @@ namespace idg {
     
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
-                    kernel_gridder.run(
+                    kernel_gridder->run(
                         jobsize,
                         w_offset,
                         uvw_ptr,
@@ -367,7 +367,7 @@ namespace idg {
     
                     // FFT kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD);
+                    kernel_fft->run(subgridsize, jobsize, subgrids_ptr, FFTW_BACKWARD);
                     powerStates[3] = powerSensor->read();
     
                     // Performance reporting
@@ -381,12 +381,12 @@ namespace idg {
                     double power_fft       = LikwidPowerSensor::Watt(
                         powerStates[2], powerStates[3] );
                     auxiliary::report("gridder", runtime_gridder,
-                                      kernel_gridder.flops(jobsize),
-                                      kernel_gridder.bytes(jobsize),
+                                      kernel_gridder->flops(jobsize),
+                                      kernel_gridder->bytes(jobsize),
                                       power_gridder);
                     auxiliary::report("fft", runtime_fft,
-                                      kernel_fft.flops(subgridsize, jobsize),
-                                      kernel_fft.bytes(subgridsize, jobsize),
+                                      kernel_fft->flops(subgridsize, jobsize),
+                                      kernel_fft->bytes(subgridsize, jobsize),
                                       power_fft);
                     #endif
                     #if defined(REPORT_TOTAL)
@@ -398,11 +398,11 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
                 clog << endl;
-                uint64_t total_flops_gridder  = kernel_gridder.flops(nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize,
+                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize,
                                                                  nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize,
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize,
                                                                  nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
@@ -437,7 +437,7 @@ namespace idg {
                 auto subgridsize = mParams.get_subgrid_size();
     
                 // Load kernel function
-                Adder kernel_adder(*(modules[which_module[name_adder]]), mParams);
+                unique_ptr<kernel::cpu::Adder> kernel_adder = get_kernel_adder();
     
                 // Performance measurements
                 double total_runtime_adding = 0;
@@ -461,13 +461,13 @@ namespace idg {
                     void *grid_ptr     = grid;
     
                     double runtime_adder = -omp_get_wtime();
-                    kernel_adder.run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
+                    kernel_adder->run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
                     runtime_adder += omp_get_wtime();
     
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("adder", runtime_adder,
-                                      kernel_adder.flops(jobsize),
-                                      kernel_adder.bytes(jobsize));
+                                      kernel_adder->flops(jobsize),
+                                      kernel_adder->bytes(jobsize));
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_adder += runtime_adder;
@@ -477,8 +477,8 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_adding += omp_get_wtime();
                 clog << endl;
-                uint64_t total_flops_adder = kernel_adder.flops(nr_subgrids);
-                uint64_t total_bytes_adder = kernel_adder.bytes(nr_subgrids);
+                uint64_t total_flops_adder = kernel_adder->flops(nr_subgrids);
+                uint64_t total_bytes_adder = kernel_adder->bytes(nr_subgrids);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder,
                                   total_bytes_adder);
                 auxiliary::report("|adding", total_runtime_adding, total_flops_adder,
@@ -506,7 +506,7 @@ namespace idg {
                 auto subgridsize = mParams.get_subgrid_size();
     
                 // Load kernel function
-                Splitter kernel_splitter(*(modules[which_module[name_splitter]]), mParams);
+                unique_ptr<kernel::cpu::Splitter> kernel_splitter = get_kernel_splitter();
     
                 // Performance measurements
                 double total_runtime_splitting = 0;
@@ -530,13 +530,13 @@ namespace idg {
                     void *grid_ptr     = grid;
     
                     double runtime_splitter = -omp_get_wtime();
-                    kernel_splitter.run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
+                    kernel_splitter->run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
                     runtime_splitter += omp_get_wtime();
     
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("splitter", runtime_splitter,
-                                      kernel_splitter.flops(jobsize),
-                                      kernel_splitter.bytes(jobsize));
+                                      kernel_splitter->flops(jobsize),
+                                      kernel_splitter->bytes(jobsize));
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_splitter += runtime_splitter;
@@ -546,8 +546,8 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_splitting += omp_get_wtime();
                 clog << endl;
-                uint64_t total_flops_splitter = kernel_splitter.flops(nr_subgrids);
-                uint64_t total_bytes_splitter = kernel_splitter.bytes(nr_subgrids);
+                uint64_t total_flops_splitter = kernel_splitter->flops(nr_subgrids);
+                uint64_t total_bytes_splitter = kernel_splitter->bytes(nr_subgrids);
                 auxiliary::report("|splitter", total_runtime_splitter,
                                   total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|splitting", total_runtime_splitting,
@@ -584,8 +584,8 @@ namespace idg {
                 auto subgridsize = mParams.get_subgrid_size();
     
                 // Load kernel functions
-                Degridder kernel_degridder(*(modules[which_module[name_degridder]]), mParams);
-                GridFFT kernel_fft(*(modules[which_module[name_fft]]), mParams);
+                unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
+                unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
     
                 // Performance measurements
                 double total_runtime_degridding = 0;
@@ -620,12 +620,12 @@ namespace idg {
     
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
-                    kernel_fft.run(subgridsize, jobsize, subgrids_ptr, FFTW_FORWARD);
+                    kernel_fft->run(subgridsize, jobsize, subgrids_ptr, FFTW_FORWARD);
                     powerStates[1] = powerSensor->read();
     
                     // Degridder kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_degridder.run(
+                    kernel_degridder->run(
                         jobsize,
                         w_offset,
                         uvw_ptr,
@@ -649,12 +649,12 @@ namespace idg {
                         powerStates[2], powerStates[3] );
     
                     auxiliary::report("degridder", runtime_degridder,
-                                      kernel_degridder.flops(jobsize),
-                                      kernel_degridder.bytes(jobsize),
+                                      kernel_degridder->flops(jobsize),
+                                      kernel_degridder->bytes(jobsize),
                                       power_degridder);
                     auxiliary::report("fft", runtime_fft,
-                                      kernel_fft.flops(subgridsize, jobsize),
-                                      kernel_fft.bytes(subgridsize, jobsize),
+                                      kernel_fft->flops(subgridsize, jobsize),
+                                      kernel_fft->bytes(subgridsize, jobsize),
                                       power_fft);
                     #endif
                     #if defined(REPORT_TOTAL)
@@ -666,11 +666,11 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
                 clog << endl;
-                uint64_t total_flops_degridder  = kernel_degridder.flops(nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize,
+                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize,
                                                                    nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize,
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize,
                                                                    nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder
                                                   + total_flops_fft;
@@ -779,51 +779,66 @@ namespace idg {
                 #endif
     
                 for (unsigned int i=0; i<modules.size(); i++) {
-                    if (dlsym(*modules[i], name_gridder.c_str())) {
+                    if (dlsym(*modules[i], kernel::cpu::name_gridder.c_str())) {
                       // found gridder kernel in module i
-                      which_module[name_gridder] = i;
+                      which_module[kernel::cpu::name_gridder] = i;
                     }
-                    if (dlsym(*modules[i], name_degridder.c_str())) {
+                    if (dlsym(*modules[i], kernel::cpu::name_degridder.c_str())) {
                       // found degridder kernel in module i
-                      which_module[name_degridder] = i;
+                      which_module[kernel::cpu::name_degridder] = i;
                     }
-                    if (dlsym(*modules[i], name_fft.c_str())) {
+                    if (dlsym(*modules[i], kernel::cpu::name_fft.c_str())) {
                       // found fft kernel in module i
-                      which_module[name_fft] = i;
+                      which_module[kernel::cpu::name_fft] = i;
                     }
-                    if (dlsym(*modules[i], name_adder.c_str())) {
+                    if (dlsym(*modules[i], kernel::cpu::name_adder.c_str())) {
                       // found adder kernel in module i
-                      which_module[name_adder] = i;
+                      which_module[kernel::cpu::name_adder] = i;
                     }
-                    if (dlsym(*modules[i], name_splitter.c_str())) {
+                    if (dlsym(*modules[i], kernel::cpu::name_splitter.c_str())) {
                       // found gridder kernel in module i
-                      which_module[name_splitter] = i;
+                      which_module[kernel::cpu::name_splitter] = i;
                     }
                 } // end for
             } // end find_kernel_functions
 
 
-            unique_ptr<Gridder> CPU::get_kernel_gridder() const {
-                return unique_ptr<Gridder>(new Gridder(*(modules[which_module.at(name_gridder)]), mParams));
+            unique_ptr<kernel::cpu::Gridder> CPU::get_kernel_gridder() const {
+                return unique_ptr<kernel::cpu::Gridder>(
+                    new kernel::cpu::Gridder(
+                        *(modules[which_module.at(kernel::cpu::name_gridder)]),
+                        mParams));
             }
 
 
-            unique_ptr<Degridder> CPU::get_kernel_degridder() const {
-                return unique_ptr<Degridder>(new Degridder(*(modules[which_module.at(name_degridder)]), mParams));
+            unique_ptr<kernel::cpu::Degridder> CPU::get_kernel_degridder() const {
+                return unique_ptr<kernel::cpu::Degridder>(
+                    new kernel::cpu::Degridder(
+                        *(modules[which_module.at(kernel::cpu::name_degridder)]),
+                        mParams));
             }
 
 
-            unique_ptr<Adder> CPU::get_kernel_adder() const {
-                return unique_ptr<Adder>(new Adder(*(modules[which_module.at(name_adder)]), mParams));
+            unique_ptr<kernel::cpu::Adder> CPU::get_kernel_adder() const {
+                return unique_ptr<kernel::cpu::Adder>(
+                    new kernel::cpu::Adder(
+                        *(modules[which_module.at(kernel::cpu::name_adder)]),
+                        mParams));
             }
 
-            unique_ptr<Splitter> CPU::get_kernel_splitter() const {
-                return unique_ptr<Splitter>(new Splitter(*(modules[which_module.at(name_splitter)]), mParams));
+            unique_ptr<kernel::cpu::Splitter> CPU::get_kernel_splitter() const {
+                return unique_ptr<kernel::cpu::Splitter>(
+                    new kernel::cpu::Splitter(
+                        *(modules[which_module.at(kernel::cpu::name_splitter)]),
+                        mParams));
             }
 
 
-            unique_ptr<GridFFT> CPU::get_kernel_fft() const {
-                return unique_ptr<GridFFT>(new GridFFT(*(modules[which_module.at(name_fft)]), mParams));
+            unique_ptr<kernel::cpu::GridFFT> CPU::get_kernel_fft() const {
+                return unique_ptr<kernel::cpu::GridFFT>(
+                    new kernel::cpu::GridFFT(
+                        *(modules[which_module.at(kernel::cpu::name_fft)]),
+                        mParams));
             }
 
         } // namespace cpu
