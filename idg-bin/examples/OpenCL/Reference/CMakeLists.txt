@@ -33,3 +33,10 @@ target_link_libraries (
   ${OPENCL_LIBRARIES}
   ${CLFFT_LIBRARIES}
 )
+
+# install
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
