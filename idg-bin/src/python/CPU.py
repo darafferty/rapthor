@@ -10,7 +10,7 @@ from Proxy import *
 path = os.path.dirname(os.path.realpath(__file__))
 path, junk = os.path.split(path)
 path, junk = os.path.split(path)
-libpath = os.path.join(path, 'libidg.so')
+libpath = os.path.join(path, 'libidg-cpu.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
 
@@ -50,154 +50,6 @@ class Reference(Proxy):
         return cls(p.nr_stations, p.nr_channels, p.nr_timesteps, \
                    p.nr_timeslots, p.imagesize, p.grid_size, \
                    p.subgrid_size)
-
-
-    def grid_visibilities(self,
-                          visibilities,
-                          uvw,
-                          wavenumbers,
-                          metadata,
-                          grid,
-                          w_offset,
-                          aterms,
-                          spheroidal):
-        """Grid visibilities onto grid.
-
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
-                                            nr_channels, nr_polarizations),
-                                            dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
-                            dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
-                             subgrid_size, subgrid_size), dtype = idg.atermtype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                     dtype = idg.spheroidaltype)
-        """
-        # check dimensions
-        if visibilities.shape != (self.get_nr_subgrids(),
-                                  self.get_nr_timesteps(),
-                                  self.get_nr_channels(),
-                                  self.get_nr_polarizations()):
-            raise ValueError('Visibilities dimension missmatch.')
-        if uvw.shape != (self.get_nr_subgrids(),
-                         self.get_nr_timesteps(), 3):
-             raise ValueError('UVW dimension missmatch.')
-        if wavenumbers.shape != (self.get_nr_channels(), ):
-            raise ValueError('Wavenumbers dimension missmatch.')
-        if metadata.shape != (self.get_nr_subgrids(), ):
-            raise ValueError('Metadata dimension missmatch.')
-        if grid.shape != (self.get_nr_polarizations(),
-                          self.get_grid_size(),
-                          self.get_grid_size()):
-            raise ValueError('Grid dimension missmatch.')
-        if aterms.shape != (self.get_nr_stations(),
-                            self.get_nr_timeslots(),
-                            self.get_nr_polarizations(),
-                            self.get_subgrid_size(),
-                            self.get_subgrid_size()):
-            raise ValueError('Aterms dimension missmatch.')
-        if spheroidal.shape != (self.get_subgrid_size(),
-                                self.get_subgrid_size()):
-            raise ValueError('Spheroidal dimension missmatch.')
-
-        # call C function to do the work
-        self._cwrap_grid_visibilities(visibilities, uvw, wavenumbers,
-                                      metadata, grid, w_offset, aterms,
-                                      spheroidal)
-
-
-
-
-    def degrid_visibilities(self,
-                            visibilities,
-                            uvw,
-                            wavenumbers,
-                            metadata,
-                            grid,
-                            w_offset,
-                            aterm,
-                            spheroidal):
-        """Degrid visibilities onto grid.
-
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_subgrids, nr_timesteps,
-                                            nr_channels, nr_polarizations),
-                                            dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_subgrids,nr_timesteps, 3),
-                            dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_subgrids, dtype=idg.metadatatype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterm - numpy.ndarray(shape=(nr_stations, nr_timeslots, nr_polarizations,
-                             subgrid_size, subgrid_size), dtype = idg.atermtype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                     dtype = idg.spheroidaltype)
-        """
-        # check dimensions
-        if visibilities.shape != (self.get_nr_subgrids(),
-                                  self.get_nr_timesteps(),
-                                  self.get_nr_channels(),
-                                  self.get_nr_polarizations()):
-            raise ValueError('Visibilities dimension missmatch.')
-        if uvw.shape != (self.get_nr_subgrids(),
-                         self.get_nr_timesteps(), 3):
-             raise ValueError('UVW dimension missmatch.')
-        if wavenumbers.shape != (self.get_nr_channels(), ):
-            raise ValueError('Wavenumbers dimension missmatch.')
-        if metadata.shape != (self.get_nr_subgrids(), ):
-            raise ValueError('Metadata dimension missmatch.')
-        if grid.shape != (self.get_nr_polarizations(),
-                          self.get_grid_size(),
-                          self.get_grid_size()):
-            raise ValueError('Grid dimension missmatch.')
-        if aterms.shape != (self.get_nr_stations(),
-                            self.get_nr_timeslots(),
-                            self.get_nr_polarizations(),
-                            self.get_subgrid_size(),
-                            self.get_subgrid_size()):
-            raise ValueError('Aterms dimension missmatch.')
-        if spheroidal.shape != (self.get_subgrid_size(),
-                                self.get_subgrid_size()):
-            raise ValueError('Spheroidal dimension missmatch.')
-
-        # call C function to do the work
-        self._cwrap_degrid_visibilities(visibilities, uvw, wavenumbers,
-                                        metadata, grid, w_offset, aterms,
-                                        spheroidal)
-
-
-
-    def transform(self,
-                  direction,
-                  grid):
-        """Transform Fourier Domain<->Image Domain.
-
-        Arguments:
-        direction - idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        """
-        # check argument dimesions
-        if grid.shape != (self.get_nr_polarizations(),
-                          self.get_grid_size(),
-                          self.get_grid_size()):
-            raise ValueError('Grid dimension missmatch.')
-
-        # call C function to do the work
-        self._cwrap_transform(direction, grid)
-
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_transform(self, direction, grid):
-        lib.CPU_Reference_transform(self.obj,
-                                    ctypes.c_int(direction),
-                                    grid.ctypes.data_as(ctypes.c_void_p))
 
     def get_job_size_gridder(self):
         return lib.CPU_get_job_size_gridder(self.obj)
@@ -251,6 +103,12 @@ class Reference(Proxy):
                                  ctypes.c_float(w_offset),
                                  aterms.ctypes.data_as(ctypes.c_void_p),
                                  spheroidal.ctypes.data_as(ctypes.c_void_p))
+
+    # Wrapper to C function (override for each class inheriting from this)
+    def _cwrap_transform(self, direction, grid):
+        lib.CPU_Reference_transform(self.obj,
+                                    ctypes.c_int(direction),
+                                    grid.ctypes.data_as(ctypes.c_void_p))
 
 
 
