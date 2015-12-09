@@ -10,7 +10,6 @@
 #ifndef IDG_CUDA_KEPLER_H_
 #define IDG_CUDA_KEPLER_H_
 
-#include "idg-config.h"
 #include "idg-cuda.h"
 #include "KernelsKepler.h"
 

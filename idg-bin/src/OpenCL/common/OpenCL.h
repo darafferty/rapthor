@@ -10,11 +10,11 @@
 #ifndef IDG_OPENCL_H_
 #define IDG_OPENCL_H_
 
-#include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 #include <CL/cl.h>
-#include "Proxy.h"
+
+#include "idg-common.h"
 #include "Kernels.h"
 
 // High level method parameters

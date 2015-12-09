@@ -7,8 +7,8 @@
  *  This will be included by a user, so detail usage...
  */
 
-#ifndef IDG_HASWELLEP_H_
-#define IDG_HASWELLEP_H_
+#ifndef IDG_CPU_HASWELLEP_H_
+#define IDG_CPU_HASWELLEP_H_
 
 #include "idg-cpu.h"
 
