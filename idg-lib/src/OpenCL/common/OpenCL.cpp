@@ -19,10 +19,7 @@
 using namespace std;
 
 namespace idg {
-
     namespace proxy {
-
-        static PowerSensor *powerSensor;
 
         /// Constructors
         OpenCL::OpenCL(
@@ -41,6 +38,18 @@ namespace idg {
         	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
             device = devices[deviceNumber];
 
+            // Set/check parameters
+            mParams = params;
+            parameter_sanity_check(); // throws exception if bad parameters
+
+            // Compile kernels
+            compile(flags);
+            
+            // Initialize clFFT
+            clfftSetupData setup;
+            clfftSetup(&setup);
+
+            // Initialize power sensor
             #if defined(MEASURE_POWER_ARDUINO)
             const char *str_power_sensor = getenv("POWER_SENSOR");
             if (!str_power_sensor) str_power_sensor = STR_POWER_SENSOR;
@@ -48,15 +57,8 @@ namespace idg {
             if (!str_power_file) str_power_file = STR_POWER_FILE;
             cout << "Opening power sensor: " << str_power_sensor << endl;
             cout << "Writing power consumption to file: " << str_power_file << endl;
-            powerSensor = new PowerSensor(str_power_sensor, str_power_file);
+            powerSensor.init(str_power_sensor, str_power_file);
             #endif
-
-            mParams = params;
-            parameter_sanity_check(); // throws exception if bad parameters
-            compile(flags);
-            
-            clfftSetupData setup;
-            clfftSetup(&setup);
         }
 
         OpenCL::~OpenCL()
@@ -190,8 +192,8 @@ namespace idg {
                 PerformanceCounter counter_gridder;
                 PerformanceCounter counter_fft;
                 #if defined(MEASURE_POWER_ARDUINO)
-                counter_gridder.setPowerSensor(powerSensor);
-                counter_fft.setPowerSensor(powerSensor);
+                counter_gridder.setPowerSensor(&powerSensor);
+                counter_fft.setPowerSensor(&powerSensor);
                 #endif
  
                 #pragma omp for schedule(dynamic)
@@ -308,8 +310,8 @@ namespace idg {
                 PerformanceCounter counter_degridder;
                 PerformanceCounter counter_fft;
                 #if defined(MEASURE_POWER_ARDUINO)
-                counter_degridder.setPowerSensor(powerSensor);
-                counter_fft.setPowerSensor(powerSensor);
+                counter_degridder.setPowerSensor(&powerSensor);
+                counter_fft.setPowerSensor(&powerSensor);
                 #endif
 
                 #pragma omp for schedule(dynamic)
@@ -384,7 +386,7 @@ namespace idg {
             // Performance counter
             PerformanceCounter counter_fft;
             #if defined(MEASURE_POWER_ARDUINO)
-            counter_fft.setPowerSensor(powerSensor);
+            counter_fft.setPowerSensor(&powerSensor);
             #endif
 
             // Load kernel function

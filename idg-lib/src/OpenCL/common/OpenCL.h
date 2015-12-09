@@ -39,6 +39,8 @@
 namespace idg {
     namespace proxy {
 
+        static PowerSensor powerSensor;
+
         class OpenCL {
             public:
                 /// Constructors
