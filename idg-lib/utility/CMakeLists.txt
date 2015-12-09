@@ -1,33 +1,27 @@
-project(idg-utility)
+project(utility)
 
-# external header files needed
-include_directories (
-    ${CMAKE_SOURCE_DIR}/external
-    ${CMAKE_SOURCE_DIR}/utility
+# add subfolders
+add_subdirectory(initialize)
+add_subdirectory(external)
+
+
+####################################################
+# build libidg-utility, containing all common code #
+####################################################
+add_library(idg-utility
+  $<TARGET_OBJECTS:utility-initialize>
+  $<TARGET_OBJECTS:utility-external>
 )
 
-# sources and header files
-set (${PROJECT_NAME}_headers 
-  Arguments.h
-  Init.h
-)
-
-set (${PROJECT_NAME}_sources 
-  Init.cpp
-)
-
-# create a common library 
-add_library(
-    ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
-                    ${${PROJECT_NAME}_sources}
-)
-
-# linker
-target_link_libraries(${PROJECT_NAME} idg-utility)
-
-# install
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS idg-utility
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
+)
+
+install(
+    FILES
+    idg-utility.h
+    DESTINATION
+    include
 )

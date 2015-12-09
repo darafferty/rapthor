@@ -4,7 +4,6 @@ project(example-cpu-haswellep.x)
 include_directories(
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}/utility
-  ${CMAKE_SOURCE_DIR}/external
  )
 
 set (${PROJECT_NAME}_sources 
@@ -20,7 +19,6 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
-  idg-external
   idg-cpu
   ${CMAKE_DL_LIBS}
 )

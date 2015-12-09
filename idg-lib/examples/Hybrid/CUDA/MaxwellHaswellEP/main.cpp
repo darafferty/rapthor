@@ -1,6 +1,6 @@
-#include "Hybrid/CUDA/MaxwellHaswellEP/idg.h"
+#include "idg-hybrid-cuda.h"
 
-#include "common.h"
+#include "../../common/common.h"
 
 int main(int argc, char **argv) {
     run<idg::proxy::hybrid::MaxwellHaswellEP>();

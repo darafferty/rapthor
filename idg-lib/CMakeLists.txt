@@ -130,7 +130,6 @@ configure_file (
 add_subdirectory(src)
 
 if (BUILD_EXAMPLES OR BUILD_TESTS)
-add_subdirectory(external)
 add_subdirectory(utility)
 endif ()
 
