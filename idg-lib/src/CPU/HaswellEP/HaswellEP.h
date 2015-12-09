@@ -13,7 +13,7 @@
 // TODO: check which include files are really necessary
 #include <dlfcn.h>
 #include "fftw3.h" // FFTW_BACKWARD, FFTW_FORWARD
-#include "Proxy.h"
+#include "../../common/Proxy.h"
 #include "../common/CPU.h"
 #include "../common/Kernels.h"
 
