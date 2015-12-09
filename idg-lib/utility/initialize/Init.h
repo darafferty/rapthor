@@ -21,7 +21,7 @@
 #define SPEED_OF_LIGHT      299792458.0
 
 /* Observation parameters */
-#define LAYOUT_DIR          "utility"
+#define LAYOUT_DIR          "utility/initialize"
 #define LAYOUT_FILE         "SKA1_low_ecef.txt"
 #define START_FREQUENCY     500.0e6
 #define FREQUENCY_INCREMENT 5.0e6
