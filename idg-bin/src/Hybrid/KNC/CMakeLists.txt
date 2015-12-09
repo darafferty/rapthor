@@ -19,8 +19,8 @@ set (${PROJECT_NAME}_headers
 )
 
 set (${PROJECT_NAME}_sources
-  ${CMAKE_SOURCE_DIR}/src/Hybrid/common/Kernels.cpp
   KNC.cpp
+  Kernel.cpp
   kernels/KernelGridder.cpp
   kernels/KernelDegridder.cpp
   kernels/KernelFFT.cpp

@@ -25,9 +25,7 @@ target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
   idg-external
-  idg-cuda-maxwell
-  idg-cuda-common
-  idg-common
+  idg-cuda
   ${CUDA_CUFFT_LIBRARIES}
   cuda
 )

@@ -1,4 +1,4 @@
-project(idg-hybrid-maxwellhaswellep)
+project(hybrid-cuda-maxwellhaswellep)
 
 # external header files needed
 include_directories (
@@ -13,24 +13,25 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common/CU.h
     MaxwellHaswellEP.h
 )
 
 set (${PROJECT_NAME}_sources
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common/CU.cpp
     MaxwellHaswellEP.cpp
 )
 
 # create library
 add_library(
-    ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
-                    ${${PROJECT_NAME}_sources}
+    ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
+                           ${${PROJECT_NAME}_sources}
 )
+if (NOT BUILD_STATIC_LIBS)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
 
 # install
-install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-)
+# install(TARGETS ${PROJECT_NAME}
+#  RUNTIME DESTINATION bin
+#  LIBRARY DESTINATION lib
+#  ARCHIVE DESTINATION lib/static
+#)

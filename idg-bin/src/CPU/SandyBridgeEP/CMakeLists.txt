@@ -1,4 +1,4 @@
-project(idg-cpu-sandybridgeep)
+project(cpu-sandybridgeep)
 
 # external header files needed
 include_directories (
