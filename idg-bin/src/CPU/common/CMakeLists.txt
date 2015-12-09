@@ -1,4 +1,4 @@
-project(idg-cpu-common)
+project(cpu-common)
 
 # external header files needed
 include_directories (

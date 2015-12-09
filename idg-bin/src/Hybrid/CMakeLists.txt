@@ -1,4 +1,4 @@
-project(idg-hybrid)
+project(hybrid)
 
 # add subfolders
 add_subdirectory(common)
@@ -11,5 +11,5 @@ if (BUILD_WITH_MIC)
 endif(BUILD_WITH_MIC) 
 
 if (BUILD_WITH_CPU AND BUILD_WITH_CUDA)
-   add_subdirectory(MaxwellHaswellEP)
+   add_subdirectory(CUDA)
 endif()

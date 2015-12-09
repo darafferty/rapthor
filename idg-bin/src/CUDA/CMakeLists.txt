@@ -1,4 +1,4 @@
-project(idg-gpu)
+project(cuda)
 
 # add subfolders
 add_subdirectory(common)

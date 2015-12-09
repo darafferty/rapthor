@@ -25,7 +25,6 @@ target_link_libraries (
   idg-utility
   idg-external
   idg-cpu
-  idg-common
   ${CMAKE_DL_LIBS}
 )
 
