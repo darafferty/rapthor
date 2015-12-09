@@ -25,6 +25,18 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
 
+# Copy kernel source files
+install(
+    FILES
+    kernels/KernelDegridder.cu
+    kernels/KernelFFT.cu
+    kernels/KernelGridder.cu
+    kernels/math.cu
+    kernels/Types.h
+    DESTINATION
+    lib/kernels/CUDA/Maxwell
+)
+
 # Copy header files
 install(
    FILES

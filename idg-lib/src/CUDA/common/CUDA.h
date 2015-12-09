@@ -23,17 +23,13 @@
 #include <vector>
 #include <map>
 
-#include "idg-config.h"
-
 #include <fftw3.h> // FFTW_BACKWARD, FFTW_FORWARD
 
 #include <cuda.h>
 
 #include "CU.h"
 
-#include "../../common/Proxy.h"
-#include "../../common/PowerSensor.h"
-#include "../../common/auxiliary.h"
+#include "idg-common.h"
 #include "Kernels.h"
 
 // Low level routine parameters
