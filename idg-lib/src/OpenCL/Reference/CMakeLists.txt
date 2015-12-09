@@ -24,5 +24,20 @@ add_library(
                   ${${PROJECT_NAME}_sources}
 )
 
-# linker
-target_link_libraries(${PROJECT_NAME} idg-opencl-reference)
+# Set installation directory
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
+
+# Copy kernel source files
+install(
+    FILES
+    kernels/KernelGridder.cl
+    kernels/KernelDegridder.cl
+    kernels/math.cl
+    kernels/Types.cl
+    DESTINATION
+    lib/kernels/GPU/OpenCL
+)
