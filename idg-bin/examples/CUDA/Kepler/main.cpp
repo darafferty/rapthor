@@ -1,6 +1,6 @@
-#include "CUDA/Kepler/idg.h"
+#include "idg-cuda.h"
 
-#include "common.h"
+#include "../common/common.h"
 
 int main(int argc, char **argv) {
     run<idg::proxy::cuda::Kepler>();

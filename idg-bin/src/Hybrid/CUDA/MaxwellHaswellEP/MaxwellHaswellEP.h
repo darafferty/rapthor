@@ -14,10 +14,7 @@
 #include <cuda.h>
 #include <cudaProfiler.h>
 
-#include "Proxy.h"
-#include "HaswellEP.h"
-#include "Maxwell.h"
-
+#include "idg-hybrid-cuda.h"
 
 namespace idg {
     namespace proxy {
