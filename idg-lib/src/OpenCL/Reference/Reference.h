@@ -10,7 +10,7 @@
 #ifndef IDG_OPENCL_REFERENCE_H_
 #define IDG_OPENCL_REFERENCE_H_
 
-#include "OpenCL.h"
+#include "idg-opencl.h"
 
 namespace idg {
     namespace proxy {

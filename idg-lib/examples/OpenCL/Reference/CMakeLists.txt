@@ -5,12 +5,8 @@ include_directories(
   ${_OPENCL_CPP_INCLUDE_DIRS}
   ${_CLFFT_CPP_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/utility
-  ${CMAKE_SOURCE_DIR}/src/OpenCL/common
-  ${CMAKE_SOURCE_DIR}/src/common
   ${CMAKE_SOURCE_DIR}/src/external
-  ${CMAKE_SOURCE_DIR}/examples/OpenCL/common
+  ${CMAKE_SOURCE_DIR}/utility
  )
 
 set (${PROJECT_NAME}_sources 
@@ -26,10 +22,7 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
-  idg-external
-  idg-opencl-reference
-  idg-opencl-common
-  idg-common
+  idg-opencl
   ${OPENCL_LIBRARIES}
   ${CLFFT_LIBRARIES}
 )
