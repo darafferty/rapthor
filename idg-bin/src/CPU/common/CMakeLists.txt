@@ -30,8 +30,7 @@ endif()
 install(
     FILES
     CPU.h
-    idg-cpu.h
     Kernels.h
     DESTINATION
-    include/CPU
+    include/CPU/common
 )

@@ -1,6 +1,6 @@
-#include "CPU/HaswellEP/idg.h"
+#include "idg-cpu.h"
 
-#include "common.h"
+#include "../common/common.h"
 
 void run(
     idg::Parameters params,

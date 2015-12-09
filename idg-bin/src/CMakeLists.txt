@@ -23,6 +23,29 @@ if (BUILD_WITH_BOOST_PYTHON)
 endif()
 
 
+
+###################################################
+# build libidg-common, containing all common code #
+###################################################
+add_library(idg-common
+  $<TARGET_OBJECTS:common>
+)
+
+install(TARGETS idg-common
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
+
+install(
+    FILES
+    idg-common.h
+    DESTINATION
+    include
+)
+
+
+
 ########################################################
 # build libidg-cpu, containing all needed for CPU code #
 ########################################################
@@ -39,6 +62,13 @@ install(TARGETS idg-cpu
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
+)
+
+install(
+    FILES
+    idg-cpu.h
+    DESTINATION
+    include
 )
 endif()
 
