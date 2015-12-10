@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     auto subgrids = new complex<float>[size_subgrids];
 
     idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
+    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
     idg::init_wavenumbers(wavenumbers, nr_channels);
     idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     idg::init_spheroidal(spheroidal, subgridsize);
