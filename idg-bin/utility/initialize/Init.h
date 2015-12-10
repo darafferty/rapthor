@@ -12,7 +12,7 @@
 #include "idg-config.h"
 #include "idg-utility.h"
 
-  /* Macro */
+/* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -25,9 +25,9 @@
 #define LAYOUT_FILE         "SKA1_low_ecef.txt"
 #define START_FREQUENCY     500.0e6
 #define FREQUENCY_INCREMENT 5.0e6
-#define RIGHT_ASCENSION     10.0 * (M_PI/180.)
-#define DECLINATION         70.0 * (M_PI/180.)
-#define YEAR                2015
+#define RIGHT_ASCENSION     (10.0 * (M_PI/180.))
+#define DECLINATION         (70.0 * (M_PI/180.))
+#define YEAR                2014
 #define MONTH               03
 #define DAY                 20
 #define HOUR                01
@@ -38,7 +38,7 @@ namespace idg {
 
 /* Methods */
 void init_uvw(void *ptr, int nr_stations, int nr_baselines,
-              int nr_time, int gridsize, int subgridsize);
+              int nr_time);
 void init_visibilities(void *ptr, int nr_baselines, int nr_time,
                        int nr_channels, int nr_polarizations);
 void init_wavenumbers(void *ptr, int nr_channels);
@@ -54,8 +54,7 @@ void init_metadata(void *ptr, void *uvw, void *wavenumbers,
                    int nr_timeslots, int nr_channels, int gridsize,
                    int subgridsize, float imagesize);
 
-void* init_uvw(int nr_stations, int nr_baselines, int nr_time,
-               int gridsize, int subgridsize);
+void* init_uvw(int nr_stations, int nr_baselines, int nr_time);
 void* init_visibilities(int nr_baselines, int nr_time, int nr_channels,
                         int nr_polarizations);
 void* init_wavenumbers(int nr_channels);
