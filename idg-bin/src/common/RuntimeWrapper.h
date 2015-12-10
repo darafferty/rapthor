@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "idg-config.h"
+
 namespace idg {
 
     namespace runtime {

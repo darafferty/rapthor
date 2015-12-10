@@ -1,0 +1,20 @@
+# This module tries to find CUDA driver libaries on your system
+#
+# Once done this will define
+#  CUDA_DRIVER_FOUND        - system has CUDA
+#  CUDA_DRIVER_LIBRARIES    - link these to use OpenCL
+
+FIND_PACKAGE( PackageHandleStandardArgs )
+
+# Unix style platforms
+FIND_LIBRARY(CUDA_DRIVER_LIBRARIES cuda
+    ENV LD_LIBRARY_PATH
+)
+
+GET_FILENAME_COMPONENT(CUDA_DRIVER_LIB_DIR ${CUDA_DRIVER_LIBRARIES} PATH)
+
+FIND_PACKAGE_HANDLE_STANDARD_ARGS( cuda DEFAULT_MSG CUDA_DRIVER_LIBRARIES CUDA_DRIVER_INCLUDE_DIRS )
+
+MARK_AS_ADVANCED(
+  CUDA_DRIVER_INCLUDE_DIRS
+)
