@@ -16,13 +16,15 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories (${LIBRARY_OUTPUT_PATH}) 
 
+set(LINK_LIRBRARIES idg-utility idg-hybrid-cuda ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} cuda)
+
+if (BUILD_WITH_LIKWID_POWER_SENSOR)
+  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
+endif()
+
 target_link_libraries (
-    ${PROJECT_NAME} 
-    idg-utility
-    idg-hybrid-cuda
-    ${CMAKE_DL_LIBS}
-    ${CUDA_CUFFT_LIBRARIES}
-    cuda
+  ${PROJECT_NAME} 
+  ${LINK_LIRBRARIES}
 )
 
 # install
