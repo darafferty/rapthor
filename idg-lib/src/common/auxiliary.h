@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "idg-config.h"
+
 namespace idg {
     namespace auxiliary {
 

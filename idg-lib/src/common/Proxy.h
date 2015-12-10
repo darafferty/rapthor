@@ -16,6 +16,8 @@
 
 #include <complex>
 
+#include "idg-config.h"
+
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
