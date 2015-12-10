@@ -403,3 +403,50 @@ void *init_metadata(void *uvw, void *wavenumbers, int nr_stations, int nr_baseli
    return ptr;
 }
 } // namespace idg
+
+
+
+
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+
+    void utils_init_uvw(
+         void *ptr,
+         int nr_stations,
+         int nr_baselines,
+         int nr_time,
+         int gridsize,
+         int subgridsize)
+    {
+         idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time,
+                       gridsize, subgridsize);
+    }
+
+    void utils_init_wavenumbers(void *ptr, int nr_channels)
+    {
+         idg::init_wavenumbers(ptr, nr_channels);
+    }
+
+    void utils_init_metadata(
+         void *ptr,
+         void *uvw,
+         void *wavenumbers,
+         int nr_stations,
+         int nr_baselines,
+         int nr_timesteps,
+         int nr_timeslots,
+         int nr_channels,
+         int gridsize,
+         int subgridsize,
+         float imagesize)
+    {
+         idg::init_metadata(ptr, uvw, wavenumbers, nr_stations, nr_baselines,
+                            nr_timesteps, nr_timeslots, nr_channels, gridsize,
+                            subgridsize, imagesize);
+    }
+
+}  // end extern "C"
