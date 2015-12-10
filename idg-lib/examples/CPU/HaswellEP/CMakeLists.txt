@@ -2,7 +2,6 @@ project(example-cpu-haswellep.x)
 
 # Set external header files
 include_directories(
-  ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}/utility
  )
 

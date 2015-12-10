@@ -118,7 +118,10 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/src/idg-config.h.in"
   "${PROJECT_BINARY_DIR}/src/idg-config.h"
   )
-include_directories (${CMAKE_BINARY_DIR})
+include_directories (${CMAKE_BINARY_DIR}/src)
+
+# add main include folder
+include_directories (${CMAKE_SOURCE_DIR}/src)
 
 # write file to initialize enoviroment
 configure_file (

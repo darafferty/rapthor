@@ -3,7 +3,6 @@ project(cuda-common)
 # external header files needed
 include_directories (
     ${CUDA_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/src
 )
 
 # sources and header files
