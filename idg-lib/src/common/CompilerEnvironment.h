@@ -13,6 +13,8 @@
 #include <string>
 #include <map>
 
+#include "idg-config.h"
+
 namespace idg {
 
   /// typedefs

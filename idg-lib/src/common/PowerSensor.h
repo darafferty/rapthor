@@ -13,6 +13,7 @@
 #include <inttypes.h>
 #include <pthread.h>
 
+#include "idg-config.h"
 
 #if defined(MEASURE_POWER_ARDUINO)
 #define _QUOTE(str) #str
