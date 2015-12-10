@@ -14,6 +14,8 @@
 #include <map>
 #include <vector>
 
+#include "idg-config.h"
+
 namespace idg {
       
     class ProxyInfo {

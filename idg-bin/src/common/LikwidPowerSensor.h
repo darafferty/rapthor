@@ -7,6 +7,7 @@
 #include <fstream>
 #include <vector>
 
+#include "idg-config.h"
 
 #if defined(MEASURE_POWER_LIKWID)
 #define _QUOTE(str) #str

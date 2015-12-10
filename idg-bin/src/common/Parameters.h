@@ -11,6 +11,8 @@
 
 #include <iostream>
 
+#include "idg-config.h"
+
 namespace idg {
 
   class Parameters 

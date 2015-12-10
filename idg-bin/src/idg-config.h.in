@@ -14,4 +14,7 @@
 #cmakedefine USING_INTEL_CXX_COMPILER
 #cmakedefine USING_MSVC_CXX_COMPILER
 
+#cmakedefine MEASURE_POWER_LIKWID
+#cmakedefine MEASURE_POWER_ARDUINO
+
 #endif
