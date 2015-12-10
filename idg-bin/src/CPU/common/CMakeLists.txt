@@ -1,10 +1,5 @@
 project(cpu-common)
 
-# external header files needed
-include_directories (
-  ${CMAKE_SOURCE_DIR}/src
-)
-
 # sources and header files
 set (${PROJECT_NAME}_headers
   CPU.h
