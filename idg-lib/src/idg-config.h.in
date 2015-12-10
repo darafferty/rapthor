@@ -16,5 +16,7 @@
 
 #cmakedefine MEASURE_POWER_LIKWID
 #cmakedefine MEASURE_POWER_ARDUINO
+#define POWER_SENSOR "@POWER_SENSOR@"
+#define POWER_FILE "@POWER_FILE@"
 
 #endif
