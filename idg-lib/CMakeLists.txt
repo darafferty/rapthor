@@ -99,7 +99,8 @@ endif()
 # find CUDA environment 
 # (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
 if (BUILD_WITH_CUDA)
-  find_package(CUDA)
+    find_package(CUDA)
+    find_package(CUDAdriver)
 endif (BUILD_WITH_CUDA)
 
 # find OpenCL environment
