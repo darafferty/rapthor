@@ -5,5 +5,6 @@ install(FILES
         idg.py
         CPU.py
         Proxy.py
+        utils.py
         DESTINATION
         ${PYTHON_INSTALL_DIR})

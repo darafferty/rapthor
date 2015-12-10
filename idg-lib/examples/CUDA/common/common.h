@@ -101,7 +101,7 @@ void run() {
     void *spheroidal  = idg::init_spheroidal(subgridsize);
     void *grid        = idg::init_grid(gridsize, nr_polarizations);
     idg::init_visibilities(h_visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
-    idg::init_uvw(h_uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
+    idg::init_uvw(h_uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
     idg::init_metadata(h_metadata, h_uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
     d_wavenumbers.set(wavenumbers);
     d_aterm.set(aterm);

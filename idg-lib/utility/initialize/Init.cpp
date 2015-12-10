@@ -20,8 +20,7 @@ namespace idg {
 /*
     Methos where pointed to allocated memory is provided
 */
-void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time,
-              int gridsize, int subgridsize) {
+void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time) {
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
 
@@ -74,7 +73,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time,
         int i = 0;
         srandom(RANDOM_SEED);
         while (i < nr_stations) {
-            int index = nr_stations * ((double) random() / RAND_MAX);
+            int index = nr_stations_file * ((double) random() / RAND_MAX);
             bool found = true;
             for (int j = 0; j < i; j++) {
                 if (station_number[j] == index) {
@@ -110,7 +109,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time,
     double ra0  = RIGHT_ASCENSION;
     double dec0 = DECLINATION;
     double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
-    double obs_length_days = 1.0 / 24.0;
+    double obs_length_days = 8.0 / 24.0;
 
     // Allocate memory for baseline coordinates
     int nr_coordinates = nr_time * nr_baselines;
@@ -333,11 +332,11 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
 /*
     Methods where memory is allocated
 */
-void* init_uvw(int nr_stations, int nr_baselines, int nr_time, int gridsize, int subgridsize) {
+void* init_uvw(int nr_stations, int nr_baselines, int nr_time) {
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
     void *ptr = malloc(sizeof(UVWType));
-    init_uvw(ptr, nr_stations, nr_baselines, nr_time, gridsize, subgridsize);
+    init_uvw(ptr, nr_stations, nr_baselines, nr_time);
     return ptr;
 }
 
@@ -413,17 +412,13 @@ void *init_metadata(void *uvw, void *wavenumbers, int nr_stations, int nr_baseli
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-
     void utils_init_uvw(
          void *ptr,
          int nr_stations,
          int nr_baselines,
-         int nr_time,
-         int gridsize,
-         int subgridsize)
+         int nr_time)
     {
-         idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time,
-                       gridsize, subgridsize);
+        idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time);
     }
 
     void utils_init_wavenumbers(void *ptr, int nr_channels)

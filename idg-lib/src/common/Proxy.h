@@ -16,8 +16,6 @@
 
 #include <complex>
 
-#include "idg-config.h"
-
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
@@ -112,6 +110,8 @@ namespace idg {
                 return mParams.get_nr_baselines(); }
             unsigned int get_nr_channels() const {
                 return mParams.get_nr_channels(); }
+            unsigned int get_nr_time() const {
+                return mParams.get_nr_time(); }
             unsigned int get_nr_timesteps() const {
                 return mParams.get_nr_timesteps(); }
             unsigned int get_nr_timeslots() const {
