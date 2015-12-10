@@ -10,9 +10,6 @@
 
 #include "idg-config.h"
 #include "MaxwellHaswellEP.h"
-#if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-#include "auxiliary.h"
-#endif
 
 using namespace std;
 
