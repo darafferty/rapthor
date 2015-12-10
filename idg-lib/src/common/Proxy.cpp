@@ -13,6 +13,8 @@ extern "C" {
         return p->get_nr_baselines(); }
     int Proxy_get_nr_channels(Proxy_t* p) {
         return p->get_nr_channels(); }
+    int Proxy_get_nr_time(Proxy_t* p) {
+        return p->get_nr_time(); }
     int Proxy_get_nr_timesteps(Proxy_t* p) {
         return p->get_nr_timesteps(); }
     int Proxy_get_nr_timeslots(Proxy_t* p) {

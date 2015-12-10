@@ -50,6 +50,7 @@ namespace idg {
       unsigned int get_nr_stations() const { return nr_stations; }
       unsigned int get_nr_baselines() const { return nr_baselines; }
       unsigned int get_nr_channels() const { return nr_channels; }
+      unsigned int get_nr_time() const { return nr_timesteps*nr_timeslots; }
       unsigned int get_nr_timesteps() const { return nr_timesteps; }
       unsigned int get_nr_timeslots() const { return nr_timeslots; }
       float get_imagesize() const { return imagesize; } 
