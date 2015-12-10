@@ -2,12 +2,7 @@ project(test-cpu-haswellep.x)
 
 # Set external header files
 include_directories(
-  ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/utility
-  ${CMAKE_SOURCE_DIR}/tests/CPU/common
-  ${CMAKE_SOURCE_DIR}/src/CPU/common
-  ${CMAKE_SOURCE_DIR}/src/common
  )
 
 set (${PROJECT_NAME}_sources 
@@ -23,9 +18,7 @@ link_directories (${LIBRARY_OUTPUT_PATH})
 target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
-  idg-external
   idg-cpu
-  idg-common
   ${CMAKE_DL_LIBS}
 )
 

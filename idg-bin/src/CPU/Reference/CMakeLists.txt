@@ -1,10 +1,5 @@
 project(cpu-reference)
 
-# external header files needed
-include_directories (
-  ${CMAKE_SOURCE_DIR}/src
-)
-
 # sources and header files
 set (${PROJECT_NAME}_headers
   Reference.h
