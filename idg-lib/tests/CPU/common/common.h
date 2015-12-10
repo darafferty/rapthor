@@ -4,8 +4,8 @@
 #include <complex>
 #include <limits>
 
-#include "CPU/Reference/idg.h" // Reference proxy
-#include "Init.h"  // Data init routines
+#include "idg-cpu.h" // Reference proxy
+#include "idg-utility.h"  // Data init routines
 
 
 // computes max|A[i]-B[i]| / max|B[i]|
