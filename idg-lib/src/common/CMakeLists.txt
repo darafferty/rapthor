@@ -29,17 +29,10 @@ add_library(
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 
-
 # Copy header files
 install(
     FILES
-    Proxy.h
-    CompilerEnvironment.h
-    Parameters.h
-    ProxyInfo.h
-    RuntimeWrapper.h
-    auxiliary.h
-    LikwidPowerSensor.h
+    ${${PROJECT_NAME}_headers}
     DESTINATION
     include/common
 )
