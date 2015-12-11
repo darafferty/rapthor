@@ -176,7 +176,7 @@ class Proxy(object):
     def get_nr_polarizations(self):
         return lib.Proxy_get_nr_polarizations(self.obj)
 
-    def get_imagesize(self):
+    def get_image_size(self):
         lib.Proxy_get_imagesize.restype = ctypes.c_float
         return lib.Proxy_get_imagesize(self.obj)
 
