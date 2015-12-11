@@ -4,6 +4,7 @@ import numpy
 import ctypes
 import numpy.ctypeslib
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 # A bit ugly, but ctypes.util's find_library does not look in
@@ -17,7 +18,7 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 
 
 def nr_baselines_to_nr_stations(nr_baselines):
-    """Converet NUMBER OF BASELINES to NUMBER OF STATIONS"""
+    """Convert NUMBER OF BASELINES to NUMBER OF STATIONS"""
     lower = int(math.floor(math.sqrt(2*nr_baselines)))
     upper = int(math.ceil(math.sqrt(2*nr_baselines) + 2))
     nr_stations = 2;
@@ -52,18 +53,17 @@ def plot_uvw(uvw):
     u = uvw['u'].flatten()
     v = uvw['v'].flatten()
     uvlim = 1.2*max(max(abs(u)), max(abs(v)))
+    fig = plt.figure()
+    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
-    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
     plt.grid(True)
     plt.axes().set_aspect('equal')
-    plt.show()
 
 
 def init_wavenumbers(wavenumbers):
     """Initialize wavenumbers for test case defined in utility/initialize"""
     nr_channels = wavenumbers.shape[0]
-    print nr_channels
     lib.utils_init_wavenumbers.argtypes = [ctypes.c_void_p,
                                            ctypes.c_int]
     lib.utils_init_wavenumbers(wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -75,11 +75,11 @@ def plot_wavenumbers(wavenumbers):
     Input:
     wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
     """
+    fig = plt.figure()
     plt.plot(wavenumbers,'.')
     plt.grid(True)
     plt.xlabel("Channel")
     plt.ylabel("PUT UNIT HERE")
-    plt.show()
 
 
 def init_metadata(metadata, uvw, wavenumbers, nr_timesteps,
@@ -144,23 +144,29 @@ def plot_visibilities(visibilities, form='abs'):
         visXY = numpy.real( visibilities[:,:,:,1].flatten() )
         visYX = numpy.real( visibilities[:,:,:,2].flatten() )
         visYY = numpy.real( visibilities[:,:,:,3].flatten() )
+        title = 'Real'
     if (form=='imag'):
         visXX = numpy.imag( visibilities[:,:,:,0].flatten() )
         visXY = numpy.imag( visibilities[:,:,:,1].flatten() )
         visYX = numpy.imag( visibilities[:,:,:,2].flatten() )
         visYY = numpy.imag( visibilities[:,:,:,3].flatten() )
+        title = 'Imag'
     if (form=='angle'):
         visXX = numpy.angle( visibilities[:,:,:,0].flatten() )
         visXY = numpy.angle( visibilities[:,:,:,1].flatten() )
         visYX = numpy.angle( visibilities[:,:,:,2].flatten() )
         visYY = numpy.angle( visibilities[:,:,:,3].flatten() )
+        title = 'Angle'
     else:
         visXX = numpy.abs( visibilities[:,:,:,0].flatten() )
         visXY = numpy.abs( visibilities[:,:,:,1].flatten() )
         visYX = numpy.abs( visibilities[:,:,:,2].flatten() )
         visYY = numpy.abs( visibilities[:,:,:,3].flatten() )
+        title = 'Abs'
 
-    f, axarr = plt.subplots(2, 2)
+
+    fig, axarr = plt.subplots(2, 2)
+    fig.suptitle(title, fontsize=14)
 
     axarr[0,0].plot(visXX)
     axarr[0,1].plot(visXY)
@@ -199,8 +205,6 @@ def plot_visibilities(visibilities, form='abs'):
         bottom='off',
         top='off',
         labelbottom='off')
-
-    plt.show()
 
 
 def init_aterms(aterms):
@@ -249,7 +253,6 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     """
     plt.imshow(spheroidal, interpolation=interpolation_method)
     plt.colorbar()
-    plt.show()
 
 
 def plot_grid(grid, form='abs', interpolation_method='none'):
@@ -261,39 +264,58 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
-    f, axarr = plt.subplots(2, 2)
     if (form=='real'):
         gridXX = numpy.real(grid[0,:,:])
         gridXY = numpy.real(grid[1,:,:])
         gridYX = numpy.real(grid[2,:,:])
         gridYY = numpy.real(grid[3,:,:])
+        title = 'Real'
     elif (form=='imag'):
         gridXX = numpy.imag(grid[0,:,:])
         gridXY = numpy.imag(grid[1,:,:])
         gridYX = numpy.imag(grid[2,:,:])
         gridYY = numpy.imag(grid[3,:,:])
+        title = 'Imag'
     elif (form=='angle'):
         gridXX = numpy.angle(grid[0,:,:])
         gridXY = numpy.angle(grid[1,:,:])
         gridYX = numpy.angle(grid[2,:,:])
         gridYY = numpy.angle(grid[3,:,:])
+        title = 'Angle'
     else:
         gridXX = numpy.abs(grid[0,:,:])
         gridXY = numpy.abs(grid[1,:,:])
         gridYX = numpy.abs(grid[2,:,:])
         gridYY = numpy.abs(grid[3,:,:])
+        title = 'Abs'
 
-    axarr[0,0].imshow(gridXX, interpolation=interpolation_method)
-    axarr[0,1].imshow(gridXY, interpolation=interpolation_method)
-    axarr[1,0].imshow(gridYX, interpolation=interpolation_method)
-    axarr[1,1].imshow(gridYY, interpolation=interpolation_method)
+    fig = plt.figure()
+    fig.suptitle(title, fontsize=14)
 
-    axarr[0,0].set_title('XX')
-    axarr[0,1].set_title('XY')
-    axarr[1,0].set_title('YX')
-    axarr[1,1].set_title('YY')
+    ax = ["ax1", "ax2", "ax3", "ax4"]
+    for idx in range(len(ax)):
+        locals()[ax[idx]] = fig.add_subplot(2, 2, (idx + 1))
+        divider = make_axes_locatable(vars()[ax[idx]])
+        locals()["c" + ax[idx]] = divider.append_axes("right", size = "5%", pad = 0.05)
 
-    axarr[0,0].tick_params(
+    im1 = locals()['ax1'].imshow(gridXX, interpolation=interpolation_method)
+    plt.colorbar(im1, cax = locals()['cax1'], format='%.1e')
+
+    im2 = locals()['ax2'].imshow(gridXY, interpolation=interpolation_method)
+    plt.colorbar(im2, cax = locals()['cax2'], format='%.1e')
+
+    im3 = locals()['ax3'].imshow(gridYX, interpolation=interpolation_method)
+    plt.colorbar(im3, cax = locals()['cax3'], format='%.1e')
+
+    im4 = locals()['ax4'].imshow(gridYY, interpolation=interpolation_method)
+    plt.colorbar(im4, cax = locals()['cax4'], format='%.1e')
+
+    locals()['ax1'].set_title('XX')
+    locals()['ax2'].set_title('XY')
+    locals()['ax3'].set_title('YX')
+    locals()['ax4'].set_title('YY')
+
+    locals()['ax1'].tick_params(
         axis='both',
         which='both',
         bottom='off',
@@ -303,7 +325,7 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
-    axarr[0,1].tick_params(
+    locals()['ax2'].tick_params(
         axis='both',
         which='both',
         bottom='off',
@@ -313,7 +335,7 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
-    axarr[1,0].tick_params(
+    locals()['ax3'].tick_params(
         axis='both',
         which='both',
         bottom='off',
@@ -323,7 +345,7 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
-    axarr[1,1].tick_params(
+    locals()['ax4'].tick_params(
         axis='both',
         which='both',
         bottom='off',
@@ -332,5 +354,3 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         left='off',
         labelbottom='off',
         labelleft='off')
-
-    plt.show()

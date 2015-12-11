@@ -4,7 +4,7 @@
 # (or setting the PYTHONPATH manually), you can import the idg module
 import idg
 import numpy
-
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
@@ -12,11 +12,11 @@ if __name__ == "__main__":
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 8
     nr_timesteps = 10
-    nr_timeslots = 40
+    nr_timeslots = 400
     nr_time = nr_timesteps*nr_timeslots
-    image_size = 0.1
+    image_size = 0.01
     subgrid_size = 8
-    grid_size = 128
+    grid_size = 512
 
     p = idg.CPU.Reference(nr_stations, nr_channels,
                           nr_timesteps, nr_timeslots,
@@ -47,24 +47,24 @@ if __name__ == "__main__":
         (nr_baselines, nr_time, nr_channels, nr_polarizations),
         dtype = idg.visibilitiestype)
     idg.utils.init_visibilities(visibilities)
-    # idg.utils.plot_visibilities(visibilities)
+    idg.utils.plot_visibilities(visibilities)
 
     uvw = numpy.zeros((nr_baselines, nr_time),
                       dtype = idg.uvwtype)
     idg.utils.init_uvw(uvw)
-    # idg.utils.plot_uvw(uvw)
+    idg.utils.plot_uvw(uvw)
 
     wavenumbers = numpy.ones(nr_channels,
                              dtype = idg.wavenumberstype)
     idg.utils.init_wavenumbers(wavenumbers)
-    # idg.utils.plot_wavenumbers(wavenumbers)
+    idg.utils.plot_wavenumbers(wavenumbers)
 
     metadata = numpy.zeros((nr_baselines, nr_timeslots),
-                           dtype=idg.metadatatype)
+                            dtype=idg.metadatatype)
+    # init_metadata leads currently to an error!
     # idg.utils.init_metadata(metadata, uvw, wavenumbers, nr_timesteps,
     #                        nr_timeslots, image_size, grid_size,
     #                        subgrid_size)
-    # print metadata
 
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
@@ -84,12 +84,36 @@ if __name__ == "__main__":
     # call gridding and degridding
     w_offset = 0.0
 
-    p.grid_visibilities(visibilities, uvw, wavenumbers, metadata, grid,
-                        w_offset, aterms, spheroidal)
-    p.transform(idg.FourierDomainToImageDomain, grid)
+    grid.real = 0
+    grid.imag = 0
+    grid[0,grid_size/2,grid_size/2] = 1 + 0j
+
+    # plt.figure()
+    # plt.imshow(grid[0,:,:].real.copy(), interpolation='none')
+    # plt.colorbar()
 
     idg.utils.plot_grid(grid)
 
-    p.transform(idg.ImageDomainToFourierDomain, grid)
     p.degrid_visibilities(visibilities, uvw, wavenumbers, metadata, grid,
                           w_offset, aterms, spheroidal)
+
+    grid.real = 0
+    grid.imag = 0
+
+    p.grid_visibilities(visibilities, uvw, wavenumbers, metadata, grid,
+                        w_offset, aterms, spheroidal)
+
+    # plt.figure()
+    # plt.imshow(grid[0,:,:].real.copy(), interpolation='none')
+    # plt.colorbar()
+
+    p.transform(idg.FourierDomainToImageDomain, grid)
+    # grid.real *= 2
+    # grid.imag = 0
+
+    p.transform(idg.ImageDomainToFourierDomain, grid)
+    # grid /= grid_size*grid_size
+
+    # idg.utils.plot_grid(grid)
+
+    plt.show()

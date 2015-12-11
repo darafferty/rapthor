@@ -6,10 +6,6 @@
 
 #include "Types.h"
 
-#define FFT_LAYOUT_YXP (-1)
-#define FFT_LAYOUT_PYX (+1)
-
-
 extern "C" {
 void kernel_fft(
 	int size, 
@@ -42,7 +38,17 @@ void kernel_fft(
 
     // Execute FFTs
     fftwf_execute_dft(plan, data, data);
-    
+
+    // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
+    if (sign == 0) {
+        float scale = 1 / (double(size)*double(size));
+        #pragma omp parallel for
+        for (int i = 0; i < size*size; i++) {
+            data[i][0] *= scale;
+            data[i][1] *= scale;
+        }
+    }
+
     // Destroy plan
     fftwf_destroy_plan(plan);
 }
