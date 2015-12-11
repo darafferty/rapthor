@@ -42,7 +42,7 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines,
 void init_visibilities(void *ptr, int nr_baselines, int nr_time,
                        int nr_channels, int nr_polarizations);
 void init_wavenumbers(void *ptr, int nr_channels);
-void init_aterm(void *ptr, int nr_stations, int nr_time,
+void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
                 int nr_polarizations, int subgridsize);
 void init_spheroidal(void *ptr, int subgridsize);
 void init_baselines(void *ptr, int nr_stations, int nr_baselines);
@@ -58,7 +58,7 @@ void* init_uvw(int nr_stations, int nr_baselines, int nr_time);
 void* init_visibilities(int nr_baselines, int nr_time, int nr_channels,
                         int nr_polarizations);
 void* init_wavenumbers(int nr_channels);
-void* init_aterm(int nr_stations, int nr_time, int nr_polarizations,
+void* init_aterm(int nr_stations, int nr_timeslots, int nr_polarizations,
                  int subgridsize);
 void* init_spheroidal(int subgridsize);
 void* init_baselines(int nr_stations, int nr_baselines);

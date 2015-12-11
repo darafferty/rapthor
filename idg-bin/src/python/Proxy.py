@@ -34,7 +34,7 @@ class Proxy(object):
         metadata - numpy.ndarray(nr_baselines, nr_timeslots, dtype=idg.metadatatype)
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                              dtype = idg.gridtype)
-        aterms - numpy.ndarray(shape=(nr_stations, nr_time,
+        aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
                                nr_polarizations, subgrid_size, subgrid_size),
                                dtype = idg.atermtype)
         spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
@@ -58,7 +58,7 @@ class Proxy(object):
                           self.get_grid_size()):
             raise ValueError('Grid dimension missmatch.')
         if aterms.shape != (self.get_nr_stations(),
-                            self.get_nr_time(),
+                            self.get_nr_timeslots(),
                             self.get_nr_polarizations(),
                             self.get_subgrid_size(),
                             self.get_subgrid_size()):
@@ -94,7 +94,7 @@ class Proxy(object):
         metadata - numpy.ndarray(nr_baselines, nr_timeslots, dtype=idg.metadatatype)
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
         dtype = idg.gridtype)
-        aterms - numpy.ndarray(shape=(nr_stations, nr_time,
+        aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
                  nr_polarizations, subgrid_size, subgrid_size),
                  dtype = idg.atermtype)
         spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
@@ -118,7 +118,7 @@ class Proxy(object):
                           self.get_grid_size()):
             raise ValueError('Grid dimension missmatch.')
         if aterms.shape != (self.get_nr_stations(),
-                            self.get_nr_time(),
+                            self.get_nr_timeslots(),
                             self.get_nr_polarizations(),
                             self.get_subgrid_size(),
                             self.get_subgrid_size()):

@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
-    aterms = numpy.zeros((nr_stations, nr_time, nr_polarizations,
+    aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
                           subgrid_size, subgrid_size), \
                          dtype = idg.atermtype)
     # idg.utils.init_aterms(aterms)
