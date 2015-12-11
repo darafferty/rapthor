@@ -116,6 +116,14 @@ configure_file (
   "${PROJECT_BINARY_DIR}/src/idg-config.h"
   )
 include_directories (${CMAKE_BINARY_DIR}/src)
+# Copy header files
+install(
+    FILES
+    ${PROJECT_BINARY_DIR}/src/idg-config.h
+    DESTINATION
+    include
+)
+
 
 # add main include folder
 include_directories (${CMAKE_SOURCE_DIR}/src)
