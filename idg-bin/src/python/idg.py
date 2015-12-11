@@ -19,11 +19,11 @@ uvwtype = numpy.dtype([('u', numpy.float32),
                        ('w', numpy.float32)])
 wavenumberstype = numpy.float32
 gridtype = numpy.complex64
-baselinetype = numpy.dtype([('station1', numpy.int32),
-                            ('station2', numpy.int32)])
-coordinatetype = numpy.dtype([('x', numpy.int32),
-                              ('y', numpy.int32)])
-metadatatype = numpy.dtype([ ('time_nr', numpy.int32),
+baselinetype = numpy.dtype([('station1', numpy.intc),
+                            ('station2', numpy.intc)])
+coordinatetype = numpy.dtype([('x', numpy.intc),
+                              ('y', numpy.intc)])
+metadatatype = numpy.dtype([ ('time_nr', numpy.intc),
                              ('baseline', baselinetype),
                              ('coordinate', coordinatetype)])
 atermtype = numpy.complex64
