@@ -4,7 +4,7 @@
 #define TYPEDEF_UVW_TYPE          typedef UVW UVWType[nr_baselines][nr_time];
 #define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
-#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_time][nr_polarizations][subgridsize][subgridsize];
+#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
 #define TYPEDEF_BASELINE          typedef struct { int station1, station2; } Baseline;
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
@@ -177,14 +177,15 @@ void init_wavenumbers(void *ptr, int nr_channels) {
 	}
 }
 
-void init_aterm(void *ptr, int nr_stations, int nr_time, int nr_polarizations, int subgridsize) {
+void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
+                int nr_polarizations, int subgridsize) {
 	TYPEDEF_ATERM_TYPE
     ATermType *aterm = (ATermType *) ptr;
 
     std::complex<float> value(1, 1);
 
 	for (int ant = 0; ant < nr_stations; ant++) {
-        for (int t = 0; t < nr_time; t++) {
+        for (int t = 0; t < nr_timeslots; t++) {
 		    for (int y = 0; y < subgridsize; y++) {
 		    	for (int x = 0; x < subgridsize; x++) {
 		    		for (int pol = 0; pol < nr_polarizations; pol++) {
@@ -356,10 +357,11 @@ void* init_wavenumbers(int nr_channels) {
     return ptr;
 }
 
-void* init_aterm(int nr_stations, int nr_time, int nr_polarizations, int subgridsize) {
+void* init_aterm(int nr_stations, int nr_timeslots, int nr_polarizations,
+                 int subgridsize) {
     TYPEDEF_ATERM_TYPE
     void *ptr = malloc(sizeof(ATermType));
-    init_aterm(ptr, nr_stations, nr_time, nr_polarizations, subgridsize);
+    init_aterm(ptr, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     return ptr;
 }
 
@@ -462,11 +464,11 @@ extern "C" {
     void utils_init_aterms(
         void *ptr,
         int nr_stations,
-        int nr_time,
+        int nr_timeslots,
         int nr_polarizations,
         int subgridsize)
     {
-        idg::init_aterm(ptr, nr_stations, nr_time,
+        idg::init_aterm(ptr, nr_stations, nr_timeslots,
                         nr_polarizations, subgridsize);
     }
 
