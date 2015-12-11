@@ -206,7 +206,7 @@ def plot_visibilities(visibilities, form='abs'):
 def init_aterms(aterms):
     """Initialize aterms for test case defined in utility/initialize"""
     nr_stations = aterms.shape[0]
-    nr_time = aterms.shape[1]
+    nr_timeslots = aterms.shape[1]
     nr_polarizations = aterms.shape[2]
     subgrid_size = aterms.shape[3]
     lib.utils_init_aterms.argtypes = [ctypes.c_void_p,
@@ -216,7 +216,7 @@ def init_aterms(aterms):
                                       ctypes.c_int]
     lib.utils_init_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
                           ctypes.c_int(nr_stations),
-                          ctypes.c_int(nr_time),
+                          ctypes.c_int(nr_timeslots),
                           ctypes.c_int(nr_polarizations),
                           ctypes.c_int(subgrid_size) )
 
