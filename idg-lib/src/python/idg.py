@@ -2,8 +2,16 @@ import os
 import ctypes
 import numpy
 from ctypes.util import find_library
-import CPU
-import utils
+
+try:
+    import CPU
+except OSError:
+    pass
+
+try:
+    import utils
+except OSError:
+    pass
 
 visibilitiestype = numpy.complex64
 uvwtype = numpy.dtype([('u', numpy.float32),

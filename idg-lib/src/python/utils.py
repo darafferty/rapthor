@@ -17,6 +17,7 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 
 
 def nr_baselines_to_nr_stations(nr_baselines):
+    """Converet NUMBER OF BASELINES to NUMBER OF STATIONS"""
     lower = int(math.floor(math.sqrt(2*nr_baselines)))
     upper = int(math.ceil(math.sqrt(2*nr_baselines) + 2))
     nr_stations = 2;
@@ -28,17 +29,25 @@ def nr_baselines_to_nr_stations(nr_baselines):
 
 
 def init_uvw(uvw):
+    """Initialize uvw for test case defined in utility/initialize"""
     nr_baselines = uvw.shape[0]
     nr_stations = nr_baselines_to_nr_stations(nr_baselines)
     nr_time = uvw.shape[1]
+    lib.utils_init_uvw.argtypes = [ctypes.c_void_p,
+                                   ctypes.c_int,
+                                   ctypes.c_int,
+                                   ctypes.c_int]
     lib.utils_init_uvw( uvw.ctypes.data_as(ctypes.c_void_p),
-                        nr_stations, nr_baselines, nr_time )
+                        ctypes.c_int(nr_stations),
+                        ctypes.c_int(nr_baselines),
+                        ctypes.c_int(nr_time) )
 
 
 def plot_uvw(uvw):
     """Plot UVW data as (u,v)-plot
-    Input: uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
-                               dtype = idg.uvwtype)
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
     """
     u = uvw['u'].flatten()
     v = uvw['v'].flatten()
@@ -51,24 +60,219 @@ def plot_uvw(uvw):
     plt.show()
 
 
-def plot_grid(grid, form="abs"):
+def init_wavenumbers(wavenumbers):
+    """Initialize wavenumbers for test case defined in utility/initialize"""
+    nr_channels = wavenumbers.shape[0]
+    print nr_channels
+    lib.utils_init_wavenumbers.argtypes = [ctypes.c_void_p,
+                                           ctypes.c_int]
+    lib.utils_init_wavenumbers(wavenumbers.ctypes.data_as(ctypes.c_void_p),
+                               ctypes.c_int(nr_channels) )
+
+
+def plot_wavenumbers(wavenumbers):
+    """Plot wavenumbers
+    Input:
+    wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
+    """
+    plt.plot(wavenumbers,'.')
+    plt.grid(True)
+    plt.xlabel("Channel")
+    plt.ylabel("PUT UNIT HERE")
+    plt.show()
+
+
+def init_metadata(metadata, uvw, wavenumbers, nr_timesteps,
+                  nr_timeslots, image_size, grid_size, subgrid_size):
+    """Initialize wavenumbers for test case defined in utility/initialize"""
+    nr_baselines = uvw.shape[0]
+    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
+    nr_channels = wavenumbers.shape[0]
+
+    lib.utils_init_metadata.argtypes = [ctypes.c_void_p,
+                                        ctypes.c_void_p,
+                                        ctypes.c_void_p,
+                                        ctypes.c_int,
+                                        ctypes.c_int,
+                                        ctypes.c_int,
+                                        ctypes.c_int,
+                                        ctypes.c_int,
+                                        ctypes.c_int,
+                                        ctypes.c_int,
+                                        ctypes.c_float]
+    lib.utils_init_metadata( metadata.ctypes.data_as(ctypes.c_void_p),
+                             uvw.ctypes.data_as(ctypes.c_void_p),
+                             wavenumbers.ctypes.data_as(ctypes.c_void_p),
+                             ctypes.c_int(nr_stations),
+                             ctypes.c_int(nr_baselines),
+                             ctypes.c_int(nr_timesteps),
+                             ctypes.c_int(nr_timeslots),
+                             ctypes.c_int(nr_channels),
+                             ctypes.c_int(grid_size),
+                             ctypes.c_int(subgrid_size),
+                             ctypes.c_float(image_size) )
+
+
+def init_visibilities(visibilities):
+    """Initialize visibilities for test case defined in utility/initialize"""
+    nr_baselines = visibilities.shape[0]
+    nr_time = visibilities.shape[1]
+    nr_channels = visibilities.shape[2]
+    nr_polarizations = visibilities.shape[3]
+    lib.utils_init_visibilities.argtypes = [ctypes.c_void_p,
+                                            ctypes.c_int,
+                                            ctypes.c_int,
+                                            ctypes.c_int,
+                                            ctypes.c_int]
+    lib.utils_init_visibilities(visibilities.ctypes.data_as(ctypes.c_void_p),
+                                ctypes.c_int(nr_baselines),
+                                ctypes.c_int(nr_time),
+                                ctypes.c_int(nr_channels),
+                                ctypes.c_int(nr_polarizations) )
+
+
+def plot_visibilities(visibilities, form='abs'):
     """Plot Grid data
-    Input: grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                                dtype = idg.gridtype)
-           form - "real", "imag", "abs", "phase"
+    Input:
+    visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
+                                nr_channels, nr_polarizations),
+                                dtype=idg.visibilitiestype)
+    form - 'real', 'imag', 'abs', 'phase'
+    """
+    if (form=='real'):
+        visXX = numpy.real( visibilities[:,:,:,0].flatten() )
+        visXY = numpy.real( visibilities[:,:,:,1].flatten() )
+        visYX = numpy.real( visibilities[:,:,:,2].flatten() )
+        visYY = numpy.real( visibilities[:,:,:,3].flatten() )
+    if (form=='imag'):
+        visXX = numpy.imag( visibilities[:,:,:,0].flatten() )
+        visXY = numpy.imag( visibilities[:,:,:,1].flatten() )
+        visYX = numpy.imag( visibilities[:,:,:,2].flatten() )
+        visYY = numpy.imag( visibilities[:,:,:,3].flatten() )
+    if (form=='angle'):
+        visXX = numpy.angle( visibilities[:,:,:,0].flatten() )
+        visXY = numpy.angle( visibilities[:,:,:,1].flatten() )
+        visYX = numpy.angle( visibilities[:,:,:,2].flatten() )
+        visYY = numpy.angle( visibilities[:,:,:,3].flatten() )
+    else:
+        visXX = numpy.abs( visibilities[:,:,:,0].flatten() )
+        visXY = numpy.abs( visibilities[:,:,:,1].flatten() )
+        visYX = numpy.abs( visibilities[:,:,:,2].flatten() )
+        visYY = numpy.abs( visibilities[:,:,:,3].flatten() )
+
+    f, axarr = plt.subplots(2, 2)
+
+    axarr[0,0].plot(visXX)
+    axarr[0,1].plot(visXY)
+    axarr[1,0].plot(visYX)
+    axarr[1,1].plot(visYY)
+
+    axarr[0,0].set_title('XX')
+    axarr[0,1].set_title('XY')
+    axarr[1,0].set_title('YX')
+    axarr[1,1].set_title('YY')
+
+    axarr[0,0].tick_params(
+        axis='both',
+        which='both',
+        bottom='off',
+        top='off',
+        labelbottom='off')
+
+    axarr[0,1].tick_params(
+        axis='both',
+        which='both',
+        bottom='off',
+        top='off',
+        labelbottom='off')
+
+    axarr[1,0].tick_params(
+        axis='both',
+        which='both',
+        bottom='off',
+        top='off',
+        labelbottom='off')
+
+    axarr[1,1].tick_params(
+        axis='both',
+        which='both',
+        bottom='off',
+        top='off',
+        labelbottom='off')
+
+    plt.show()
+
+
+def init_aterms(aterms):
+    """Initialize aterms for test case defined in utility/initialize"""
+    nr_stations = aterms.shape[0]
+    nr_time = aterms.shape[1]
+    nr_polarizations = aterms.shape[2]
+    subgrid_size = aterms.shape[3]
+    lib.utils_init_aterms.argtypes = [ctypes.c_void_p,
+                                      ctypes.c_int,
+                                      ctypes.c_int,
+                                      ctypes.c_int,
+                                      ctypes.c_int]
+    lib.utils_init_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+                          ctypes.c_int(nr_stations),
+                          ctypes.c_int(nr_time),
+                          ctypes.c_int(nr_polarizations),
+                          ctypes.c_int(subgrid_size) )
+
+def plot_aterms(aterms):
+    """Plot A-terms
+    Input:
+    aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
+                           nr_polarizations, subgrid_size, subgrid_size),
+                           dtype = idg.atermtype)
+    """
+    print "TO BE IMPLEMENTED"
+
+
+def init_spheroidal(spheroidal):
+    """Initialize aterms for test case defined in utility/initialize"""
+    subgrid_size = spheroidal.shape[0]
+    lib.utils_init_spheroidal.argtypes = [ctypes.c_void_p,
+                                          ctypes.c_int]
+    lib.utils_init_spheroidal(spheroidal.ctypes.data_as(ctypes.c_void_p),
+                              ctypes.c_int(subgrid_size) )
+
+
+def plot_spheroidal(spheroidal, interpolation_method='none'):
+    """Plot spheroidal
+    Input:
+    spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
+                               dtype = idg.spheroidaltype)
+    interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
+                           'spline16', ... (see matplotlib imshow)
+    """
+    plt.imshow(spheroidal, interpolation=interpolation_method)
+    plt.colorbar()
+    plt.show()
+
+
+def plot_grid(grid, form='abs', interpolation_method='none'):
+    """Plot Grid data
+    Input:
+    grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+                         dtype = idg.gridtype)
+    form - 'real', 'imag', 'abs', 'phase'
+    interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
+                           'spline16', ... (see matplotlib imshow)
     """
     f, axarr = plt.subplots(2, 2)
-    if (form=="real"):
+    if (form=='real'):
         gridXX = numpy.real(grid[0,:,:])
         gridXY = numpy.real(grid[1,:,:])
         gridYX = numpy.real(grid[2,:,:])
         gridYY = numpy.real(grid[3,:,:])
-    elif (form=="imag"):
+    elif (form=='imag'):
         gridXX = numpy.imag(grid[0,:,:])
         gridXY = numpy.imag(grid[1,:,:])
         gridYX = numpy.imag(grid[2,:,:])
         gridYY = numpy.imag(grid[3,:,:])
-    elif (form=="angle"):
+    elif (form=='angle'):
         gridXX = numpy.angle(grid[0,:,:])
         gridXY = numpy.angle(grid[1,:,:])
         gridYX = numpy.angle(grid[2,:,:])
@@ -79,10 +283,10 @@ def plot_grid(grid, form="abs"):
         gridYX = numpy.abs(grid[2,:,:])
         gridYY = numpy.abs(grid[3,:,:])
 
-    axarr[0,0].imshow(gridXX)
-    axarr[0,1].imshow(gridXY)
-    axarr[1,0].imshow(gridYX)
-    axarr[1,1].imshow(gridYY)
+    axarr[0,0].imshow(gridXX, interpolation=interpolation_method)
+    axarr[0,1].imshow(gridXY, interpolation=interpolation_method)
+    axarr[1,0].imshow(gridYX, interpolation=interpolation_method)
+    axarr[1,1].imshow(gridYY, interpolation=interpolation_method)
 
     axarr[0,0].set_title('XX')
     axarr[0,1].set_title('XY')

@@ -17,135 +17,137 @@
 
 namespace idg {
 
-/*
-    Methos where pointed to allocated memory is provided
-*/
-void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time) {
-    TYPEDEF_UVW
-    TYPEDEF_UVW_TYPE
+/* Methods where pointed to allocated memory is provided */
+    void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time) {
+        TYPEDEF_UVW
+        TYPEDEF_UVW_TYPE
 
-    UVWType *uvw = (UVWType *) ptr;
+        UVWType *uvw = (UVWType *) ptr;
 
-    // Check whether layout file exists
-    bool found = false;
-    char filename[512];
-    sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
+        // Check whether layout file exists
+        bool found = false;
+        char filename[512];
+        sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
 
-    if (!uvwsim_file_exists(filename)) {
-        std::cerr << "Unable to find specified layout file: " 
-                  << filename << std::endl;
-        exit(EXIT_FAILURE);
-    }
+        if (!uvwsim_file_exists(filename)) {
+            std::cerr << "Unable to find specified layout file: "
+                      << filename << std::endl;
+            exit(EXIT_FAILURE);
+        }
 
-    // Read the number of stations in the layout file.
-    int nr_stations_file = uvwsim_get_num_stations(filename);
+        // Read the number of stations in the layout file.
+        int nr_stations_file = uvwsim_get_num_stations(filename);
 
-    // Check wheter the requested number of station is feasible
-    // if (nr_stations_file < nr_stations) {
-    //    std::cerr << "More stations requested than present in layout file: "
-    //              << "(" << nr_stations_file << ")" << std::endl;
-    // }
+        // Check wheter the requested number of station is feasible
+        // if (nr_stations_file < nr_stations) {
+        //    std::cerr << "More stations requested than present in layout file: "
+        //              << "(" << nr_stations_file << ")" << std::endl;
+        // }
 
-    // Allocate memory for antenna coordinates
-    double *x = (double*) malloc(nr_stations_file * sizeof(double));
-    double *y = (double*) malloc(nr_stations_file * sizeof(double));
-    double *z = (double*) malloc(nr_stations_file * sizeof(double));
+        // Allocate memory for antenna coordinates
+        double *x = (double*) malloc(nr_stations_file * sizeof(double));
+        double *y = (double*) malloc(nr_stations_file * sizeof(double));
+        double *z = (double*) malloc(nr_stations_file * sizeof(double));
 
-    // Load the antenna coordinates
-    #if defined(DEBUG)
-    printf("looking for stations file in: %s\n", filename);
-    #endif
+        // Load the antenna coordinates
+        #if defined(DEBUG)
+        printf("looking for stations file in: %s\n", filename);
+        #endif
 
-    if (uvwsim_load_station_coords(filename, nr_stations_file, x, y, z) != nr_stations_file) {
-        std::cerr << "Failed to read antenna coordinates." << std::endl;
-        exit(EXIT_FAILURE);
-    }
+        if (uvwsim_load_station_coords(filename, nr_stations_file, x, y, z) != nr_stations_file) {
+            std::cerr << "Failed to read antenna coordinates." << std::endl;
+            exit(EXIT_FAILURE);
+        }
 
-    // Select some antennas randomly when not all antennas are requested
-    if (nr_stations < nr_stations_file) {
-        // Allocate memory for selection of antenna coordinates
-        double *_x = (double*) malloc(nr_stations * sizeof(double));
-        double *_y = (double*) malloc(nr_stations * sizeof(double));
-        double *_z = (double*) malloc(nr_stations * sizeof(double));
+        // Select some antennas randomly when not all antennas are requested
+        if (nr_stations < nr_stations_file) {
+            // Allocate memory for selection of antenna coordinates
+            double *_x = (double*) malloc(nr_stations * sizeof(double));
+            double *_y = (double*) malloc(nr_stations * sizeof(double));
+            double *_z = (double*) malloc(nr_stations * sizeof(double));
 
-        // Generate nr_stations random numbers
-        int station_number[nr_stations];
-        int i = 0;
-        srandom(RANDOM_SEED);
-        while (i < nr_stations) {
-            int index = nr_stations_file * ((double) random() / RAND_MAX);
-            bool found = true;
-            for (int j = 0; j < i; j++) {
-                if (station_number[j] == index) {
-                    found = false;
-                    break;
+            // Generate nr_stations random numbers
+            int station_number[nr_stations];
+            int i = 0;
+            srandom(RANDOM_SEED);
+            while (i < nr_stations) {
+                int index = nr_stations_file * ((double) random() / RAND_MAX);
+                bool found = true;
+                for (int j = 0; j < i; j++) {
+                    if (station_number[j] == index) {
+                        found = false;
+                        break;
+                    }
                 }
+                if (found) {
+                     station_number[i++] = index;
+                }
+             }
+
+            // Set stations
+            for (int i = 0; i < nr_stations; i++) {
+                _x[i] = x[station_number[i]];
+                _y[i] = y[station_number[i]];
+                _z[i] = z[station_number[i]];
             }
-            if (found) {
-                station_number[i++] = index;
-            }
+
+            // Swap pointers and free memory
+            double *__x = x;
+            double *__y = y;
+            double *__z = z;
+            x = _x;
+            y = _y;
+            z = _z;
+            free(__x);
+            free(__y);
+            free(__z);
         }
 
-        // Set stations
-        for (int i = 0; i < nr_stations; i++) {
-            _x[i] = x[station_number[i]];
-            _y[i] = y[station_number[i]];
-            _z[i] = z[station_number[i]];
-        }
+        // Define observation parameters
+        double ra0  = RIGHT_ASCENSION;
+        double dec0 = DECLINATION;
+        double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
+        double obs_length_days = 8.0 / 24.0;
 
-        // Swap pointers and free memory
-        double *__x = x;
-        double *__y = y;
-        double *__z = z;
-        x = _x;
-        y = _y;
-        z = _z;
-        free(__x);
-        free(__y);
-        free(__z);
-    }
+        // Allocate memory for baseline coordinates
+        int nr_coordinates = nr_time * nr_baselines;
+        double *uu = (double*) malloc(nr_coordinates * sizeof(double));
+        double *vv = (double*) malloc(nr_coordinates * sizeof(double));
+        double *ww = (double*) malloc(nr_coordinates * sizeof(double));
 
-    // Define observation parameters
-    double ra0  = RIGHT_ASCENSION;
-    double dec0 = DECLINATION;
-    double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
-    double obs_length_days = 8.0 / 24.0;
-
-    // Allocate memory for baseline coordinates
-    int nr_coordinates = nr_time * nr_baselines;
-    double *uu = (double*) malloc(nr_coordinates * sizeof(double));
-    double *vv = (double*) malloc(nr_coordinates * sizeof(double));
-    double *ww = (double*) malloc(nr_coordinates * sizeof(double));
-
-    // Evaluate baseline uvw coordinates.
-    for (int t = 0; t < nr_time; t++) {
-        double time_mjd = start_time_mjd + t * (obs_length_days/(double)nr_time);
-        size_t offset = t * nr_baselines;
-        uvwsim_evaluate_baseline_uvw(
-            &uu[offset], &vv[offset], &ww[offset],
-            nr_stations, x, y, z, ra0, dec0, time_mjd);
-    }
-
-    // Fill UVW datastructure
-    for (int bl = 0; bl < nr_baselines; bl++) {
+        // Evaluate baseline uvw coordinates.
         for (int t = 0; t < nr_time; t++) {
-            int i = bl * nr_time + t;
-            UVW value = {(float) uu[i], (float) vv[i], (float) ww[i]};
-            (*uvw)[bl][t] = value;
+            double time_mjd = start_time_mjd + t
+                              * (obs_length_days/(double)nr_time);
+            size_t offset = t * nr_baselines;
+            uvwsim_evaluate_baseline_uvw(
+                &uu[offset], &vv[offset], &ww[offset],
+                nr_stations, x, y, z, ra0, dec0, time_mjd);
         }
+
+        // Fill UVW datastructure
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            for (int t = 0; t < nr_time; t++) {
+                int i = bl * nr_time + t;
+                UVW value = {(float) uu[i], (float) vv[i], (float) ww[i]};
+                (*uvw)[bl][t] = value;
+            }
+        }
+
+        // Free memory
+        free(x); free(y); free(z);
+        free(uu); free(vv); free(ww);
     }
 
-    // Free memory
-    free(x); free(y); free(z);
-    free(uu); free(vv); free(ww);
-}
 
-void init_visibilities(void *ptr, int nr_baselines, int nr_time, int nr_channels, int nr_polarizations) {
+
+void init_visibilities(void *ptr, int nr_baselines, int nr_time,
+                       int nr_channels, int nr_polarizations) {
     TYPEDEF_VISIBILITIES_TYPE
 	VisibilitiesType *visibilities = (VisibilitiesType *) (ptr);
 
 	// Fixed visibility
-	std::complex<float> visibility(2, 1);
+    std::complex<float> visibility(1, 0);
 
 	// Set all visibilities
 	for (int bl = 0; bl < nr_baselines; bl++) {
@@ -179,7 +181,7 @@ void init_aterm(void *ptr, int nr_stations, int nr_time, int nr_polarizations, i
 	TYPEDEF_ATERM_TYPE
     ATermType *aterm = (ATermType *) ptr;
 
-	std::complex<float> value(1, 1);
+    std::complex<float> value(1, 1);
 
 	for (int ant = 0; ant < nr_stations; ant++) {
         for (int t = 0; t < nr_time; t++) {
@@ -269,7 +271,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
 
     // Pointers to datastructures
     UVWType *uvw = (UVWType *) _uvw;
-    WavenumberType *wavenumbers = (WavenumberType *) init_wavenumbers(nr_channels);
+    WavenumberType *wavenumbers = (WavenumberType *) _wavenumbers;
     BaselineType *baselines = (BaselineType *) init_baselines(nr_stations, nr_baselines);
     MetadataType *metadata = (MetadataType *) ptr;
 
@@ -412,6 +414,7 @@ void *init_metadata(void *uvw, void *wavenumbers, int nr_stations, int nr_baseli
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
+
     void utils_init_uvw(
          void *ptr,
          int nr_stations,
@@ -443,5 +446,37 @@ extern "C" {
                             nr_timesteps, nr_timeslots, nr_channels, gridsize,
                             subgridsize, imagesize);
     }
+
+    void utils_init_visibilities(
+        void *ptr,
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations)
+    {
+        idg::init_visibilities(ptr, nr_baselines, nr_time,
+                               nr_channels, nr_polarizations);
+    }
+
+
+    void utils_init_aterms(
+        void *ptr,
+        int nr_stations,
+        int nr_time,
+        int nr_polarizations,
+        int subgridsize)
+    {
+        idg::init_aterm(ptr, nr_stations, nr_time,
+                        nr_polarizations, subgridsize);
+    }
+
+
+    void utils_init_spheroidal(
+        void *ptr,
+        int subgridsize)
+    {
+        idg::init_spheroidal(ptr, subgridsize);
+    }
+
 
 }  // end extern "C"
