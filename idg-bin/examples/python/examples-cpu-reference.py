@@ -14,13 +14,13 @@ if __name__ == "__main__":
     nr_timesteps = 10
     nr_timeslots = 40
     nr_time = nr_timesteps*nr_timeslots
-    imagesize = 0.1
+    image_size = 0.1
     subgrid_size = 8
     grid_size = 128
 
     p = idg.CPU.Reference(nr_stations, nr_channels,
                           nr_timesteps, nr_timeslots,
-                          imagesize, grid_size, subgrid_size)
+                          image_size, grid_size, subgrid_size)
 
     print "Proxy: nr_stations = ", p.get_nr_stations()
     print "Proxy: nr_baselines = ", p.get_nr_baselines()
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     print "Proxy: nr_subgrid_size = ", p.get_subgrid_size()
     print "Proxy: nr_subgrids = ", p.get_nr_subgrids()
     print "Proxy: nr_grid_size = ", p.get_grid_size()
-    print "Proxy: imagesize = ", p.get_imagesize()
+    print "Proxy: image_size = ", p.get_image_size()
     print "Proxy: job size for gridding = ", p.get_job_size_gridding()
     print "Proxy: job size for degridding = ", p.get_job_size_degridding()
     print "Change job size:"
@@ -46,6 +46,8 @@ if __name__ == "__main__":
     visibilities =  numpy.ones(
         (nr_baselines, nr_time, nr_channels, nr_polarizations),
         dtype = idg.visibilitiestype)
+    idg.utils.init_visibilities(visibilities)
+    # idg.utils.plot_visibilities(visibilities)
 
     uvw = numpy.zeros((nr_baselines, nr_time),
                       dtype = idg.uvwtype)
@@ -54,19 +56,30 @@ if __name__ == "__main__":
 
     wavenumbers = numpy.ones(nr_channels,
                              dtype = idg.wavenumberstype)
+    idg.utils.init_wavenumbers(wavenumbers)
+    # idg.utils.plot_wavenumbers(wavenumbers)
+
     metadata = numpy.zeros((nr_baselines, nr_timeslots),
                            dtype=idg.metadatatype)
+    # idg.utils.init_metadata(metadata, uvw, wavenumbers, nr_timesteps,
+    #                        nr_timeslots, image_size, grid_size,
+    #                        subgrid_size)
+    # print metadata
+
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
-    aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
+    aterms = numpy.zeros((nr_stations, nr_time, nr_polarizations,
                           subgrid_size, subgrid_size), \
                          dtype = idg.atermtype)
+    # idg.utils.init_aterms(aterms)
     # Set aterm to identity
     aterms[:,:,0,:,:] = 1.0
     aterms[:,:,3,:,:] = 1.0
 
     spheroidal = numpy.ones((subgrid_size, subgrid_size),
-                            dtype = idg.spheroidaltype)
+                             dtype = idg.spheroidaltype)
+    # idg.utils.init_spheroidal(spheroidal)
+    # idg.utils.plot_spheroidal(spheroidal)
 
     # call gridding and degridding
     w_offset = 0.0
