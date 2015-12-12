@@ -294,6 +294,7 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
             UVW last  = (*uvw)[bl][MIN(time_offset + nr_timesteps, nr_timesteps * nr_timeslots - 1)];
 
             // Find mininmum and maximum u and v for current chunk in wavelengths
+            // TODO: this might not be the true min/max, right?
             float u_min = min(first.u, last.u, wavenumber_first, wavenumber_last);
             float u_max = max(first.u, last.u, wavenumber_first, wavenumber_last);
             float v_min = min(first.v, last.v, wavenumber_first, wavenumber_last);
@@ -328,7 +329,6 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
     }
 
     // Free memory
-    free(wavenumbers);
     free(baselines);
 }
 
