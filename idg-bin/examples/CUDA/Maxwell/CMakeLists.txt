@@ -1,4 +1,4 @@
-project(example-cuda-maxwell.x)
+project(cuda-maxwell.x)
 
 # Set external header files
 include_directories(
@@ -28,7 +28,7 @@ target_link_libraries (
 
 # install
 install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin
+  RUNTIME DESTINATION bin/examples
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )

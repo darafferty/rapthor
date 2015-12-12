@@ -24,7 +24,7 @@ target_link_libraries (
 
 # install
 install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin
+  RUNTIME DESTINATION bin/tests
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
