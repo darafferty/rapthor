@@ -3,16 +3,16 @@ project(idg)
 # add subfolders
 add_subdirectory(common)
 
-if (BUILD_WITH_CPU)
+if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
 
 add_subdirectory(Hybrid)
 
-if (BUILD_WITH_CUDA)
+if (BUILD_LIB_CUDA)
     add_subdirectory(CUDA)
 endif()
-if (BUILD_WITH_OPENCL)
+if (BUILD_LIB_OPENCL)
     add_subdirectory(OpenCL)
 endif()
 if (BUILD_WITH_PYTHON)
@@ -49,7 +49,7 @@ install(
 ########################################################
 # build libidg-cpu, containing all needed for CPU code #
 ########################################################
-if (BUILD_WITH_CPU)
+if (BUILD_LIB_CPU)
 add_library(idg-cpu
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cpu-common>
@@ -76,7 +76,7 @@ endif()
 ##########################################################
 # build libidg-cuda, containing all needed for CUDA code #
 ##########################################################
-if (BUILD_WITH_CUDA)
+if (BUILD_LIB_CUDA)
 add_library(idg-cuda
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cuda-common>
@@ -96,13 +96,13 @@ install(
     DESTINATION
     include
 )
-endif(BUILD_WITH_CUDA)
+endif(BUILD_LIB_CUDA)
 
 
 ##############################################################
 # build libidg-hybrid-cuda: containing all for CPU/CUDA code #
 ##############################################################
-if (BUILD_WITH_CPU AND BUILD_WITH_CUDA)
+if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cpu-common>
@@ -134,7 +134,7 @@ endif()
 ###################################################
 # build libidg-opencl, containing all common code #
 ###################################################
-if (BUILD_WITH_OPENCL)
+if (BUILD_LIB_OPENCL)
 add_library(idg-opencl
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:opencl-common>
@@ -153,4 +153,4 @@ install(
     DESTINATION
     include
 )
-endif(BUILD_WITH_OPENCL)
+endif(BUILD_LIB_OPENCL)

@@ -1,6 +1,6 @@
 project(tests)
 
 # add subfolders
-if (BUILD_WITH_CPU)
+if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
