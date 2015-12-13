@@ -11,8 +11,9 @@ void kernel_fft(
 	int size, 
 	int batch,
 	fftwf_complex __restrict__ *data,
-	int sign
+    int sign    // Note: -1=FFTW_FORWARD, 1=FFTW_BACKWARD
 	) {
+
     // 2D FFT
     int rank = 2;
     
@@ -40,10 +41,10 @@ void kernel_fft(
     fftwf_execute_dft(plan, data, data);
 
     // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
-    if (sign == 0) {
-        float scale = 1 / (double(size)*double(size));
+    if (sign == FFTW_BACKWARD) {
+        float scale = 1 / (float(size)*float(size));
         #pragma omp parallel for
-        for (int i = 0; i < size*size; i++) {
+        for (int i = 0; i < batch*NR_POLARIZATIONS*size*size; i++) {
             data[i][0] *= scale;
             data[i][1] *= scale;
         }
