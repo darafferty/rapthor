@@ -262,7 +262,7 @@ namespace idg {
                 cout << "Transform direction: " << direction << endl;
                 #endif
     
-                int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+                int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
     
                 // Constants
                 auto gridsize = mParams.get_grid_size();
