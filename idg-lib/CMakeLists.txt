@@ -12,7 +12,7 @@ endif()
 project(ImageDomainGridder CXX)
 set (VERSION_MAJOR 0)
 set (VERSION_MINOR 1)
-set (VERSION_PATCH 0)
+set (VERSION_PATCH 1)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
 # set cmake module path
@@ -20,14 +20,14 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # options
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
-option (BUILD_WITH_CPU "Build CPU libraries" ON)
-option (BUILD_WITH_MIC "Have Xeon Phi environment" OFF) 
-option (BUILD_WITH_CUDA "Have CUDA environment" OFF)
-option (BUILD_WITH_OPENCL "Have OpenCL environment" OFF)
+option (BUILD_LIB_CPU "Build CPU libraries" ON)
+option (BUILD_LIB_CUDA "Have CUDA environment" OFF)
+option (BUILD_LIB_OPENCL "Have OpenCL environment" OFF)
+option (BUILD_LIB_KNC "Have Xeon Phi environment" OFF)
 option (BUILD_WITH_PYTHON "Have Python environment" OFF)
 option (BUILD_WITH_BOOST_PYTHON "Have Python environment" OFF)
-option (BUILD_EXAMPLES "Build example executables" OFF) 
-option (BUILD_TESTS "Build test executables" OFF) 
+option (BUILD_WITH_EXAMPLES "Build example executables" OFF)
+option (BUILD_WITH_TESTS "Build test executables" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (BUILD_WITH_ARDUINO_POWER_SENSOR "Measure power using arduino power sensor" OFF)
@@ -98,17 +98,17 @@ endif()
 
 # find CUDA environment 
 # (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
-if (BUILD_WITH_CUDA)
+if (BUILD_LIB_CUDA)
     find_package(CUDA)
     find_package(CUDAdriver)
-endif (BUILD_WITH_CUDA)
+endif (BUILD_LIB_CUDA)
 
 # find OpenCL environment
 # (see http://www.cmake.org/cmake/help/v3.1/module/FindOpenCL.html)
-if (BUILD_WITH_OPENCL)
+if (BUILD_LIB_OPENCL)
     find_package(OpenCL)
     find_package(clFFT)
-endif (BUILD_WITH_OPENCL)
+endif (BUILD_LIB_OPENCL)
 
 # write config file, included in all files of the project
 configure_file (
@@ -137,14 +137,14 @@ configure_file (
 # add subfolders
 add_subdirectory(src)
 
-if (BUILD_EXAMPLES OR BUILD_TESTS)
+if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
 add_subdirectory(utility)
 endif ()
 
-if (BUILD_EXAMPLES)
+if (BUILD_WITH_EXAMPLES)
 add_subdirectory(examples)
-endif (BUILD_EXAMPLES)
+endif (BUILD_WITH_EXAMPLES)
 
-if (BUILD_TESTS)
+if (BUILD_WITH_TESTS)
 add_subdirectory(tests)
-endif (BUILD_TESTS)
+endif (BUILD_WITH_TESTS)

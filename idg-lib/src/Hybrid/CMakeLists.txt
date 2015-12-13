@@ -1,14 +1,14 @@
 project(hybrid)
 
 # add subfolders
-if (BUILD_WITH_MIC)
+if (BUILD_LIB_KNC)
    if (USING_INTEL_CXX_COMPILER)
        add_subdirectory(KNC)
    else (USING_INTEL_CXX_COMPILER)
         message("Need Intel compiler to build for Xeon Phi")
    endif(USING_INTEL_CXX_COMPILER)
-endif(BUILD_WITH_MIC) 
+endif(BUILD_LIB_KNC)
 
-if (BUILD_WITH_CPU AND BUILD_WITH_CUDA)
+if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
    add_subdirectory(CUDA)
 endif()

@@ -1,14 +1,14 @@
 project(examples)
 
 # add subfolders
-if (BUILD_WITH_CPU)
+if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
 add_subdirectory(Hybrid)
-if (BUILD_WITH_CUDA)
+if (BUILD_LIB_CUDA)
     add_subdirectory(CUDA)
 endif()
-if (BUILD_WITH_OPENCL)
+if (BUILD_LIB_OPENCL)
     add_subdirectory(OpenCL)
 endif()
 if (BUILD_WITH_PYTHON)
