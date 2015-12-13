@@ -1,11 +1,20 @@
 #ifndef IDG_CONFIG_H_
 #define IDG_CONFIG_H_
 
+#define IDG_VERSION "@VERSION@"
+
 #define IDG_SOURCE_DIR "@CMAKE_SOURCE_DIR@"
 #define IDG_BINARY_DIR "@CMAKE_BINARY_DIR@"
 #define IDG_INSTALL_DIR "@CMAKE_INSTALL_PREFIX@"
 #define IDG_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
 
+#cmakedefine BUILD_LIB_CPU
+#cmakedefine BUILD_LIB_CUDA
+#cmakedefine BUILD_LIB_OPENCL
+#cmakedefine BUILD_LIB_KNC
+#cmakedefine BUILD_WITH_PYTHON
+#cmakedefine BUILD_WITH_EXAMPLES
+#cmakedefine BUILD_WITH_TESTS
 #cmakedefine REPORT_VERBOSE
 #cmakedefine REPORT_TOTAL
 
