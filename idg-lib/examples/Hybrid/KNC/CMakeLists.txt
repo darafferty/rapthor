@@ -3,10 +3,7 @@ project(hybrid-knc.x)
 # Set external header files
 include_directories(
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/utility
-  ${CMAKE_SOURCE_DIR}/examples/CPU/common
-  ${CMAKE_SOURCE_DIR}/src/common
  )
 
 set (${PROJECT_NAME}_sources
@@ -19,12 +16,11 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories (${LIBRARY_OUTPUT_PATH}) 
 
+set(LINK_LIRBRARIES idg-utility idg-knc)
+
 target_link_libraries (
   ${PROJECT_NAME}
-  idg-utility
-  idg-hybrid-knc
-  idg-common
-  ${CMAKE_DL_LIBS}
+  ${LINK_LIRBRARIES}
 )
 
 # install

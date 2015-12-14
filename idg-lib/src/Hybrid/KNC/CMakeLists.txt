@@ -1,15 +1,8 @@
-project(idg-hybrid-knc)
-
-# write config file, included in all files of the project
-configure_file (
-  "${PROJECT_SOURCE_DIR}/set-hybrid-knc-env.sh.in"
-  "${CMAKE_BINARY_DIR}/set-hybrid-knc-env.sh"
-  )
+project(hybrid-knc)
 
 # external header files needed
 include_directories (
-  ${CMAKE_SOURCE_DIR}/src/common
-  ${CMAKE_SOURCE_DIR}/src/CPU/reference
+  ${CMAKE_SOURCE_DIR}/src
 )
 
 # sources and header files
@@ -30,22 +23,17 @@ set (${PROJECT_NAME}_sources
 
 # create library
 add_library(
-  ${PROJECT_NAME} STATIC ${${PROJECT_NAME}_headers}
+  ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                          ${${PROJECT_NAME}_sources}
 )
-
-# Set installation directory
-install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
+if (NOT BUILD_STATIC_LIBS)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
 
 # Copy header files
 install(
     FILES
-    idg.h
-    KNC.h
+    ${${PROJECT_NAME}_headers}
     DESTINATION
     include/Hybrid/KNC
 )
