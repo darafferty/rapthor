@@ -35,7 +35,8 @@ namespace idg {
                 const char *str_power_file = getenv("POWER_FILE");
                 if (!str_power_file) str_power_file = STR_POWER_FILE;
                 #else
-                powerSensor = new PowerSensor(); // TODO: where is it freed?
+                powerSensor = new PowerSensor();
+                // TODO: where is it freed? Need to be done in destructor!
                 #endif
             }
 
