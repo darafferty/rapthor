@@ -154,3 +154,19 @@ install(
     include
 )
 endif(BUILD_LIB_OPENCL)
+
+
+
+################################################
+# build libidg-knc, containing all common code #
+################################################
+if (BUILD_LIB_KNC)
+
+
+install(
+    FILES
+    idg-knc.h
+    DESTINATION
+    include
+)
+endif (BUILD_LIB_KNC)
