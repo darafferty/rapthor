@@ -71,26 +71,26 @@ int run()
                        nr_channels, gridsize, subgridsize, imagesize);
     std::clog << std::endl;
 
-    /* // Initialize interface to kernels */
-    /* std::clog << ">>> Initialize proxy" << std::endl; */
-    /* ProxyType proxy(params); */
-    /* std::clog << std::endl; */
+    // Initialize interface to kernels
+    std::clog << ">>> Initialize proxy" << std::endl;
+    ProxyType proxy(params);
+    std::clog << std::endl;
 
-    /* // Run */
-    /* std::clog << ">>> Run gridder" << std::endl; */
-    /* proxy.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids); */
+    // Run
+    std::clog << ">>> Run gridder" << std::endl;
+    proxy.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
-    /* std::clog << ">>> Run adder" << std::endl; */
-    /* proxy.add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid); */
+    std::clog << ">>> Run adder" << std::endl;
+    proxy.add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid);
 
-    /* std::clog << ">>> Run fft" << std::endl; */
-    /* proxy.transform(idg::FourierDomainToImageDomain, grid); */
+    std::clog << ">>> Run fft" << std::endl;
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    /* std::clog << ">>> Run splitter" << std::endl; */
-    /* proxy.split_grid_into_subgrids(nr_subgrids, metadata, subgrids, grid); */
+    std::clog << ">>> Run splitter" << std::endl;
+    proxy.split_grid_into_subgrids(nr_subgrids, metadata, subgrids, grid);
 
-    /* std::clog << ">>> Run degridder" << std::endl; */
-    /* proxy.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids); */
+    std::clog << ">>> Run degridder" << std::endl;
+    proxy.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
 
     // Free memory for data structures
     delete[] visibilities;
