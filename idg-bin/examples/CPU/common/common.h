@@ -2,33 +2,19 @@
 #include <cstdlib> // size_t
 #include <complex>
 
+#include "idg-cpu.h"
 #include "idg-utility.h"  // Data init routines
 
-using namespace std;
-
-void run(
-    idg::Parameters p,
-    int nr_subgrids,
-    float *uvw,
-    float *wavenumbers,
-    complex<float> *visibilities,
-    float *spheroidal,
-    complex<float> *aterm,
-    int *metadata,
-    complex<float> *subgrids,
-    complex<float> *grid
-);
-
-int main(int argc, char *argv[]) {
+template <typename ProxyType>
+int run()
+{
     // Set constants explicitly in the parameters parameter
-    clog << ">>> Configuration"  << endl;
+    std::clog << ">>> Configuration"  << std::endl;
     idg::Parameters params;
     // Read the following from ENV: 
     // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE, 
     // GRIDSIZE 
-    // if non-default jobsize wanted, set JOBSIZE (all routines), 
-    // JOBSIZE_GRIDDING, JOBSIZE_DEGRIDDING, JOBSIZE_GRIDDER, 
-    // JOBSIZE_ADDER, JOBSIZE_SPLITTER, JOBSIZE_DEGRIDDER
+    // if non-default jobsize wanted, set also JOBSIZE, etc.
     params.set_from_env();
 
     // retrieve constants for memory allocation
@@ -44,42 +30,67 @@ int main(int argc, char *argv[]) {
     int nr_subgrids = nr_baselines * nr_timeslots;
 
     // Print configuration
-    clog << params;
-    clog << endl;
+    std::clog << params;
+    std::clog << std::endl;
 
     // Allocate and initialize data structures
-    clog << ">>> Initialize data structures" << endl;
+    std::clog << ">>> Initialize data structures" << std::endl;
 
-    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
+    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*
+        nr_timeslots*nr_channels*nr_polarizations;
     auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
     auto size_wavenumbers = 1ULL * nr_channels;
-    auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize;
+    auto size_aterm = 1ULL * nr_stations*nr_timeslots*
+        nr_polarizations*subgridsize*subgridsize;
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
     auto size_metadata = 1ULL * nr_subgrids*5;
-    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize;
+    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
+        subgridsize*subgridsize;
 
-    auto visibilities = new complex<float>[size_visibilities];
+    auto visibilities = new std::complex<float>[size_visibilities];
     auto uvw = new float[size_uvw];
     auto wavenumbers = new float[size_wavenumbers];
-    auto aterm = new complex<float>[size_aterm];
+    auto aterm = new std::complex<float>[size_aterm];
     auto spheroidal = new float[size_spheroidal];
-    auto grid = new complex<float>[size_grid];
+    auto grid = new std::complex<float>[size_grid];
     auto metadata = new int[size_metadata];
-    auto subgrids = new complex<float>[size_subgrids];
+    auto subgrids = new std::complex<float>[size_subgrids];
 
-    idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
+    idg::init_visibilities(visibilities, nr_baselines,
+                           nr_timesteps*nr_timeslots,
+                           nr_channels, nr_polarizations);
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
     idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
+    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations,
+                    subgridsize);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
-    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
-    clog << endl;
+    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations,
+                       nr_baselines, nr_timesteps, nr_timeslots,
+                       nr_channels, gridsize, subgridsize, imagesize);
+    std::clog << std::endl;
 
-    // Run
-    run(params, nr_subgrids, uvw, wavenumbers, visibilities, spheroidal,
-        aterm, metadata, subgrids, grid);
+    /* // Initialize interface to kernels */
+    /* std::clog << ">>> Initialize proxy" << std::endl; */
+    /* ProxyType proxy(params); */
+    /* std::clog << std::endl; */
+
+    /* // Run */
+    /* std::clog << ">>> Run gridder" << std::endl; */
+    /* proxy.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids); */
+
+    /* std::clog << ">>> Run adder" << std::endl; */
+    /* proxy.add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid); */
+
+    /* std::clog << ">>> Run fft" << std::endl; */
+    /* proxy.transform(idg::FourierDomainToImageDomain, grid); */
+
+    /* std::clog << ">>> Run splitter" << std::endl; */
+    /* proxy.split_grid_into_subgrids(nr_subgrids, metadata, subgrids, grid); */
+
+    /* std::clog << ">>> Run degridder" << std::endl; */
+    /* proxy.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids); */
 
     // Free memory for data structures
     delete[] visibilities;
