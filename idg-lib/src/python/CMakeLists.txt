@@ -4,6 +4,7 @@ set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python2.7/dist-packages)
 install(FILES
         idg.py
         CPU.py
+        Hybrid.py
         Proxy.py
         utils.py
         DESTINATION
