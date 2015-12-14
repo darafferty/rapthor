@@ -24,9 +24,10 @@ endif()
 
 
 
-###################################################
-# build libidg-common, containing all common code #
-###################################################
+#########################################################
+# build libidg-common, containing all common code       #
+# Note: used to access common functionality from python #
+#########################################################
 add_library(idg-common
   $<TARGET_OBJECTS:common>
 )
@@ -162,6 +163,16 @@ endif(BUILD_LIB_OPENCL)
 ################################################
 if (BUILD_LIB_KNC)
 
+add_library(idg-knc
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:hybrid-knc>
+)
+
+install(TARGETS idg-knc
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
 
 install(
     FILES
@@ -169,4 +180,4 @@ install(
     DESTINATION
     include
 )
-endif (BUILD_LIB_KNC)
+endif(BUILD_LIB_KNC)
