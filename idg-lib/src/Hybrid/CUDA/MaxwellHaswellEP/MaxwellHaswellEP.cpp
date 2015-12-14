@@ -470,3 +470,91 @@ namespace idg {
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+    typedef idg::proxy::hybrid::MaxwellHaswellEP Hybrid_MaxwellHaswellEP;
+
+    Hybrid_MaxwellHaswellEP* Hybrid_MaxwellHaswellEP_init(
+                unsigned int nr_stations,
+                unsigned int nr_channels,
+                unsigned int nr_timesteps,
+                unsigned int nr_timeslots,
+                float        imagesize,
+                unsigned int grid_size,
+                unsigned int subgrid_size)
+    {
+        idg::Parameters P;
+        P.set_nr_stations(nr_stations);
+        P.set_nr_channels(nr_channels);
+        P.set_nr_timesteps(nr_timesteps);
+        P.set_nr_timeslots(nr_timeslots);
+        P.set_imagesize(imagesize);
+        P.set_subgrid_size(subgrid_size);
+        P.set_grid_size(grid_size);
+
+        return new Hybrid_MaxwellHaswellEP(P);
+    }
+
+    void Hybrid_MaxwellHaswellEP_grid(Hybrid_MaxwellHaswellEP* p,
+                            void *visibilities,
+                            void *uvw,
+                            void *wavenumbers,
+                            void *metadata,
+                            void *grid,
+                            float w_offset,
+                            void *aterm,
+                            void *spheroidal)
+    {
+         p->grid_visibilities(
+                (const std::complex<float>*) visibilities,
+                (const float*) uvw,
+                (const float*) wavenumbers,
+                (const int*) metadata,
+                (std::complex<float>*) grid,
+                w_offset,
+                (const std::complex<float>*) aterm,
+                (const float*) spheroidal);
+    }
+
+    void Hybrid_MaxwellHaswellEP_degrid(Hybrid_MaxwellHaswellEP* p,
+                            void *visibilities,
+                            void *uvw,
+                            void *wavenumbers,
+                            void *metadata,
+                            void *grid,
+                            float w_offset,
+                            void *aterm,
+                            void *spheroidal)
+    {
+         p->degrid_visibilities(
+                (std::complex<float>*) visibilities,
+                    (const float*) uvw,
+                    (const float*) wavenumbers,
+                    (const int*) metadata,
+                    (const std::complex<float>*) grid,
+                    w_offset,
+                    (const std::complex<float>*) aterm,
+                    (const float*) spheroidal);
+     }
+
+    void Hybrid_MaxwellHaswellEP_transform(Hybrid_MaxwellHaswellEP* p,
+                    int direction,
+                    void *grid)
+    {
+       if (direction!=0)
+           p->transform(idg::ImageDomainToFourierDomain,
+                    (std::complex<float>*) grid);
+       else
+           p->transform(idg::FourierDomainToImageDomain,
+                    (std::complex<float>*) grid);
+    }
+
+    void Hybrid_MaxwellHaswellEP_destroy(Hybrid_MaxwellHaswellEP* p) {
+       delete p;
+    }
+
+}  // end extern "C"
