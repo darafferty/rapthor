@@ -20,7 +20,7 @@ set (${PROJECT_NAME}_headers
 
 set (${PROJECT_NAME}_sources
   KNC.cpp
-  Kernel.cpp
+  Kernels.cpp
   kernels/KernelGridder.cpp
   kernels/KernelDegridder.cpp
   kernels/KernelFFT.cpp

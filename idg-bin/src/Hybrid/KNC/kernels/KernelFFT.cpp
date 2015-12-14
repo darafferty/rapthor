@@ -46,6 +46,15 @@ void kernel_fft(
             // Execute FFTs
             fftwf_execute_dft(plan, data, data);
 
+            // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
+            if (sign == FFTW_BACKWARD) {
+                float scale = 1 / (float(size)*float(size));
+                for (int i = 0; i < nr_polarizations*size*size; i++) {
+                    data[i][0] *= scale;
+                    data[i][1] *= scale;
+                }
+            }
+
             // Destroy plan
             fftwf_destroy_plan(plan);
         }
