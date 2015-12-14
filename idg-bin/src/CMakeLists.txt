@@ -90,6 +90,13 @@ install(TARGETS idg-cuda
   ARCHIVE DESTINATION lib/static
 )
 
+set(LINK_LIRBRARIES ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+
+target_link_libraries (
+  idg-cuda
+  ${LINK_LIRBRARIES}
+)
+
 install(
     FILES
     idg-cuda.h
@@ -113,6 +120,13 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
   $<TARGET_OBJECTS:hybrid-cuda-maxwellhaswellep>
+)
+
+set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+
+target_link_libraries (
+  idg-hybrid-cuda
+  ${LINK_LIRBRARIES}
 )
 
 install(TARGETS idg-hybrid-cuda
