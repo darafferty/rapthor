@@ -29,7 +29,7 @@ void kernel_fft_grid(
         if (sign == FFTW_BACKWARD) {
             float scale = 1 / (float(size)*float(size));
             #pragma omp parallel for
-            for (int i = 0; i < batch*NR_POLARIZATIONS*size*size; i++) {
+            for (int i = 0; i < NR_POLARIZATIONS*size*size; i++) {
                 data[i][0] *= scale;
                 data[i][1] *= scale;
             }
