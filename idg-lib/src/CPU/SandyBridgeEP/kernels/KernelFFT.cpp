@@ -11,7 +11,7 @@ extern "C" {
 void kernel_fft_grid(
 	int size, 
 	fftwf_complex __restrict__ *_data,
-    int sign   // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
+    int sign    // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
 	) {
     #pragma omp parallel for
 	for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -29,7 +29,7 @@ void kernel_fft_grid(
         if (sign == FFTW_BACKWARD) {
             float scale = 1 / (float(size)*float(size));
             #pragma omp parallel for
-            for (int i = 0; i < NR_POLARIZATIONS*size*size; i++) {
+            for (int i = 0; i < size*size; i++) {
                 data[i][0] *= scale;
                 data[i][1] *= scale;
             }
@@ -78,7 +78,7 @@ void kernel_fft_subgrid(
         if (sign == 0) {
             float scale = 1 / (double(size)*double(size));
             #pragma omp parallel for
-            for (int i = 0; i < size*size; i++) {
+            for (int i = 0; i < NR_POLARIZATIONS*size*size; i++) {
                 data[i][0] *= scale;
                 data[i][1] *= scale;
             }
