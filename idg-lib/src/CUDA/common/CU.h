@@ -164,6 +164,10 @@ namespace cu {
                 memcpy(_ptr, in, (size_t) _size);
             }
 
+            void set(void *in, size_t bytes) {
+                memcpy(_ptr, in, bytes);
+            }
+
             void get(void *out) {
                 memcpy(out, _ptr, (size_t) _size);
             }
