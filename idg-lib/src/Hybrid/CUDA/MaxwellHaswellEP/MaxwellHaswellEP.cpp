@@ -23,10 +23,11 @@ namespace idg {
                 cpu(params), cuda(params)
             {
                 #if defined(DEBUG)
-                cout << "Maxwell-HaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << params;
                 #endif
 
+                mParams = params;
                 cuProfilerStart();
             }
 
@@ -49,7 +50,7 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const float *spheroidal) {
                 #if defined(DEBUG)
-                cout << "MaxwellHaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Load kernels
@@ -140,17 +141,17 @@ namespace idg {
                         void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
                         void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
-                        // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr);
-                        h_uvw.set(uvw_ptr);
-                        h_metadata.set(metadata_ptr);
-
                         // Power measurement
                         cuda::PowerRecord powerRecords[3];
                         LikwidPowerSensor::State powerStates[2];
 
+                        // Copy memory to host memory
+                        h_visibilities.set(visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                        h_uvw.set(uvw_ptr, current_jobsize * SIZEOF_UVW);
+                        h_metadata.set(metadata_ptr, current_jobsize * SIZEOF_METADATA);
+
                         #pragma omp critical (GPU)
-                		{
+                        {
                 			// Copy input data to device
                 			htodstream.waitEvent(inputFree);
                 			htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, current_jobsize * SIZEOF_VISIBILITIES);
@@ -246,7 +247,7 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const float *spheroidal) {
                 #if defined(DEBUG)
-                cout << "MaxwellHaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Load kernels
@@ -338,9 +339,9 @@ namespace idg {
                         void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                         // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr);
-                        h_uvw.set(uvw_ptr);
-                        h_metadata.set(metadata_ptr);
+                        h_visibilities.set(visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                        h_uvw.set(uvw_ptr, current_jobsize * SIZEOF_UVW);
+                        h_metadata.set(metadata_ptr, current_jobsize * SIZEOF_METADATA);
 
                         // Power measurement
                         cuda::PowerRecord powerRecords[3];
@@ -389,6 +390,7 @@ namespace idg {
                 		}
 
                 		outputFree.synchronize();
+                        memcpy(visibilities_ptr, h_visibilities, SIZEOF_VISIBILITIES * current_jobsize);
 
                         double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_degridder = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
@@ -437,7 +439,7 @@ namespace idg {
             void MaxwellHaswellEP::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
-                cout << "MaxwellHaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
@@ -470,3 +472,92 @@ namespace idg {
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+    typedef idg::proxy::hybrid::MaxwellHaswellEP Hybrid_MaxwellHaswellEP;
+
+    Hybrid_MaxwellHaswellEP* Hybrid_MaxwellHaswellEP_init(
+                unsigned int nr_stations,
+                unsigned int nr_channels,
+                unsigned int nr_timesteps,
+                unsigned int nr_timeslots,
+                float        imagesize,
+                unsigned int grid_size,
+                unsigned int subgrid_size)
+    {
+        idg::Parameters P;
+        P.set_nr_stations(nr_stations);
+        P.set_nr_channels(nr_channels);
+        P.set_nr_timesteps(nr_timesteps);
+        P.set_nr_timeslots(nr_timeslots);
+        P.set_imagesize(imagesize);
+        P.set_subgrid_size(subgrid_size);
+        P.set_grid_size(grid_size);
+
+        cout << "P: " << P << endl;
+        return new Hybrid_MaxwellHaswellEP(P);
+    }
+
+    void Hybrid_MaxwellHaswellEP_grid(Hybrid_MaxwellHaswellEP* p,
+                            void *visibilities,
+                            void *uvw,
+                            void *wavenumbers,
+                            void *metadata,
+                            void *grid,
+                            float w_offset,
+                            void *aterm,
+                            void *spheroidal)
+    {
+         p->grid_visibilities(
+                (const std::complex<float>*) visibilities,
+                (const float*) uvw,
+                (const float*) wavenumbers,
+                (const int*) metadata,
+                (std::complex<float>*) grid,
+                w_offset,
+                (const std::complex<float>*) aterm,
+                (const float*) spheroidal);
+    }
+
+    void Hybrid_MaxwellHaswellEP_degrid(Hybrid_MaxwellHaswellEP* p,
+                            void *visibilities,
+                            void *uvw,
+                            void *wavenumbers,
+                            void *metadata,
+                            void *grid,
+                            float w_offset,
+                            void *aterm,
+                            void *spheroidal)
+    {
+         p->degrid_visibilities(
+                (std::complex<float>*) visibilities,
+                    (const float*) uvw,
+                    (const float*) wavenumbers,
+                    (const int*) metadata,
+                    (const std::complex<float>*) grid,
+                    w_offset,
+                    (const std::complex<float>*) aterm,
+                    (const float*) spheroidal);
+     }
+
+    void Hybrid_MaxwellHaswellEP_transform(Hybrid_MaxwellHaswellEP* p,
+                    int direction,
+                    void *grid)
+    {
+       if (direction!=0)
+           p->transform(idg::ImageDomainToFourierDomain,
+                    (std::complex<float>*) grid);
+       else
+           p->transform(idg::FourierDomainToImageDomain,
+                    (std::complex<float>*) grid);
+    }
+
+    void Hybrid_MaxwellHaswellEP_destroy(Hybrid_MaxwellHaswellEP* p) {
+       delete p;
+    }
+
+}  // end extern "C"

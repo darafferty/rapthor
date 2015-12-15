@@ -9,6 +9,11 @@ except OSError:
     pass
 
 try:
+    import Hybrid
+except OSError:
+    pass
+
+try:
     import utils
 except OSError:
     pass
