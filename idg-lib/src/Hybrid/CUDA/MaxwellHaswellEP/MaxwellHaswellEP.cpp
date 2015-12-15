@@ -23,10 +23,11 @@ namespace idg {
                 cpu(params), cuda(params)
             {
                 #if defined(DEBUG)
-                cout << "Maxwell-HaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 cout << params;
                 #endif
 
+                mParams = params;
                 cuProfilerStart();
             }
 
@@ -49,7 +50,7 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const float *spheroidal) {
                 #if defined(DEBUG)
-                cout << "MaxwellHaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Load kernels
@@ -140,17 +141,17 @@ namespace idg {
                         void *visibilities_ptr = (complex<float>*) visibilities + s * visibilities_elements;
                         void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
-                        // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr);
-                        h_uvw.set(uvw_ptr);
-                        h_metadata.set(metadata_ptr);
-
                         // Power measurement
                         cuda::PowerRecord powerRecords[3];
                         LikwidPowerSensor::State powerStates[2];
 
+                        // Copy memory to host memory
+                        h_visibilities.set(visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                        h_uvw.set(uvw_ptr, current_jobsize * SIZEOF_UVW);
+                        h_metadata.set(metadata_ptr, current_jobsize * SIZEOF_METADATA);
+
                         #pragma omp critical (GPU)
-                		{
+                        {
                 			// Copy input data to device
                 			htodstream.waitEvent(inputFree);
                 			htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, current_jobsize * SIZEOF_VISIBILITIES);
@@ -246,7 +247,7 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const float *spheroidal) {
                 #if defined(DEBUG)
-                cout << "MaxwellHaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 // Load kernels
@@ -338,9 +339,9 @@ namespace idg {
                         void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                         // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr);
-                        h_uvw.set(uvw_ptr);
-                        h_metadata.set(metadata_ptr);
+                        h_visibilities.set(visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                        h_uvw.set(uvw_ptr, current_jobsize * SIZEOF_UVW);
+                        h_metadata.set(metadata_ptr, current_jobsize * SIZEOF_METADATA);
 
                         // Power measurement
                         cuda::PowerRecord powerRecords[3];
@@ -389,6 +390,7 @@ namespace idg {
                 		}
 
                 		outputFree.synchronize();
+                        memcpy(visibilities_ptr, h_visibilities, SIZEOF_VISIBILITIES * current_jobsize);
 
                         double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_degridder = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
@@ -437,7 +439,7 @@ namespace idg {
             void MaxwellHaswellEP::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
-                cout << "MaxwellHaswellEP::" << __func__ << endl;
+                cout << __func__ << endl;
                 #endif
 
                 int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
@@ -496,6 +498,7 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
+        cout << "P: " << P << endl;
         return new Hybrid_MaxwellHaswellEP(P);
     }
 
