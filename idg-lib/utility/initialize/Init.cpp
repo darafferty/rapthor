@@ -128,7 +128,7 @@ namespace idg {
         // Fill UVW datastructure
         for (int bl = 0; bl < nr_baselines; bl++) {
             for (int t = 0; t < nr_time; t++) {
-                int i = bl * nr_time + t;
+                int i = t * nr_baselines + bl;
                 UVW value = {(float) uu[i], (float) vv[i], (float) ww[i]};
                 (*uvw)[bl][t] = value;
             }

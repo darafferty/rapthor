@@ -65,6 +65,8 @@ if __name__ == "__main__":
                             nr_timeslots, image_size, grid_size,
                             subgrid_size)
 
+    idg.utils.plot_metadata(metadata, grid_size)
+
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
 
