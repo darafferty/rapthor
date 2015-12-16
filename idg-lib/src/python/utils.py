@@ -361,6 +361,8 @@ def plot_metadata(metadata, grid_size):
     x = metadata['coordinate']['x'].flatten()
     y = metadata['coordinate']['y'].flatten()
     fig = plt.figure(get_figure_name("metadata"))
+    x = x - (grid_size / 2)
+    y = y - (grid_size / 2)
     xylim = 1.2*max(max(abs(x)), max(abs(y)))
     plt.plot(numpy.append(x, -x), numpy.append(y, -y), '.')
     plt.xlim([-xylim, xylim])
