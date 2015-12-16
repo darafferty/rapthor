@@ -16,6 +16,8 @@ path, junk = os.path.split(path)
 libpath = os.path.join(path, 'libidg-utility.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
+def get_figure_name(name):
+    return "Figure %d: %s" % (len(plt.get_fignums()) + 1, name)
 
 def nr_baselines_to_nr_stations(nr_baselines):
     """Convert NUMBER OF BASELINES to NUMBER OF STATIONS"""
@@ -53,7 +55,7 @@ def plot_uvw(uvw):
     u = uvw['u'].flatten()
     v = uvw['v'].flatten()
     uvlim = 1.2*max(max(abs(u)), max(abs(v)))
-    fig = plt.figure()
+    fig = plt.figure(get_figure_name("uvw"))
     plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
@@ -75,11 +77,11 @@ def plot_wavenumbers(wavenumbers):
     Input:
     wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
     """
-    fig = plt.figure()
+    fig = plt.figure(get_figure_name("wavenumbers"))
     plt.plot(wavenumbers,'.')
     plt.grid(True)
     plt.xlabel("Channel")
-    plt.ylabel("PUT UNIT HERE")
+    plt.ylabel("rad/m")
 
 
 def init_metadata(metadata, uvw, wavenumbers, nr_timesteps,
@@ -164,8 +166,7 @@ def plot_visibilities(visibilities, form='abs'):
         visYY = numpy.abs( visibilities[:,:,:,3].flatten() )
         title = 'Abs'
 
-
-    fig, axarr = plt.subplots(2, 2)
+    fig, axarr = plt.subplots(2, 2, num=get_figure_name("visibilities"))
     fig.suptitle(title, fontsize=14)
 
     axarr[0,0].plot(visXX)
@@ -251,6 +252,7 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
+    plt.figure(get_figure_name("spheroidal"))
     plt.imshow(spheroidal, interpolation=interpolation_method)
     plt.colorbar()
 
@@ -289,7 +291,7 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         gridYY = numpy.abs(grid[3,:,:])
         title = 'Abs'
 
-    fig = plt.figure()
+    fig = plt.figure(get_figure_name("grid"))
     fig.suptitle(title, fontsize=14)
 
     ax = ["ax1", "ax2", "ax3", "ax4"]
@@ -354,3 +356,16 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         left='off',
         labelbottom='off',
         labelleft='off')
+
+def plot_metadata(metadata, grid_size):
+    x = metadata['coordinate']['x'].flatten()
+    y = metadata['coordinate']['y'].flatten()
+    fig = plt.figure(get_figure_name("metadata"))
+    x = x - (grid_size / 2)
+    y = y - (grid_size / 2)
+    xylim = 1.2*max(max(abs(x)), max(abs(y)))
+    plt.plot(numpy.append(x, -x), numpy.append(y, -y), '.')
+    plt.xlim([-xylim, xylim])
+    plt.ylim([-xylim, xylim])
+    plt.grid(True)
+    plt.axes().set_aspect('equal')
