@@ -4,6 +4,7 @@ project(hybrid-maxwellhaswellep.x)
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/utility
+    ${CUDA_INCLUDE_DIRS}
  )
 
 set (${PROJECT_NAME}_sources 
