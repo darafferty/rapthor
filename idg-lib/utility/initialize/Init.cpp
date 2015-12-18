@@ -18,7 +18,7 @@
 namespace idg {
 
 /* Methods where pointed to allocated memory is provided */
-    void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time) {
+    void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int integration_time) {
         TYPEDEF_UVW
         TYPEDEF_UVW_TYPE
 
@@ -107,7 +107,8 @@ namespace idg {
         double ra0  = RIGHT_ASCENSION;
         double dec0 = DECLINATION;
         double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
-        double obs_length_days = 8.0 / 24.0;
+        double obs_length_hours = (nr_time * integration_time) / (3600.0);
+        double obs_length_days = obs_length_hours / 24.0;
 
         // Allocate memory for baseline coordinates
         int nr_coordinates = nr_time * nr_baselines;
@@ -436,9 +437,10 @@ extern "C" {
          void *ptr,
          int nr_stations,
          int nr_baselines,
-         int nr_time)
+         int nr_time,
+         int integration_time)
     {
-        idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time);
+        idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time, integration_time);
     }
 
     void utils_init_wavenumbers(void *ptr, int nr_channels)
