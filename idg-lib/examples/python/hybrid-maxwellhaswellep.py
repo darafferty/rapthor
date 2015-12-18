@@ -8,15 +8,16 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    nr_stations = 8
+    nr_stations = 15
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 8
-    nr_timesteps = 10
-    nr_timeslots = 400
+    nr_timesteps = 16
+    nr_timeslots = 300
     nr_time = nr_timesteps*nr_timeslots
-    image_size = 0.01
-    subgrid_size = 8
-    grid_size = 512
+    image_size = 0.008
+    subgrid_size = 24
+    grid_size = 1024
+    integration_time = 10
 
     p = idg.Hybrid.MaxwellHaswellEP(nr_stations, nr_channels,
                                     nr_timesteps, nr_timeslots,
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     print "Proxy: nr_polarizations = ", p.get_nr_polarizations()
     print "Proxy: nr_subgrid_size = ", p.get_subgrid_size()
     print "Proxy: nr_subgrids = ", p.get_nr_subgrids()
-    print "Proxy: nr_grid_size = ", p.get_grid_size()
+    print "Proxy: grid_size = ", p.get_grid_size()
     print "Proxy: image_size = ", p.get_image_size()
     print "Proxy: job size for gridding = ", p.get_job_size_gridding()
     print "Proxy: job size for degridding = ", p.get_job_size_degridding()
@@ -39,6 +40,7 @@ if __name__ == "__main__":
     p.set_job_size_degridding(4096)
     print "Proxy: job size for gridding = ", p.get_job_size_gridding()
     print "Proxy: job size for degridding = ", p.get_job_size_degridding()
+    print "integration time = ", integration_time
 
     # allocate memory for data
     nr_polarizations = p.get_nr_polarizations()
@@ -51,7 +53,7 @@ if __name__ == "__main__":
 
     uvw = numpy.zeros((nr_baselines, nr_time),
                       dtype = idg.uvwtype)
-    idg.utils.init_uvw(uvw)
+    idg.utils.init_uvw(uvw, integration_time)
     idg.utils.plot_uvw(uvw)
 
     wavenumbers = numpy.ones(nr_channels,
@@ -94,7 +96,7 @@ if __name__ == "__main__":
     # TODO: shift zero frequency to outer part
     grid = numpy.fft.ifftshift(grid, axes=(1,2))
 
-    idg.utils.plot_grid(grid)
+    #idg.utils.plot_grid(grid)
 
     p.transform(idg.FourierDomainToImageDomain, grid)
 
@@ -113,7 +115,7 @@ if __name__ == "__main__":
     # TODO: Shift the zero-frequency component to the center of the spectrum.
     grid = numpy.fft.fftshift(grid, axes=(1,2))
 
-    idg.utils.plot_grid(grid)
+    #idg.utils.plot_grid(grid)
 
     p.degrid_visibilities(visibilities, uvw, wavenumbers, metadata, grid,
                           w_offset, aterms, spheroidal)
