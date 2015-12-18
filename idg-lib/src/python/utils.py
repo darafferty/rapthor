@@ -357,15 +357,33 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
-def plot_metadata(metadata, grid_size):
+def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size):
+    # Show subgrids (from metadata)
     x = metadata['coordinate']['x'].flatten()
     y = metadata['coordinate']['y'].flatten()
     fig = plt.figure(get_figure_name("metadata"))
-    x = x - (grid_size / 2)
-    y = y - (grid_size / 2)
-    xylim = 1.2*max(max(abs(x)), max(abs(y)))
-    plt.plot(numpy.append(x, -x), numpy.append(y, -y), '.')
-    plt.xlim([-xylim, xylim])
-    plt.ylim([-xylim, xylim])
+    grid = numpy.zeros((grid_size, grid_size))
+    for coordinate in zip(x, y):
+        _x = coordinate[0]
+        _y = coordinate[1]
+        grid[_y:_y+subgrid_size,_x:_x+subgrid_size] += 1
+    grid[grid == 0] = numpy.nan
+    plt.imshow(grid, interpolation='none')
+
+    # Show u,v coordinates (from uvw)
+    u = uvw['u'].flatten()
+    v = uvw['v'].flatten()
+    u_pixels = []
+    v_pixels = []
+    for wavenumber in wavenumbers:
+        scaling = (wavenumber * image_size / (2 * numpy.pi))
+        u_pixels.append(u * scaling)
+        v_pixels.append(v * scaling)
+    u_pixels = numpy.asarray(u_pixels).flatten() + (grid_size / 2)
+    v_pixels = numpy.asarray(v_pixels).flatten() + (grid_size / 2)
+    plt.plot(u_pixels, v_pixels, 'r.')
+
+    # Set plot options
     plt.grid(True)
+    plt.colorbar()
     plt.axes().set_aspect('equal')
