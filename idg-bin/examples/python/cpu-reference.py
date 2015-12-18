@@ -8,15 +8,16 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    nr_stations = 8
+    nr_stations = 15
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 8
-    nr_timesteps = 10
-    nr_timeslots = 400
+    nr_timesteps = 16
+    nr_timeslots = 300
     nr_time = nr_timesteps*nr_timeslots
-    image_size = 0.01
-    subgrid_size = 8
-    grid_size = 512
+    image_size = 0.008
+    subgrid_size = 24
+    grid_size = 1024
+    integration_time = 10
 
     p = idg.CPU.Reference(nr_stations, nr_channels,
                           nr_timesteps, nr_timeslots,
@@ -51,7 +52,7 @@ if __name__ == "__main__":
 
     uvw = numpy.zeros((nr_baselines, nr_time),
                       dtype = idg.uvwtype)
-    idg.utils.init_uvw(uvw)
+    idg.utils.init_uvw(uvw, integration_time)
     idg.utils.plot_uvw(uvw)
 
     wavenumbers = numpy.ones(nr_channels,
@@ -64,6 +65,8 @@ if __name__ == "__main__":
     idg.utils.init_metadata(metadata, uvw, wavenumbers, nr_timesteps,
                             nr_timeslots, image_size, grid_size,
                             subgrid_size)
+
+    idg.utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
 
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
@@ -92,7 +95,7 @@ if __name__ == "__main__":
     # TODO: shift zero frequency to outer part
     grid = numpy.fft.ifftshift(grid, axes=(1,2))
 
-    idg.utils.plot_grid(grid)
+    #idg.utils.plot_grid(grid)
 
     p.transform(idg.FourierDomainToImageDomain, grid)
 
@@ -111,7 +114,7 @@ if __name__ == "__main__":
     # TODO: Shift the zero-frequency component to the center of the spectrum.
     grid = numpy.fft.fftshift(grid, axes=(1,2))
 
-    idg.utils.plot_grid(grid)
+    #idg.utils.plot_grid(grid)
 
     p.degrid_visibilities(visibilities, uvw, wavenumbers, metadata, grid,
                           w_offset, aterms, spheroidal)
