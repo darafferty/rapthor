@@ -18,7 +18,7 @@
 namespace idg {
 
 /* Methods where pointed to allocated memory is provided */
-    void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time) {
+    void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int integration_time) {
         TYPEDEF_UVW
         TYPEDEF_UVW_TYPE
 
@@ -107,7 +107,8 @@ namespace idg {
         double ra0  = RIGHT_ASCENSION;
         double dec0 = DECLINATION;
         double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
-        double obs_length_days = 8.0 / 24.0;
+        double obs_length_hours = (nr_time * integration_time) / (3600.0);
+        double obs_length_days = obs_length_hours / 24.0;
 
         // Allocate memory for baseline coordinates
         int nr_coordinates = nr_time * nr_baselines;
@@ -286,44 +287,59 @@ void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, i
         Baseline baseline = (*baselines)[bl];
 
         // Iterate all timeslots
-        for (int t = 0; t < nr_timeslots; t++) {
-            int time_offset = t * nr_timesteps;
+        for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
+            int time_offset = timeslot * nr_timesteps;
 
-            // Get first and last UVW coordinate in meters
-            UVW first = (*uvw)[bl][time_offset];
-            UVW last  = (*uvw)[bl][MIN(time_offset + nr_timesteps, nr_timesteps * nr_timeslots - 1)];
+            // Find mininmum and maximum u and v for current timeslot in pixels
+            float u_min =  std::numeric_limits<float>::infinity();
+            float u_max = -std::numeric_limits<float>::infinity();
+            float v_min =  std::numeric_limits<float>::infinity();
+            float v_max = -std::numeric_limits<float>::infinity();
 
-            // Find mininmum and maximum u and v for current chunk in wavelengths
-            // TODO: this might not be the true min/max, right?
-            float u_min = min(first.u, last.u, wavenumber_first, wavenumber_last);
-            float u_max = max(first.u, last.u, wavenumber_first, wavenumber_last);
-            float v_min = min(first.v, last.v, wavenumber_first, wavenumber_last);
-            float v_max = max(first.v, last.v, wavenumber_first, wavenumber_last);
+            // Iterate all timesteps
+            for (int timestep = 0; timestep < nr_timesteps; timestep++) {
+                UVW current = (*uvw)[bl][time_offset + timestep];
 
-            // Compute middle point
-            float u_middle_wavelenghts = (int) ((u_max + u_min) / 2);
-            float v_middle_wavelenghts = (int) ((v_max + v_min) / 2);
+                // U,V in meters
+                float u_meters = current.u;
+                float v_meters = current.v;
+
+                // Iterate all channels
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    float wavenumber = (*wavenumbers)[chan];
+                    float scaling = imagesize * wavenumber / (2 * M_PI);
+
+                    // U,V in pixels
+                    float u_pixels = u_meters * scaling;
+                    float v_pixels = v_meters * scaling;
+
+                    if (u_pixels < u_min) u_min = u_pixels;
+                    if (u_pixels > u_max) u_max = u_pixels;
+                    if (v_pixels < v_min) v_min = v_pixels;
+                    if (v_pixels > v_max) v_max = v_pixels;
+                }
+            }
 
             // Compute middle point in pixels
-            int u_middle_pixels = roundf(u_middle_wavelenghts * imagesize);
-            int v_middle_pixels = roundf(v_middle_wavelenghts * imagesize);
+            int u_pixels = roundf((u_max + u_min) / 2);
+            int v_pixels = roundf((v_max + v_min) / 2);
 
             // Shift center from middle of grid to top left
-            u_middle_pixels += (gridsize/2);
-            v_middle_pixels += (gridsize/2);
+            u_pixels += (gridsize/2);
+            v_pixels += (gridsize/2);
 
             // Shift from middle of subgrid to top left
-            u_middle_pixels -= (subgridsize/2);
-            v_middle_pixels -= (subgridsize/2);
+            u_pixels -= (subgridsize/2);
+            v_pixels -= (subgridsize/2);
 
             // Construct coordinate
-            Coordinate coordinate = { u_middle_pixels, v_middle_pixels };
+            Coordinate coordinate = { u_pixels, v_pixels };
 
             // Compute subgrid number
-            int subgrid_nr = bl * nr_timeslots + t;
+            int subgrid_nr = bl * nr_timeslots + timeslot;
 
             // Set metadata
-            Metadata m = { t, baseline, coordinate };
+            Metadata m = { timeslot, baseline, coordinate };
             (*metadata)[subgrid_nr] = m;
         }
     }
@@ -421,9 +437,10 @@ extern "C" {
          void *ptr,
          int nr_stations,
          int nr_baselines,
-         int nr_time)
+         int nr_time,
+         int integration_time)
     {
-        idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time);
+        idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time, integration_time);
     }
 
     void utils_init_wavenumbers(void *ptr, int nr_channels)

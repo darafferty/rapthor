@@ -31,7 +31,7 @@ def nr_baselines_to_nr_stations(nr_baselines):
     return nr_stations
 
 
-def init_uvw(uvw):
+def init_uvw(uvw, integration_time = 10):
     """Initialize uvw for test case defined in utility/initialize"""
     nr_baselines = uvw.shape[0]
     nr_stations = nr_baselines_to_nr_stations(nr_baselines)
@@ -39,11 +39,13 @@ def init_uvw(uvw):
     lib.utils_init_uvw.argtypes = [ctypes.c_void_p,
                                    ctypes.c_int,
                                    ctypes.c_int,
+                                   ctypes.c_int,
                                    ctypes.c_int]
     lib.utils_init_uvw( uvw.ctypes.data_as(ctypes.c_void_p),
                         ctypes.c_int(nr_stations),
                         ctypes.c_int(nr_baselines),
-                        ctypes.c_int(nr_time) )
+                        ctypes.c_int(nr_time),
+                        ctypes.c_int(integration_time))
 
 
 def plot_uvw(uvw):
@@ -257,15 +259,21 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     plt.colorbar()
 
 
-def plot_grid(grid, form='abs', interpolation_method='none'):
+def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
     """Plot Grid data
     Input:
     grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                          dtype = idg.gridtype)
     form - 'real', 'imag', 'abs', 'phase'
+    scaling - 'none', 'log', 'sqrt'
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
+    if (scaling=='log'):
+        grid = numpy.log(grid)
+    if (scaling=='sqrt'):
+        grid = numpy.sqrt(grid)
+
     if (form=='real'):
         gridXX = numpy.real(grid[0,:,:])
         gridXY = numpy.real(grid[1,:,:])
@@ -357,15 +365,48 @@ def plot_grid(grid, form='abs', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
-def plot_metadata(metadata, grid_size):
+def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size):
+    # Show subgrids (from metadata)
     x = metadata['coordinate']['x'].flatten()
     y = metadata['coordinate']['y'].flatten()
     fig = plt.figure(get_figure_name("metadata"))
-    x = x - (grid_size / 2)
-    y = y - (grid_size / 2)
-    xylim = 1.2*max(max(abs(x)), max(abs(y)))
-    plt.plot(numpy.append(x, -x), numpy.append(y, -y), '.')
-    plt.xlim([-xylim, xylim])
-    plt.ylim([-xylim, xylim])
+    grid = numpy.zeros((grid_size, grid_size))
+    for coordinate in zip(x, y):
+        _x = coordinate[0]
+        _y = coordinate[1]
+        grid[_y:_y+subgrid_size,_x:_x+subgrid_size] += 1
+    grid[grid == 0] = numpy.nan
+    plt.imshow(grid, interpolation='None')
+
+    # Show u,v coordinates (from uvw)
+    u = uvw['u'].flatten()
+    v = uvw['v'].flatten()
+    u_pixels = []
+    v_pixels = []
+    for wavenumber in wavenumbers:
+        scaling = (wavenumber * image_size / (2 * numpy.pi))
+        u_pixels.append(u * scaling)
+        v_pixels.append(v * scaling)
+    u_pixels = numpy.asarray(u_pixels).flatten() + (grid_size / 2)
+    v_pixels = numpy.asarray(v_pixels).flatten() + (grid_size / 2)
+    plt.plot(u_pixels, v_pixels, 'r.', markersize=1, alpha=0.1)
+
+    # Make mouseover show value of gird
+    def format_coord(x, y):
+        col = int(x+0.5)
+        row = int(y+0.5)
+        z = grid[row,col]
+        if z is not numpy.nan:
+            return 'x=%1.1f, y=%1.1f, z=%1.1f' % (x, y, z)
+        else:
+            return 'x=%1.1f, y=%1.1f' % (x, y)
+    
+    ax = fig.gca()
+    ax.format_coord = format_coord
+
+    # Set plot options
     plt.grid(True)
+    plt.colorbar()
     plt.axes().set_aspect('equal')
+    plt.xlim([0, grid_size])
+    plt.ylim([grid_size, 0])
