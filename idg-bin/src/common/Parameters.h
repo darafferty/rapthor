@@ -64,7 +64,6 @@ namespace idg {
       unsigned int get_job_size_splitter() const { return job_size_splitter; }
       unsigned int get_job_size_degridder() const { return job_size_degridder; }
       unsigned int get_nr_polarizations() const { return nr_polarizations; }
-      unsigned int get_nr_subgrids() const { return nr_baselines * nr_timeslots; }
 
       // set methods
       void set_nr_stations(unsigned int ns);

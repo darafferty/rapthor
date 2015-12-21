@@ -497,5 +497,11 @@ extern "C" {
         idg::init_spheroidal(ptr, subgridsize);
     }
 
-
+    void utils_init_baselines(
+        void *ptr,
+        int nr_stations,
+        int nr_baselines)
+    {
+        idg::init_baselines(ptr, nr_stations, nr_baselines);
+    }
 }  // end extern "C"

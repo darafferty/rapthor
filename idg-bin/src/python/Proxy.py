@@ -17,7 +17,7 @@ class Proxy(object):
                           visibilities,
                           uvw,
                           wavenumbers,
-                          metadata,
+                          baselines,
                           grid,
                           w_offset,
                           aterms,
@@ -31,7 +31,7 @@ class Proxy(object):
         uvw - numpy.ndarray(shape=(nr_baselines, nr_time),
                             dtype = idg.uvwtype)
         wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_baselines, nr_timeslots, dtype=idg.metadatatype)
+        baselines - numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                              dtype = idg.gridtype)
         aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
@@ -51,8 +51,8 @@ class Proxy(object):
             raise ValueError('UVW dimension missmatch.')
         if wavenumbers.shape != (self.get_nr_channels(), ):
             raise ValueError('Wavenumbers dimension missmatch.')
-        if metadata.shape != (self.get_nr_baselines(), self.get_nr_timeslots()):
-            raise ValueError('Metadata dimension missmatch.')
+        if baselines.shape != (self.get_nr_baselines(), ):
+            raise ValueError('Baseline dimension missmatch.')
         if grid.shape != (self.get_nr_polarizations(),
                           self.get_grid_size(),
                           self.get_grid_size()):
@@ -69,7 +69,7 @@ class Proxy(object):
 
         # call C function to do the work
         self._cwrap_grid_visibilities(visibilities, uvw, wavenumbers,
-                                      metadata, grid, w_offset, aterms,
+                                      baselines, grid, w_offset, aterms,
                                       spheroidal)
 
 
@@ -77,7 +77,7 @@ class Proxy(object):
                             visibilities,
                             uvw,
                             wavenumbers,
-                            metadata,
+                            baselines,
                             grid,
                             w_offset,
                             aterms,
@@ -91,7 +91,7 @@ class Proxy(object):
         uvw - numpy.ndarray(shape=(nr_baselines,nr_time),
                             dtype = idg.uvwtype)
         wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        metadata - numpy.ndarray(nr_baselines, nr_timeslots, dtype=idg.metadatatype)
+        baselines - numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
         grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
         dtype = idg.gridtype)
         aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
@@ -111,8 +111,8 @@ class Proxy(object):
             raise ValueError('UVW dimension missmatch.')
         if wavenumbers.shape != (self.get_nr_channels(), ):
             raise ValueError('Wavenumbers dimension missmatch.')
-        if metadata.shape != (self.get_nr_baselines(), self.get_nr_timeslots()):
-            raise ValueError('Metadata dimension missmatch.')
+        if baselines.shape != (self.get_nr_baselines(), ):
+            raise ValueError('Baseline dimension missmatch.')
         if grid.shape != (self.get_nr_polarizations(),
                           self.get_grid_size(),
                           self.get_grid_size()):
@@ -129,7 +129,7 @@ class Proxy(object):
 
         # call C function to do the work
         self._cwrap_degrid_visibilities(visibilities, uvw, wavenumbers,
-                                        metadata, grid, w_offset, aterms,
+                                        baselines, grid, w_offset, aterms,
                                         spheroidal)
 
 
@@ -186,9 +186,6 @@ class Proxy(object):
     def get_subgrid_size(self):
         return lib.Proxy_get_subgrid_size(self.obj)
 
-    def get_nr_subgrids(self):
-        return lib.Proxy_get_nr_subgrids(self.obj)
-
     def get_job_size(self):
         return lib.Proxy_get_job_size(self.obj)
 
@@ -207,16 +204,28 @@ class Proxy(object):
     def set_job_size_degridding(self, n = 8192):
         lib.Proxy_set_job_size_degridding(self.obj, ctypes.c_int(n))
 
+    def _get_nr_subgrids(self, uvw, wavenumbers, baselines):
+        return lib.Proxy_get_nr_subgrids(self.obj,
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            wavenumbers.ctypes.data_as(ctypes.c_void_p),
+            baselines.ctypes.data_as(ctypes.c_void_p))
+
+    def _init_metadata(self, metadata, uvw, wavenumbers, baselines):
+        lib.Proxy_init_metadata(self.obj,
+            metadata.ctypes.data_as(ctypes.c_void_p),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            wavenumbers.ctypes.data_as(ctypes.c_void_p),
+            baselines.ctypes.data_as(ctypes.c_void_p))
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,
-                                metadata, grid, w_offset, aterms,
+                                baselines, grid, w_offset, aterms,
                                 spheroidal):
         pass
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_degrid_visibilities(self, visibilities, uvw,
-                                   wavenumbers, metadata,
+                                   wavenumbers, baselines,
                                    grid, w_offset, aterms,
                                    spheroidal):
         pass
