@@ -55,7 +55,6 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = cuda.get_kernel_gridder();
-                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
 
 				// Load context
@@ -112,6 +111,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
+                    unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
 
                     // Private host memory
 			        cu::HostMemory h_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -189,7 +189,7 @@ namespace idg {
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
                         {
-                            kernel_adder->run(jobsize, h_metadata, h_subgrids, grid);
+                            kernel_adder->run(current_jobsize, h_metadata, h_subgrids, grid);
                         }
                         powerStates[1] = cpu.read_power();
 
@@ -220,6 +220,7 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
+                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -252,7 +253,6 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = cuda.get_kernel_degridder();
-                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
 
 				// Load context
@@ -309,6 +309,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
+                    unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
 
                     // Private host memory
 			        cu::HostMemory h_visibilities(jobsize * SIZEOF_VISIBILITIES);
@@ -351,7 +352,7 @@ namespace idg {
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
                         {
-                            kernel_splitter->run(jobsize, h_metadata, h_subgrids, (void *) grid);
+                            kernel_splitter->run(current_jobsize, h_metadata, h_subgrids, (void *) grid);
                         }
                         powerStates[1] = cpu.read_power();
 
@@ -419,6 +420,7 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
+                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -498,7 +500,6 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
-        cout << "P: " << P << endl;
         return new Hybrid_MaxwellHaswellEP(P);
     }
 
