@@ -14,17 +14,17 @@ namespace cufft {
 		public:
 			Error(cufftResult result):
 			_result(result)
-			{}   
+			{}
 
 			virtual const char *what() const throw();
 
-			operator cufftResult () const {   
+			operator cufftResult () const {
 				return _result;
-			}   
+			}
 
 		private:
 			cufftResult _result;
-	};  
+	};
 
 	#if 1
 	inline void __checkCuFFTcall(cufftResult result, char const *const func, const char *const file, int const line) {
@@ -48,53 +48,53 @@ namespace cufft {
 
 	class C2C_1D {
 		public:
-			C2C_1D(unsigned n, unsigned count) {   
+			C2C_1D(unsigned n, unsigned count) {
 				checkCuFFTcall(cufftPlan1d(&plan, n, CUFFT_C2C, count));
-			}   
+			}
 
-			~C2C_1D() {   
+			~C2C_1D() {
 				checkCuFFTcall(cufftDestroy(plan));
-			}   
+			}
 
-			void setStream(CUstream stream) {   
+			void setStream(CUstream stream) {
 				checkCuFFTcall(cufftSetStream(plan, stream));
-			}   
+			}
 
-			void execute(cufftComplex *in, cufftComplex *out, int direction = CUFFT_FORWARD) {   
+			void execute(cufftComplex *in, cufftComplex *out, int direction = CUFFT_FORWARD) {
 				checkCuFFTcall(cufftExecC2C(plan, in, out, direction));
-			}   
+			}
 
 		private:
 			cufftHandle plan;
 	};
-	
+
 	class C2C_2D {
 		public:
 			C2C_2D(unsigned nx, unsigned ny) {
 				checkCuFFTcall(cufftPlan2d(&plan, nx, ny, CUFFT_C2C));
 			}
-			
+
 			C2C_2D(unsigned nx, unsigned ny, unsigned stride, unsigned dist, unsigned count) {
 				int n[] = {(int) ny, (int) nx};
-				checkCuFFTcall(cufftPlanMany(&plan, 2, n, n, stride, dist, n, stride, dist, CUFFT_C2C, count));
+                checkCuFFTcall(cufftPlanMany(&plan, 2, n, NULL, stride, dist, NULL, stride, dist, CUFFT_C2C, count));
 			}
-			
+
 			~C2C_2D() {
 			    checkCuFFTcall(cufftDestroy(plan));
 			}
-				
-			void setStream(CUstream stream) {   
+
+			void setStream(CUstream stream) {
 				checkCuFFTcall(cufftSetStream(plan, stream));
 			}
-			
+
 			void execute(cufftComplex *in, cufftComplex *out, int direction = CUFFT_FORWARD) {
 				checkCuFFTcall(cufftExecC2C(plan, in, out, direction));
 			}
-			
+
 		private:
 			cufftHandle plan;
 	};
-	
+
 }
 
 #endif

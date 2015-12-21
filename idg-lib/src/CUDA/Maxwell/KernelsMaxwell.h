@@ -3,7 +3,6 @@
 
 #include "../common/Kernels.h"
 
-#define USE_CUFFT 0
 
 namespace idg {
     namespace kernel {
