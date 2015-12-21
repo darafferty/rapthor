@@ -10,7 +10,6 @@
 #include "CUFFT.h"
 #include "../../common/Parameters.h"
 
-#define USE_CUFFT 0
 
 namespace idg {
     namespace kernel {
@@ -76,7 +75,7 @@ namespace idg {
                     flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
                     return flops;
                 }
-    
+
                 uint64_t bytes(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_timesteps = parameters.get_nr_timesteps();
@@ -88,13 +87,13 @@ namespace idg {
                     bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * sizeof(cuFloatComplex); // subgrids
                     return bytes;
                 }
-    
+
         	private:
                 cu::Function function;
                 Parameters parameters;
             };
-    
-    
+
+
             class Degridder {
             public:
                 Degridder(cu::Module &module, const Parameters &params);
@@ -132,7 +131,7 @@ namespace idg {
                     stream.launchKernel(function, jobsize, 1, 1,
                                         blockX, blockY, blockZ, 0, parameters);
                 }
-    
+
                 uint64_t flops(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_timesteps = parameters.get_nr_timesteps();
@@ -148,7 +147,7 @@ namespace idg {
                     flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
                     return flops;
                 }
-    
+
                 uint64_t bytes(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_time = parameters.get_nr_timesteps();
@@ -167,8 +166,8 @@ namespace idg {
         	    cu::Function function;
                 Parameters parameters;
             };
-    
-    
+
+
             class GridFFT {
         	public:
                 GridFFT(cu::Module &module, const Parameters &params);
@@ -184,44 +183,44 @@ namespace idg {
                 void launchAsync(
                     cu::Stream &stream,
                     cu::DeviceMemory &data,
-                    int direction) {
-                    if (planned_size != 32 || USE_CUFFT) {
-                        // Initialize
-                        cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-                        int s = 0;
-                        int nr_polarizations = parameters.get_nr_polarizations();
+                    int direction)
+                {
+                    // Initialize
+                    cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
+                    int s = 0;
+                    int nr_polarizations = parameters.get_nr_polarizations();
 
-                        // Execute bulk ffts (if any)
-                        if (planned_batch > bulk_size) {
-                            (*fft_bulk).setStream(stream);
-                            for (; s < (planned_batch - bulk_size); s += bulk_size) {
-                                (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                                data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
-                            }
+                    // Execute bulk ffts (if any)
+                    if (planned_batch > bulk_size) {
+                        (*fft_bulk).setStream(stream);
+                        for (; s < (planned_batch - bulk_size); s += bulk_size) {
+                            (*fft_bulk).execute(data_ptr, data_ptr, direction);
+                            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
                         }
-
-                        // Execute remainder ffts
-                        (*fft_remainder).setStream(stream);
-                        (*fft_remainder).execute(data_ptr, data_ptr, direction);
-                    } else {
-                        cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
-                        int nr_polarizations = parameters.get_nr_polarizations();
-                        const void *parameters[] = { &data_ptr, &data_ptr, &direction};
-                        stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1,
-                                            blockX, blockY, blockZ, 0, parameters);
                     }
+
+                    // Execute remainder ffts
+                    (*fft_remainder).setStream(stream);
+                    (*fft_remainder).execute(data_ptr, data_ptr, direction);
+
+                    // Custom FFT kernel is disabled
+                    //cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
+                    //int nr_polarizations = parameters.get_nr_polarizations();
+                    //const void *parameters[] = { &data_ptr, &data_ptr, &direction};
+                    //stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1,
+                    //                    blockX, blockY, blockZ, 0, parameters);
                 }
 
                 uint64_t flops(int size, int batch) {
                     int nr_polarizations = parameters.get_nr_polarizations();
                     return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
                 }
-    
+
                 uint64_t bytes(int size, int batch) {
                     int nr_polarizations = parameters.get_nr_polarizations();
                     return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(cuFloatComplex);
                 }
-    
+
             private:
                 cu::Function function;
                 Parameters parameters;
@@ -231,8 +230,8 @@ namespace idg {
                 cufft::C2C_2D *fft_bulk;
                 cufft::C2C_2D *fft_remainder;
             };
-    
-    
+
+
             class Adder {
             public:
                 Adder(cu::Module &module, const Parameters &params);
@@ -259,7 +258,7 @@ namespace idg {
                     int nr_polarizations = parameters.get_nr_polarizations();
                     return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
                 }
-    
+
                 uint64_t bytes(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
@@ -269,13 +268,13 @@ namespace idg {
                         // Grid
                         1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
                 }
-    
+
             private:
                 cu::Function function;
                 Parameters parameters;
             };
-    
-    
+
+
             /*
               Splitter
             */
