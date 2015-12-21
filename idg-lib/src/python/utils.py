@@ -258,6 +258,19 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     plt.imshow(spheroidal, interpolation=interpolation_method)
     plt.colorbar()
 
+def init_baselines(baselines):
+    """Initialize baselines
+    Input:
+    baselines - numpy.ndarray(shape=(nr_baselines), dtype = idg.baselinetype)
+    """
+    nr_baselines = baselines.shape[0]
+    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
+    lib.utils_init_baselines.argtypes = [ctypes.c_void_p,
+                                         ctypes.c_int,
+                                         ctypes.c_int]
+    lib.utils_init_baselines(baselines.ctypes.data_as(ctypes.c_void_p),
+                             ctypes.c_int(nr_stations),
+                             ctypes.c_int(nr_baselines))
 
 def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
     """Plot Grid data
@@ -270,6 +283,7 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
                            'spline16', ... (see matplotlib imshow)
     """
     if (scaling=='log'):
+        grid = numpy.abs(grid) + 1
         grid = numpy.log(grid)
     if (scaling=='sqrt'):
         grid = numpy.sqrt(grid)
@@ -400,7 +414,7 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
             return 'x=%1.1f, y=%1.1f, z=%1.1f' % (x, y, z)
         else:
             return 'x=%1.1f, y=%1.1f' % (x, y)
-    
+
     ax = fig.gca()
     ax.format_coord = format_coord
 
