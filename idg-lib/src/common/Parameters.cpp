@@ -51,7 +51,7 @@ namespace idg {
 
   void Parameters::set_imagesize(float is) 
   {
-    imagesize = is < 0 ? 0.1 : is; // 0.1 is typical for LOFAR
+    imagesize = is < 0 ? 1 : is;
   }
 
   void Parameters::set_grid_size(unsigned int gs)

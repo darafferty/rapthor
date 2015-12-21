@@ -27,7 +27,7 @@ int run()
     int subgridsize = params.get_subgrid_size();
     float imagesize = params.get_imagesize();
     int nr_polarizations = 4;
-    int nr_subgrids = nr_baselines * nr_timeslots;
+    float w_offset = 0;
 
     // Print configuration
     std::clog << params;
@@ -44,9 +44,7 @@ int run()
         nr_polarizations*subgridsize*subgridsize;
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
-    auto size_metadata = 1ULL * nr_subgrids*5;
-    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
-        subgridsize*subgridsize;
+    auto size_baselines = 1ULL * nr_baselines*2;
 
     auto visibilities = new std::complex<float>[size_visibilities];
     auto uvw = new float[size_uvw];
@@ -54,8 +52,7 @@ int run()
     auto aterm = new std::complex<float>[size_aterm];
     auto spheroidal = new float[size_spheroidal];
     auto grid = new std::complex<float>[size_grid];
-    auto metadata = new int[size_metadata];
-    auto subgrids = new std::complex<float>[size_subgrids];
+    auto baselines = new int[size_baselines];
 
     idg::init_visibilities(visibilities, nr_baselines,
                            nr_timesteps*nr_timeslots,
@@ -66,9 +63,7 @@ int run()
                     subgridsize);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
-    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations,
-                       nr_baselines, nr_timesteps, nr_timeslots,
-                       nr_channels, gridsize, subgridsize, imagesize);
+    idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
     // Initialize interface to kernels
@@ -77,20 +72,11 @@ int run()
     std::clog << std::endl;
 
     // Run
-    std::clog << ">>> Run gridder" << std::endl;
-    proxy.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    std::clog << ">>> Run gridding" << std::endl;
+    proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, aterm, spheroidal);
 
-    std::clog << ">>> Run adder" << std::endl;
-    proxy.add_subgrids_to_grid(nr_subgrids, metadata, subgrids, grid);
-
-    std::clog << ">>> Run fft" << std::endl;
-    proxy.transform(idg::FourierDomainToImageDomain, grid);
-
-    std::clog << ">>> Run splitter" << std::endl;
-    proxy.split_grid_into_subgrids(nr_subgrids, metadata, subgrids, grid);
-
-    std::clog << ">>> Run degridder" << std::endl;
-    proxy.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrids);
+    std::clog << ">>> Run degridding" << std::endl;
+    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, aterm, spheroidal);
 
     // Free memory for data structures
     delete[] visibilities;
@@ -99,6 +85,5 @@ int run()
     delete[] aterm;
     delete[] spheroidal;
     delete[] grid;
-    delete[] subgrids;
-    delete[] metadata;
+    delete[] baselines;
 }

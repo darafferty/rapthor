@@ -15,6 +15,10 @@
 #define IDG_PROXY_H_
 
 #include <complex>
+#include <vector>
+#include <limits>
+#include <cstring>
+#include <iostream>
 
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
@@ -32,6 +36,11 @@ namespace idg {
 
 namespace idg {
     namespace proxy {
+
+        typedef struct { float u, v, w; } UVW;
+        typedef struct { int x, y; } Coordinate;
+        typedef struct { int station1, station2; } Baseline;
+        typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
 
         class Proxy
         {
@@ -51,7 +60,7 @@ namespace idg {
              * \param visibilities [in] complex<float>[BL][TI][CH][PL]
              * \param uvw [in] float[3*BL][TI]
              * \param wavenumbers [in] float[CH]
-             * \param metadata [in] ... what is; format
+             * \param baselines [in] int[BL][2]
              * \param grid [out] complex<float>[PL][GS][GS]
              * \param w_offset [in] float
              * \param aterm [in] complex<float>[ST][TI][PL][SB][SB]
@@ -61,7 +70,7 @@ namespace idg {
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
-                const int *metadata,
+                const int *baselines,
                 std::complex<float> *grid,
                 const float w_offset,
                 const std::complex<float> *aterm,
@@ -78,8 +87,8 @@ namespace idg {
              * SB = SUBGRIDSIZE
              * \param visibilities [out] complex<float>[BL][TI][CH][PL]
              * \param uvw [in] float[3*BL][TI]
-             * \param wavenumbers [in]
-             * \param metadata [in] ... what is; format
+             * \param wavenumbers [in] float[CH]
+             * \param baselines [in] int[BL][2]
              * \param grid [in] complex<float>[PL][GS][GS]
              * \param aterm [in] complex<float>[ST][TI][PL][SB][SB]
              * \param spheroidal [in] float[SB][SB]
@@ -88,7 +97,7 @@ namespace idg {
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
-                const int *metadata,
+                const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
                 const std::complex<float> *aterm,
@@ -101,7 +110,6 @@ namespace idg {
              */
             virtual void transform(DomainAtoDomainB direction,
                                    std::complex<float>* grid) = 0;
-
 
             // Auxiliary: set and get methods
             unsigned int get_nr_stations() const {
@@ -138,8 +146,6 @@ namespace idg {
                 return mParams.get_job_size_degridder(); }
             unsigned int get_nr_polarizations() const {
                 return mParams.get_nr_polarizations(); }
-            unsigned int get_nr_subgrids() const {
-                return mParams.get_nr_subgrids(); }
 
             void set_job_size(unsigned int js) {
                 mParams.set_job_size(js); }
@@ -148,11 +154,17 @@ namespace idg {
             void set_job_size_degridding(unsigned int js) {
                 mParams.set_job_size_degridding(js); }
 
+        public:
+            std::vector<Metadata> init_metadata(const float *uvw, const float *wavenumbers, const int *baselines);
+
         protected:
             Parameters mParams;  // store parameters passed on creation
-    };
+        };
 
-  } // namespace proxy
+        std::ostream& operator<<(std::ostream &out, idg::proxy::Baseline &b);
+        std::ostream& operator<<(std::ostream &out, idg::proxy::Coordinate &c);
+        std::ostream& operator<<(std::ostream &out, idg::proxy::Metadata &m);
+        std::ostream& operator<<(std::ostream &out, idg::proxy::UVW &uvw);
+    } // namespace proxy
 } // namespace idg
-
 #endif
