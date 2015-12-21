@@ -283,6 +283,7 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
                            'spline16', ... (see matplotlib imshow)
     """
     if (scaling=='log'):
+        grid = numpy.abs(grid) + 1
         grid = numpy.log(grid)
     if (scaling=='sqrt'):
         grid = numpy.sqrt(grid)

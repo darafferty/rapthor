@@ -14,6 +14,9 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
+    ############
+    # paramaters
+    ############
     nr_stations = 15
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 8
@@ -25,10 +28,16 @@ if __name__ == "__main__":
     grid_size = 1024
     integration_time = 10
 
+    ##################
+    # initialize proxy
+    ##################
     p = idg.CPU.Reference(nr_stations, nr_channels,
                           nr_timesteps, nr_timeslots,
                           image_size, grid_size, subgrid_size)
 
+    ##################
+    # print parameters
+    ##################
     print "Proxy: nr_stations = ", p.get_nr_stations()
     print "Proxy: nr_baselines = ", p.get_nr_baselines()
     print "Proxy: nr_channels = ", p.get_nr_channels()
@@ -40,15 +49,10 @@ if __name__ == "__main__":
     print "Proxy: image_size = ", p.get_image_size()
     print "Proxy: job size for gridding = ", p.get_job_size_gridding()
     print "Proxy: job size for degridding = ", p.get_job_size_degridding()
-    print "Change job size:"
-    p.set_job_size_gridding(4096)
-    p.set_job_size_degridding(4096)
-    print "Proxy: job size for gridding = ", p.get_job_size_gridding()
-    print "Proxy: job size for degridding = ", p.get_job_size_degridding()
 
-    ############
-    # initialize
-    ############
+    #################
+    # initialize data
+    #################
 
     # allocate memory for data
     nr_polarizations = p.get_nr_polarizations()
@@ -110,7 +114,7 @@ if __name__ == "__main__":
 
     p.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                         w_offset, aterms, spheroidal)
-    idg.utils.plot_grid(grid)
+    idg.utils.plot_grid(grid, scaling='log')
 
     # TODO: shift zero frequency to outer part
     grid = numpy.fft.ifftshift(grid, axes=(1,2))
