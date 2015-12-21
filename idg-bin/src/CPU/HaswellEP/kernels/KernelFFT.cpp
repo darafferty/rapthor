@@ -75,7 +75,7 @@ void kernel_fft_subgrid(
         fftwf_execute_dft(plan, data, data);
 
         // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
-        if (sign == 0) {
+        if (sign == FFTW_BACKWARD) {
             float scale = 1 / (double(size)*double(size));
             #pragma omp parallel for
             for (int i = 0; i < NR_POLARIZATIONS*size*size; i++) {
