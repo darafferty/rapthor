@@ -18,12 +18,12 @@
 #include <vector>
 #include <limits>
 #include <cstring>
-#include <iostream>
 
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
 #include "CompilerEnvironment.h" // to be use in derived class
+#include "Types.h"
 
 
 namespace idg {
@@ -36,12 +36,6 @@ namespace idg {
 
 namespace idg {
     namespace proxy {
-
-        typedef struct { float u, v, w; } UVW;
-        typedef struct { int x, y; } Coordinate;
-        typedef struct { int station1, station2; } Baseline;
-        typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
-
         class Proxy
         {
         public:
@@ -160,11 +154,6 @@ namespace idg {
         protected:
             Parameters mParams;  // store parameters passed on creation
         };
-
-        std::ostream& operator<<(std::ostream &out, idg::proxy::Baseline &b);
-        std::ostream& operator<<(std::ostream &out, idg::proxy::Coordinate &c);
-        std::ostream& operator<<(std::ostream &out, idg::proxy::Metadata &m);
-        std::ostream& operator<<(std::ostream &out, idg::proxy::UVW &uvw);
     } // namespace proxy
 } // namespace idg
 #endif

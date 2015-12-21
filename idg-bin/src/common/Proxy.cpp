@@ -102,34 +102,6 @@ namespace idg {
             return metadata;
         }
 
-        ostream& operator<<(ostream &out, idg::proxy::Baseline &b) {
-            out << "("
-                << b.station1 << ","
-                << b.station2 << ")";
-            return out;
-        }
-
-        ostream& operator<<(ostream &out, idg::proxy::Coordinate &c) {
-            out << "("
-                << c.x << ","
-                << c.y << ")";
-            return out;
-        }
-
-        ostream& operator<<(ostream &out, idg::proxy::Metadata &m) {
-            out << m.time_nr << ", "
-                << m.baseline << ", "
-                << m.coordinate;
-            return out;
-        }
-
-        ostream& operator<<(ostream &out, idg::proxy::UVW &uvw) {
-            out << "("
-                << uvw.u << ","
-                << uvw.v << ","
-                << uvw.w << ")";
-            return out;
-        }
     } // namespace proxy
 } // namespace idg
 
@@ -187,6 +159,6 @@ extern "C" {
 
     void Proxy_init_metadata(Proxy_t* p, void *metadata, void *uvw, void *wavenumbers, void *baselines) {
         auto _metadata = p->init_metadata((float *) uvw, (float *) wavenumbers, (int *) baselines);
-        memcpy(metadata, _metadata.data(), _metadata.size() * sizeof(idg::proxy::Metadata));
+        memcpy(metadata, _metadata.data(), _metadata.size() * sizeof(idg::Metadata));
     }
 } // end extern "C"
