@@ -43,7 +43,9 @@ namespace idg {
                 batch != planned_batch ||
                 size < bulk_size) {
                 int remainder = batch % bulk_size;
-                fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
+                if (remainder > 0) {
+                    fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
+                }
             }
 
             // Set parameters

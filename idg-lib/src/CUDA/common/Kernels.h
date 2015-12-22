@@ -191,7 +191,7 @@ namespace idg {
                     int nr_polarizations = parameters.get_nr_polarizations();
 
                     // Execute bulk ffts (if any)
-                    if (planned_batch > bulk_size) {
+                    if (planned_batch >= bulk_size) {
                         (*fft_bulk).setStream(stream);
                         for (; s < (planned_batch - bulk_size); s += bulk_size) {
                             (*fft_bulk).execute(data_ptr, data_ptr, direction);
@@ -200,8 +200,10 @@ namespace idg {
                     }
 
                     // Execute remainder ffts
-                    (*fft_remainder).setStream(stream);
-                    (*fft_remainder).execute(data_ptr, data_ptr, direction);
+                    if (fft_remainder) {
+                        (*fft_remainder).setStream(stream);
+                        (*fft_remainder).execute(data_ptr, data_ptr, direction);
+                    }
 
                     // Custom FFT kernel is disabled
                     //cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
@@ -226,7 +228,7 @@ namespace idg {
                 Parameters parameters;
                 int planned_size;
                 int planned_batch;
-                const int bulk_size = 8192;
+                const int bulk_size = 1024;
                 cufft::C2C_2D *fft_bulk;
                 cufft::C2C_2D *fft_remainder;
             };
