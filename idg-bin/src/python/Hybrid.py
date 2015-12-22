@@ -78,13 +78,13 @@ class MaxwellHaswellEP(Proxy):
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,
-                                metadata, grid, w_offset, aterms,
+                                baselines, grid, w_offset, aterms,
                                 spheroidal):
         lib.Hybrid_MaxwellHaswellEP_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
                                wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                               metadata.ctypes.data_as(ctypes.c_void_p),
+                               baselines.ctypes.data_as(ctypes.c_void_p),
                                grid.ctypes.data_as(ctypes.c_void_p),
                                ctypes.c_float(w_offset),
                                aterms.ctypes.data_as(ctypes.c_void_p),
@@ -92,14 +92,14 @@ class MaxwellHaswellEP(Proxy):
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_degrid_visibilities(self, visibilities, uvw,
-                                   wavenumbers, metadata,
+                                   wavenumbers, baselines,
                                    grid, w_offset, aterms,
                                    spheroidal):
         lib.Hybrid_MaxwellHaswellEP_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
                                  uvw.ctypes.data_as(ctypes.c_void_p),
                                  wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                                 metadata.ctypes.data_as(ctypes.c_void_p),
+                                 baselines.ctypes.data_as(ctypes.c_void_p),
                                  grid.ctypes.data_as(ctypes.c_void_p),
                                  ctypes.c_float(w_offset),
                                  aterms.ctypes.data_as(ctypes.c_void_p),
