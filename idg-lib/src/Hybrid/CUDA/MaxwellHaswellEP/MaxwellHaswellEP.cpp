@@ -44,7 +44,7 @@ namespace idg {
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
-                const int *metadata,
+                const int *baselines,
                 std::complex<float> *grid,
                 const float w_offset,
                 const std::complex<float> *aterm,
@@ -52,6 +52,11 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // initialize metadata
+                vector<Metadata> _metadata = init_metadata(uvw, wavenumbers, baselines);
+                auto nr_subgrids = _metadata.size();
+                const int *metadata = (const int *) _metadata.data();
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = cuda.get_kernel_gridder();
@@ -70,7 +75,6 @@ namespace idg {
 				auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
-    			auto nr_subgrids = nr_baselines * nr_timeslots;
 
 			    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
 			    auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
@@ -242,7 +246,7 @@ namespace idg {
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
-                const int *metadata,
+                const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
                 const std::complex<float> *aterm,
@@ -250,6 +254,11 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // initialize metadata
+                vector<Metadata> _metadata = init_metadata(uvw, wavenumbers, baselines);
+                auto nr_subgrids = _metadata.size();
+                const int *metadata = (const int *) _metadata.data();
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = cuda.get_kernel_degridder();
@@ -268,7 +277,6 @@ namespace idg {
 				auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
-    			auto nr_subgrids = nr_baselines * nr_timeslots;
 
 			    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
 			    auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;

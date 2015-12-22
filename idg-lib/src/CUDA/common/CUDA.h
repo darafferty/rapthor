@@ -148,12 +148,6 @@ namespace idg {
                 std::vector<cu::Module*> modules;
                 std::map<std::string,int> which_module;
 
-            // protected:
-            //     std::string name_gridder   = "kernel_gridder";
-            //     std::string name_degridder = "kernel_degridder";
-            //     std::string name_adder     = "kernel_adder";
-            //     std::string name_splitter  = "kernel_splitter";
-            //     std::string name_fft       = "kernel_fft";
             }; // class CUDA
         } // namespace cuda
     } // namespace proxy

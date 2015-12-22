@@ -196,7 +196,7 @@ class Proxy(object):
         return lib.Proxy_get_job_size_degridding(self.obj)
 
     def set_job_size(self, n = 8192):
-        lib.Proxy_set_job_size(self.obj, ctypes.cint(n))
+        lib.Proxy_set_job_size(self.obj, ctypes.c_int(n))
 
     def set_job_size_gridding(self, n = 8192):
         lib.Proxy_set_job_size_gridding(self.obj, ctypes.c_int(n))
