@@ -14,6 +14,11 @@ except OSError:
     pass
 
 try:
+    import KNC
+except OSError:
+    pass
+
+try:
     import utils
 except OSError:
     pass
