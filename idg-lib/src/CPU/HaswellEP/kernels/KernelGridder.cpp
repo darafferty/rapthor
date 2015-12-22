@@ -51,10 +51,10 @@ void kernel_gridder_intel(
         // Storage for precomputed values
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        FLOAT_COMPLEX vis[NR_POLARIZATIONS][NR_CHANNELS] __attribute__((aligned(32)));
-        float phasor_real[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float phasor_imag[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float phase[NR_CHANNELS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        FLOAT_COMPLEX vis[NR_POLARIZATIONS] __attribute__((aligned(32)));
+        float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phase[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
 
         // Iterate all timesteps
         for (int time = 0; time < NR_TIMESTEPS; time++) {
@@ -80,37 +80,33 @@ void kernel_gridder_intel(
             }
 
             // Load visibilities
-            #pragma simd
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    vis[pol][chan] = (*visibilities)[s][time][chan][pol];
+                    vis[pol] = (*visibilities)[s][time][chan][pol];
                 }
-            }
 
-            // Compute phase
-            for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                // Compute phase
+                #pragma unroll_and_jam
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        phase[chan][y][x] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
+                        phase[y][x] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
                     }
                 }
-            }
 
-            // Compute phasor
-            vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS,
-                (const float *) &phase[0][0][0],
-                                &phasor_imag[0][0][0],
-                                &phasor_real[0][0][0], VML_PRECISION);
+                // Compute phasor
+                vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE,
+                (const float *) &phase[0][0],
+                                &phasor_imag[0][0],
+                                &phasor_real[0][0], VML_PRECISION);
 
-            // Update current subgrid
-            for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                #pragma unroll_and_jam(2)
+                // Update current subgrid
+                #pragma unroll_and_jam
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[chan][y][x], phasor_imag[chan][y][x]);
                         #pragma simd
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels[y][x][pol] += vis[pol][chan] * phasor;
+                            FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x], phasor_imag[y][x]);
+                            pixels[y][x][pol] += vis[pol] * phasor;
                         }
                     }
                 }
@@ -164,6 +160,7 @@ void kernel_gridder_intel(
                 int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                 // Set subgrid value
+                #pragma simd
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     (*subgrid)[s][pol][y_dst][x_dst] = pixels[y][x][pol] * _spheroidal;
                 }
@@ -207,7 +204,7 @@ void kernel_gridder(
     kernel_gridder_gnu(
           jobsize, w_offset, uvw, wavenumbers,
           visibilities, spheroidal, aterm, metadata, subgrid);
-    #else 
+    #else
     printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
     return;
     #endif
