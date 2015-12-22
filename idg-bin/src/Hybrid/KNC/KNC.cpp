@@ -46,7 +46,7 @@ namespace idg {
                 const complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
-                const int *metadata,
+                const int *baselines,
                 complex<float> *grid,
                 const float w_offset,
                 const complex<float> *aterms,
@@ -56,10 +56,13 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                // initialize metadata
+                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                auto nr_subgrids = metadata.size();
+
                 // allocate 'subgrids' memory for subgrids
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_subgrids = mParams.get_nr_subgrids();
                 auto nr_polarizations = mParams.get_nr_polarizations();;
                 auto subgridsize = mParams.get_subgrid_size();
                 auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
@@ -73,11 +76,11 @@ namespace idg {
                     const_cast<complex<float>*>(visibilities),
                     const_cast<float*>(spheroidal),
                     const_cast<complex<float>*>(aterms),
-                    const_cast<int*>(metadata),
+                    (int*) metadata.data(),
                     subgrids);
 
                 add_subgrids_to_grid(nr_subgrids,
-                    const_cast<int*>(metadata),
+                    (int*) metadata.data(),
                     subgrids,
                     grid);
 
@@ -89,7 +92,7 @@ namespace idg {
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
-                const int *metadata,
+                const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
                 const std::complex<float> *aterms,
@@ -99,18 +102,21 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                // initialize metadata
+                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                auto nr_subgrids = metadata.size();
+
                 // allocate 'subgrids' memory for subgrids
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_subgrids = nr_baselines * nr_timeslots;
                 auto nr_polarizations = mParams.get_nr_polarizations();;
                 auto subgridsize = mParams.get_subgrid_size();
                 auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
                                      subgridsize*subgridsize;
-                auto subgrids = new complex<float>[size_subgrids];
+                auto subgrids = new complex<float>[size_subgrids]; // make unique_ptr
 
                 split_grid_into_subgrids(nr_subgrids,
-                    const_cast<int*>(metadata),
+                    (int*) metadata.data(),
                     subgrids,
                     const_cast<complex<float>*>(grid));
 
@@ -121,7 +127,7 @@ namespace idg {
                     visibilities,
                     const_cast<float*>(spheroidal),
                     const_cast<complex<float>*>(aterms),
-                    const_cast<int*>(metadata),
+                    (int*) metadata.data(),
                     subgrids);
 
                 delete[] subgrids;
@@ -535,9 +541,9 @@ namespace idg {
             total_runtime_degridding = -omp_get_wtime();
 
             // Start degridder
-            // #pragma omp target data \
-            //     map(to:wavenumbers_ptr[0:wavenumbers_elements]) \
-            //     map(to:spheroidal_ptr[0:spheroidal_elements]) \
+            //#pragma omp target data                            \
+            //     map(to:wavenumbers_ptr[0:wavenumbers_elements])  \
+            //     map(to:spheroidal_ptr[0:spheroidal_elements])    \
             //     map(to:aterms_ptr[0:aterms_elements])
             {
                 cout << "No degridding!!" << endl;
