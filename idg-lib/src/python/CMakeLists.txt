@@ -5,6 +5,7 @@ install(FILES
         idg.py
         CPU.py
         Hybrid.py
+        KNC.py
         Proxy.py
         utils.py
         DESTINATION
