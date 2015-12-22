@@ -51,7 +51,7 @@ void kernel_gridder_intel(
         // Storage for precomputed values
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        FLOAT_COMPLEX vis[NR_CHANNELS][NR_POLARIZATIONS] __attribute__((aligned(32)));
+        FLOAT_COMPLEX vis[NR_POLARIZATIONS][NR_CHANNELS] __attribute__((aligned(32)));
         float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
         float phase[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
@@ -80,9 +80,10 @@ void kernel_gridder_intel(
             }
 
             // Load visibilities
+            #pragma simd
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    vis[chan][pol] = (*visibilities)[s][time][chan][pol];
+                    vis[pol][chan] = (*visibilities)[s][time][chan][pol];
                 }
             }
 
@@ -102,18 +103,18 @@ void kernel_gridder_intel(
                                 &phasor_real[0][0][0], VML_PRECISION);
 
             // Update current subgrid
+            #pragma simd
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     for (int chan = 0; chan < NR_CHANNELS; chan++) {
                         FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
-
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels[y][x][pol] += vis[chan][pol] * phasor;
+                            pixels[y][x][pol] += vis[pol][chan] * phasor;
                         }
                     }
                 }
             }
-       }
+        }
 
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < SUBGRIDSIZE; y++) {
