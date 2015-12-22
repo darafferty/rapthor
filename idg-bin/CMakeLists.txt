@@ -96,15 +96,20 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+# TODO: make proper use of FindFFTW3
+# Now, when using MKL the include directory '$MKLROOT/include/fftw' is unknown
+# and needs to be put into the CPATH to make it work
+# if (BUILD_LIB_CPU)
+#    find_package(FFTW3)
+# endif (BUILD_LIB_CPU)
+
 # find CUDA environment 
-# (see http://www.cmake.org/cmake/help/v3.0/module/FindCUDA.html)
 if (BUILD_LIB_CUDA)
     find_package(CUDA)
     find_package(CUDAdriver)
 endif (BUILD_LIB_CUDA)
 
 # find OpenCL environment
-# (see http://www.cmake.org/cmake/help/v3.1/module/FindOpenCL.html)
 if (BUILD_LIB_OPENCL)
     find_package(OpenCL)
     find_package(clFFT)

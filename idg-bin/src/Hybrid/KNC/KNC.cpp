@@ -541,106 +541,104 @@ namespace idg {
             total_runtime_degridding = -omp_get_wtime();
 
             // Start degridder
-            //#pragma omp target data                            \
-            //     map(to:wavenumbers_ptr[0:wavenumbers_elements])  \
-            //     map(to:spheroidal_ptr[0:spheroidal_elements])    \
-            //     map(to:aterms_ptr[0:aterms_elements])
+            #pragma omp target data                            \
+                 map(to:wavenumbers_ptr[0:wavenumbers_elements])  \
+                 map(to:spheroidal_ptr[0:spheroidal_elements])    \
+                 map(to:aterms_ptr[0:aterms_elements])
             {
-                cout << "No degridding!!" << endl;
-            //     for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
-            //         // Prevent overflow
-            //         int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+                for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
+                    // Prevent overflow
+                    int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
-            //         // Number of elements in batch
-            //         int uvw_elements          = nr_timesteps * 3;
-            //         int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
-            //         int metadata_elements     = 5;
-            //         int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                    // Number of elements in batch
+                    int uvw_elements          = nr_timesteps * 3;
+                    int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
+                    int metadata_elements     = 5;
+                    int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
 
-            //         // Pointers to data for current batch
-            //         float *uvw_ptr                   = (float *) uvw + s * uvw_elements;
-            //         complex<float> *visibilities_ptr = (complex<float>*) visibilities
-            //                                            + s * visibilities_elements;
-            //         complex<float> *subgrids_ptr     = (complex<float>*) subgrids
-            //                                            + s * subgrid_elements;
-            //         int *metadata_ptr                = (int *) metadata + s * metadata_elements;
+                    // Pointers to data for current batch
+                    float *uvw_ptr                   = (float *) uvw + s * uvw_elements;
+                    complex<float> *visibilities_ptr = (complex<float>*) visibilities
+                                                       + s * visibilities_elements;
+                    complex<float> *subgrids_ptr     = (complex<float>*) subgrids
+                                                       + s * subgrid_elements;
+                    int *metadata_ptr                = (int *) metadata + s * metadata_elements;
 
-            //         // Power measurement
-            //         PowerSensor::State powerStates[3];
-            //         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            //         powerStates[0] = powerSensor->read();
-            //         #endif
+                    // Power measurement
+                    PowerSensor::State powerStates[3];
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    powerStates[0] = powerSensor->read();
+                    #endif
 
-            //         // Performance measurement
-            //         double runtime_degridder, runtime_fft;
+                    // Performance measurement
+                    double runtime_degridder, runtime_fft;
 
-            //         #pragma omp target \
-            //             map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
-            //             map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
-            //             map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
-            //             map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
-            //         {
-            //             runtime_fft = -omp_get_wtime();
-            //             kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
-            //                        -1, nr_polarizations);
-            //             runtime_fft += omp_get_wtime();
-            //         }
+                    #pragma omp target \
+                        map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
+                        map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
+                        map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
+                        map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
+                    {
+                        runtime_fft = -omp_get_wtime();
+                        kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
+                                   -1, nr_polarizations);
+                        runtime_fft += omp_get_wtime();
+                    }
 
-            //         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            //         powerStates[1] = powerSensor->read();
-            //         #endif
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    powerStates[1] = powerSensor->read();
+                    #endif
 
-            //         #pragma omp target \
-            //             map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
-            //             map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
-            //             map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
-            //             map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
-            //         {
-            //             runtime_degridder = -omp_get_wtime();
-            //             kernel_degridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
-            //                 visibilities_ptr, spheroidal_ptr, aterms_ptr,
-            //                 metadata_ptr, subgrids_ptr, nr_stations, nr_timesteps, nr_timeslots,
-            //                 nr_channels, subgridsize, imagesize, nr_polarizations);
-            //             runtime_degridder += omp_get_wtime();
-            //         }
+                    #pragma omp target \
+                        map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
+                        map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
+                        map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
+                        map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
+                    {
+                        runtime_degridder = -omp_get_wtime();
+                        kernel_degridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
+                            visibilities_ptr, spheroidal_ptr, aterms_ptr,
+                            metadata_ptr, subgrids_ptr, nr_stations, nr_timesteps, nr_timeslots,
+                            nr_channels, subgridsize, imagesize, nr_polarizations);
+                        runtime_degridder += omp_get_wtime();
+                    }
 
-            //         #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            //         powerStates[2] = powerSensor->read();
-            //         total_runtime_fft += runtime_fft;
-            //         total_runtime_degridder += runtime_degridder;
-            //         #endif
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    powerStates[2] = powerSensor->read();
+                    total_runtime_fft += runtime_fft;
+                    total_runtime_degridder += runtime_degridder;
+                    #endif
 
-            //         #if defined(REPORT_VERBOSE)
-            //         auxiliary::report("fft", runtime_fft,
-            //             kernel_fft_flops(subgridsize, current_jobsize, nr_polarizations),
-            //             kernel_fft_bytes(subgridsize, current_jobsize, nr_polarizations),
-            //             PowerSensor::Watt(powerStates[0], powerStates[1]));
-            //         auxiliary::report("degridder", runtime_degridder,
-            //             kernel_degridder_flops(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
-            //             kernel_degridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
-            //             PowerSensor::Watt(powerStates[1], powerStates[2]));
-            //         #endif
-            //     } // end for s
+                    #if defined(REPORT_VERBOSE)
+                    auxiliary::report("fft", runtime_fft,
+                        kernel_fft_flops(subgridsize, current_jobsize, nr_polarizations),
+                        kernel_fft_bytes(subgridsize, current_jobsize, nr_polarizations),
+                        PowerSensor::Watt(powerStates[0], powerStates[1]));
+                    auxiliary::report("degridder", runtime_degridder,
+                        kernel_degridder_flops(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
+                        kernel_degridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
+                        PowerSensor::Watt(powerStates[1], powerStates[2]));
+                    #endif
+                } // end for s
 
             } // end pragma omp target data
 
-            // #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-            // total_runtime_degridding += omp_get_wtime();
-            // total_runtime_degridding = total_runtime_degridder + total_runtime_fft;
-            // clog << endl;
-            // uint64_t total_flops_degridder  = kernel_degridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
-            // uint64_t total_bytes_degridder  = kernel_degridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
-            // uint64_t total_flops_fft      = kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations);
-            // uint64_t total_bytes_fft      = kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations);
-            // uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
-            // uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
-            // auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-            // auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-            // auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
-            // auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
-            // clog << endl;
-            // #endif
-
+            #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+            total_runtime_degridding += omp_get_wtime();
+            total_runtime_degridding = total_runtime_degridder + total_runtime_fft;
+            clog << endl;
+            uint64_t total_flops_degridder  = kernel_degridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_bytes_degridder  = kernel_degridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_flops_fft      = kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_bytes_fft      = kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
+            uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
+            auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+            auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+            auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
+            auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            clog << endl;
+            #endif
         }
 
         } // namespace hybrid
