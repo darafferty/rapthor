@@ -135,8 +135,6 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                // Gridder kernel_gridder(*(modules[which_module[name_gridder]]), mParams);
-                // cu::Module *module_fft = (modules[which_module[name_fft]]);
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
