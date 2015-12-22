@@ -424,3 +424,50 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
     plt.axes().set_aspect('equal')
     plt.xlim([0, grid_size])
     plt.ylim([grid_size, 0])
+
+
+
+def init_grid_of_point_sources(N, image_size, visibilities, uvw,
+                               wavenumbers, asymmetric=False):
+    """Initialize visibilities (and set w=0) to
+    get a grid of N by N point sources
+
+    Arguments:
+    N - odd integer for N by N point sources
+    image_size - ...
+    visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
+                                 nr_channels, nr_polarizations),
+                                 dtype=idg.visibilitiestype)
+    uvw - numpy.ndarray(shape=(nr_baselines,nr_time),
+                        dtype = idg.uvwtype)
+    wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
+    asymmetric - bool to make positive (l,m) twice in magnitude
+    """
+
+    # make sure N is odd, w=0, visibilities are zero initially
+    if math.fmod(N,2)==0:
+        N += 1
+    uvw['w'] = 0
+    visibilities.fill(0)
+
+    # create visibilities
+    nr_baselines = visibilities.shape[0]
+    nr_time = visibilities.shape[1]
+    nr_channels = visibilities.shape[2]
+    nr_polarizations = visibilities.shape[3]
+
+    for b in range(nr_baselines):
+        for t in range(nr_time):
+            for c in range(nr_channels):
+                u = wavenumbers[c]*uvw[b][t]['u']/(2*numpy.pi)
+                v = wavenumbers[c]*uvw[b][t]['v']/(2*numpy.pi)
+                for i in range(-N/2+1,N/2+1):     # -N/2,-N/2+1,..,-1,0,1,...,N/2
+                    for j in range(-N/2+1,N/2+1): # -N/2,-N/2+1,..,-1,0,1,...,N/2
+                        l = i*image_size/(N+1)
+                        m = j*image_size/(N+1)
+                        value = numpy.exp(numpy.complex(0,-2*numpy.pi*(u*l + v*m)))
+                        if asymmetric==True:
+                            if l>0 and m>0:
+                                value *= 2
+                        for p in range(nr_polarizations):
+                            visibilities[b][t][c][p] += value
