@@ -48,7 +48,7 @@ template <typename ProxyType>
 int run_test()
 {
     int info = 0;
-    float tol = 100*std::numeric_limits<float>::epsilon();
+    float tol = 10000*std::numeric_limits<float>::epsilon();
 
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;

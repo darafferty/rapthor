@@ -40,11 +40,13 @@ void kernel_degridder_intel(
 
         // Storage for precomputed values
         FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
+        float pixels_real[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float pixels_imag[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
         float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
         float phase_offset[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
-        float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
-        float phase[SUBGRIDSIZE][SUBGRIDSIZE][NR_CHANNELS] __attribute__((aligned(32)));
+        float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        float phase[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
 
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
@@ -98,6 +100,19 @@ void kernel_degridder_intel(
             }
         }
 
+        // Copy pixels from _pixels to pixels_real and pixels_imag
+        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            for (int y = 0; y < SUBGRIDSIZE; y++) {
+                for (int x = 0; x < SUBGRIDSIZE; x++) {
+                    pixels_real[pol][y][x] =  _pixels[y][x][pol].real();
+                    pixels_imag[pol][y][x] =  _pixels[y][x][pol].imag();
+                }
+            }
+        }
+
+        // Reset all visibilities
+        memset(&(*visibilities)[s][0][0][0], 0, NR_TIMESTEPS * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+
         // Iterate all timesteps
         for (int time = 0; time < NR_TIMESTEPS; time++) {
             // Load UVW coordinates
@@ -121,42 +136,60 @@ void kernel_degridder_intel(
                 }
             }
 
-            // Compute phase
-            for (int y = 0; y < SUBGRIDSIZE; y++) {
-                for (int x = 0; x < SUBGRIDSIZE; x++) {
-                    for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        phase[y][x][chan] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
-                    }
-                }
-            }
-
-            // Compute phasor
-            vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE * NR_CHANNELS,
-                (const float *) &phase[0][0][0],
-                                &phasor_imag[0][0][0],
-                                &phasor_real[0][0][0], VML_PRECISION);
-
-
-            FLOAT_COMPLEX sum[NR_POLARIZATIONS] __attribute__((aligned(32)));
-
+            // Iterate all channels
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                memset(sum, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
-
+                // Compute phase
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real[y][x][chan], phasor_imag[y][x][chan]);
-
-                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            sum[pol] += _pixels[y][x][pol] * phasor;
-                        }
+                        phase[y][x] = (phase_index[y][x] * (*wavenumbers)[chan]) - phase_offset[y][x];
                     }
                 }
 
-                // Set visibilities
-                (*visibilities)[s][time][chan][0] = sum[0];
-                (*visibilities)[s][time][chan][1] = sum[1];
-                (*visibilities)[s][time][chan][2] = sum[2];
-                (*visibilities)[s][time][chan][3] = sum[3];
+                // Compute phasor
+                vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE,
+                    (const float *) &phase[0][0],
+                                    &phasor_imag[0][0],
+                                    &phasor_real[0][0], VML_PRECISION);
+
+                // Storage for sums
+                float sum_xx_real, sum_xx_imag;
+                float sum_xy_real, sum_xy_imag;
+                float sum_yx_real, sum_yx_imag;
+                float sum_yy_real, sum_yy_imag;
+
+                // Accumulate visibilities
+                for (int y = 0; y < SUBGRIDSIZE; y++) {
+                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                        float _phasor_real = phasor_real[y][x];
+                        float _phasor_imag = phasor_imag[y][x];
+
+                        sum_xx_real += _phasor_real * pixels_real[0][y][x];
+                        sum_xx_imag += _phasor_real * pixels_imag[0][y][x];
+                        sum_xx_real -= _phasor_imag * pixels_imag[0][y][x];
+                        sum_xx_imag += _phasor_imag * pixels_real[0][y][x];
+
+                        sum_xy_real += _phasor_real * pixels_real[1][y][x];
+                        sum_xy_imag += _phasor_real * pixels_imag[1][y][x];
+                        sum_xy_real -= _phasor_imag * pixels_imag[1][y][x];
+                        sum_xy_imag += _phasor_imag * pixels_real[1][y][x];
+
+                        sum_yx_real += _phasor_real * pixels_real[2][y][x];
+                        sum_yx_imag += _phasor_real * pixels_imag[2][y][x];
+                        sum_yx_real -= _phasor_imag * pixels_imag[2][y][x];
+                        sum_yx_imag += _phasor_imag * pixels_real[2][y][x];
+
+                        sum_yy_real += _phasor_real * pixels_real[3][y][x];
+                        sum_yy_imag += _phasor_real * pixels_imag[3][y][x];
+                        sum_yy_real -= _phasor_imag * pixels_imag[3][y][x];
+                        sum_yy_imag += _phasor_imag * pixels_real[3][y][x];
+                    }
+                }
+
+                // Store visibilities
+                (*visibilities)[s][time][chan][0] = {sum_xx_real, sum_xx_imag};
+                (*visibilities)[s][time][chan][1] = {sum_xy_real, sum_xy_imag};
+                (*visibilities)[s][time][chan][2] = {sum_yx_real, sum_yx_imag};
+                (*visibilities)[s][time][chan][3] = {sum_yy_real, sum_yy_imag};
             }
         }
 	}
@@ -197,7 +230,7 @@ void kernel_degridder(
     kernel_degridder_gnu(
           jobsize, w_offset, uvw, wavenumbers,
           visibilities, spheroidal, aterm, metadata, subgrid);
-    #else 
+    #else
     printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
     #endif
 }
