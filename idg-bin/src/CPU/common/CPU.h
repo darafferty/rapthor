@@ -78,38 +78,38 @@ namespace idg {
                 // Low level routines
                 public:
                     virtual void grid_onto_subgrids(
-                        unsigned nr_subgrids,
-                        float w_offset,
-                        float *uvw,
-                        float *wavenumbers,
-                        std::complex<float> *visibilities,
-                        float *spheroidal,
-                        std::complex<float> *aterm,
-                        int *metadata,
+                        const unsigned nr_subgrids,
+                        const float w_offset,
+                        const float *uvw,
+                        const float *wavenumbers,
+                        const std::complex<float> *visibilities,
+                        const float *spheroidal,
+                        const std::complex<float> *aterm,
+                        const int *metadata,
                         std::complex<float> *subgrids);
 
                     virtual void add_subgrids_to_grid(
-                        unsigned nr_subgrids,
-                        int *metadata,
-                        std::complex<float> *subgrids,
+                        const unsigned nr_subgrids,
+                        const int *metadata,
+                        const std::complex<float> *subgrids,
                         std::complex<float> *grid);
 
                     virtual void split_grid_into_subgrids(
-                        unsigned nr_subgrids,
-                        int *metadata,
+                        const unsigned nr_subgrids,
+                        const int *metadata,
                         std::complex<float> *subgrids,
-                        std::complex<float> *grid);
+                        const std::complex<float> *grid);
 
                     virtual void degrid_from_subgrids(
-                        unsigned nr_subgrids,
-                        float w_offset,
-                        float *uvw,
-                        float *wavenumbers,
+                        const unsigned nr_subgrids,
+                        const float w_offset,
+                        const float *uvw,
+                        const float *wavenumbers,
                         std::complex<float> *visibilities,
-                        float *spheroidal,
-                        std::complex<float> *aterm,
-                        int *metadata,
-                        std::complex<float> *subgrids);
+                        const float *spheroidal,
+                        const std::complex<float> *aterm,
+                        const int *metadata,
+                        const std::complex<float> *subgrids);
 
 
                     // Auxiliary: additional set and get methods
