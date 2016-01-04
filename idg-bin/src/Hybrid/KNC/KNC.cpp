@@ -13,7 +13,7 @@ namespace idg {
     namespace proxy {
         namespace hybrid {
 
-            // Power sensor
+            // Power sensor (TODO: why here? why not a member of the class?)
             static PowerSensor *powerSensor = nullptr;
 
             /// Constructors
@@ -56,36 +56,48 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // initialize metadata
-                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
-                auto nr_subgrids = metadata.size();
+                try {
+                    // initialize metadata
+                    vector<Metadata> metadata = init_metadata(uvw,
+                                                              wavenumbers,
+                                                              baselines);
+                    auto nr_subgrids = metadata.size();
 
-                // allocate 'subgrids' memory for subgrids
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();;
-                auto subgridsize = mParams.get_subgrid_size();
-                auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
-                                     subgridsize*subgridsize;
-                auto subgrids = new complex<float>[size_subgrids];
+                    // allocate 'subgrids' memory for subgrids
+                    auto nr_baselines = mParams.get_nr_baselines();
+                    auto nr_timeslots = mParams.get_nr_timeslots();
+                    auto nr_polarizations = mParams.get_nr_polarizations();;
+                    auto subgridsize = mParams.get_subgrid_size();
+                    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
+                                         subgridsize*subgridsize;
+                    auto subgrids = new complex<float>[size_subgrids];
 
-                grid_onto_subgrids(nr_subgrids,
-                    w_offset,
-                    const_cast<float*>(uvw),
-                    const_cast<float*>(wavenumbers),
-                    const_cast<complex<float>*>(visibilities),
-                    const_cast<float*>(spheroidal),
-                    const_cast<complex<float>*>(aterms),
-                    (int*) metadata.data(),
-                    subgrids);
+                    grid_onto_subgrids(
+                        nr_subgrids,
+                        w_offset,
+                        uvw,
+                        wavenumbers,
+                        visibilities,
+                        spheroidal,
+                        aterms,
+                        (int*) metadata.data(),
+                        subgrids);
 
-                add_subgrids_to_grid(nr_subgrids,
-                    (int*) metadata.data(),
-                    subgrids,
-                    grid);
+                    add_subgrids_to_grid(
+                        nr_subgrids,
+                        (int*) metadata.data(),
+                        subgrids,
+                        grid);
 
-                delete[] subgrids;
-            };
+                    delete[] subgrids;
+
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
+            }
 
 
             void KNC::degrid_visibilities(
@@ -102,36 +114,46 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // initialize metadata
-                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
-                auto nr_subgrids = metadata.size();
+                try {
+                    // initialize metadata
+                    vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                    auto nr_subgrids = metadata.size();
 
-                // allocate 'subgrids' memory for subgrids
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();;
-                auto subgridsize = mParams.get_subgrid_size();
-                auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
-                                     subgridsize*subgridsize;
-                auto subgrids = new complex<float>[size_subgrids]; // make unique_ptr
+                    // allocate 'subgrids' memory for subgrids
+                    auto nr_baselines = mParams.get_nr_baselines();
+                    auto nr_timeslots = mParams.get_nr_timeslots();
+                    auto nr_polarizations = mParams.get_nr_polarizations();;
+                    auto subgridsize = mParams.get_subgrid_size();
+                    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
+                                         subgridsize*subgridsize;
+                    auto subgrids = new complex<float>[size_subgrids]; // make unique_ptr
 
-                split_grid_into_subgrids(nr_subgrids,
-                    (int*) metadata.data(),
-                    subgrids,
-                    const_cast<complex<float>*>(grid));
+                    split_grid_into_subgrids(
+                        nr_subgrids,
+                        (int*) metadata.data(),
+                        subgrids,
+                        grid);
 
-                degrid_from_subgrids(nr_subgrids,
-                    w_offset,
-                    const_cast<float*>(uvw),
-                    const_cast<float*>(wavenumbers),
-                    visibilities,
-                    const_cast<float*>(spheroidal),
-                    const_cast<complex<float>*>(aterms),
-                    (int*) metadata.data(),
-                    subgrids);
+                    degrid_from_subgrids(
+                        nr_subgrids,
+                        w_offset,
+                        uvw,
+                        wavenumbers,
+                        visibilities,
+                        spheroidal,
+                        aterms,
+                        (int*) metadata.data(),
+                        subgrids);
 
-                delete[] subgrids;
-            };
+                    delete[] subgrids;
+
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
+            }
 
 
 
@@ -142,52 +164,59 @@ namespace idg {
                 cout << "Transform direction: " << direction << endl;
                 #endif
 
-                int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+                try {
+                    int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
-                // Performance measurements
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                double runtime;
-                #endif
+                    // Performance measurements
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    double runtime;
+                    #endif
 
-                // Constants
-                auto gridsize = mParams.get_grid_size();
-                auto nr_polarizations = mParams.get_nr_polarizations();
+                    // Constants
+                    auto gridsize = mParams.get_grid_size();
+                    auto nr_polarizations = mParams.get_nr_polarizations();
 
-                // Start fft
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime = -omp_get_wtime();
-                #endif
+                    // Start fft
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    runtime = -omp_get_wtime();
+                    #endif
 
-                kernel_fft(gridsize, 1, grid, sign, nr_polarizations);
+                    kernel_fft(gridsize, 1, grid, sign, nr_polarizations);
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                runtime += omp_get_wtime();
-                #endif
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    runtime += omp_get_wtime();
+                    #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                clog << endl;
-                clog << "Total: fft" << endl;
-                auxiliary::report("fft", runtime,
-                                  kernel_fft_flops(gridsize, 1, nr_polarizations),
-                                  kernel_fft_bytes(gridsize, 1, nr_polarizations));
-                auxiliary::report_runtime(runtime);
-                clog << endl;
-                #endif
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    clog << endl;
+                    clog << "Total: fft" << endl;
+                    auxiliary::report("fft", runtime,
+                                      kernel_fft_flops(gridsize, 1, nr_polarizations),
+                                      kernel_fft_bytes(gridsize, 1, nr_polarizations));
+                    auxiliary::report_runtime(runtime);
+                    clog << endl;
+                    #endif
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
             }
 
 
 
             /// Low level routines
             void KNC::grid_onto_subgrids(
-                    unsigned nr_subgrids,
-                    float w_offset,
-                    float *uvw,
-                    float *wavenumbers,
-                    complex<float> *visibilities,
-                    float *spheroidal,
-                    complex<float> *aterms,
-                    int *metadata,
-                    complex<float> *subgrids)
+                const unsigned nr_subgrids,
+                const float w_offset,
+                const float *uvw,
+                const float *wavenumbers,
+                const complex<float> *visibilities,
+                const float *spheroidal,
+                const complex<float> *aterms,
+                const int *metadata,
+                      complex<float> *subgrids)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -299,8 +328,13 @@ namespace idg {
                                 map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                         {
                             runtime_fft = -omp_get_wtime();
-                            kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
-                                       1, nr_polarizations);
+
+                            kernel_fft(subgridsize,
+                                       current_jobsize,
+                                       subgrids_ptr,
+                                       1,
+                                       nr_polarizations);
+
                             runtime_fft += omp_get_wtime();
                         }
 
@@ -360,10 +394,10 @@ namespace idg {
 
 
         void KNC::add_subgrids_to_grid(
-            unsigned nr_subgrids,
-            int *metadata,
-            complex<float> *subgrids,
-            complex<float> *grid)
+            const unsigned nr_subgrids,
+            const int *metadata,
+            const complex<float> *subgrids,
+                  complex<float> *grid)
         {
             #if defined(DEBUG)
             cout << __func__ << endl;
@@ -403,8 +437,13 @@ namespace idg {
                 runtime_adder = -omp_get_wtime();
                 #endif
 
-                kernel_adder(current_jobsize, metadata_ptr, subgrid_ptr, grid_ptr,
-                             gridsize, subgridsize, nr_polarizations);
+                kernel_adder(current_jobsize,
+                             metadata_ptr,
+                             subgrid_ptr,
+                             grid_ptr,
+                             gridsize,
+                             subgridsize,
+                             nr_polarizations);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_adder += omp_get_wtime();
@@ -414,7 +453,8 @@ namespace idg {
                 #if defined(REPORT_VERBOSE)
                 auxiliary::report("adder", runtime_adder,
                     kernel_adder_flops(current_jobsize, subgridsize),
-                    kernel_adder_bytes(current_jobsize, subgridsize, nr_polarizations));
+                    kernel_adder_bytes(current_jobsize, subgridsize,
+                                       nr_polarizations) );
                 #endif
             } // end for s
 
@@ -426,7 +466,7 @@ namespace idg {
             auxiliary::report("adder", total_runtime_adder,
                               kernel_adder_flops(nr_subgrids, subgridsize),
                               kernel_adder_bytes(nr_subgrids, subgridsize,
-                                                 nr_polarizations));
+                                                 nr_polarizations) );
             auxiliary::report_runtime(runtime);
             auxiliary::report_subgrids(runtime, nr_subgrids);
             clog << endl;
@@ -435,10 +475,10 @@ namespace idg {
 
 
         void KNC::split_grid_into_subgrids(
-            unsigned nr_subgrids,
-            int *metadata,
-            complex<float> *subgrids,
-            complex<float> *grid)
+            const unsigned nr_subgrids,
+            const int *metadata,
+                  complex<float> *subgrids,
+            const complex<float> *grid)
         {
             #if defined(DEBUG)
             cout << __func__ << endl;
@@ -472,7 +512,7 @@ namespace idg {
                 // Pointer to data for current jobs
                 void *metadata_ptr = (int *) metadata + s * metadata_elements;
                 void *subgrid_ptr  = (complex<float>*) subgrids + s * subgrid_elements;
-                void *grid_ptr     = grid;
+                void *grid_ptr     = (complex<float>*) grid;
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_splitter = -omp_get_wtime();
@@ -496,7 +536,7 @@ namespace idg {
                 auxiliary::report("splitter", runtime_splitter,
                                   kernel_splitter_flops(current_jobsize, subgridsize),
                                   kernel_splitter_bytes(current_jobsize, subgridsize,
-                                                        nr_polarizations));
+                                                        nr_polarizations) );
                 #endif
             } // end for bl
 
@@ -508,7 +548,7 @@ namespace idg {
             auxiliary::report("splitter", total_runtime_splitter,
                               kernel_splitter_flops(nr_subgrids, subgridsize),
                               kernel_splitter_bytes(nr_subgrids, subgridsize,
-                                                    nr_polarizations));
+                                                    nr_polarizations) );
             auxiliary::report_runtime(runtime);
             auxiliary::report_subgrids(runtime, nr_subgrids);
             clog << endl;
@@ -518,15 +558,15 @@ namespace idg {
 
 
         void KNC::degrid_from_subgrids(
-                unsigned nr_subgrids,
-                float w_offset,
-                float *uvw,
-                float *wavenumbers,
-                std::complex<float> *visibilities,
-                float *spheroidal,
-                std::complex<float> *aterms,
-                int *metadata,
-                std::complex<float> *subgrids)
+            const unsigned nr_subgrids,
+            const float w_offset,
+            const float *uvw,
+            const float *wavenumbers,
+                   complex<float> *visibilities,
+            const float *spheroidal,
+            const complex<float> *aterms,
+            const int *metadata,
+            const complex<float> *subgrids)
         {
             #if defined(DEBUG)
             cout << __func__ << endl;
@@ -659,7 +699,7 @@ namespace idg {
                                          nr_polarizations),
                         kernel_fft_bytes(subgridsize, current_jobsize,
                                          nr_polarizations),
-                        PowerSensor::Watt(powerStates[0], powerStates[1]));
+                        PowerSensor::Watt(powerStates[0], powerStates[1]) );
                     auxiliary::report("degridder", runtime_degridder,
                         kernel_degridder_flops(current_jobsize, nr_timesteps,
                                                nr_channels, subgridsize,
@@ -667,7 +707,7 @@ namespace idg {
                         kernel_degridder_bytes(current_jobsize, nr_timesteps,
                                                nr_channels, subgridsize,
                                                nr_polarizations),
-                        PowerSensor::Watt(powerStates[1], powerStates[2]));
+                        PowerSensor::Watt(powerStates[1], powerStates[2]) );
                     #endif
                 } // end for s
 
@@ -677,16 +717,23 @@ namespace idg {
             total_runtime_degridding += omp_get_wtime();
             total_runtime_degridding = total_runtime_degridder + total_runtime_fft;
             clog << endl;
-            uint64_t total_flops_degridder  = kernel_degridder_flops(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
-            uint64_t total_bytes_degridder  = kernel_degridder_bytes(nr_subgrids, nr_timesteps, nr_channels, subgridsize, nr_polarizations);
-            uint64_t total_flops_fft      = kernel_fft_flops(subgridsize, nr_subgrids, nr_polarizations);
-            uint64_t total_bytes_fft      = kernel_fft_bytes(subgridsize, nr_subgrids, nr_polarizations);
+            uint64_t total_flops_degridder  = kernel_degridder_flops(nr_subgrids, nr_timesteps,
+                    nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_bytes_degridder  = kernel_degridder_bytes(nr_subgrids, nr_timesteps,
+                    nr_channels, subgridsize, nr_polarizations);
+            uint64_t total_flops_fft      = kernel_fft_flops(subgridsize, nr_subgrids,
+                                                             nr_polarizations);
+            uint64_t total_bytes_fft      = kernel_fft_bytes(subgridsize, nr_subgrids,
+                                                             nr_polarizations);
             uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
             uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
-            auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+            auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder,
+                              total_bytes_degridder);
             auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-            auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
-            auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+            auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding,
+                              total_bytes_degridding);
+            auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines,
+                                           nr_timesteps * nr_timeslots, nr_channels);
             clog << endl;
             #endif
         }
