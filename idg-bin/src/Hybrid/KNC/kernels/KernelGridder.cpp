@@ -123,6 +123,7 @@ void kernel_gridder (
     const int nr_timesteps,
     const int nr_timeslots,
     const int nr_channels,
+    const int gridsize,
     const int subgridsize,
     const float imagesize,
     const int nr_polarizations
@@ -161,8 +162,10 @@ void kernel_gridder (
         int y_coordinate = m.coordinate.y;
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + subgridsize/2) / imagesize;
-        float v_offset = (y_coordinate + subgridsize/2) / imagesize;
+        float u_offset = (x_coordinate + subgridsize/2 - gridsize/2) /
+            imagesize * 2*M_PI;
+        float v_offset = (y_coordinate + subgridsize/2 - gridsize/2) /
+            imagesize * 2*M_PI;
 
         // Initialize private subgrid
         FLOAT_COMPLEX pixels[subgridsize][subgridsize][NR_POLARIZATIONS] __attribute__((aligned(64)));
@@ -184,8 +187,8 @@ void kernel_gridder (
             for (int y = 0; y < subgridsize; y++) {
                 for (int x = 0; x < subgridsize; x++) {
                     // Compute l,m,n
-                    float l = -(x-(subgridsize/2)) * imagesize/subgridsize;
-                    float m =  (y-(subgridsize/2)) * imagesize/subgridsize;
+                    float l = (x-(subgridsize/2)) * imagesize/subgridsize;
+                    float m = (y-(subgridsize/2)) * imagesize/subgridsize;
                     float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
                     // Compute phase index

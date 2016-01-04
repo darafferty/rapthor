@@ -20,6 +20,7 @@ namespace idg {
         const int nr_timesteps,
         const int nr_timeslots,
         const int nr_channels,
+        const int gridsize,
         const int subgridsize,
         const float imagesize,
         const int nr_polarizations
@@ -38,6 +39,7 @@ namespace idg {
         const int nr_timesteps,
         const int nr_timeslots,
         const int nr_channels,
+        const int gridsize,
         const int subgridsize,
         const float imagesize,
         const int nr_polarizations
