@@ -15,7 +15,8 @@
 namespace idg {
 
 void kernel_degridder(
-    const int jobsize, const float w_offset,
+    const int jobsize,
+    const float w_offset,
 	const void *_uvw,
 	const void *_wavenumbers,
 	      void *_visibilities,
@@ -27,6 +28,7 @@ void kernel_degridder(
     const int nr_timesteps,
     const int nr_timeslots,
     const int nr_channels,
+    const int gridsize,
     const int subgridsize,
     const float imagesize,
     const int nr_polarizations
