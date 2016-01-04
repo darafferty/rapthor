@@ -12,8 +12,6 @@
 #include "idg-config.h"
 #include "CPU.h"
 
-#include <exception>
-
 using namespace std;
 using namespace idg;
 
