@@ -12,6 +12,8 @@
 #include "idg-config.h"
 #include "CPU.h"
 
+#include <exception>
+
 using namespace std;
 using namespace idg;
 
@@ -182,35 +184,48 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // initialize metadata
-                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
-                auto nr_subgrids = metadata.size();
+                try {
+                    // initialize metadata
+                    vector<Metadata> metadata = init_metadata(uvw,
+                                                              wavenumbers,
+                                                              baselines);
+                    auto nr_subgrids = metadata.size();
 
-                // allocate 'subgrids' memory for subgrids
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();;
-                auto subgridsize = mParams.get_subgrid_size();
-                auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize;
-                auto subgrids = new complex<float>[size_subgrids];
+                    // allocate 'subgrids' memory for subgrids
+                    auto nr_baselines = mParams.get_nr_baselines();
+                    auto nr_timeslots = mParams.get_nr_timeslots();
+                    auto nr_polarizations = mParams.get_nr_polarizations();;
+                    auto subgridsize = mParams.get_subgrid_size();
+                    auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
+                                         subgridsize*subgridsize;
+                    auto subgrids = new complex<float>[size_subgrids];
 
-                 grid_onto_subgrids(nr_subgrids,
-                    w_offset,
-                    const_cast<float*>(uvw),
-                    const_cast<float*>(wavenumbers),
-                    const_cast<complex<float>*>(visibilities),
-                    const_cast<float*>(spheroidal),
-                    const_cast<complex<float>*>(aterm),
-                    (int *) metadata.data(),
-                    subgrids);
+                    grid_onto_subgrids(
+                        nr_subgrids,
+                        w_offset,
+                        uvw,
+                        wavenumbers,
+                        visibilities,
+                        spheroidal,
+                        aterm,
+                        (int *) metadata.data(),
+                        subgrids);
 
-                add_subgrids_to_grid(nr_subgrids,
-                    (int *) metadata.data(),
-                    subgrids,
-                    grid);
+                    add_subgrids_to_grid(
+                        nr_subgrids,
+                        (int *) metadata.data(),
+                        subgrids,
+                        grid);
 
-                delete[] subgrids;
-            };
+                    delete[] subgrids;
+
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
+            }
     
     
             void CPU::degrid_visibilities(
@@ -226,37 +241,47 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-    
-                // initialize metadata
-                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
-                auto nr_subgrids = metadata.size();
 
-                // allocate 'subgrids' memory for subgrids
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();;
-                auto subgridsize = mParams.get_subgrid_size();
-                auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
-                                     subgridsize*subgridsize;
-                auto subgrids = new complex<float>[size_subgrids];
+                try {
+                    // initialize metadata
+                    vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                    auto nr_subgrids = metadata.size();
+
+                    // allocate 'subgrids' memory for subgrids
+                    auto nr_baselines = mParams.get_nr_baselines();
+                    auto nr_timeslots = mParams.get_nr_timeslots();
+                    auto nr_polarizations = mParams.get_nr_polarizations();;
+                    auto subgridsize = mParams.get_subgrid_size();
+                    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
+                                         subgridsize*subgridsize;
+                    auto subgrids = new complex<float>[size_subgrids];
     
-                split_grid_into_subgrids(nr_subgrids,
-                    (int *) metadata.data(),
-                    subgrids,
-                    const_cast<complex<float>*>(grid));
+                    split_grid_into_subgrids(
+                        nr_subgrids,
+                        (int *) metadata.data(),
+                        subgrids,
+                        grid);
+
+                    degrid_from_subgrids(
+                        nr_subgrids,
+                        w_offset,
+                        uvw,
+                        wavenumbers,
+                        visibilities,
+                        spheroidal,
+                        aterm,
+                        (int *) metadata.data(),
+                        subgrids);
     
-                degrid_from_subgrids(nr_subgrids,
-                    w_offset,
-                    const_cast<float*>(uvw),
-                    const_cast<float*>(wavenumbers),
-                    visibilities,
-                    const_cast<float*>(spheroidal),
-                    const_cast<complex<float>*>(aterm),
-                    (int *) metadata.data(),
-                    subgrids);
-    
-                delete[] subgrids;
-            };
+                    delete[] subgrids;
+
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
+            }
     
     
             void CPU::transform(DomainAtoDomainB direction,
@@ -266,27 +291,35 @@ namespace idg {
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
+
+                try {
     
-                int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+                    int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+
+                    // Constants
+                    auto gridsize = mParams.get_grid_size();
     
-                // Constants
-                auto gridsize = mParams.get_grid_size();
+                    // Load kernel function
+                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
     
-                // Load kernel function
-                unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
+                    // Start fft
+                    double runtime = -omp_get_wtime();
+                    kernel_fft->run(gridsize, 1, grid, sign);
+                    runtime += omp_get_wtime();
     
-                // Start fft
-                double runtime = -omp_get_wtime();
-                kernel_fft->run(gridsize, 1, grid, sign);
-                runtime += omp_get_wtime();
-    
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auxiliary::report(">grid_fft", runtime,
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1));
-                clog << endl;
-                #endif
-    
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    auxiliary::report(">grid_fft", runtime,
+                        kernel_fft->flops(gridsize, 1),
+                        kernel_fft->bytes(gridsize, 1));
+                    clog << endl;
+                    #endif
+
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
             }
     
     
@@ -294,14 +327,14 @@ namespace idg {
                 Low level routines
             */
             void CPU::grid_onto_subgrids(
-                unsigned nr_subgrids,
-                float w_offset,
-                float *uvw,
-                float *wavenumbers,
-                complex<float> *visibilities,
-                float *spheroidal,
-                complex<float> *aterm,
-                int *metadata,
+                const unsigned nr_subgrids,
+                const float w_offset,
+                const float *uvw,
+                const float *wavenumbers,
+                const complex<float> *visibilities,
+                const float *spheroidal,
+                const complex<float> *aterm,
+                const int *metadata,
                 complex<float> *subgrids)
             {
                 #if defined(DEBUG)
@@ -343,11 +376,11 @@ namespace idg {
     
                     // Pointers to data for current batch
                     void *uvw_ptr          = (float *) uvw + s * uvw_elements;
-                    void *wavenumbers_ptr  = wavenumbers;
+                    void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
                     void *visibilities_ptr = (complex<float>*) visibilities
                                              + s * visibilities_elements;
-                    void *spheroidal_ptr   = spheroidal;
-                    void *aterm_ptr        = aterm;
+                    void *spheroidal_ptr   = const_cast<float*>(spheroidal);
+                    void *aterm_ptr        = const_cast<complex<float>*>(aterm);
                     void *subgrids_ptr     = (complex<float>*) subgrids
                                              + s * subgrid_elements;
                     void *metadata_ptr     = (int *) metadata + s * metadata_elements;
@@ -424,9 +457,9 @@ namespace idg {
     
     
             void CPU::add_subgrids_to_grid(
-                unsigned nr_subgrids,
-                int *metadata,
-                complex<float> *subgrids,
+                const unsigned nr_subgrids,
+                const int *metadata,
+                const complex<float> *subgrids,
                 complex<float> *grid)
             {
                 #if defined(DEBUG)
@@ -493,10 +526,10 @@ namespace idg {
     
     
             void CPU::split_grid_into_subgrids(
-                unsigned nr_subgrids,
-                int *metadata,
+                const unsigned nr_subgrids,
+                const int *metadata,
                 complex<float> *subgrids,
-                complex<float> *grid)
+                const complex<float> *grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -529,7 +562,7 @@ namespace idg {
                     void *metadata_ptr = (int *) metadata + s * metadata_elements;
                     void *subgrid_ptr  = (complex<float>*) subgrids
                                          + s * subgrid_elements;
-                    void *grid_ptr     = grid;
+                    void *grid_ptr     = const_cast<complex<float>*>(grid);
     
                     double runtime_splitter = -omp_get_wtime();
                     kernel_splitter->run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
@@ -562,15 +595,15 @@ namespace idg {
     
     
             void CPU::degrid_from_subgrids(
-                unsigned nr_subgrids,
-                float w_offset,
-                float *uvw,
-                float *wavenumbers,
+                const unsigned nr_subgrids,
+                const float w_offset,
+                const float *uvw,
+                const float *wavenumbers,
                 std::complex<float> *visibilities,
-                float *spheroidal,
-                std::complex<float> *aterm,
-                int *metadata,
-                std::complex<float> *subgrids)
+                const float *spheroidal,
+                const std::complex<float> *aterm,
+                const int *metadata,
+                const std::complex<float> *subgrids)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -611,11 +644,11 @@ namespace idg {
     
                     // Pointers to data for current batch
                     void *uvw_ptr          = (float *) uvw + s * uvw_elements;
-                    void *wavenumbers_ptr  = wavenumbers;
+                    void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
                     void *visibilities_ptr = (complex<float>*) visibilities
                                              + s * visibilities_elements;
-                    void *spheroidal_ptr   = spheroidal;
-                    void *aterm_ptr        = aterm;
+                    void *spheroidal_ptr   = const_cast<float*>(spheroidal);
+                    void *aterm_ptr        = const_cast<complex<float>*>(aterm);
                     void *metadata_ptr     = (int *) metadata + s * metadata_elements;
                     void *subgrids_ptr     = (complex<float>*) subgrids
                                              + s * subgrid_elements;
