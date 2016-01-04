@@ -93,9 +93,9 @@ namespace idg {
                 const float *uvw,
                 const float *wavenumbers,
                 const int *baselines,
-                const std::complex<float> *grid,
+                const complex<float> *grid,
                 const float w_offset,
-                const std::complex<float> *aterms,
+                const complex<float> *aterms,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
@@ -201,6 +201,7 @@ namespace idg {
                 auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto imagesize = mParams.get_imagesize();
 
@@ -237,18 +238,17 @@ namespace idg {
                         int uvw_elements          = nr_timesteps * 3;
                         int visibilities_elements = nr_timesteps * nr_channels *
                                                     nr_polarizations;
+                        int metadata_elements     = 5;
                         int subgrid_elements      = subgridsize * subgridsize *
                                                     nr_polarizations;
-                        int metadata_elements     = 5;
 
                         // Pointers to data for current batch
-                        float *uvw_ptr                   = (float *) uvw + s * uvw_elements;
-                        complex<float> *visibilities_ptr = (complex<float>*) visibilities
-                                                           + s * visibilities_elements;
-                        complex<float> *subgrids_ptr     = (complex<float>*) subgrids
-                                                           + s * subgrid_elements;
-                        int *metadata_ptr                = (int *) metadata
-                                                           + s * metadata_elements;
+                        float *uvw_ptr = (float *) uvw + s * uvw_elements;
+                        complex<float> *visibilities_ptr = (complex<float>*)
+                            visibilities + s * visibilities_elements;
+                        complex<float> *subgrids_ptr = (complex<float>*) subgrids
+                                                       + s * subgrid_elements;
+                        int *metadata_ptr = (int *) metadata + s * metadata_elements;
 
                         // Power measurement
                         PowerSensor::State powerStates[3];
@@ -266,11 +266,25 @@ namespace idg {
                                map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                         {
                             runtime_gridder = -omp_get_wtime();
-                            kernel_gridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
-                                           visibilities_ptr, spheroidal_ptr, aterms_ptr,
-                                           metadata_ptr, subgrids_ptr, nr_stations,
-                                           nr_timesteps, nr_timeslots, nr_channels,
-                                           subgridsize, imagesize, nr_polarizations);
+
+                            kernel_gridder(current_jobsize,
+                                           w_offset,
+                                           uvw_ptr,
+                                           wavenumbers_ptr,
+                                           visibilities_ptr,
+                                           spheroidal_ptr,
+                                           aterms_ptr,
+                                           metadata_ptr,
+                                           subgrids_ptr,
+                                           nr_stations,
+                                           nr_timesteps,
+                                           nr_timeslots,
+                                           nr_channels,
+                                           gridsize,
+                                           subgridsize,
+                                           imagesize,
+                                           nr_polarizations);
+
                             runtime_gridder += omp_get_wtime();
                         }
 
@@ -464,8 +478,14 @@ namespace idg {
                 runtime_splitter = -omp_get_wtime();
                 #endif
 
-                kernel_splitter(current_jobsize, metadata_ptr, subgrid_ptr, grid_ptr,
-                        gridsize, subgridsize, nr_polarizations);
+                kernel_splitter(
+                    current_jobsize,
+                    metadata_ptr,
+                    subgrid_ptr,
+                    grid_ptr,
+                    gridsize,
+                    subgridsize,
+                    nr_polarizations);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 runtime_splitter += omp_get_wtime();
@@ -520,6 +540,7 @@ namespace idg {
             auto nr_timesteps = mParams.get_nr_timesteps();
             auto nr_timeslots = mParams.get_nr_timeslots();
             auto nr_polarizations = mParams.get_nr_polarizations();
+            auto gridsize = mParams.get_grid_size();
             auto subgridsize = mParams.get_subgrid_size();
             auto imagesize = mParams.get_imagesize();
 
@@ -552,9 +573,11 @@ namespace idg {
 
                     // Number of elements in batch
                     int uvw_elements          = nr_timesteps * 3;
-                    int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
+                    int visibilities_elements = nr_timesteps * nr_channels
+                                                * nr_polarizations;
                     int metadata_elements     = 5;
-                    int subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                    int subgrid_elements      = subgridsize * subgridsize
+                                                * nr_polarizations;
 
                     // Pointers to data for current batch
                     float *uvw_ptr                   = (float *) uvw + s * uvw_elements;
@@ -576,12 +599,17 @@ namespace idg {
                     #pragma omp target \
                         map(to:uvw_ptr[0:(current_jobsize * uvw_elements)]) \
                         map(from:visibilities_ptr[0:(current_jobsize * visibilities_elements)]) \
-                        map(to:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
+                        map(tofrom:subgrids_ptr[0:(current_jobsize * subgrid_elements)]) \
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
                         runtime_fft = -omp_get_wtime();
-                        kernel_fft(subgridsize, current_jobsize, subgrids_ptr,
-                                   -1, nr_polarizations);
+
+                        kernel_fft(subgridsize,
+                                   current_jobsize,
+                                   subgrids_ptr,
+                                   -1,
+                                   nr_polarizations);
+
                         runtime_fft += omp_get_wtime();
                     }
 
@@ -596,10 +624,26 @@ namespace idg {
                         map(to:metadata_ptr[0:(current_jobsize * metadata_elements)])
                     {
                         runtime_degridder = -omp_get_wtime();
-                        kernel_degridder(current_jobsize, w_offset, uvw_ptr, wavenumbers_ptr,
-                            visibilities_ptr, spheroidal_ptr, aterms_ptr,
-                            metadata_ptr, subgrids_ptr, nr_stations, nr_timesteps, nr_timeslots,
-                            nr_channels, subgridsize, imagesize, nr_polarizations);
+
+                        kernel_degridder(
+                            current_jobsize,
+                            w_offset,
+                            uvw_ptr,
+                            wavenumbers_ptr,
+                            visibilities_ptr,
+                            spheroidal_ptr,
+                            aterms_ptr,
+                            metadata_ptr,
+                            subgrids_ptr,
+                            nr_stations,
+                            nr_timesteps,
+                            nr_timeslots,
+                            nr_channels,
+                            gridsize,
+                            subgridsize,
+                            imagesize,
+                            nr_polarizations);
+
                         runtime_degridder += omp_get_wtime();
                     }
 
@@ -611,12 +655,18 @@ namespace idg {
 
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("fft", runtime_fft,
-                        kernel_fft_flops(subgridsize, current_jobsize, nr_polarizations),
-                        kernel_fft_bytes(subgridsize, current_jobsize, nr_polarizations),
+                        kernel_fft_flops(subgridsize, current_jobsize,
+                                         nr_polarizations),
+                        kernel_fft_bytes(subgridsize, current_jobsize,
+                                         nr_polarizations),
                         PowerSensor::Watt(powerStates[0], powerStates[1]));
                     auxiliary::report("degridder", runtime_degridder,
-                        kernel_degridder_flops(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
-                        kernel_degridder_bytes(current_jobsize, nr_timesteps, nr_channels, subgridsize, nr_polarizations),
+                        kernel_degridder_flops(current_jobsize, nr_timesteps,
+                                               nr_channels, subgridsize,
+                                               nr_polarizations),
+                        kernel_degridder_bytes(current_jobsize, nr_timesteps,
+                                               nr_channels, subgridsize,
+                                               nr_polarizations),
                         PowerSensor::Watt(powerStates[1], powerStates[2]));
                     #endif
                 } // end for s
