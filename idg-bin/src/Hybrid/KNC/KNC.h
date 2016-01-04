@@ -1,7 +1,7 @@
 /**
  *  \class KNC
  *
- *  \brief Class for ...
+ *  \brief Class for CPU using a KNC via offloading.
  *
  *  Have a more detailed description here
  *  This will be included by a user, so detail usage...
@@ -61,46 +61,38 @@ namespace idg {
 
                 // Low-level interface (see also CPU class)
                 virtual void grid_onto_subgrids(
-                    unsigned nr_subgrids,
-                    float w_offset,
-                    float *uvw,
-                    float *wavenumbers,
-                    std::complex<float> *visibilities,
-                    float *spheroidal,
-                    std::complex<float> *aterms,
-                    int *metadata,
+                    const unsigned nr_subgrids,
+                    const float w_offset,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const std::complex<float> *visibilities,
+                    const float *spheroidal,
+                    const std::complex<float> *aterms,
+                    const int *metadata,
                     std::complex<float> *subgrids);
 
                 virtual void add_subgrids_to_grid(
-                    unsigned nr_subgrids,
-                    int *metadata,
-                    std::complex<float> *subgrids,
+                    const unsigned nr_subgrids,
+                    const int *metadata,
+                    const std::complex<float> *subgrids,
                     std::complex<float> *grid);
 
                 virtual void split_grid_into_subgrids(
-                    unsigned nr_subgrids,
-                    int *metadata,
+                    const unsigned nr_subgrids,
+                    const int *metadata,
                     std::complex<float> *subgrids,
-                    std::complex<float> *grid);
+                    const std::complex<float> *grid);
 
                 virtual void degrid_from_subgrids(
-                    unsigned nr_subgrids,
-                    float w_offset,
-                    float *uvw,
-                    float *wavenumbers,
+                    const unsigned nr_subgrids,
+                    const float w_offset,
+                    const float *uvw,
+                    const float *wavenumbers,
                     std::complex<float> *visibilities,
-                    float *spheroidal,
-                    std::complex<float> *aterms,
-                    int *metadata,
-                    std::complex<float> *subgrids);
-
-
-                //protected:
-                //void run_gridder(int jobsize, GRIDDER_PARAMETERS);
-                //void run_adder(int jobsize, ADDER_PARAMETERS);
-                //void run_splitter(int jobsize, SPLITTER_PARAMETERS);
-                //void run_degridder(int jobsize, DEGRIDDER_PARAMETERS);
-                //void run_fft(FFT_PARAMETERS);
+                    const float *spheroidal,
+                    const std::complex<float> *aterms,
+                    const int *metadata,
+                    const std::complex<float> *subgrids);
 
         }; // class KNC
 
