@@ -42,7 +42,6 @@ __global__ void kernel_gridder(
 
 	syncthreads();
 
-	// Private subgrid points
 	// Load metadata
 	const Metadata &m = metadata[blockIdx.x];
 	int time_nr = m.time_nr;
@@ -52,8 +51,8 @@ __global__ void kernel_gridder(
 	int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
-	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
-	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
+    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
 	// Iterate all pixels in subgrid
 	for (int y = tidy; y < SUBGRIDSIZE; y += blockDim.y) {
@@ -65,8 +64,8 @@ __global__ void kernel_gridder(
 			float2 uvYY = {0, 0};
 
 			// Compute l,m,n
-			float l = -(x-(SUBGRIDSIZE/2)) * (float) IMAGESIZE/SUBGRIDSIZE;
-			float m =  (y-(SUBGRIDSIZE/2)) * (float) IMAGESIZE/SUBGRIDSIZE;
+			float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+			float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
 			float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
 			// Iterate all timesteps
@@ -77,7 +76,7 @@ __global__ void kernel_gridder(
 				float w = _uvw[time].w;
 
 				// Compute phase index
-				float ulvmwn = u*l + v*m + w*n;
+				float phase_index = u*l + v*m + w*n;
 
 				// Compute phase offset
 				float phase_offset = u_offset*l + v_offset*m + w_offset*n;
@@ -85,7 +84,8 @@ __global__ void kernel_gridder(
 				// Compute phasor
                 #pragma unroll 16
 				for (int chan = 0; chan < NR_CHANNELS; chan++) {
-					float phase = (ulvmwn * _wavenumbers[chan]) - phase_offset;
+                    float wavenumber = _wavenumbers[chan];
+					float phase = (phase_index * wavenumber) - phase_offset;
 					float2 phasor = make_float2(cos(phase), sin(phase));
 
 					// Load visibilities from shared memory
@@ -95,12 +95,6 @@ __global__ void kernel_gridder(
 					float2 visYY = _visibilities[time][chan][3];
 
 					// Multiply visibility by phasor
-                    #if 0
-					uvXX += phasor * visXX;
-					uvXY += phasor * visXY;
-					uvYX += phasor * visYX;
-					uvYY += phasor * visYY;
-                    #else
 					uvXX.x += phasor.x * visXX.x;
 					uvXX.y += phasor.x * visXX.y;
 					uvXX.x -= phasor.y * visXX.y;
@@ -120,7 +114,6 @@ __global__ void kernel_gridder(
 					uvYY.y += phasor.x * visYY.y;
 					uvYY.x -= phasor.y * visYY.y;
 					uvYY.y += phasor.y * visYY.x;
-                    #endif
 				}
 			}
 
@@ -137,16 +130,9 @@ __global__ void kernel_gridder(
 			float2 aYY2 = aterm[station2][time_nr][3][y][x];
 
 			// Apply aterm
-            #if 0
-			float2 auvXX  = uvXX * aXX1 + uvXY * aYX1 + uvXX * aXX2 + uvXY * aYX2;
-			float2 auvXY  = uvXX * aXY1 + uvXY * aYY1 + uvXX * aXY2 + uvXY * aYY2;
-			float2 auvYX  = uvYX * aXX1 + uvYY * aYX1 + uvYX * aXX2 + uvYY * aYX2;
-			float2 auvYY  = uvYY * aXY1 + uvYY * aYY1 + uvYY * aXY2 + uvYY * aYY2;
-            #else
 			float2 tXX, tXY, tYX, tYY;
 			Matrix2x2mul(tXX, tXY, tYX, tYY, cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1), uvXX, uvXY, uvYX, uvYY);
 			Matrix2x2mul(tXX, tXY, tYX, tYY, tXX, tXY, tYX, tYY, aXX2, aXY2, aYX2, aYY2);
-            #endif
 
 			// Load spheroidal
 			float sph = spheroidal[y][x];
@@ -156,11 +142,11 @@ __global__ void kernel_gridder(
 			int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
 			// Set subgrid value
-			subgrid[blockIdx.x][0][y_dst][x_dst] = tXX * sph;
-			subgrid[blockIdx.x][1][y_dst][x_dst] = tXY * sph;
-			subgrid[blockIdx.x][2][y_dst][x_dst] = tYX * sph;
-			subgrid[blockIdx.x][3][y_dst][x_dst] = tYY * sph;
-		}
+            subgrid[blockIdx.x][0][y_dst][x_dst] = tXX * sph;
+            subgrid[blockIdx.x][1][y_dst][x_dst] = tXY * sph;
+            subgrid[blockIdx.x][2][y_dst][x_dst] = tYX * sph;
+            subgrid[blockIdx.x][3][y_dst][x_dst] = tYY * sph;
+        }
 	}
 }
 }
