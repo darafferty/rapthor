@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <omp.h>
 
 #include "Types.h"
 
@@ -14,27 +15,33 @@ void kernel_adder(
     const SubGridType  __restrict__ *subgrid,
     GridType           __restrict__ *grid
     ) {
-
-    #pragma omp parallel for
-    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+    // Iterate all colums of grid
+    #pragma omp parallel for schedule(guided)
+    for (int row = 0; row < GRIDSIZE; row++) {
         for (int s = 0; s < jobsize; s++) {
-            // Load position in grid
-            int grid_x = metadata[s]->coordinate.x;
-            int grid_y = metadata[s]->coordinate.y;
+            // Load topleft corner of subgrid
+            int subgrid_x = metadata[s]->coordinate.x;
+            int subgrid_y = metadata[s]->coordinate.y;
 
-            // Check wheter subgrid fits in grid
-            if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
-                grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
+            // Compute y offset
+            int offset_y = row - subgrid_y;
 
-                for (int y = 0; y < SUBGRIDSIZE; y++) {
-                    for (int x = 0; x < SUBGRIDSIZE; x++) {
-                        // Compute shifted position in subgrid
-                        int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                        int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            // Check wheter subgrid fits in grid and matches curent row
+            if (subgrid_x >= 0 && subgrid_x < GRIDSIZE-SUBGRIDSIZE &&
+                subgrid_y >= 0 && subgrid_y < GRIDSIZE-SUBGRIDSIZE &&
+                 offset_y >= 0 &&  offset_y < SUBGRIDSIZE) {
 
-                        // Add subgrid value to grid
-                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
-                    }
+                // Iterate all columns of subgrid
+                for (int x = 0; x < SUBGRIDSIZE; x++) {
+                    // Compute shifted position in subgrid
+                    int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int y_src = (offset_y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
+                    // Add subgrid value to grid
+                    (*grid)[0][row][subgrid_x+x] += (*subgrid)[s][0][y_src][x_src];
+                    (*grid)[1][row][subgrid_x+x] += (*subgrid)[s][1][y_src][x_src];
+                    (*grid)[2][row][subgrid_x+x] += (*subgrid)[s][2][y_src][x_src];
+                    (*grid)[3][row][subgrid_x+x] += (*subgrid)[s][3][y_src][x_src];
                 }
             }
         }
