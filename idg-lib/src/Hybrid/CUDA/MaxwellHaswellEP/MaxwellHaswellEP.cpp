@@ -189,6 +189,14 @@ namespace idg {
 
                 		outputFree.synchronize();
 
+                        // Scale subgrids
+                        complex<float> *data = h_subgrids;
+                        float scale = 1 / (float(subgridsize)*float(subgridsize)) * 2;
+                        for (int i = 0; i < current_jobsize*nr_polarizations*subgridsize*subgridsize; i++) {
+                            complex<float> value = data[i];
+                            data[i] = complex<float>(data[i].real() * scale, data[i].imag() * scale);
+                        }
+
                         // Add subgrid to grid
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
@@ -380,7 +388,7 @@ namespace idg {
                 			// Launch FFT
                 			executestream.waitEvent(inputReady);
                             powerRecords[0].enqueue(executestream);
-                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch degridder kernel
