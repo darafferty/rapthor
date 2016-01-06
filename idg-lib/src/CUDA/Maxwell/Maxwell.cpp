@@ -84,14 +84,17 @@ namespace idg {
                 string libgridder = "Gridder.ptx";
                 string libdegridder = "Degridder.ptx";
                 string libfft = "FFT.ptx";
+                string libscaler = "Scaler.ptx";
 
                 p.add_lib(libgridder);
                 p.add_lib(libdegridder);
                 p.add_lib(libfft);
+                p.add_lib(libscaler);
 
                 p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
                 p.add_src_file_to_lib(libfft, "KernelFFT.cu");
+                p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
 
                 p.set_delete_shared_objects(true);
 
@@ -110,6 +113,9 @@ namespace idg {
                 return unique_ptr<GridFFT>(new GridFFTMaxwell(*(modules[which_module.at(name_fft)]), mParams));
             }
 
+            unique_ptr<Scaler> Maxwell::get_kernel_scaler() const {
+                return unique_ptr<Scaler>(new ScalerMaxwell(*(modules[which_module.at(name_scaler)]), mParams));
+            }
 
         } // namespace cuda
     } // namespace proxy

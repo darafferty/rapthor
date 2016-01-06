@@ -60,6 +60,7 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = cuda.get_kernel_gridder();
+                unique_ptr<idg::kernel::cuda::Scaler> kernel_scaler = cuda.get_kernel_scaler();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
 
 				// Load context
@@ -146,7 +147,7 @@ namespace idg {
                         void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                         // Power measurement
-                        cuda::PowerRecord powerRecords[3];
+                        cuda::PowerRecord powerRecords[4];
                         LikwidPowerSensor::State powerStates[2];
 
                         // Copy memory to host memory
@@ -176,8 +177,13 @@ namespace idg {
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch FFT
-                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            //kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
+
+                            // Launch scaler kernel
+                            kernel_scaler->launch(
+                                executestream, current_jobsize, d_subgrids);
+                            powerRecords[3].enqueue(executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
 
@@ -189,14 +195,6 @@ namespace idg {
 
                 		outputFree.synchronize();
 
-                        // Scale subgrids
-                        complex<float> *data = h_subgrids;
-                        float scale = 1 / (float(subgridsize)*float(subgridsize)) * 2;
-                        for (int i = 0; i < current_jobsize*nr_polarizations*subgridsize*subgridsize; i++) {
-                            complex<float> value = data[i];
-                            data[i] = complex<float>(data[i].real() * scale, data[i].imag() * scale);
-                        }
-
                         // Add subgrid to grid
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
@@ -207,6 +205,7 @@ namespace idg {
 
                         double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_adder   = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
@@ -217,6 +216,10 @@ namespace idg {
                                                      kernel_fft->flops(subgridsize, current_jobsize),
                                                      kernel_fft->bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                        auxiliary::report(" scaler", runtime_scaler,
+                                                     kernel_scaler->flops(current_jobsize),
+                                                     kernel_scaler->bytes(current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                         auxiliary::report("  adder", runtime_adder,
                                                      kernel_adder->flops(current_jobsize),
                                                      kernel_adder->bytes(current_jobsize),

@@ -21,6 +21,7 @@ namespace idg {
             static const std::string name_adder     = "kernel_adder";
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
+            static const std::string name_scaler    = "kernel_scaler";
 
             class Gridder {
             public:
@@ -322,6 +323,46 @@ namespace idg {
                 Parameters parameters;
             };
 
+            class Scaler {
+            public:
+                Scaler(cu::Module &module, const Parameters &params);
+
+                virtual void launch(
+                    cu::Stream &stream, int jobsize,
+                    cu::DeviceMemory &d_subgrid) = 0;
+
+                template <int blockX, int blockY, int blockZ>
+                void launchAsync(
+                    cu::Stream &stream,
+                    int jobsize,
+                    cu::DeviceMemory &d_subgrid) {
+
+                    const void *parameters[] = { d_subgrid };
+
+                    stream.launchKernel(function, jobsize, 1, 1,
+                                        blockX, blockY, blockZ, 0, parameters);
+                }
+
+                uint64_t flops(int jobsize) {
+                    int subgridsize = parameters.get_subgrid_size();
+                    int nr_polarizations = parameters.get_nr_polarizations();
+                    uint64_t flops = 0;
+                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // scale
+                    return flops;
+                }
+
+                uint64_t bytes(int jobsize) {
+                    int subgridsize = parameters.get_subgrid_size();
+                    int nr_polarizations = parameters.get_nr_polarizations();
+                    uint64_t bytes = 0;
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
+                    return bytes;
+                }
+
+            private:
+                cu::Function function;
+                Parameters parameters;
+            };
         } // namespace cuda
     } // namespace kernel
 } // namespace idg
