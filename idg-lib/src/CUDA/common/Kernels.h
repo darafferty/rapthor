@@ -194,14 +194,16 @@ namespace idg {
                     // Execute bulk ffts (if any)
                     if (planned_batch >= bulk_size) {
                         (*fft_bulk).setStream(stream);
-                        for (; s < (planned_batch - bulk_size); s += bulk_size) {
-                            (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+                        for (; s < planned_batch; s += bulk_size) {
+                            if (planned_batch - s >= bulk_size) {
+                                (*fft_bulk).execute(data_ptr, data_ptr, direction);
+                                data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+                            }
                         }
                     }
 
                     // Execute remainder ffts
-                    if (fft_remainder) {
+                    if (s < planned_batch) {
                         (*fft_remainder).setStream(stream);
                         (*fft_remainder).execute(data_ptr, data_ptr, direction);
                     }
@@ -216,7 +218,7 @@ namespace idg {
 
                 uint64_t flops(int size, int batch) {
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
+                    return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);
                 }
 
                 uint64_t bytes(int size, int batch) {
