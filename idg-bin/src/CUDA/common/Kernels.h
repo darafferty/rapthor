@@ -253,7 +253,7 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid) {
-                    const void *parameters[] = { &jobsize, d_metadata, d_subgrid, d_grid };
+                    const void *parameters[] = { d_metadata, d_subgrid, d_grid };
                     stream.launchKernel(function, jobsize, 1, 1,
                                         blockX, blockY, blockZ, 0, parameters);
                 }
@@ -261,17 +261,21 @@ namespace idg {
                 uint64_t flops(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
+                    uint64_t flops = 0;
+                    flops += 1ULL * jobsize * subgridsize * subgridsize * 8; // shift
+                    flops += 1ULL * jobsize * subgridsize * subgridsize * 4; // add
+                    return flops;
                 }
 
                 uint64_t bytes(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    return
-                        // Coordinate
-                        1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
-                        // Grid
-                        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
+                    uint64_t bytes = 0;
+                    bytes += 1ULL * jobsize * 2 * sizeof(int); // coordinate
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+                    return bytes;
                 }
 
             private:
@@ -293,31 +297,32 @@ namespace idg {
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid) = 0;
 
-                template <int gridX, int gridY, int gridZ, int blockX, int blockY, int blockZ>
+                template <int blockX, int blockY, int blockZ>
                 void launchAsync(
                     cu::Stream &stream, int jobsize,
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid) {
-                    const void *parameters[] = { &jobsize, d_metadata, d_subgrid, d_grid };
+                    const void *parameters[] = { d_metadata, d_subgrid, d_grid };
                     stream.launchKernel(function, jobsize, 1, 1,
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
                 uint64_t flops(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
-                    int nr_polarizations = parameters.get_nr_polarizations();
-                    return 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2;
+                    uint64_t flops = 0;
+                    flops += 1ULL * jobsize * subgridsize * subgridsize * 8; // shift
+                    return flops;
                 }
 
                 uint64_t bytes(int jobsize) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    return
-                        // Coordinate
-                        1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(int) +
-                        // Grid
-                        1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex);
+                    uint64_t bytes = 0;
+                    bytes += 1ULL * jobsize * 2 * sizeof(int); // coordinate
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+                    return bytes;
                 }
 
             private:

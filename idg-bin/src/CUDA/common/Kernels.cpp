@@ -58,7 +58,6 @@ namespace idg {
         Adder::Adder(cu::Module &module, const Parameters &params) :
             function(module, name_adder.c_str()), parameters(params) { }
 
-
         // Splitter class
         Splitter::Splitter(cu::Module &module, const Parameters &params) :
             function(module, name_splitter.c_str()), parameters(params) { }

@@ -85,16 +85,22 @@ namespace idg {
                 string libdegridder = "Degridder.ptx";
                 string libfft = "FFT.ptx";
                 string libscaler = "Scaler.ptx";
+                string libadder = "Adder.ptx";
+                string libsplitter = "Splitter.ptx";
 
                 p.add_lib(libgridder);
                 p.add_lib(libdegridder);
                 p.add_lib(libfft);
                 p.add_lib(libscaler);
+                p.add_lib(libadder);
+                p.add_lib(libsplitter);
 
                 p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
                 p.add_src_file_to_lib(libfft, "KernelFFT.cu");
                 p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
+                p.add_src_file_to_lib(libadder, "KernelAdder.cu");
+                p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
 
                 p.set_delete_shared_objects(true);
 
@@ -117,6 +123,13 @@ namespace idg {
                 return unique_ptr<Scaler>(new ScalerMaxwell(*(modules[which_module.at(name_scaler)]), mParams));
             }
 
+            unique_ptr<Adder> Maxwell::get_kernel_adder() const {
+                return unique_ptr<Adder>(new AdderMaxwell(*(modules[which_module.at(name_adder)]), mParams));
+            }
+
+            unique_ptr<Splitter> Maxwell::get_kernel_splitter() const {
+                return unique_ptr<Splitter>(new SplitterMaxwell(*(modules[which_module.at(name_splitter)]), mParams));
+            }
         } // namespace cuda
     } // namespace proxy
 } // namespace idg

@@ -87,19 +87,19 @@ namespace idg {
 
         void report_subgrids(
             double runtime,
-            uint64_t nr_baselines)
+            uint64_t nr_subgrids)
         {
-            clog << "throughput: " << 1e-3 * nr_baselines / runtime
+            clog << "throughput: " << 1e-3 * nr_subgrids / runtime
                  << " Ksubgrids/s" << endl;
         }
 
         void report_subgrids(
             const char *name,
             double runtime,
-            uint64_t nr_baselines)
+            uint64_t nr_subgrids)
         {
             clog << setw(FW1) << left << string(name) + ": "
-                 << 1e-3 * nr_baselines / runtime
+                 << 1e-3 * nr_subgrids / runtime
                  << " Ksubgrids/s" << endl;
         }
     } // namespace auxiliary
