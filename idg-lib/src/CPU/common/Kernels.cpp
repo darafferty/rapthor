@@ -144,8 +144,10 @@ namespace idg {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t bytes = 0;
-                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(unsigned); // coordinate
-                bytes += 1ULL * jobsize * subgridsize * subgridsize * 3 * sizeof(unsigned); // pixels
+                bytes += 1ULL * jobsize * 2 * sizeof(int); // coordinate
+                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
+                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
                 return bytes;
             }
 
@@ -161,7 +163,6 @@ namespace idg {
 
             uint64_t Splitter::flops(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t flops = 0;
                 flops += 1ULL * jobsize * subgridsize * subgridsize * 8; // shift
                 return flops;
@@ -171,8 +172,9 @@ namespace idg {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t bytes = 0;
-                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(unsigned); // coordinate
-                bytes += 1ULL * jobsize * subgridsize * subgridsize * 3 * sizeof(unsigned); // pixels
+                bytes += 1ULL * jobsize * 2 * sizeof(int); // coordinate
+                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+                bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
                 return bytes;
             }
 
