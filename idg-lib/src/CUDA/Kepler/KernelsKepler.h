@@ -124,6 +124,19 @@ namespace idg {
                 }
             };
 
+           class ScalerKepler : public Scaler {
+            public:
+                ScalerKepler(cu::Module& module, const Parameters& params)
+                    : Scaler(module, params)
+                {}
+
+                virtual void launch(
+                    cu::Stream &stream, int jobsize,
+                    cu::DeviceMemory &d_subgrid) override
+                {
+                    launchAsync<128,1,1>(stream, jobsize, d_subgrid);
+                }
+            };
 
         } // namespace cuda
     } // namespace kernel

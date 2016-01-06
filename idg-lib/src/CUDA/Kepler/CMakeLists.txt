@@ -30,6 +30,7 @@ install(
     kernels/KernelDegridder.cu
     kernels/KernelFFT.cu
     kernels/KernelGridder.cu
+    kernels/KernelScaler.cu
     kernels/math.cu
     kernels/Types.h
     DESTINATION

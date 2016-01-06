@@ -8,7 +8,7 @@
 
 extern "C" {
 void kernel_fft(
-	int size, 
+	int size,
 	int batch,
 	fftwf_complex __restrict__ *data,
     int sign    // Note: -1=FFTW_FORWARD, 1=FFTW_BACKWARD
@@ -16,21 +16,21 @@ void kernel_fft(
 
     // 2D FFT
     int rank = 2;
-    
+
     // For grids of size*size elements
     int n[] = {size, size};
-    
+
     // Set stride
     int istride = 1;
     int ostride = istride;
-    
+
     // Set dist
     int idist = n[0] * n[1];
     int odist = idist;
 
     // Planner flags
     int flags = FFTW_ESTIMATE;
-    
+
     // Create plan
     fftwf_plan plan = fftwf_plan_many_dft(
         rank, n, batch * NR_POLARIZATIONS, data, n,

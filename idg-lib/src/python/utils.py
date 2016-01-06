@@ -379,6 +379,7 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
+
 def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size):
     # Show subgrids (from metadata)
     x = metadata['coordinate']['x'].flatten()
@@ -405,7 +406,7 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
     v_pixels = numpy.asarray(v_pixels).flatten() + (grid_size / 2)
     plt.plot(u_pixels, v_pixels, 'r.', markersize=1, alpha=0.1)
 
-    # Make mouseover show value of gird
+    # Make mouseover show value of grid
     def format_coord(x, y):
         col = int(x+0.5)
         row = int(y+0.5)
@@ -424,7 +425,6 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
     plt.axes().set_aspect('equal')
     plt.xlim([0, grid_size])
     plt.ylim([grid_size, 0])
-
 
 
 def init_grid_of_point_sources(N, image_size, visibilities, uvw,
