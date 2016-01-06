@@ -99,20 +99,24 @@ void run() {
     void *wavenumbers = idg::init_wavenumbers(nr_channels);
     void *aterm       = idg::init_aterm(nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     void *spheroidal  = idg::init_spheroidal(subgridsize);
-    void *grid        = idg::init_grid(gridsize, nr_polarizations);
     idg::init_visibilities(h_visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
     idg::init_uvw(h_uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
     idg::init_metadata(h_metadata, h_uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
+    idg::init_grid(h_grid, gridsize, nr_polarizations);
     d_wavenumbers.set(wavenumbers);
     d_aterm.set(aterm);
     d_spheroidal.set(spheroidal);
-    
+
     // Start profiling
     cuProfilerStart();
 
     // Run gridder
     clog << ">>> Run gridder" << endl;
     proxy.grid_onto_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+
+    // Run adder
+    clog << ">>> Run adder" << endl;
+    proxy.add_subgrids_to_grid(context, nr_subgrids, h_metadata, h_subgrids, h_grid);
 
     clog << ">>> Run degridder" << endl;
     proxy.degrid_from_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
@@ -124,5 +128,4 @@ void run() {
     free(wavenumbers);
     free(aterm);
     free(spheroidal);
-    free(grid);
 }

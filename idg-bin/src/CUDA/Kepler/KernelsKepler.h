@@ -103,7 +103,7 @@ namespace idg {
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid)
                 {
-                    std::cout << __func__ << " to be implemented" << std::endl;
+                    launchAsync<128, 1, 1>(stream, jobsize, d_metadata, d_subgrid, d_grid);
                 }
             };
 
@@ -120,7 +120,7 @@ namespace idg {
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid)
                 {
-                    std::cout << __func__ << " to be implemented" << std::endl;
+                    launchAsync<128, 1, 1>(stream, jobsize, d_metadata, d_subgrid, d_grid);
                 }
             };
 

@@ -36,8 +36,9 @@ namespace idg {
                 virtual std::unique_ptr<idg::kernel::cuda::Gridder> get_kernel_gridder() const override;
                 virtual std::unique_ptr<idg::kernel::cuda::Degridder> get_kernel_degridder() const override;
                 virtual std::unique_ptr<idg::kernel::cuda::GridFFT> get_kernel_fft() const override;
-                // TODO: add Adder and Splitter
                 virtual std::unique_ptr<idg::kernel::cuda::Scaler> get_kernel_scaler() const override;
+                virtual std::unique_ptr<idg::kernel::cuda::Adder> get_kernel_adder() const override;
+                virtual std::unique_ptr<idg::kernel::cuda::Splitter> get_kernel_splitter() const override;
 
             }; // class Kepler
 

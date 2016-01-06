@@ -279,7 +279,113 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
-                cout << "Not implemented" << endl;
+                #endif
+
+                // Constants
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgridsize = mParams.get_subgrid_size();
+                auto gridsize = mParams.get_grid_size();
+                auto jobsize = mParams.get_job_size_gridder();
+
+                // Load kernels
+                unique_ptr<Adder> kernel_adder = get_kernel_adder();
+
+                // Initialize
+                cu::Stream executestream;
+                cu::Stream htodstream;
+                cu::Stream dtohstream;
+                const int nr_streams = 3;
+                context.setCurrent();
+
+                // Shared device memory
+                cu::DeviceMemory d_grid(SIZEOF_GRID);
+                htodstream.memcpyHtoDAsync(d_grid, h_grid, SIZEOF_GRID);
+                htodstream.synchronize();
+
+                // Performance measurements
+                double total_runtime_adding = 0;
+                double total_runtime_adder = 0;
+                total_runtime_adding = -omp_get_wtime();
+                PowerSensor::State startState = powerSensor.read();
+
+                // Start adder
+                #pragma omp parallel num_threads(nr_streams)
+                {
+                    // Initialize
+                    context.setCurrent();
+                    cu::Event inputFree;
+                    cu::Event inputReady;
+                    cu::Event executeFinished;
+
+                    // Private device memory
+                    cu::DeviceMemory d_subgrids(jobsize * SIZEOF_SUBGRIDS);
+                    cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
+
+                    #pragma omp for schedule(dynamic)
+                    for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
+                        // Prevent overflow
+                        int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+
+                        // Number of elements in batch
+                        int subgrid_elements   = subgridsize * subgridsize * nr_polarizations;
+                        int metadata_elements  = 5;
+
+                        // Pointers to data for current batch
+                        void *subgrids_ptr     = (complex<float>*) h_subgrids + s * subgrid_elements;
+                        void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
+
+                        // Power measurement
+                        PowerRecord powerRecords[2];
+
+                        #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
+                        {
+                            // Copy input data to device
+                            htodstream.waitEvent(inputFree);
+                            htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, current_jobsize * SIZEOF_SUBGRIDS);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
+                            htodstream.record(inputReady);
+
+                            // Launch adder kernel
+                            executestream.waitEvent(inputReady);
+                            powerRecords[0].enqueue(executestream);
+                            kernel_adder->launch(
+                                executestream, current_jobsize,
+                                d_metadata, d_subgrids, d_grid);
+                            powerRecords[1].enqueue(executestream);
+                            executestream.record(executeFinished);
+                        }
+
+                        executeFinished.synchronize();
+
+                        double runtime_adder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+                        #if defined(REPORT_VERBOSE)
+                        auxiliary::report("adder", runtime_adder,
+                                                   kernel_adder->flops(current_jobsize),
+                                                   kernel_adder->bytes(current_jobsize),
+                                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                        #endif
+                        #if defined(REPORT_TOTAL)
+                        total_runtime_adder += runtime_adder;
+                        #endif
+                    } // end for s
+                }
+
+                // Copy grid to host
+                dtohstream.synchronize();
+                dtohstream.memcpyDtoHAsync(h_grid, d_grid, SIZEOF_GRID);
+                dtohstream.synchronize();
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                total_runtime_adding += omp_get_wtime();
+                PowerSensor::State stopState = powerSensor.read();
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                uint64_t total_flops_adder  = kernel_adder->flops(nr_subgrids);
+                uint64_t total_bytes_adder  = kernel_adder->bytes(nr_subgrids);
+                double   total_watt_adding  = PowerSensor::Watt(startState, stopState);
+                auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
+                auxiliary::report("|adding", total_runtime_adding, total_flops_adder, total_bytes_adder, total_watt_adding);
+                auxiliary::report_subgrids("|adding", total_runtime_adding, nr_subgrids);
+                clog << endl;
                 #endif
             }
 
@@ -308,7 +414,7 @@ namespace idg {
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size();
 
-                // load kernel
+                // Load kernel
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
@@ -530,6 +636,10 @@ namespace idg {
                     if (cuModuleGetFunction(&function, *modules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
                         // found scaler kernel in module i
                         which_module[name_scaler] = i;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], name_adder.c_str()) == CUDA_SUCCESS) {
+                        // found adder kernel in module i
+                        which_module[name_adder] = i;
                     }
                 } // end for
             } // end find_kernel_functions

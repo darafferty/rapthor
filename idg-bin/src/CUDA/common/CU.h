@@ -82,14 +82,14 @@ namespace cu {
 			operator CUdevice () {
 				return _device;
 			}
-            
+
             size_t free_memory() {
                 size_t free;
                 size_t total;
                 cuMemGetInfo(&free, &total);
                 return free;
             }
-            
+
             size_t total_memory() {
                 size_t free;
                 size_t total;
@@ -155,7 +155,7 @@ namespace cu {
             template <typename T> operator T * () {
 				return static_cast<T *>(_ptr);
 			}
-			
+
 			size_t size() {
 				return _size;
 			}
@@ -171,7 +171,7 @@ namespace cu {
             void get(void *out) {
                 memcpy(out, _ptr, (size_t) _size);
             }
-		
+
 		private:
 			void *_ptr;
 			size_t _size;
@@ -187,11 +187,11 @@ namespace cu {
 			~DeviceMemory() {
 				checkCudaCall(cuMemFree(_ptr));
 			}
-			
+
 			operator CUdeviceptr() {
 				return _ptr;
 			}
-			
+
 			operator const void*() {
 				return &_ptr;
 			}
@@ -199,7 +199,7 @@ namespace cu {
 			size_t size() {
 				return _size;
 			}
-            
+
             void set(void *in) {
                 cuMemcpyHtoD(_ptr, in, _size);
             }
@@ -207,11 +207,11 @@ namespace cu {
             void get(void *out) {
                 cuMemcpyDtoH(out, _ptr, _size);
             }
-			
+
 			void zero() {
 				cuMemsetD8(_ptr, 0, _size);
 			}
-			
+
 		private:
 			CUdeviceptr _ptr;
 			size_t _size;
@@ -260,7 +260,7 @@ namespace cu {
 
 	class TexRef {
 		public:
-		TexRef(CUtexref texref): 
+		TexRef(CUtexref texref):
 			_texref(texref)
 		{}
 

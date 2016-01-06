@@ -129,6 +129,8 @@ namespace idg {
                 virtual std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const = 0;
                 virtual std::unique_ptr<kernel::cuda::GridFFT> get_kernel_fft() const = 0;
                 virtual std::unique_ptr<kernel::cuda::Scaler> get_kernel_scaler() const = 0;
+                virtual std::unique_ptr<kernel::cuda::Adder> get_kernel_adder() const = 0;
+                virtual std::unique_ptr<kernel::cuda::Splitter> get_kernel_splitter() const = 0;
 
             protected:
                 static std::string make_tempdir();
