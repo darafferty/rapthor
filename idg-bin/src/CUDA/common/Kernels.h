@@ -21,6 +21,7 @@ namespace idg {
             static const std::string name_adder     = "kernel_adder";
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
+            static const std::string name_scaler    = "kernel_scaler";
 
             class Gridder {
             public:
@@ -193,14 +194,16 @@ namespace idg {
                     // Execute bulk ffts (if any)
                     if (planned_batch >= bulk_size) {
                         (*fft_bulk).setStream(stream);
-                        for (; s < (planned_batch - bulk_size); s += bulk_size) {
-                            (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+                        for (; s < planned_batch; s += bulk_size) {
+                            if (planned_batch - s >= bulk_size) {
+                                (*fft_bulk).execute(data_ptr, data_ptr, direction);
+                                data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+                            }
                         }
                     }
 
                     // Execute remainder ffts
-                    if (fft_remainder) {
+                    if (s < planned_batch) {
                         (*fft_remainder).setStream(stream);
                         (*fft_remainder).execute(data_ptr, data_ptr, direction);
                     }
@@ -215,7 +218,7 @@ namespace idg {
 
                 uint64_t flops(int size, int batch) {
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
+                    return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);
                 }
 
                 uint64_t bytes(int size, int batch) {
@@ -322,6 +325,46 @@ namespace idg {
                 Parameters parameters;
             };
 
+            class Scaler {
+            public:
+                Scaler(cu::Module &module, const Parameters &params);
+
+                virtual void launch(
+                    cu::Stream &stream, int jobsize,
+                    cu::DeviceMemory &d_subgrid) = 0;
+
+                template <int blockX, int blockY, int blockZ>
+                void launchAsync(
+                    cu::Stream &stream,
+                    int jobsize,
+                    cu::DeviceMemory &d_subgrid) {
+
+                    const void *parameters[] = { d_subgrid };
+
+                    stream.launchKernel(function, jobsize, 1, 1,
+                                        blockX, blockY, blockZ, 0, parameters);
+                }
+
+                uint64_t flops(int jobsize) {
+                    int subgridsize = parameters.get_subgrid_size();
+                    int nr_polarizations = parameters.get_nr_polarizations();
+                    uint64_t flops = 0;
+                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // scale
+                    return flops;
+                }
+
+                uint64_t bytes(int jobsize) {
+                    int subgridsize = parameters.get_subgrid_size();
+                    int nr_polarizations = parameters.get_nr_polarizations();
+                    uint64_t bytes = 0;
+                    bytes += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
+                    return bytes;
+                }
+
+            private:
+                cu::Function function;
+                Parameters parameters;
+            };
         } // namespace cuda
     } // namespace kernel
 } // namespace idg

@@ -54,7 +54,6 @@ namespace idg {
             planned_batch = batch;
         }
 
-
         // Adder class
         Adder::Adder(cu::Module &module, const Parameters &params) :
             function(module, name_adder.c_str()), parameters(params) { }
@@ -63,6 +62,10 @@ namespace idg {
         // Splitter class
         Splitter::Splitter(cu::Module &module, const Parameters &params) :
             function(module, name_splitter.c_str()), parameters(params) { }
+
+        // Scaler class
+        Scaler::Scaler(cu::Module &module, const Parameters &params) :
+            function(module, name_scaler.c_str()), parameters(params) { }
 
         } // namespace cuda
     } // namespace kernel

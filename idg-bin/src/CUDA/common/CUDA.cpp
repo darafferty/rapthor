@@ -136,6 +136,7 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
+                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize
@@ -186,7 +187,7 @@ namespace idg {
                         void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
 
                         // Power measurement
-                        PowerRecord powerRecords[3];
+                        PowerRecord powerRecords[4];
 
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
                 		{
@@ -213,6 +214,12 @@ namespace idg {
                 			// Launch FFT
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
+
+
+                            // Launch scaler kernel
+                            kernel_scaler->launch(
+                                executestream, current_jobsize, d_subgrids);
+                            powerRecords[3].enqueue(executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
 
@@ -226,6 +233,7 @@ namespace idg {
 
                         double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
                                                      kernel_gridder->flops(current_jobsize),
@@ -235,7 +243,11 @@ namespace idg {
                                                      kernel_fft->flops(subgridsize, current_jobsize),
                                                      kernel_fft->bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
-                        #endif
+                        auxiliary::report(" scaler", runtime_scaler,
+                                                     kernel_scaler->flops(current_jobsize),
+                                                     kernel_scaler->bytes(current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                         #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_gridder += runtime_gridder;
                         total_runtime_fft     += runtime_fft;
@@ -514,6 +526,10 @@ namespace idg {
                     if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
                         // found fft kernel in module i
                         which_module[name_fft] = i;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
+                        // found scaler kernel in module i
+                        which_module[name_scaler] = i;
                     }
                 } // end for
             } // end find_kernel_functions
