@@ -177,7 +177,7 @@ namespace idg {
                             powerRecords[1].enqueue(executestream);
 
                 			// Launch FFT
-                            //kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
 
                             // Launch scaler kernel
