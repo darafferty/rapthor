@@ -78,6 +78,9 @@ namespace idg {
                 return unique_ptr<GridFFT>(new GridFFTKepler(*(modules[which_module.at(name_fft)]), mParams));
             }
 
+            unique_ptr<Scaler> Kepler::get_kernel_scaler() const {
+                return unique_ptr<Scaler>(new ScalerKepler(*(modules[which_module.at(name_scaler)]), mParams));
+            }
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
