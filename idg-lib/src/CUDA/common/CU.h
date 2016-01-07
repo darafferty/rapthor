@@ -153,11 +153,15 @@ namespace cu {
                 _size = size;
                 _ptr = ptr;
                 checkCudaCall(cuMemHostRegister(ptr, size, flags));
+                unregister = true;
             }
 
         	~HostMemory() {
                 if (free) {
 				    checkCudaCall(cuMemFreeHost(_ptr));
+                }
+                if (unregister) {
+                    cuMemHostUnregister(_ptr);
                 }
 			}
 
@@ -185,6 +189,7 @@ namespace cu {
 			void *_ptr;
 			size_t _size;
             bool free = false;
+            bool unregister = false;
 	};
 
 	class DeviceMemory 	{
