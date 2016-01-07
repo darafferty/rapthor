@@ -24,15 +24,13 @@ namespace idg {
                           Compiler compiler = default_compiler(),
                           Compilerflags flags = default_compiler_flags(),
                           ProxyInfo info = default_info());
-                
-                /// Copy constructor
-                ///SandyBridgeEP(const SandyBridgeEP& v) = delete;
+
+                // Disallow assignment and pass-by-value
+                SandyBridgeEP& operator=(const SandyBridgeEP& rhs) = delete;
+                SandyBridgeEP(const SandyBridgeEP& v) = delete;
 
                 /// Destructor
                 virtual ~SandyBridgeEP() = default;
-    
-                /// Assignment
-                SandyBridgeEP& operator=(const SandyBridgeEP& rhs) = delete;
 
                 // Get default values for ProxyInfo
                 static ProxyInfo default_info();
