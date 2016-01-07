@@ -22,7 +22,6 @@
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
-#include "CompilerEnvironment.h" // to be use in derived class
 #include "Types.h"
 
 
@@ -31,11 +30,16 @@ namespace idg {
         FourierDomainToImageDomain,
         ImageDomainToFourierDomain
     };
+
+    /// typedefs
+    typedef std::string Compiler;
+    typedef std::string Compilerflags;
 }
 
 
 namespace idg {
     namespace proxy {
+
         class Proxy
         {
         public:
@@ -70,7 +74,8 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const float *spheroidal) = 0;
 
-            /** \brief Degrid the visibilities from a uniform grid (grid -> visibilities)
+            /** \brief Degrid the visibilities from a uniform grid
+             *  (grid -> visibilities)
              * Using:
              * ST = NR_STATIONS
              * BL = NR_BASELINES = NR_STATIONS*(NR_STATIONS-1)/2
@@ -97,7 +102,8 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const float *spheroidal) = 0;
 
-            /** \brief Applyies (inverse) Fourier transform to grid (grid -> grid)
+            /** \brief Applyies (inverse) Fourier transform to grid
+             *  (grid -> grid)
              *  \param direction [in] idg::FourierDomainToImageDomain
              *                     or idg::ImageDomainToFourierDomain
              *  \param grid [in/out] complex<float>[PL][GS][GS]
@@ -149,11 +155,14 @@ namespace idg {
                 mParams.set_job_size_degridding(js); }
 
         public:
-            std::vector<Metadata> init_metadata(const float *uvw, const float *wavenumbers, const int *baselines);
+            std::vector<Metadata> init_metadata(const float *uvw,
+                                                const float *wavenumbers,
+                                                const int *baselines);
 
         protected:
             Parameters mParams;  // store parameters passed on creation
         };
+
     } // namespace proxy
 } // namespace idg
 #endif

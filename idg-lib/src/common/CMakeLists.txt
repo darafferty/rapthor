@@ -2,7 +2,6 @@ project(common)
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
-  CompilerEnvironment.h
   Proxy.h
   Parameters.h
   ProxyInfo.h
@@ -14,7 +13,6 @@ set (${PROJECT_NAME}_headers
 )
 
 set (${PROJECT_NAME}_sources 
-  CompilerEnvironment.cpp
   Proxy.cpp
   Parameters.cpp
   ProxyInfo.cpp 
