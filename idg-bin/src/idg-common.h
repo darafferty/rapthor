@@ -9,7 +9,6 @@
 #include "common/PowerSensor.h"
 #include "common/LikwidPowerSensor.h"
 #include "common/auxiliary.h"
-#include "common/CompilerEnvironment.h"
 #include "common/Types.h"
 
 #endif
