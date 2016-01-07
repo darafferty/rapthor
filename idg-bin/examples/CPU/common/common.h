@@ -11,9 +11,9 @@ int run()
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;
     idg::Parameters params;
-    // Read the following from ENV: 
-    // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE, 
-    // GRIDSIZE 
+    // Read the following from ENV:
+    // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE,
+    // GRIDSIZE
     // if non-default jobsize wanted, set also JOBSIZE, etc.
     params.set_from_env();
 
