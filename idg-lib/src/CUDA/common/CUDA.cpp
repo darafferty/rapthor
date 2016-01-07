@@ -134,7 +134,191 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-                cout << "Not implemented yet." << endl;
+
+                // Initialize metadata
+                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                auto nr_subgrids = metadata.size();
+
+                // Constants
+                auto nr_stations = mParams.get_nr_stations();
+                auto nr_baselines = mParams.get_nr_baselines();
+                auto nr_timesteps = mParams.get_nr_timesteps();
+                auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_channels = mParams.get_nr_channels();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
+                auto subgridsize = mParams.get_subgrid_size();
+                auto jobsize = mParams.get_job_size_gridder();
+
+                // Load kernels
+                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
+                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
+                unique_ptr<Adder> kernel_adder = get_kernel_adder();
+                cu::Module *module_fft = (modules[which_module[name_fft]]);
+
+                // Initialize
+                cu::Context &context = get_context();
+                cu::Stream executestream;
+                cu::Stream htodstream;
+                cu::Stream dtohstream;
+                const int nr_streams = 3;
+
+                // Host memory
+                cu::HostMemory h_visibilities((void *) visibilities, nr_subgrids * SIZEOF_VISIBILITIES);
+                cu::HostMemory h_uvw((void *) uvw, nr_subgrids * SIZEOF_UVW);
+                cu::HostMemory h_metadata((void *) metadata.data(), nr_subgrids * SIZEOF_METADATA);
+
+                // Device memory
+                cu::DeviceMemory d_wavenumbers(SIZEOF_WAVENUMBERS);
+                cu::DeviceMemory d_spheroidal(SIZEOF_SPHEROIDAL);
+                cu::DeviceMemory d_aterm(SIZEOF_ATERM);
+                cu::DeviceMemory d_grid(SIZEOF_GRID);
+
+                // Copy static device memory
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers, SIZEOF_WAVENUMBERS);
+                htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal, SIZEOF_SPHEROIDAL);
+                htodstream.memcpyHtoDAsync(d_aterm, aterm, SIZEOF_ATERM);
+                htodstream.synchronize();
+
+                // Performance measurements
+                double total_runtime_gridding = 0;
+                double total_runtime_gridder = 0;
+                double total_runtime_fft = 0;
+                double total_runtime_adder = 0;
+                total_runtime_gridding = -omp_get_wtime();
+                PowerSensor::State startState = powerSensor.read();
+
+                // Start gridder
+                #pragma omp parallel num_threads(nr_streams)
+                {
+                    // Initialize
+                    context.setCurrent();
+                    cu::Event inputFree;
+                    cu::Event outputFree;
+                    cu::Event inputReady;
+                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+
+                    // Private device memory
+                    cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
+                    cu::DeviceMemory d_uvw(jobsize * SIZEOF_UVW);
+                    cu::DeviceMemory d_subgrids(jobsize * SIZEOF_SUBGRIDS);
+                    cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
+
+                    #pragma omp for schedule(dynamic)
+                    for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
+                        // Prevent overflow
+                        int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+
+                        // Number of elements in batch
+                        int uvw_elements          = nr_timesteps * 3;
+                        int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
+                        int metadata_elements     = 5;
+
+                        // Pointers to data for current batch
+                        void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
+                        void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
+                        void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
+
+                        // Power measurement
+                        PowerRecord powerRecords[5];
+
+                        #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
+                        {
+                            // Copy input data to device
+                            htodstream.waitEvent(inputFree);
+                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, current_jobsize * SIZEOF_VISIBILITIES);
+                            htodstream.memcpyHtoDAsync(d_uvw, h_uvw, current_jobsize * SIZEOF_UVW);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_jobsize * SIZEOF_METADATA);
+                            htodstream.record(inputReady);
+
+                            // Create FFT plan
+                            kernel_fft->plan(subgridsize, current_jobsize);
+
+                            // Launch gridder kernel
+                            executestream.waitEvent(inputReady);
+                            executestream.waitEvent(outputFree);
+                            powerRecords[0].enqueue(executestream);
+                            kernel_gridder->launch(
+                                executestream, current_jobsize, w_offset, d_uvw, d_wavenumbers,
+                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                            executestream.record(inputFree);
+                            powerRecords[1].enqueue(executestream);
+
+                            // Launch FFT
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            powerRecords[2].enqueue(executestream);
+
+                            // Launch scaler kernel
+                            kernel_scaler->launch(
+                                executestream, current_jobsize, d_subgrids);
+                            powerRecords[3].enqueue(executestream);
+
+                            // Launch adder kernel
+                            kernel_adder->launch(
+                                executestream, current_jobsize,
+                                d_metadata, d_subgrids, d_grid);
+                            powerRecords[4].enqueue(executestream);
+                            executestream.record(outputFree);
+                        }
+
+                        outputFree.synchronize();
+
+                        double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+                        double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+                        double runtime_adder   = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
+                        #if defined(REPORT_VERBOSE)
+                        auxiliary::report("gridder", runtime_gridder,
+                                                     kernel_gridder->flops(current_jobsize),
+                                                     kernel_gridder->bytes(current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                        auxiliary::report("    fft", runtime_fft,
+                                                     kernel_fft->flops(subgridsize, current_jobsize),
+                                                     kernel_fft->bytes(subgridsize, current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                        auxiliary::report(" scaler", runtime_scaler,
+                                                     kernel_scaler->flops(current_jobsize),
+                                                     kernel_scaler->bytes(current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                        auxiliary::report("  adder", runtime_adder,
+                                                     kernel_adder->flops(current_jobsize),
+                                                     kernel_adder->bytes(current_jobsize),
+                                                     PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
+                        #endif
+                        #if defined(REPORT_TOTAL)
+                        total_runtime_gridder += runtime_gridder;
+                        total_runtime_fft     += runtime_fft;
+                        total_runtime_adder   += runtime_adder;
+                        #endif
+                    } // end for s
+                }
+
+                // Copy grid to host
+                dtohstream.synchronize();
+                dtohstream.memcpyDtoHAsync(grid, d_grid, SIZEOF_GRID);
+                dtohstream.synchronize();
+                executestream.synchronize();
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                total_runtime_gridding += omp_get_wtime();
+                PowerSensor::State stopState = powerSensor.read();
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_adder    = kernel_adder->flops(nr_subgrids);
+                uint64_t total_bytes_adder    = kernel_adder->bytes(nr_subgrids);
+                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_adder;
+                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_adder;
+                double   total_watt_gridding  = PowerSensor::Watt(startState, stopState);
+                auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
+                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
+                auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+                clog << endl;
+                #endif
             }
 
             void CUDA::degrid_visibilities(
@@ -308,7 +492,6 @@ namespace idg {
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
 
-
                             // Launch scaler kernel
                             kernel_scaler->launch(
                                 executestream, current_jobsize, d_subgrids);
@@ -340,7 +523,7 @@ namespace idg {
                                                      kernel_scaler->flops(current_jobsize),
                                                      kernel_scaler->bytes(current_jobsize),
                                                      PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
-                         #endif
+                        #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_gridder += runtime_gridder;
                         total_runtime_fft     += runtime_fft;
