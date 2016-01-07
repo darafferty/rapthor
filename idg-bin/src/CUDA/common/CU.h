@@ -146,10 +146,23 @@ namespace cu {
 			HostMemory(size_t size, int flags = 0) {
 				_size = size;
 				checkCudaCall(cuMemHostAlloc(&_ptr, size, flags));
+                free = true;
 			}
 
+            HostMemory(void *ptr, size_t size, int flags= 0) {
+                _size = size;
+                _ptr = ptr;
+                checkCudaCall(cuMemHostRegister(ptr, size, flags));
+                unregister = true;
+            }
+
         	~HostMemory() {
-				checkCudaCall(cuMemFreeHost(_ptr));
+                if (free) {
+				    checkCudaCall(cuMemFreeHost(_ptr));
+                }
+                if (unregister) {
+                    cuMemHostUnregister(_ptr);
+                }
 			}
 
             template <typename T> operator T * () {
@@ -175,6 +188,8 @@ namespace cu {
 		private:
 			void *_ptr;
 			size_t _size;
+            bool free = false;
+            bool unregister = false;
 	};
 
 	class DeviceMemory 	{

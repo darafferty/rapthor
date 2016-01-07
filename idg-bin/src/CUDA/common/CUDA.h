@@ -53,11 +53,14 @@
 /*
     Size of data structures for a single job
 */
-#define SIZEOF_SUBGRIDS 1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
-#define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
+#define SIZEOF_SUBGRIDS     1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
+#define SIZEOF_UVW          1ULL * nr_timesteps * 3 * sizeof(float)
 #define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
-#define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
-#define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
+#define SIZEOF_METADATA     1ULL * 5 * sizeof(int)
+#define SIZEOF_GRID         1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
+#define SIZEOF_WAVENUMBERS  1ULL * nr_channels * sizeof(float)
+#define SIZEOF_ATERM        1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
+#define SIZEOF_SPHEROIDAL   1ULL * subgridsize * subgridsize * sizeof(complex<float>)
 
 namespace idg {
     namespace proxy {
@@ -75,7 +78,7 @@ namespace idg {
                 cu::Event event;
             };
 
-            class CUDA {
+            class CUDA : public Proxy {
             public:
                 /// Constructors
                 CUDA(Parameters params,
@@ -98,7 +101,31 @@ namespace idg {
                 cu::Context& get_context() const {
                     return *context;
                 }
+            // High level interface, inherited from Proxy
+            virtual void grid_visibilities(
+                const std::complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                std::complex<float> *grid,
+                const float w_offset,
+                const std::complex<float> *aterm,
+                const float *spheroidal) override;
 
+            virtual void degrid_visibilities(
+                std::complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                const std::complex<float> *grid,
+                const float w_offset,
+                const std::complex<float> *aterm,
+                const float *spheroidal) override;
+
+            virtual void transform(DomainAtoDomainB direction,
+                                   std::complex<float>* grid) override;
+
+            // Low level routines
             public:
                 /** \brief Grid the visibilities onto uniform subgrids
                     (visibilities -> subgrids). */
