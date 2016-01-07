@@ -25,14 +25,12 @@ namespace idg {
                               Compilerflags flags = default_compiler_flags(),
                               ProxyInfo info = default_info());
 
-                    /// Copy constructor
-                    //Reference(const Reference& v) = delete;
+                    // Disallow assignment and pass-by-value
+                    Reference& operator=(const Reference& rhs) = delete;
+                    Reference(const Reference& v) = delete;
 
                     /// Destructor
                     virtual ~Reference() = default;
-
-                    /// Assignment
-                    Reference& operator=(const Reference& rhs) = delete;
 
                     // Get default values for ProxyInfo
                     static ProxyInfo default_info();
