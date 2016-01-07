@@ -111,7 +111,14 @@ namespace idg {
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
-                cout << "Not implemented yet." << endl;
+
+                // Constants
+                auto gridsize = mParams.get_grid_size();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+
+                cu::Context &context = get_context();
+                cu::HostMemory h_grid(grid, SIZEOF_GRID);
+                transform(direction, context, h_grid);
             }
 
             void CUDA::grid_visibilities(
