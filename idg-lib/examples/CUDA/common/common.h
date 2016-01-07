@@ -214,6 +214,9 @@ void run_highlevel() {
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
 
+    clog << ">>> Run degridder" << endl;
+    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, 0, aterm, spheroidal);
+
     // Stop profiling
     cuProfilerStop();
 
