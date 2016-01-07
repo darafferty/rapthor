@@ -29,23 +29,16 @@ namespace idg {
                 public:
                     /// Constructors
                     CPU(Parameters params,
-                        Compiler compiler = default_compiler(),
-                        Compilerflags flags = default_compiler_flags(),
-                        ProxyInfo info = default_info());
+                        Compiler compiler,
+                        Compilerflags flags,
+                        ProxyInfo info);
 
-                    /// Copy constructor
-                    //CPU(const CPU& v) = delete;
+                    // Disallow assignment and pass-by-value
+                    CPU& operator=(const CPU& rhs) = delete;
+                    CPU(const CPU& v) = delete;
 
                     /// Destructor
                     virtual ~CPU();
-
-                    /// Assignment
-                    CPU& operator=(const CPU& rhs) = delete;
-
-                    // Get default values
-                    static ProxyInfo default_info();
-                    static std::string default_compiler();
-                    static std::string default_compiler_flags();
 
                     // Get parameters of proxy
                     const Parameters& get_parameters() const { return mParams; }
