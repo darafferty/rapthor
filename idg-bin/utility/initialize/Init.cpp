@@ -29,11 +29,11 @@ namespace idg {
         char filename[512];
         sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
 
-        if (!uvwsim_file_exists(filename)) {
-            std::cerr << "Unable to find specified layout file: "
-                      << filename << std::endl;
-            exit(EXIT_FAILURE);
-        }
+        //if (!uvwsim_file_exists(filename)) {
+        //    std::cerr << "Unable to find specified layout file: "
+        //              << filename << std::endl;
+        //    exit(EXIT_FAILURE);
+        //}
 
         // Read the number of stations in the layout file.
         int nr_stations_file = uvwsim_get_num_stations(filename);
