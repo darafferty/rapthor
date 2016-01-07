@@ -75,7 +75,7 @@ namespace cufft {
 			}
 
 			C2C_2D(unsigned nx, unsigned ny, unsigned stride, unsigned dist, unsigned count) {
-				int n[] = {ny, nx};
+				int n[] = {(int) ny, (int) nx};
                 checkCuFFTcall(cufftPlanMany(&plan, 2, n, n, stride, dist, n, stride, dist, CUFFT_C2C, count));
 			}
 
