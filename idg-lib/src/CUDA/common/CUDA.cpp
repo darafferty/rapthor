@@ -103,8 +103,51 @@ namespace idg {
                 #endif
             }
 
+            /* High level routines */
+            void CUDA::transform(DomainAtoDomainB direction,
+                                complex<float>* grid)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                cout << "Transform direction: " << direction << endl;
+                #endif
+                cout << "Not implemented yet." << endl;
+            }
 
-            /// High level routines
+            void CUDA::grid_visibilities(
+                const complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                complex<float> *grid,
+                const float w_offset,
+                const complex<float> *aterm,
+                const float *spheroidal)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+                cout << "Not implemented yet." << endl;
+            }
+
+            void CUDA::degrid_visibilities(
+                std::complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                const std::complex<float> *grid,
+                const float w_offset,
+                const std::complex<float> *aterm,
+                const float *spheroidal)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+                cout << "Not implemented yet." << endl;
+            }
+
+
+            /* Low level routines */
             void CUDA::transform(DomainAtoDomainB direction, cu::Context &context, cu::HostMemory &h_grid)
             {
                 #if defined(DEBUG)
