@@ -118,10 +118,15 @@ void run() {
     clog << ">>> Run adder" << endl;
     proxy.add_subgrids_to_grid(context, nr_subgrids, h_metadata, h_subgrids, h_grid);
 
+    // Run fft
+    clog << ">>> Run fft" << endl;
+    proxy.transform(idg::FourierDomainToImageDomain, context, h_grid);
+
     // Run splitter
     clog << ">>> Run splitter" << endl;
     proxy.split_grid_into_subgrids(context, nr_subgrids, h_metadata, h_subgrids, h_grid);
 
+    // Run degridder
     clog << ">>> Run degridder" << endl;
     proxy.degrid_from_subgrids(context, nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
 
