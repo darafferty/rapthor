@@ -8,7 +8,7 @@ extern "C" {
 /*
 	Kernel
 */
-__global__ void kernel_adder(
+__global__ void kernel_splitter(
 	const MetadataType __restrict__ metadata,
 	SubGridType        __restrict__ subgrid,
 	const GridType     __restrict__ grid
