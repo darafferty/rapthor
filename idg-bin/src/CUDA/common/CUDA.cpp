@@ -184,6 +184,7 @@ namespace idg {
                 double total_runtime_gridding = 0;
                 double total_runtime_gridder = 0;
                 double total_runtime_fft = 0;
+                double total_runtime_scaler = 0;
                 double total_runtime_adder = 0;
                 total_runtime_gridding = -omp_get_wtime();
                 PowerSensor::State startState = powerSensor.read();
@@ -288,6 +289,7 @@ namespace idg {
                         #if defined(REPORT_TOTAL)
                         total_runtime_gridder += runtime_gridder;
                         total_runtime_fft     += runtime_fft;
+                        total_runtime_scaler  += runtime_scaler;
                         total_runtime_adder   += runtime_adder;
                         #endif
                     } // end for s
@@ -307,13 +309,16 @@ namespace idg {
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_scaler   = kernel_scaler->flops(nr_subgrids);
+                uint64_t total_bytes_scaler   = kernel_scaler->bytes(nr_subgrids);
                 uint64_t total_flops_adder    = kernel_adder->flops(nr_subgrids);
                 uint64_t total_bytes_adder    = kernel_adder->bytes(nr_subgrids);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_adder;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_adder;
+                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
+                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 double   total_watt_gridding  = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
