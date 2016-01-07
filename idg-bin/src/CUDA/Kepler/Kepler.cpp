@@ -66,6 +66,7 @@ namespace idg {
                 p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
                 p.add_src_file_to_lib(libfft, "KernelFFT.cu");
+                p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
                 p.add_src_file_to_lib(libadder, "KernelAdder.cu");
                 p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
 
