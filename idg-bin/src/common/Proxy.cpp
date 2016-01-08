@@ -116,8 +116,7 @@ namespace idg {
                                                       v_pixels_previous };
 
                             // Set metadata
-                            Metadata m = { baseline_offset,
-                                           time,
+                            Metadata m = { baseline_offset + time,
                                            nr_timesteps,
                                            baseline,
                                            coordinate };
@@ -125,7 +124,7 @@ namespace idg {
                             metadata.push_back(m);
 
                             // cout << "Create new subgrid: "
-                            //     << "baseline_offset = " << baseline_offset << ", "
+                            //     << "offset = " << offset << ", "
                             //     << "time_offset = " << time << ", "
                             //     << "nr_timesteps = " << nr_timesteps << endl;
 

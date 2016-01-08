@@ -21,6 +21,10 @@ void kernel_gridder(
     const MetadataType __restrict__ *metadata,
     SubGridType	__restrict__ *subgrid)
 {
+    // Load metadata
+    const Metadata m = (*metadata)[0];
+    const int offset_first = m.offset;
+
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
     // Iterate all subgrids
@@ -29,6 +33,7 @@ void kernel_gridder(
         // Load metadata
         const Metadata m = (*metadata)[s];
         int time_nr = 0; // TODO: HACK
+        int local_offset = m.offset - offset_first;
         int nr_timesteps = m.nr_timesteps;
         int station1 = m.baseline.station1;
         int station2 = m.baseline.station2;
@@ -56,9 +61,10 @@ void kernel_gridder(
 
                 for (int time = 0; time < nr_timesteps; time++) {
                     // Load UVW coordinates
-                    float u = (*uvw)[local_time_offset + time].u;
-                    float v = (*uvw)[local_time_offset + time].v;
-                    float w = (*uvw)[local_time_offset + time].w;
+
+                    float u = (*uvw)[local_offset + time].u;
+                    float v = (*uvw)[local_offset + time].v;
+                    float w = (*uvw)[local_offset + time].w;
 
                     // Compute phase index
                     float phase_index = u*l + v*m + w*n;
@@ -79,7 +85,7 @@ void kernel_gridder(
 
                         // Update pixel for every polarization
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            FLOAT_COMPLEX visibility = (*visibilities)[local_time_offset + time][chan][pol];
+                            FLOAT_COMPLEX visibility = (*visibilities)[local_offset + time][chan][pol];
                             pixels[pol] += visibility * phasor;
                         }
                     }
@@ -142,8 +148,6 @@ void kernel_gridder(
                 }
             }
         }
-
-        local_time_offset += nr_timesteps;
     } // end s
     } // end pragma parallel
 }  // end kernel_gridder

@@ -21,9 +21,9 @@ if __name__ == "__main__":
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 1
     nr_timesteps = 16
-    nr_timeslots = 100
+    nr_timeslots = 300
     nr_time = nr_timesteps*nr_timeslots
-    image_size = 0.1
+    image_size = 0.08
     subgrid_size = 24
     grid_size = 1024
     integration_time = 10
@@ -134,19 +134,19 @@ if __name__ == "__main__":
 
     grid = numpy.fft.fftshift(grid, axes=(1,2))
     idg.utils.plot_grid(grid)
-#
-#    ############
-#    # degridding
-#    ############
-#    grid = numpy.fft.ifftshift(grid, axes=(1,2))
-#    p.transform(idg.ImageDomainToFourierDomain, grid)
-#
-#    # TODO: Shift the zero-frequency component to the center of the spectrum.
-#    grid = numpy.fft.fftshift(grid, axes=(1,2))
-#    #idg.utils.plot_grid(grid)
-#
-#    p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
-#                          w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-#    idg.utils.plot_visibilities(visibilities)
-#
+
+    ############
+    # degridding
+    ############
+    grid = numpy.fft.ifftshift(grid, axes=(1,2))
+    p.transform(idg.ImageDomainToFourierDomain, grid)
+
+    # TODO: Shift the zero-frequency component to the center of the spectrum.
+    grid = numpy.fft.fftshift(grid, axes=(1,2))
+    #idg.utils.plot_grid(grid)
+
+    p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
+                          w_offset, kernel_size, aterms, aterms_offset, spheroidal)
+    idg.utils.plot_visibilities(visibilities)
+
     plt.show()
