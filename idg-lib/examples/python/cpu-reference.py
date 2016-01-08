@@ -99,6 +99,7 @@ if __name__ == "__main__":
     # aterm offset
     aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)
     idg.utils.init_aterms_offset(aterms_offset, nr_time)
+    print aterms_offset
 
     # spheroidal
     spheroidal = numpy.ones((subgrid_size, subgrid_size),

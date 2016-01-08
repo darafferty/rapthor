@@ -14,8 +14,9 @@ namespace idg {
         {
             // Load parameters
             auto nr_baselines = mParams.get_nr_baselines();
-            auto nr_timeslots = mParams.get_nr_timeslots();
             auto nr_timesteps = mParams.get_nr_timesteps();
+            auto nr_timeslots = mParams.get_nr_timeslots();
+            auto nr_time = mParams.get_nr_time();
             auto nr_channels = mParams.get_nr_channels();
             auto grid_size = mParams.get_grid_size();
             auto subgrid_size = mParams.get_subgrid_size();
@@ -23,9 +24,6 @@ namespace idg {
 
             // Compute number of subgrids
             auto nr_subgrids = nr_baselines * nr_timeslots;
-
-            // nr_time is the total number of timesteps for a baseline
-            auto nr_time = nr_timesteps * nr_timeslots;
 
             // Pointers to datastructures
             UVW *uvw = (UVW *) _uvw;
