@@ -51,10 +51,6 @@ void init_baselines(void *ptr, int nr_stations, int nr_baselines);
 void init_subgrid(void *ptr, int nr_baselines, int subgridsize,
                   int nr_polarizations, int nr_chunks);
 void init_grid(void *ptr, int gridsize, int nr_polarizations);
-void init_metadata(void *ptr, void *uvw, void *wavenumbers,
-                   int nr_stations, int nr_baselines, int nr_timesteps,
-                   int nr_timeslots, int nr_channels, int gridsize,
-                   int subgridsize, float imagesize);
 
 void* init_uvw(int nr_stations, int nr_baselines, int nr_time);
 void* init_visibilities(int nr_baselines, int nr_time, int nr_channels,
@@ -68,10 +64,6 @@ void* init_baselines(int nr_stations, int nr_baselines);
 void* init_subgrid(int nr_baselines, int subgridsize, int nr_polarizations,
                    int nr_chunks);
 void* init_grid(int gridsize, int nr_polarizations);
-void* init_metadata(void *uvw, void *wavenumbers, int nr_stations,
-                    int nr_baselines, int nr_timesteps, int nr_timeslots,
-                    int nr_channels, int gridsize, int subgridsize,
-                    float imagesize);
 
 } // namespace idg
 
