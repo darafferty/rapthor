@@ -14,22 +14,17 @@ namespace idg {
         {
             // Load parameters
             auto nr_baselines = mParams.get_nr_baselines();
-            auto nr_timesteps = mParams.get_nr_timesteps();
-            auto nr_timeslots = mParams.get_nr_timeslots();
             auto nr_time = mParams.get_nr_time();
             auto nr_channels = mParams.get_nr_channels();
             auto grid_size = mParams.get_grid_size();
             auto subgrid_size = mParams.get_subgrid_size();
             auto imagesize = mParams.get_imagesize();
 
-            // Compute number of subgrids
-            auto nr_subgrids = nr_baselines * nr_timeslots;
-
             // Pointers to datastructures
             UVW *uvw = (UVW *) _uvw;
             Baseline *baselines = (Baseline *) _baselines;
             vector<Metadata> metadata;
-            metadata.reserve(nr_subgrids);
+            metadata.reserve(nr_baselines); // TODO: put more accurate reservation
             Baseline *bptr = (Baseline *) baselines;
 
             // Get wavenumber for first and last frequency
@@ -37,23 +32,23 @@ namespace idg {
             float wavenumber_last  = wavenumbers[nr_channels-1];
 
             // Iterate all baselines
-            int t = 0;
             for (int bl = 0; bl < nr_baselines; bl++) {
                 Baseline baseline = baselines[bl];
 
-                // Iterate all timeslots
-                for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
-                    int time_offset = timeslot * nr_timesteps;
-
-                    // Find mininmum and maximum u and v for current timeslot in pixels
+                // Iterate all timesteps
+                int time = 0;
+                while (time < nr_time) {
+                    // Find mininmum and maximum u and v for current set of measurements in pixels
                     float u_min =  std::numeric_limits<float>::infinity();
                     float u_max = -std::numeric_limits<float>::infinity();
                     float v_min =  std::numeric_limits<float>::infinity();
                     float v_max = -std::numeric_limits<float>::infinity();
 
-                    // Iterate all timesteps
-                    for (int timestep = 0; timestep < nr_timesteps; timestep++) {
-                        UVW current = uvw[bl * (nr_time) + (time_offset + timestep)];
+                    int nr_timesteps = 0;
+                    int u_pixels_previous;
+                    int v_pixels_previous;
+                    for (int time_offset = time; time_offset < nr_time; time_offset++) {
+                        UVW current = uvw[(bl * (nr_time)) + time_offset];
 
                         // U,V in meters
                         float u_meters = current.u;
@@ -73,37 +68,65 @@ namespace idg {
                             if (v_pixels < v_min) v_min = v_pixels;
                             if (v_pixels > v_max) v_max = v_pixels;
                         }
+
+                        // Compute u,v width
+                        int u_width = u_max - u_min + 1;
+                        int v_width = v_max - v_min + 1;
+                        int uv_width = u_width < v_width ? v_width : u_width;
+
+                        // Compute middle point in pixels
+                        int u_pixels = roundf((u_max + u_min) / 2);
+                        int v_pixels = roundf((v_max + v_min) / 2);
+
+                        // Shift center from middle of grid to top left
+                        u_pixels += (grid_size/2);
+                        v_pixels += (grid_size/2);
+
+                        // Shift from middle of subgrid to top left
+                        u_pixels -= (subgrid_size/2);
+                        v_pixels -= (subgrid_size/2);
+
+                        // Check whether current set of measurements fit in subgrid
+                        if ((uv_width + kernel_size) < subgrid_size && time_offset < nr_time - 1) {
+                            // Continue to next measurement
+                            nr_timesteps++;
+                        } else {
+                            // Measurement no longer fits, create new subgrid
+
+                            // Use current u,v pixels for last measurement
+                            if (time_offset == nr_time - 1) {
+                                u_pixels_previous = u_pixels;
+                                v_pixels_previous = v_pixels;
+                                nr_timesteps++;
+                            }
+
+                            // Construct coordinate
+                            Coordinate coordinate = { u_pixels_previous, v_pixels_previous };
+
+                            // Set metadata
+                            //Metadata m = { time_offset, nr_timesteps, baseline, coordinate };
+                            Metadata m = { 0, baseline, coordinate };
+                            metadata.push_back(m);
+
+                            // Go to next subgrid
+                            time += nr_timesteps;
+                            break;
+                        }
+
+                        // Store curren u,v pixels
+                        u_pixels_previous = u_pixels;
+                        v_pixels_previous = v_pixels;
                     }
-
-                    // Compute middle point in pixels
-                    int u_pixels = roundf((u_max + u_min) / 2);
-                    int v_pixels = roundf((v_max + v_min) / 2);
-
-                    // Shift center from middle of grid to top left
-                    u_pixels += (grid_size/2);
-                    v_pixels += (grid_size/2);
-
-                    // Shift from middle of subgrid to top left
-                    u_pixels -= (subgrid_size/2);
-                    v_pixels -= (subgrid_size/2);
-
-                    // Construct coordinate
-                    Coordinate coordinate = { u_pixels, v_pixels };
-
-                    // Compute subgrid number
-                    int subgrid_nr = bl * nr_timeslots + timeslot;
-
-                    // Set metadata
-                    Metadata m = { timeslot, baseline, coordinate };
-                    metadata.push_back(m);
-                }
-            }
+                } // end while
+            } // end for bl
 
             return metadata;
-        }
+        } // end init_metadata
 
     } // namespace proxy
 } // namespace idg
+
+
 
 // C interface:
 // Rationale: calling the code from C code and Fortran easier,

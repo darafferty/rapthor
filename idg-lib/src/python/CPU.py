@@ -21,11 +21,13 @@ class Reference(Proxy):
                        nr_channels,
                        nr_timesteps,
                        nr_timeslots,
+                       nr_time,
                        imagesize,
                        grid_size,
                        subgrid_size = 32):
         try:
             lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
+                                               ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
@@ -37,6 +39,7 @@ class Reference(Proxy):
                 ctypes.c_uint(nr_channels),
                 ctypes.c_uint(nr_timesteps),
                 ctypes.c_uint(nr_timeslots),
+                ctypes.c_uint(nr_time),
                 ctypes.c_float(imagesize),
                 ctypes.c_uint(grid_size),
                 ctypes.c_uint(subgrid_size))
