@@ -1,4 +1,5 @@
 #include "Proxy.h"
+#include <exception> // runtime_error
 
 using namespace std;
 
@@ -38,7 +39,8 @@ namespace idg {
                 // Iterate all timesteps
                 int time = 0;
                 while (time < nr_time) {
-                    // Find mininmum and maximum u and v for current set of measurements in pixels
+                    // Find mininmum and maximum u and v for current set of
+                    // measurements in pixels
                     float u_min =  std::numeric_limits<float>::infinity();
                     float u_max = -std::numeric_limits<float>::infinity();
                     float v_min =  std::numeric_limits<float>::infinity();
@@ -48,7 +50,8 @@ namespace idg {
                     int u_pixels_previous;
                     int v_pixels_previous;
                     for (int time_offset = time; time_offset < nr_time; time_offset++) {
-                        UVW current = uvw[(bl * (nr_time)) + time_offset];
+                        int baseline_offset = bl * nr_time;
+                        UVW current = uvw[baseline_offset + time_offset];
 
                         // U,V in meters
                         float u_meters = current.u;
@@ -86,8 +89,12 @@ namespace idg {
                         u_pixels -= (subgrid_size/2);
                         v_pixels -= (subgrid_size/2);
 
+                        // TODO: add chaniging a terms as not fit anymore
+                        bool timestep_fits = (uv_width + kernel_size) < subgrid_size
+                                             && time_offset < nr_time - 1;
+
                         // Check whether current set of measurements fit in subgrid
-                        if ((uv_width + kernel_size) < subgrid_size && time_offset < nr_time - 1) {
+                        if (timestep_fits) {
                             // Continue to next measurement
                             nr_timesteps++;
                         } else {
@@ -100,13 +107,27 @@ namespace idg {
                                 nr_timesteps++;
                             }
 
+                            // TODO: split also on channels dynamically
+                            if (nr_timesteps==0)
+                                throw runtime_error("Probably too many channels!");
+
                             // Construct coordinate
-                            Coordinate coordinate = { u_pixels_previous, v_pixels_previous };
+                            Coordinate coordinate = { u_pixels_previous,
+                                                      v_pixels_previous };
 
                             // Set metadata
-                            //Metadata m = { time_offset, nr_timesteps, baseline, coordinate };
-                            Metadata m = { 0, baseline, coordinate };
+                            Metadata m = { baseline_offset,
+                                           time,
+                                           nr_timesteps,
+                                           baseline,
+                                           coordinate };
+                            // TODO: include aterm_index
                             metadata.push_back(m);
+
+                            // cout << "Create new subgrid: "
+                            //     << "baseline_offset = " << baseline_offset << ", "
+                            //     << "time_offset = " << time << ", "
+                            //     << "nr_timesteps = " << nr_timesteps << endl;
 
                             // Go to next subgrid
                             time += nr_timesteps;

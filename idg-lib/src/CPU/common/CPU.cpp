@@ -129,6 +129,7 @@ namespace idg {
                 #endif
 
                 try {
+
                     // initialize metadata
                     vector<Metadata> metadata = init_metadata(
                         uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -151,12 +152,12 @@ namespace idg {
                         visibilities,
                         spheroidal,
                         aterm,
-                        (int *) metadata.data(),
+                        metadata,
                         subgrids);
 
                     add_subgrids_to_grid(
                         nr_subgrids,
-                        (int *) metadata.data(),
+                        metadata,
                         subgrids,
                         grid);
 
@@ -202,22 +203,23 @@ namespace idg {
                                          subgridsize*subgridsize;
                     auto subgrids = new complex<float>[size_subgrids];
 
-                    split_grid_into_subgrids(
-                        nr_subgrids,
-                        (int *) metadata.data(),
-                        subgrids,
-                        grid);
+                    cout << "Degridder commented out" << endl;
+                    // split_grid_into_subgrids(
+                    //     nr_subgrids,
+                    //     (int *) metadata.data(),
+                    //     subgrids,
+                    //     grid);
 
-                    degrid_from_subgrids(
-                        nr_subgrids,
-                        w_offset,
-                        uvw,
-                        wavenumbers,
-                        visibilities,
-                        spheroidal,
-                        aterm,
-                        (int *) metadata.data(),
-                        subgrids);
+                    // degrid_from_subgrids(
+                    //     nr_subgrids,
+                    //     w_offset,
+                    //     uvw,
+                    //     wavenumbers,
+                    //     visibilities,
+                    //     spheroidal,
+                    //     aterm,
+                    //     (int *) metadata.data(),
+                    //     subgrids);
 
                     delete[] subgrids;
 
@@ -280,7 +282,7 @@ namespace idg {
                 const complex<float> *visibilities,
                 const float *spheroidal,
                 const complex<float> *aterm,
-                const int *metadata,
+                const vector<Metadata>& metadata,
                 complex<float> *subgrids)
             {
                 #if defined(DEBUG)
@@ -309,27 +311,28 @@ namespace idg {
 
                 // Start gridder
                 for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
+
                     // Prevent overflow
                     jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
-                    // Number of elements in batch
-                    int uvw_elements          = nr_timesteps * 3;
-                    int visibilities_elements = nr_timesteps * nr_channels
-                                                * nr_polarizations;
+                    int baseline_offset = metadata[s].baseline_offset;
+                    int time_offset     = metadata[s].time_offset;
+                    int offset          = baseline_offset + time_offset;
+
+                    int uvw_elements = sizeof(UVW)/sizeof(float); // = 3
+                    int visibilities_elements = nr_channels * nr_polarizations;
                     int subgrid_elements      = subgridsize * subgridsize
                                                 * nr_polarizations;
-                    int metadata_elements     = 5;
 
-                    // Pointers to data for current batch
-                    void *uvw_ptr          = (float *) uvw + s * uvw_elements;
-                    void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
+                    void *uvw_ptr          = (float *) uvw + offset * uvw_elements;
                     void *visibilities_ptr = (complex<float>*) visibilities
-                                             + s * visibilities_elements;
+                                             + offset * visibilities_elements;
+                    void *metadata_ptr     = (void *) &(metadata[s]);
+                    void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
                     void *spheroidal_ptr   = const_cast<float*>(spheroidal);
                     void *aterm_ptr        = const_cast<complex<float>*>(aterm);
                     void *subgrids_ptr     = (complex<float>*) subgrids
                                              + s * subgrid_elements;
-                    void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
@@ -404,7 +407,7 @@ namespace idg {
 
             void CPU::add_subgrids_to_grid(
                 const unsigned nr_subgrids,
-                const int *metadata,
+                const vector<Metadata>& metadata,
                 const complex<float> *subgrids,
                 complex<float> *grid)
             {
@@ -436,7 +439,7 @@ namespace idg {
                                             * nr_polarizations;
 
                     // Pointer to data for current jobs
-                    void *metadata_ptr = (int *) metadata + s * metadata_elements;
+                    void *metadata_ptr = (int *) &(metadata[s]);
                     void *subgrid_ptr  = (complex<float>*) subgrids
                                          + s * subgrid_elements;
                     void *grid_ptr     = grid;
