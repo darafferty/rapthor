@@ -18,7 +18,12 @@ void kernel_degridder(
 	const ATermType		 __restrict__ *aterm,
 	const MetadataType	 __restrict__ *metadata,
 	const SubGridType	 __restrict__ *subgrid
-	) {
+    )
+{
+    // Load metadata
+    const Metadata m = (*metadata)[0];
+    const int offset_first = m.offset;
+
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
     // Iterate all subgrids
@@ -27,6 +32,7 @@ void kernel_degridder(
         // Load metadata
         const Metadata m = (*metadata)[s];
         int time_nr = 0; // TODO: m.time_nr;
+        int local_offset = m.offset - offset_first;
         int nr_timesteps = m.nr_timesteps;
         int station1 = m.baseline.station1;
         int station2 = m.baseline.station2;
@@ -96,9 +102,9 @@ void kernel_degridder(
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
             // Load UVW coordinates
-            float u = (*uvw)[time_offset + time].u;
-            float v = (*uvw)[time_offset + time].v;
-            float w = (*uvw)[time_offset + time].w;
+            float u = (*uvw)[local_offset + time].u;
+            float v = (*uvw)[local_offset + time].v;
+            float w = (*uvw)[local_offset + time].w;
 
             // Compute phase indices and phase offsets
             for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -149,14 +155,15 @@ void kernel_degridder(
                 }
 
                 // Set visibilities
-                (*visibilities)[time_offset + time][chan][0] = sum[0];
-                (*visibilities)[time_offset + time][chan][1] = sum[1];
-                (*visibilities)[time_offset + time][chan][2] = sum[2];
-                (*visibilities)[time_offset + time][chan][3] = sum[3];
+                (*visibilities)[local_offset + time][chan][0] = sum[0];
+                (*visibilities)[local_offset + time][chan][1] = sum[1];
+                (*visibilities)[local_offset + time][chan][2] = sum[2];
+                (*visibilities)[local_offset + time][chan][3] = sum[3];
             }
-        }
-        time_offset += nr_timesteps;
-	}
-    }
-}
-}
+} // end for time
+} // end for s
+} // end #pragma parallel
+
+} // end kernel_gridder
+
+} // end extern "C"

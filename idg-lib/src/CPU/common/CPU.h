@@ -12,6 +12,7 @@
 
 #include <dlfcn.h>
 #include <memory>
+#include <vector>
 
 #include <fftw3.h> // FFTW_BACKWARD, FFTW_FORWARD
 
@@ -94,7 +95,7 @@ namespace idg {
 
                     virtual void split_grid_into_subgrids(
                         const unsigned nr_subgrids,
-                        const int *metadata,
+                        const std::vector<Metadata>& metadata,
                         std::complex<float> *subgrids,
                         const std::complex<float> *grid);
 
@@ -106,7 +107,7 @@ namespace idg {
                         std::complex<float> *visibilities,
                         const float *spheroidal,
                         const std::complex<float> *aterm,
-                        const int *metadata,
+                        const std::vector<Metadata>& metadata,
                         const std::complex<float> *subgrids);
 
 
