@@ -5,6 +5,7 @@
 #define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
 #define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
+#define TYPEDEF_ATERM_OFFSET_TYPE typedef int ATermOffsetType[nr_timeslots + 1];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
 #define TYPEDEF_BASELINE          typedef struct { int station1, station2; } Baseline;
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
@@ -198,6 +199,15 @@ void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
 	}
 }
 
+void init_aterm_offsets(void *ptr, int nr_timeslots, int nr_time) {
+    TYPEDEF_ATERM_OFFSET_TYPE
+    ATermOffsetType *aterm_offsets = (ATermOffsetType *) ptr;
+    for (int time = 0; time < nr_timeslots; time++) {
+        (*aterm_offsets)[time] = time * (nr_time / nr_timeslots);
+    }
+    (*aterm_offsets)[nr_timeslots] = nr_time + 1;
+}
+
 void init_spheroidal(void *ptr, int subgridsize) {
     TYPEDEF_SPHEROIDAL_TYPE
     SpheroidalType *spheroidal = (SpheroidalType *) ptr;
@@ -381,6 +391,13 @@ void* init_aterm(int nr_stations, int nr_timeslots, int nr_polarizations,
     return ptr;
 }
 
+void* init_aterm_offsets(int nr_timeslots, int nr_time) {
+    TYPEDEF_ATERM_OFFSET_TYPE
+    void *ptr = malloc(sizeof(ATermOffsetType));
+    init_aterm_offsets(ptr, nr_timeslots, nr_time);
+    return ptr;
+}
+
 void* init_spheroidal(int subgridsize) {
     TYPEDEF_SPHEROIDAL_TYPE
     void *ptr = malloc(sizeof(SpheroidalType));
@@ -487,6 +504,15 @@ extern "C" {
     {
         idg::init_aterm(ptr, nr_stations, nr_timeslots,
                         nr_polarizations, subgridsize);
+    }
+
+
+    void utils_init_aterms_offset(
+        void *ptr,
+        int nr_timeslots,
+        int nr_time)
+    {
+        idg::init_aterm_offsets(ptr, nr_timeslots, nr_time);
     }
 
 

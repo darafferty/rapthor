@@ -51,6 +51,7 @@ namespace idg {
              * ST = NR_STATIONS
              * BL = NR_BASELINES = NR_STATIONS*(NR_STATIONS-1)/2
              * CH = NR_CHANNELS
+             * TS = NR_TIMESLOTS
              * TI = NR_TIMESTEPS*NR_TIMESLOTS
              * PL = NR_POLARIZATIONS
              * GS = GRIDSIZE
@@ -61,6 +62,8 @@ namespace idg {
              * \param baselines [in] int[BL][2]
              * \param grid [out] complex<float>[PL][GS][GS]
              * \param w_offset [in] float
+             * \param kernel_size [in] int
+             * \param aterm_offsets [in] int[TS]
              * \param aterm [in] complex<float>[ST][TI][PL][SB][SB]
              * \param spheroidal [in] float[SB][SB]
              */
@@ -71,7 +74,9 @@ namespace idg {
                 const int *baselines,
                 std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal) = 0;
 
             /** \brief Degrid the visibilities from a uniform grid
@@ -80,6 +85,7 @@ namespace idg {
              * ST = NR_STATIONS
              * BL = NR_BASELINES = NR_STATIONS*(NR_STATIONS-1)/2
              * CH = NR_CHANNELS
+             * TS = NR_TIMESLOTS
              * TI = NR_TIMESTEPS*NR_TIMESLOTS
              * PL = NR_POLARIZATIONS
              * GS = GRIDSIZE
@@ -89,7 +95,10 @@ namespace idg {
              * \param wavenumbers [in] float[CH]
              * \param baselines [in] int[BL][2]
              * \param grid [in] complex<float>[PL][GS][GS]
+             * \param w_offset [in] float
+             * \param kernel_size [in] int
              * \param aterm [in] complex<float>[ST][TI][PL][SB][SB]
+             * \param aterm_offsets [in] int[TS]
              * \param spheroidal [in] float[SB][SB]
              */
             virtual void degrid_visibilities(
@@ -99,7 +108,9 @@ namespace idg {
                 const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal) = 0;
 
             /** \brief Applyies (inverse) Fourier transform to grid
@@ -108,8 +119,9 @@ namespace idg {
              *                     or idg::ImageDomainToFourierDomain
              *  \param grid [in/out] complex<float>[PL][GS][GS]
              */
-            virtual void transform(DomainAtoDomainB direction,
-                                   std::complex<float>* grid) = 0;
+            virtual void transform(
+                DomainAtoDomainB direction,
+                std::complex<float>* grid) = 0;
 
             // Auxiliary: set and get methods
             unsigned int get_nr_stations() const {
@@ -157,7 +169,9 @@ namespace idg {
         public:
             std::vector<Metadata> init_metadata(const float *uvw,
                                                 const float *wavenumbers,
-                                                const int *baselines);
+                                                const int *baselines,
+                                                const int *aterm_offsets,
+                                                const int kernel_size);
 
         protected:
             Parameters mParams;  // store parameters passed on creation

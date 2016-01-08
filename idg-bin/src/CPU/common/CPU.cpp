@@ -119,7 +119,9 @@ namespace idg {
                 const int *baselines,
                 complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
@@ -128,9 +130,8 @@ namespace idg {
 
                 try {
                     // initialize metadata
-                    vector<Metadata> metadata = init_metadata(uvw,
-                                                              wavenumbers,
-                                                              baselines);
+                    vector<Metadata> metadata = init_metadata(
+                        uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                     auto nr_subgrids = metadata.size();
 
                     // allocate 'subgrids' memory for subgrids
@@ -177,7 +178,9 @@ namespace idg {
                 const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
@@ -186,7 +189,8 @@ namespace idg {
 
                 try {
                     // initialize metadata
-                    vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                    vector<Metadata> metadata = init_metadata(
+                        uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                     auto nr_subgrids = metadata.size();
 
                     // allocate 'subgrids' memory for subgrids

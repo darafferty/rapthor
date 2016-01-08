@@ -52,7 +52,9 @@ namespace idg {
                         const int *baselines,
                         std::complex<float> *grid,
                         const float w_offset,
+                        const int kernel_size,
                         const std::complex<float> *aterm,
+                        const int *aterm_offsets,
                         const float *spheroidal) override;
 
                     virtual void degrid_visibilities(
@@ -62,11 +64,14 @@ namespace idg {
                         const int *baselines,
                         const std::complex<float> *grid,
                         const float w_offset,
+                        const int kernel_size,
                         const std::complex<float> *aterm,
+                        const int *aterm_offsets,
                         const float *spheroidal) override;
 
-                    virtual void transform(DomainAtoDomainB direction,
-                                           std::complex<float>* grid) override;
+                    virtual void transform(
+                        DomainAtoDomainB direction,
+                        std::complex<float>* grid) override;
 
                 // Low level routines
                 public:

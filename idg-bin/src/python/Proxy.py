@@ -20,7 +20,9 @@ class Proxy(object):
                           baselines,
                           grid,
                           w_offset,
+                          kernel_size,
                           aterms,
+                          aterms_offset,
                           spheroidal):
         """Grid visibilities onto grid.
 
@@ -37,6 +39,8 @@ class Proxy(object):
         aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
                                nr_polarizations, subgrid_size, subgrid_size),
                                dtype = idg.atermtype)
+        aterms_offset - numpy.ndarray(shape=(nr_timeslots+1),
+                                      dtype = idg.atermoffsettype)
         spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
                                    dtype = idg.spheroidaltype)
         """
@@ -63,14 +67,16 @@ class Proxy(object):
                             self.get_subgrid_size(),
                             self.get_subgrid_size()):
             raise ValueError('Aterms dimension missmatch.')
+        if aterms_offset.shape != (self.get_nr_timeslots() + 1, ):
+            raise ValueError('Aterms_offset dimension missmatch.')
         if spheroidal.shape != (self.get_subgrid_size(),
                                 self.get_subgrid_size()):
             raise ValueError('Spheroidal dimension missmatch.')
 
         # call C function to do the work
         self._cwrap_grid_visibilities(visibilities, uvw, wavenumbers,
-                                      baselines, grid, w_offset, aterms,
-                                      spheroidal)
+                                      baselines, grid, w_offset, kernel_size,
+                                      aterms, aterms_offset, spheroidal)
 
 
     def degrid_visibilities(self,
@@ -80,7 +86,9 @@ class Proxy(object):
                             baselines,
                             grid,
                             w_offset,
+                            kernel_size,
                             aterms,
+                            aterms_offset,
                             spheroidal):
         """Degrid visibilities onto grid.
 
@@ -97,6 +105,8 @@ class Proxy(object):
         aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
                  nr_polarizations, subgrid_size, subgrid_size),
                  dtype = idg.atermtype)
+        aterms_offset - numpy.ndarray(shape=(nr_timeslots+1),
+                                      dtype = idg.atermoffsettype)
         spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
         dtype = idg.spheroidaltype)
         """
@@ -123,14 +133,16 @@ class Proxy(object):
                             self.get_subgrid_size(),
                             self.get_subgrid_size()):
             raise ValueError('Aterms dimension missmatch.')
+        if aterms_offset.shape != (self.get_nr_timeslots() + 1, ):
+            raise ValueError('Aterms_offset dimension missmatch.')
         if spheroidal.shape != (self.get_subgrid_size(),
                                 self.get_subgrid_size()):
             raise ValueError('Spheroidal dimension missmatch.')
 
         # call C function to do the work
         self._cwrap_degrid_visibilities(visibilities, uvw, wavenumbers,
-                                        baselines, grid, w_offset, aterms,
-                                        spheroidal)
+                                        baselines, grid, w_offset, kernel_size,
+                                        aterms, aterms_offset, spheroidal)
 
 
 
