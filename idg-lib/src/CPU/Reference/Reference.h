@@ -38,6 +38,7 @@ namespace idg {
                     static std::string default_compiler_flags();
 
             }; // class Reference
+
         } // namespace cpu
     } // namespace proxy
 } // namespace idg

@@ -17,16 +17,17 @@ if __name__ == "__main__":
     ############
     # paramaters
     ############
-    nr_stations = 15
+    nr_stations = 8
     nr_baselines = nr_stations*(nr_stations-1)/2
-    nr_channels = 8
+    nr_channels = 4
     nr_timesteps = 16
-    nr_timeslots = 300
+    nr_timeslots = 10
     nr_time = nr_timesteps*nr_timeslots
-    image_size = 0.008
+    image_size = 0.1
     subgrid_size = 24
     grid_size = 1024
-    integration_time = 10
+    integration_time = 100
+    kernel_size = (subgrid_size / 2) + 1
 
     ##################
     # initialize proxy
@@ -85,7 +86,7 @@ if __name__ == "__main__":
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
 
-    # aterm
+    # aterms
     aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
                           subgrid_size, subgrid_size), \
                          dtype = idg.atermtype)
@@ -94,6 +95,10 @@ if __name__ == "__main__":
     # Set aterm to identity instead
     aterms[:,:,0,:,:] = 1.0
     aterms[:,:,3,:,:] = 1.0
+
+    # aterm offset
+    aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)
+    idg.utils.init_aterms_offset(aterms_offset, nr_time)
 
     # spheroidal
     spheroidal = numpy.ones((subgrid_size, subgrid_size),
@@ -113,7 +118,7 @@ if __name__ == "__main__":
     w_offset = 0.0
 
     p.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
-                        w_offset, aterms, spheroidal)
+                        w_offset, kernel_size, aterms, aterms_offset, spheroidal)
     idg.utils.plot_grid(grid, scaling='log')
 
     # TODO: shift zero frequency to outer part
@@ -140,7 +145,7 @@ if __name__ == "__main__":
     #idg.utils.plot_grid(grid)
 
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
-                          w_offset, aterms, spheroidal)
+                          w_offset, kernel_size, aterms, aterms_offset, spheroidal)
     idg.utils.plot_visibilities(visibilities)
 
     plt.show()

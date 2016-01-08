@@ -37,6 +37,7 @@ metadatatype = numpy.dtype([ ('time_nr', numpy.intc),
                              ('baseline', baselinetype),
                              ('coordinate', coordinatetype)])
 atermtype = numpy.complex64
+atermoffsettype = numpy.intc
 spheroidaltype = numpy.float32
 
 FourierDomainToImageDomain = 0

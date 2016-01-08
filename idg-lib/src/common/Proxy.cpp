@@ -8,7 +8,9 @@ namespace idg {
         vector<Metadata> Proxy::init_metadata(
             const float *_uvw,
             const float *wavenumbers,
-            const int *_baselines)
+            const int *_baselines,
+            const int *aterm_offsets,
+            const int kernel_size)
         {
             // Load parameters
             auto nr_baselines = mParams.get_nr_baselines();
@@ -153,12 +155,22 @@ extern "C" {
     void Proxy_set_job_size_degridding(Proxy_t* p, int n) {
         p->set_job_size_degridding(n); }
 
-    int Proxy_get_nr_subgrids(Proxy_t* p, void *uvw, void *wavenumbers, void *baselines) {
-        return p->init_metadata((float *) uvw, (float *) wavenumbers, (int *) baselines).size();
+    int Proxy_get_nr_subgrids(
+        Proxy_t* p, void *uvw, void *wavenumbers,
+        void *baselines, void *aterm_offsets, int kernel_size)
+    {
+        return p->init_metadata(
+            (float *) uvw, (float *) wavenumbers,
+            (int *) baselines, (int *) aterm_offsets, kernel_size).size();
     }
 
-    void Proxy_init_metadata(Proxy_t* p, void *metadata, void *uvw, void *wavenumbers, void *baselines) {
-        auto _metadata = p->init_metadata((float *) uvw, (float *) wavenumbers, (int *) baselines);
+    void Proxy_init_metadata(
+        Proxy_t* p, void *metadata, void *uvw, void *wavenumbers,
+        void *baselines, void *aterm_offsets, int kernel_size)
+    {
+        auto _metadata = p->init_metadata(
+            (float *) uvw, (float *) wavenumbers,
+            (int *) baselines, (int *) aterm_offsets, kernel_size);
         memcpy(metadata, _metadata.data(), _metadata.size() * sizeof(idg::Metadata));
     }
 } // end extern "C"

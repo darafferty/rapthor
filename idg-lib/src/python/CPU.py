@@ -76,9 +76,17 @@ class Reference(Proxy):
         lib.CPU_set_job_size_degridder(self.obj, ctypes.c_int(n))
 
     # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,
-                                baselines, grid, w_offset, aterms,
-                                spheroidal):
+    def _cwrap_grid_visibilities(self,
+                                 visibilities,
+                                 uvw,
+                                 wavenumbers,
+                                 baselines,
+                                 grid,
+                                 w_offset,
+                                 kernel_size,
+                                 aterms,
+                                 aterms_offset,
+                                 spheroidal):
         lib.CPU_Reference_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
@@ -86,13 +94,22 @@ class Reference(Proxy):
                                baselines.ctypes.data_as(ctypes.c_void_p),
                                grid.ctypes.data_as(ctypes.c_void_p),
                                ctypes.c_float(w_offset),
+                               ctypes.c_int(kernel_size),
                                aterms.ctypes.data_as(ctypes.c_void_p),
+                               aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                spheroidal.ctypes.data_as(ctypes.c_void_p))
 
     # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_degrid_visibilities(self, visibilities, uvw,
-                                   wavenumbers, baselines,
-                                   grid, w_offset, aterms,
+    def _cwrap_degrid_visibilities(self,
+                                   visibilities,
+                                   uvw,
+                                   wavenumbers,
+                                   baselines,
+                                   grid,
+                                   w_offset,
+                                   kernel_size,
+                                   aterms,
+                                   aterms_offset,
                                    spheroidal):
         lib.CPU_Reference_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
@@ -101,7 +118,9 @@ class Reference(Proxy):
                                  baselines.ctypes.data_as(ctypes.c_void_p),
                                  grid.ctypes.data_as(ctypes.c_void_p),
                                  ctypes.c_float(w_offset),
+                                 ctypes.c_int(kernel_size),
                                  aterms.ctypes.data_as(ctypes.c_void_p),
+                                 aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                  spheroidal.ctypes.data_as(ctypes.c_void_p))
 
     # Wrapper to C function (override for each class inheriting from this)
@@ -140,10 +159,17 @@ class SandyBridgeEP(Reference):
         except AttributeError:
             print "The chosen proxy was not built into the library"
 
-    def _cwrap_grid_visibilities(self, visibilities, uvw,
-                                 wavenumbers, baselines,
-                                 grid, w_offset,
-                                 aterms, spheroidal):
+    def _cwrap_grid_visibilities(self,
+                                 visibilities,
+                                 uvw,
+                                 wavenumbers,
+                                 baselines,
+                                 grid,
+                                 w_offset,
+                                 kernel_size,
+                                 aterms,
+                                 aterms_offset,
+                                 spheroidal):
         lib.CPU_SandyBridgeEP_grid(self.obj,
                                    visibilities.ctypes.data_as(ctypes.c_void_p),
                                    uvw.ctypes.data_as(ctypes.c_void_p),
@@ -151,14 +177,22 @@ class SandyBridgeEP(Reference):
                                    baselines.ctypes.data_as(ctypes.c_void_p),
                                    grid.ctypes.data_as(ctypes.c_void_p),
                                    ctypes.c_float(w_offset),
+                                   ctypes.c_int(kernel_size),
                                    aterms.ctypes.data_as(ctypes.c_void_p),
+                                   aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                    spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    def _cwrap_degrid_visibilities(self, visibilities,
-                                  uvw, wavenumbers,
-                                  baselines, grid,
-                                  w_offset, aterms,
-                                  spheroidal):
+    def _cwrap_degrid_visibilities(self,
+                                   visibilities,
+                                   uvw,
+                                   wavenumbers,
+                                   baselines,
+                                   grid,
+                                   w_offset,
+                                   kernel_size,
+                                   aterms,
+                                   aterms_offset,
+                                   spheroidal):
         lib.CPU_SandyBridgeEP_degrid(self.obj,
                                      visibilities.ctypes.data_as(ctypes.c_void_p),
                                      uvw.ctypes.data_as(ctypes.c_void_p),
@@ -166,8 +200,11 @@ class SandyBridgeEP(Reference):
                                      baselines.ctypes.data_as(ctypes.c_void_p),
                                      grid.ctypes.data_as(ctypes.c_void_p),
                                      ctypes.c_float(w_offset),
+                                     ctypes.c_int(kernel_size),
                                      aterms.ctypes.data_as(ctypes.c_void_p),
+                                     aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                      spheroidal.ctypes.data_as(ctypes.c_void_p))
+
 
     def _cwarp_transform(self, direction, grid):
         lib.CPU_SandyBridgeEP_transform(self.obj,
@@ -205,22 +242,26 @@ class HaswellEP(Reference):
             print "The chosen proxy was not built into the library"
 
     def _cwrap_grid_visibilities(self,
-                          visibilities,
-                          uvw,
-                          wavenumbers,
-                          baselines,
-                          grid,
-                          w_offset,
-                          aterms,
-                          spheroidal):
-        lib.CPU_HaswellEP_grid(self.obj,
+                                 visibilities,
+                                 uvw,
+                                 wavenumbers,
+                                 baselines,
+                                 grid,
+                                 w_offset,
+                                 kernel_size,
+                                 aterms,
+                                 aterms_offset,
+                                 spheroidal):
+            lib.CPU_HaswellEP_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
                                wavenumbers.ctypes.data_as(ctypes.c_void_p),
                                baselines.ctypes.data_as(ctypes.c_void_p),
                                grid.ctypes.data_as(ctypes.c_void_p),
                                ctypes.c_float(w_offset),
+                               ctypes.c_int(kernel_size),
                                aterms.ctypes.data_as(ctypes.c_void_p),
+                               aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                spheroidal.ctypes.data_as(ctypes.c_void_p))
 
     def _cwrap_degrid_visibilities(self,
@@ -230,7 +271,9 @@ class HaswellEP(Reference):
                                    baselines,
                                    grid,
                                    w_offset,
+                                   kernel_size,
                                    aterms,
+                                   aterms_offset,
                                    spheroidal):
         lib.CPU_HaswellEP_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
@@ -239,8 +282,11 @@ class HaswellEP(Reference):
                                  baselines.ctypes.data_as(ctypes.c_void_p),
                                  grid.ctypes.data_as(ctypes.c_void_p),
                                  ctypes.c_float(w_offset),
+                                 ctypes.c_int(kernel_size),
                                  aterms.ctypes.data_as(ctypes.c_void_p),
+                                 aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                  spheroidal.ctypes.data_as(ctypes.c_void_p))
+
 
     def _cwrap_transform(self, direction, grid):
         lib.CPU_HaswellEP_transform(self.obj,

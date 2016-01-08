@@ -236,9 +236,19 @@ def plot_aterms(aterms):
     """
     print "TO BE IMPLEMENTED"
 
+def init_aterms_offset(aterms_offset, nr_time):
+    """Initialize aterms offset"""
+    nr_timeslots = aterms_offset.shape[0] - 1
+    lib.utils_init_aterms_offset.argtypes = [ctypes.c_void_p,
+                                             ctypes.c_int,
+                                             ctypes.c_int]
+    lib.utils_init_aterms_offset(aterms_offset.ctypes.data_as(ctypes.c_void_p),
+                                 ctypes.c_int(nr_timeslots),
+                                 ctypes.c_int(nr_time) )
+
 
 def init_spheroidal(spheroidal):
-    """Initialize aterms for test case defined in utility/initialize"""
+    """Initialize spheroidal for test case defined in utility/initialize"""
     subgrid_size = spheroidal.shape[0]
     lib.utils_init_spheroidal.argtypes = [ctypes.c_void_p,
                                           ctypes.c_int]
@@ -404,7 +414,7 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
         v_pixels.append(v * scaling)
     u_pixels = numpy.asarray(u_pixels).flatten() + (grid_size / 2)
     v_pixels = numpy.asarray(v_pixels).flatten() + (grid_size / 2)
-    plt.plot(u_pixels, v_pixels, 'r.', markersize=1, alpha=0.1)
+    plt.plot(u_pixels, v_pixels, 'r.', markersize=2, alpha=0.9)
 
     # Make mouseover show value of grid
     def format_coord(x, y):
