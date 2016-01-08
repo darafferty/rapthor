@@ -83,6 +83,7 @@ add_library(idg-cuda
   $<TARGET_OBJECTS:cuda-common>
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
+  $<TARGET_OBJECTS:cuda-jetson>
 )
 
 install(TARGETS idg-cuda
