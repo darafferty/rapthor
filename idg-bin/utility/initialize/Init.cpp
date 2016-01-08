@@ -205,7 +205,7 @@ void init_aterm_offsets(void *ptr, int nr_timeslots, int nr_time) {
     for (int time = 0; time < nr_timeslots; time++) {
         (*aterm_offsets)[time] = time * (nr_time / nr_timeslots);
     }
-    (*aterm_offsets)[nr_timeslots] = nr_time + 1;
+    (*aterm_offsets)[nr_timeslots] = nr_time;
 }
 
 void init_spheroidal(void *ptr, int subgridsize) {
