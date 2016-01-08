@@ -83,12 +83,12 @@ namespace idg {
                         const std::complex<float> *visibilities,
                         const float *spheroidal,
                         const std::complex<float> *aterm,
-                        const int *metadata,
+                        const std::vector<Metadata>& metadata,
                         std::complex<float> *subgrids);
 
                     virtual void add_subgrids_to_grid(
                         const unsigned nr_subgrids,
-                        const int *metadata,
+                        const std::vector<Metadata>& metadata,
                         const std::complex<float> *subgrids,
                         std::complex<float> *grid);
 

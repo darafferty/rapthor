@@ -21,12 +21,12 @@ if __name__ == "__main__":
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 1
     nr_timesteps = 16
-    nr_timeslots = 10
+    nr_timeslots = 100
     nr_time = nr_timesteps*nr_timeslots
     image_size = 0.1
     subgrid_size = 24
     grid_size = 1024
-    integration_time = 100
+    integration_time = 10
     kernel_size = (subgrid_size / 2) + 1
 
     ##################

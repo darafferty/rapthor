@@ -11,16 +11,16 @@
 
 extern "C" {
 void kernel_gridder(
-	const int jobsize, const float w_offset,
-	const UVWType		   __restrict__ *uvw,
-	const WavenumberType   __restrict__ *wavenumbers,
-	const VisibilitiesType __restrict__ *visibilities,
-	const SpheroidalType   __restrict__ *spheroidal,
-	const ATermType		   __restrict__ *aterm,
-	const MetadataType	   __restrict__ *metadata,
-	SubGridType			   __restrict__ *subgrid
-	) {
-
+    const int jobsize,
+    const float w_offset,
+    const UVWType __restrict__ *uvw,
+    const WavenumberType __restrict__ *wavenumbers,
+    const VisibilitiesType __restrict__ *visibilities,
+    const SpheroidalType __restrict__ *spheroidal,
+    const ATermType	__restrict__ *aterm,
+    const MetadataType __restrict__ *metadata,
+    SubGridType	__restrict__ *subgrid)
+{
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
     // Iterate all subgrids
@@ -28,7 +28,8 @@ void kernel_gridder(
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
         const Metadata m = (*metadata)[s];
-        int time_nr = m.time_nr;
+        int time_nr = 0; // TODO: HACK
+        int nr_timesteps = m.nr_timesteps;
         int station1 = m.baseline.station1;
         int station2 = m.baseline.station2;
         int x_coordinate = m.coordinate.x;
@@ -37,6 +38,7 @@ void kernel_gridder(
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
         float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        int local_time_offset = 0;
 
         // Iterate all pixels in subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -47,15 +49,16 @@ void kernel_gridder(
 
                 // Compute l,m,n
                 float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
  
                 // Iterate all timesteps
-                for (int time = 0; time < NR_TIMESTEPS; time++) {
+
+                for (int time = 0; time < nr_timesteps; time++) {
                     // Load UVW coordinates
-                    float u = (*uvw)[s][time].u;
-                    float v = (*uvw)[s][time].v;
-                    float w = (*uvw)[s][time].w;
+                    float u = (*uvw)[local_time_offset + time].u;
+                    float v = (*uvw)[local_time_offset + time].v;
+                    float w = (*uvw)[local_time_offset + time].w;
 
                     // Compute phase index
                     float phase_index = u*l + v*m + w*n;
@@ -76,7 +79,7 @@ void kernel_gridder(
 
                         // Update pixel for every polarization
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            FLOAT_COMPLEX visibility = (*visibilities)[s][time][chan][pol];
+                            FLOAT_COMPLEX visibility = (*visibilities)[local_time_offset + time][chan][pol];
                             pixels[pol] += visibility * phasor;
                         }
                     }
@@ -139,7 +142,9 @@ void kernel_gridder(
                 }
             }
         }
-    }
-    }
-}
-}
+
+        local_time_offset += nr_timesteps;
+    } // end s
+    } // end pragma parallel
+}  // end kernel_gridder
+}  // end extern C

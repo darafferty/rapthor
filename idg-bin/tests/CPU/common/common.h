@@ -79,8 +79,8 @@ int run_test()
     // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
 
-    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
-    auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
+    auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations;
+    auto size_uvw = 1ULL * nr_baselines*nr_time*3;
     auto size_wavenumbers = 1ULL * nr_channels;
     auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize;
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;

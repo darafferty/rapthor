@@ -26,7 +26,8 @@ void kernel_degridder(
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
         const Metadata m = (*metadata)[s];
-        int time_nr = m.time_nr;
+        int time_nr = 0; // TODO: m.time_nr;
+        int nr_timesteps = m.nr_timesteps;
         int station1 = m.baseline.station1;
         int station2 = m.baseline.station2;
         int x_coordinate = m.coordinate.x;
@@ -42,6 +43,7 @@ void kernel_degridder(
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
         float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        int time_offset = 0;
 
         // Apply aterm to subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -92,11 +94,11 @@ void kernel_degridder(
         }
 
         // Iterate all timesteps
-        for (int time = 0; time < NR_TIMESTEPS; time++) {
+        for (int time = 0; time < nr_timesteps; time++) {
             // Load UVW coordinates
-            float u = (*uvw)[s][time].u;
-            float v = (*uvw)[s][time].v;
-            float w = (*uvw)[s][time].w;
+            float u = (*uvw)[time_offset + time].u;
+            float v = (*uvw)[time_offset + time].v;
+            float w = (*uvw)[time_offset + time].w;
 
             // Compute phase indices and phase offsets
             for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -147,12 +149,13 @@ void kernel_degridder(
                 }
 
                 // Set visibilities
-                (*visibilities)[s][time][chan][0] = sum[0];
-                (*visibilities)[s][time][chan][1] = sum[1];
-                (*visibilities)[s][time][chan][2] = sum[2];
-                (*visibilities)[s][time][chan][3] = sum[3];
+                (*visibilities)[time_offset + time][chan][0] = sum[0];
+                (*visibilities)[time_offset + time][chan][1] = sum[1];
+                (*visibilities)[time_offset + time][chan][2] = sum[2];
+                (*visibilities)[time_offset + time][chan][3] = sum[3];
             }
         }
+        time_offset += nr_timesteps;
 	}
     }
 }
