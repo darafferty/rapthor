@@ -27,32 +27,35 @@ namespace idg {
 
             uint64_t Gridder::flops(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
-                int nr_timesteps = parameters.get_nr_timesteps();
+                // int nr_timesteps = parameters.get_nr_timesteps();
                 int nr_channels = parameters.get_nr_channels();
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t flops = 0;
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
+                std::cout << "flop count has to be changed, as not every job performs the same" << std::endl;
+                // TODO: this has to be changed, as not every job performs the same
+//                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
+//                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
+//                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
                 #if defined(COUNT_SINCOS_AS_FLOPS)
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
+//                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
                 #endif
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+                // flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+                // flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+                // flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+                // flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
                 return flops;
             }
 
             uint64_t Gridder::bytes(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
-                int nr_timesteps = parameters.get_nr_timesteps();
+                // int nr_timesteps = parameters.get_nr_timesteps();
                 int nr_channels = parameters.get_nr_channels();
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t bytes = 0;
-                bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
-                bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
-                bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
+                std::cout << "byte count has to be changed, as not every job performs the same" << std::endl;
+                // bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
+                // bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
+                // bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
                 return bytes;
             }
 
@@ -72,32 +75,34 @@ namespace idg {
 
             uint64_t Degridder::flops(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
-                int nr_timesteps = parameters.get_nr_timesteps();
+                // int nr_timesteps = parameters.get_nr_timesteps();
                 int nr_channels = parameters.get_nr_channels();
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t flops = 0;
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
+                std::cout << "flop count has to be changed, as not every job performs the same" << std::endl;
+                // flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
+                // flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
+                // flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
                 #if defined(COUNT_SINCOS_AS_FLOPS)
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
+                // flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
                 #endif
-                flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+                // flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+                // flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+                // flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+                // flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
                 return flops;
             }
 
             uint64_t Degridder::bytes(int jobsize) {
                 int subgridsize = parameters.get_subgrid_size();
-                int nr_timesteps = parameters.get_nr_timesteps();
+                // int nr_timesteps = parameters.get_nr_timesteps();
                 int nr_channels = parameters.get_nr_channels();
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t bytes = 0;
-                bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
-                bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
-                bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
+                std::cout << "byte count has to be changed, as not every job performs the same" << std::endl;
+                // bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
+                // bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
+                // bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
                 return bytes;
             }
 

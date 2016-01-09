@@ -19,15 +19,13 @@ class Reference(Proxy):
     """Reference CPU implementation"""
     def __init__(self, nr_stations,
                        nr_channels,
-                       nr_timesteps,
-                       nr_timeslots,
                        nr_time,
+                       nr_timeslots,
                        imagesize,
                        grid_size,
-                       subgrid_size = 32):
+                       subgrid_size):
         try:
             lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
@@ -37,9 +35,8 @@ class Reference(Proxy):
             self.obj = lib.CPU_Reference_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
-                ctypes.c_uint(nr_timesteps),
-                ctypes.c_uint(nr_timeslots),
                 ctypes.c_uint(nr_time),
+                ctypes.c_uint(nr_timeslots),
                 ctypes.c_float(imagesize),
                 ctypes.c_uint(grid_size),
                 ctypes.c_uint(subgrid_size))
@@ -50,7 +47,7 @@ class Reference(Proxy):
     @classmethod
     def from_parameters(cls,p):
         """Another constructor form an instance of the Parameters class."""
-        return cls(p.nr_stations, p.nr_channels, p.nr_timesteps, \
+        return cls(p.nr_stations, p.nr_channels, p.nr_time, \
                    p.nr_timeslots, p.imagesize, p.grid_size, \
                    p.subgrid_size)
 
@@ -138,15 +135,13 @@ class SandyBridgeEP(Reference):
     """CPU implementation optimized for Intel SandyBridgeEP"""
     def __init__(self, nr_stations,
                        nr_channels,
-                       nr_timesteps,
-                       nr_timeslots,
                        nr_time,
+                       nr_timeslots,
                        imagesize,
                        grid_size,
                        subgrid_size = 32):
         try:
             lib.CPU_SandyBridgeEP_init.argtypes = [ctypes.c_uint, \
-                                                   ctypes.c_uint, \
                                                    ctypes.c_uint, \
                                                    ctypes.c_uint, \
                                                    ctypes.c_uint, \
@@ -156,9 +151,8 @@ class SandyBridgeEP(Reference):
             self.obj = lib.CPU_SandyBridgeEP_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
-                ctypes.c_uint(nr_timesteps),
-                ctypes.c_uint(nr_timeslots),
                 ctypes.c_uint(nr_time),
+                ctypes.c_uint(nr_timeslots),
                 ctypes.c_float(imagesize),
                 ctypes.c_uint(grid_size),
                 ctypes.c_uint(subgrid_size))
@@ -223,15 +217,13 @@ class HaswellEP(Reference):
     """CPU implementation optimized for Intel HaswellEP"""
     def __init__(self, nr_stations,
                        nr_channels,
-                       nr_timesteps,
-                       nr_timeslots,
                        nr_time,
+                       nr_timeslots,
                        imagesize,
                        grid_size,
                        subgrid_size = 32):
         try:
             lib.CPU_HaswellEP_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
@@ -241,9 +233,8 @@ class HaswellEP(Reference):
             self.obj = lib.CPU_HaswellEP_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
-                ctypes.c_uint(nr_timesteps),
-                ctypes.c_uint(nr_timeslots),
                 ctypes.c_uint(nr_time),
+                ctypes.c_uint(nr_timeslots),
                 ctypes.c_float(imagesize),
                 ctypes.c_uint(grid_size),
                 ctypes.c_uint(subgrid_size))

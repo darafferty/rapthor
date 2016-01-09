@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # initialize proxy
     ##################
     p = idg.CPU.Reference(nr_stations, nr_channels,
-                          nr_timesteps, nr_timeslots, nr_time,
+                          nr_time, nr_timeslots,
                           image_size, grid_size, subgrid_size)
 
     ##################
@@ -42,7 +42,6 @@ if __name__ == "__main__":
     print "nr_stations = ", p.get_nr_stations()
     print "nr_baselines = ", p.get_nr_baselines()
     print "nr_channels = ", p.get_nr_channels()
-    print "nr_timesteps = ", p.get_nr_timesteps()
     print "nr_timeslots = ", p.get_nr_timeslots()
     print "nr_polarizations = ", p.get_nr_polarizations()
     print "subgrid_size = ", p.get_subgrid_size()

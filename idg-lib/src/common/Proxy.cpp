@@ -89,6 +89,7 @@ namespace idg {
                         u_pixels -= (subgrid_size/2);
                         v_pixels -= (subgrid_size/2);
 
+                        // TODO: add a MAX_NR_TIMESTEPS to be put onto a grid?
                         // TODO: add changing A-terms
                         // TODO: is +1 necessary? I believe it is only for
                         // even kernel_size, as middle point of uv_width
@@ -167,8 +168,6 @@ extern "C" {
         return p->get_nr_channels(); }
     int Proxy_get_nr_time(Proxy_t* p) {
         return p->get_nr_time(); }
-    int Proxy_get_nr_timesteps(Proxy_t* p) {
-        return p->get_nr_timesteps(); }
     int Proxy_get_nr_timeslots(Proxy_t* p) {
         return p->get_nr_timeslots(); }
     int Proxy_get_nr_polarizations(Proxy_t* p) {
