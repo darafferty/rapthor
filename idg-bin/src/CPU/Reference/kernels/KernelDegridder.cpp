@@ -20,7 +20,7 @@ void kernel_degridder(
 	const SubGridType	 __restrict__ *subgrid
     )
 {
-    // Load metadata
+    // Find offset of first subgrid
     const Metadata m = (*metadata)[0];
     const int offset_first = m.offset;
 
