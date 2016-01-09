@@ -31,13 +31,13 @@ void kernel_degridder(
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
         const Metadata m = (*metadata)[s];
-        int time_nr = 0; // TODO: m.time_nr;
-        int local_offset = m.offset - offset_first;
-        int nr_timesteps = m.nr_timesteps;
-        int station1 = m.baseline.station1;
-        int station2 = m.baseline.station2;
-        int x_coordinate = m.coordinate.x;
-        int y_coordinate = m.coordinate.y;
+        const int time_nr = 0; // TODO: m.time_nr; will be aterm_index
+        const int local_offset = m.offset - offset_first;
+        const int nr_timesteps = m.nr_timesteps;
+        const int station1 = m.baseline.station1;
+        const int station2 = m.baseline.station2;
+        const int x_coordinate = m.coordinate.x;
+        const int y_coordinate = m.coordinate.y;
 
         // Storage for precomputed values
         FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
@@ -49,7 +49,6 @@ void kernel_degridder(
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
         float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
-        int time_offset = 0;
 
         // Apply aterm to subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
