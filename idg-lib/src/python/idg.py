@@ -33,10 +33,12 @@ baselinetype = numpy.dtype([('station1', numpy.intc),
                             ('station2', numpy.intc)])
 coordinatetype = numpy.dtype([('x', numpy.intc),
                               ('y', numpy.intc)])
-metadatatype = numpy.dtype([ ('time_nr', numpy.intc),
+metadatatype = numpy.dtype([ ('offset', numpy.intc),
+                             ('nr_timesteps', numpy.intc),
                              ('baseline', baselinetype),
                              ('coordinate', coordinatetype)])
 atermtype = numpy.complex64
+atermoffsettype = numpy.intc
 spheroidaltype = numpy.float32
 
 FourierDomainToImageDomain = 0

@@ -45,28 +45,28 @@ namespace idg {
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
             #endif
- 
+
             // Create temp directory
             string tmpdir = CPU::make_tempdir();
- 
+
             // Create proxy info
             ProxyInfo p = CPU::default_proxyinfo(srcdir, tmpdir);
 
             return p;
         }
 
-        
-        string HaswellEP::default_compiler() 
+
+        string HaswellEP::default_compiler()
         {
             #if defined(USING_GNU_CXX_COMPILER)
             return "g++";
-            #else 
+            #else
             return "icpc";
             #endif
         }
-        
 
-        string HaswellEP::default_compiler_flags() 
+
+        string HaswellEP::default_compiler_flags()
         {
             string debug = "Debug";
             string relwithdebinfo = "RelWithDebInfo";
@@ -79,7 +79,7 @@ namespace idg {
                 return "-O3 -g -fopenmp -lfftw3f";
             else
                 return "-Wall -O3 -fopenmp -lfftw3f";
-            #else 
+            #else
             // Settings (general, assuming intel as default)
             // TODO: investigate effect of -march=core-avx2 option (performance, accuracy)
             if (debug == IDG_BUILD_TYPE)
@@ -134,7 +134,9 @@ extern "C" {
                             void *baselines,
                             void *grid,
                             float w_offset,
+                            int   kernel_size,
                             void *aterm,
+                            void *aterm_offsets,
                             void *spheroidal)
     {
          p->grid_visibilities(
@@ -144,7 +146,9 @@ extern "C" {
                 (const int*) baselines,
                 (std::complex<float>*) grid,
                 w_offset,
+                kernel_size,
                 (const std::complex<float>*) aterm,
+                (const int*) aterm_offsets,
                 (const float*) spheroidal);
     }
 
@@ -155,19 +159,23 @@ extern "C" {
                             void *baselines,
                             void *grid,
                             float w_offset,
+                            int   kernel_size,
                             void *aterm,
+                            void *aterm_offsets,
                             void *spheroidal)
     {
          p->degrid_visibilities(
                 (std::complex<float>*) visibilities,
-                    (const float*) uvw,
-                    (const float*) wavenumbers,
-                    (const int*) baselines,
-                    (const std::complex<float>*) grid,
-                    w_offset,
-                    (const std::complex<float>*) aterm,
-                    (const float*) spheroidal);
-     }
+                (const float*) uvw,
+                (const float*) wavenumbers,
+                (const int*) baselines,
+                (const std::complex<float>*) grid,
+                w_offset,
+                kernel_size,
+                (const std::complex<float>*) aterm,
+                (const int*) aterm_offsets,
+                (const float*) spheroidal);
+    }
 
     void CPU_HaswellEP_transform(CPU_HaswellEP* p,
                     int direction,
