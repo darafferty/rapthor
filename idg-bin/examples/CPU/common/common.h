@@ -20,14 +20,14 @@ int run()
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
-    int nr_timesteps = params.get_nr_timesteps();
+    int nr_time =  params.get_nr_time();
     int nr_timeslots = params.get_nr_timeslots();
-    int nr_time =  nr_timesteps * nr_timeslots;
     int nr_channels = params.get_nr_channels();
     int gridsize = params.get_grid_size();
     int subgridsize = params.get_subgrid_size();
     float imagesize = params.get_imagesize();
-    int nr_polarizations = 4;
+    int nr_polarizations = params.get_nr_polarizations();
+
     float w_offset = 0;
     int kernel_size = (subgridsize / 4) + 1;
 

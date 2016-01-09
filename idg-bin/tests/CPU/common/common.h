@@ -61,16 +61,16 @@ int run_test()
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
-    int nr_timesteps = params.get_nr_timesteps();
+    int nr_time = params.get_nr_time();
     int nr_timeslots = params.get_nr_timeslots();
-    int nr_time =  nr_timesteps * nr_timeslots;
     int nr_channels = params.get_nr_channels();
     int gridsize = params.get_grid_size();
     int subgridsize = params.get_subgrid_size();
     float imagesize = params.get_imagesize();
-    int nr_polarizations = 4;
+    int nr_polarizations = params.get_nr_polarizations();
+
     float w_offset = 0;
-    int kernel_size = (subgridsize / 2) + 1;
+    int kernel_size = (subgridsize / 4) + 1;
 
     // Print configuration
     std::clog << params;
@@ -98,11 +98,11 @@ int run_test()
     auto grid_ref = new std::complex<float>[size_grid];
     auto baselines = new int[size_baselines];
 
-    idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots,
+    idg::init_visibilities(visibilities, nr_baselines, nr_time,
                            nr_channels, nr_polarizations);
-    idg::init_visibilities(visibilities_ref, nr_baselines, nr_timesteps*nr_timeslots,
+    idg::init_visibilities(visibilities_ref, nr_baselines, nr_time,
                            nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
+    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
     idg::init_wavenumbers(wavenumbers, nr_channels);
     idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
