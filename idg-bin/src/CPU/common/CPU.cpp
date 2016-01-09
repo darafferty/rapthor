@@ -119,7 +119,9 @@ namespace idg {
                 const int *baselines,
                 complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
@@ -127,10 +129,10 @@ namespace idg {
                 #endif
 
                 try {
+
                     // initialize metadata
-                    vector<Metadata> metadata = init_metadata(uvw,
-                                                              wavenumbers,
-                                                              baselines);
+                    vector<Metadata> metadata = init_metadata(
+                        uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                     auto nr_subgrids = metadata.size();
 
                     // allocate 'subgrids' memory for subgrids
@@ -150,12 +152,12 @@ namespace idg {
                         visibilities,
                         spheroidal,
                         aterm,
-                        (int *) metadata.data(),
+                        metadata,
                         subgrids);
 
                     add_subgrids_to_grid(
                         nr_subgrids,
-                        (int *) metadata.data(),
+                        metadata,
                         subgrids,
                         grid);
 
@@ -177,7 +179,9 @@ namespace idg {
                 const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
@@ -186,7 +190,8 @@ namespace idg {
 
                 try {
                     // initialize metadata
-                    vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
+                    vector<Metadata> metadata = init_metadata(
+                        uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                     auto nr_subgrids = metadata.size();
 
                     // allocate 'subgrids' memory for subgrids
@@ -199,10 +204,10 @@ namespace idg {
                     auto subgrids = new complex<float>[size_subgrids];
 
                     split_grid_into_subgrids(
-                        nr_subgrids,
-                        (int *) metadata.data(),
-                        subgrids,
-                        grid);
+                         nr_subgrids,
+                         metadata,
+                         subgrids,
+                         grid);
 
                     degrid_from_subgrids(
                         nr_subgrids,
@@ -212,7 +217,7 @@ namespace idg {
                         visibilities,
                         spheroidal,
                         aterm,
-                        (int *) metadata.data(),
+                        metadata,
                         subgrids);
 
                     delete[] subgrids;
@@ -276,7 +281,7 @@ namespace idg {
                 const complex<float> *visibilities,
                 const float *spheroidal,
                 const complex<float> *aterm,
-                const int *metadata,
+                const vector<Metadata>& metadata,
                 complex<float> *subgrids)
             {
                 #if defined(DEBUG)
@@ -304,31 +309,42 @@ namespace idg {
                 total_runtime_gridding -= omp_get_wtime();
 
                 // Start gridder
+                // TODO: loop over baseline?
                 for (unsigned int s = 0; s < nr_subgrids; s += jobsize) {
+
                     // Prevent overflow
                     jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
-                    // Number of elements in batch
-                    int uvw_elements          = nr_timesteps * 3;
-                    int visibilities_elements = nr_timesteps * nr_channels
-                                                * nr_polarizations;
-                    int subgrid_elements      = subgridsize * subgridsize
-                                                * nr_polarizations;
-                    int metadata_elements     = 5;
+                    // offset for arrays with [baseline*nr_time + time]
+                    int offset       = metadata[s].offset;
 
-                    // Pointers to data for current batch
-                    void *uvw_ptr          = (float *) uvw + s * uvw_elements;
+                    int uvw_elements = sizeof(UVW)/sizeof(float); // = 3
+                    int visibilities_elements = nr_channels * nr_polarizations;
+                    int subgrid_elements      = subgridsize * subgridsize
+                                                 * nr_polarizations;
+                    // TODO: if later metadata back to int*:
+                    // int metadata_elements = sizeof(Metadata)/sizeof(int);
+
+                    // Note: the following are the pointers to the first
+                    // element that is processed in the kernel
+                    // These are mainly determined as in other code,
+                    // where the kernels are offload these parts
+                    // need to be copied over
                     void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
-                    void *visibilities_ptr = (complex<float>*) visibilities
-                                             + s * visibilities_elements;
                     void *spheroidal_ptr   = const_cast<float*>(spheroidal);
                     void *aterm_ptr        = const_cast<complex<float>*>(aterm);
+                    void *uvw_ptr          = (float *) uvw + offset * uvw_elements;
+                    void *visibilities_ptr = (complex<float>*) visibilities
+                                             + offset * visibilities_elements;
                     void *subgrids_ptr     = (complex<float>*) subgrids
                                              + s * subgrid_elements;
-                    void *metadata_ptr     = (int *) metadata + s * metadata_elements;
+                    void *metadata_ptr     = (void *) &(metadata[s]);
+                    // TODO: if later metadata back to int*:
+                    // void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
+
                     kernel_gridder->run(
                         jobsize,
                         w_offset,
@@ -340,6 +356,7 @@ namespace idg {
                         metadata_ptr,
                         subgrids_ptr
                         );
+
                     powerStates[1] = powerSensor->read();
 
                     // FFT kernel
@@ -400,7 +417,7 @@ namespace idg {
 
             void CPU::add_subgrids_to_grid(
                 const unsigned nr_subgrids,
-                const int *metadata,
+                const vector<Metadata>& metadata,
                 const complex<float> *subgrids,
                 complex<float> *grid)
             {
@@ -427,12 +444,16 @@ namespace idg {
                     jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s: jobsize;
 
                     // Number of elements in batch
-                    int metadata_elements = 5;
+
+                    // TODO: if later metadata back to int*:
+                    // int metadata_elements = sizeof(Metadata)/sizeof(int);;
                     int subgrid_elements  = subgridsize * subgridsize
                                             * nr_polarizations;
 
                     // Pointer to data for current jobs
-                    void *metadata_ptr = (int *) metadata + s * metadata_elements;
+                    // TODO: if later metadata back to int*:
+                    // void *metadata_ptr = (int *) metadata + s * metadata_elements;
+                    void *metadata_ptr = (int *) &(metadata[s]);
                     void *subgrid_ptr  = (complex<float>*) subgrids
                                          + s * subgrid_elements;
                     void *grid_ptr     = grid;
@@ -469,7 +490,7 @@ namespace idg {
 
             void CPU::split_grid_into_subgrids(
                 const unsigned nr_subgrids,
-                const int *metadata,
+                const vector<Metadata>& metadata,
                 complex<float> *subgrids,
                 const complex<float> *grid)
             {
@@ -496,15 +517,18 @@ namespace idg {
                     jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
                     // Number of elements in batch
-                    int metadata_elements = 5;
+                    // TODO: if later metadata back to int*:
+                    // int metadata_elements = sizeof(Metadata)/sizeof(int);;
                     int subgrid_elements  = subgridsize * subgridsize
                                             * nr_polarizations;
 
                     // Pointer to data for current jobs
-                    void *metadata_ptr = (int *) metadata + s * metadata_elements;
                     void *subgrid_ptr  = (complex<float>*) subgrids
                                          + s * subgrid_elements;
                     void *grid_ptr     = const_cast<complex<float>*>(grid);
+                    void *metadata_ptr = (int *) &(metadata[s]);
+                    // TODO: if later metadata back to int*:
+                    // void *metadata_ptr = (int *) metadata + s * metadata_elements;
 
                     double runtime_splitter = -omp_get_wtime();
                     kernel_splitter->run(jobsize, metadata_ptr, subgrid_ptr, grid_ptr);
@@ -544,7 +568,7 @@ namespace idg {
                 std::complex<float> *visibilities,
                 const float *spheroidal,
                 const std::complex<float> *aterm,
-                const int *metadata,
+                const vector<Metadata>& metadata,
                 const std::complex<float> *subgrids)
             {
                 #if defined(DEBUG)
@@ -576,24 +600,32 @@ namespace idg {
                     // Prevent overflow
                     jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
 
-                    // Number of elements in batch
-                    int uvw_elements          = nr_timesteps * 3;
-                    int visibilities_elements = nr_timesteps * nr_channels
-                                                * nr_polarizations;
-                    int metadata_elements     = 5;
-                    int subgrid_elements      = subgridsize * subgridsize
-                                                * nr_polarizations;
+                    // offset for arrays with [baseline*nr_time + time]
+                    int offset       = metadata[s].offset;
 
-                    // Pointers to data for current batch
-                    void *uvw_ptr          = (float *) uvw + s * uvw_elements;
+                    int uvw_elements = sizeof(UVW)/sizeof(float); // = 3
+                    int visibilities_elements = nr_channels * nr_polarizations;
+                    int subgrid_elements      = subgridsize * subgridsize
+                                                 * nr_polarizations;
+                    // TODO: if later metadata back to int*:
+                    // int metadata_elements = sizeof(Metadata)/sizeof(int);
+
+                    // Note: the following are the pointers to the first
+                    // element that is processed in the kernel
+                    // These are mainly determined as in other code,
+                    // where the kernels are offload these parts
+                    // need to be copied over
                     void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
-                    void *visibilities_ptr = (complex<float>*) visibilities
-                                             + s * visibilities_elements;
                     void *spheroidal_ptr   = const_cast<float*>(spheroidal);
                     void *aterm_ptr        = const_cast<complex<float>*>(aterm);
-                    void *metadata_ptr     = (int *) metadata + s * metadata_elements;
+                    void *uvw_ptr          = (float *) uvw + offset * uvw_elements;
+                    void *visibilities_ptr = (complex<float>*) visibilities
+                                             + offset * visibilities_elements;
                     void *subgrids_ptr     = (complex<float>*) subgrids
                                              + s * subgrid_elements;
+                    void *metadata_ptr     = (void *) &(metadata[s]);
+                    // TODO: if later metadata back to int*:
+                    // void *metadata_ptr     = (int *) metadata + s * metadata_elements;
 
                     // FFT kernel
                     powerStates[0] = powerSensor->read();

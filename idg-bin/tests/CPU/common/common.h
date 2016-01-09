@@ -63,12 +63,14 @@ int run_test()
     int nr_baselines = params.get_nr_baselines();
     int nr_timesteps = params.get_nr_timesteps();
     int nr_timeslots = params.get_nr_timeslots();
+    int nr_time =  nr_timesteps * nr_timeslots;
     int nr_channels = params.get_nr_channels();
     int gridsize = params.get_grid_size();
     int subgridsize = params.get_subgrid_size();
     float imagesize = params.get_imagesize();
     int nr_polarizations = 4;
-    int nr_subgrids = nr_baselines * nr_timeslots;
+    float w_offset = 0;
+    int kernel_size = (subgridsize / 2) + 1;
 
     // Print configuration
     std::clog << params;
@@ -77,26 +79,24 @@ int run_test()
     // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
 
-    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations;
-    auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
+    auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations;
+    auto size_uvw = 1ULL * nr_baselines*nr_time*3;
     auto size_wavenumbers = 1ULL * nr_channels;
     auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize;
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
-    auto size_metadata = 1ULL * nr_subgrids*5;
-    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize;
+    auto size_baselines = 1ULL * nr_baselines*2;
 
     auto visibilities = new std::complex<float>[size_visibilities];
     auto visibilities_ref = new std::complex<float>[size_visibilities];
     auto uvw = new float[size_uvw];
     auto wavenumbers = new float[size_wavenumbers];
     auto aterm = new std::complex<float>[size_aterm];
+    auto aterm_offsets = new int[nr_timeslots+1];
     auto spheroidal = new float[size_spheroidal];
     auto grid = new std::complex<float>[size_grid];
     auto grid_ref = new std::complex<float>[size_grid];
-    auto metadata = new int[size_metadata];
-    auto subgrids = new std::complex<float>[size_subgrids];
-    auto subgrids_ref = new std::complex<float>[size_subgrids];
+    auto baselines = new int[size_baselines];
 
     idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots,
                            nr_channels, nr_polarizations);
@@ -105,11 +105,10 @@ int run_test()
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
     idg::init_wavenumbers(wavenumbers, nr_channels);
     idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
+    idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
     idg::init_grid(grid_ref, gridsize, nr_polarizations);
-    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines,
-                       nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
     std::clog << std::endl;
 
     // Initialize interface to kernels
@@ -120,46 +119,33 @@ int run_test()
 
 
     // Run gridder
-    std::clog << ">>> Run gridder" << std::endl;
-    optimized.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers,
-                                 visibilities, spheroidal, aterm,
-                                 metadata, subgrids);
+    std::clog << ">>> Run gridding" << std::endl;
+    optimized.grid_visibilities(
+        visibilities, uvw, wavenumbers,
+        baselines, grid, w_offset, kernel_size,
+        aterm, aterm_offsets, spheroidal);
 
-    std::clog << ">>> Run adder" << std::endl;
-    optimized.add_subgrids_to_grid(nr_subgrids, metadata,
-                                   subgrids, grid);
-
-    std::clog << ">>> Run reference gridder" << std::endl;
-    reference.grid_onto_subgrids(nr_subgrids, 0, uvw, wavenumbers,
-                                 visibilities, spheroidal, aterm,
-                                 metadata, subgrids_ref);
-
-    std::clog << ">>> Run reference adder" << std::endl;
-    reference.add_subgrids_to_grid(nr_subgrids, metadata,
-                                   subgrids_ref, grid_ref);
+    std::clog << ">>> Run reference gridding" << std::endl;
+    reference.grid_visibilities(
+        visibilities, uvw, wavenumbers,
+        baselines, grid_ref, w_offset, kernel_size,
+        aterm, aterm_offsets, spheroidal);
 
     float grid_error = get_accucary(size_grid, grid, grid_ref);
 
 
     // Run degridder
-    std::clog << ">>> Run splitter" << std::endl;
-    // uses reference grid
-    optimized.split_grid_into_subgrids(nr_subgrids, metadata,
-                                       subgrids, grid_ref);
+    std::clog << ">>> Run degridding" << std::endl;
+    optimized.degrid_visibilities(
+        visibilities, uvw, wavenumbers,
+        baselines, grid_ref, w_offset, kernel_size,
+        aterm, aterm_offsets, spheroidal);
 
-    std::clog << ">>> Run degridder" << std::endl;
-    optimized.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers,
-                                   visibilities, spheroidal, aterm,
-                                   metadata, subgrids);
-
-    std::clog << ">>> Run reference splitter" << std::endl;
-    reference.split_grid_into_subgrids(nr_subgrids, metadata,
-                                       subgrids_ref, grid_ref);
-
-    std::clog << ">>> Run reference degridder" << std::endl;
-    reference.degrid_from_subgrids(nr_subgrids, 0, uvw, wavenumbers,
-                                   visibilities_ref, spheroidal, aterm,
-                                   metadata, subgrids_ref);
+    std::clog << ">>> Run reference degridding" << std::endl;
+    reference.degrid_visibilities(
+        visibilities_ref, uvw, wavenumbers,
+        baselines, grid_ref, w_offset, kernel_size,
+        aterm, aterm_offsets, spheroidal);
     std::clog << std::endl;
 
     float degrid_error = get_accucary(size_visibilities,
@@ -168,7 +154,6 @@ int run_test()
 
 
     // Report results
-
     if (grid_error < tol) {
         std::cout << "Gridding test PASSED!" << std::endl;
     } else {
@@ -192,12 +177,10 @@ int run_test()
     delete[] uvw;
     delete[] wavenumbers;
     delete[] aterm;
+    delete[] aterm_offsets;
     delete[] spheroidal;
     delete[] grid;
     delete[] grid_ref;
-    delete[] subgrids;
-    delete[] subgrids_ref;
-    delete[] metadata;
 
     return info;
 }

@@ -5,6 +5,7 @@
 #define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
 #define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
+#define TYPEDEF_ATERM_OFFSET_TYPE typedef int ATermOffsetType[nr_timeslots + 1];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
 #define TYPEDEF_BASELINE          typedef struct { int station1, station2; } Baseline;
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
@@ -198,6 +199,15 @@ void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
 	}
 }
 
+void init_aterm_offsets(void *ptr, int nr_timeslots, int nr_time) {
+    TYPEDEF_ATERM_OFFSET_TYPE
+    ATermOffsetType *aterm_offsets = (ATermOffsetType *) ptr;
+    for (int time = 0; time < nr_timeslots; time++) {
+        (*aterm_offsets)[time] = time * (nr_time / nr_timeslots);
+    }
+    (*aterm_offsets)[nr_timeslots] = nr_time;
+}
+
 void init_spheroidal(void *ptr, int subgridsize) {
     TYPEDEF_SPHEROIDAL_TYPE
     SpheroidalType *spheroidal = (SpheroidalType *) ptr;
@@ -254,99 +264,6 @@ float max(float coordinate_first, float coordinate_last, float wavenumber_first,
            MAX(coordinate_last  * wavenumber_first, coordinate_last  * wavenumber_last));
 }
 
-void init_metadata(void *ptr, void *_uvw, void *_wavenumbers, int nr_stations, int nr_baselines, int nr_timesteps, int nr_timeslots, int nr_channels, int gridsize, int subgridsize, float imagesize) {
-    // Compute number of subgrids
-    int nr_subgrids = nr_baselines * nr_timeslots;
-
-    // nr_time is the total number of timesteps for a baseline
-    int nr_time = nr_timesteps * nr_timeslots;
-
-    // Define datatypes
-    TYPEDEF_UVW
-    TYPEDEF_UVW_TYPE
-    TYPEDEF_WAVENUMBER_TYPE
-    TYPEDEF_BASELINE
-    TYPEDEF_BASELINE_TYPE
-    TYPEDEF_COORDINATE
-    TYPEDEF_METADATA
-    TYPEDEF_METADATA_TYPE
-
-    // Pointers to datastructures
-    UVWType *uvw = (UVWType *) _uvw;
-    WavenumberType *wavenumbers = (WavenumberType *) _wavenumbers;
-    BaselineType *baselines = (BaselineType *) init_baselines(nr_stations, nr_baselines);
-    MetadataType *metadata = (MetadataType *) ptr;
-
-    // Get wavenumber for first and last frequency
-    float wavenumber_first = (*wavenumbers)[0];
-    float wavenumber_last  = (*wavenumbers)[nr_channels-1];
-
-    // Iterate all baselines
-    for (int bl = 0; bl < nr_baselines; bl++) {
-        // Load baseline
-        Baseline baseline = (*baselines)[bl];
-
-        // Iterate all timeslots
-        for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
-            int time_offset = timeslot * nr_timesteps;
-
-            // Find mininmum and maximum u and v for current timeslot in pixels
-            float u_min =  std::numeric_limits<float>::infinity();
-            float u_max = -std::numeric_limits<float>::infinity();
-            float v_min =  std::numeric_limits<float>::infinity();
-            float v_max = -std::numeric_limits<float>::infinity();
-
-            // Iterate all timesteps
-            for (int timestep = 0; timestep < nr_timesteps; timestep++) {
-                UVW current = (*uvw)[bl][time_offset + timestep];
-
-                // U,V in meters
-                float u_meters = current.u;
-                float v_meters = current.v;
-
-                // Iterate all channels
-                for (int chan = 0; chan < nr_channels; chan++) {
-                    float wavenumber = (*wavenumbers)[chan];
-                    float scaling = imagesize * wavenumber / (2 * M_PI);
-
-                    // U,V in pixels
-                    float u_pixels = u_meters * scaling;
-                    float v_pixels = v_meters * scaling;
-
-                    if (u_pixels < u_min) u_min = u_pixels;
-                    if (u_pixels > u_max) u_max = u_pixels;
-                    if (v_pixels < v_min) v_min = v_pixels;
-                    if (v_pixels > v_max) v_max = v_pixels;
-                }
-            }
-
-            // Compute middle point in pixels
-            int u_pixels = roundf((u_max + u_min) / 2);
-            int v_pixels = roundf((v_max + v_min) / 2);
-
-            // Shift center from middle of grid to top left
-            u_pixels += (gridsize/2);
-            v_pixels += (gridsize/2);
-
-            // Shift from middle of subgrid to top left
-            u_pixels -= (subgridsize/2);
-            v_pixels -= (subgridsize/2);
-
-            // Construct coordinate
-            Coordinate coordinate = { u_pixels, v_pixels };
-
-            // Compute subgrid number
-            int subgrid_nr = bl * nr_timeslots + timeslot;
-
-            // Set metadata
-            Metadata m = { timeslot, baseline, coordinate };
-            (*metadata)[subgrid_nr] = m;
-        }
-    }
-
-    // Free memory
-    free(baselines);
-}
 
 /*
     Methods where memory is allocated
@@ -381,6 +298,13 @@ void* init_aterm(int nr_stations, int nr_timeslots, int nr_polarizations,
     return ptr;
 }
 
+void* init_aterm_offsets(int nr_timeslots, int nr_time) {
+    TYPEDEF_ATERM_OFFSET_TYPE
+    void *ptr = malloc(sizeof(ATermOffsetType));
+    init_aterm_offsets(ptr, nr_timeslots, nr_time);
+    return ptr;
+}
+
 void* init_spheroidal(int subgridsize) {
     TYPEDEF_SPHEROIDAL_TYPE
     void *ptr = malloc(sizeof(SpheroidalType));
@@ -411,16 +335,6 @@ void* init_grid(int gridsize, int nr_polarizations) {
     return ptr;
 }
 
-void *init_metadata(void *uvw, void *wavenumbers, int nr_stations, int nr_baselines, int nr_timesteps, int nr_timeslots, int nr_channels, int gridsize, int subgridsize, float imagesize) {
-   int nr_subgrids = nr_baselines * nr_timeslots;
-   TYPEDEF_BASELINE
-   TYPEDEF_COORDINATE
-   TYPEDEF_METADATA
-   TYPEDEF_METADATA_TYPE
-   void *ptr = malloc(sizeof(MetadataType));
-   init_metadata(ptr, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
-   return ptr;
-}
 } // namespace idg
 
 
@@ -448,24 +362,6 @@ extern "C" {
          idg::init_wavenumbers(ptr, nr_channels);
     }
 
-    void utils_init_metadata(
-         void *ptr,
-         void *uvw,
-         void *wavenumbers,
-         int nr_stations,
-         int nr_baselines,
-         int nr_timesteps,
-         int nr_timeslots,
-         int nr_channels,
-         int gridsize,
-         int subgridsize,
-         float imagesize)
-    {
-         idg::init_metadata(ptr, uvw, wavenumbers, nr_stations, nr_baselines,
-                            nr_timesteps, nr_timeslots, nr_channels, gridsize,
-                            subgridsize, imagesize);
-    }
-
     void utils_init_visibilities(
         void *ptr,
         int nr_baselines,
@@ -487,6 +383,15 @@ extern "C" {
     {
         idg::init_aterm(ptr, nr_stations, nr_timeslots,
                         nr_polarizations, subgridsize);
+    }
+
+
+    void utils_init_aterms_offset(
+        void *ptr,
+        int nr_timeslots,
+        int nr_time)
+    {
+        idg::init_aterm_offsets(ptr, nr_timeslots, nr_time);
     }
 
 

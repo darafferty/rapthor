@@ -7,7 +7,8 @@ namespace idg {
     typedef struct { float u, v, w; } UVW;
     typedef struct { int x, y; } Coordinate;
     typedef struct { int station1, station2; } Baseline;
-    typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
+    typedef struct { int offset; int nr_timesteps;
+                     Baseline baseline; Coordinate coordinate; } Metadata;
 
     std::ostream& operator<<(std::ostream &out, Baseline &b);
     std::ostream& operator<<(std::ostream &out, Coordinate &c);

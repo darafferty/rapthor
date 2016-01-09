@@ -11,45 +11,51 @@ using namespace std;
 
 namespace idg {
 
-    string Parameters::ENV_NR_STATIONS  = "NR_STATIONS";
-    string Parameters::ENV_NR_CHANNELS  = "NR_CHANNELS";
-    string Parameters::ENV_NR_TIMESTEPS = "NR_TIMESTEPS";
-    string Parameters::ENV_NR_TIMESLOTS = "NR_TIMESLOTS";
-    string Parameters::ENV_IMAGESIZE    = "IMAGESIZE";  
-    string Parameters::ENV_GRIDSIZE     = "GRIDSIZE";
-    string Parameters::ENV_SUBGRIDSIZE  = "SUBGRIDSIZE";
-    string Parameters::ENV_JOBSIZE      = "JOBSIZE"; // to all routines
-    string Parameters::ENV_JOBSIZE_GRIDDING   = "JOBSIZE_GRIDDING";
-    string Parameters::ENV_JOBSIZE_DEGRIDDING = "JOBSIZE_DEGRIDDING";
-    string Parameters::ENV_JOBSIZE_GRIDDER    = "JOBSIZE_GRIDDER";
-    string Parameters::ENV_JOBSIZE_ADDER      = "JOBSIZE_ADDER";
-    string Parameters::ENV_JOBSIZE_SPLITTER   = "JOBSIZE_SPLITTER";
-    string Parameters::ENV_JOBSIZE_DEGRIDDER  = "JOBSIZE_DEGRIDDER";
+    const string Parameters::ENV_NR_STATIONS  = "NR_STATIONS";
+    const string Parameters::ENV_NR_CHANNELS  = "NR_CHANNELS";
+    const string Parameters::ENV_NR_TIMESTEPS = "NR_TIMESTEPS";
+    const string Parameters::ENV_NR_TIMESLOTS = "NR_TIMESLOTS";
+    const string Parameters::ENV_NR_TIME      = "NR_TIME";
+    const string Parameters::ENV_IMAGESIZE    = "IMAGESIZE";
+    const string Parameters::ENV_GRIDSIZE     = "GRIDSIZE";
+    const string Parameters::ENV_SUBGRIDSIZE  = "SUBGRIDSIZE";
+    const string Parameters::ENV_JOBSIZE      = "JOBSIZE"; // to all routines
+    const string Parameters::ENV_JOBSIZE_GRIDDING   = "JOBSIZE_GRIDDING";
+    const string Parameters::ENV_JOBSIZE_DEGRIDDING = "JOBSIZE_DEGRIDDING";
+    const string Parameters::ENV_JOBSIZE_GRIDDER    = "JOBSIZE_GRIDDER";
+    const string Parameters::ENV_JOBSIZE_ADDER      = "JOBSIZE_ADDER";
+    const string Parameters::ENV_JOBSIZE_SPLITTER   = "JOBSIZE_SPLITTER";
+    const string Parameters::ENV_JOBSIZE_DEGRIDDER  = "JOBSIZE_DEGRIDDER";
 
 
   // set methods
-  void Parameters::set_nr_stations(unsigned int ns) 
+  void Parameters::set_nr_stations(unsigned int ns)
   {
     nr_stations = ns > 1 ? ns : 1;
     nr_baselines = (nr_stations * (nr_stations-1)) / 2;
   }
-  
-  void Parameters::set_nr_channels(unsigned int nc) 
+
+  void Parameters::set_nr_channels(unsigned int nc)
   {
     nr_channels = nc > 0 ? nc : 1;
   }
 
-  void Parameters::set_nr_timesteps(unsigned int nt) 
+  void Parameters::set_nr_timesteps(unsigned int nt)
   {
     nr_timesteps = nt > 0 ? nt : 1;
   }
 
-  void Parameters::set_nr_timeslots(unsigned int nt) 
+  void Parameters::set_nr_timeslots(unsigned int nt)
   {
     nr_timeslots = nt > 0 ? nt : 1;
   }
 
-  void Parameters::set_imagesize(float is) 
+  void Parameters::set_nr_time(unsigned int nt)
+  {
+    nr_time = nt > 0 ? nt : 1;
+  }
+
+  void Parameters::set_imagesize(float is)
   {
     imagesize = is < 0 ? 1 : is;
   }
@@ -70,42 +76,42 @@ namespace idg {
     job_size = js;
     job_size_gridding = js;
     job_size_degridding = js;
-    job_size_gridder = js; 
-    job_size_adder = js; 
-    job_size_splitter = js; 
-    job_size_degridder = js; 
+    job_size_gridder = js;
+    job_size_adder = js;
+    job_size_splitter = js;
+    job_size_degridder = js;
   }
 
   void Parameters::set_job_size_gridding(unsigned int js)
   {
     if (js == 0) return; // avoid job_size==0
     job_size_gridding = js;
-    job_size_gridder = js; 
-    job_size_adder = js; 
+    job_size_gridder = js;
+    job_size_adder = js;
   }
-  
+
   void Parameters::set_job_size_degridding(unsigned int js)
   {
     if (js == 0) return; // avoid job_size==0
     job_size_degridding = js;
-    job_size_splitter = js; 
-    job_size_degridder = js; 
+    job_size_splitter = js;
+    job_size_degridder = js;
   }
 
   void Parameters::set_job_size_gridder(unsigned int js)
   {
     if(js > 0) job_size_gridder = js;
   }
-  
+
   void Parameters::set_job_size_adder(unsigned int js)
   {
     if(js > 0) job_size_adder = js;
   }
-  
+
   void Parameters::set_job_size_splitter(unsigned int js)
   {
     if(js > 0) job_size_splitter = js;
-  } 
+  }
 
   void Parameters::set_job_size_degridder(unsigned int js)
   {
@@ -120,52 +126,55 @@ namespace idg {
 
     os << "-----------" << endl;
     os << "PARAMETERS:" << endl;
-    
-    os << setw(fw1) << left << "Number of stations" << "== " 
+
+    os << setw(fw1) << left << "Number of stations" << "== "
        << setw(fw2) << right << nr_stations << endl;
-    
-    os << setw(fw1) << left << "Number of baselines" << "== " 
+
+    os << setw(fw1) << left << "Number of baselines" << "== "
        << setw(fw2) << right << nr_baselines << endl;
-    
-    os << setw(fw1) << left << "Number of channels" << "== " 
+
+    os << setw(fw1) << left << "Number of channels" << "== "
        << setw(fw2) << right << nr_channels << endl;
 
-    os << setw(fw1) << left << "Number of timesteps" << "== " 
+    os << setw(fw1) << left << "Number of timesteps" << "== "
        << setw(fw2) << right << nr_timesteps << endl;
-    
-    os << setw(fw1) << left << "Number of timeslots" << "== " 
+
+    os << setw(fw1) << left << "Number of timeslots" << "== "
        << setw(fw2) << right << nr_timeslots << endl;
-    
-    os << setw(fw1) << left << "Imagesize" << "== " 
+
+    os << setw(fw1) << left << "Number of time" << "== "
+       << setw(fw2) << right << nr_time << endl;
+
+    os << setw(fw1) << left << "Imagesize" << "== "
        << setw(fw2) << right << imagesize  << endl;
 
-    os << setw(fw1) << left << "Grid size" << "== " 
+    os << setw(fw1) << left << "Grid size" << "== "
        << setw(fw2) << right << grid_size << endl;
 
-    os << setw(fw1) << left << "Subgrid size" << "== " 
+    os << setw(fw1) << left << "Subgrid size" << "== "
        << setw(fw2) << right << subgrid_size << endl;
 
-    os << setw(fw1) << left << "Job size" << "== " 
+    os << setw(fw1) << left << "Job size" << "== "
        << setw(fw2) << right << job_size << endl;
 
-    os << setw(fw1) << left << "Job size (gridding)" << "== " 
+    os << setw(fw1) << left << "Job size (gridding)" << "== "
        << setw(fw2) << right << job_size_gridding << endl;
 
-    os << setw(fw1) << left << "Job size (degridding)" << "== " 
+    os << setw(fw1) << left << "Job size (degridding)" << "== "
        << setw(fw2) << right << job_size_degridding << endl;
 
-    os << setw(fw1) << left << "Job size (gridder)" << "== " 
+    os << setw(fw1) << left << "Job size (gridder)" << "== "
        << setw(fw2) << right << job_size_gridder << endl;
 
-    os << setw(fw1) << left << "Job size (adder)" << "== " 
+    os << setw(fw1) << left << "Job size (adder)" << "== "
        << setw(fw2) << right << job_size_adder << endl;
 
-    os << setw(fw1) << left << "Job size (splitter)" << "== " 
+    os << setw(fw1) << left << "Job size (splitter)" << "== "
        << setw(fw2) << right << job_size_splitter << endl;
 
-    os << setw(fw1) << left << "Job size (degridder)" << "== " 
+    os << setw(fw1) << left << "Job size (degridder)" << "== "
        << setw(fw2) << right << job_size_degridder << endl;
- 
+
     os << "-----------" << endl;
   }
 
@@ -174,14 +183,15 @@ namespace idg {
   {
     print(cout);
   }
- 
 
-  void Parameters::set_from_env() 
+
+  void Parameters::set_from_env()
   {
     const unsigned int DEFAULT_NR_STATIONS = 44;
     const unsigned int DEFAULT_NR_CHANNELS = 16;
     const unsigned int DEFAULT_NR_TIMESTEPS = 16;
     const unsigned int DEFAULT_NR_TIMESLOTS = 128;
+    const unsigned int DEFAULT_NR_TIME = 2048;
     const unsigned int DEFAULT_NR_POLARIZATIONS = 4;
     const float DEFAULT_IMAGESIZE = 0.1f;
     const unsigned int DEFAULT_GRIDSIZE = 4096;
@@ -192,7 +202,7 @@ namespace idg {
     char *cstr_nr_stations = getenv(ENV_NR_STATIONS.c_str());
     nr_stations = cstr_nr_stations ? atoi(cstr_nr_stations): DEFAULT_NR_STATIONS;
 
-    // nr_baselines 
+    // nr_baselines
     nr_baselines = (nr_stations * (nr_stations-1)) / 2;
 
     // nr_channels
@@ -207,7 +217,11 @@ namespace idg {
     char *cstr_nr_timeslots = getenv(ENV_NR_TIMESLOTS.c_str());
     nr_timeslots = cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
-    // imagesize 
+    // nr_time
+    char *cstr_nr_time = getenv(ENV_NR_TIME.c_str());
+    nr_time = cstr_nr_time ? atoi(cstr_nr_time) : DEFAULT_NR_TIME;
+
+    // imagesize
     char *cstr_imagesize = getenv(ENV_IMAGESIZE.c_str());
     imagesize = cstr_imagesize ? atof(cstr_imagesize) : DEFAULT_IMAGESIZE;
 
@@ -225,7 +239,7 @@ namespace idg {
 
     // job_size_*
     char *cstr_job_size_gridding = getenv(ENV_JOBSIZE_GRIDDING.c_str());
-    job_size_gridding = cstr_job_size_gridding ? atoi(cstr_job_size_gridding) : job_size; 
+    job_size_gridding = cstr_job_size_gridding ? atoi(cstr_job_size_gridding) : job_size;
 
     char *cstr_job_size_degridding = getenv(ENV_JOBSIZE_DEGRIDDING.c_str());
     job_size_degridding = cstr_job_size_degridding ? atoi(cstr_job_size_degridding) : job_size;
@@ -245,8 +259,8 @@ namespace idg {
 
 
   string Parameters::definitions(
-            unsigned int nr_stations, 
-            unsigned int nr_baselines, 
+            unsigned int nr_stations,
+            unsigned int nr_baselines,
             unsigned int nr_channels,
             unsigned int nr_timesteps,
             unsigned int nr_timeslots,
@@ -268,7 +282,7 @@ namespace idg {
   }
 
   // helper functions
-  ostream& operator<<(ostream& os, const Parameters& c) 
+  ostream& operator<<(ostream& os, const Parameters& c)
   {
     c.print(os);
     return os;

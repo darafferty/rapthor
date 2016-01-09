@@ -105,6 +105,7 @@ extern "C" {
                 unsigned int nr_channels,
                 unsigned int nr_timesteps,
                 unsigned int nr_timeslots,
+                unsigned int nr_time,
                 float        imagesize,
                 unsigned int grid_size,
                 unsigned int subgrid_size)
@@ -114,6 +115,7 @@ extern "C" {
         P.set_nr_channels(nr_channels);
         P.set_nr_timesteps(nr_timesteps);
         P.set_nr_timeslots(nr_timeslots);
+        P.set_nr_time(nr_time);
         P.set_imagesize(imagesize);
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
@@ -128,7 +130,9 @@ extern "C" {
                             void *baselines,
                             void *grid,
                             float w_offset,
+                            int   kernel_size,
                             void *aterm,
+                            void *aterm_offsets,
                             void *spheroidal)
     {
          p->grid_visibilities(
@@ -138,7 +142,9 @@ extern "C" {
                 (const int*) baselines,
                 (std::complex<float>*) grid,
                 w_offset,
+                kernel_size,
                 (const std::complex<float>*) aterm,
+                (const int*) aterm_offsets,
                 (const float*) spheroidal);
     }
 
@@ -149,19 +155,23 @@ extern "C" {
                             void *baselines,
                             void *grid,
                             float w_offset,
+                            int   kernel_size,
                             void *aterm,
+                            void *aterm_offsets,
                             void *spheroidal)
     {
          p->degrid_visibilities(
                 (std::complex<float>*) visibilities,
-                    (const float*) uvw,
-                    (const float*) wavenumbers,
-                    (const int*) baselines,
-                    (const std::complex<float>*) grid,
-                    w_offset,
-                    (const std::complex<float>*) aterm,
-                    (const float*) spheroidal);
-     }
+                (const float*) uvw,
+                (const float*) wavenumbers,
+                (const int*) baselines,
+                (const std::complex<float>*) grid,
+                w_offset,
+                kernel_size,
+                (const std::complex<float>*) aterm,
+                (const int*) aterm_offsets,
+                (const float*) spheroidal);
+    }
 
     void CPU_Reference_transform(CPU_Reference* p,
                     int direction,

@@ -31,14 +31,14 @@ namespace idg {
 
                 /// Destructor
                 virtual ~HaswellEP() = default;
-    
+
                 // Get default values for ProxyInfo
                 static ProxyInfo default_info();
                 static std::string default_compiler();
                 static std::string default_compiler_flags();
-                    
+
         }; // class HaswellEP
-    
+
         } // namespace cpu
     } // namespace proxy
 } // namespace idg
