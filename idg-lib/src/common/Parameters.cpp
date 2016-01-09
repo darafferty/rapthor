@@ -188,7 +188,7 @@ namespace idg {
   void Parameters::set_from_env()
   {
     const unsigned int DEFAULT_NR_STATIONS = 44;
-    const unsigned int DEFAULT_NR_CHANNELS = 16;
+    const unsigned int DEFAULT_NR_CHANNELS = 8;
     const unsigned int DEFAULT_NR_TIMESTEPS = 16;
     const unsigned int DEFAULT_NR_TIMESLOTS = 128;
     const unsigned int DEFAULT_NR_TIME = 2048;

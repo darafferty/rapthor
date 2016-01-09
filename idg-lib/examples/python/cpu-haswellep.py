@@ -14,17 +14,16 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
-
     ############
     # paramaters
     ############
-    nr_stations = 15
+    nr_stations = 8
     nr_baselines = nr_stations*(nr_stations-1)/2
-    nr_channels = 8
+    nr_channels = 1
     nr_timesteps = 16
     nr_timeslots = 300
     nr_time = nr_timesteps*nr_timeslots
-    image_size = 0.008
+    image_size = 0.08
     subgrid_size = 24
     grid_size = 1024
     integration_time = 10
@@ -34,23 +33,24 @@ if __name__ == "__main__":
     # initialize proxy
     ##################
     p = idg.CPU.HaswellEP(nr_stations, nr_channels,
-                          nr_timesteps, nr_timeslots,
+                          nr_timesteps, nr_timeslots, nr_time,
                           image_size, grid_size, subgrid_size)
 
     ##################
     # print parameters
     ##################
-    print "Proxy: nr_stations = ", p.get_nr_stations()
-    print "Proxy: nr_baselines = ", p.get_nr_baselines()
-    print "Proxy: nr_channels = ", p.get_nr_channels()
-    print "Proxy: nr_timesteps = ", p.get_nr_timesteps()
-    print "Proxy: nr_timeslots = ", p.get_nr_timeslots()
-    print "Proxy: nr_polarizations = ", p.get_nr_polarizations()
-    print "Proxy: subgrid_size = ", p.get_subgrid_size()
-    print "Proxy: grid_size = ", p.get_grid_size()
-    print "Proxy: image_size = ", p.get_image_size()
-    print "Proxy: job size for gridding = ", p.get_job_size_gridding()
-    print "Proxy: job size for degridding = ", p.get_job_size_degridding()
+    print "nr_stations = ", p.get_nr_stations()
+    print "nr_baselines = ", p.get_nr_baselines()
+    print "nr_channels = ", p.get_nr_channels()
+    print "nr_timesteps = ", p.get_nr_timesteps()
+    print "nr_timeslots = ", p.get_nr_timeslots()
+    print "nr_polarizations = ", p.get_nr_polarizations()
+    print "subgrid_size = ", p.get_subgrid_size()
+    print "grid_size = ", p.get_grid_size()
+    print "image_size = ", p.get_image_size()
+    print "kernel_size = ", kernel_size
+    print "job size for gridding = ", p.get_job_size_gridding()
+    print "job size for degridding = ", p.get_job_size_degridding()
 
     #################
     # initialize data
@@ -108,9 +108,9 @@ if __name__ == "__main__":
     #idg.utils.plot_spheroidal(spheroidal)
 
     # metadata (for debugging)
-    nr_subgrids = p._get_nr_subgrids(uvw, wavenumbers, baselines)
+    nr_subgrids = p._get_nr_subgrids(uvw, wavenumbers, baselines, aterms_offset, kernel_size)
     metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
-    p._init_metadata(metadata, uvw, wavenumbers, baselines)
+    p._init_metadata(metadata, uvw, wavenumbers, baselines, aterms_offset, kernel_size)
     idg.utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
 
     ##########

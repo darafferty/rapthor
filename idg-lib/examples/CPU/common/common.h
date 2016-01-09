@@ -29,7 +29,7 @@ int run()
     float imagesize = params.get_imagesize();
     int nr_polarizations = 4;
     float w_offset = 0;
-    int kernel_size = (subgridsize / 2) + 1;
+    int kernel_size = (subgridsize / 4) + 1;
 
     // Print configuration
     std::clog << params;
