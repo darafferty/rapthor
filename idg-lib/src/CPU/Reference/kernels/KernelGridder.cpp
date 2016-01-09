@@ -32,18 +32,17 @@ void kernel_gridder(
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
         const Metadata m = (*metadata)[s];
-        int time_nr = 0; // TODO: HACK
-        int local_offset = m.offset - offset_first;
-        int nr_timesteps = m.nr_timesteps;
-        int station1 = m.baseline.station1;
-        int station2 = m.baseline.station2;
-        int x_coordinate = m.coordinate.x;
-        int y_coordinate = m.coordinate.y;
+        const int time_nr = 0; // TODO: HACK, needs to be aterm_index
+        const int local_offset = m.offset - offset_first;
+        const int nr_timesteps = m.nr_timesteps;
+        const int station1 = m.baseline.station1;
+        const int station2 = m.baseline.station2;
+        const int x_coordinate = m.coordinate.x;
+        const int y_coordinate = m.coordinate.y;
 
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
         float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-        int local_time_offset = 0;
 
         // Iterate all pixels in subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
