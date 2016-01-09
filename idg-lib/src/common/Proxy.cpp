@@ -89,12 +89,16 @@ namespace idg {
                         u_pixels -= (subgrid_size/2);
                         v_pixels -= (subgrid_size/2);
 
-                        // TODO: add chaniging a terms as not fit anymore
-                        bool timestep_fits = (uv_width + kernel_size) < subgrid_size
-                                             && time_offset < nr_time - 1;
+                        // TODO: add changing A-terms
+                        // TODO: is +1 necessary? I believe it is only for
+                        // even kernel_size, as middle point of uv_width
+                        // and middle point of subgrid might be off by one
+                        bool same_aterm = true;
+                        bool last_iteration = (time_offset == nr_time - 1);
+                        bool timestep_fits = (uv_width + kernel_size + 1) < subgrid_size;
 
                         // Check whether current set of measurements fit in subgrid
-                        if (timestep_fits) {
+                        if (timestep_fits && same_aterm && !last_iteration) {
                             // Continue to next measurement
                             nr_timesteps++;
                         } else {
