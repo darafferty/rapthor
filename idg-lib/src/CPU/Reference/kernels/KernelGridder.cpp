@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <immintrin.h>
 #include <omp.h>
+
 #include <string.h>
 #include <stdint.h>
 
@@ -21,7 +22,7 @@ void kernel_gridder(
     const MetadataType __restrict__ *metadata,
     SubGridType	__restrict__ *subgrid)
 {
-    // Load metadata
+    // Find offset of first subgrid
     const Metadata m = (*metadata)[0];
     const int offset_first = m.offset;
 

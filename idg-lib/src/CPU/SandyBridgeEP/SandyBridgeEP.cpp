@@ -109,6 +109,7 @@ extern "C" {
                 unsigned int nr_channels,
                 unsigned int nr_timesteps,
                 unsigned int nr_timeslots,
+                unsigned int nr_time,
                 float        imagesize,
                 unsigned int grid_size,
                 unsigned int subgrid_size)
@@ -118,6 +119,7 @@ extern "C" {
         P.set_nr_channels(nr_channels);
         P.set_nr_timesteps(nr_timesteps);
         P.set_nr_timeslots(nr_timeslots);
+        P.set_nr_time(nr_time);
         P.set_imagesize(imagesize);
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
