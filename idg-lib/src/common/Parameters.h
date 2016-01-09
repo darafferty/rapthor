@@ -22,9 +22,8 @@ namespace idg {
       /// Define the environment names searched for
       static const std::string ENV_NR_STATIONS;
       static const std::string ENV_NR_CHANNELS;
-      static const std::string ENV_NR_TIMESTEPS; // TODO: remove
-      static const std::string ENV_NR_TIMESLOTS; // TODO: remove
       static const std::string ENV_NR_TIME;
+      static const std::string ENV_NR_TIMESLOTS;
       static const std::string ENV_IMAGESIZE;
       static const std::string ENV_GRIDSIZE;
       static const std::string ENV_SUBGRIDSIZE;
@@ -51,9 +50,8 @@ namespace idg {
       unsigned int get_nr_stations() const { return nr_stations; }
       unsigned int get_nr_baselines() const { return nr_baselines; }
       unsigned int get_nr_channels() const { return nr_channels; }
-      unsigned int get_nr_timesteps() const { return nr_timesteps; } // TODO: remove
-      unsigned int get_nr_timeslots() const { return nr_timeslots; } // TODO: remove
       unsigned int get_nr_time() const { return nr_time; }
+      unsigned int get_nr_timeslots() const { return nr_timeslots; }
       float get_imagesize() const { return imagesize; }
       unsigned int get_grid_size() const { return grid_size; }
       unsigned int get_subgrid_size() const { return subgrid_size; }
@@ -69,9 +67,8 @@ namespace idg {
       // set methods
       void set_nr_stations(unsigned int ns);
       void set_nr_channels(unsigned int nc);
-      void set_nr_timesteps(unsigned int nt);   // TODO: remove
-      void set_nr_timeslots(unsigned int nt);   // TODO: remove
       void set_nr_time(unsigned int nt);
+      void set_nr_timeslots(unsigned int nt);
       void set_imagesize(float imagesize);
       void set_subgrid_size(unsigned int sgs);
       void set_grid_size(unsigned int gs);
@@ -92,8 +89,7 @@ namespace idg {
           definitions(unsigned int nr_stations,
                       unsigned int nr_baselines,
                       unsigned int nr_channels,
-                      unsigned int nr_timesteps,    // TODO: remove
-                      unsigned int nr_timeslots,    // TODO: remove
+                      unsigned int nr_timeslots,
                       float imagesize,
                       unsigned int nr_polarizations,
                       unsigned int grid_size,
@@ -103,9 +99,8 @@ namespace idg {
       unsigned int nr_stations;
       unsigned int nr_baselines;     // nr_stations*(nr_stations-1)/2
       unsigned int nr_channels;
-      unsigned int nr_timesteps;     // TODO: remove
-      unsigned int nr_timeslots;     // TODO: remove
       unsigned int nr_time;
+      unsigned int nr_timeslots;     // for each time slot, one A-term
       static const unsigned int nr_polarizations = 4;
       float        imagesize;        // angular resolution in radians
       unsigned int grid_size;

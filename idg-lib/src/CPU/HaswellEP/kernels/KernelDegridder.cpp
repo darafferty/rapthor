@@ -118,7 +118,8 @@ void kernel_degridder_intel(
         }
 
         // Reset all visibilities
-        memset(&(*visibilities)[local_offset][0][0], 0, NR_TIMESTEPS * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+        // TODO: is this memset necessary?
+        // memset(&(*visibilities)[local_offset][0][0], 0, nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {

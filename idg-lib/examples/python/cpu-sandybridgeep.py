@@ -32,9 +32,9 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    p = idg.CPU.HaswellEP(nr_stations, nr_channels,
-                          nr_time, nr_timeslots,
-                          image_size, grid_size, subgrid_size)
+    p = idg.CPU.SandyBridgeEP(nr_stations, nr_channels,
+                              nr_time, nr_timeslots,
+                              image_size, grid_size, subgrid_size)
 
     ##################
     # print parameters

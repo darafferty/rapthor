@@ -109,9 +109,8 @@ extern "C" {
     CPU_HaswellEP* CPU_HaswellEP_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
-                unsigned int nr_timesteps,
-                unsigned int nr_timeslots,
                 unsigned int nr_time,
+                unsigned int nr_timeslots,
                 float        imagesize,
                 unsigned int grid_size,
                 unsigned int subgrid_size)
@@ -119,9 +118,8 @@ extern "C" {
         idg::Parameters P;
         P.set_nr_stations(nr_stations);
         P.set_nr_channels(nr_channels);
-        P.set_nr_timesteps(nr_timesteps);
-        P.set_nr_timeslots(nr_timeslots);
         P.set_nr_time(nr_time);
+        P.set_nr_timeslots(nr_timeslots);
         P.set_imagesize(imagesize);
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
