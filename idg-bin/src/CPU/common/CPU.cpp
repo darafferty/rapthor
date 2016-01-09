@@ -137,7 +137,7 @@ namespace idg {
 
                     // allocate 'subgrids' memory for subgrids
                     auto nr_baselines = mParams.get_nr_baselines();
-                    auto nr_timeslots = mParams.get_nr_timeslots();
+                    // auto nr_timeslots = mParams.get_nr_timeslots(); // to remove
                     auto nr_polarizations = mParams.get_nr_polarizations();;
                     auto subgridsize = mParams.get_subgrid_size();
                     auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
@@ -196,7 +196,7 @@ namespace idg {
 
                     // allocate 'subgrids' memory for subgrids
                     auto nr_baselines = mParams.get_nr_baselines();
-                    auto nr_timeslots = mParams.get_nr_timeslots();
+                    // auto nr_timeslots = mParams.get_nr_timeslots(); // to remove
                     auto nr_polarizations = mParams.get_nr_polarizations();;
                     auto subgridsize = mParams.get_subgrid_size();
                     auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
@@ -291,8 +291,9 @@ namespace idg {
                 // Constants
                 auto jobsize = mParams.get_job_size_gridder();
                 auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timesteps = mParams.get_nr_timesteps();
-                auto nr_timeslots = mParams.get_nr_timeslots();
+                // auto nr_timesteps = mParams.get_nr_timesteps();
+                // auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
@@ -408,7 +409,7 @@ namespace idg {
                                   total_flops_gridding, total_bytes_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding,
                                                nr_baselines,
-                                               nr_timesteps * nr_timeslots,
+                                               nr_time,
                                                nr_channels);
                 clog << endl;
                 #endif
@@ -579,8 +580,9 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_degridder();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_channels = mParams.get_nr_channels();
-                auto nr_timesteps = mParams.get_nr_timesteps();
-                auto nr_timeslots = mParams.get_nr_timeslots();
+                // auto nr_timesteps = mParams.get_nr_timesteps(); // to remove
+                // auto nr_timeslots = mParams.get_nr_timeslots(); // to remove
+                auto nr_time = mParams.get_nr_time();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
 
@@ -693,7 +695,7 @@ namespace idg {
                                   total_flops_degridding, total_bytes_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding,
                                                nr_baselines,
-                                               nr_timesteps * nr_timeslots,
+                                               nr_time,
                                                nr_channels);
                 clog << endl;
                 #endif
@@ -711,7 +713,6 @@ namespace idg {
                   mParams.get_nr_stations(),
                   mParams.get_nr_baselines(),
                   mParams.get_nr_channels(),
-                  mParams.get_nr_timesteps(),
                   mParams.get_nr_timeslots(),
                   mParams.get_imagesize(),
                   mParams.get_nr_polarizations(),
