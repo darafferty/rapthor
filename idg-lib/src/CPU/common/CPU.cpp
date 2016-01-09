@@ -4,6 +4,7 @@
 #include <complex>
 #include <sstream>
 #include <memory>
+#include <exception>
 #include <dlfcn.h> // dlsym()
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
@@ -129,6 +130,10 @@ namespace idg {
                 #endif
 
                 try {
+                    // checks arguments
+                    if (kernel_size <= 0 || kernel_size >= mParams.get_subgrid_size()-3) {
+                        throw invalid_argument("0 < kernel_size < subgridsize-3 not true");
+                    }
 
                     // initialize metadata
                     vector<Metadata> metadata = init_metadata(
@@ -137,7 +142,6 @@ namespace idg {
 
                     // allocate 'subgrids' memory for subgrids
                     auto nr_baselines = mParams.get_nr_baselines();
-                    // auto nr_timeslots = mParams.get_nr_timeslots(); // to remove
                     auto nr_polarizations = mParams.get_nr_polarizations();;
                     auto subgridsize = mParams.get_subgrid_size();
                     auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
@@ -163,11 +167,17 @@ namespace idg {
 
                     delete[] subgrids;
 
-                } catch (const exception& e) {
-                    cerr << __func__ << " caught exception: "
+                } catch (const invalid_argument& e) {
+                    cerr << __func__ << ": invalid argument: "
                          << e.what() << endl;
+                    exit(1);
+                } catch (const exception& e) {
+                    cerr << __func__ << ": caught exception: "
+                         << e.what() << endl;
+                    exit(2);
                 } catch (...) {
-                    cerr << __func__ << " caught unknown exception" << endl;
+                    cerr << __func__ << ": caught unknown exception" << endl;
+                    exit(3);
                 }
             }
 
@@ -189,6 +199,11 @@ namespace idg {
                 #endif
 
                 try {
+                    // checks arguments
+                    if (kernel_size <= 0 || kernel_size >= mParams.get_subgrid_size()-3) {
+                        throw invalid_argument("0 < kernel_size < subgridsize-3 not true");
+                    }
+
                     // initialize metadata
                     vector<Metadata> metadata = init_metadata(
                         uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -196,7 +211,6 @@ namespace idg {
 
                     // allocate 'subgrids' memory for subgrids
                     auto nr_baselines = mParams.get_nr_baselines();
-                    // auto nr_timeslots = mParams.get_nr_timeslots(); // to remove
                     auto nr_polarizations = mParams.get_nr_polarizations();;
                     auto subgridsize = mParams.get_subgrid_size();
                     auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*
@@ -222,11 +236,17 @@ namespace idg {
 
                     delete[] subgrids;
 
-                } catch (const exception& e) {
-                    cerr << __func__ << " caught exception: "
+                } catch (const invalid_argument& e) {
+                    cerr << __func__ << ": invalid argument: "
                          << e.what() << endl;
+                    exit(1);
+                } catch (const exception& e) {
+                    cerr << __func__ << ": caught exception: "
+                         << e.what() << endl;
+                    exit(2);
                 } catch (...) {
-                    cerr << __func__ << " caught unknown exception" << endl;
+                    cerr << __func__ << ": caught unknown exception" << endl;
+                    exit(3);
                 }
             }
 
