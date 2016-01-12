@@ -18,7 +18,7 @@ namespace idg {
     }
 
     ostream& operator<<(ostream &out, Metadata &m) {
-        out << m.offset << ", "
+        out << m.time_offset << ", "
             << m.nr_timesteps << ", "
             << m.baseline << ", "
             << m.coordinate;
