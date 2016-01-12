@@ -81,11 +81,11 @@ namespace idg {
             #else
             // Settings (general, assuming intel as default)
             if (debug == IDG_BUILD_TYPE)
-                return "-Wall -openmp -g -DDEBUG -mkl -lmkl_avx -lmkl_vml_avx -mavx";
+                return "-Wall -openmp -g -DDEBUG -xavx -mkl";
             else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g -openmp -mkl -lmkl_avx -lmkl_vml_avx -mavx";
+                return "-O3 -g -openmp -xavx -mkl";
             else
-                return "-Wall -O3 -openmp -mkl -lmkl_avx -lmkl_vml_avx -mavx";
+                return "-Wall -O3 -openmp -mkl -xavx -mkl";
             #endif
         }
 
