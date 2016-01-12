@@ -83,11 +83,11 @@ namespace idg {
             // Settings (general, assuming intel as default)
             // TODO: investigate effect of -march=core-avx2 option (performance, accuracy)
             if (debug == IDG_BUILD_TYPE)
-                return "-Wall -g -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
+                return "-Wall -g -openmp -xcore-avx2 -mkl";
             else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
+                return "-O3 -g -openmp -xcore-avx2 -mkl";
             else
-                return "-Wall -O3 -openmp -mkl -lmkl_avx2 -lmkl_vml_avx2 -march=core-avx2";
+                return "-Wall -O3 -openmp -xcore-avx2 -mkl";
             #endif
         }
 
