@@ -24,7 +24,7 @@ namespace idg {
     namespace proxy {
         namespace cpu {
             // Power sensor
-            static LikwidPowerSensor *powerSensor;
+            static LikwidPowerSensor *powerSensor = nullptr;
 
             class CPU : public Proxy {
                 public:
@@ -77,19 +77,17 @@ namespace idg {
                 // Low level routines
                 public:
                     virtual void grid_onto_subgrids(
-                        const unsigned nr_subgrids,
+                        const Plan& plan,
                         const float w_offset,
                         const float *uvw,
                         const float *wavenumbers,
                         const std::complex<float> *visibilities,
                         const float *spheroidal,
                         const std::complex<float> *aterm,
-                        const std::vector<Metadata>& metadata,
                         std::complex<float> *subgrids);
 
                     virtual void add_subgrids_to_grid(
-                        const unsigned nr_subgrids,
-                        const std::vector<Metadata>& metadata,
+                        const Plan& plan,
                         const std::complex<float> *subgrids,
                         std::complex<float> *grid);
 

@@ -1,11 +1,12 @@
-#include "Proxy.h"
 #include <exception> // runtime_error
+#include "Proxy.h"
 
 using namespace std;
 
 namespace idg {
     namespace proxy{
 
+        // TODO: remove
         vector<Metadata> Proxy::init_metadata(
             const float *_uvw,
             const float *wavenumbers,
@@ -58,7 +59,9 @@ namespace idg {
                         float v_meters = current.v;
 
                         // Iterate all channels
-                        for (int chan = 0; chan < nr_channels; chan++) {
+                        // if (bl==0 && time==0) printf("WARNING: some channels not gridded!\n");
+                        for (int chan = 0; chan < 1; chan++) {
+                            // for (int chan = 0; chan < nr_channels; chan++) {
                             float wavenumber = wavenumbers[chan];
                             float scaling = imagesize * wavenumber / (2 * M_PI);
 
@@ -110,15 +113,16 @@ namespace idg {
                             }
 
                             // TODO: split also on channels dynamically
-                            if (nr_timesteps==0)
+                            if (nr_timesteps==0) {
                                 throw runtime_error("Probably too many channels!");
+                            }
 
                             // Construct coordinate
                             Coordinate coordinate = { u_pixels_previous,
                                                       v_pixels_previous };
 
                             // Set metadata
-                            Metadata m = { baseline_offset + time,
+                            Metadata m = { time,
                                            nr_timesteps,
                                            baseline,
                                            coordinate };
