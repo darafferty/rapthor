@@ -10,5 +10,6 @@
 #include "common/LikwidPowerSensor.h"
 #include "common/auxiliary.h"
 #include "common/Types.h"
+#include "common/Plan.h"
 
 #endif

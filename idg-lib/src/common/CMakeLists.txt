@@ -10,6 +10,7 @@ set (${PROJECT_NAME}_headers
   LikwidPowerSensor.h
   auxiliary.h
   Types.h
+  Plan.h
 )
 
 set (${PROJECT_NAME}_sources 
@@ -21,6 +22,7 @@ set (${PROJECT_NAME}_sources
   LikwidPowerSensor.cpp
   auxiliary.cpp
   Types.cpp
+  Plan.cpp
 )
 
 add_library(
