@@ -252,18 +252,6 @@ void init_grid(void *ptr, int gridsize, int nr_polarizations) {
 	memset(grid, 0, sizeof(GridType));
 }
 
-float min(float coordinate_first, float coordinate_last, float wavenumber_first, float wavenumber_last) {
-    return MIN(
-           MIN(coordinate_first * wavenumber_first, coordinate_first * wavenumber_last),
-           MIN(coordinate_last  * wavenumber_first, coordinate_last  * wavenumber_last));
-}
-
-float max(float coordinate_first, float coordinate_last, float wavenumber_first, float wavenumber_last) {
-    return MAX(
-           MAX(coordinate_first * wavenumber_first, coordinate_first * wavenumber_last),
-           MAX(coordinate_last  * wavenumber_first, coordinate_last  * wavenumber_last));
-}
-
 
 /*
     Methods where memory is allocated
