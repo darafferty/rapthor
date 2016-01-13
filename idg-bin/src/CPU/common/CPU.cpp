@@ -141,8 +141,6 @@ namespace idg {
                     }
 
                     // initialize metadata
-                    // Plan plan(mParams, uvw, wavenumbers, baselines,
-                    //           aterm_offsets, kernel_size);
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
                     auto nr_subgrids = plan.get_nr_subgrids();
@@ -314,8 +312,6 @@ namespace idg {
                 // Constants
                 auto jobsize = mParams.get_job_size_gridder();
                 auto nr_baselines = mParams.get_nr_baselines();
-                // auto nr_timesteps = mParams.get_nr_timesteps();
-                // auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
@@ -462,7 +458,6 @@ namespace idg {
                     auto nr_subgrids = plan.get_nr_subgrids(bl, jobsize);
                     auto elems_per_subgrid     = subgridsize * subgridsize
                                                  * nr_polarizations;
-                    // auto subgrid_elements      = nr_subgrids * elems_per_subgrid;
 
                     // Pointers to the first element in processed batch
                     void *subgrid_ptr  = const_cast<complex<float>*>(subgrids
@@ -533,7 +528,6 @@ namespace idg {
                     auto nr_subgrids = plan.get_nr_subgrids(bl, jobsize);
                     auto elems_per_subgrid     = subgridsize * subgridsize
                                                  * nr_polarizations;
-                    // auto subgrid_elements      = nr_subgrids * elems_per_subgrid;
 
                     // Pointers to the first element in processed batch
                     void *subgrid_ptr  = subgrids
@@ -589,8 +583,6 @@ namespace idg {
                 // Constants
                 auto jobsize = mParams.get_job_size_gridder();
                 auto nr_baselines = mParams.get_nr_baselines();
-                // auto nr_timesteps = mParams.get_nr_timesteps();
-                // auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
