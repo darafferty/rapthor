@@ -16,6 +16,15 @@ namespace idg {
 
         void report(
             const char *name,
+            double runtime)
+        {
+            clog << setw(FW1) << left << string(name) + ": "
+                 << setw(FW2) << right << scientific << setprecision(4)
+                 << runtime << " s" << endl;
+        }
+
+        void report(
+            const char *name,
             double runtime,
             uint64_t flops,
             uint64_t bytes,

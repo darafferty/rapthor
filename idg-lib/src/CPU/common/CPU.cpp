@@ -140,6 +140,8 @@ namespace idg {
                         throw invalid_argument("0 < kernel_size < subgridsize-1 not true");
                     }
 
+                    double runtime = -omp_get_wtime();
+
                     // initialize metadata
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
@@ -149,6 +151,11 @@ namespace idg {
                     auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
                                         subgridsize*subgridsize;
                     auto subgrids = new complex<float>[size_subgrids];
+
+                    runtime += omp_get_wtime();
+                    #if defined (REPORT_TOTAL)
+                    auxiliary::report("init", runtime);
+                    #endif
 
                     grid_onto_subgrids(
                         plan,
@@ -209,9 +216,9 @@ namespace idg {
                         throw invalid_argument("0 < kernel_size < subgridsize-1 not true");
                     }
 
+                    double runtime = -omp_get_wtime();
+
                     // initialize metadata
-                    // Plan plan(mParams, uvw, wavenumbers, baselines,
-                    //           aterm_offsets, kernel_size);
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
                     auto nr_subgrids = plan.get_nr_subgrids();
@@ -220,6 +227,11 @@ namespace idg {
                     auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
                                         subgridsize*subgridsize;
                     auto subgrids = new complex<float>[size_subgrids];
+
+                    runtime += omp_get_wtime();
+                    #if defined (REPORT_TOTAL)
+                    auxiliary::report("init", runtime);
+                    #endif
 
                     split_grid_into_subgrids(
                          plan,
