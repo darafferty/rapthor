@@ -54,9 +54,9 @@
     Size of data structures for a single job
 */
 #define SIZEOF_SUBGRIDS     1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
-#define SIZEOF_UVW          1ULL * nr_timesteps * 3 * sizeof(float)
-#define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
-#define SIZEOF_METADATA     1ULL * 5 * sizeof(int)
+#define SIZEOF_UVW          1ULL * nr_time * 3 * sizeof(float)
+#define SIZEOF_VISIBILITIES 1ULL * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>)
+#define SIZEOF_METADATA     1ULL * 6 * sizeof(int)
 #define SIZEOF_GRID         1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
 #define SIZEOF_WAVENUMBERS  1ULL * nr_channels * sizeof(float)
 #define SIZEOF_ATERM        1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
@@ -101,6 +101,7 @@ namespace idg {
                 cu::Context& get_context() const {
                     return *context;
                 }
+
             // High level interface, inherited from Proxy
             virtual void grid_visibilities(
                 const std::complex<float> *visibilities,
@@ -109,7 +110,9 @@ namespace idg {
                 const int *baselines,
                 std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal) override;
 
             virtual void degrid_visibilities(
@@ -119,7 +122,9 @@ namespace idg {
                 const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal) override;
 
             virtual void transform(DomainAtoDomainB direction,

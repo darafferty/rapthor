@@ -22,8 +22,23 @@ __global__ void kernel_gridder(
 	int tidy = threadIdx.y;
 	int tid = tidx + tidy * blockDim.x;
 	int blockSize = blockDim.x * blockDim.y;
+    int s = blockIdx.x;
+
+    // Load metadata
+	const Metadata &m = metadata[s];
+    const int offset = m.baseline_offset + m.baseline_offset;
+    const int nr_timesteps = m.nr_timesteps;
+	const int aterm_index = m.aterm_index;
+	const int station1 = m.baseline.station1;
+	const int station2 = m.baseline.station2;
+	const int x_coordinate = m.coordinate.x;
+	const int y_coordinate = m.coordinate.y;
+
 
     // Shared data
+    #define NR_TIMESTEPS 16
+    // TODO: introduce compile time constant: MAX_NR_TIMESTEPS
+    //       and use this constant to initialize shared memory
 	__shared__ float2 _visibilities[NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
 	__shared__ UVW _uvw[NR_TIMESTEPS];
 	__shared__ float _wavenumbers[NR_CHANNELS];
@@ -33,24 +48,16 @@ __global__ void kernel_gridder(
         _wavenumbers[i] = wavenumbers[i];
 
 	// Load UVW
-	for (int time = tid; time < NR_TIMESTEPS; time += blockSize)
-		_uvw[time] = uvw[blockIdx.x][time];
+	for (int time = tid; time < nr_timesteps; time += blockSize)
+		_uvw[time] = uvw[offset + time];
 
 	// Load visibilities
-	for (int i = tid; i < NR_TIMESTEPS * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize)
-		_visibilities[0][0][i] = visibilities[blockIdx.x][0][0][i];
+	for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize)
+		_visibilities[0][0][i] = visibilities[s][0][i];
 
 	syncthreads();
 
-	// Load metadata
-	const Metadata &m = metadata[blockIdx.x];
-	int time_nr = m.time_nr;
-	int station1 = m.baseline.station1;
-	int station2 = m.baseline.station2;
-	int x_coordinate = m.coordinate.x;
-	int y_coordinate = m.coordinate.y;
-
-	// Compute u and v offset in wavelenghts
+    // Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
     float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
@@ -69,7 +76,7 @@ __global__ void kernel_gridder(
 			float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
 			// Iterate all timesteps
-			for (int time = 0; time < NR_TIMESTEPS; time++) {
+			for (int time = 0; time < nr_timesteps; time++) {
 				 // Load UVW coordinates
 				float u = _uvw[time].u;
 				float v = _uvw[time].v;
@@ -118,16 +125,16 @@ __global__ void kernel_gridder(
 			}
 
 			// Get a term for station1
-			float2 aXX1 = aterm[station1][time_nr][0][y][x];
-			float2 aXY1 = aterm[station1][time_nr][1][y][x];
-			float2 aYX1 = aterm[station1][time_nr][2][y][x];
-			float2 aYY1 = aterm[station1][time_nr][3][y][x];
+			float2 aXX1 = aterm[station1][aterm_index][0][y][x];
+			float2 aXY1 = aterm[station1][aterm_index][1][y][x];
+			float2 aYX1 = aterm[station1][aterm_index][2][y][x];
+			float2 aYY1 = aterm[station1][aterm_index][3][y][x];
 
 			// Get aterm for station2
-			float2 aXX2 = aterm[station2][time_nr][0][y][x];
-			float2 aXY2 = aterm[station2][time_nr][1][y][x];
-			float2 aYX2 = aterm[station2][time_nr][2][y][x];
-			float2 aYY2 = aterm[station2][time_nr][3][y][x];
+			float2 aXX2 = aterm[station2][aterm_index][0][y][x];
+			float2 aXY2 = aterm[station2][aterm_index][1][y][x];
+			float2 aYX2 = aterm[station2][aterm_index][2][y][x];
+			float2 aYY2 = aterm[station2][aterm_index][3][y][x];
 
 			// Apply aterm
 			float2 tXX, tXY, tYX, tYY;
@@ -142,10 +149,10 @@ __global__ void kernel_gridder(
 			int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
 			// Set subgrid value
-            subgrid[blockIdx.x][0][y_dst][x_dst] = tXX * sph;
-            subgrid[blockIdx.x][1][y_dst][x_dst] = tXY * sph;
-            subgrid[blockIdx.x][2][y_dst][x_dst] = tYX * sph;
-            subgrid[blockIdx.x][3][y_dst][x_dst] = tYY * sph;
+            subgrid[s][0][y_dst][x_dst] = tXX * sph;
+            subgrid[s][1][y_dst][x_dst] = tXY * sph;
+            subgrid[s][2][y_dst][x_dst] = tYX * sph;
+            subgrid[s][3][y_dst][x_dst] = tYY * sph;
         }
 	}
 }

@@ -29,7 +29,7 @@ namespace idg {
             // TODO: this method is currently not used
             int get_jobsize(int nr_subgrids, Parameters mParams, cu::Device &device, int nr_streams) {
                 // Get parameters
-                auto nr_timesteps = mParams.get_nr_timesteps();
+                auto nr_time= mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();

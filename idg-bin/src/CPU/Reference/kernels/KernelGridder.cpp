@@ -59,7 +59,7 @@ void kernel_gridder(
                 const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                 const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                 const float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
- 
+
                 // Iterate all timesteps
                 for (int time = 0; time < nr_timesteps; time++) {
                     // Load UVW coordinates
@@ -92,7 +92,7 @@ void kernel_gridder(
                         }
                     }
                 }
-                
+
                 // Load a term for station1
                 FLOAT_COMPLEX aXX1 = (*aterm)[station1][aterm_index][0][y][x];
                 FLOAT_COMPLEX aXY1 = (*aterm)[station1][aterm_index][1][y][x];
