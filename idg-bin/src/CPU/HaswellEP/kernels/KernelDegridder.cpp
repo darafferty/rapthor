@@ -28,7 +28,8 @@ void kernel_degridder_intel(
 {
     // Load metadata
     const Metadata m = (*metadata)[0];
-    const int offset_first = m.offset;
+    const int baseline_offset_1 = m.baseline_offset;
+    const int time_offset_1 = m.time_offset; // should be 0
 
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
@@ -38,7 +39,8 @@ void kernel_degridder_intel(
         // Load metadata
         const Metadata m = (*metadata)[s];
         const int time_nr = 0; // TODO: m.time_nr; will be aterm_index
-        const int local_offset = m.offset - offset_first;
+        const int offset = (m.baseline_offset - baseline_offset_1)
+                           + (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
         const int station1 = m.baseline.station1;
         const int station2 = m.baseline.station2;
@@ -56,8 +58,8 @@ void kernel_degridder_intel(
         float phase[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        const float u_offset = (x_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
+        const float v_offset = (y_coordinate + SUBGRIDSIZE/2) / IMAGESIZE;
 
         // Apply aterm to subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -119,14 +121,14 @@ void kernel_degridder_intel(
 
         // Reset all visibilities
         // TODO: is this memset necessary?
-        // memset(&(*visibilities)[local_offset][0][0], 0, nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+        // memset(&(*visibilities)[offset][0][0], 0, nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
             // Load UVW coordinates
-            float u = (*uvw)[local_offset + time].u;
-            float v = (*uvw)[local_offset + time].v;
-            float w = (*uvw)[local_offset + time].w;
+            float u = (*uvw)[offset + time].u;
+            float v = (*uvw)[offset + time].v;
+            float w = (*uvw)[offset + time].w;
 
             // Compute phase indices and phase offsets
             for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -194,10 +196,10 @@ void kernel_degridder_intel(
                 }
 
                 // Store visibilities
-                (*visibilities)[local_offset + time][chan][0] = {sum_xx_real, sum_xx_imag};
-                (*visibilities)[local_offset + time][chan][1] = {sum_xy_real, sum_xy_imag};
-                (*visibilities)[local_offset + time][chan][2] = {sum_yx_real, sum_yx_imag};
-                (*visibilities)[local_offset + time][chan][3] = {sum_yy_real, sum_yy_imag};
+                (*visibilities)[offset + time][chan][0] = {sum_xx_real, sum_xx_imag};
+                (*visibilities)[offset + time][chan][1] = {sum_xy_real, sum_xy_imag};
+                (*visibilities)[offset + time][chan][2] = {sum_yx_real, sum_yx_imag};
+                (*visibilities)[offset + time][chan][3] = {sum_yy_real, sum_yy_imag};
             }
         }
 	}
