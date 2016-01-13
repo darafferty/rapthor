@@ -19,8 +19,8 @@ typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
 /*
 	Datatypes
 */
-typedef UVW UVWType[1][NR_TIMESTEPS];
-typedef FLOAT_COMPLEX VisibilitiesType[1][NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
+typedef UVW UVWType[1];
+typedef FLOAT_COMPLEX VisibilitiesType[1][NR_CHANNELS][NR_POLARIZATIONS];
 typedef float WavenumberType[NR_CHANNELS];
 typedef FLOAT_COMPLEX ATermType[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
