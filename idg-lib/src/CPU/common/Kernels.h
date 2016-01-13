@@ -46,8 +46,8 @@ namespace idg {
                     void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
                              void *visibilities, void *spheroidal, void *aterm,
                              void *metadata, void *subgrid);
-                    uint64_t flops(int jobsize);
-                    uint64_t bytes(int jobsize);
+                    uint64_t flops(int jobsize, int nr_subgrids);
+                    uint64_t bytes(int jobsize, int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -61,8 +61,8 @@ namespace idg {
                     void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
                              void *visibilities, void *spheroidal, void *aterm,
                              void *metadata, void *subgrid);
-                    uint64_t flops(int jobsize);
-                    uint64_t bytes(int jobsize);
+                    uint64_t flops(int jobsize, int nr_subgrids);
+                    uint64_t bytes(int jobsize, int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -87,8 +87,8 @@ namespace idg {
                 public:
                     Adder(runtime::Module &module, const Parameters &parameters);
                     void run(int jobsize, void *metadata, void *subgrid, void *grid);
-                    uint64_t flops(int jobsize);
-                    uint64_t bytes(int jobsize);
+                    uint64_t flops(int nr_subgrids);
+                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -100,8 +100,8 @@ namespace idg {
                 public:
                     Splitter(runtime::Module &module, const Parameters &parameters);
                     void run(int jobsize, void *metadata, void *subgrid, void *grid);
-                    uint64_t flops(int jobsize);
-                    uint64_t bytes(int jobsize);
+                    uint64_t flops(int nr_subgrids);
+                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     runtime::Function _run;
