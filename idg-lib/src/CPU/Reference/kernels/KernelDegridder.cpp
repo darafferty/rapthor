@@ -22,7 +22,8 @@ void kernel_degridder(
 {
     // Find offset of first subgrid
     const Metadata m = (*metadata)[0];
-    const int offset_first = m.offset;
+    const int baseline_offset_1 = m.baseline_offset;
+    const int time_offset_1 = m.time_offset;
 
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
@@ -32,7 +33,8 @@ void kernel_degridder(
         // Load metadata
         const Metadata m = (*metadata)[s];
         const int time_nr = 0; // TODO: m.time_nr; will be aterm_index
-        const int local_offset = m.offset - offset_first;
+        const int local_offset = (m.baseline_offset - baseline_offset_1) +
+            (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
         const int station1 = m.baseline.station1;
         const int station2 = m.baseline.station2;
