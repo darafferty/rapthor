@@ -128,7 +128,9 @@ namespace idg {
                 const int *baselines,
                 complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
@@ -136,13 +138,15 @@ namespace idg {
                 #endif
 
                 // Initialize metadata
-                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
-                auto nr_subgrids = metadata.size();
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size);
+                auto nr_subgrids = plan.get_nr_subgrids();
+                const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timesteps = mParams.get_nr_timesteps();
+                auto nr_time = mParams.get_nr_time();
                 auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
@@ -166,7 +170,7 @@ namespace idg {
                 // Host memory
                 cu::HostMemory h_visibilities((void *) visibilities, nr_subgrids * SIZEOF_VISIBILITIES);
                 cu::HostMemory h_uvw((void *) uvw, nr_subgrids * SIZEOF_UVW);
-                cu::HostMemory h_metadata((void *) metadata.data(), nr_subgrids * SIZEOF_METADATA);
+                cu::HostMemory h_metadata((void *) metadata, nr_subgrids * SIZEOF_METADATA);
 
                 // Device memory
                 cu::DeviceMemory d_wavenumbers(SIZEOF_WAVENUMBERS);
@@ -206,19 +210,23 @@ namespace idg {
                     cu::DeviceMemory d_metadata(jobsize * SIZEOF_METADATA);
 
                     #pragma omp for schedule(dynamic)
-                    for (unsigned s = 0; s < nr_subgrids; s += jobsize) {
+                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Prevent overflow
-                        int current_jobsize = s + jobsize > nr_subgrids ? nr_subgrids - s : jobsize;
+                        int current_jobsize = bl + jobsize > nr_subgrids ? nr_subgrids - bl : jobsize;
 
                         // Number of elements in batch
-                        int uvw_elements          = nr_timesteps * 3;
-                        int visibilities_elements = nr_timesteps * nr_channels * nr_polarizations;
+                        int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
+                        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
                         int metadata_elements     = 5;
 
+                        // Number of subgrids for all baselines in job
+                        auto nr_subgrids           = plan.get_nr_subgrids(bl, jobsize);
+                        auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+
                         // Pointers to data for current batch
-                        void *uvw_ptr          = (float *) h_uvw + s * uvw_elements;
-                        void *visibilities_ptr = (complex<float>*) h_visibilities + s * visibilities_elements;
-                        void *metadata_ptr     = (int *) h_metadata + s * metadata_elements;
+                        void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
+                        void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
+                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
                         PowerRecord powerRecords[5];
@@ -270,20 +278,20 @@ namespace idg {
                         double runtime_adder   = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
-                                                     kernel_gridder->flops(current_jobsize),
-                                                     kernel_gridder->bytes(current_jobsize),
+                                                     kernel_gridder->flops(current_jobsize, nr_subgrids),
+                                                     kernel_gridder->bytes(current_jobsize, nr_subgrids),
                                                      PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_jobsize),
                                                      kernel_fft->bytes(subgridsize, current_jobsize),
                                                      PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report(" scaler", runtime_scaler,
-                                                     kernel_scaler->flops(current_jobsize),
-                                                     kernel_scaler->bytes(current_jobsize),
+                                                     kernel_scaler->flops(nr_subgrids),
+                                                     kernel_scaler->bytes(nr_subgrids),
                                                      PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                         auxiliary::report("  adder", runtime_adder,
-                                                     kernel_adder->flops(current_jobsize),
-                                                     kernel_adder->bytes(current_jobsize),
+                                                     kernel_adder->flops(nr_subgrids),
+                                                     kernel_adder->bytes(nr_subgrids),
                                                      PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -305,8 +313,8 @@ namespace idg {
                 total_runtime_gridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor.read();
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_subgrids);
+                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
                 uint64_t total_flops_scaler   = kernel_scaler->flops(nr_subgrids);
@@ -321,7 +329,7 @@ namespace idg {
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
             }
@@ -333,22 +341,25 @@ namespace idg {
                 const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
 
+#if 0
                 // Initialize metadata
-                vector<Metadata> metadata = init_metadata(uvw, wavenumbers, baselines);
-                auto nr_subgrids = metadata.size();
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size);
+                auto nr_subgrids = plan.get_nr_subgrids();
 
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_timesteps = mParams.get_nr_timesteps();
-                auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
@@ -369,8 +380,8 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
-                cu::HostMemory h_visibilities((void *) visibilities, nr_subgrids * SIZEOF_VISIBILITIES);
-                cu::HostMemory h_uvw((void *) uvw, nr_subgrids * SIZEOF_UVW);
+                cu::HostMemory h_visibilities((void *) visibilities, nr_baselines * SIZEOF_VISIBILITIES);
+                cu::HostMemory h_uvw((void *) uvw, nr_baselines * SIZEOF_UVW);
                 cu::HostMemory h_metadata((void *) metadata.data(), nr_subgrids * SIZEOF_METADATA);
 
                 // Device memory
@@ -531,6 +542,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
 
@@ -597,7 +609,7 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-
+#if 0
                 // Constants
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timesteps = mParams.get_nr_timesteps();
@@ -744,6 +756,7 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
 
@@ -973,7 +986,7 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-
+#if 0
                 // Constants
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timesteps = mParams.get_nr_timesteps();
@@ -1108,6 +1121,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                  clog << endl;
                 #endif
+#endif
             }
 
 
@@ -1122,7 +1136,6 @@ namespace idg {
                   mParams.get_nr_stations(),
                   mParams.get_nr_baselines(),
                   mParams.get_nr_channels(),
-                  mParams.get_nr_timesteps(),
                   mParams.get_nr_timeslots(),
                   mParams.get_imagesize(),
                   mParams.get_nr_polarizations(),
