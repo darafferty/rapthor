@@ -1,3 +1,4 @@
+#include <iostream>
 #include <complex>
 
 #include <math.h>
@@ -24,7 +25,8 @@ void kernel_gridder(
 {
     // Find offset of first subgrid
     const Metadata m = (*metadata)[0];
-    const int offset_first = m.offset;
+    const int baseline_offset_1 = m.baseline_offset;
+    const int time_offset_1 = m.time_offset; // should be 0
 
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
@@ -34,7 +36,8 @@ void kernel_gridder(
         // Load metadata
         const Metadata m = (*metadata)[s];
         const int time_nr = 0; // TODO: HACK, needs to be aterm_index
-        const int local_offset = m.offset - offset_first;
+        const int offset = (m.baseline_offset - baseline_offset_1)
+                           + (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
         const int station1 = m.baseline.station1;
         const int station2 = m.baseline.station2;
@@ -42,8 +45,8 @@ void kernel_gridder(
         const int y_coordinate = m.coordinate.y;
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
         // Iterate all pixels in subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -53,18 +56,17 @@ void kernel_gridder(
                 memset(pixels, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
                 // Compute l,m,n
-                float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+                const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                const float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
  
                 // Iterate all timesteps
-
                 for (int time = 0; time < nr_timesteps; time++) {
                     // Load UVW coordinates
 
-                    float u = (*uvw)[local_offset + time].u;
-                    float v = (*uvw)[local_offset + time].v;
-                    float w = (*uvw)[local_offset + time].w;
+                    float u = (*uvw)[offset + time].u;
+                    float v = (*uvw)[offset + time].v;
+                    float w = (*uvw)[offset + time].w;
 
                     // Compute phase index
                     float phase_index = u*l + v*m + w*n;
@@ -85,7 +87,7 @@ void kernel_gridder(
 
                         // Update pixel for every polarization
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            FLOAT_COMPLEX visibility = (*visibilities)[local_offset + time][chan][pol];
+                            FLOAT_COMPLEX visibility = (*visibilities)[offset + time][chan][pol];
                             pixels[pol] += visibility * phasor;
                         }
                     }

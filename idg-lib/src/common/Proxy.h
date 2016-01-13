@@ -23,7 +23,7 @@
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters.h" // to be use in derived class
 #include "Types.h"
-
+#include "Plan.h"
 
 namespace idg {
     enum DomainAtoDomainB {
@@ -165,11 +165,14 @@ namespace idg {
                 mParams.set_job_size_degridding(js); }
 
         public:
-            std::vector<Metadata> init_metadata(const float *uvw,
-                                                const float *wavenumbers,
-                                                const int *baselines,
-                                                const int *aterm_offsets,
-                                                const int kernel_size);
+            // creates and execution plan given the data and
+            // the proxy's parameters
+            Plan create_plan(
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                const int *aterm_offsets,
+                const int kernel_size);
 
         protected:
             Parameters mParams;  // store parameters passed on creation

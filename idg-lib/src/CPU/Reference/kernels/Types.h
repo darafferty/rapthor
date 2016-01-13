@@ -5,11 +5,11 @@
 /*
 	Structures
 */
-// TODO: why are these here?
+// TODO: why are these here? Use from common/Types.h!
 typedef struct { float u, v, w; } UVW;
 typedef struct { int x, y; } Coordinate;
 typedef struct { int station1, station2; } Baseline;
-typedef struct { int offset; int nr_timesteps;
+typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
                  Baseline baseline; Coordinate coordinate; } Metadata;
 
 /*
