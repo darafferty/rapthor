@@ -44,7 +44,7 @@ namespace idg {
 
             void print_subgrid_offset() const;
 
-            const Metadata* get_metadata_ptr(int baseline) const;
+            const Metadata* get_metadata_ptr(int baseline = 0) const;
             std::vector<Metadata> copy_metadata() const;
 
         private:

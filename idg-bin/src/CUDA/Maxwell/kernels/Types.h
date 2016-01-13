@@ -3,10 +3,12 @@
 /*
 	Structures
 */
+// TODO: use structures from common/Types.h
 typedef struct { float u, v, w; } UVW;
 typedef struct { int x, y; } Coordinate;
 typedef struct { int station1, station2; } Baseline;
-typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
+typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
+                 int aterm_index; Baseline baseline; Coordinate coordinate; } Metadata;
 
 /*
     Complex numbers

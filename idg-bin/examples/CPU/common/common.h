@@ -87,6 +87,7 @@ int run()
     delete[] uvw;
     delete[] wavenumbers;
     delete[] aterm;
+    delete[] aterm_offsets;
     delete[] spheroidal;
     delete[] grid;
     delete[] baselines;

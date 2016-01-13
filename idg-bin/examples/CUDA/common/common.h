@@ -153,7 +153,7 @@ void run_highlevel() {
     // Retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
-    int nr_timesteps = params.get_nr_timesteps();
+    int nr_time = params.get_nr_time();
     int nr_timeslots = params.get_nr_timeslots();
     int nr_channels = params.get_nr_channels();
     int gridsize = params.get_grid_size();
@@ -162,6 +162,9 @@ void run_highlevel() {
     int nr_polarizations = 4;
     int nr_subgrids = nr_baselines * nr_timeslots;
 
+    float w_offset = 0;
+    int kernel_size = (subgridsize / 4) + 1;
+
     // Print configuration
     clog << params;
     clog << endl;
@@ -169,9 +172,9 @@ void run_highlevel() {
     // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
 
-    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*
-        nr_timeslots*nr_channels*nr_polarizations;
-    auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3;
+    auto size_visibilities = 1ULL * nr_baselines*nr_time*
+        nr_channels*nr_polarizations;
+    auto size_uvw = 1ULL * nr_baselines*nr_time*3;
     auto size_wavenumbers = 1ULL * nr_channels;
     auto size_aterm = 1ULL * nr_stations*nr_timeslots*
         nr_polarizations*subgridsize*subgridsize;
@@ -183,21 +186,24 @@ void run_highlevel() {
     auto uvw = new float[size_uvw];
     auto wavenumbers = new float[size_wavenumbers];
     auto aterm = new std::complex<float>[size_aterm];
+    auto aterm_offsets = new int[nr_timeslots+1];
     auto spheroidal = new float[size_spheroidal];
     auto grid = new std::complex<float>[size_grid];
     auto baselines = new int[size_baselines];
 
     idg::init_visibilities(visibilities, nr_baselines,
-                           nr_timesteps*nr_timeslots,
+                           nr_time,
                            nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots);
+    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
     idg::init_wavenumbers(wavenumbers, nr_channels);
     idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations,
                     subgridsize);
+    idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
     idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
+
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
@@ -209,13 +215,13 @@ void run_highlevel() {
 
     // Run
     clog << ">>> Run gridder" << endl;
-    proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, 0, aterm, spheroidal);
+    proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
 
     clog << ">>> Run degridder" << endl;
-    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, 0, aterm, spheroidal);
+    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     // Stop profiling
     cuProfilerStop();
@@ -225,6 +231,7 @@ void run_highlevel() {
     delete[] uvw;
     delete[] wavenumbers;
     delete[] aterm;
+    delete[] aterm_offsets;
     delete[] spheroidal;
     delete[] grid;
     delete[] baselines;
