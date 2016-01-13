@@ -92,20 +92,18 @@ namespace idg {
                         std::complex<float> *grid);
 
                     virtual void split_grid_into_subgrids(
-                        const unsigned nr_subgrids,
-                        const std::vector<Metadata>& metadata,
+                        const Plan& plan,
                         std::complex<float> *subgrids,
                         const std::complex<float> *grid);
 
                     virtual void degrid_from_subgrids(
-                        const unsigned nr_subgrids,
+                        const Plan& plan,
                         const float w_offset,
                         const float *uvw,
                         const float *wavenumbers,
                         std::complex<float> *visibilities,
                         const float *spheroidal,
                         const std::complex<float> *aterm,
-                        const std::vector<Metadata>& metadata,
                         const std::complex<float> *subgrids);
 
 

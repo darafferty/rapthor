@@ -12,6 +12,10 @@ namespace idg {
                const int kernel_size)
         : mParams(parameters)
     {
+        #if defined(DEBUG)
+        cout << __func__ << endl;
+        #endif
+
         init_metadata(uvw, wavenumbers, baselines,
                       aterm_offsets, kernel_size);
     }
@@ -51,6 +55,14 @@ namespace idg {
     }
 
 
+    void Plan::print_subgrid_offset() const {
+        int k = 0;
+        for (auto& e: subgrid_offset) {
+            cout << "subgrid_offset[" << k++ << "]:" << e << endl;
+        }
+    }
+
+
     void Plan::init_metadata(
         const float *_uvw,
         const float *wavenumbers,
@@ -58,6 +70,10 @@ namespace idg {
         const int *aterm_offsets,
         const int kernel_size)
     {
+        #if defined(DEBUG)
+        cout << __func__ << endl;
+        #endif
+
         // Load parameters
         auto nr_baselines = mParams.get_nr_baselines();
         auto nr_time = mParams.get_nr_time();
@@ -69,7 +85,7 @@ namespace idg {
         // Pointers to datastructures
         UVW *uvw = (UVW *) _uvw;
         Baseline *baselines = (Baseline *) _baselines;
-        metadata.reserve(nr_baselines); // TODO: put more accurate reservation
+        metadata.reserve(10*nr_baselines); // TODO: put more accurate reservation
         Baseline *bptr = (Baseline *) baselines;
 
         // Get wavenumber for first and last frequency
@@ -103,9 +119,9 @@ namespace idg {
                     float v_meters = current.v;
 
                     // Iterate all channels
-                    // if (bl==0 && time==0) printf("WARNING: some channels not gridded!\n");
-                    for (int chan = 0; chan < 1; chan++) {
-                        // for (int chan = 0; chan < nr_channels; chan++) {
+                    // TODO: if (bl==0 && time==0) printf("WARNING: some channels not gridded!\n");
+                    // for (int chan = 0; chan < 1; chan++) {
+                    for (int chan = 0; chan < nr_channels; chan++) {
                         float wavenumber = wavenumbers[chan];
                         float scaling = imagesize * wavenumber / (2 * M_PI);
 
@@ -166,7 +182,8 @@ namespace idg {
                                                   v_pixels_previous };
 
                         // Set metadata
-                        Metadata m = { time,
+                        Metadata m = { baseline_offset,
+                                       time,
                                        nr_timesteps,
                                        baseline,
                                        coordinate };
@@ -189,15 +206,5 @@ namespace idg {
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
     } // end init_metadata
-
-
-    // auxiliary for debugging
-    void Plan::print_subgrid_offset() const {
-        int k = 0;
-        for (auto& e: subgrid_offset) {
-            cout << "subgrid_offset[" << k++ << "]:" << e << endl;
-        }
-    }
-
 
 } // namespace idg

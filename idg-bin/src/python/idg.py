@@ -33,7 +33,8 @@ baselinetype = numpy.dtype([('station1', numpy.intc),
                             ('station2', numpy.intc)])
 coordinatetype = numpy.dtype([('x', numpy.intc),
                               ('y', numpy.intc)])
-metadatatype = numpy.dtype([ ('offset', numpy.intc),
+metadatatype = numpy.dtype([ ('baseline_offset', numpy.intc),
+                             ('time_offset', numpy.intc),
                              ('nr_timesteps', numpy.intc),
                              ('baseline', baselinetype),
                              ('coordinate', coordinatetype)])
