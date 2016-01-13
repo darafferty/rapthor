@@ -39,10 +39,10 @@ void kernel_gridder_intel(
 	for (int s = 0; s < jobsize; s++) {
         // Load metadata
         const Metadata m = (*metadata)[s];
-        const int time_nr = 0; // TODO: HACK, needs to be aterm_index
         const int offset = (m.baseline_offset - baseline_offset_1)
                            + (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
+        const int aterm_index = m.aterm_index;
         const int station1 = m.baseline.station1;
         const int station2 = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;
@@ -125,16 +125,16 @@ void kernel_gridder_intel(
         for (int y = 0; y < SUBGRIDSIZE; y++) {
             for (int x = 0; x < SUBGRIDSIZE; x++) {
                 // Load a term for station1
-                FLOAT_COMPLEX aXX1 = (*aterm)[station1][time_nr][0][y][x];
-                FLOAT_COMPLEX aXY1 = (*aterm)[station1][time_nr][1][y][x];
-                FLOAT_COMPLEX aYX1 = (*aterm)[station1][time_nr][2][y][x];
-                FLOAT_COMPLEX aYY1 = (*aterm)[station1][time_nr][3][y][x];
+                FLOAT_COMPLEX aXX1 = (*aterm)[station1][aterm_index][0][y][x];
+                FLOAT_COMPLEX aXY1 = (*aterm)[station1][aterm_index][1][y][x];
+                FLOAT_COMPLEX aYX1 = (*aterm)[station1][aterm_index][2][y][x];
+                FLOAT_COMPLEX aYY1 = (*aterm)[station1][aterm_index][3][y][x];
 
                 // Load aterm for station2
-                FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][time_nr][0][y][x]);
-                FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][time_nr][1][y][x]);
-                FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][time_nr][2][y][x]);
-                FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][time_nr][3][y][x]);
+                FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][aterm_index][0][y][x]);
+                FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][aterm_index][1][y][x]);
+                FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][aterm_index][2][y][x]);
+                FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][aterm_index][3][y][x]);
 
                 // Load spheroidal
                 float _spheroidal = (*spheroidal)[y][x];
