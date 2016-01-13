@@ -52,7 +52,6 @@ namespace idg {
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;
 
-
         }; // class Plan
 
 } // namespace idg
