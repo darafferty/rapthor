@@ -130,9 +130,9 @@ namespace idg {
                     float v_meters = current.v;
 
                     // Iterate all channels
-                    // TODO: if (bl==0 && time==0) printf("WARNING: some channels not gridded!\n");
-                    // for (int chan = 0; chan < 1; chan++) {
-                    for (int chan = 0; chan < nr_channels; chan++) {
+                    // TODO: split channels if they do not fit on a subgrid
+                    //for (int chan = 0; chan < nr_channels; chan++) {
+                    for (int chan = 0; chan < nr_channels; chan += nr_channels) {
                         float wavenumber = wavenumbers[chan];
                         float scaling = imagesize * wavenumber / (2 * M_PI);
 
