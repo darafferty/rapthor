@@ -63,6 +63,15 @@ namespace idg {
     }
 
 
+    static int find_aterm_index(const int time,
+                                const int *aterm_offsets)
+    {
+        int k = 0;
+        while (time >= aterm_offsets[k+1]) k++;
+        return k;
+    }
+
+
     void Plan::init_metadata(
         const float *_uvw,
         const float *wavenumbers,
@@ -110,9 +119,11 @@ namespace idg {
                 int nr_timesteps = 0;
                 int u_pixels_previous;
                 int v_pixels_previous;
-                for (int time_offset = time; time_offset < nr_time; time_offset++) {
+                int aterm_index_subgrid = find_aterm_index(time, aterm_offsets);;
+                for (int t = time; t < nr_time; t++) {
                     int baseline_offset = bl * nr_time;
-                    UVW current = uvw[baseline_offset + time_offset];
+                    auto aterm_index = find_aterm_index(t, aterm_offsets);
+                    UVW current = uvw[baseline_offset + t];
 
                     // U,V in meters
                     float u_meters = current.u;
@@ -153,9 +164,8 @@ namespace idg {
                     v_pixels -= (subgrid_size/2);
 
                     // TODO: add a MAX_NR_TIMESTEPS to be put onto a grid?
-                    // TODO: add changing A-terms
-                    bool same_aterm = true;
-                    bool last_iteration = (time_offset == nr_time - 1);
+                    bool same_aterm = (aterm_index == aterm_index_subgrid);
+                    bool last_iteration = (t == nr_time - 1);
                     bool timestep_fits = (uv_width + kernel_size) < subgrid_size;
 
                     // Check whether current set of measurements fit in subgrid
@@ -166,7 +176,7 @@ namespace idg {
                         // Measurement no longer fits, create new subgrid
 
                         // Use current u,v pixels for last measurement
-                        if (time_offset == nr_time - 1) {
+                        if (t == nr_time - 1) {
                             u_pixels_previous = u_pixels;
                             v_pixels_previous = v_pixels;
                             nr_timesteps++;
@@ -185,12 +195,14 @@ namespace idg {
                         Metadata m = { baseline_offset,
                                        time,
                                        nr_timesteps,
+                                       aterm_index_subgrid,
                                        baseline,
                                        coordinate };
                         // TODO: include aterm_index
                         metadata.push_back(m);
 
-                        // cout << "Create new subgrid: " << m << endl;
+                        // cout << "New subgrid: " << endl
+                        //      << m << endl;
 
                         // Go to next subgrid
                         time += nr_timesteps;

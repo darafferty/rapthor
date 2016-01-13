@@ -36,6 +36,7 @@ coordinatetype = numpy.dtype([('x', numpy.intc),
 metadatatype = numpy.dtype([ ('baseline_offset', numpy.intc),
                              ('time_offset', numpy.intc),
                              ('nr_timesteps', numpy.intc),
+                             ('aterm_index', numpy.intc),
                              ('baseline', baselinetype),
                              ('coordinate', coordinatetype)])
 atermtype = numpy.complex64

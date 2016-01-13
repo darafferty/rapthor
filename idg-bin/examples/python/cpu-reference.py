@@ -20,9 +20,8 @@ if __name__ == "__main__":
     nr_stations = 8
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 1
-    nr_timesteps = 16
-    nr_timeslots = 300
-    nr_time = nr_timesteps*nr_timeslots
+    nr_time = 4800            # samples per baseline
+    nr_timeslots = 10         # A-term time slots
     image_size = 0.08
     subgrid_size = 24
     grid_size = 1024
