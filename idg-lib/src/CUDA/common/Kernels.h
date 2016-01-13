@@ -61,31 +61,31 @@ namespace idg {
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
-                uint64_t flops(int jobsize) {
+                uint64_t flops(int jobsize, int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
-                    int nr_timesteps = parameters.get_nr_timesteps();
+                    int nr_time = parameters.get_nr_time();
                     int nr_channels = parameters.get_nr_channels();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t flops = 0;
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase index
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase offset
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
                     return flops;
                 }
 
-                uint64_t bytes(int jobsize) {
+                uint64_t bytes(int jobsize, int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
-                    int nr_timesteps = parameters.get_nr_timesteps();
+                    int nr_time = parameters.get_nr_time();
                     int nr_channels = parameters.get_nr_channels();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t bytes = 0;
-                    bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
-                    bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * sizeof(cuFloatComplex); // visibilities
-                    bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * sizeof(cuFloatComplex); // subgrids
+                    bytes += 1ULL * jobsize * nr_time * 3 * sizeof(float); // uvw
+                    bytes += 1ULL * jobsize * nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex); // visibilities
+                    bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(cuFloatComplex); // subgrids
                     return bytes;
                 }
 
@@ -133,34 +133,32 @@ namespace idg {
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
-                uint64_t flops(int jobsize) {
+                uint64_t flops(int jobsize, int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
-                    int nr_timesteps = parameters.get_nr_timesteps();
+                    int nr_time = parameters.get_nr_time();
                     int nr_channels = parameters.get_nr_channels();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t flops = 0;
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
-                    flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase index
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase offset
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
+                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
                     return flops;
                 }
 
-                uint64_t bytes(int jobsize) {
+                uint64_t bytes(int jobsize, int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
-                    int nr_time = parameters.get_nr_timesteps();
+                    int nr_time = parameters.get_nr_time();
                     int nr_channels = parameters.get_nr_channels();
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    return 1ULL * jobsize * (
-                    // ATerm
-                    2 * subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex) +
-                    // UV grid
-                    subgridsize * subgridsize * nr_polarizations * sizeof(cuFloatComplex) +
-                    // Visibilities
-                    nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex));
+                    uint64_t bytes = 0;
+                    bytes += 1ULL * jobsize * nr_time * 3 * sizeof(float); // uvw
+                    bytes += 1ULL * jobsize * nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex); // visibilities
+                    bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(cuFloatComplex); // subgrids
+                    return bytes;
                 }
 
         	private:
@@ -258,23 +256,23 @@ namespace idg {
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
-                uint64_t flops(int jobsize) {
+                uint64_t flops(int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t flops = 0;
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * 8; // shift
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * 4; // add
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 4; // add
                     return flops;
                 }
 
-                uint64_t bytes(int jobsize) {
+                uint64_t bytes(int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t bytes = 0;
-                    bytes += 1ULL * jobsize * 2 * sizeof(int); // coordinate
-                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // grid in
-                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
-                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+                    bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
+                    bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+                    bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
+                    bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
                     return bytes;
                 }
 
@@ -308,20 +306,20 @@ namespace idg {
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
-                uint64_t flops(int jobsize) {
+                uint64_t flops(int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     uint64_t flops = 0;
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * 8; // shift
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
                     return flops;
                 }
 
-                uint64_t bytes(int jobsize) {
+                uint64_t bytes(int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t bytes = 0;
-                    bytes += 1ULL * jobsize * 2 * sizeof(int); // coordinate
-                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // grid in
-                    bytes += 1ULL * jobsize * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+                    bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
+                    bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+                    bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
                     return bytes;
                 }
 
@@ -350,19 +348,19 @@ namespace idg {
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
-                uint64_t flops(int jobsize) {
+                uint64_t flops(int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t flops = 0;
-                    flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // scale
+                    flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
                     return flops;
                 }
 
-                uint64_t bytes(int jobsize) {
+                uint64_t bytes(int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t bytes = 0;
-                    bytes += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
+                    bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
                     return bytes;
                 }
 
