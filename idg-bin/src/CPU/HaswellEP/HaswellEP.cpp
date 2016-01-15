@@ -70,24 +70,30 @@ namespace idg {
         {
             string debug = "Debug";
             string relwithdebinfo = "RelWithDebInfo";
+            string intel_flags = "-openmp -xcore-avx2 -mkl=parallel";
+            string gnu_flags_wo_mkl = "-fopenmp -march=core-avx2 -lfftw3f";
+
+            #if defined(BUILD_WITH_PYTHON)
+            // hack to make code be corretly loaded with ctypes
+            intel_flags += " -lmkl_avx2 -lmkl_vml_avx2";
+            #endif
 
             #if defined(USING_GNU_CXX_COMPILER)
             // Settings for gcc
             if (debug == IDG_BUILD_TYPE)
-                return "-Wall -g -fopenmp -lfftw3f";
+                return "-Wall -g " + gnu_flags_wo_mkl;
             else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g -fopenmp -lfftw3f";
+                return "-O3 -g " + gnu_flags_wo_mkl;
             else
-                return "-Wall -O3 -fopenmp -lfftw3f";
+                return "-Wall -O3 " + gnu_flags_wo_mkl;
             #else
             // Settings (general, assuming intel as default)
-            // TODO: investigate effect of -march=core-avx2 option (performance, accuracy)
             if (debug == IDG_BUILD_TYPE)
-                return "-Wall -g -openmp -xcore-avx2 -mkl";
+                return "-Wall -g " + intel_flags;
             else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g -openmp -xcore-avx2 -mkl";
+                return "-O3 -g " + intel_flags;
             else
-                return "-Wall -O3 -openmp -xcore-avx2 -mkl";
+                return "-Wall -O3 " + intel_flags;
             #endif
         }
 
