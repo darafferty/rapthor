@@ -70,6 +70,13 @@ namespace idg {
         {
             string debug = "Debug";
             string relwithdebinfo = "RelWithDebInfo";
+            string intel_flags = "-openmp -xavx -mkl=parallel";
+            string gnu_flags_wo_mkl = "-fopenmp -march=avx -lfftw3f";
+
+            #if defined(BUILD_WITH_PYTHON)
+            // hack to make code be corretly loaded with ctypes
+            intel_flags += " -lmkl_avx -lmkl_vml_avx -lmkl_avx2 -lmkl_vml_avx2";
+            #endif
 
             #if defined(USING_GNU_CXX_COMPILER)
             if (debug == IDG_BUILD_TYPE)
@@ -81,11 +88,11 @@ namespace idg {
             #else
             // Settings (general, assuming intel as default)
             if (debug == IDG_BUILD_TYPE)
-                return "-Wall -openmp -g -DDEBUG -xavx -mkl";
+                return "-Wall -g -DDEBUG " + intel_flags;
             else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g -openmp -xavx -mkl";
+                return "-O3 -g " + intel_flags;
             else
-                return "-Wall -O3 -openmp -mkl -xavx -mkl";
+                return "-Wall -O3 " + intel_flags;
             #endif
         }
 
