@@ -15,9 +15,10 @@ __global__ void kernel_degridder(
 	VisibilitiesType	    __restrict__ visibilities,
 	const SpheroidalType	__restrict__ spheroidal,
 	const ATermType			__restrict__ aterm,
-	const MetadataType		__restrict__ metadata,		
+	const MetadataType		__restrict__ metadata,
 	const SubGridType	    __restrict__ subgrid
     ) {
+#if 0
 	int s = blockIdx.x;
 
 	// Load metadata
@@ -46,7 +47,7 @@ __global__ void kernel_degridder(
 		float2 visXX, visXY, visYX, visYY;
 		float  u, v, w;
 		float  wavenumber;
-		
+
 		if (time < NR_TIMESTEPS) {
 			visXX = make_float2(0, 0);
 			visXY = make_float2(0, 0);
@@ -277,6 +278,7 @@ __global__ void kernel_degridder(
 
 		visibilities[s][time][chan][pol] = _vis[pol][time][chan];
     }
+#endif
 #endif
 }
 }

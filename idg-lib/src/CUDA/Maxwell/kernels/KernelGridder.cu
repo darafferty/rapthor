@@ -5,6 +5,8 @@
 
 extern "C" {
 
+#define MAX_NR_TIMESTEPS MAX_NR_TIMESTEPS_GRIDDER
+
 /*
 	Kernel
 */
@@ -24,9 +26,12 @@ __global__ void kernel_gridder(
 	int blockSize = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
-    // Load metadata
+    // Load metadata for first subgrid
+    const Metadata &m_0 = metadata[0];
+
+    // Load metadata for current subgrid
 	const Metadata &m = metadata[s];
-    const int offset = m.baseline_offset + m.baseline_offset;
+    const int offset = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
     const int nr_timesteps = m.nr_timesteps;
 	const int aterm_index = m.aterm_index;
 	const int station1 = m.baseline.station1;
@@ -34,13 +39,9 @@ __global__ void kernel_gridder(
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
 
-
     // Shared data
-    #define NR_TIMESTEPS 16
-    // TODO: introduce compile time constant: MAX_NR_TIMESTEPS
-    //       and use this constant to initialize shared memory
-	__shared__ float2 _visibilities[NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
-	__shared__ UVW _uvw[NR_TIMESTEPS];
+	__shared__ float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
+	__shared__ UVW _uvw[MAX_NR_TIMESTEPS];
 	__shared__ float _wavenumbers[NR_CHANNELS];
 
     // Load wavenumbers
@@ -48,12 +49,17 @@ __global__ void kernel_gridder(
         _wavenumbers[i] = wavenumbers[i];
 
 	// Load UVW
-	for (int time = tid; time < nr_timesteps; time += blockSize)
+	for (int time = tid; time < nr_timesteps; time += blockSize) {
 		_uvw[time] = uvw[offset + time];
+    }
 
 	// Load visibilities
-	for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize)
-		_visibilities[0][0][i] = visibilities[s][0][i];
+	for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize) {
+        int j = tid / (NR_CHANNELS * NR_POLARIZATIONS);
+        int k = tid % (NR_CHANNELS * NR_POLARIZATIONS);
+		_visibilities[j][0][k] = visibilities[offset + j][0][k];
+
+    }
 
 	syncthreads();
 
@@ -138,7 +144,9 @@ __global__ void kernel_gridder(
 
 			// Apply aterm
 			float2 tXX, tXY, tYX, tYY;
-			Matrix2x2mul(tXX, tXY, tYX, tYY, cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1), uvXX, uvXY, uvYX, uvYY);
+			Matrix2x2mul(tXX, tXY, tYX, tYY,
+                         cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1),
+                         uvXX, uvXY, uvYX, uvYY);
 			Matrix2x2mul(tXX, tXY, tYX, tYY, tXX, tXY, tYX, tYY, aXX2, aXY2, aYX2, aYY2);
 
 			// Load spheroidal
