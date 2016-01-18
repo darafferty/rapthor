@@ -180,12 +180,12 @@ namespace idg {
   {
     const unsigned int DEFAULT_NR_STATIONS = 44;
     const unsigned int DEFAULT_NR_CHANNELS = 8;
-    const unsigned int DEFAULT_NR_TIME = 2048;
-    const unsigned int DEFAULT_NR_TIMESLOTS = 128;
+    const unsigned int DEFAULT_NR_TIME = 4096;
+    const unsigned int DEFAULT_NR_TIMESLOTS = 16;
     const unsigned int DEFAULT_NR_POLARIZATIONS = 4;
     const float DEFAULT_IMAGESIZE = 0.1f;
     const unsigned int DEFAULT_GRIDSIZE = 4096;
-    const unsigned int DEFAULT_SUBGRIDSIZE = 32;
+    const unsigned int DEFAULT_SUBGRIDSIZE = 24;
     const unsigned int DEFAULT_JOBSIZE = 256;
 
     // nr_stations
@@ -248,6 +248,7 @@ namespace idg {
             unsigned int nr_stations,
             unsigned int nr_baselines,
             unsigned int nr_channels,
+            unsigned int nr_time,
             unsigned int nr_timeslots,
             float imagesize,
             unsigned int nr_polarizations,
@@ -257,6 +258,7 @@ namespace idg {
     parameters << " -DNR_STATIONS=" << nr_stations;
     parameters << " -DNR_BASELINES=" << nr_baselines;
     parameters << " -DNR_CHANNELS=" << nr_channels;
+    parameters << " -DNR_TIME=" << nr_time;
     parameters << " -DNR_TIMESLOTS=" << nr_timeslots;
     parameters << " -DIMAGESIZE=" << imagesize;
     parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
