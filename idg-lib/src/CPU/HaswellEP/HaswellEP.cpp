@@ -75,7 +75,7 @@ namespace idg {
 
             #if defined(BUILD_WITH_PYTHON)
             // hack to make code be corretly loaded with ctypes
-            intel_flags += " -lmkl_avx2 -lmkl_vml_avx2";
+            intel_flags += " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
             #endif
 
             #if defined(USING_GNU_CXX_COMPILER)
