@@ -23,8 +23,8 @@
 /* Observation parameters */
 #define LAYOUT_DIR          "utility/initialize"
 #define LAYOUT_FILE         "SKA1_low_ecef.txt"
-#define START_FREQUENCY     500.0e6
-#define FREQUENCY_INCREMENT 5.0e6
+#define START_FREQUENCY     150e6
+#define FREQUENCY_INCREMENT 0.7e6
 #define RIGHT_ASCENSION     (10.0 * (M_PI/180.))
 #define DECLINATION         (70.0 * (M_PI/180.))
 #define YEAR                2014

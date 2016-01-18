@@ -720,6 +720,7 @@ namespace idg {
                   mParams.get_nr_stations(),
                   mParams.get_nr_baselines(),
                   mParams.get_nr_channels(),
+                  mParams.get_nr_time(),
                   mParams.get_nr_timeslots(),
                   mParams.get_imagesize(),
                   mParams.get_nr_polarizations(),
