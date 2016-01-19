@@ -131,7 +131,6 @@ namespace idg {
 
                     // Iterate all channels
                     // TODO: split channels if they do not fit on a subgrid
-                    //for (int chan = 0; chan < nr_channels; chan++) {
                     for (int chan = 0; chan < nr_channels; chan += nr_channels) {
                         float wavenumber = wavenumbers[chan];
                         float scaling = imagesize * wavenumber / (2 * M_PI);
@@ -144,7 +143,7 @@ namespace idg {
                         if (u_pixels > u_max) u_max = u_pixels;
                         if (v_pixels < v_min) v_min = v_pixels;
                         if (v_pixels > v_max) v_max = v_pixels;
-                    }
+                    } // end for chan
 
                     // Compute u,v width
                     int u_width = u_max - u_min + 1;
