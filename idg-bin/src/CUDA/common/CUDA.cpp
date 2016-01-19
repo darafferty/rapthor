@@ -103,6 +103,54 @@ namespace idg {
                 #endif
             }
 
+            /* Sizeof routines */
+            uint64_t CUDA::sizeof_subgrids(int nr_subgrids) {
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgridsize = mParams.get_subgrid_size();
+                return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
+            }
+
+            uint64_t CUDA::sizeof_uvw(int nr_baselines) {
+                auto nr_time = mParams.get_nr_time();
+                return 1ULL * nr_baselines * nr_time * sizeof(UVW);
+            }
+
+            uint64_t CUDA::sizeof_visibilities(int nr_baselines) {
+                auto nr_time = mParams.get_nr_time();
+                auto nr_channels = mParams.get_nr_channels();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>);
+            }
+
+            uint64_t CUDA::sizeof_metadata(int nr_subgrids) {
+                return 1ULL * nr_subgrids * sizeof(Metadata);
+            }
+
+            uint64_t CUDA::sizeof_grid() {
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
+                return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>);
+            }
+
+            uint64_t CUDA::sizeof_wavenumbers() {
+                auto nr_channels = mParams.get_nr_channels();
+                return 1ULL * nr_channels * sizeof(float);
+            }
+
+            uint64_t CUDA::sizeof_aterm() {
+                auto nr_stations = mParams.get_nr_stations();
+                auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgridsize = mParams.get_subgrid_size();
+                return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
+            }
+
+            uint64_t CUDA::sizeof_spheroidal() {
+                auto subgridsize = mParams.get_subgrid_size();
+                return 1ULL * subgridsize * subgridsize * sizeof(complex<float>);
+            }
+
+
             /* Misc routines */
             int CUDA::get_max_nr_timesteps_gridder() {
                 // Get size of shared memory
@@ -143,7 +191,7 @@ namespace idg {
 
                 // Initialize
                 cu::Context &context = get_context();
-                cu::HostMemory h_grid(grid, SIZEOF_GRID);
+                cu::HostMemory h_grid(grid, sizeof_grid());
 
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
@@ -156,9 +204,9 @@ namespace idg {
                 PowerRecord powerRecords[4];
 
                 // Copy grid to device
-                cu::DeviceMemory d_grid(SIZEOF_GRID);
+                cu::DeviceMemory d_grid(sizeof_grid());
                 powerRecords[0].enqueue(stream);
-                stream.memcpyHtoDAsync(d_grid, h_grid, SIZEOF_GRID);
+                stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
@@ -167,14 +215,14 @@ namespace idg {
                 powerRecords[2].enqueue(stream);
 
                 // Copy grid to host
-                stream.memcpyDtoHAsync(h_grid, d_grid, SIZEOF_GRID);
+                stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
                 powerRecords[3].enqueue(stream);
                 stream.synchronize();
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report(" input",
                                   PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
-                                  0, SIZEOF_GRID,
+                                  0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                 auxiliary::report("   fft",
                                   PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
@@ -183,7 +231,7 @@ namespace idg {
                                   PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                 auxiliary::report("output",
                                   PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
-                                  0, SIZEOF_GRID,
+                                  0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                 std::cout << std::endl;
                 #endif
@@ -238,20 +286,20 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
-                cu::HostMemory h_visibilities((void *) visibilities, nr_baselines * SIZEOF_VISIBILITIES);
-                cu::HostMemory h_uvw((void *) uvw, nr_baselines * SIZEOF_UVW);
-                cu::HostMemory h_metadata((void *) metadata, nr_subgrids * SIZEOF_METADATA);
+                cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
+                cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
+                cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
 
                 // Device memory
-                cu::DeviceMemory d_wavenumbers(SIZEOF_WAVENUMBERS);
-                cu::DeviceMemory d_spheroidal(SIZEOF_SPHEROIDAL);
-                cu::DeviceMemory d_aterm(SIZEOF_ATERM);
-                cu::DeviceMemory d_grid(SIZEOF_GRID);
+                cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers());
+                cu::DeviceMemory d_spheroidal(sizeof_spheroidal());
+                cu::DeviceMemory d_aterm(sizeof_aterm());
+                cu::DeviceMemory d_grid(sizeof_grid());
 
                 // Copy static device memory
-                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers, SIZEOF_WAVENUMBERS);
-                htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal, SIZEOF_SPHEROIDAL);
-                htodstream.memcpyHtoDAsync(d_aterm, aterm, SIZEOF_ATERM);
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers, sizeof_wavenumbers());
+                htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal, sizeof_spheroidal());
+                htodstream.memcpyHtoDAsync(d_aterm, aterm, sizeof_aterm());
                 htodstream.synchronize();
 
                 // Performance measurements
@@ -274,8 +322,8 @@ namespace idg {
                     unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                     // Private device memory
-                    cu::DeviceMemory d_visibilities(jobsize * SIZEOF_VISIBILITIES);
-                    cu::DeviceMemory d_uvw(jobsize * SIZEOF_UVW);
+                    cu::DeviceMemory d_visibilities(sizeof_visibilities(jobsize));
+                    cu::DeviceMemory d_uvw(sizeof_uvw(jobsize));
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -294,8 +342,8 @@ namespace idg {
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Private device memory
-                        cu::DeviceMemory d_subgrids(current_nr_subgrids * SIZEOF_SUBGRIDS);
-                        cu::DeviceMemory d_metadata(current_nr_subgrids * SIZEOF_METADATA);
+                        cu::DeviceMemory d_subgrids(sizeof_subgrids(current_nr_subgrids));
+                        cu::DeviceMemory d_metadata(sizeof_metadata(current_nr_subgrids));
 
                         // Power measurement
                         PowerRecord powerRecords[5];
@@ -304,9 +352,9 @@ namespace idg {
                         {
                             // Copy input data to device
                             htodstream.waitEvent(inputFree);
-                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, current_nr_baselines * SIZEOF_VISIBILITIES);
-                            htodstream.memcpyHtoDAsync(d_uvw, h_uvw, current_nr_baselines * SIZEOF_UVW);
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, current_nr_subgrids * SIZEOF_METADATA);
+                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities(current_nr_baselines));
+                            htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw(current_nr_baselines));
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
                             // Create FFT plan
@@ -374,7 +422,7 @@ namespace idg {
 
                 // Copy grid to host
                 dtohstream.synchronize();
-                dtohstream.memcpyDtoHAsync(grid, d_grid, SIZEOF_GRID);
+                dtohstream.memcpyDtoHAsync(grid, d_grid, sizeof_grid());
                 dtohstream.synchronize();
                 executestream.synchronize();
 
