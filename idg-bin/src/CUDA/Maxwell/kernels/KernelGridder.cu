@@ -55,8 +55,8 @@ __global__ void kernel_gridder(
 
 	// Load visibilities
 	for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize) {
-        int j = tid / (NR_CHANNELS * NR_POLARIZATIONS);
-        int k = tid % (NR_CHANNELS * NR_POLARIZATIONS);
+        int j = tid / (NR_CHANNELS * NR_POLARIZATIONS); // time index
+        int k = tid % (NR_CHANNELS * NR_POLARIZATIONS); // channel and polarization index
 		_visibilities[j][0][k] = visibilities[offset + j][0][k];
 
     }
