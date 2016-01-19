@@ -33,18 +33,6 @@
 #include "Kernels.h"
 
 
-/*
-    Size of data structures for a single job
-*/
-#define  SIZEOF_SUBGRIDS     1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
-#define  SIZEOF_UVW          1ULL * nr_time * sizeof(UVW)
-#define  SIZEOF_VISIBILITIES 1ULL * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>)
-#define  SIZEOF_METADATA     1ULL * sizeof(Metadata)
-#define  SIZEOF_GRID         1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
-#define  SIZEOF_WAVENUMBERS  1ULL * nr_channels * sizeof(float)
-#define  SIZEOF_ATERM        1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
-#define  SIZEOF_SPHEROIDAL   1ULL * subgridsize * subgridsize * sizeof(complex<float>)
-
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -90,33 +78,43 @@ namespace idg {
                 }
 
 
-            // High level interface, inherited from Proxy
-            virtual void grid_visibilities(
-                const std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal) override;
+            public:
+                // High level interface, inherited from Proxy
+                virtual void grid_visibilities(
+                    const std::complex<float> *visibilities,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const int *baselines,
+                    std::complex<float> *grid,
+                    const float w_offset,
+                    const int kernel_size,
+                    const std::complex<float> *aterm,
+                    const int *aterm_offsets,
+                    const float *spheroidal) override;
 
-            virtual void degrid_visibilities(
-                std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                const std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal) override;
+                virtual void degrid_visibilities(
+                    std::complex<float> *visibilities,
+                    const float *uvw,
+                    const float *wavenumbers,
+                    const int *baselines,
+                    const std::complex<float> *grid,
+                    const float w_offset,
+                    const int kernel_size,
+                    const std::complex<float> *aterm,
+                    const int *aterm_offsets,
+                    const float *spheroidal) override;
 
-            virtual void transform(DomainAtoDomainB direction,
-                                   std::complex<float>* grid) override;
+                virtual void transform(DomainAtoDomainB direction,
+                                       std::complex<float>* grid) override;
+            protected:
+               uint64_t sizeof_subgrids(int nr_subgrids);
+               uint64_t sizeof_uvw(int nr_baselines);
+               uint64_t sizeof_visibilities(int nr_baselines);
+               uint64_t sizeof_metadata(int nr_subgrids);
+               uint64_t sizeof_grid();
+               uint64_t sizeof_wavenumbers();
+               uint64_t sizeof_aterm();
+               uint64_t sizeof_spheroidal();
 
             public:
                 virtual std::unique_ptr<kernel::cuda::Gridder> get_kernel_gridder() const = 0;

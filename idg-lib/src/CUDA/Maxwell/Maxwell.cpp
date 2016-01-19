@@ -26,7 +26,8 @@ namespace idg {
                 find_kernel_functions();
             }
 
-            // TODO: this method is currently not used
+            // TODO: this method is deprecated
+            #if 0
             int get_jobsize(int nr_subgrids, Parameters mParams, cu::Device &device, int nr_streams) {
                 // Get parameters
                 auto nr_time= mParams.get_nr_time();
@@ -54,6 +55,7 @@ namespace idg {
 
                 return jobsize;
             }
+            #endif
 
             ProxyInfo Maxwell::default_info() {
                 #if defined(DEBUG)
