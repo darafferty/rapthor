@@ -17,7 +17,7 @@ namespace idg {
 
                 virtual void launch(
                     cu::Stream &stream,
-                    int jobsize,
+                    int nr_baselines,
                     float w_offset,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
@@ -29,7 +29,7 @@ namespace idg {
                     {
                         launchAsync<8,8,1>(
                             stream,
-                            jobsize,
+                            nr_baselines,
                             w_offset,
                             d_uvw,
                             d_wavenumbers,
