@@ -712,7 +712,9 @@ namespace idg {
                         source += mInfo.get_path_to_src() + "/" + src + " ";
                     } // source = a.cpp b.cpp c.cpp ...
 
+                    #if defined(DEBUG)
                     cout << lib << " " << source << " " << endl;
+                    #endif
 
                     cu::Source(source.c_str()).compile(lib.c_str(), parameters.c_str());
                 } // for each library
