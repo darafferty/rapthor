@@ -27,12 +27,12 @@ class MaxwellHaswellEP(Proxy):
                        subgrid_size):
         try:
             lib.Hybrid_MaxwellHaswellEP_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_float, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint]
+                                                         ctypes.c_uint, \
+                                                         ctypes.c_uint, \
+                                                         ctypes.c_uint, \
+                                                         ctypes.c_float, \
+                                                         ctypes.c_uint, \
+                                                         ctypes.c_uint]
             self.obj = lib.Hybrid_MaxwellHaswellEP_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
