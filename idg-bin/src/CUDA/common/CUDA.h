@@ -106,7 +106,7 @@ namespace idg {
 
                 virtual void transform(DomainAtoDomainB direction,
                                        std::complex<float>* grid) override;
-            protected:
+            public:
                uint64_t sizeof_subgrids(int nr_subgrids);
                uint64_t sizeof_uvw(int nr_baselines);
                uint64_t sizeof_visibilities(int nr_baselines);
@@ -124,7 +124,7 @@ namespace idg {
                 virtual std::unique_ptr<kernel::cuda::Adder> get_kernel_adder() const = 0;
                 virtual std::unique_ptr<kernel::cuda::Splitter> get_kernel_splitter() const = 0;
 
-            protected:
+            public:
                 int get_max_nr_timesteps_gridder();
 
             protected:
