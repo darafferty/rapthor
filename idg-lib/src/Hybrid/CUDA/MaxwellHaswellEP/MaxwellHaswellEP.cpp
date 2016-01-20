@@ -47,12 +47,14 @@ namespace idg {
                 const int *baselines,
                 std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-
+#if 0
                 // initialize metadata
                 vector<Metadata> _metadata = init_metadata(uvw, wavenumbers, baselines);
                 auto nr_subgrids = _metadata.size();
@@ -251,6 +253,7 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
             void MaxwellHaswellEP::degrid_visibilities(
@@ -260,12 +263,14 @@ namespace idg {
                 const int *baselines,
                 const std::complex<float> *grid,
                 const float w_offset,
+                const int kernel_size,
                 const std::complex<float> *aterm,
+                const int *aterm_offsets,
                 const float *spheroidal) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-
+#if 0
                 // initialize metadata
                 vector<Metadata> _metadata = init_metadata(uvw, wavenumbers, baselines);
                 auto nr_subgrids = _metadata.size();
@@ -455,6 +460,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
             void MaxwellHaswellEP::transform(DomainAtoDomainB direction,
@@ -505,6 +511,7 @@ extern "C" {
                 unsigned int nr_stations,
                 unsigned int nr_channels,
                 unsigned int nr_timesteps,
+                unsigned int nr_time,
                 unsigned int nr_timeslots,
                 float        imagesize,
                 unsigned int grid_size,
@@ -513,7 +520,7 @@ extern "C" {
         idg::Parameters P;
         P.set_nr_stations(nr_stations);
         P.set_nr_channels(nr_channels);
-        P.set_nr_timesteps(nr_timesteps);
+        P.set_nr_time(nr_time);
         P.set_nr_timeslots(nr_timeslots);
         P.set_imagesize(imagesize);
         P.set_subgrid_size(subgrid_size);
@@ -529,7 +536,9 @@ extern "C" {
                             void *metadata,
                             void *grid,
                             float w_offset,
+                            int   kernel_size,
                             void *aterm,
+                            void *aterm_offsets,
                             void *spheroidal)
     {
          p->grid_visibilities(
@@ -539,7 +548,9 @@ extern "C" {
                 (const int*) metadata,
                 (std::complex<float>*) grid,
                 w_offset,
+                kernel_size,
                 (const std::complex<float>*) aterm,
+                (const int*) aterm_offsets,
                 (const float*) spheroidal);
     }
 
@@ -550,7 +561,9 @@ extern "C" {
                             void *metadata,
                             void *grid,
                             float w_offset,
+                            int   kernel_size,
                             void *aterm,
+                            void *aterm_offsets,
                             void *spheroidal)
     {
          p->degrid_visibilities(
@@ -560,7 +573,9 @@ extern "C" {
                     (const int*) metadata,
                     (const std::complex<float>*) grid,
                     w_offset,
+                    kernel_size,
                     (const std::complex<float>*) aterm,
+                    (const int*) aterm_offsets,
                     (const float*) spheroidal);
      }
 
