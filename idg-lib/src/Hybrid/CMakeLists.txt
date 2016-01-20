@@ -10,6 +10,5 @@ if (BUILD_LIB_KNC)
 endif(BUILD_LIB_KNC)
 
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-    message("Hybrid CUDA is disabled")
-    #add_subdirectory(CUDA)
+    add_subdirectory(CUDA)
 endif()
