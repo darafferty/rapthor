@@ -111,38 +111,37 @@ endif(BUILD_LIB_CUDA)
 # build libidg-hybrid-cuda: containing all for CPU/CUDA code #
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-message("Hybrid CUDA is disabled")
-#add_library(idg-hybrid-cuda
-#  $<TARGET_OBJECTS:common>
-#  $<TARGET_OBJECTS:cpu-common>
-#  $<TARGET_OBJECTS:cpu-reference>
-#  $<TARGET_OBJECTS:cpu-haswellep>
-#  $<TARGET_OBJECTS:cpu-sandybridgeep>
-#  $<TARGET_OBJECTS:cuda-common>
-#  $<TARGET_OBJECTS:cuda-kepler>
-#  $<TARGET_OBJECTS:cuda-maxwell>
-#  $<TARGET_OBJECTS:hybrid-cuda-maxwellhaswellep>
-#)
+add_library(idg-hybrid-cuda
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:cpu-common>
+  $<TARGET_OBJECTS:cpu-reference>
+  $<TARGET_OBJECTS:cpu-haswellep>
+  $<TARGET_OBJECTS:cpu-sandybridgeep>
+  $<TARGET_OBJECTS:cuda-common>
+  $<TARGET_OBJECTS:cuda-kepler>
+  $<TARGET_OBJECTS:cuda-maxwell>
+  $<TARGET_OBJECTS:hybrid-cuda-maxwellhaswellep>
+)
 
-#set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
 
-#target_link_libraries (
-#  idg-hybrid-cuda
-#  ${LINK_LIRBRARIES}
-#)
+target_link_libraries (
+  idg-hybrid-cuda
+  ${LINK_LIRBRARIES}
+)
 
-#install(TARGETS idg-hybrid-cuda
-#  RUNTIME DESTINATION bin
-#  LIBRARY DESTINATION lib
-#  ARCHIVE DESTINATION lib/static
-#)
+install(TARGETS idg-hybrid-cuda
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+)
 
-#install(
-#    FILES
-#    idg-hybrid-cuda.h
-#    DESTINATION
-#    include
-#)
+install(
+    FILES
+    idg-hybrid-cuda.h
+    DESTINATION
+    include
+)
 endif()
 
 
