@@ -179,9 +179,6 @@ class Proxy(object):
     def get_nr_time(self):
         return lib.Proxy_get_nr_time(self.obj)
 
-    def get_nr_timesteps(self):
-        return lib.Proxy_get_nr_timesteps(self.obj)
-
     def get_nr_timeslots(self):
         return lib.Proxy_get_nr_timeslots(self.obj)
 
@@ -235,15 +232,14 @@ class Proxy(object):
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,
-                                baselines, grid, w_offset, aterms,
-                                spheroidal):
+                                baselines, grid, w_offset, kernel_size,
+                                aterms, aterms_offset, spheroidal):
         pass
 
     # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_degrid_visibilities(self, visibilities, uvw,
-                                   wavenumbers, baselines,
-                                   grid, w_offset, aterms,
-                                   spheroidal):
+    def _cwrap_degrid_visibilities(self, visibilities, uvw, wavenumbers,
+                                   baselines, grid, w_offset, kernel_size,
+                                   aterms, aterms_offset, spheroidal):
         pass
 
     # Wrapper to C function (override for each class inheriting from this)
