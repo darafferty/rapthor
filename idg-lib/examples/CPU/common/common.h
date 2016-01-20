@@ -70,7 +70,7 @@ int run()
     idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
-    // Initialize interface to kernels
+    // Initialize proxy
     std::clog << ">>> Initialize proxy" << std::endl;
     ProxyType proxy(params);
     std::clog << std::endl;
@@ -78,6 +78,9 @@ int run()
     // Run
     std::clog << ">>> Run gridding" << std::endl;
     proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
+
+    std::clog << ">>> Run fft" << std::endl;
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
 
     std::clog << ">>> Run degridding" << std::endl;
     proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
