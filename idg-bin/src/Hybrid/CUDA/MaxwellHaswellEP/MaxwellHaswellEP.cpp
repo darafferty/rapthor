@@ -515,7 +515,6 @@ extern "C" {
     Hybrid_MaxwellHaswellEP* Hybrid_MaxwellHaswellEP_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
-                unsigned int nr_timesteps,
                 unsigned int nr_time,
                 unsigned int nr_timeslots,
                 float        imagesize,
