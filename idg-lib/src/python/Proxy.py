@@ -213,22 +213,28 @@ class Proxy(object):
     def set_job_size_degridding(self, n = 8192):
         lib.Proxy_set_job_size_degridding(self.obj, ctypes.c_int(n))
 
-    def _get_nr_subgrids(self, uvw, wavenumbers, baselines, aterms_offset, kernel_size):
+    def _get_nr_subgrids(self, uvw, wavenumbers, baselines, aterms_offset,
+                         kernel_size, max_nr_timesteps=1024*1024):
+        print "_init_metadata", max_nr_timesteps
         return lib.Proxy_get_nr_subgrids(self.obj,
             uvw.ctypes.data_as(ctypes.c_void_p),
             wavenumbers.ctypes.data_as(ctypes.c_void_p),
             baselines.ctypes.data_as(ctypes.c_void_p),
             aterms_offset.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(kernel_size))
+            ctypes.c_int(kernel_size),
+            ctypes.c_int(max_nr_timesteps))
 
-    def _init_metadata(self, metadata, uvw, wavenumbers, baselines, aterms_offset, kernel_size):
+    def _init_metadata(self, metadata, uvw, wavenumbers, baselines, aterms_offset,
+                       kernel_size, max_nr_timesteps=1024*1024):
+        print "_init_metadata", max_nr_timesteps
         lib.Proxy_init_metadata(self.obj,
             metadata.ctypes.data_as(ctypes.c_void_p),
             uvw.ctypes.data_as(ctypes.c_void_p),
             wavenumbers.ctypes.data_as(ctypes.c_void_p),
             baselines.ctypes.data_as(ctypes.c_void_p),
             aterms_offset.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(kernel_size))
+            ctypes.c_int(kernel_size),
+            ctypes.c_int(max_nr_timesteps))
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,

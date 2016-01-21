@@ -21,14 +21,16 @@ namespace idg {
                  const float *wavenumbers,
                  const int *baselines,
                  const int *aterm_offsets,
-                 const int kernel_size);
+                 const int kernel_size,
+                 const int max_nr_timesteps = std::numeric_limits<int>::max());
 
             void init_metadata(
                 const float *_uvw,
                 const float *wavenumbers,
                 const int *_baselines,
                 const int *aterm_offsets,
-                const int kernel_size);
+                const int kernel_size,
+                const int max_nr_timesteps = std::numeric_limits<int>::max());
 
             // returns index of first index of baseline
             int get_subgrid_offset(int baseline) const;
@@ -41,10 +43,6 @@ namespace idg {
 
             // number of subgrids for baselines b1 to b1+n-1
             int get_nr_subgrids(int baseline, int n) const;
-
-            // split subgrid into multiple subgrids when
-            // max_nr_timesteps is exceeded
-            void split_subgrids(int max_nr_timesteps);
 
             void print_subgrid_offset() const;
 

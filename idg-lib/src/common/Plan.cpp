@@ -9,7 +9,8 @@ namespace idg {
                const float *wavenumbers,
                const int *baselines,
                const int *aterm_offsets,
-               const int kernel_size)
+               const int kernel_size,
+               const int max_nr_timesteps)
         : mParams(parameters)
     {
         #if defined(DEBUG)
@@ -17,7 +18,7 @@ namespace idg {
         #endif
 
         init_metadata(uvw, wavenumbers, baselines,
-                      aterm_offsets, kernel_size);
+                      aterm_offsets, kernel_size, max_nr_timesteps);
     }
 
     int Plan::get_subgrid_offset(int bl) const {
@@ -76,7 +77,8 @@ namespace idg {
         const float *wavenumbers,
         const int *_baselines,
         const int *aterm_offsets,
-        const int kernel_size)
+        const int kernel_size,
+        const int max_nr_timesteps)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -85,6 +87,7 @@ namespace idg {
         // Load parameters
         auto nr_baselines = mParams.get_nr_baselines();
         auto nr_time = mParams.get_nr_time();
+        auto nr_timeslots = mParams.get_nr_timeslots();
         auto nr_channels = mParams.get_nr_channels();
         auto grid_size = mParams.get_grid_size();
         auto subgrid_size = mParams.get_subgrid_size();
@@ -93,7 +96,7 @@ namespace idg {
         // Pointers to datastructures
         UVW *uvw = (UVW *) _uvw;
         Baseline *baselines = (Baseline *) _baselines;
-        metadata.reserve(10*nr_baselines); // TODO: put more accurate reservation
+        metadata.reserve(nr_baselines * nr_time / nr_timeslots);
         Baseline *bptr = (Baseline *) baselines;
 
         // Get wavenumber for first and last frequency
@@ -161,13 +164,14 @@ namespace idg {
                     u_pixels -= (subgrid_size/2);
                     v_pixels -= (subgrid_size/2);
 
-                    // TODO: add a MAX_NR_TIMESTEPS to be put onto a grid?
+                    // Stop conditions
                     bool same_aterm = (aterm_index == aterm_index_subgrid);
                     bool last_iteration = (t == nr_time - 1);
                     bool timestep_fits = (uv_width + kernel_size) < subgrid_size;
+                    bool nr_timesteps_below_threshold = nr_timesteps < max_nr_timesteps;
 
                     // Check whether current set of measurements fit in subgrid
-                    if (timestep_fits && same_aterm && !last_iteration) {
+                    if (timestep_fits && same_aterm && !last_iteration && nr_timesteps_below_threshold) {
                         // Continue to next measurement
                         nr_timesteps++;
                     } else {
@@ -181,8 +185,9 @@ namespace idg {
                         }
 
                         // TODO: split also on channels dynamically
-                        if (nr_timesteps==0) {
-                            throw runtime_error("Probably too many channels!");
+                        if (nr_timesteps == 0) {
+                            printf("max_nr_timesteps=%d\n", max_nr_timesteps);
+                            throw runtime_error("Could not fit any timestep on subgrid, nr_channels is probably too high");
                         }
 
                         // Construct coordinate
@@ -196,7 +201,6 @@ namespace idg {
                                        aterm_index_subgrid,
                                        baseline,
                                        coordinate };
-                        // TODO: include aterm_index
                         metadata.push_back(m);
 
                         // cout << "New subgrid: " << endl
@@ -217,53 +221,5 @@ namespace idg {
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
     } // end init_metadata
-
-
-    void Plan::split_subgrids(int max_nr_timesteps) {
-        // Load parameters
-        auto nr_baselines = mParams.get_nr_baselines();
-        auto nr_time = mParams.get_nr_time();
-
-        // Copy of old metadata
-        auto metadata_old = metadata;
-
-        // Reset plan members
-        metadata.clear();
-        subgrid_offset.clear();
-
-        // Iterate all metadata elements
-        int _baseline_offset = -1;
-        for (auto& m : metadata_old) {
-            // Load elements from metadata
-            const int baseline_offset = m.baseline_offset;
-            const int time_offset = m.time_offset;
-            const int nr_timesteps = m.nr_timesteps;
-            const int aterm_index = m.aterm_index;
-            const Baseline baseline = m.baseline;
-            const Coordinate coordinate = m.coordinate;
-
-            // Check wheter this metadata belongs to a new baseline
-            if (baseline_offset != _baseline_offset) {
-                subgrid_offset.push_back(metadata.size());
-                _baseline_offset = baseline_offset;
-            }
-
-            for (int i = 0; i < nr_timesteps; i += max_nr_timesteps) {
-                int _time_offset = time_offset + i;
-                int _nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
-                Metadata _m = {
-                    baseline_offset,
-                    _time_offset,
-                    _nr_timesteps,
-                    aterm_index,
-                    baseline,
-                    coordinate };
-                metadata.push_back(_m);
-            }
-        } // end for metadata
-
-        // Set sentinel
-        subgrid_offset.push_back(metadata.size());
-    } // end split_subgrids
 
 } // namespace idg

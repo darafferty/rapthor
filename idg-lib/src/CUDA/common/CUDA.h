@@ -125,12 +125,6 @@ namespace idg {
                 virtual std::unique_ptr<kernel::cuda::Splitter> get_kernel_splitter() const = 0;
 
             public:
-                Plan create_plan_gridder(
-                    const float* uvw,
-                    const float* wavenumbers,
-                    const int* baselines,
-                    const int* aterm_offsets,
-                    const int kernel_size);
                 int get_max_nr_timesteps_gridder();
 
             protected:
