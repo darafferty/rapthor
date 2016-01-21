@@ -115,7 +115,9 @@ void Source::compile(const char *output_file_name, const char *compiler_options)
 	command_line << output_file_name;
 	command_line << ' ' << input_file_name;
 
+    #if defined(DEBUG)
     std::clog << command_line.str() << std::endl;
+    #endif
     int retval = system(command_line.str().c_str());
 	    
     if (WEXITSTATUS(retval) != 0) {
