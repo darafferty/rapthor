@@ -30,7 +30,7 @@ namespace idg {
 
                 virtual void launch(
                     cu::Stream &stream,
-                    int jobsize,
+                    int nr_subgrids,
                     float w_offset,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
@@ -43,7 +43,7 @@ namespace idg {
                 template <int blockX, int blockY, int blockZ>
                 void launchAsync(
                     cu::Stream &stream,
-                    int jobsize,
+                    int nr_subgrids,
                     float w_offset,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
@@ -57,34 +57,34 @@ namespace idg {
                         &w_offset, d_uvw, d_wavenumbers, d_visibilities,
                         d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
-                    stream.launchKernel(function, jobsize, 1, 1,
+                    stream.launchKernel(function, nr_subgrids, 1, 1,
                                         blockX, blockY, blockZ, 0, parameters);
                 }
 
-                uint64_t flops(int jobsize, int nr_subgrids) {
+                uint64_t flops(int nr_baselines, int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_time = parameters.get_nr_time();
                     int nr_channels = parameters.get_nr_channels();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t flops = 0;
-                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase index
-                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase offset
-                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
-                    flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+                    flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase index
+                    flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase offset
+                    flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
+                    flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
                     flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
                     flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
                     flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
                     return flops;
                 }
 
-                uint64_t bytes(int jobsize, int nr_subgrids) {
+                uint64_t bytes(int nr_baselines, int nr_subgrids) {
                     int subgridsize = parameters.get_subgrid_size();
                     int nr_time = parameters.get_nr_time();
                     int nr_channels = parameters.get_nr_channels();
                     int nr_polarizations = parameters.get_nr_polarizations();
                     uint64_t bytes = 0;
-                    bytes += 1ULL * jobsize * nr_time * 3 * sizeof(float); // uvw
-                    bytes += 1ULL * jobsize * nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex); // visibilities
+                    bytes += 1ULL * nr_baselines * nr_time * 3 * sizeof(float); // uvw
+                    bytes += 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(cuFloatComplex); // visibilities
                     bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(cuFloatComplex); // subgrids
                     return bytes;
                 }
