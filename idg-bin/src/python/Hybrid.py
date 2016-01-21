@@ -127,19 +127,3 @@ class MaxwellHaswellEP(Proxy):
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))
 
-    def get_nr_subgrids(self, uvw, wavenumbers, baselines, aterms_offset, kernel_size):
-        return lib.Hybrid_MaxwellHaswellEP_get_nr_subgrids(self.obj,
-            uvw.ctypes.data_as(ctypes.c_void_p),
-            wavenumbers.ctypes.data_as(ctypes.c_void_p),
-            baselines.ctypes.data_as(ctypes.c_void_p),
-            aterms_offset.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(kernel_size))
-
-    def init_metadata(self, metadata, uvw, wavenumbers, baselines, aterms_offset, kernel_size):
-        lib.Hybrid_MaxwellHaswellEP_init_metadata(self.obj,
-            metadata.ctypes.data_as(ctypes.c_void_p),
-            uvw.ctypes.data_as(ctypes.c_void_p),
-            wavenumbers.ctypes.data_as(ctypes.c_void_p),
-            baselines.ctypes.data_as(ctypes.c_void_p),
-            aterms_offset.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(kernel_size))

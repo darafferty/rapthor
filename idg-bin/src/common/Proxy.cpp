@@ -11,7 +11,8 @@ namespace idg {
             const float *wavenumbers,
             const int *baselines,
             const int *aterm_offsets,
-            const int kernel_size)
+            const int kernel_size,
+            const int max_nr_timesteps)
         {
             #if defined(DEBUG)
             cout << __func__ << endl;
@@ -19,7 +20,7 @@ namespace idg {
 
             Plan plan(mParams, uvw, wavenumbers,
                       baselines, aterm_offsets,
-                      kernel_size);
+                      kernel_size, max_nr_timesteps);
 
             return plan;
         }
@@ -77,21 +78,21 @@ extern "C" {
 
     int Proxy_get_nr_subgrids(
         Proxy_t* p, void *uvw, void *wavenumbers,
-        void *baselines, void *aterm_offsets, int kernel_size)
+        void *baselines, void *aterm_offsets, int kernel_size, int max_nr_timesteps)
     {
         idg::Plan plan = p->create_plan( (float *) uvw, (float *) wavenumbers,
                                          (int *) baselines, (int *) aterm_offsets,
-                                         kernel_size);
+                                         kernel_size, max_nr_timesteps);
         return plan.get_nr_subgrids();
     }
 
     void Proxy_init_metadata(
         Proxy_t* p, void *metadata, void *uvw, void *wavenumbers,
-        void *baselines, void *aterm_offsets, int kernel_size)
+        void *baselines, void *aterm_offsets, int kernel_size, int max_nr_timesteps)
     {
         idg::Plan plan = p->create_plan( (float *) uvw, (float *) wavenumbers,
                                     (int *) baselines, (int *) aterm_offsets,
-                                    kernel_size);
+                                    kernel_size, max_nr_timesteps);
         memcpy(metadata, plan.get_metadata_ptr(0),
                plan.get_nr_subgrids() * sizeof(idg::Metadata));
     }
