@@ -55,11 +55,8 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
-                auto max_nr_timesteps_gridder = cuda.get_max_nr_timesteps_gridder();
-                plan.split_subgrids(max_nr_timesteps_gridder);
+                // Initialize metadata
+                auto plan = create_plan_gridder(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -597,6 +594,43 @@ extern "C" {
 
     void Hybrid_MaxwellHaswellEP_destroy(Hybrid_MaxwellHaswellEP* p) {
        delete p;
+    }
+
+    int Hybrid_MaxwellHaswellEP_get_nr_subgrids(
+        Hybrid_MaxwellHaswellEP* p,
+        void *uvw,
+        void *wavenumbers,
+        void *baselines,
+        void *aterm_offsets,
+        int kernel_size)
+    {
+        idg::Plan plan = p->create_plan_gridder(
+            (float *) uvw,
+            (float *) wavenumbers,
+            (int *) baselines,
+            (int *) aterm_offsets,
+            kernel_size);
+        return plan.get_nr_subgrids();
+    }
+
+    void Hybrid_MaxwellHaswellEP_init_metadata(
+        Hybrid_MaxwellHaswellEP* p,
+        void *_metadata,
+        void *uvw,
+        void *wavenumbers,
+        void *baselines,
+        void *aterm_offsets,
+        int kernel_size)
+    {
+        idg::Plan plan = p->create_plan_gridder(
+            (float *) uvw,
+            (float *) wavenumbers,
+            (int *) baselines,
+            (int *) aterm_offsets,
+            kernel_size);
+        void *metadata = (void *) plan.get_metadata_ptr();
+        auto nr_subgrids = plan.get_nr_subgrids();
+        memcpy(_metadata, metadata, nr_subgrids * sizeof(idg::Metadata));
     }
 
 }  // end extern "C"
