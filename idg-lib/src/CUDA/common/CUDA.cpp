@@ -174,6 +174,21 @@ namespace idg {
                 return max_nr_timesteps;
             }
 
+            Plan CUDA::create_plan_gridder(
+                const float* uvw,
+                const float* wavenumbers,
+                const int* baselines,
+                const int* aterm_offsets,
+                const int kernel_size)
+            {
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size);
+                auto max_nr_timesteps_gridder = get_max_nr_timesteps_gridder();
+                plan.split_subgrids(max_nr_timesteps_gridder);
+                return plan;
+            }
+
+
             /* High level routines */
             void CUDA::transform(
                 DomainAtoDomainB direction,

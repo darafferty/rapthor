@@ -20,7 +20,6 @@ namespace idg {
                       aterm_offsets, kernel_size);
     }
 
-
     int Plan::get_subgrid_offset(int bl) const {
         return subgrid_offset[bl];
     }
@@ -225,19 +224,16 @@ namespace idg {
         auto nr_baselines = mParams.get_nr_baselines();
         auto nr_time = mParams.get_nr_time();
 
-        // New vectors
-        std::vector<Metadata> _metadata;
-        _metadata.reserve(metadata.size());
-        std::vector<int> _subgrid_offset;
-        _subgrid_offset.reserve(subgrid_offset.size());
+        // Copy of old metadata
+        auto metadata_old = metadata;
 
-        // Add subgrid_offset for first baseline
-        _subgrid_offset.push_back(0);
+        // Reset plan members
+        metadata.clear();
+        subgrid_offset.clear();
 
         // Iterate all metadata elements
-        int _baseline_offset = 0;
-        for (auto& m : metadata) {
-            //cout << m << endl;
+        int _baseline_offset = -1;
+        for (auto& m : metadata_old) {
             // Load elements from metadata
             const int baseline_offset = m.baseline_offset;
             const int time_offset = m.time_offset;
@@ -248,7 +244,7 @@ namespace idg {
 
             // Check wheter this metadata belongs to a new baseline
             if (baseline_offset != _baseline_offset) {
-                _subgrid_offset.push_back(metadata.size());
+                subgrid_offset.push_back(metadata.size());
                 _baseline_offset = baseline_offset;
             }
 
@@ -257,21 +253,17 @@ namespace idg {
                 int _nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
                 Metadata _m = {
                     baseline_offset,
-                    time_offset + i,
+                    _time_offset,
                     _nr_timesteps,
                     aterm_index,
                     baseline,
                     coordinate };
-                _metadata.push_back(_m);
+                metadata.push_back(_m);
             }
         } // end for metadata
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
-
-        // Set class members
-        metadata = _metadata;
-        subgrid_offset = subgrid_offset;
     } // end split_subgrids
 
 } // namespace idg

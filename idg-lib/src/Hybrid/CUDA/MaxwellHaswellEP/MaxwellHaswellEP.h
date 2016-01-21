@@ -66,6 +66,16 @@ namespace idg {
                     idg::proxy::cpu::HaswellEP cpu;
                     idg::proxy::cuda::Maxwell cuda;
 
+                public:
+                    Plan create_plan_gridder(
+                        const float* uvw,
+                        const float* wavenumbers,
+                        const int* baselines,
+                        const int* aterm_offsets,
+                        const int kernel_size) {
+                        return cuda.create_plan_gridder(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
+                    }
+
             }; // class MaxwellHaswellEP
         } // namespace hybrid
     } // namespace proxy
