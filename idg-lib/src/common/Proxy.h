@@ -172,7 +172,8 @@ namespace idg {
                 const float *wavenumbers,
                 const int *baselines,
                 const int *aterm_offsets,
-                const int kernel_size);
+                const int kernel_size,
+                const int max_nr_timesteps = std::numeric_limits<int>::max());
 
         protected:
             Parameters mParams;  // store parameters passed on creation

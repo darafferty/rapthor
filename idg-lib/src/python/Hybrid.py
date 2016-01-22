@@ -76,7 +76,6 @@ class MaxwellHaswellEP(Proxy):
     def set_job_size_degridder(self, n = 8192):
         lib.Hybrid_set_job_size_degridder(self.obj, ctypes.c_int(n))
 
-    # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_grid_visibilities(self,
                                  visibilities,
                                  uvw,
@@ -100,7 +99,6 @@ class MaxwellHaswellEP(Proxy):
                                aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_degrid_visibilities(self,
                                    visibilities,
                                    uvw,
@@ -124,10 +122,8 @@ class MaxwellHaswellEP(Proxy):
                                  aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                  spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_transform(self, direction, grid):
         lib.Hybrid_MaxwellHaswellEP_transform(self.obj,
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))
-
 
