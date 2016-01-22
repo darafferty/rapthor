@@ -32,13 +32,15 @@ namespace idg {
             parameters(parameters) {}
 
         void Gridder::launchAsync(
-            cl::CommandQueue &queue, int jobsize, float w_offset,
+            cl::CommandQueue &queue,
+            int nr_baselines, int nr_subgrids,
+            float w_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_metadata,
             cl::Buffer &d_subgrid,
             PerformanceCounter &counter) {
-            cl::NDRange globalSize(32 * jobsize, 4);
+            cl::NDRange globalSize(32 * nr_subgrids, 4);
             cl::NDRange localSize(32, 4);
             kernel.setArg(0, w_offset);
             kernel.setArg(1, d_uvw);
@@ -50,38 +52,38 @@ namespace idg {
             kernel.setArg(7, d_subgrid);
             try {
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
-                counter.doOperation(event, "gridder", flops(jobsize), bytes(jobsize));
+                counter.doOperation(event, "gridder", flops(nr_baselines, nr_subgrids), bytes(nr_baselines, nr_subgrids));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching gridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
 
-        uint64_t Gridder::flops(int jobsize) {
+        uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
             int subgridsize = parameters.get_subgrid_size();
-            int nr_timesteps = parameters.get_nr_timesteps();
+            int nr_time = parameters.get_nr_time();
             int nr_channels = parameters.get_nr_channels();
             int nr_polarizations = parameters.get_nr_polarizations();
             uint64_t flops = 0;
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-            flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-            flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-            flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase index
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase offset
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
             return flops;
         }
 
-        uint64_t Gridder::bytes(int jobsize) {
+        uint64_t Gridder::bytes(int nr_baselines, int nr_subgrids) {
             int subgridsize = parameters.get_subgrid_size();
-            int nr_timesteps = parameters.get_nr_timesteps();
+            int nr_time = parameters.get_nr_time();
             int nr_channels = parameters.get_nr_channels();
             int nr_polarizations = parameters.get_nr_polarizations();
             uint64_t bytes = 0;
-            bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
-            bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
-            bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
+            bytes += 1ULL * nr_baselines * nr_time * 3 * sizeof(float); // uvw
+            bytes += 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>); // visibilities
+            bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(std::complex<float>); // subgrids
             return bytes;
         }
 
@@ -92,7 +94,9 @@ namespace idg {
             parameters(parameters) {}
 
         void Degridder::launchAsync(
-            cl::CommandQueue &queue, int jobsize, float w_offset,
+            cl::CommandQueue &queue,
+            int nr_baselines, int nr_subgrids,
+            float w_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
             cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -100,7 +104,7 @@ namespace idg {
             PerformanceCounter &counter) {
             // IF wgSize IS MODIFIED, ALSO MODIFY NR_THREADS in KernelDegridder.cl
             int wgSize = 256;
-            cl::NDRange globalSize(jobsize * wgSize);
+            cl::NDRange globalSize(nr_subgrids * wgSize);
             cl::NDRange localSize(wgSize);
             kernel.setArg(0, w_offset);
             kernel.setArg(1, d_uvw);
@@ -112,38 +116,38 @@ namespace idg {
             kernel.setArg(7, d_subgrid);
             try {
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
-                counter.doOperation(event, "degridder", flops(jobsize), bytes(jobsize));
+                counter.doOperation(event, "degridder", flops(nr_baselines, nr_subgrids), bytes(nr_baselines, nr_subgrids));
             } catch (cl::Error &error) {
                 std::cerr << "Error launching degridder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
 
-        uint64_t Degridder::flops(int jobsize) {
+        uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {
             int subgridsize = parameters.get_subgrid_size();
-            int nr_timesteps = parameters.get_nr_timesteps();
+            int nr_time = parameters.get_nr_time();
             int nr_channels = parameters.get_nr_channels();
             int nr_polarizations = parameters.get_nr_polarizations();
             uint64_t flops = 0;
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase index
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * 5; // phase offset
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * 2; // phase
-            flops += 1ULL * jobsize * nr_timesteps * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-            flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-            flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-            flops += 1ULL * jobsize * subgridsize * subgridsize * nr_polarizations * 6; // shift
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase index
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase offset
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
+            flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
             return flops;
         }
 
-        uint64_t Degridder::bytes(int jobsize) {
+        uint64_t Degridder::bytes(int nr_baselines, int nr_subgrids) {
             int subgridsize = parameters.get_subgrid_size();
-            int nr_timesteps = parameters.get_nr_timesteps();
+            int nr_time = parameters.get_nr_time();
             int nr_channels = parameters.get_nr_channels();
             int nr_polarizations = parameters.get_nr_polarizations();
             uint64_t bytes = 0;
-            bytes += 1ULL * jobsize * nr_timesteps * 3 * sizeof(float); // uvw
-            bytes += 1ULL * jobsize * nr_timesteps * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
-            bytes += 1ULL * jobsize * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
+            bytes += 1ULL * nr_baselines * nr_time * 3 * sizeof(float); // uvw
+            bytes += 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>); // visibilities
+            bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(std::complex<float>); // subgrids
             return bytes;
         }
 
@@ -214,11 +218,15 @@ namespace idg {
         }
 
         uint64_t GridFFT::flops(int size, int batch) {
-        	return 1ULL * batch * 5 * size * size * log(size * size) / log(2.0);
+            int nr_polarizations = parameters.get_nr_polarizations();
+            return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);
         }
 
         uint64_t GridFFT::bytes(int size, int batch) {
-        	return 1ULL * 2 * batch * size * size * sizeof(complex<float>);
+            int nr_polarizations = parameters.get_nr_polarizations();
+            return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(std::complex<float>);
         }
+
+
     } // namespace kernel
 } // namespace idg

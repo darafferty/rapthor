@@ -1,4 +1,3 @@
-// TODO: check which include files are really necessary
 #include <complex>
 #include <sstream>
 #include <memory>
@@ -6,9 +5,6 @@
 
 #include "idg-config.h"
 #include "Reference.h"
-#if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-#include "auxiliary.h"
-#endif
 
 using namespace std;
 
