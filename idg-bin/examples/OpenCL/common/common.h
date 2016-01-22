@@ -85,7 +85,7 @@ void run() {
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
-    int nr_timesteps = params.get_nr_timesteps();
+    int nr_time = params.get_nr_time();
     int nr_timeslots = params.get_nr_timeslots();
     int nr_channels = params.get_nr_channels();
     int gridsize = params.get_grid_size();
@@ -93,6 +93,9 @@ void run() {
     float imagesize = params.get_imagesize();
     int nr_polarizations = 4;
     int nr_subgrids = nr_baselines * nr_timeslots;
+
+    float w_offset = 0;
+    int kernel_size = (subgridsize / 4) + 1;
 
     // Print configuration
     clog << params;
@@ -110,13 +113,12 @@ void run() {
 
     // Allocate data structures
     clog << ">>> Allocate data structures" << endl;
-    auto size_visibilities = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*nr_channels*nr_polarizations*sizeof(complex<float>);
-    auto size_uvw = 1ULL * nr_baselines*nr_timesteps*nr_timeslots*3*sizeof(float);
+    auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations*sizeof(complex<float>);
+    auto size_uvw = 1ULL * nr_baselines*nr_time*3*sizeof(float);
     auto size_wavenumbers = 1ULL * nr_channels*sizeof(float);
     auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize*sizeof(complex<float>);
     auto size_spheroidal = 1ULL * subgridsize*subgridsize*sizeof(float);
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize*sizeof(complex<float>);
-    auto size_metadata = 1ULL * nr_subgrids*5*sizeof(int);
     auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize*sizeof(complex<float>);
 
     // Allocate OpenCL buffers
@@ -127,7 +129,6 @@ void run() {
     cl::Buffer d_aterm        = cl::Buffer(context, CL_MEM_READ_WRITE, size_aterm);
     cl::Buffer d_spheroidal   = cl::Buffer(context, CL_MEM_READ_WRITE, size_spheroidal);
     cl::Buffer h_grid         = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_grid);
-    cl::Buffer h_metadata     = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_metadata);
     cl::Buffer h_subgrids     = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_subgrids);
 
     // Initialize data structures
@@ -137,17 +138,16 @@ void run() {
     void *spheroidal   = idg::init_spheroidal(subgridsize);
     void *visibilities = queue.enqueueMapBuffer(h_visibilities, CL_FALSE, CL_MAP_WRITE, 0, size_visibilities);
     void *uvw          = queue.enqueueMapBuffer(h_uvw, CL_FALSE, CL_MAP_WRITE, 0, size_uvw);
-    void *metadata     = queue.enqueueMapBuffer(h_metadata, CL_FALSE, CL_MAP_WRITE, 0, size_metadata);
+    auto aterm_offsets = new int[nr_timeslots+1];
     queue.finish();
-    idg::init_visibilities(visibilities, nr_baselines, nr_timesteps*nr_timeslots, nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_timesteps*nr_timeslots, gridsize, subgridsize);
-    idg::init_metadata(metadata, uvw, wavenumbers, nr_stations, nr_baselines, nr_timesteps, nr_timeslots, nr_channels, gridsize, subgridsize, imagesize);
+    idg::init_visibilities(visibilities, nr_baselines, nr_time, nr_channels, nr_polarizations);
+    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
+    idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
     queue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, size_wavenumbers, wavenumbers);
     queue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, size_aterm, aterm);
     queue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, size_spheroidal, spheroidal);
     queue.enqueueUnmapMemObject(h_visibilities, visibilities);
     queue.enqueueUnmapMemObject(h_uvw, uvw);
-    queue.enqueueUnmapMemObject(h_metadata, metadata);
     queue.finish();
 
     // Initialize interface to kernels
@@ -160,11 +160,11 @@ void run() {
 
     // Run gridder
     clog << ">>> Run gridder" << endl;
-    opencl.grid_onto_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+    opencl.grid_onto_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, aterm_offsets, h_subgrids);
 
     // Run degridder
     clog << ">>> Run degridder" << endl;
-    opencl.degrid_from_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, h_metadata, h_subgrids);
+    opencl.degrid_from_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, aterm_offsets, h_subgrids);
 
     // Free memory for data structures
     free(wavenumbers);
