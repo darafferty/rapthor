@@ -147,6 +147,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+#if 0
                 // Command queues
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
@@ -240,6 +241,7 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
+#endif
             } // run_gridder
 
 
@@ -264,7 +266,7 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-
+#if 0
                 // Command queue
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
@@ -358,6 +360,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", runtime, nr_baselines, nr_timesteps * nr_timeslots, nr_channels);
                 clog << endl;
                 #endif
+#endif
             } // run_degridder
 
 
@@ -427,7 +430,7 @@ namespace idg {
                     mParams.get_nr_stations(),
                     mParams.get_nr_baselines(),
                     mParams.get_nr_channels(),
-                    mParams.get_nr_timesteps(),
+                    mParams.get_nr_time(),
                     mParams.get_nr_timeslots(),
                     mParams.get_imagesize(),
                     mParams.get_nr_polarizations(),
