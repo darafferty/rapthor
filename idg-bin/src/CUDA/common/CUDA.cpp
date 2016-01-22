@@ -174,6 +174,7 @@ namespace idg {
                 return max_nr_timesteps;
             }
 
+
             /* High level routines */
             void CUDA::transform(
                 DomainAtoDomainB direction,
@@ -254,10 +255,9 @@ namespace idg {
                 #endif
 
                 // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
                 auto max_nr_timesteps_gridder = get_max_nr_timesteps_gridder();
-                plan.split_subgrids(max_nr_timesteps_gridder);
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size, max_nr_timesteps_gridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 

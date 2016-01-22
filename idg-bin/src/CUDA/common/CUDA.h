@@ -139,7 +139,6 @@ namespace idg {
                 // data
                 cu::Device *device;
                 cu::Context *context;
-                Parameters mParams; // remove if inherited from Proxy
                 ProxyInfo mInfo; // info about shared object files
 
                 // store the ptr to Module, which each loads an .ptx-file
