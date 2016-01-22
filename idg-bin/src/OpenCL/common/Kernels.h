@@ -28,14 +28,15 @@ namespace idg {
             public:
                 Gridder(cl::Program &program, Parameters &parameters);
                  void launchAsync(
-                    cl::CommandQueue &queue, int jobsize, float w_offset,
+                    cl::CommandQueue &queue,
+                    int nr_baselines, int nr_subgrids, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
                     cl::Buffer &d_subgrid,
                     PerformanceCounter &counter);
-            	uint64_t flops(int jobsize);
-        		uint64_t bytes(int jobsize);
+                uint64_t flops(int jobsize, int nr_subgrids);
+                uint64_t bytes(int jobsize, int nr_subgrids);
 
         	private:
                 cl::Event event;
@@ -48,14 +49,15 @@ namespace idg {
             public:
                 Degridder(cl::Program &program, Parameters &parameters);
                 void launchAsync(
-                    cl::CommandQueue &queue, int jobsize, float w_offset,
+                    cl::CommandQueue &queue,
+                    int nr_baselines, int nr_subgrids, float w_offset,
                     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                     cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
                     cl::Buffer &d_subgrid,
                     PerformanceCounter &counter);
-               	uint64_t flops(int jobsize);
-        		uint64_t bytes(int jobsize);
+                uint64_t flops(int jobsize, int nr_subgrids);
+                uint64_t bytes(int jobsize, int nr_subgrids);
 
         	private:
                 cl::Event event;
