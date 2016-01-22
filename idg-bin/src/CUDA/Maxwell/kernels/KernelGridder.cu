@@ -58,7 +58,6 @@ __global__ void kernel_gridder(
         int j = tid / (NR_CHANNELS * NR_POLARIZATIONS); // time index
         int k = tid % (NR_CHANNELS * NR_POLARIZATIONS); // channel and polarization index
 		_visibilities[j][0][k] = visibilities[offset + j][0][k];
-
     }
 
 	syncthreads();

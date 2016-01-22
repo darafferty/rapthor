@@ -50,7 +50,7 @@ if __name__ == "__main__":
     print "job size for gridding = ", p.get_job_size_gridding()
     print "job size for degridding = ", p.get_job_size_degridding()
 
-    ################
+    #################
     # initialize data
     #################
 
