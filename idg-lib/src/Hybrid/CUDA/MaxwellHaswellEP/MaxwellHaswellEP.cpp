@@ -137,7 +137,7 @@ namespace idg {
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr();
+                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Private host memory
     			        cu::HostMemory h_subgrids(cuda.sizeof_subgrids(current_nr_subgrids));
@@ -145,6 +145,7 @@ namespace idg {
 
                         // Private device memory
                         cu::DeviceMemory d_subgrids(cuda.sizeof_subgrids(current_nr_subgrids));
+                        d_subgrids.zero();
                         cu::DeviceMemory d_metadata(cuda.sizeof_metadata(current_nr_subgrids));
 
                         // Power measurement
@@ -162,7 +163,7 @@ namespace idg {
                 			htodstream.waitEvent(inputFree);
                 			htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_uvw, h_uvw, cuda.sizeof_uvw(current_nr_baselines));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
+                            htodstream.memcpyHtoDAsync(d_metadata, h_metadata, cuda.sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
                 			htodstream.record(inputReady);
@@ -473,7 +474,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                int sign = (direction == FourierDomainToImageDomain) ? 0 : 1;
+                int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
                 // Load kernel
                 unique_ptr<idg::kernel::cpu::GridFFT> kernel_fft = cpu.get_kernel_fft();
