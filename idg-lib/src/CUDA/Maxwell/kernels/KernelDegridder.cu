@@ -45,7 +45,8 @@ __global__ void kernel_degridder(
     __shared__ float2 _pix[NR_POLARIZATIONS][NR_THREADS];
 
     // Map every visibility to one thread
-    for (int i = tid; i < ALIGN(nr_timesteps * NR_CHANNELS, NR_THREADS); i += NR_THREADS) {
+    //for (int i = tid; i < ALIGN(nr_timesteps * NR_CHANNELS, NR_THREADS); i += NR_THREADS) {
+    for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += NR_THREADS) {
 		int time = i / NR_CHANNELS;
 		int chan = i % NR_CHANNELS;
 
@@ -101,10 +102,23 @@ __global__ void kernel_degridder(
 				float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
 
 				// Apply aterm
-				float2 pixXX = pixelsXX * aXX1 + pixelsXY * aYX1 + pixelsXX * aXX2 + pixelsYX * aYX2;
-				float2 pixXY = pixelsXX * aXY1 + pixelsXY * aYY1 + pixelsXY * aXX2 + pixelsYY * aYX2;
-				float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
-				float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
+                float2 pixXX, pixXY, pixYX, pixYY;
+                pixXX  = pixelsXX * aXX1;
+                pixXX += pixelsXY * aYX1;
+                pixXX += pixelsXX * aXX2;
+                pixXX += pixelsYX * aYX2;
+                pixXY  = pixelsXX * aXY1;
+                pixXY += pixelsXY * aYY1;
+                pixXY += pixelsXY * aXX2;
+                pixXY += pixelsYY * aYX2;
+                pixYX  = pixelsYX * aXX1;
+                pixYX += pixelsYY * aYX1;
+                pixYX += pixelsXX * aXY2;
+                pixYX += pixelsYX * aYY2;
+                pixYY  = pixelsYX * aXY1;
+                pixYY += pixelsYY * aYY1;
+                pixYY += pixelsXY * aXY2;
+                pixYY += pixelsYY * aYY2;
 
                 // Store pixels in shared memory
                 _pix[0][tid] = pixXX;
@@ -131,11 +145,13 @@ __global__ void kernel_degridder(
 				    float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
 				    float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
+                    // Compute phase index
+					float  phase_index = u*l + v*m + w*n;
+
                     // Compute phase offset
-				    float phase_offset = u_offset * l + v_offset * m + w_offset * n;
+				    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                     // Compute phasor
-					float  phase_index = u * l + v * m + w * n;
 					float  phase  = (phase_index * wavenumber) - phase_offset;
 					float2 phasor = make_float2(cosf(phase), sinf(phase));
 
