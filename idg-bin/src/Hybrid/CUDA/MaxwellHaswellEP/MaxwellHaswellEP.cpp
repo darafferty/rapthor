@@ -472,31 +472,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
-
-                // Load kernel
-                unique_ptr<idg::kernel::cpu::GridFFT> kernel_fft = cpu.get_kernel_fft();
-
-                // Constants
-				auto gridsize = mParams.get_grid_size();
-
-                // Power measurement
-                LikwidPowerSensor::State powerStates[2];
-
-                // Start fft
-                powerStates[0] = cpu.read_power();
-                kernel_fft->run(gridsize, 1, grid, sign);
-                powerStates[1] = cpu.read_power();
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auxiliary::report("|grid_fft",
-                                  LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1),
-                                  LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
-                clog << endl;
-                #endif
-
+                cpu.transform(direction, grid);
             }
 
         } // namespace hybrid
