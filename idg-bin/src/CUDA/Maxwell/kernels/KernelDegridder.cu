@@ -41,8 +41,8 @@ __global__ void kernel_degridder(
 	const int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
-	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
-	float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
+	const float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
+	const float v_offset = (y_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
 
     // Shared memory
     __shared__ float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
@@ -135,17 +135,17 @@ __global__ void kernel_degridder(
             for (int x = 0; x < SUBGRIDSIZE; x++) {
                 // Compute l,m,n
                 float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
-                float m =  (x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
+                float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
                 // Compute phase index
-                float  phase_index = u*l + v*m + w*n;
+                float phase_index = u*l + v*m + w*n;
 
                 // Compute phase offset
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                 // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
+                float phase  = (phase_index * wavenumber) - phase_offset;
                 float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                 // Load pixels
