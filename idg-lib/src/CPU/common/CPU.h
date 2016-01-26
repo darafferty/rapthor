@@ -106,6 +106,10 @@ namespace idg {
                         const std::complex<float> *aterm,
                         const std::complex<float> *subgrids);
 
+                    void fftshift(int nr_polarizations, std::complex<float> *grid);
+                    void ifftshift(int nr_polarizations, std::complex<float> *grid);
+                    void fftshift(std::complex<float> *array);
+                    void ifftshift(std::complex<float> *array);
 
                     // Auxiliary: additional set and get methods
                     // Note: the abstract proxy provides less,
