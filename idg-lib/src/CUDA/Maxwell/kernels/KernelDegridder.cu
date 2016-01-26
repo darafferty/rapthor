@@ -6,6 +6,7 @@
 extern "C" {
 
 #define MAX_NR_TIMESTEPS 32
+#define BLOCKDIM_Y 4
 
 /*
 	Kernel
@@ -45,10 +46,10 @@ __global__ void kernel_degridder(
 
     // Shared memory
     __shared__ float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
-    __shared__ float2 _pixels[NR_POLARIZATIONS][SUBGRIDSIZE];
+    __shared__ float2 _pixels[BLOCKDIM_Y][NR_POLARIZATIONS][SUBGRIDSIZE];
 
     // Iterate all rows of subgrid
-    for (int y = 0; y < SUBGRIDSIZE; y++) {
+    for (int y = tidy; y < SUBGRIDSIZE; y += blockDim.y) {
         __syncthreads();
 
         // Preprocess pixels and store in shared memory
@@ -98,10 +99,10 @@ __global__ void kernel_degridder(
             pixYY += pixelsYY * aYY2;
 
             // Store pixels in shared memory
-            _pixels[0][x] = pixXX;
-            _pixels[1][x] = pixXY;
-            _pixels[2][x] = pixYX;
-            _pixels[3][x] = pixYY;
+            _pixels[blockIdx.y][0][x] = pixXX;
+            _pixels[blockIdx.y][1][x] = pixXY;
+            _pixels[blockIdx.y][2][x] = pixYX;
+            _pixels[blockIdx.y][3][x] = pixYY;
         }
 
         __syncthreads();
@@ -143,10 +144,10 @@ __global__ void kernel_degridder(
                 float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                 // Load pixels
-                float2 apXX = _pixels[0][x];
-                float2 apXY = _pixels[1][x];
-                float2 apYX = _pixels[2][x];
-                float2 apYY = _pixels[3][x];
+                float2 apXX = _pixels[blockIdx.y][0][x];
+                float2 apXY = _pixels[blockIdx.y][1][x];
+                float2 apYX = _pixels[blockIdx.y][2][x];
+                float2 apYY = _pixels[blockIdx.y][3][x];
 
                 // Update visibilities
                 visXX.x += apXX.x * phasor.x;
@@ -170,10 +171,10 @@ __global__ void kernel_degridder(
                 visYY.y += apYY.y * phasor.x;
             }
 
-            _visibilities[time][chan][0] += visXX;
-            _visibilities[time][chan][1] += visXY;
-            _visibilities[time][chan][2] += visYX;
-            _visibilities[time][chan][3] += visYY;
+            atomicAdd(&_visibilities[time][chan][0], visXX);
+            atomicAdd(&_visibilities[time][chan][1], visXY);
+            atomicAdd(&_visibilities[time][chan][2], visYX);
+            atomicAdd(&_visibilities[time][chan][3], visYY);
         }
 
         // Store visibilities
