@@ -48,12 +48,17 @@ __global__ void kernel_degridder(
     __shared__ float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
     __shared__ float2 _pixels[BLOCKDIM_Y][NR_POLARIZATIONS][SUBGRIDSIZE];
 
+    // Set visibilities to zero
+    for (int i = tid; i < NR_POLARIZATIONS * MAX_NR_TIMESTEPS * NR_CHANNELS; i += blockSize) {
+        _visibilities[0][0][i] = make_float2(0, 0);
+    }
+
     // Iterate all rows of subgrid
     for (int y = tidy; y < SUBGRIDSIZE; y += blockDim.y) {
         __syncthreads();
 
         // Preprocess pixels and store in shared memory
-        for (int x = tid; x < SUBGRIDSIZE; x += blockSize) {
+        for (int x = tidx; x < SUBGRIDSIZE; x += blockDim.x) {
             // Load aterm for station1
             float2 aXX1 = aterm[station1][aterm_index][0][y][x];
             float2 aXY1 = aterm[station1][aterm_index][1][y][x];
@@ -99,16 +104,16 @@ __global__ void kernel_degridder(
             pixYY += pixelsYY * aYY2;
 
             // Store pixels in shared memory
-            _pixels[blockIdx.y][0][x] = pixXX;
-            _pixels[blockIdx.y][1][x] = pixXY;
-            _pixels[blockIdx.y][2][x] = pixYX;
-            _pixels[blockIdx.y][3][x] = pixYY;
+            _pixels[threadIdx.y][0][x] = pixXX;
+            _pixels[threadIdx.y][1][x] = pixXY;
+            _pixels[threadIdx.y][2][x] = pixYX;
+            _pixels[threadIdx.y][3][x] = pixYY;
         }
 
         __syncthreads();
 
         // Map every visibility to one thread
-        for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += blockSize) {
+        for (int i = tidx; i < nr_timesteps * NR_CHANNELS; i += blockDim.x) {
 	    	int time = i / NR_CHANNELS;
 	    	int chan = i % NR_CHANNELS;
 
@@ -127,7 +132,7 @@ __global__ void kernel_degridder(
             float wavenumber = wavenumbers[chan];
 
             // Iterate all pixels in row of subgrid
-	    	for (int x = tid; x < SUBGRIDSIZE; x++) {
+            for (int x = 0; x < SUBGRIDSIZE; x++) {
                 // Compute l,m,n
                 float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
                 float m =  (x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
@@ -144,10 +149,10 @@ __global__ void kernel_degridder(
                 float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                 // Load pixels
-                float2 apXX = _pixels[blockIdx.y][0][x];
-                float2 apXY = _pixels[blockIdx.y][1][x];
-                float2 apYX = _pixels[blockIdx.y][2][x];
-                float2 apYY = _pixels[blockIdx.y][3][x];
+                float2 apXX = _pixels[threadIdx.y][0][x];
+                float2 apXY = _pixels[threadIdx.y][1][x];
+                float2 apYX = _pixels[threadIdx.y][2][x];
+                float2 apYY = _pixels[threadIdx.y][3][x];
 
                 // Update visibilities
                 visXX.x += apXX.x * phasor.x;
@@ -176,16 +181,13 @@ __global__ void kernel_degridder(
             atomicAdd(&_visibilities[time][chan][2], visYX);
             atomicAdd(&_visibilities[time][chan][3], visYY);
         }
-
-        // Store visibilities
-        for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += blockSize) {
-	    	int time = i / NR_CHANNELS;
-	    	int chan = i % NR_CHANNELS;
-            visibilities[offset + time][chan][0] = _visibilities[time][chan][0];
-            visibilities[offset + time][chan][1] = _visibilities[time][chan][1];
-            visibilities[offset + time][chan][2] = _visibilities[time][chan][2];
-            visibilities[offset + time][chan][3] = _visibilities[time][chan][3];
-		}
 	}
+
+    __syncthreads();
+
+    // Store visibilities
+    for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize) {
+        visibilities[offset][0][i] = _visibilities[0][0][i];
+    }
 }
 }
