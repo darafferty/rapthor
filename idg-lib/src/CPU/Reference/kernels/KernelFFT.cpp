@@ -42,12 +42,24 @@ void kernel_fft(
 
     // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
     if (sign == FFTW_BACKWARD) {
-        float scale = 1 / (float(size)*float(size));
+
+        float scale_real = 1.0f / (float(size)*float(size));
+        float scale_imag = 1.0f / (float(size)*float(size));
+
+        // TODO: A bit of a hack to have it here:
+        // Since we only take half the visibilities
+        // scale real part by two, and set imaginery part to zero
+        if (size == GRIDSIZE) {
+            scale_real = 2.0f / (float(size)*float(size));
+            scale_imag = 0.0f;
+        }
+
         #pragma omp parallel for
         for (int i = 0; i < batch*NR_POLARIZATIONS*size*size; i++) {
-            data[i][0] *= scale;
-            data[i][1] *= scale;
+            data[i][0] *= scale_real;
+            data[i][1] *= scale_imag;
         }
+
     }
 
     // Destroy plan
