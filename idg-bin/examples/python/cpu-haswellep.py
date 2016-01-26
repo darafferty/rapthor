@@ -124,10 +124,6 @@ if __name__ == "__main__":
 
     p.transform(idg.FourierDomainToImageDomain, grid)
 
-    # TODO: move to fft routine
-    grid.real *= 2
-    grid.imag = 0
-
     idg.utils.plot_grid(grid)
 
     ############
