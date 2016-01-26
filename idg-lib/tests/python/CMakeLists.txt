@@ -1,5 +1,5 @@
 # Install Python tests
 install(FILES
-  test-cpu-reference.py
-  test-hybrid-maxwellhaswellep.py
-  DESTINATION bin/tests)
+    test-cpu-reference.py
+    test-hybrid-maxwellhaswellep.py
+    DESTINATION bin/tests)
