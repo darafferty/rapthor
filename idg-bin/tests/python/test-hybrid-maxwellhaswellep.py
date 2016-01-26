@@ -108,9 +108,8 @@ if __name__ == "__main__":
     ############
     # degridding
     ############
-    grid = numpy.fft.ifftshift(grid, axes=(1,2))
     p.transform(idg.ImageDomainToFourierDomain, grid)
-    grid = numpy.fft.fftshift(grid, axes=(1,2))
+
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal)
     #idg.utils.plot_visibilities(visibilities)
@@ -124,9 +123,8 @@ if __name__ == "__main__":
     ##########
     p.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                         w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    grid = numpy.fft.ifftshift(grid, axes=(1,2))
+
     p.transform(idg.FourierDomainToImageDomain, grid)
-    grid = numpy.fft.fftshift(grid, axes=(1,2))
 
     # plot result (should look like the point spread function)
     idg.utils.plot_grid(grid)

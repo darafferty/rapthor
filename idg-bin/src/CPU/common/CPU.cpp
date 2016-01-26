@@ -270,7 +270,6 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
-                cout << "Transform direction: " << direction << endl;
                 #endif
 
                 try {
@@ -279,13 +278,29 @@ namespace idg {
 
                     // Constants
                     auto gridsize = mParams.get_grid_size();
+                    auto nr_polarizations = mParams.get_nr_polarizations();
 
                     // Load kernel function
                     unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
 
-                    // Start fft
                     double runtime = -omp_get_wtime();
+
+                    if (direction == FourierDomainToImageDomain)
+                        ifftshift(nr_polarizations, grid); // TODO: integrate into adder?
+                    else
+                        ifftshift(nr_polarizations, grid); // TODO: remove
+
+                    // Start fft
+                    #if defined(DEBUG)
+                    cout << "FFT (direction: " << direction << ")" << endl;
+                    #endif
                     kernel_fft->run(gridsize, 1, grid, sign);
+
+                    if (direction == FourierDomainToImageDomain)
+                        fftshift(nr_polarizations, grid); // TODO: remove
+                    else
+                        fftshift(nr_polarizations, grid); // TODO: integrate into splitter?
+
                     runtime += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -707,6 +722,70 @@ namespace idg {
                 clog << endl;
                 #endif
             }
+
+
+
+            void CPU::ifftshift(int nr_polarizations, complex<float> *grid)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << " (calling fftshift)" << endl;
+                #endif
+
+                // TODO: implement for odd size gridsize
+                // For even gridsize, same as fftshift
+                fftshift(nr_polarizations, grid);
+            }
+
+
+
+            void CPU::fftshift(int nr_polarizations, complex<float> *grid)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+                // Note: grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
+                auto gridsize         = mParams.get_grid_size();
+
+                for (int p = 0; p < nr_polarizations; p++) {
+                    // Pass grid[p][GRIDSIZE][GRIDSIZE]
+                    fftshift(grid + p*gridsize*gridsize);
+                }
+            }
+
+
+            void CPU::ifftshift(complex<float> *array)
+            {
+                // to be implemented
+            }
+
+
+            void CPU::fftshift(complex<float> *array)
+            {
+                auto gridsize = mParams.get_grid_size(); // assumed to be even
+                auto buffer   = new complex<float>[gridsize];
+
+                if (gridsize % 2 != 0)
+                    throw invalid_argument("gridsize is assumed to be even");
+
+                for (int i = 0; i < gridsize/2; i++) {
+                    // save i-th row into buffer
+                    memcpy(buffer, &array[i*gridsize], gridsize*sizeof(complex<float>));
+
+                    auto j = i + gridsize/2;
+                    memcpy( &array[i*gridsize + gridsize/2], &array[j*gridsize],
+                           (gridsize/2)*sizeof(complex<float>) );
+                    memcpy( &array[i*gridsize], &array[j*gridsize + gridsize/2],
+                           (gridsize/2)*sizeof(complex<float>) );
+                    memcpy( &array[j*gridsize], &buffer[gridsize/2],
+                           (gridsize/2)*sizeof(complex<float>) );
+                    memcpy( &array[j*gridsize + gridsize/2], &buffer[0],
+                           (gridsize/2)*sizeof(complex<float>) );
+                }
+
+                delete [] buffer;
+            }
+
 
 
             void CPU::compile(Compiler compiler, Compilerflags flags)
