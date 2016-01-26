@@ -724,7 +724,6 @@ namespace idg {
             }
 
 
-
             void CPU::ifftshift(int nr_polarizations, complex<float> *grid)
             {
                 #if defined(DEBUG)
@@ -737,7 +736,6 @@ namespace idg {
             }
 
 
-
             void CPU::fftshift(int nr_polarizations, complex<float> *grid)
             {
                 #if defined(DEBUG)
@@ -747,8 +745,10 @@ namespace idg {
                 // Note: grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
                 auto gridsize         = mParams.get_grid_size();
 
+                #pragma omp parallel for
                 for (int p = 0; p < nr_polarizations; p++) {
-                    // Pass grid[p][GRIDSIZE][GRIDSIZE]
+                    // Pass &grid[p][GRIDSIZE][GRIDSIZE]
+                    // and do shift for each polarization
                     fftshift(grid + p*gridsize*gridsize);
                 }
             }
@@ -762,7 +762,7 @@ namespace idg {
 
             void CPU::fftshift(complex<float> *array)
             {
-                auto gridsize = mParams.get_grid_size(); // assumed to be even
+                auto gridsize = mParams.get_grid_size();
                 auto buffer   = new complex<float>[gridsize];
 
                 if (gridsize % 2 != 0)
@@ -770,7 +770,8 @@ namespace idg {
 
                 for (int i = 0; i < gridsize/2; i++) {
                     // save i-th row into buffer
-                    memcpy(buffer, &array[i*gridsize], gridsize*sizeof(complex<float>));
+                    memcpy(buffer, &array[i*gridsize],
+                           gridsize*sizeof(complex<float>));
 
                     auto j = i + gridsize/2;
                     memcpy( &array[i*gridsize + gridsize/2], &array[j*gridsize],
@@ -785,7 +786,6 @@ namespace idg {
 
                 delete [] buffer;
             }
-
 
 
             void CPU::compile(Compiler compiler, Compilerflags flags)
