@@ -52,11 +52,9 @@ if __name__ == "__main__":
     nr_polarizations = p.get_nr_polarizations()
 
     # visibilities
-    visibilities =  numpy.ones(
+    visibilities =  numpy.zeros(
         (nr_baselines, nr_time, nr_channels, nr_polarizations),
         dtype = idg.visibilitiestype)
-    idg.utils.init_visibilities(visibilities)
-    #idg.utils.plot_visibilities(visibilities)
 
     # uvw
     uvw = numpy.zeros((nr_baselines, nr_time),
@@ -113,7 +111,7 @@ if __name__ == "__main__":
     grid = numpy.fft.fftshift(grid, axes=(1,2))
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    #idg.utils.plot_visibilities(visibilities)
+    idg.utils.plot_visibilities(visibilities)
 
     # reset grid
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
