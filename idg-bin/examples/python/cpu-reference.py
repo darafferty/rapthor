@@ -123,10 +123,6 @@ if __name__ == "__main__":
 
     p.transform(idg.FourierDomainToImageDomain, grid)
 
-    # TODO: move to fft routine
-    grid.real *= 2
-    grid.imag = 0
-
     idg.utils.plot_grid(grid)
 
     ############
@@ -134,8 +130,6 @@ if __name__ == "__main__":
     ############
     p.transform(idg.ImageDomainToFourierDomain, grid)
 
-    # TODO: Shift the zero-frequency component to the center of the spectrum.
-    # grid = numpy.fft.fftshift(grid, axes=(1,2))
     #idg.utils.plot_grid(grid)
 
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
