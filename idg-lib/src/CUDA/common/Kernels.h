@@ -128,7 +128,6 @@ namespace idg {
                         &w_offset, d_uvw, d_wavenumbers, d_visibilities,
                         d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
-                    // IF blockDim.x IS MODIFIED, ALSO MODIFY NR_THREADS IN KernelDegridder.cu
                     stream.launchKernel(function, nr_subgrids, 1, 1,
                                         blockX, blockY, blockZ, 0, parameters);
                 }

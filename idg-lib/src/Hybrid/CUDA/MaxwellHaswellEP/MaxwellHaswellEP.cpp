@@ -368,7 +368,7 @@ namespace idg {
                         cu::DeviceMemory d_metadata(cuda.sizeof_metadata(current_nr_subgrids));
 
                         // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr, cuda.sizeof_visibilities(current_nr_baselines));
+                        h_visibilities.zero();
                         h_uvw.set(uvw_ptr, cuda.sizeof_uvw(current_nr_baselines));
                         h_metadata.set(metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
 
