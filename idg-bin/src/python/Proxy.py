@@ -215,7 +215,6 @@ class Proxy(object):
 
     def _get_nr_subgrids(self, uvw, wavenumbers, baselines, aterms_offset,
                          kernel_size, max_nr_timesteps=1024*1024):
-        print "_init_metadata", max_nr_timesteps
         return lib.Proxy_get_nr_subgrids(self.obj,
             uvw.ctypes.data_as(ctypes.c_void_p),
             wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -226,7 +225,6 @@ class Proxy(object):
 
     def _init_metadata(self, metadata, uvw, wavenumbers, baselines, aterms_offset,
                        kernel_size, max_nr_timesteps=1024*1024):
-        print "_init_metadata", max_nr_timesteps
         lib.Proxy_init_metadata(self.obj,
             metadata.ctypes.data_as(ctypes.c_void_p),
             uvw.ctypes.data_as(ctypes.c_void_p),
