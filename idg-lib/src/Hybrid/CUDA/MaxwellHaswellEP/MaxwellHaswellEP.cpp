@@ -277,8 +277,9 @@ namespace idg {
                 #endif
 
                 // initialize metadata
+                auto max_nr_timesteps_degridder = 32;
                 auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
+                                        aterm_offsets, kernel_size, max_nr_timesteps_degridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
