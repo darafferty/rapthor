@@ -277,8 +277,9 @@ namespace idg {
                 #endif
 
                 // initialize metadata
+                auto max_nr_timesteps_degridder = 32;
                 auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
+                                        aterm_offsets, kernel_size, max_nr_timesteps_degridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -367,7 +368,7 @@ namespace idg {
                         cu::DeviceMemory d_metadata(cuda.sizeof_metadata(current_nr_subgrids));
 
                         // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr, cuda.sizeof_visibilities(current_nr_baselines));
+                        h_visibilities.zero();
                         h_uvw.set(uvw_ptr, cuda.sizeof_uvw(current_nr_baselines));
                         h_metadata.set(metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
 
@@ -471,31 +472,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
-
-                // Load kernel
-                unique_ptr<idg::kernel::cpu::GridFFT> kernel_fft = cpu.get_kernel_fft();
-
-                // Constants
-				auto gridsize = mParams.get_grid_size();
-
-                // Power measurement
-                LikwidPowerSensor::State powerStates[2];
-
-                // Start fft
-                powerStates[0] = cpu.read_power();
-                kernel_fft->run(gridsize, 1, grid, sign);
-                powerStates[1] = cpu.read_power();
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auxiliary::report("|grid_fft",
-                                  LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1),
-                                  LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
-                clog << endl;
-                #endif
-
+                cpu.transform(direction, grid);
             }
 
         } // namespace hybrid

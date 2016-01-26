@@ -185,6 +185,10 @@ namespace cu {
                 memcpy(out, _ptr, (size_t) _size);
             }
 
+			void zero() {
+				memset(_ptr, 0, _size);
+			}
+
 		private:
 			void *_ptr;
 			size_t _size;
