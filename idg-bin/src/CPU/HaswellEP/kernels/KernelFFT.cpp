@@ -26,12 +26,15 @@ void kernel_fft_grid(
         fftwf_execute_dft(plan, data, data);
 
         // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
+        // => scale by 1/(N*N); since we only use half of the visibilities
+        // scale real part by two, and set imaginary part to zero
         if (sign == FFTW_BACKWARD) {
-            float scale = 1 / (float(size)*float(size));
+            float scale_real = 2.0f / (float(size)*float(size));
+            float scale_imag = 0.0f;
             #pragma omp parallel for
             for (int i = 0; i < size*size; i++) {
-                data[i][0] *= scale;
-                data[i][1] *= scale;
+                data[i][0] *= scale_real;
+                data[i][1] *= scale_imag;
             }
         }
         
