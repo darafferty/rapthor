@@ -120,8 +120,6 @@ if __name__ == "__main__":
                         w_offset, kernel_size, aterms, aterms_offset, spheroidal)
     idg.utils.plot_grid(grid, scaling='log')
 
-    # TODO: shift zero frequency to outer part
-    grid = numpy.fft.ifftshift(grid, axes=(1,2))
     #idg.utils.plot_grid(grid)
 
     p.transform(idg.FourierDomainToImageDomain, grid)
@@ -130,18 +128,12 @@ if __name__ == "__main__":
     grid.real *= 2
     grid.imag = 0
 
-    grid = numpy.fft.fftshift(grid, axes=(1,2))
     idg.utils.plot_grid(grid)
 
     ############
     # degridding
     ############
-    grid = numpy.fft.ifftshift(grid, axes=(1,2))
     p.transform(idg.ImageDomainToFourierDomain, grid)
-
-    # TODO: Shift the zero-frequency component to the center of the spectrum.
-    grid = numpy.fft.fftshift(grid, axes=(1,2))
-    #idg.utils.plot_grid(grid)
 
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal)
