@@ -13,8 +13,13 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info)
-                : CUDA(params, deviceNumber, compiler, flags, info)
+                ProxyInfo info,
+                int max_nr_timesteps_gridder,
+                int max_nr_timesteps_degridder)
+                : CUDA(
+                    params, deviceNumber, compiler, flags, info,
+                    max_nr_timesteps_gridder,
+                    max_nr_timesteps_degridder)
             {
                 #if defined(DEBUG)
                 cout << "Maxwell::" << __func__ << endl;
