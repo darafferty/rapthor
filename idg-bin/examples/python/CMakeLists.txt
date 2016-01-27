@@ -6,4 +6,5 @@ install(FILES
   hybrid-maxwellhaswellep.py
   hybrid-knc.py
   demo-idg.py
+  cpu-clean-reference.py
   DESTINATION bin/examples)
