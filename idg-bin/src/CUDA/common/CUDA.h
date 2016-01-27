@@ -56,7 +56,9 @@ namespace idg {
                      unsigned deviceNumber = 0,
                      Compiler compiler = default_compiler(),
                      Compilerflags flags = default_compiler_flags(),
-                     ProxyInfo info = default_info());
+                     ProxyInfo info = default_info(),
+                     int max_nr_timesteps_gridder = 1,
+                     int max_nr_timesteps_degridder = 1);
 
                 ~CUDA();
 
@@ -124,9 +126,6 @@ namespace idg {
                 virtual std::unique_ptr<kernel::cuda::Adder> get_kernel_adder() const = 0;
                 virtual std::unique_ptr<kernel::cuda::Splitter> get_kernel_splitter() const = 0;
 
-            public:
-                int get_max_nr_timesteps_gridder();
-
             protected:
                 static std::string make_tempdir();
                 static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
@@ -140,6 +139,8 @@ namespace idg {
                 cu::Device *device;
                 cu::Context *context;
                 ProxyInfo mInfo; // info about shared object files
+                const int max_nr_timesteps_gridder;
+                const int max_nr_timesteps_degridder;
 
                 // store the ptr to Module, which each loads an .ptx-file
                 std::vector<cu::Module*> modules;

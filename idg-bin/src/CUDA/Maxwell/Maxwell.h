@@ -23,13 +23,19 @@ namespace idg {
                         unsigned deviceNumber = 0,
                         Compiler compiler = default_compiler(),
                         Compilerflags flags = default_compiler_flags(),
-                        ProxyInfo info = default_info());
+                        ProxyInfo info = default_info(),
+                        int max_nr_timesteps_gridder = get_max_nr_timesteps_gridder(),
+                        int max_nr_timesteps_degridder = get_max_nr_timesteps_degridder());
 
                 /// Destructor
                 ~Maxwell() = default;
 
                 static ProxyInfo default_info();
                 static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
+
+            public:
+                static int get_max_nr_timesteps_gridder() { return 32; };
+                static int get_max_nr_timesteps_degridder() { return 32; };
 
             public:
                 virtual std::unique_ptr<idg::kernel::cuda::Gridder> get_kernel_gridder() const override;

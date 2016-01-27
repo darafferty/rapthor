@@ -22,8 +22,12 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info)
-              : mInfo(info)
+                ProxyInfo info,
+                int max_nr_timesteps_gridder,
+                int max_nr_timesteps_degridder)
+              : mInfo(info),
+                max_nr_timesteps_gridder(max_nr_timesteps_gridder),
+                max_nr_timesteps_degridder(max_nr_timesteps_degridder)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -151,6 +155,7 @@ namespace idg {
             }
 
 
+#if 0
             /* Misc routines */
             int CUDA::get_max_nr_timesteps_gridder() {
                 // Get size of shared memory
@@ -173,6 +178,7 @@ namespace idg {
 
                 return max_nr_timesteps;
             }
+#endif
 
 
             /* High level routines */
@@ -255,9 +261,9 @@ namespace idg {
                 #endif
 
                 // Initialize metadata
-                auto max_nr_timesteps_gridder = get_max_nr_timesteps_gridder();
                 auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size, max_nr_timesteps_gridder);
+                                        aterm_offsets, kernel_size,
+                                        max_nr_timesteps_gridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -469,7 +475,8 @@ namespace idg {
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
+                                        aterm_offsets, kernel_size,
+                                        max_nr_timesteps_degridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -678,7 +685,8 @@ namespace idg {
                                              " -code=sm_" + to_string(capability);
 
                 stringstream memory_parameters;
-                memory_parameters << " -DMAX_NR_TIMESTEPS_GRIDDER=" << get_max_nr_timesteps_gridder();
+                memory_parameters << " -DMAX_NR_TIMESTEPS_GRIDDER=" << max_nr_timesteps_gridder;
+                memory_parameters << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << max_nr_timesteps_degridder;
                 string parameters = " " + flags +
                                     " " + compiler_parameters +
                                     " " + mparameters +
