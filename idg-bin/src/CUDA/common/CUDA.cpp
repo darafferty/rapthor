@@ -22,8 +22,12 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info)
-              : mInfo(info)
+                ProxyInfo info,
+                int max_nr_timesteps_gridder,
+                int max_nr_timesteps_degridder)
+              : mInfo(info),
+                max_nr_timesteps_gridder(max_nr_timesteps_gridder),
+                max_nr_timesteps_degridder(max_nr_timesteps_degridder)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -151,6 +155,7 @@ namespace idg {
             }
 
 
+#if 0
             /* Misc routines */
             int CUDA::get_max_nr_timesteps_gridder() {
                 // Get size of shared memory
@@ -173,6 +178,7 @@ namespace idg {
 
                 return max_nr_timesteps;
             }
+#endif
 
 
             /* High level routines */
@@ -255,9 +261,9 @@ namespace idg {
                 #endif
 
                 // Initialize metadata
-                auto max_nr_timesteps_gridder = get_max_nr_timesteps_gridder();
                 auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size, max_nr_timesteps_gridder);
+                                        aterm_offsets, kernel_size,
+                                        max_nr_timesteps_gridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -469,7 +475,8 @@ namespace idg {
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
+                                        aterm_offsets, kernel_size,
+                                        max_nr_timesteps_degridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -518,7 +525,6 @@ namespace idg {
                 double total_runtime_degridding = 0;
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
                 double total_runtime_splitter = 0;
                 total_runtime_degridding = -omp_get_wtime();
                 PowerSensor::State startState = powerSensor.read();
@@ -586,18 +592,14 @@ namespace idg {
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
 
-                            // Launch scaler kernel
-                            kernel_scaler->launch(
-                                executestream, current_nr_subgrids, d_subgrids);
-                            powerRecords[3].enqueue(executestream);
-
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
+                            powerRecords[3].enqueue(executestream);
                             kernel_degridder->launch(
                                 executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            executestream.record(outputReady);
                             powerRecords[4].enqueue(executestream);
+                            executestream.record(outputReady);
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
@@ -609,7 +611,6 @@ namespace idg {
 
                         double runtime_splitter  = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft       = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_scaler    = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_degridder = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,
@@ -620,10 +621,6 @@ namespace idg {
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                        PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
-                        auxiliary::report("   scaler", runtime_scaler,
-                                                       kernel_scaler->flops(current_nr_subgrids),
-                                                       kernel_scaler->bytes(current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                         auxiliary::report("degridder", runtime_degridder,
                                                        kernel_degridder->flops(current_nr_baselines, current_nr_subgrids),
                                                        kernel_degridder->bytes(current_nr_baselines, current_nr_subgrids),
@@ -632,7 +629,6 @@ namespace idg {
                         #if defined(REPORT_TOTAL)
                         total_runtime_splitter  += runtime_splitter;
                         total_runtime_fft       += runtime_fft;
-                        total_runtime_scaler    += runtime_scaler;
                         total_runtime_degridder += runtime_degridder;
                         #endif
                     } // end for s
@@ -649,16 +645,13 @@ namespace idg {
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_scaler     = kernel_scaler->flops(nr_subgrids);
-                uint64_t total_bytes_scaler     = kernel_scaler->bytes(nr_subgrids);
-                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_subgrids, nr_baselines);
-                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_subgrids, nr_baselines);
-                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_scaler + total_flops_splitter;
-                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_scaler + total_bytes_splitter;
+                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
+                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
+                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 double   total_watt_degridding  = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-                auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
@@ -692,7 +685,8 @@ namespace idg {
                                              " -code=sm_" + to_string(capability);
 
                 stringstream memory_parameters;
-                memory_parameters << " -DMAX_NR_TIMESTEPS_GRIDDER=" << get_max_nr_timesteps_gridder();
+                memory_parameters << " -DMAX_NR_TIMESTEPS_GRIDDER=" << max_nr_timesteps_gridder;
+                memory_parameters << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << max_nr_timesteps_degridder;
                 string parameters = " " + flags +
                                     " " + compiler_parameters +
                                     " " + mparameters +
