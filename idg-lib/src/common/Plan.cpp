@@ -168,10 +168,9 @@ namespace idg {
                     bool same_aterm = (aterm_index == aterm_index_subgrid);
                     bool last_iteration = (t == nr_time - 1);
                     bool timestep_fits = (uv_width + kernel_size) < subgrid_size;
-                    bool nr_timesteps_below_threshold = nr_timesteps < max_nr_timesteps;
 
                     // Check whether current set of measurements fit in subgrid
-                    if (timestep_fits && same_aterm && !last_iteration && nr_timesteps_below_threshold) {
+                    if (timestep_fits && same_aterm && !last_iteration) {
                         // Continue to next measurement
                         nr_timesteps++;
                     } else {
@@ -194,14 +193,18 @@ namespace idg {
                         Coordinate coordinate = { u_pixels_previous,
                                                   v_pixels_previous };
 
-                        // Set metadata
-                        Metadata m = { baseline_offset,
-                                       time,
-                                       nr_timesteps,
-                                       aterm_index_subgrid,
-                                       baseline,
-                                       coordinate };
-                        metadata.push_back(m);
+                        // Split into subgrids with at most max_nr_timesteps
+                        for (int i = 0; i < nr_timesteps; i += max_nr_timesteps) {
+                            int current_nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
+                            // Set metadata
+                            Metadata m = { baseline_offset,
+                                           time + i,
+                                           current_nr_timesteps,
+                                           aterm_index_subgrid,
+                                           baseline,
+                                           coordinate };
+                            metadata.push_back(m);
+                        }
 
                         // cout << "New subgrid: " << endl
                         //      << m << endl;
