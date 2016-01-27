@@ -277,7 +277,7 @@ namespace idg {
                 #endif
 
                 // initialize metadata
-                auto max_nr_timesteps_degridder = 32;
+                auto max_nr_timesteps_degridder = 128;
                 auto plan = create_plan(uvw, wavenumbers, baselines,
                                         aterm_offsets, kernel_size, max_nr_timesteps_degridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
@@ -302,7 +302,7 @@ namespace idg {
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
-                const int nr_streams = 3;
+                const int nr_streams = 1;
 
                 // Shared device memory
                 cu::DeviceMemory d_wavenumbers(cuda.sizeof_wavenumbers());
@@ -373,7 +373,7 @@ namespace idg {
                         h_metadata.set(metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
 
                         // Power measurement
-                        cuda::PowerRecord powerRecords[3];
+                        cuda::PowerRecord powerRecords[4];
                         LikwidPowerSensor::State powerStates[2];
 
                         // Extract subgrid from grid
@@ -405,10 +405,11 @@ namespace idg {
 
                 			// Launch degridder kernel
                 			executestream.waitEvent(outputFree);
+                            powerRecords[2].enqueue(executestream);
                             kernel_degridder->launch(
                                 executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            powerRecords[2].enqueue(executestream);
+                            powerRecords[3].enqueue(executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
 
@@ -422,7 +423,7 @@ namespace idg {
                         memcpy(visibilities_ptr, h_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
 
                         double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_degridder = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_splitter  = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,
@@ -436,7 +437,7 @@ namespace idg {
                         auxiliary::report("degridder", runtime_degridder,
                                                        kernel_degridder->flops(current_nr_baselines, current_nr_subgrids),
                                                        kernel_degridder->bytes(current_nr_baselines, current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                                                       PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                         #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_degridder += runtime_degridder;
@@ -445,6 +446,7 @@ namespace idg {
                         #endif
                     } // end for s
                 }
+
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();

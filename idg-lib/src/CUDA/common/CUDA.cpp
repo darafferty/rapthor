@@ -518,7 +518,6 @@ namespace idg {
                 double total_runtime_degridding = 0;
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
                 double total_runtime_splitter = 0;
                 total_runtime_degridding = -omp_get_wtime();
                 PowerSensor::State startState = powerSensor.read();
@@ -586,18 +585,14 @@ namespace idg {
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
 
-                            // Launch scaler kernel
-                            kernel_scaler->launch(
-                                executestream, current_nr_subgrids, d_subgrids);
-                            powerRecords[3].enqueue(executestream);
-
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
+                            powerRecords[3].enqueue(executestream);
                             kernel_degridder->launch(
                                 executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            executestream.record(outputReady);
                             powerRecords[4].enqueue(executestream);
+                            executestream.record(outputReady);
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
@@ -609,7 +604,6 @@ namespace idg {
 
                         double runtime_splitter  = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft       = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_scaler    = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_degridder = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,
@@ -620,10 +614,6 @@ namespace idg {
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                        PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
-                        auxiliary::report("   scaler", runtime_scaler,
-                                                       kernel_scaler->flops(current_nr_subgrids),
-                                                       kernel_scaler->bytes(current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                         auxiliary::report("degridder", runtime_degridder,
                                                        kernel_degridder->flops(current_nr_baselines, current_nr_subgrids),
                                                        kernel_degridder->bytes(current_nr_baselines, current_nr_subgrids),
@@ -632,7 +622,6 @@ namespace idg {
                         #if defined(REPORT_TOTAL)
                         total_runtime_splitter  += runtime_splitter;
                         total_runtime_fft       += runtime_fft;
-                        total_runtime_scaler    += runtime_scaler;
                         total_runtime_degridder += runtime_degridder;
                         #endif
                     } // end for s
@@ -649,16 +638,13 @@ namespace idg {
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_scaler     = kernel_scaler->flops(nr_subgrids);
-                uint64_t total_bytes_scaler     = kernel_scaler->bytes(nr_subgrids);
-                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_subgrids, nr_baselines);
-                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_subgrids, nr_baselines);
-                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_scaler + total_flops_splitter;
-                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_scaler + total_bytes_splitter;
+                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
+                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
+                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 double   total_watt_degridding  = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-                auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
