@@ -277,7 +277,7 @@ namespace idg {
                 #endif
 
                 // initialize metadata
-                auto max_nr_timesteps_degridder = 128;
+                auto max_nr_timesteps_degridder = cuda.get_max_nr_timesteps_degridder();
                 auto plan = create_plan(uvw, wavenumbers, baselines,
                                         aterm_offsets, kernel_size, max_nr_timesteps_degridder);
                 auto nr_subgrids = plan.get_nr_subgrids();
