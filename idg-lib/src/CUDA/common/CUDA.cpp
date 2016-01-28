@@ -302,29 +302,26 @@ namespace idg {
                 cu::DeviceMemory d_aterm(sizeof_aterm());
                 cu::DeviceMemory d_grid(sizeof_grid());
 
+                // Performance measurements
+                double total_runtime_gridder = 0;
+                double total_runtime_fft = 0;
+                double total_runtime_scaler = 0;
+                double total_runtime_adder = 0;
+                PowerSensor::State startState = powerSensor.read();
+
                 // Copy static device memory
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
                 htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
                 htodstream.memcpyHtoDAsync(d_aterm, aterm);
                 htodstream.synchronize();
 
-                // Performance measurements
-                double total_runtime_gridding = 0;
-                double total_runtime_gridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
-                double total_runtime_adder = 0;
-                total_runtime_gridding = -omp_get_wtime();
-                PowerSensor::State startState = powerSensor.read();
-
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
                     // Initialize
                     context.setCurrent();
-                    cu::Event inputFree;
-                    cu::Event outputFree;
                     cu::Event inputReady;
+                    cu::Event outputReady;
                     unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                     // Private device memory
@@ -355,26 +352,23 @@ namespace idg {
                         // Power measurement
                         PowerRecord powerRecords[5];
 
+                        // Create FFT plan
+                        kernel_fft->plan(subgridsize, current_nr_subgrids);
+
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
                         {
                             // Copy input data to device
-                            htodstream.waitEvent(inputFree);
                             htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
-                            // Create FFT plan
-                            kernel_fft->plan(subgridsize, current_nr_subgrids);
-
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
-                            executestream.waitEvent(outputFree);
                             powerRecords[0].enqueue(executestream);
                             kernel_gridder->launch(
                                 executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            executestream.record(inputFree);
                             powerRecords[1].enqueue(executestream);
 
                             // Launch FFT
@@ -391,10 +385,10 @@ namespace idg {
                                 executestream, current_nr_subgrids,
                                 d_metadata, d_subgrids, d_grid);
                             powerRecords[4].enqueue(executestream);
-                            executestream.record(outputFree);
+                            executestream.record(outputReady);
                         }
 
-                        outputFree.synchronize();
+                        outputReady.synchronize();
 
                         double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
@@ -428,12 +422,10 @@ namespace idg {
                 }
 
                 // Copy grid to host
-                dtohstream.synchronize();
                 dtohstream.memcpyDtoHAsync(grid, d_grid, sizeof_grid());
                 dtohstream.synchronize();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_gridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor.read();
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
@@ -446,7 +438,8 @@ namespace idg {
                 uint64_t total_bytes_adder    = kernel_adder->bytes(nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
-                double   total_watt_gridding  = PowerSensor::Watt(startState, stopState);
+                double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
+                double total_watt_gridding    = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
@@ -456,6 +449,7 @@ namespace idg {
                 clog << endl;
                 #endif
             }
+
 
             void CUDA::degrid_visibilities(
                 std::complex<float> *visibilities,
@@ -514,20 +508,18 @@ namespace idg {
                 cu::DeviceMemory d_aterm(sizeof_aterm());
                 cu::DeviceMemory d_grid(sizeof_grid());
 
+                // Performance measurements
+                double total_runtime_degridder = 0;
+                double total_runtime_fft = 0;
+                double total_runtime_splitter = 0;
+                PowerSensor::State startState = powerSensor.read();
+
                 // Copy static device memory
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
                 htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
                 htodstream.memcpyHtoDAsync(d_aterm, aterm);
                 htodstream.memcpyHtoDAsync(d_grid, grid);
                 htodstream.synchronize();
-
-                // Performance measurements
-                double total_runtime_degridding = 0;
-                double total_runtime_degridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_splitter = 0;
-                total_runtime_degridding = -omp_get_wtime();
-                PowerSensor::State startState = powerSensor.read();
 
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -638,7 +630,6 @@ namespace idg {
                 dtohstream.synchronize();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_degridding += omp_get_wtime();
                 PowerSensor::State stopState = powerSensor.read();
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_splitter   = kernel_splitter->flops(nr_subgrids);
@@ -649,7 +640,8 @@ namespace idg {
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                double   total_watt_degridding  = PowerSensor::Watt(startState, stopState);
+                double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
+                double total_watt_degridding  = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
