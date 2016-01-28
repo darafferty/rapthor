@@ -108,6 +108,10 @@ void run() {
     PROXYNAME proxy(params, deviceNumber);
     clog << endl;
 
+    // Print all CUDA devices
+    clog << ">>> CUDA devices" << endl;
+    printDevices(deviceNumber);
+
     // Start profiling
     cuProfilerStart();
 
