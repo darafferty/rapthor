@@ -12,145 +12,150 @@
 #include "Types.h"
 
 extern "C" {
-void kernel_gridder(
-    const int jobsize,
-    const float w_offset,
-    const UVWType __restrict__ *uvw,
-    const WavenumberType __restrict__ *wavenumbers,
-    const VisibilitiesType __restrict__ *visibilities,
-    const SpheroidalType __restrict__ *spheroidal,
-    const ATermType	__restrict__ *aterm,
-    const MetadataType __restrict__ *metadata,
-    SubGridType	__restrict__ *subgrid)
-{
-    // Find offset of first subgrid
-    const Metadata m = (*metadata)[0];
-    const int baseline_offset_1 = m.baseline_offset;
-    const int time_offset_1 = m.time_offset; // should be 0
-
-    #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
+    void kernel_gridder(
+        const int jobsize,
+        const float w_offset,
+        const UVWType __restrict__ *uvw,
+        const WavenumberType __restrict__ *wavenumbers,
+        const VisibilitiesType __restrict__ *visibilities,
+        const SpheroidalType __restrict__ *spheroidal,
+        const ATermType	__restrict__ *aterm,
+        const MetadataType __restrict__ *metadata,
+        SubGridType	__restrict__ *subgrid)
     {
-    // Iterate all subgrids
-    #pragma omp for
-	for (int s = 0; s < jobsize; s++) {
-        // Load metadata
-        const Metadata m = (*metadata)[s];
-        const int offset = (m.baseline_offset - baseline_offset_1)
-                           + (m.time_offset - time_offset_1);
-        const int nr_timesteps = m.nr_timesteps;
-        const int aterm_index = m.aterm_index;
-        const int station1 = m.baseline.station1;
-        const int station2 = m.baseline.station2;
-        const int x_coordinate = m.coordinate.x;
-        const int y_coordinate = m.coordinate.y;
+        // Find offset of first subgrid
+        const Metadata m = (*metadata)[0];
+        const int baseline_offset_1 = m.baseline_offset;
+        const int time_offset_1 = m.time_offset; // should be 0
 
-        // Compute u and v offset in wavelenghts
-        const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-        const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
+        {
+            // Iterate all subgrids
+            #pragma omp for
+            for (int s = 0; s < jobsize; s++) {
+                // Load metadata
+                const Metadata m = (*metadata)[s];
+                const int offset = (m.baseline_offset - baseline_offset_1)
+                    + (m.time_offset - time_offset_1);
+                const int nr_timesteps = m.nr_timesteps;
+                const int aterm_index = m.aterm_index;
+                const int station1 = m.baseline.station1;
+                const int station2 = m.baseline.station2;
+                const int x_coordinate = m.coordinate.x;
+                const int y_coordinate = m.coordinate.y;
 
-        // Iterate all pixels in subgrid
-        for (int y = 0; y < SUBGRIDSIZE; y++) {
-            for (int x = 0; x < SUBGRIDSIZE; x++) {
-                // Initialize pixel for every polarization
-                FLOAT_COMPLEX pixels[NR_POLARIZATIONS];
-                memset(pixels, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+                // Compute u and v offset in wavelenghts
+                const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
+                                       * (2*M_PI / IMAGESIZE);
+                const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
+                                       * (2*M_PI / IMAGESIZE);
 
-                // Compute l,m,n
-                const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                const float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+                // Iterate all pixels in subgrid
+                for (int y = 0; y < SUBGRIDSIZE; y++) {
+                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                        // Initialize pixel for every polarization
+                        FLOAT_COMPLEX pixels[NR_POLARIZATIONS];
+                        memset(pixels, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
-                // Iterate all timesteps
-                for (int time = 0; time < nr_timesteps; time++) {
-                    // Load UVW coordinates
+                        // Compute l,m,n
+                        const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                        const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                        // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
+                        // accurately for small values of l and m
+                        const float tmp = (l * l) + (m * m);
+                        const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
 
-                    float u = (*uvw)[offset + time].u;
-                    float v = (*uvw)[offset + time].v;
-                    float w = (*uvw)[offset + time].w;
+                        // Iterate all timesteps
+                        for (int time = 0; time < nr_timesteps; time++) {
+                            // Load UVW coordinates
 
-                    // Compute phase index
-                    float phase_index = u*l + v*m + w*n;
+                            float u = (*uvw)[offset + time].u;
+                            float v = (*uvw)[offset + time].v;
+                            float w = (*uvw)[offset + time].w;
 
-                    // Compute phase offset
-                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                            // Compute phase index
+                            float phase_index = u*l + v*m + w*n;
 
-                    // Update pixel for every channel
-                    for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                        // Compute phase
-                        float wavenumber = (*wavenumbers)[chan];
-                        float phase  = (phase_index * wavenumber) - phase_offset;
+                            // Compute phase offset
+                            float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
-                        // Compute phasor
-                        float phasor_real = cosf(phase);
-                        float phasor_imag = sinf(phase);
-                        FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real, phasor_imag);
+                            // Update pixel for every channel
+                            for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                                // Compute phase
+                                float wavenumber = (*wavenumbers)[chan];
+                                float phase  = (phase_index * wavenumber) - phase_offset;
 
-                        // Update pixel for every polarization
+                                // Compute phasor
+                                float phasor_real = cosf(phase);
+                                float phasor_imag = sinf(phase);
+                                FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real, phasor_imag);
+
+                                // Update pixel for every polarization
+                                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                    FLOAT_COMPLEX visibility = (*visibilities)[offset + time][chan][pol];
+                                    pixels[pol] += visibility * phasor;
+                                }
+                            }
+                        }
+
+                        // Load a term for station1
+                        FLOAT_COMPLEX aXX1 = (*aterm)[station1][aterm_index][0][y][x];
+                        FLOAT_COMPLEX aXY1 = (*aterm)[station1][aterm_index][1][y][x];
+                        FLOAT_COMPLEX aYX1 = (*aterm)[station1][aterm_index][2][y][x];
+                        FLOAT_COMPLEX aYY1 = (*aterm)[station1][aterm_index][3][y][x];
+
+                        // Load aterm for station2
+                        FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][aterm_index][0][y][x]);
+                        FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][aterm_index][1][y][x]);
+                        FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][aterm_index][2][y][x]);
+                        FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][aterm_index][3][y][x]);
+
+                        // Apply aterm to subgrid: P*A1
+                        // [ pixels[0], pixels[1];    [ aXX1, aXY1;
+                        //   pixels[2], pixels[3] ] *   aYX1, aYY1 ]
+                        FLOAT_COMPLEX pixelsXX = pixels[0];
+                        FLOAT_COMPLEX pixelsXY = pixels[1];
+                        FLOAT_COMPLEX pixelsYX = pixels[2];
+                        FLOAT_COMPLEX pixelsYY = pixels[3];
+                        pixels[0]  = (pixelsXX * aXX1);
+                        pixels[0] += (pixelsXY * aYX1);
+                        pixels[1]  = (pixelsXX * aXY1);
+                        pixels[1] += (pixelsXY * aYY1);
+                        pixels[2]  = (pixelsYX * aXX1);
+                        pixels[2] += (pixelsYY * aYX1);
+                        pixels[3]  = (pixelsYX * aXY1);
+                        pixels[3] += (pixelsYY * aYY1);
+
+                        // Apply aterm to subgrid: A2^H*P
+                        // [ aXX2, aYX1;      [ pixels[0], pixels[1];
+                        //   aXY1, aYY2 ]  *    pixels[2], pixels[3] ]
+                        pixelsXX = pixels[0];
+                        pixelsXY = pixels[1];
+                        pixelsYX = pixels[2];
+                        pixelsYY = pixels[3];
+                        pixels[0]  = (pixelsXX * aXX2);
+                        pixels[0] += (pixelsYX * aYX2);
+                        pixels[1]  = (pixelsXY * aXX2);
+                        pixels[1] += (pixelsYY * aYX2);
+                        pixels[2]  = (pixelsXX * aXY2);
+                        pixels[2] += (pixelsYX * aYY2);
+                        pixels[3]  = (pixelsXY * aXY2);
+                        pixels[3] += (pixelsYY * aYY2);
+
+                        // Load spheroidal
+                        float sph = (*spheroidal)[y][x];
+
+                        // Compute shifted position in subgrid
+                        int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                        int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
+                        // Set subgrid value
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            FLOAT_COMPLEX visibility = (*visibilities)[offset + time][chan][pol];
-                            pixels[pol] += visibility * phasor;
+                            (*subgrid)[s][pol][y_dst][x_dst] = pixels[pol] * sph;
                         }
                     }
                 }
-
-                // Load a term for station1
-                FLOAT_COMPLEX aXX1 = (*aterm)[station1][aterm_index][0][y][x];
-                FLOAT_COMPLEX aXY1 = (*aterm)[station1][aterm_index][1][y][x];
-                FLOAT_COMPLEX aYX1 = (*aterm)[station1][aterm_index][2][y][x];
-                FLOAT_COMPLEX aYY1 = (*aterm)[station1][aterm_index][3][y][x];
-
-                // Load aterm for station2
-                FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][aterm_index][0][y][x]);
-                FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][aterm_index][1][y][x]);
-                FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][aterm_index][2][y][x]);
-                FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][aterm_index][3][y][x]);
-
-                // Apply aterm to subgrid: P*A1
-                // [ pixels[0], pixels[1];    [ aXX1, aXY1;
-                //   pixels[2], pixels[3] ] *   aYX1, aYY1 ]
-                FLOAT_COMPLEX pixelsXX = pixels[0];
-                FLOAT_COMPLEX pixelsXY = pixels[1];
-                FLOAT_COMPLEX pixelsYX = pixels[2];
-                FLOAT_COMPLEX pixelsYY = pixels[3];
-                pixels[0]  = (pixelsXX * aXX1);
-                pixels[0] += (pixelsXY * aYX1);
-                pixels[1]  = (pixelsXX * aXY1);
-                pixels[1] += (pixelsXY * aYY1);
-                pixels[2]  = (pixelsYX * aXX1);
-                pixels[2] += (pixelsYY * aYX1);
-                pixels[3]  = (pixelsYX * aXY1);
-                pixels[3] += (pixelsYY * aYY1);
-
-                // Apply aterm to subgrid: A2^H*P
-                // [ aXX2, aYX1;      [ pixels[0], pixels[1];
-                //   aXY1, aYY2 ]  *    pixels[2], pixels[3] ]
-                pixelsXX = pixels[0];
-                pixelsXY = pixels[1];
-                pixelsYX = pixels[2];
-                pixelsYY = pixels[3];
-                pixels[0]  = (pixelsXX * aXX2);
-                pixels[0] += (pixelsYX * aYX2);
-                pixels[1]  = (pixelsXY * aXX2);
-                pixels[1] += (pixelsYY * aYX2);
-                pixels[2]  = (pixelsXX * aXY2);
-                pixels[2] += (pixelsYX * aYY2);
-                pixels[3]  = (pixelsXY * aXY2);
-                pixels[3] += (pixelsYY * aYY2);
-
-                // Load spheroidal
-                float sph = (*spheroidal)[y][x];
-
-                // Compute shifted position in subgrid
-                int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-
-                // Set subgrid value
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    (*subgrid)[s][pol][y_dst][x_dst] = pixels[pol] * sph;
-                }
-            }
-        }
-    } // end s
-    } // end pragma parallel
-}  // end kernel_gridder
+            } // end s
+        } // end pragma parallel
+    }  // end kernel_gridder
 }  // end extern C
