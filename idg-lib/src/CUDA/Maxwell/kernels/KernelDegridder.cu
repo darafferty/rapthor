@@ -103,6 +103,7 @@ __global__ void kernel_degridder(
 				float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
 				float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
 
+                // Store pixels
 				_pix[0][threadIdx.x] = make_float4(pixXX.x, pixXX.y, pixXY.x, pixXY.y);
 				_pix[1][threadIdx.x] = make_float4(pixYX.x, pixYX.y, pixYY.x, pixYY.y);
 
@@ -124,19 +125,28 @@ __global__ void kernel_degridder(
                 #endif
 
 				for (int k = 0; k < last_k; k ++) {
+                    // Load l,m,n
 					float  l = _lmn_phaseoffset[k].x;
 					float  m = _lmn_phaseoffset[k].y;
 					float  n = _lmn_phaseoffset[k].z;
-					float  phase_offset = _lmn_phaseoffset[k].w;
-					float  phase_index = u * l + v * m + w * n;
+
+                    // Load phase offset
+					float phase_offset = _lmn_phaseoffset[k].w;
+
+                    // Compute phase index
+                    float phase_index = u * l + v * m + w * n;
+
+                    // Compute phasor
 					float  phase  = (phase_index * wavenumber) - phase_offset;
 					float2 phasor = make_float2(cosf(phase), sinf(phase));
 
+                    // Load pixels from shared memory
 					float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
 					float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
 					float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
 					float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
 
+                    // Multiply pixels by phasor
 					visXX.x += apXX.x * phasor.x;
 					visXX.x -= apXX.y * phasor.y;
 					visXX.y += apXX.x * phasor.y;
@@ -160,11 +170,12 @@ __global__ void kernel_degridder(
 			}
 		}
 
+        // Set visibility value
 		if (time < nr_timesteps) {
-		  visibilities[offset + time][chan][0] = visXX;
-		  visibilities[offset + time][chan][1] = visXY;
-		  visibilities[offset + time][chan][2] = visYX;
-		  visibilities[offset + time][chan][3] = visYY;
+            visibilities[offset + time][chan][0] = visXX;
+            visibilities[offset + time][chan][1] = visXY;
+            visibilities[offset + time][chan][2] = visYX;
+            visibilities[offset + time][chan][3] = visYY;
 		}
 	}
 }
