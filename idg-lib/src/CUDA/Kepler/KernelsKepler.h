@@ -10,10 +10,11 @@ namespace idg {
 
             class GridderKepler : public Gridder {
             public:
-
                 GridderKepler(cu::Module& module, const Parameters& params)
                     : Gridder(module, params)
                     {}
+
+                static const int max_nr_timesteps = 32;
 
                 virtual void launch(
                     cu::Stream &stream,
@@ -41,7 +42,7 @@ namespace idg {
                     }
 
                 virtual int get_max_nr_timesteps() {
-                    return 32;
+                    return max_nr_timesteps;
                 }
 
             };
@@ -52,6 +53,8 @@ namespace idg {
                 DegridderKepler(cu::Module& module, const Parameters& params)
                     : Degridder(module, params)
                     {}
+
+                static const int max_nr_timesteps = 64;
 
                 virtual void launch(
                     cu::Stream &stream,
@@ -79,7 +82,7 @@ namespace idg {
                     }
 
                 virtual int get_max_nr_timesteps() {
-                    return 64;
+                    return max_nr_timesteps;
                 }
             };
 

@@ -26,8 +26,8 @@ namespace idg {
             Compilerflags Kepler::append(Compilerflags flags) {
                 stringstream new_flags;
                 new_flags << flags;
-                new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << 32;
-                new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << 64;
+                new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << GridderKepler::max_nr_timesteps;
+                new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << DegridderKepler::max_nr_timesteps;
                 return new_flags.str();
             }
 
