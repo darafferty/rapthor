@@ -6,7 +6,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#if defined(USING_INTEL_CXX_COMPILER)
+#if defined(__INTEL_COMPILER)
+#define USE_VML
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
 #endif
@@ -14,8 +15,8 @@
 #include "Types.h"
 
 extern "C" {
-    #if defined(USING_INTEL_CXX_COMPILER)
-    void kernel_degridder_intel(
+
+    void kernel_degridder(
         const int jobsize, const float w_offset,
         const UVWType		 __restrict__ *uvw,
         const WavenumberType __restrict__ *wavenumbers,
@@ -48,7 +49,7 @@ extern "C" {
                 const int y_coordinate = m.coordinate.y;
 
                 // Storage for precomputed values
-                FLOAT_COMPLEX _pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
+                FLOAT_COMPLEX pixels[SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS] __attribute__((aligned(32)));
                 float pixels_real[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
                 float pixels_imag[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
                 float phase_index[SUBGRIDSIZE][SUBGRIDSIZE]  __attribute__((aligned(32)));
@@ -79,56 +80,52 @@ extern "C" {
                         FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][aterm_index][3][y][x]);
 
                         // Load spheroidal
-                        float _spheroidal = (*spheroidal)[y][x];
+                        float sph = (*spheroidal)[y][x];
 
                         // Compute shifted position in subgrid
                         int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                         int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                         // Load uv values
-                        FLOAT_COMPLEX pixelsXX = _spheroidal * (*subgrid)[s][0][y_src][x_src];
-                        FLOAT_COMPLEX pixelsXY = _spheroidal * (*subgrid)[s][1][y_src][x_src];
-                        FLOAT_COMPLEX pixelsYX = _spheroidal * (*subgrid)[s][2][y_src][x_src];
-                        FLOAT_COMPLEX pixelsYY = _spheroidal * (*subgrid)[s][3][y_src][x_src];
+                        FLOAT_COMPLEX pixelsXX = sph * (*subgrid)[s][0][y_src][x_src];
+                        FLOAT_COMPLEX pixelsXY = sph * (*subgrid)[s][1][y_src][x_src];
+                        FLOAT_COMPLEX pixelsYX = sph * (*subgrid)[s][2][y_src][x_src];
+                        FLOAT_COMPLEX pixelsYY = sph * (*subgrid)[s][3][y_src][x_src];
 
                         // Apply aterm to subgrid
-                        _pixels[y][x][0]  = pixelsXX * aXX1;
-                        _pixels[y][x][0] += pixelsXY * aYX1;
-                        _pixels[y][x][1]  = pixelsXX * aXY1;
-                        _pixels[y][x][1] += pixelsXY * aYY1;
-                        _pixels[y][x][2]  = pixelsYX * aXX1;
-                        _pixels[y][x][2] += pixelsYY * aYX1;
-                        _pixels[y][x][3]  = pixelsYX * aXY1;
-                        _pixels[y][x][3] += pixelsYY * aYY1;
+                        pixels[y][x][0]  = pixelsXX * aXX1;
+                        pixels[y][x][0] += pixelsXY * aYX1;
+                        pixels[y][x][1]  = pixelsXX * aXY1;
+                        pixels[y][x][1] += pixelsXY * aYY1;
+                        pixels[y][x][2]  = pixelsYX * aXX1;
+                        pixels[y][x][2] += pixelsYY * aYX1;
+                        pixels[y][x][3]  = pixelsYX * aXY1;
+                        pixels[y][x][3] += pixelsYY * aYY1;
 
-                        pixelsXX = _pixels[y][x][0];
-                        pixelsXY = _pixels[y][x][1];
-                        pixelsYX = _pixels[y][x][2];
-                        pixelsYY = _pixels[y][x][3];
-                        _pixels[y][x][0]  = pixelsXX * aXX2;
-                        _pixels[y][x][0] += pixelsYX * aYX2;
-                        _pixels[y][x][1]  = pixelsXY * aXX2;
-                        _pixels[y][x][1] += pixelsYY * aYX2;
-                        _pixels[y][x][2]  = pixelsXX * aXY2;
-                        _pixels[y][x][2] += pixelsYX * aYY2;
-                        _pixels[y][x][3]  = pixelsXY * aXY2;
-                        _pixels[y][x][3] += pixelsYY * aYY2;
+                        pixelsXX = pixels[y][x][0];
+                        pixelsXY = pixels[y][x][1];
+                        pixelsYX = pixels[y][x][2];
+                        pixelsYY = pixels[y][x][3];
+                        pixels[y][x][0]  = pixelsXX * aXX2;
+                        pixels[y][x][0] += pixelsYX * aYX2;
+                        pixels[y][x][1]  = pixelsXY * aXX2;
+                        pixels[y][x][1] += pixelsYY * aYX2;
+                        pixels[y][x][2]  = pixelsXX * aXY2;
+                        pixels[y][x][2] += pixelsYX * aYY2;
+                        pixels[y][x][3]  = pixelsXY * aXY2;
+                        pixels[y][x][3] += pixelsYY * aYY2;
                     }
                 }
 
-                // Copy pixels from _pixels to pixels_real and pixels_imag
+                // Copy pixels from pixels to pixels_real and pixels_imag
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     for (int y = 0; y < SUBGRIDSIZE; y++) {
                         for (int x = 0; x < SUBGRIDSIZE; x++) {
-                            pixels_real[pol][y][x] =  _pixels[y][x][pol].real();
-                            pixels_imag[pol][y][x] =  _pixels[y][x][pol].imag();
+                            pixels_real[pol][y][x] =  pixels[y][x][pol].real();
+                            pixels_imag[pol][y][x] =  pixels[y][x][pol].imag();
                         }
                     }
                 }
-
-                // Reset all visibilities
-                // TODO: is this memset necessary?
-                // memset(&(*visibilities)[offset][0][0], 0, nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
 
                 // Iterate all timesteps
                 for (int time = 0; time < nr_timesteps; time++) {
@@ -163,16 +160,25 @@ extern "C" {
                         }
 
                         // Compute phasor
+                        #if defined(USE_VML)
                         vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE,
                                   (const float *) &phase[0][0],
                                   &phasor_imag[0][0],
                                   &phasor_real[0][0], VML_PRECISION);
+                        #else
+                        for (int y = 0; y < SUBGRIDSIZE; y++) {
+                            for (int x = 0; x < SUBGRIDSIZE; x++) {
+                                phasor_imag[y][x] = sinf(phase[y][x]);
+                                phasor_real[y][x] = cosf(phase[y][x]);
+                            }
+                        }
+                        #endif
 
                         // Storage for sums
-                        float sum_xx_real, sum_xx_imag;
-                        float sum_xy_real, sum_xy_imag;
-                        float sum_yx_real, sum_yx_imag;
-                        float sum_yy_real, sum_yy_imag;
+                        float sum_xx_real = 0.0f, sum_xx_imag = 0.0f;
+                        float sum_xy_real = 0.0f, sum_xy_imag = 0.0f;
+                        float sum_yx_real = 0.0f, sum_yx_imag = 0.0f;
+                        float sum_yy_real = 0.0f, sum_yy_imag = 0.0f;
 
                         // Accumulate visibilities
                         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -210,46 +216,8 @@ extern "C" {
                         (*visibilities)[offset + time][chan][3] = {scale*sum_yy_real, scale*sum_yy_imag};
                     }
                 }
-            }
-        }
-    }
-    #endif
 
-    #if defined(USING_GNU_CXX_COMPILER)
-    void kernel_degridder_gnu(
-        const int jobsize, const float w_offset,
-        const UVWType		   __restrict__ *uvw,
-        const WavenumberType   __restrict__ *wavenumbers,
-        VisibilitiesType       __restrict__ *visibilities,
-        const SpheroidalType   __restrict__ *spheroidal,
-        const ATermType		   __restrict__ *aterm,
-        const MetadataType	   __restrict__ *metadata,
-        const SubGridType	   __restrict__ *subgrid
-        ) {
-        printf("%s not implemented yet\n", __func__);
-    }
-    #endif
-
-    void kernel_degridder(
-        const int jobsize, const float w_offset,
-        const UVWType		   __restrict__ *uvw,
-        const WavenumberType   __restrict__ *wavenumbers,
-        VisibilitiesType       __restrict__ *visibilities,
-        const SpheroidalType   __restrict__ *spheroidal,
-        const ATermType		   __restrict__ *aterm,
-        const MetadataType	   __restrict__ *metadata,
-        const SubGridType	   __restrict__ *subgrid
-        ) {
-        #if defined(USING_INTEL_CXX_COMPILER)
-        kernel_degridder_intel(
-            jobsize, w_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
-        #elif defined(USING_GNU_CXX_COMPILER)
-        kernel_degridder_gnu(
-            jobsize, w_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
-        #else
-        printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
-        #endif
-    }
-}
+            } // end for s
+        } // end pragma parallel
+    } // end kernel_degridder
+} // end extern "C"
