@@ -46,6 +46,7 @@ namespace idg {
                 virtual std::unique_ptr<idg::kernel::cuda::Splitter> get_kernel_splitter() const override;
 
             }; // class Maxwell
+
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
