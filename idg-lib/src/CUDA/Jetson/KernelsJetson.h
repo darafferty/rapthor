@@ -15,9 +15,11 @@ namespace idg {
                     : Gridder(module, params)
                     {}
 
+                static const int max_nr_timesteps = 32;
+
                 virtual void launch(
                     cu::Stream &stream,
-                    int jobsize,
+                    int nr_baselines,
                     float w_offset,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
@@ -27,9 +29,9 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<8,8,1>(
+                        launchAsync<32,4,1>(
                             stream,
-                            jobsize,
+                            nr_baselines,
                             w_offset,
                             d_uvw,
                             d_wavenumbers,
@@ -39,6 +41,10 @@ namespace idg {
                             d_metadata,
                             d_subgrid);
                     }
+
+                virtual int get_max_nr_timesteps() {
+                    return max_nr_timesteps;
+                }
             };
 
 
@@ -48,9 +54,12 @@ namespace idg {
                     : Degridder(module, params)
                     {}
 
+                static const int max_nr_timesteps = 64;
+                static const int nr_threads = 128;
+
                 virtual void launch(
                     cu::Stream &stream,
-                    int jobsize,
+                    int nr_baselines,
                     float w_offset,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
@@ -60,9 +69,9 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<256,1,1>(
+                        launchAsync<nr_threads,1,1>(
                         stream,
-                        jobsize,
+                        nr_baselines,
                         w_offset,
                         d_uvw,
                         d_wavenumbers,
@@ -72,6 +81,10 @@ namespace idg {
                         d_metadata,
                         d_subgrid);
                     }
+
+                virtual int get_max_nr_timesteps() {
+                    return max_nr_timesteps;
+                }
             };
 
 
@@ -98,12 +111,12 @@ namespace idg {
                 {}
 
                 virtual void launch(
-                    cu::Stream &stream, int jobsize,
+                    cu::Stream &stream, int nr_subgrids,
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid)
                 {
-                    launchAsync<128, 1, 1>(stream, jobsize, d_metadata, d_subgrid, d_grid);
+                    launchAsync<128, 1, 1>(stream, nr_subgrids, d_metadata, d_subgrid, d_grid);
                 }
             };
 
@@ -115,12 +128,12 @@ namespace idg {
                 {}
 
                 virtual void launch(
-                    cu::Stream &stream, int jobsize,
+                    cu::Stream &stream, int nr_subgrids,
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid)
                 {
-                    launchAsync<128, 1, 1>(stream, jobsize, d_metadata, d_subgrid, d_grid);
+                    launchAsync<128, 1, 1>(stream, nr_subgrids, d_metadata, d_subgrid, d_grid);
                 }
             };
 
@@ -132,12 +145,13 @@ namespace idg {
                 {}
 
                 virtual void launch(
-                    cu::Stream &stream, int jobsize,
+                    cu::Stream &stream, int nr_subgrids,
                     cu::DeviceMemory &d_subgrid) override
                 {
-                    launchAsync<128,1,1>(stream, jobsize, d_subgrid);
+                    launchAsync<128,1,1>(stream, nr_subgrids, d_subgrid);
                 }
             };
+
         } // namespace cuda
     } // namespace kernel
 } // namespace idg
