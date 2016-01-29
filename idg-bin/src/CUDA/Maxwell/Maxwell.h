@@ -30,9 +30,6 @@ namespace idg {
                 /// Destructor
                 ~Maxwell() = default;
 
-                static ProxyInfo default_info();
-                static ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
-
             public:
                 static int get_max_nr_timesteps_gridder() { return 32; };
                 static int get_max_nr_timesteps_degridder() { return 64; };
