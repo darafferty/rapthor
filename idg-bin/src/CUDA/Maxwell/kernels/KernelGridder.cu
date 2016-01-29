@@ -40,8 +40,8 @@ __global__ void kernel_gridder(
 	const int y_coordinate = m.coordinate.y;
 
     // Shared data
-	__shared__ float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
-	__shared__ UVW _uvw[MAX_NR_TIMESTEPS];
+	__shared__ float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS/2];
+	__shared__ float4 _uvw[MAX_NR_TIMESTEPS];
 	__shared__ float _wavenumbers[NR_CHANNELS];
 
     // Load wavenumbers
@@ -50,12 +50,18 @@ __global__ void kernel_gridder(
 
 	// Load UVW
 	for (int time = tid; time < nr_timesteps; time += blockSize) {
-		_uvw[time] = uvw[offset + time];
+		UVW a = uvw[offset + time];
+        _uvw[time] = make_float4(a.u, a.v, a.w, 0);
     }
 
 	// Load visibilities
-	for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blockSize) {
-		_visibilities[0][0][i] = visibilities[offset][0][i];
+	for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += blockSize) {
+        float2 a = visibilities[offset][i][0];
+        float2 b = visibilities[offset][i][1];
+        float2 c = visibilities[offset][i][2];
+        float2 d = visibilities[offset][i][3];
+        _visibilities[0][i][0] = make_float4(a.x, a.y, b.x, b.y);
+        _visibilities[0][i][1] = make_float4(c.x, c.y, d.x, d.y);
     }
 
 	syncthreads();
@@ -80,10 +86,10 @@ __global__ void kernel_gridder(
 
 			// Iterate all timesteps
 			for (int time = 0; time < nr_timesteps; time++) {
-				 // Load UVW coordinates
-				float u = _uvw[time].u;
-				float v = _uvw[time].v;
-				float w = _uvw[time].w;
+                // Load UVW coordinates
+				float u = _uvw[time].x;
+				float v = _uvw[time].y;
+				float w = _uvw[time].z;
 
 				// Compute phase index
 				float phase_index = u*l + v*m + w*n;
@@ -92,17 +98,19 @@ __global__ void kernel_gridder(
 				float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
 				// Compute phasor
-                #pragma unroll 16
+                #pragma unroll 8
 				for (int chan = 0; chan < NR_CHANNELS; chan++) {
                     float wavenumber = _wavenumbers[chan];
 					float phase = (phase_index * wavenumber) - phase_offset;
 					float2 phasor = make_float2(cos(phase), sin(phase));
 
 					// Load visibilities from shared memory
-					float2 visXX = _visibilities[time][chan][0];
-					float2 visXY = _visibilities[time][chan][1];
-					float2 visYX = _visibilities[time][chan][2];
-					float2 visYY = _visibilities[time][chan][3];
+					float4 a = _visibilities[time][chan][0];
+					float4 b = _visibilities[time][chan][1];
+					float2 visXX = make_float2(a.x, a.y);
+					float2 visXY = make_float2(a.z, a.w);
+					float2 visYX = make_float2(b.x, b.y);
+					float2 visYY = make_float2(b.z, b.w);
 
 					// Multiply visibility by phasor
 					uvXX.x += phasor.x * visXX.x;
