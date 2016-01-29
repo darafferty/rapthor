@@ -12,13 +12,8 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info,
-                int max_nr_timesteps_gridder,
-                int max_nr_timesteps_degridder)
-                : CUDA(
-                    params, deviceNumber, compiler, flags, info,
-                    max_nr_timesteps_gridder,
-                    max_nr_timesteps_degridder)
+                ProxyInfo info)
+                : CUDA(params, deviceNumber, compiler, append(flags), info)
             {
                 #if defined(DEBUG)
                 cout << "Kepler::" << __func__ << endl;
@@ -28,56 +23,13 @@ namespace idg {
                 #endif
             }
 
-            ProxyInfo Kepler::default_info() {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                #endif
-
-                string srcdir = string(IDG_INSTALL_DIR)
-                    + "/lib/kernels/CUDA/Kepler";
-
-                #if defined(DEBUG)
-                cout << "Searching for source files in: " << srcdir << endl;
-                #endif
-
-                // Create temp directory
-                string tmpdir = make_tempdir();
-
-                // Create proxy info
-                ProxyInfo p = default_proxyinfo(srcdir, tmpdir);
-
-                return p;
-            }
-
-            ProxyInfo Kepler::default_proxyinfo(string srcdir, string tmpdir) {
-                ProxyInfo p;
-                p.set_path_to_src(srcdir);
-                p.set_path_to_lib(tmpdir);
-
-                string libgridder = "Gridder.ptx";
-                string libdegridder = "Degridder.ptx";
-                string libfft = "FFT.ptx";
-                string libscaler = "Scaler.ptx";
-                string libadder = "Adder.ptx";
-                string libsplitter = "Splitter.ptx";
-
-                p.add_lib(libgridder);
-                p.add_lib(libdegridder);
-                p.add_lib(libfft);
-                p.add_lib(libscaler);
-                p.add_lib(libadder);
-                p.add_lib(libsplitter);
-
-                p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
-                p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
-                p.add_src_file_to_lib(libfft, "KernelFFT.cu");
-                p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
-                p.add_src_file_to_lib(libadder, "KernelAdder.cu");
-                p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
-
-                p.set_delete_shared_objects(true);
-
-                return p;
+            Compilerflags Kepler::append(Compilerflags flags) {
+                stringstream new_flags;
+                new_flags << flags;
+                new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << GridderKepler::max_nr_timesteps;
+                new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << DegridderKepler::max_nr_timesteps;
+                new_flags << " -DNR_THREADS_DEGRIDDER=" << DegridderKepler::nr_threads;
+                return new_flags.str();
             }
 
             unique_ptr<Gridder> Kepler::get_kernel_gridder() const {
