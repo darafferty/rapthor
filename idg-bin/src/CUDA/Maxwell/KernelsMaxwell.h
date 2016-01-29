@@ -15,6 +15,8 @@ namespace idg {
                     : Gridder(module, params)
                     {}
 
+                static const int max_nr_timesteps = 32;
+
                 virtual void launch(
                     cu::Stream &stream,
                     int nr_baselines,
@@ -27,7 +29,7 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<8,8,1>(
+                        launchAsync<32,4,1>(
                             stream,
                             nr_baselines,
                             w_offset,
@@ -39,6 +41,10 @@ namespace idg {
                             d_metadata,
                             d_subgrid);
                     }
+
+                virtual int get_max_nr_timesteps() {
+                    return max_nr_timesteps;
+                }
             };
 
 
@@ -47,6 +53,9 @@ namespace idg {
                 DegridderMaxwell(cu::Module& module, const Parameters& params)
                     : Degridder(module, params)
                     {}
+
+                static const int max_nr_timesteps = 64;
+                static const int nr_threads = 128;
 
                 virtual void launch(
                     cu::Stream &stream,
@@ -60,7 +69,7 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<128,1,1>(
+                        launchAsync<nr_threads,1,1>(
                         stream,
                         nr_baselines,
                         w_offset,
@@ -72,6 +81,10 @@ namespace idg {
                         d_metadata,
                         d_subgrid);
                     }
+
+                virtual int get_max_nr_timesteps() {
+                    return max_nr_timesteps;
+                }
             };
 
 
