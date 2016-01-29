@@ -39,6 +39,10 @@ namespace idg {
                             d_metadata,
                             d_subgrid);
                     }
+
+                virtual int get_max_nr_timesteps() {
+                    return 32;
+                }
             };
 
 
@@ -72,6 +76,10 @@ namespace idg {
                         d_metadata,
                         d_subgrid);
                     }
+
+                virtual int get_max_nr_timesteps() {
+                    return 64;
+                }
             };
 
 
