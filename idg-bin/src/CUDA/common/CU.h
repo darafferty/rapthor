@@ -201,10 +201,17 @@ namespace cu {
 			DeviceMemory(size_t size) {
 				_size = size;
 				checkCudaCall(cuMemAlloc(&_ptr, size));
+                free = true;
 			}
 
+            DeviceMemory(void *ptr) {
+                cuMemHostGetDevicePointer(&_ptr, ptr, 0);
+            }
+
 			~DeviceMemory() {
-				checkCudaCall(cuMemFree(_ptr));
+                if (free) {
+    				checkCudaCall(cuMemFree(_ptr));
+                }
 			}
 
 			operator CUdeviceptr() {
@@ -234,6 +241,7 @@ namespace cu {
 		private:
 			CUdeviceptr _ptr;
 			size_t _size;
+            bool free = false;
 
 	};
 
