@@ -50,7 +50,7 @@ endif()
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
 set (BUILD_SHARED_LIBS FALSE)
-else() 
+else()
 set (BUILD_SHARED_LIBS TRUE)
 endif()
 
@@ -106,7 +106,7 @@ endif()
 #    find_package(FFTW3)
 # endif (BUILD_LIB_CPU)
 
-# find CUDA environment 
+# find CUDA environment
 if (BUILD_LIB_CUDA)
     find_package(CUDA)
     find_package(CUDAdriver)
