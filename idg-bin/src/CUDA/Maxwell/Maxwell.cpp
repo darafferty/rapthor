@@ -1,4 +1,3 @@
-#include "idg-config.h"
 #include "Maxwell.h"
 
 using namespace std;
@@ -27,40 +26,7 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-
-                find_kernel_functions();
             }
-
-            // TODO: this method is deprecated
-            #if 0
-            int get_jobsize(int nr_subgrids, Parameters mParams, cu::Device &device, int nr_streams) {
-                // Get parameters
-                auto nr_time= mParams.get_nr_time();
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-
-                // Set jobsize to match available gpu memory
-                uint64_t device_memory_required = SIZEOF_VISIBILITIES + SIZEOF_UVW + SIZEOF_SUBGRIDS + SIZEOF_METADATA;
-                uint64_t device_memory_available = device.free_memory();
-                int jobsize = (device_memory_available * 0.7) / (device_memory_required * nr_streams);
-
-                // Make sure that jobsize isn't too large
-                int max_jobsize = nr_subgrids / 8;
-                if (jobsize >= max_jobsize) {
-                    jobsize = max_jobsize;
-                }
-
-                #if defined (DEBUG)
-                clog << "nr_subgrids: " << nr_subgrids << endl;
-                clog << "jobsize:     " << jobsize << endl;
-                clog << "free size:   " << device_memory_available * 1e-9 << " Gb" << endl;
-                clog << "buffersize:  " << nr_streams * jobsize * device_memory_required * 1e-9 << " Gb" << endl;
-                #endif
-
-                return jobsize;
-            }
-            #endif
 
             ProxyInfo Maxwell::default_info() {
                 #if defined(DEBUG)

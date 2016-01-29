@@ -3,8 +3,8 @@
 #include "Types.h"
 #include "math.cu"
 
-#define MAX_NR_TIMESTEPS 32
-#define NR_THREADS 256
+#define MAX_NR_TIMESTEPS MAX_NR_TIMESTEPS_DEGRIDDER
+#define NR_THREADS 128
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 extern "C" {

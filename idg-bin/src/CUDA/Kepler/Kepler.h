@@ -36,7 +36,7 @@ namespace idg {
 
             public:
                 static int get_max_nr_timesteps_gridder() { return 32; };
-                static int get_max_nr_timesteps_degridder() { return 32; };
+                static int get_max_nr_timesteps_degridder() { return 64; };
 
             public:
                 virtual std::unique_ptr<idg::kernel::cuda::Gridder> get_kernel_gridder() const override;
