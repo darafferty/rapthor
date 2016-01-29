@@ -2,11 +2,12 @@ project(test-hybrid-maxwellhaswellep.x)
 
 # Set external header files
 include_directories(
+  ${CUDA_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/utility
   ${CMAKE_SOURCE_DIR}/src
  )
 
-set (${PROJECT_NAME}_sources 
+set (${PROJECT_NAME}_sources
   main.cpp
 )
 
@@ -14,7 +15,7 @@ set (${PROJECT_NAME}_sources
 add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
-link_directories (${LIBRARY_OUTPUT_PATH}) 
+link_directories (${LIBRARY_OUTPUT_PATH})
 
 set(LINK_LIRBRARIES idg-utility idg-hybrid-cuda ${CMAKE_DL_LIBS})
 

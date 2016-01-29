@@ -60,7 +60,7 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<256,1,1>(
+                        launchAsync<128,1,1>(
                         stream,
                         nr_baselines,
                         w_offset,
@@ -138,6 +138,7 @@ namespace idg {
                     launchAsync<128,1,1>(stream, nr_subgrids, d_subgrid);
                 }
             };
+
         } // namespace cuda
     } // namespace kernel
 } // namespace idg

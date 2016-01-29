@@ -108,10 +108,17 @@ void run() {
     PROXYNAME proxy(params, deviceNumber);
     clog << endl;
 
+    // Print all CUDA devices
+    clog << ">>> CUDA devices" << endl;
+    printDevices(deviceNumber);
+
     // Start profiling
     cuProfilerStart();
 
     // Run
+    clog << ">>> Run fft" << endl;
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
+
     clog << ">>> Run gridder" << endl;
     proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
