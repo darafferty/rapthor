@@ -8,6 +8,7 @@ if (
     cmake_policy(SET CMP0022 NEW)
 endif()
 
+
 # the project
 project(ImageDomainGridder CXX)
 set (VERSION_MAJOR 0)
@@ -15,8 +16,10 @@ set (VERSION_MINOR 1)
 set (VERSION_PATCH 1)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
+
 # set cmake module path
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+
 
 # options
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
@@ -33,12 +36,14 @@ option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (BUILD_WITH_ARDUINO_POWER_SENSOR "Measure power using arduino power sensor" OFF)
 option (BUILD_WITH_LIKWID_POWER_SENSOR "Measure power using likiwd library" OFF)
 
+
 # Power sensor
 if (BUILD_WITH_ARDUINO_POWER_SENSOR)
     set(POWER_SENSOR "/dev/ttyUSB0" CACHE FILEPATH "Power sensor")
     set(POWER_FILE "power" CACHE FILEPATH "File to dump power consumption")
     set(MEASURE_POWER_ARDUINO TRUE)
 endif()
+
 
 # Likwid power sensor
 if (BUILD_WITH_LIKWID_POWER_SENSOR)
@@ -47,6 +52,7 @@ if (BUILD_WITH_LIKWID_POWER_SENSOR)
     set(MEASURE_POWER_LIKWID TRUE)
 endif()
 
+
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
 set (BUILD_SHARED_LIBS FALSE)
@@ -54,11 +60,13 @@ else()
 set (BUILD_SHARED_LIBS TRUE)
 endif()
 
+
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR} CACHE PATH
     "IDG install prefix" FORCE)
 endif()
+
 
 # Compiler stettings:
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -99,6 +107,7 @@ else()
     message(STATUS "OpenMP support not detected")
 endif()
 
+
 # TODO: make proper use of FindFFTW3
 # Now, when using MKL the include directory '$MKLROOT/include/fftw' is unknown
 # and needs to be put into the CPATH to make it work
@@ -120,7 +129,7 @@ endif (BUILD_LIB_OPENCL)
 
 # write config file, included in all files of the project
 configure_file (
-  "${PROJECT_SOURCE_DIR}/src/idg-config.h.in"
+  "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
   "${PROJECT_BINARY_DIR}/src/idg-config.h"
   )
 include_directories (${CMAKE_BINARY_DIR}/src)
@@ -138,9 +147,10 @@ include_directories (${CMAKE_SOURCE_DIR}/src)
 
 # write file to initialize enoviroment
 configure_file (
-  "${PROJECT_SOURCE_DIR}/init-environment.sh.in"
+  "${PROJECT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
   "${PROJECT_BINARY_DIR}/init-environment.sh"
   )
+
 
 # add subfolders
 add_subdirectory(src)
