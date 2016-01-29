@@ -28,6 +28,7 @@ namespace idg {
                 new_flags << flags;
                 new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << GridderKepler::max_nr_timesteps;
                 new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << DegridderKepler::max_nr_timesteps;
+                new_flags << " -DNR_THREADS_DEGRIDDER=" << DegridderKepler::nr_threads;
                 return new_flags.str();
             }
 
