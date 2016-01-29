@@ -4,7 +4,7 @@
 #include "math.cu"
 
 #define MAX_NR_TIMESTEPS MAX_NR_TIMESTEPS_DEGRIDDER
-#define NR_THREADS 128
+#define NR_THREADS NR_THREADS_DEGRIDDER
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 extern "C" {

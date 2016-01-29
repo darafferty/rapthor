@@ -55,6 +55,7 @@ namespace idg {
                     {}
 
                 static const int max_nr_timesteps = 64;
+                static const int nr_threads = 128;
 
                 virtual void launch(
                     cu::Stream &stream,
@@ -68,7 +69,7 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<128,1,1>(
+                        launchAsync<nr_threads,1,1>(
                         stream,
                         nr_baselines,
                         w_offset,
