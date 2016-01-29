@@ -138,6 +138,7 @@ namespace idg {
                     launchAsync<128,1,1>(stream, nr_subgrids, d_subgrid);
                 }
             };
+
         } // namespace cuda
     } // namespace kernel
 } // namespace idg
