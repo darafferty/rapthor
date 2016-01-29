@@ -12,7 +12,7 @@ __global__ void kernel_scaler(
 	SubGridType __restrict__ subgrid
 	) {
     // Compute scaling factor
-    float scale = 1 / (float(SUBGRIDSIZE)*float(SUBGRIDSIZE)) * 2;
+    float scale = 1 / (float(SUBGRIDSIZE)*float(SUBGRIDSIZE));
 
 	// Iterate all pixels in subgrid
 	for (int y = threadIdx.y; y < SUBGRIDSIZE; y += blockDim.y) {
