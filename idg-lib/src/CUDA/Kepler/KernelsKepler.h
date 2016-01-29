@@ -27,7 +27,7 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) override
                     {
-                        launchAsync<8,8,1>(
+                        launchAsync<16,16,1>(
                             stream,
                             nr_baselines,
                             w_offset,
