@@ -55,13 +55,6 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // Initialize metadata
-                auto max_nr_timesteps_gridder = cuda.get_max_nr_timesteps_gridder();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size, max_nr_timesteps_gridder);
-                auto nr_subgrids = plan.get_nr_subgrids();
-                const Metadata *metadata = plan.get_metadata_ptr();
-
                 // Constants
                 auto nr_time = mParams.get_nr_time();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -74,6 +67,13 @@ namespace idg {
                 unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = cuda.get_kernel_gridder();
                 unique_ptr<idg::kernel::cuda::Scaler> kernel_scaler = cuda.get_kernel_scaler();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
+
+                // Initialize metadata
+                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size, max_nr_timesteps);
+                auto nr_subgrids = plan.get_nr_subgrids();
+                const Metadata *metadata = plan.get_metadata_ptr();
 
 				// Load context
 				cu::Context &context = cuda.get_context();
@@ -276,14 +276,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // initialize metadata
-                auto max_nr_timesteps_degridder = cuda.get_max_nr_timesteps_degridder();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size, max_nr_timesteps_degridder);
-                auto nr_subgrids = plan.get_nr_subgrids();
-                const Metadata *metadata = plan.get_metadata_ptr();
-
-                // Constants
+               // Constants
                 auto nr_time = mParams.get_nr_time();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_channels = mParams.get_nr_channels();
@@ -295,7 +288,14 @@ namespace idg {
                 unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = cuda.get_kernel_degridder();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
 
-				// Load context
+                // Initialize metadata
+                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size, max_nr_timesteps);
+                auto nr_subgrids = plan.get_nr_subgrids();
+                const Metadata *metadata = plan.get_metadata_ptr();
+
+                // Load context
 				cu::Context &context = cuda.get_context();
 
                 // Initialize

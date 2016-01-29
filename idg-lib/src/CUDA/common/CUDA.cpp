@@ -22,12 +22,8 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info,
-                int max_nr_timesteps_gridder,
-                int max_nr_timesteps_degridder)
-              : mInfo(info),
-                max_nr_timesteps_gridder(max_nr_timesteps_gridder),
-                max_nr_timesteps_degridder(max_nr_timesteps_degridder)
+                ProxyInfo info)
+              : mInfo(info)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -312,13 +308,6 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps_gridder);
-                auto nr_subgrids = plan.get_nr_subgrids();
-                const Metadata *metadata = plan.get_metadata_ptr();
-
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -335,6 +324,14 @@ namespace idg {
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
                 unique_ptr<Adder> kernel_adder = get_kernel_adder();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
+
+                // Initialize metadata
+                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size,
+                                        max_nr_timesteps);
+                auto nr_subgrids = plan.get_nr_subgrids();
+                const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
                 cu::Context &context = get_context();
@@ -519,14 +516,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps_degridder);
-                auto nr_subgrids = plan.get_nr_subgrids();
-                const Metadata *metadata = plan.get_metadata_ptr();
-
-                // Constants
+               // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
@@ -541,6 +531,14 @@ namespace idg {
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
                 unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
+
+                // Initialize metadata
+                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
+                auto plan = create_plan(uvw, wavenumbers, baselines,
+                                        aterm_offsets, kernel_size,
+                                        max_nr_timesteps);
+                auto nr_subgrids = plan.get_nr_subgrids();
+                const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
                 cu::Context &context = get_context();
@@ -728,13 +726,9 @@ namespace idg {
                 string compiler_parameters = " -arch=compute_" + to_string(capability) +
                                              " -code=sm_" + to_string(capability);
 
-                stringstream memory_parameters;
-                memory_parameters << " -DMAX_NR_TIMESTEPS_GRIDDER=" << max_nr_timesteps_gridder;
-                memory_parameters << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << max_nr_timesteps_degridder;
-                string parameters = " " + flags +
-                                    " " + compiler_parameters +
-                                    " " + mparameters +
-                                    " " + memory_parameters.str().c_str();
+                string parameters = " " + compiler_parameters +
+                                    " " + flags +
+                                    " " + mparameters;
 
                 vector<string> v = mInfo.get_lib_names();
                 #pragma omp parallel for

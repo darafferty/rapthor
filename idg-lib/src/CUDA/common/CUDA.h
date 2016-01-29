@@ -52,13 +52,13 @@ namespace idg {
             class CUDA : public Proxy {
             public:
                 /// Constructors
-                CUDA(Parameters params,
-                     unsigned deviceNumber = 0,
-                     Compiler compiler = default_compiler(),
-                     Compilerflags flags = default_compiler_flags(),
-                     ProxyInfo info = default_info(),
-                     int max_nr_timesteps_gridder = 1,
-                     int max_nr_timesteps_degridder = 1);
+                CUDA(
+                    Parameters params,
+                    unsigned deviceNumber = 0,
+                    Compiler compiler = default_compiler(),
+                    Compilerflags flags = default_compiler_flags(),
+                    ProxyInfo info = default_info()
+                );
 
                 ~CUDA();
 
@@ -139,8 +139,6 @@ namespace idg {
                 cu::Device *device;
                 cu::Context *context;
                 ProxyInfo mInfo; // info about shared object files
-                const int max_nr_timesteps_gridder;
-                const int max_nr_timesteps_degridder;
 
                 // store the ptr to Module, which each loads an .ptx-file
                 std::vector<cu::Module*> modules;

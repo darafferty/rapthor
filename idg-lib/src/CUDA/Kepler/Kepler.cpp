@@ -12,13 +12,8 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info,
-                int max_nr_timesteps_gridder,
-                int max_nr_timesteps_degridder)
-                : CUDA(
-                    params, deviceNumber, compiler, flags, info,
-                    max_nr_timesteps_gridder,
-                    max_nr_timesteps_degridder)
+                ProxyInfo info)
+                : CUDA(params, deviceNumber, compiler, append(flags), info)
             {
                 #if defined(DEBUG)
                 cout << "Kepler::" << __func__ << endl;
@@ -26,6 +21,14 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
+            }
+
+            Compilerflags Kepler::append(Compilerflags flags) {
+                stringstream new_flags;
+                new_flags << flags;
+                new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << 32;
+                new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << 64;
+                return new_flags.str();
             }
 
             unique_ptr<Gridder> Kepler::get_kernel_gridder() const {

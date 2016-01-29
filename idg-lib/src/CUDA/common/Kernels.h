@@ -40,6 +40,8 @@ namespace idg {
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) = 0;
 
+                virtual int get_max_nr_timesteps() = 0;
+
                 template <int blockX, int blockY, int blockZ>
                 void launchAsync(
                     cu::Stream &stream,
@@ -110,6 +112,8 @@ namespace idg {
                     cu::DeviceMemory &d_aterm,
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid) = 0;
+
+                virtual int get_max_nr_timesteps() = 0;
 
                 template <int blockX, int blockY, int blockZ>
                 void launchAsync(
