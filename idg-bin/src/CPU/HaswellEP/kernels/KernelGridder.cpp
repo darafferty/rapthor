@@ -7,7 +7,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#if defined(USING_INTEL_CXX_COMPILER)
+#if defined(__INTEL_COMPILER)
+#define USE_VML
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
 #endif
@@ -15,8 +16,7 @@
 #include "Types.h"
 
 extern "C" {
-#if defined(USING_INTEL_CXX_COMPILER)
-void kernel_gridder_intel(
+void kernel_gridder(
 	const int jobsize, const float w_offset,
 	const UVWType		   __restrict__ *uvw,
 	const WavenumberType   __restrict__ *wavenumbers,
@@ -37,6 +37,7 @@ void kernel_gridder_intel(
     // Iterate all subgrids
     #pragma omp for
 	for (int s = 0; s < jobsize; s++) {
+
         // Load metadata
         const Metadata m = (*metadata)[s];
         const int offset = (m.baseline_offset - baseline_offset_1)
@@ -66,6 +67,7 @@ void kernel_gridder_intel(
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
+
             // Load UVW coordinates
             float u = (*uvw)[offset + time].u;
             float v = (*uvw)[offset + time].v;
@@ -76,7 +78,7 @@ void kernel_gridder_intel(
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     // Compute l,m,n
                     float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                    float m =  (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                    float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
                     float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
                     // Compute phase index
@@ -89,6 +91,7 @@ void kernel_gridder_intel(
 
             // Load visibilities
             for (int chan = 0; chan < NR_CHANNELS; chan++) {
+
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     vis[pol] = (*visibilities)[offset + time][chan][pol];
                 }
@@ -102,10 +105,19 @@ void kernel_gridder_intel(
                 }
 
                 // Compute phasor
+                #if defined(USE_VML)
                 vmsSinCos(SUBGRIDSIZE * SUBGRIDSIZE,
                 (const float *) &phase[0][0],
                                 &phasor_imag[0][0],
                                 &phasor_real[0][0], VML_PRECISION);
+                #else
+                for (int y = 0; y < SUBGRIDSIZE; y++) {
+                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                        phasor_imag[y][x] = sinf(phase[y][x]);
+                        phasor_real[y][x] = cosf(phase[y][x]);
+                    }
+                }
+                #endif
 
                 // Update current subgrid
                 #pragma unroll_and_jam
@@ -118,8 +130,9 @@ void kernel_gridder_intel(
                         }
                     }
                 }
-            }
-        }
+
+            } // end for chan
+        } // end for time
 
         // Apply aterm and spheroidal and store result
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -178,47 +191,9 @@ void kernel_gridder_intel(
                 }
             }
         }
-    }
-    }
-}
-#endif
 
-#if defined(USING_GNU_CXX_COMPILER)
-void kernel_gridder_gnu(
-	const int jobsize, const float w_offset,
-	const UVWType		   __restrict__ *uvw,
-	const WavenumberType   __restrict__ *wavenumbers,
-	const VisibilitiesType __restrict__ *visibilities,
-	const SpheroidalType   __restrict__ *spheroidal,
-	const ATermType		   __restrict__ *aterm,
-	const MetadataType	   __restrict__ *metadata,
-	SubGridType			   __restrict__ *subgrid
-	) {
-    printf("%s not implemented yet\n", __func__);
-}
-#endif
+        } // end for s
+    } // end pragma parallel
+} // end kernel_gridder
 
-void kernel_gridder(
-	const int jobsize, const float w_offset,
-	const UVWType		   __restrict__ *uvw,
-	const WavenumberType   __restrict__ *wavenumbers,
-	const VisibilitiesType __restrict__ *visibilities,
-	const SpheroidalType   __restrict__ *spheroidal,
-	const ATermType		   __restrict__ *aterm,
-	const MetadataType	   __restrict__ *metadata,
-	SubGridType			   __restrict__ *subgrid
-	) {
-    #if defined(USING_INTEL_CXX_COMPILER)
-    kernel_gridder_intel(
-          jobsize, w_offset, uvw, wavenumbers,
-          visibilities, spheroidal, aterm, metadata, subgrid);
-    #elif defined(USING_GNU_CXX_COMPILER)
-    kernel_gridder_gnu(
-          jobsize, w_offset, uvw, wavenumbers,
-          visibilities, spheroidal, aterm, metadata, subgrid);
-    #else
-    printf("%s not implemented yet, use Intel or GNU compiler\n", __func__);
-    return;
-    #endif
-}
-}
+} // end extern "C"
