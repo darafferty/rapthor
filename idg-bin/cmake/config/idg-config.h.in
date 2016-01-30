@@ -18,10 +18,10 @@
 #cmakedefine REPORT_VERBOSE
 #cmakedefine REPORT_TOTAL
 
-#cmakedefine USING_CLANG_CXX_COMPILER
-#cmakedefine USING_GNU_CXX_COMPILER
-#cmakedefine USING_INTEL_CXX_COMPILER
-#cmakedefine USING_MSVC_CXX_COMPILER
+#cmakedefine CLANG_CXX_COMPILER
+#cmakedefine GNU_CXX_COMPILER
+#cmakedefine INTEL_CXX_COMPILER
+#cmakedefine MSVC_CXX_COMPILER
 
 #cmakedefine MEASURE_POWER_LIKWID
 #cmakedefine MEASURE_POWER_ARDUINO
