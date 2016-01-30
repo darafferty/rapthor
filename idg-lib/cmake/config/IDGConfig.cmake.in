@@ -1,0 +1,51 @@
+#  PRELIMINARY Config file for the IDG package
+#  It defines the following variables
+#  IDG_INCLUDE_DIR - include directories
+#  IDG_CPU_LIB     - libraries to link against
+#  IDG_KNC_LIB     - libraries to link against
+#  Note: this is a very simplified config file, as all path are given
+#  in full path etc.; but, it works for the following scenario:
+#  (1) install IDG using CMAKE_INSTALL_PREFIX, say $(HOME)/opt/idg
+#  (2) use the installed library in the cmake nproject as
+#      find_package(IDG NO_MODULE)
+#  (3) run such as $ cmake -DIDG_DIR=$(HOME)/opt/idg ..
+
+# Compute paths
+get_filename_component(IDG_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(IDG_PREFIX_DIR "${IDG_CMAKE_DIR}" ABSOLUTE)
+
+set(IDG_INCLUDE_DIR "${IDG_PREFIX_DIR}/include"
+    CACHE STRING "IDG include directory")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+# include("${IDG_CMAKE_DIR}/IDGTargets.cmake")
+
+if (@BUILD_LIB_CPU@)
+set(IDG_CPU_LIB "${IDG_PREFIX_DIR}/lib/libidg-cpu.so"
+    CACHE STRING "IDG CPU library")
+endif()
+
+if (@BUILD_LIB_CUDA@)
+set(IDG_CUDA_LIB "${IDG_PREFIX_DIR}/lib/libidg-cuda.so"
+    CACHE STRING "IDG CUDA library")
+endif()
+
+if (@BUILD_LIB_OPENCL@)
+set(IDG_OPENCL_LIB "${IDG_PREFIX_DIR}/lib/libidg-opencl.so"
+    CACHE STRING "IDG OpenCL library")
+endif()
+
+if (@BUILD_LIB_CPU@ AND @BUILD_LIB_CUDA@)
+set(IDG_HYBRID_CUDA_LIB "${IDG_PREFIX_DIR}/lib/libidg-hybrid-cuda.so"
+    CACHE STRING "IDG hybrid CUDA library")
+endif()
+
+if (@BUILD_LIB_KNC@)
+set(IDG_KNC_LIB "${IDG_PREFIX_DIR}/lib/libidg-knc.so"
+    CACHE STRING "IDG KNC library")
+endif()
+
+if (@BUILD_WITH_PYTHON@)
+set(IDG_PYTHON_MODULE_PATH "${IDG_PREFIX_DIR}/lib/python2.7/dist-packages"
+    CACHE STRING "IDG python module path")
+endif()
