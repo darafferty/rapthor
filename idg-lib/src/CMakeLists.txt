@@ -59,17 +59,15 @@ add_library(idg-cpu
   $<TARGET_OBJECTS:cpu-sandybridgeep>
 )
 
+set_target_properties(idg-cpu PROPERTIES
+                      PUBLIC_HEADER idg-cpu.h)
+
 install(TARGETS idg-cpu
+  EXPORT  idgTargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
-)
-
-install(
-    FILES
-    idg-cpu.h
-    DESTINATION
-    include
+  PUBLIC_HEADER DESTINATION include
 )
 endif()
 
@@ -86,10 +84,14 @@ add_library(idg-cuda
   $<TARGET_OBJECTS:cuda-jetson>
 )
 
+set_target_properties(idg-cuda PROPERTIES
+                      PUBLIC_HEADER idg-cuda.h)
+
 install(TARGETS idg-cuda
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
+  PUBLIC_HEADER DESTINATION include
 )
 
 set(LINK_LIRBRARIES ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
@@ -97,13 +99,6 @@ set(LINK_LIRBRARIES ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
 target_link_libraries (
   idg-cuda
   ${LINK_LIRBRARIES}
-)
-
-install(
-    FILES
-    idg-cuda.h
-    DESTINATION
-    include
 )
 endif(BUILD_LIB_CUDA)
 
@@ -131,17 +126,14 @@ target_link_libraries (
   ${LINK_LIRBRARIES}
 )
 
+set_target_properties(idg-hybrid-cuda PROPERTIES
+                      PUBLIC_HEADER idg-hybrid-cuda.h)
+
 install(TARGETS idg-hybrid-cuda
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
-)
-
-install(
-    FILES
-    idg-hybrid-cuda.h
-    DESTINATION
-    include
+  PUBLIC_HEADER DESTINATION include
 )
 endif()
 
@@ -157,17 +149,14 @@ add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-reference>
 )
 
+set_target_properties(idg-opencl PROPERTIES
+                      PUBLIC_HEADER idg-opencl.h)
+
 install(TARGETS idg-opencl
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
-)
-
-install(
-    FILES
-    idg-opencl.h
-    DESTINATION
-    include
+  PUBLIC_HEADER DESTINATION include
 )
 endif(BUILD_LIB_OPENCL)
 
@@ -177,22 +166,18 @@ endif(BUILD_LIB_OPENCL)
 # build libidg-knc, containing all common code #
 ################################################
 if (BUILD_LIB_KNC)
-
 add_library(idg-knc
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:hybrid-knc>
 )
 
+set_target_properties(idg-knc PROPERTIES
+                      PUBLIC_HEADER idg-knc.h)
+
 install(TARGETS idg-knc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
-)
-
-install(
-    FILES
-    idg-knc.h
-    DESTINATION
-    include
+  PUBLIC_HEADER DESTINATION include
 )
 endif(BUILD_LIB_KNC)

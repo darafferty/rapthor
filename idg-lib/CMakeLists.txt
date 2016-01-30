@@ -166,3 +166,22 @@ endif (BUILD_WITH_EXAMPLES)
 if (BUILD_WITH_TESTS)
 add_subdirectory(tests)
 endif (BUILD_WITH_TESTS)
+
+
+#####################################################
+# Create IDGConfig.cmake and IDGConfigVersion.cmake #
+# for other cmake projects to make use of IDG       #
+#####################################################
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfig.cmake.in"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake" @ONLY)
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfigVersion.cmake.in"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake" @ONLY)
+
+install(FILES
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_PREFIX})
