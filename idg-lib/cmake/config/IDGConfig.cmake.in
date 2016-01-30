@@ -1,8 +1,12 @@
 #  PRELIMINARY Config file for the IDG package
 #  It defines the following variables
-#  IDG_INCLUDE_DIR - include directories
-#  IDG_CPU_LIB     - libraries to link against
-#  IDG_KNC_LIB     - libraries to link against
+#  IDG_INCLUDE_DIR     - include directories
+#  IDG_CPU_LIB         - libraries to link against
+#  IDG_CUDA_LIB        - libraries to link against
+#  IDG_HYBRID_CUDA_LIB - libraries to link against
+#  IDG_OPENCL_LIB      - libraries to link against
+#  IDG_KNC_LIB         - libraries to link against
+#  IDG_PYTHON_MODULE_PATH - path to 'idg' python module
 #  Note: this is a very simplified config file, as all path are given
 #  in full path etc.; but, it works for the following scenario:
 #  (1) install IDG using CMAKE_INSTALL_PREFIX, say $(HOME)/opt/idg

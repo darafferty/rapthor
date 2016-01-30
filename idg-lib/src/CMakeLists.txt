@@ -63,12 +63,13 @@ set_target_properties(idg-cpu PROPERTIES
                       PUBLIC_HEADER idg-cpu.h)
 
 install(TARGETS idg-cpu
-  EXPORT  idgTargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
   PUBLIC_HEADER DESTINATION include
 )
+# use "EXPORT IDGTargets" above later?
+
 endif()
 
 
