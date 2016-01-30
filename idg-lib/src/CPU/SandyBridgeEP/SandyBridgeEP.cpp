@@ -58,7 +58,7 @@ namespace idg {
 
         string SandyBridgeEP::default_compiler()
         {
-            #if defined(USING_GNU_CXX_COMPILER)
+            #if defined(GNU_CXX_COMPILER)
             return "g++";
             #else
             return "icpc";
@@ -78,7 +78,7 @@ namespace idg {
             intel_flags += " -lmkl_avx -lmkl_vml_avx -lmkl_avx2 -lmkl_vml_avx2";
             #endif
 
-            #if defined(USING_GNU_CXX_COMPILER)
+            #if defined(GNU_CXX_COMPILER)
             if (debug == IDG_BUILD_TYPE)
                 return "-Wall -g -fopenmp -lfftw3f";
             else if (relwithdebinfo == IDG_BUILD_TYPE)

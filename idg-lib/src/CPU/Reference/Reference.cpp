@@ -52,7 +52,7 @@ namespace idg {
 
             string Reference::default_compiler()
             {
-                #if defined(USING_INTEL_CXX_COMPILER)
+                #if defined(INTEL_CXX_COMPILER)
                 return "icpc";
                 #else
                 return "g++";
@@ -65,7 +65,7 @@ namespace idg {
                 string debug = "Debug";
                 string relwithdebinfo = "RelWithDebInfo";
 
-                #if defined(USING_INTEL_CXX_COMPILER)
+                #if defined(INTEL_CXX_COMPILER)
                 // Settings for the intel compiler
                 if (debug == IDG_BUILD_TYPE)
                     return "-Wall -g -DDEBUG -openmp -mkl -lmkl_def";

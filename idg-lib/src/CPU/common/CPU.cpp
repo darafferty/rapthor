@@ -806,15 +806,7 @@ namespace idg {
                   mParams.get_grid_size(),
                   mParams.get_subgrid_size());
 
-                string compiler_parameters;
-                #if defined(USING_GNU_CXX_COMPILER)
-                compiler_parameters = "-DUSING_GNU_CXX_COMPILER";
-                #elif defined(USING_INTEL_CXX_COMPILER)
-                compiler_parameters = "-DUSING_INTEL_CXX_COMPILER";
-                #endif
-
-                string parameters = " " + flags + " " + mparameters +
-                                    " " + compiler_parameters;
+                string parameters = " " + flags + " " + mparameters;
 
                 vector<string> v = mInfo.get_lib_names();
 

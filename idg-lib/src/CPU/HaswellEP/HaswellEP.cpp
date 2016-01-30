@@ -58,7 +58,7 @@ namespace idg {
 
         string HaswellEP::default_compiler()
         {
-            #if defined(USING_GNU_CXX_COMPILER)
+            #if defined(GNU_CXX_COMPILER)
             return "g++";
             #else
             return "icpc";
@@ -78,7 +78,7 @@ namespace idg {
             intel_flags += " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
             #endif
 
-            #if defined(USING_GNU_CXX_COMPILER)
+            #if defined(GNU_CXX_COMPILER)
             // Settings for gcc
             if (debug == IDG_BUILD_TYPE)
                 return "-Wall -g " + gnu_flags_wo_mkl;
