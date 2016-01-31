@@ -1,4 +1,4 @@
-## Quick installation guide:    
+# Quick installation guide:      
 
 git clone https://gitlab.com/astron-dome/image-domain-gridder.git     
 cd image-domain-gridder     
@@ -26,3 +26,21 @@ All libraries are installed in '\<installpath\>/lib'. The header files in
 '\<installpath\>/include'. The Python module in
 '\<installpath\>/lib/python2.7/dist-packages'. Make sure that your
 LD_LIBRARY_PATH and PYTHONPATH are set as appropiate.      
+
+
+# Using IDG in your own cmake project:
+
+In your CMakeLists.txt file, use for instance:     
+
+*find_package(IDG NO_MODULE)*         
+
+(See more on the find_package command in the cmake documentation.)      
+
+When building your project, use CMAKE_PREFIX_PATH or IDG_DIR    
+
+*cmake -DCMAKE_PREFIX_PATH=\<idg\_install\_path\> \<project\_src\_path\>*
+     
+or       
+
+*cmake -DIDG_DIR=\<idg\_install\_path\> \<project\_src\_path\>*
+
