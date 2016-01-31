@@ -1,7 +1,7 @@
 # Quick installation guide:      
 
 mkdir idg; cd idg     
-git clone https://gitlab.com/astron-idg/code.git
+git clone https://gitlab.com/astron-idg/code.git      
 cd code     
 mkdir build; cd build           
 cmake -DCMAKE_INSTALL_PREFIX=\<idg\_install\_path\> ..       
@@ -9,7 +9,7 @@ make install
 [ source init-environment.sh ]         
 
 ## Installation options:      
-(Best: use 'ccmake' to configure all options.)       
+(Best: use 'ccmake' or 'cmake -i' to configure all options.)       
 
 * BUILD_STATIC_LIBS: build static libraries, instead of shared ones       
 * BUILD_LIB_CPU: build library 'libidg-cpu' for usage on CPU's      
