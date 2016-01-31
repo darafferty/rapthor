@@ -1,11 +1,12 @@
 # Quick installation guide:      
 
-git clone https://gitlab.com/astron-dome/image-domain-gridder.git     
-cd image-domain-gridder     
+mkdir idg; cd idg     
+git clone https://gitlab.com/astron-idg/code.git
+cd code     
 mkdir build; cd build           
-cmake -DCMAKE_INSTALL_PREFIX=\<installpath\> ..       
+cmake -DCMAKE_INSTALL_PREFIX=\<idg\_install\_path\> ..       
 make install            
-source init-environment.sh         
+[ source init-environment.sh ]         
 
 ## Installation options:      
 (Best: use 'ccmake' to configure all options.)       
@@ -32,15 +33,15 @@ LD_LIBRARY_PATH and PYTHONPATH are set as appropiate.
 
 In your CMakeLists.txt file, use for instance:     
 
-*find_package(IDG NO_MODULE)*         
+*find_package(IDG  NO_MODULE)*         
 
 (See more on the find_package command in the cmake documentation.)      
 
 When building your project, use CMAKE_PREFIX_PATH or IDG_DIR    
 
-*cmake -DCMAKE_PREFIX_PATH=\<idg\_install\_path\> \<project\_src\_path\>*
+*cmake  -DCMAKE_PREFIX_PATH=\<idg\_install\_path\>  \<project\_src\_path\>*
      
 or       
 
-*cmake -DIDG_DIR=\<idg\_install\_path\> \<project\_src\_path\>*
+*cmake  -DIDG_DIR=\<idg\_install\_path\>  \<project\_src\_path\>*
 
