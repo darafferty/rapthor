@@ -57,6 +57,8 @@ set(IDG_PYTHON_MODULE_PATH "${IDG_PREFIX_DIR}/lib/python2.7/dist-packages"
 endif()
 
 if (@BUILD_WITH_EXAMPLES@ OR @BUILD_WITH_TESTS@)
+set(IDG_UTILITY_INCLUDE_DIR "${IDG_PREFIX_DIR}/include/utility"
+    CACHE STRING "IDG utility include directory")
 set(IDG_UTILITY_LIB "${IDG_PREFIX_DIR}/lib/libidg-utility.so"
     CACHE STRING "IDG utility library")
 endif()
