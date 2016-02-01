@@ -31,6 +31,8 @@ LD_LIBRARY_PATH and PYTHONPATH are set as appropiate.
 
 # Using IDG in your own cmake project:
 
+## Finding IDG    
+
 In your CMakeLists.txt file, use for instance:     
 
 *find_package(IDG  NO_MODULE)*         
@@ -45,3 +47,9 @@ or
 
 *cmake  -DIDG_DIR=\<idg\_install\_path\>  \<project\_src\_path\>*
 
+## Linking against IDG
+
+For instance, for the CPU library, include the "idg-cpu." in your source file. In cmake, set the include path and link to the libarary:     
+
+*include_directories (${IDG_INCLUDE_DIR})*    
+*target_link_libraries (a.out ${IDG_CPU_LIB})*      
