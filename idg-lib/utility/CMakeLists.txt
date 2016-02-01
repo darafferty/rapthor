@@ -13,15 +13,13 @@ add_library(idg-utility
   $<TARGET_OBJECTS:utility-external>
 )
 
+set_target_properties(idg-utility PROPERTIES
+                      PUBLIC_HEADER idg-utility.h)
+
 install(TARGETS idg-utility
+  EXPORT IDGTargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
-)
-
-install(
-    FILES
-    idg-utility.h
-    DESTINATION
-    include/utility
+  PUBLIC_HEADER DESTINATION include/utility
 )
