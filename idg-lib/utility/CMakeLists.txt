@@ -23,5 +23,5 @@ install(
     FILES
     idg-utility.h
     DESTINATION
-    include
+    include/utility
 )
