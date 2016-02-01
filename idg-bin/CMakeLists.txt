@@ -152,7 +152,7 @@ configure_file (
   )
 
 
-# add subfolders
+# add subfolders, after specifying the targets to build
 add_subdirectory(src)
 
 if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
@@ -171,7 +171,30 @@ endif (BUILD_WITH_TESTS)
 #####################################################
 # Create IDGConfig.cmake and IDGConfigVersion.cmake #
 # for other cmake projects to make use of IDG       #
+# See: https://cmake.org/Wiki/CMake/Tutorials/      #
+# How_to_create_a_ProjectConfig.cmake_file          #
 #####################################################
+set(TARGETS_TO_BUILD idg-common)
+if (BUILD_LIB_CUDA)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cuda)
+endif()
+if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-hybrid-cuda)
+endif()
+if (BUILD_LIB_OPENCL)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-opencl)
+endif()
+if (BUILD_LIB_KNC)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-knc)
+endif()
+if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-utility)
+endif()
+export(TARGETS ${TARGETS_TO_BUILD}
+       FILE "${PROJECT_BINARY_DIR}/CMakeFiles/IDGTargets.cmake")
+
+install(EXPORT IDGTargets
+        DESTINATION lib/cmake)
 
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfig.cmake.in"
@@ -185,3 +208,4 @@ install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake"
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
+
