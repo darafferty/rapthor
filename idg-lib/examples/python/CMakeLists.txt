@@ -7,4 +7,5 @@ install(FILES
   hybrid-knc.py
   demo-idg.py
   cpu-clean-reference.py
+  cpu-lena-reference.py
   DESTINATION bin/examples)

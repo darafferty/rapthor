@@ -215,6 +215,82 @@ def init_aterms_offset(aterms_offset, nr_time):
                                  ctypes.c_int(nr_timeslots),
                                  ctypes.c_int(nr_time) )
 
+def func_spheroidal(nu):
+    """Function to compute spheroidal
+        Based on reference code by Bas
+        TODO: cleanup + add comments on how it works"""
+    P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
+                [ 4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
+    Q = numpy.array([[1.0000000e0, 8.212018e-1, 2.078043e-1],
+                [1.0000000e0, 9.599102e-1, 2.918724e-1]])
+
+    part = 0;
+    end = 0.0;
+
+    if (nu >= 0.0 and nu < 0.75):
+        part = 0
+        end = 0.75
+    elif (nu >= 0.75 and nu <= 1.00):
+        part = 1
+        end = 1.00
+    else:
+        return 0.0
+
+    nusq = nu * nu
+    nusq = nu * nu / 4 # TODO: find out why this increases the visibile region in the image
+    delnusq = nusq - end * end
+    delnusqPow = delnusq
+    top = P[part][0]
+    for k in range(1,5):
+        top += P[part][k] * delnusqPow
+        delnusqPow *= delnusq
+
+    bot = Q[part][0]
+    delnusqPow = delnusq
+    for k in range(1,3):
+        bot += Q[part][k] * delnusqPow
+        delnusqPow *= delnusq
+
+    if bot == 0:
+        result = 0
+    else:
+        result = (1.0 - nusq) * (top / bot)
+    return result
+
+def make_gaussian(size, fwhm = 3, center=None):
+    x = numpy.arange(0, size, 1, float)
+    y = x[:,numpy.newaxis]
+
+    if center is None:
+        x0 = y0 = size // 2
+    else:
+        x0 = center[0]
+        y0 = center[1]
+
+    return numpy.exp(-4*numpy.log(2) * ((x-x0)**2 + (y-y0)**2) / fwhm**2)
+
+def init_spheroidal_subgrid(subgrid_size):
+    """Construct spheroidal for subgrid"""
+    # Spheroidal from Bas
+    x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(subgrid_size, dtype=numpy.float32) / (subgrid_size-1) - 1.0], dtype = numpy.float32)
+    spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
+    return spheroidal
+    # Ones
+    #return numpy.ones((subgrid_size, subgrid_size), dtype = numpy.float32)
+    # Gaussian
+    #return make_gaussian(subgrid_size, int(subgrid_size * 0.3))
+
+def init_spheroidal_grid(subgrid_size, grid_size):
+    """Construct spheroidal for grid"""
+    spheroidal = init_spheroidal_subgrid(subgrid_size)
+    s = numpy.fft.fft2(spheroidal)
+    s = numpy.fft.fftshift(s)
+    s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex64)
+    support_size1 = int((grid_size - subgrid_size)/2)
+    support_size2 = int((grid_size + subgrid_size)/2)
+    s1[support_size1:support_size2, support_size1:support_size2] = s
+    s1 = numpy.fft.ifftshift(s1)
+    return numpy.real(numpy.fft.ifft2(s1))
 
 def init_spheroidal(spheroidal):
     """Initialize spheroidal for test case defined in utility/initialize"""
