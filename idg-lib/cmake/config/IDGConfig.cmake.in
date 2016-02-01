@@ -23,6 +23,8 @@ set(IDG_INCLUDE_DIR "${IDG_PREFIX_DIR}/include"
 
 # Our library dependencies (contains definitions for IMPORTED targets)
 # include("${IDG_CMAKE_DIR}/IDGTargets.cmake")
+# Note: for now, this only works for shared libraries!!!
+# Need to change it using EXPORT targets.
 
 if (@BUILD_LIB_CPU@)
 set(IDG_CPU_LIB "${IDG_PREFIX_DIR}/lib/libidg-cpu.so"
@@ -52,4 +54,9 @@ endif()
 if (@BUILD_WITH_PYTHON@)
 set(IDG_PYTHON_MODULE_PATH "${IDG_PREFIX_DIR}/lib/python2.7/dist-packages"
     CACHE STRING "IDG python module path")
+endif()
+
+if (@BUILD_WITH_EXAMPLES@ OR @BUILD_WITH_TESTS@)
+set(IDG_UTILITY_LIB "${IDG_PREFIX_DIR}/lib/libidg-utility.so"
+    CACHE STRING "IDG utility library")
 endif()
