@@ -70,7 +70,7 @@ namespace idg {
         {
             string debug = "Debug";
             string relwithdebinfo = "RelWithDebInfo";
-            string intel_flags = "-openmp -xcore-avx2 -mkl=parallel";
+            string intel_flags = "-openmp -axcore-avx2 -mkl=parallel";
             string gnu_flags_wo_mkl = "-std=c++11 -fopenmp -march=core-avx2 -ffast-math -lfftw3f";
 
             #if defined(BUILD_WITH_PYTHON)
