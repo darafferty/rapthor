@@ -217,8 +217,7 @@ def init_aterms_offset(aterms_offset, nr_time):
 
 def func_spheroidal(nu):
     """Function to compute spheroidal
-        Based on reference code by Bas
-        TODO: cleanup + add comments on how it works"""
+        Based on reference code by Bas"""
     P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
                 [ 4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
     Q = numpy.array([[1.0000000e0, 8.212018e-1, 2.078043e-1],
@@ -237,7 +236,6 @@ def func_spheroidal(nu):
         return 0.0
 
     nusq = nu * nu
-    nusq = nu * nu / 4 # TODO: find out why this increases the visibile region in the image
     delnusq = nusq - end * end
     delnusqPow = delnusq
     top = P[part][0]
@@ -272,7 +270,8 @@ def make_gaussian(size, fwhm = 3, center=None):
 def init_spheroidal_subgrid(subgrid_size):
     """Construct spheroidal for subgrid"""
     # Spheroidal from Bas
-    x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(subgrid_size, dtype=numpy.float32) / (subgrid_size-1) - 1.0], dtype = numpy.float32)
+    x = numpy.array(numpy.abs(numpy.linspace(-1, 1, num=subgrid_size, endpoint=False)), dtype=numpy.float32)
+    x = numpy.array(map(lambda e: func_spheroidal(e), x), dtype=numpy.float32)
     spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
     return spheroidal
     # Ones
