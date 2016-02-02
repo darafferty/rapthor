@@ -19,7 +19,6 @@ target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
   idg-cpu
-  ${CMAKE_DL_LIBS}
 )
 
 # install
