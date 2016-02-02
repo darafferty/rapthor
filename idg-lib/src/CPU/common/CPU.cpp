@@ -71,6 +71,11 @@ namespace idg {
             {
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
                 char *tmpdir = mkdtemp(_tmpdir);
+                
+                if (tmpdir == NULL) {
+                    throw runtime_error("Cannot create tmp directory");
+                }
+
                 #if defined(DEBUG)
                 cout << "Temporary files will be stored in: " << tmpdir << endl;
                 #endif
