@@ -56,6 +56,11 @@ add_library(idg-cpu
   $<TARGET_OBJECTS:cpu-sandybridgeep>
 )
 
+target_link_libraries (
+  idg-cpu
+  ${CMAKE_DL_LIBS}
+)
+
 set_target_properties(idg-cpu PROPERTIES
                       PUBLIC_HEADER idg-cpu.h)
 
@@ -66,6 +71,8 @@ install(TARGETS idg-cpu
   ARCHIVE DESTINATION lib/static
   PUBLIC_HEADER DESTINATION include
 )
+
+
 endif()
 
 
@@ -81,6 +88,12 @@ add_library(idg-cuda
   $<TARGET_OBJECTS:cuda-jetson>
 )
 
+set(LINK_LIRBRARIES ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+target_link_libraries (
+  idg-cuda
+  ${LINK_LIRBRARIES}
+)
+
 set_target_properties(idg-cuda PROPERTIES
                       PUBLIC_HEADER idg-cuda.h)
 
@@ -92,12 +105,6 @@ install(TARGETS idg-cuda
   PUBLIC_HEADER DESTINATION include
 )
 
-set(LINK_LIRBRARIES ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
-
-target_link_libraries (
-  idg-cuda
-  ${LINK_LIRBRARIES}
-)
 endif(BUILD_LIB_CUDA)
 
 
