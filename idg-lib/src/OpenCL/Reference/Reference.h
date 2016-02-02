@@ -21,7 +21,6 @@ namespace idg {
             public:
                 /// Constructors
                 Reference(Parameters params,
-                          cl::Context &context,
                           unsigned deviceNumber = 0,
                           Compilerflags flags = default_compiler_flags());
 

@@ -21,16 +21,18 @@ namespace idg {
             /// Constructors
             OpenCL::OpenCL(
                 Parameters params,
-                cl::Context &context,
                 unsigned deviceNumber,
-                Compilerflags flags) :
-                context(context)
+                Compilerflags flags)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
+
+                // Create context
+                context = cl::Context(CL_DEVICE_TYPE_ALL);
+
             	// Get devices
             	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
                 device = devices[deviceNumber];
