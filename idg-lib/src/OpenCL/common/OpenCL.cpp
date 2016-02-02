@@ -75,73 +75,18 @@ namespace idg {
                 return "-cl-fast-relaxed-math";
             }
 
-            /// High level routines
-            void OpenCL::transform(DomainAtoDomainB direction, cl::Buffer &h_grid)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << "Transform direction: " << direction << endl;
-                #endif
-
-                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
-                run_fft(CL_FFT_ARGUMENTS);
-            }
-
-
-            void OpenCL::grid_onto_subgrids(CL_GRIDDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                run_gridder(CL_GRIDDER_ARGUMENTS);
-            }
-
-
-            void OpenCL::add_subgrids_to_grid(CL_ADDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                run_adder(CL_ADDER_ARGUMENTS);
-            }
-
-
-            void OpenCL::split_grid_into_subgrids(CL_SPLITTER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                run_splitter(CL_SPLITTER_ARGUMENTS);
-            }
-
-
-            void OpenCL::degrid_from_subgrids(CL_DEGRIDDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                run_degridder(CL_DEGRIDDER_ARGUMENTS);
-            }
-
-            /*
-                Size of data structures for a single job
-            */
-            #define SIZEOF_SUBGRIDS 1ULL * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>)
-            #define SIZEOF_UVW      1ULL * nr_timesteps * 3 * sizeof(float)
-            #define SIZEOF_VISIBILITIES 1ULL * nr_timesteps * nr_channels * nr_polarizations * sizeof(complex<float>)
-            #define SIZEOF_METADATA 1ULL * 5 * sizeof(int)
-            #define SIZEOF_GRID     1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>)
-
-
-            /// Low level routines
-            /*
-                Gridder
-            */
-            void OpenCL::run_gridder(CL_GRIDDER_PARAMETERS)
+            /* High level routines */
+            void OpenCL::grid_visibilities(
+                const complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                complex<float> *grid,
+                const float w_offset,
+                const int kernel_size,
+                const complex<float> *aterm,
+                const int *aterm_offsets,
+                const float *spheroidal)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -150,25 +95,23 @@ namespace idg {
 #if 0
                 // Command queues
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE)
+                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE)
 
                 // Performance measurements
                 double runtime = 0;
 
-                // Constants
-                auto nr_baselines = mParams.get_nr_baselines();
+                // Constants auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_timesteps = mParams.get_nr_timesteps();
                 auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-
                 // Set jobsize
                 int jobsize = mParams.get_job_size_gridder();
-
                 // Start gridder
                 runtime -= omp_get_wtime();
+
                 const int nr_streams = 3;
                 #pragma omp parallel num_threads(nr_streams)
                 {
@@ -242,28 +185,22 @@ namespace idg {
                 clog << endl;
                 #endif
 #endif
-            } // run_gridder
+            } // grid_visibilities
 
 
-            void OpenCL::run_adder(CL_ADDER_PARAMETERS)
+            void OpenCL::degrid_visibilities(
+                std::complex<float> *visibilities,
+                const float *uvw,
+                const float *wavenumbers,
+                const int *baselines,
+                const std::complex<float> *grid,
+                const float w_offset,
+                const int kernel_size,
+                const std::complex<float> *aterm,
+                const int *aterm_offsets,
+                const float *spheroidal)
             {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-            } // run_adder
-
-
-            void OpenCL::run_splitter(CL_SPLITTER_PARAMETERS)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-            } // run_splitter
-
-
-            void OpenCL::run_degridder(CL_DEGRIDDER_PARAMETERS)
-            {
-                #if defined(DEBUG)
+               #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
 #if 0
@@ -361,15 +298,18 @@ namespace idg {
                 clog << endl;
                 #endif
 #endif
-            } // run_degridder
+            } // degrid_visibilities
 
 
-            void OpenCL::run_fft(CL_FFT_PARAMETERS)
+            void OpenCL::transform(
+                DomainAtoDomainB direction,
+                complex<float>* grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
 
+#if 0
                 // Constants
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
@@ -407,7 +347,8 @@ namespace idg {
                 // Wait for fft to finish
                 outputReady[0].wait();
                 clog << endl;
-            } // run_fft
+#endif
+            } // transform
 
             void OpenCL::compile(Compilerflags flags)
             {
