@@ -15,13 +15,32 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
-    #################
-    # initialize lena
-    #################
-    lena = scipy.misc.lena()
-    lena_img = numpy.matrix(lena, dtype = numpy.complex64)
-    lena_freq = numpy.fft.fftshift(numpy.fft.fft2(lena_img))
+    ##########################
+    # initialize example image
+    ##########################
+    # Set plotting to grayscale
     plt.gray()
+    
+    # Load lena
+    lena = scipy.misc.lena()
+    lena_size = lena.shape[0]
+
+    # Load face
+    face = numpy.sum(scipy.misc.face()[0:800,0:768], axis=2)
+    size = min(face.shape)
+    face = face[0:size,0:size]
+
+    # Set example image
+    example = lena
+    example_size = example.shape[0]
+    mask = numpy.ones(lena.shape, dtype=bool)
+    crop = 0.1 # 10%
+    crop_min = int(example_size*crop)
+    crop_max = int(example_size*(1-crop))
+    mask[crop_min:crop_max,crop_min:crop_max] = 0
+    example[mask] = 0
+    example_img = numpy.matrix(example, dtype = numpy.complex64)
+    example_freq = numpy.fft.fftshift(numpy.fft.fft2(example_img))
 
     ############
     # paramaters
@@ -34,14 +53,14 @@ if __name__ == "__main__":
     image_size = 0.08
     image_size = 0.10
     subgrid_size = 24
-    grid_size = lena_img.shape[0]
+    grid_size = example_size
     integration_time = 10
     kernel_size = (subgrid_size / 2) + 1
 
     ##################
     # initialize proxy
     ##################
-    p = idg.CPU.Reference(nr_stations, nr_channels,
+    p = idg.CPU.HaswellEP(nr_stations, nr_channels,
                           nr_time, nr_timeslots,
                           image_size, grid_size, subgrid_size)
 
@@ -91,9 +110,8 @@ if __name__ == "__main__":
     # grid
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype = idg.gridtype)
-    grid[:,:,:] = lena_img
+    grid[:,:,:] = example_img
     idg.utils.plot_grid(grid, scaling='log')
-    #grid[:,:,:] = lena_freq
     p.transform(idg.ImageDomainToFourierDomain, grid)
     idg.utils.plot_grid(grid, scaling='log')
 
@@ -131,7 +149,6 @@ if __name__ == "__main__":
     ############
     w_offset = 0.0
     #p.transform(idg.ImageDomainToFourierDomain, grid)
-
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal_subgrid)
     #idg.utils.plot_visibilities(visibilities)
@@ -148,6 +165,12 @@ if __name__ == "__main__":
 
     p.transform(idg.FourierDomainToImageDomain, grid)
 
-    idg.utils.plot_grid(grid)
+    # Get image
+    img = grid / spheroidal_grid
+    crop = 0.1 # 10%
+    crop_min = int(grid_size*crop)
+    crop_max = int(grid_size*(1-crop))
+    img = img[:,crop_min:crop_max,crop_min:crop_max]
+    idg.utils.plot_grid(img)
 
     plt.show()
