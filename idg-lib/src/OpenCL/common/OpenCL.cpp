@@ -417,8 +417,8 @@ namespace idg {
 
                 // Source directory
                 stringstream _srcdir;
-                _srcdir << string(IDG_SOURCE_DIR);
-                _srcdir << "/src/OpenCL/Reference/kernels";
+                _srcdir << string(IDG_INSTALL_DIR);
+                _srcdir << "/lib/kernels/OpenCL";
                 string srcdir = _srcdir.str();
 
                 #if defined(DEBUG)

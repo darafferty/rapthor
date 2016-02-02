@@ -32,14 +32,3 @@ install(
    DESTINATION
    include/OpenCL/Reference
 )
-
-# Copy kernel source files
-install(
-    FILES
-    kernels/KernelGridder.cl
-    kernels/KernelDegridder.cl
-    kernels/math.cl
-    kernels/Types.cl
-    DESTINATION
-    lib/kernels/OpenCL/Reference
-)
