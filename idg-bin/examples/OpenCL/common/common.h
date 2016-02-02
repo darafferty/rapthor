@@ -50,7 +50,10 @@ device_info_t getDeviceInfo(cl::Device &d) {
     return devInfo;
 }
 
-void printDevices(cl::Context &context, int deviceNumber) {
+void printDevices(int deviceNumber) {
+    // Create context
+    cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
+
 	// Get devices
 	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	
@@ -82,7 +85,7 @@ void run() {
     char *cstr_deviceNumber = getenv("OPENCL_DEVICE");
     unsigned deviceNumber = cstr_deviceNumber ? atoi (cstr_deviceNumber) : 0;
 
-    // retrieve constants for memory allocation
+    // Retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
     int nr_time = params.get_nr_time();
@@ -101,73 +104,69 @@ void run() {
     clog << params;
     clog << endl;
 
-    // Initialize OpenCL
-    std::clog << ">>> Initialize OpenCL" << std::endl;
-    cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
-    std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-    cl::Device device = devices[deviceNumber];
-    cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-
-    // Show OpenCL devices
-    printDevices(context, deviceNumber);
-
-    // Allocate data structures
-    clog << ">>> Allocate data structures" << endl;
-    auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations*sizeof(complex<float>);
-    auto size_uvw = 1ULL * nr_baselines*nr_time*3*sizeof(float);
-    auto size_wavenumbers = 1ULL * nr_channels*sizeof(float);
-    auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize*sizeof(complex<float>);
-    auto size_spheroidal = 1ULL * subgridsize*subgridsize*sizeof(float);
-    auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize*sizeof(complex<float>);
-    auto size_subgrids = 1ULL * nr_subgrids*nr_polarizations*subgridsize*subgridsize*sizeof(complex<float>);
-
-    // Allocate OpenCL buffers
-    std::clog << ">>> Allocate OpenCL buffers" << std::endl;
-    cl::Buffer h_visibilities = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_visibilities);
-    cl::Buffer h_uvw          = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_uvw);
-    cl::Buffer d_wavenumbers  = cl::Buffer(context, CL_MEM_READ_WRITE, size_wavenumbers);
-    cl::Buffer d_aterm        = cl::Buffer(context, CL_MEM_READ_WRITE, size_aterm);
-    cl::Buffer d_spheroidal   = cl::Buffer(context, CL_MEM_READ_WRITE, size_spheroidal);
-    cl::Buffer h_grid         = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_grid);
-    cl::Buffer h_subgrids     = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, size_subgrids);
-
-    // Initialize data structures
+    // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
-    void *wavenumbers  = idg::init_wavenumbers(nr_channels);
-    void *aterm        = idg::init_aterm(nr_stations, nr_timeslots, nr_polarizations, subgridsize);
-    void *spheroidal   = idg::init_spheroidal(subgridsize);
-    void *visibilities = queue.enqueueMapBuffer(h_visibilities, CL_FALSE, CL_MAP_WRITE, 0, size_visibilities);
-    void *uvw          = queue.enqueueMapBuffer(h_uvw, CL_FALSE, CL_MAP_WRITE, 0, size_uvw);
+
+    auto size_visibilities = 1ULL * nr_baselines*nr_time*
+        nr_channels*nr_polarizations;
+    auto size_uvw = 1ULL * nr_baselines*nr_time*3;
+    auto size_wavenumbers = 1ULL * nr_channels;
+    auto size_aterm = 1ULL * nr_stations*nr_timeslots*
+        nr_polarizations*subgridsize*subgridsize;
+    auto size_spheroidal = 1ULL * subgridsize*subgridsize;
+    auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
+    auto size_baselines = 1ULL * nr_baselines*2;
+
+    auto visibilities = new std::complex<float>[size_visibilities];
+    auto uvw = new float[size_uvw];
+    auto wavenumbers = new float[size_wavenumbers];
+    auto aterm = new std::complex<float>[size_aterm];
     auto aterm_offsets = new int[nr_timeslots+1];
-    queue.finish();
-    idg::init_visibilities(visibilities, nr_baselines, nr_time, nr_channels, nr_polarizations);
+    auto spheroidal = new float[size_spheroidal];
+    auto grid = new std::complex<float>[size_grid];
+    auto baselines = new int[size_baselines];
+
+    idg::init_visibilities(visibilities, nr_baselines,
+                           nr_time,
+                           nr_channels, nr_polarizations);
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
+    idg::init_wavenumbers(wavenumbers, nr_channels);
+    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations,
+                    subgridsize);
     idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
-    queue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, size_wavenumbers, wavenumbers);
-    queue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, size_aterm, aterm);
-    queue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, size_spheroidal, spheroidal);
-    queue.enqueueUnmapMemObject(h_visibilities, visibilities);
-    queue.enqueueUnmapMemObject(h_uvw, uvw);
-    queue.finish();
+    idg::init_spheroidal(spheroidal, subgridsize);
+    idg::init_grid(grid, gridsize, nr_polarizations);
+    idg::init_baselines(baselines, nr_stations, nr_baselines);
+    std::clog << std::endl;
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    PROXYNAME opencl(params, context, deviceNumber);
+    PROXYNAME proxy(params, deviceNumber);
     clog << endl;
 
+    // Print all OpenCL devices
+    printDevices(deviceNumber);
+
+    // Run
     clog << ">>> Run fft" << endl;
-    opencl.transform(idg::FourierDomainToImageDomain, h_grid);
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    // Run gridder
     clog << ">>> Run gridder" << endl;
-    opencl.grid_onto_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, aterm_offsets, h_subgrids);
+    proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
-    // Run degridder
+    clog << ">>> Run fft" << endl;
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
+
     clog << ">>> Run degridder" << endl;
-    opencl.degrid_from_subgrids(nr_subgrids, 0, h_uvw, d_wavenumbers, h_visibilities, d_spheroidal, d_aterm, aterm_offsets, h_subgrids);
+    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     // Free memory for data structures
-    free(wavenumbers);
-    free(aterm);
-    free(spheroidal);
+    delete[] visibilities;
+    delete[] uvw;
+    delete[] wavenumbers;
+    delete[] aterm;
+    delete[] aterm_offsets;
+    delete[] spheroidal;
+    delete[] grid;
+    delete[] baselines;
 }
