@@ -451,7 +451,7 @@ namespace idg {
                 // Add all kernels to build
                 vector<string> v;
                 v.push_back("KernelGridder.cl");
-                v.push_back("KernelDegridder.cl");
+                //v.push_back("KernelDegridder.cl");
 
                 // Build OpenCL programs
                 for (int i = 0; i < v.size(); i++) {
@@ -466,6 +466,10 @@ namespace idg {
                                  (std::istreambuf_iterator<char>()));
                     source_file.close();
 
+                    // Print information about compilation
+                    cout << "Compiling " << _source_file_name.str() << ":"
+                         << endl << parameters << endl;
+
                     // Create OpenCL program
                     cl::Program *program = new cl::Program(context, source);
                     try {
@@ -473,11 +477,6 @@ namespace idg {
                         (*program).build(devices, parameters.c_str());
                         programs.push_back(program);
 
-                        // Print information about compilation
-                        std::string msg;
-                        (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
-                        cout << "Compiling " << _source_file_name.str() << ":"
-                             << endl << parameters << endl << msg;
                     } catch (cl::Error &error) {
                         if (strcmp(error.what(), "clBuildProgram") == 0) {
                             // Print error message
@@ -491,7 +490,7 @@ namespace idg {
 
                 // Fill which_program structure
                 which_program[kernel::name_gridder] = 0;
-                which_program[kernel::name_degridder] = 1;
+                //which_program[kernel::name_degridder] = 1;
             } // compile
 
             void OpenCL::parameter_sanity_check()
