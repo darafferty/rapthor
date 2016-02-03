@@ -39,3 +39,7 @@ inline void atomicAdd(__global fcomplex *a, fcomplex b) {
     atomic_add_float(a_ptr + 0, b.x);
     atomic_add_float(a_ptr + 1, b.x);
 }
+
+inline fcomplex clConjf(fcomplex a) {
+    return (fcomplex) (a.x, -a.y);
+}

@@ -17,22 +17,21 @@ namespace idg {
         namespace opencl {
 
             class Reference : public OpenCL {
-            
+
             public:
                 /// Constructors
                 Reference(Parameters params,
-                          cl::Context &context,
                           unsigned deviceNumber = 0,
                           Compilerflags flags = default_compiler_flags());
-                
+
                 /// Destructor
                 ~Reference() = default;
-    
+
                 // Get default values for ProxyInfo
                 static std::string default_compiler_flags();
-                    
+
             }; // class Reference
-    
+
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
