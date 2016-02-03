@@ -157,6 +157,7 @@ namespace idg {
                 // Load kernels
                 kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
                 kernel::Adder kernel_adder(*programs[which_program[kernel::name_adder]], mParams);
+                kernel::Scaler kernel_scaler(*programs[which_program[kernel::name_scaler]], mParams);
 
                 // Initialize metadata
                 // TODO
@@ -213,13 +214,11 @@ namespace idg {
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof_uvw(jobsize));
 
                     // Performance counters
-                    PerformanceCounter counter_gridder;
-                    PerformanceCounter counter_fft;
-                    PerformanceCounter counter_adder;
+                    PerformanceCounter counters[4];
                     #if defined(MEASURE_POWER_ARDUINO)
-                    counter_gridder.setPowerSensor(&powerSensor);
-                    counter_fft.setPowerSensor(&powerSensor);
-                    counter_adder.setPowerSensor(&powerSensor);
+                    for (int i = 0; i < 4; i++) {
+                        counters[i].setPowerSensor(&powerSensor);
+                    }
                     #endif
 
                     #pragma omp for schedule(dynamic)
@@ -255,15 +254,16 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder.launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counter_gridder);
+                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
         					// Launch FFT
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counter_fft);
+                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
 
-                            // TODO: Launch scaler kernel
+                            // Launch scaler kernel
+                            kernel_scaler.launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
 
                             // Launch adder kernel
-                            kernel_adder.launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counter_adder);
+                            kernel_adder.launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
                         }
 
@@ -279,12 +279,12 @@ namespace idg {
                 uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
                 uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
-                //uint64_t total_flops_scaler   = kernel_scaler->flops(nr_subgrids);
-                //uint64_t total_bytes_scaler   = kernel_scaler->bytes(nr_subgrids);
+                uint64_t total_flops_scaler   = kernel_scaler.flops(nr_subgrids);
+                uint64_t total_bytes_scaler   = kernel_scaler.bytes(nr_subgrids);
                 uint64_t total_flops_adder    = kernel_adder.flops(nr_subgrids);
                 uint64_t total_bytes_adder    = kernel_adder.bytes(nr_subgrids);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_adder;// + total_flops_scaler;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_adder;// + total_bytes_scaler;
+                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
+                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
                 double total_watt_gridding    = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
@@ -500,6 +500,7 @@ namespace idg {
                 v.push_back("KernelGridder.cl");
                 //v.push_back("KernelDegridder.cl");
                 v.push_back("KernelAdder.cl");
+                v.push_back("KernelScaler.cl");
 
                 // Build OpenCL programs
                 for (int i = 0; i < v.size(); i++) {
@@ -540,6 +541,7 @@ namespace idg {
                 which_program[kernel::name_gridder] = 0;
                 //which_program[kernel::name_degridder] = 1;
                 which_program[kernel::name_adder] = 1;
+                which_program[kernel::name_scaler] = 2;
             } // compile
 
             void OpenCL::parameter_sanity_check()

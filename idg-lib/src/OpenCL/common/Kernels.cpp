@@ -276,5 +276,42 @@ namespace idg {
             return bytes;
         }
 
+        // Scaler class
+        Scaler::Scaler(cl::Program &program, Parameters &parameters) :
+            kernel(program, name_scaler.c_str()),
+            parameters(parameters) {}
+
+        void Scaler::launchAsync(
+            cl::CommandQueue &queue,
+            int nr_subgrids,
+            cl::Buffer d_subgrid,
+            PerformanceCounter &counter) {
+            cl::NDRange globalSize(128 * nr_subgrids, 1);
+            cl::NDRange localSize(128, 1);
+            kernel.setArg(0, d_subgrid);
+            try {
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "scaler", flops(nr_subgrids), bytes(nr_subgrids));
+            } catch (cl::Error &error) {
+                std::cerr << "Error launching gridder: " << error.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        uint64_t Scaler::flops(int nr_subgrids) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            uint64_t flops = 0;
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
+        }
+
+        uint64_t Scaler::bytes(int nr_subgrids) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            uint64_t bytes = 0;
+            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
+            return bytes;
+        }
+
     } // namespace kernel
 } // namespace idg
