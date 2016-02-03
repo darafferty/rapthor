@@ -33,7 +33,8 @@ namespace idg {
 
         void Gridder::launchAsync(
             cl::CommandQueue &queue,
-            int nr_baselines, int nr_subgrids,
+            int nr_baselines,
+            int nr_subgrids,
             float w_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
@@ -95,7 +96,8 @@ namespace idg {
 
         void Degridder::launchAsync(
             cl::CommandQueue &queue,
-            int nr_baselines, int nr_subgrids,
+            int nr_baselines,
+            int nr_subgrids,
             float w_offset,
             cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
             cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
@@ -173,7 +175,8 @@ namespace idg {
                 // Create new plan
                 size_t lengths[2] = {(size_t) size, (size_t) size};
                 clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
-                clfftSetPlanBatchSize(fft, batch);
+                int nr_polarizations = parameters.get_nr_polarizations();
+                clfftSetPlanBatchSize(fft, batch * nr_polarizations);
                 size_t dist = size * size;
                 clfftSetPlanDistance(fft, dist, dist);
 
