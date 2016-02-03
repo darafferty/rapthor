@@ -97,7 +97,6 @@ void PerformanceCounter::doOperation(cl::Event &start, cl::Event &end, const cha
     start.setCallback(CL_RUNNING, &PerformanceCounter::stopTimingMeasurement, descriptor);
     end.setCallback(CL_RUNNING, &PerformanceCounter::stopPowerAndTimingMeasurement, descriptor);
     end.setCallback(CL_COMPLETE, &PerformanceCounter::report2, descriptor);
-
 }
 
 #if defined(MEASURE_POWER_ARDUINO)
