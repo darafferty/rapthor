@@ -23,6 +23,7 @@ namespace idg {
         static const std::string name_degridder = "kernel_degridder";
         static const std::string name_adder     = "kernel_adder";
         static const std::string name_splitter  = "kernel_splitter";
+        static const std::string name_scaler    = "kernel_scaler";
 
         class Gridder {
             public:
@@ -115,6 +116,22 @@ namespace idg {
                 Parameters &parameters;
         };
 
+        class Scaler {
+            public:
+                Scaler(cl::Program &program, Parameters &parameters);
+                void launchAsync(
+                    cl::CommandQueue &queue,
+                    int nr_subgrids,
+                    cl::Buffer d_subgrid,
+                    PerformanceCounter &counter);
+                uint64_t flops(int nr_subgrids);
+                uint64_t bytes(int nr_subgrids);
+
+            private:
+                cl::Event event;
+                cl::Kernel kernel;
+                Parameters &parameters;
+        };
     } // namespace kernel
 } // namespace idg
 
