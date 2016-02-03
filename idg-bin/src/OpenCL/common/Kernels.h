@@ -61,8 +61,8 @@ namespace idg {
                     cl::Buffer &d_aterm, cl::Buffer &d_metadata,
                     cl::Buffer &d_subgrid,
                     PerformanceCounter &counter);
-                uint64_t flops(int jobsize, int nr_subgrids);
-                uint64_t bytes(int jobsize, int nr_subgrids);
+                uint64_t flops(int nr_baselines, int nr_subgrids);
+                uint64_t bytes(int nr_baselines, int nr_subgrids);
 
         	private:
                 cl::Event event;
@@ -95,6 +95,26 @@ namespace idg {
                 int planned_batch;
                 clfftPlanHandle fft;
         };
+
+        class Adder {
+            public:
+                Adder(cl::Program &program, Parameters &parameters);
+                void launchAsync(
+                    cl::CommandQueue &queue,
+                    int nr_subgrids,
+                    cl::Buffer d_metadata,
+                    cl::Buffer d_subgrid,
+                    cl::Buffer d_grid,
+                    PerformanceCounter &counter);
+                uint64_t flops(int nr_subgrids);
+                uint64_t bytes(int nr_subgrids);
+
+            private:
+                cl::Event event;
+                cl::Kernel kernel;
+                Parameters &parameters;
+        };
+
     } // namespace kernel
 } // namespace idg
 

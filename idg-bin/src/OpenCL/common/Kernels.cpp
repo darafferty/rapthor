@@ -230,6 +230,51 @@ namespace idg {
             return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(std::complex<float>);
         }
 
+        // Adder class
+        Adder::Adder(cl::Program &program, Parameters &parameters) :
+            kernel(program, name_adder.c_str()),
+            parameters(parameters) {}
+
+        void Adder::launchAsync(
+            cl::CommandQueue &queue,
+            int nr_subgrids,
+            cl::Buffer d_metadata,
+            cl::Buffer d_subgrid,
+            cl::Buffer d_grid,
+            PerformanceCounter &counter) {
+            cl::NDRange globalSize(128 * nr_subgrids, 1);
+            cl::NDRange localSize(128, 1);
+            kernel.setArg(0, d_metadata);
+            kernel.setArg(1, d_subgrid);
+            kernel.setArg(2, d_grid);
+            try {
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
+            } catch (cl::Error &error) {
+                std::cerr << "Error launching gridder: " << error.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        uint64_t Adder::flops(int nr_subgrids) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            uint64_t flops = 0;
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 4; // add
+            return flops;
+        }
+
+        uint64_t Adder::bytes(int nr_subgrids) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            uint64_t bytes = 0;
+            bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
+            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
+            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
+            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+            return bytes;
+        }
 
     } // namespace kernel
 } // namespace idg
