@@ -34,6 +34,7 @@ install(
     FILES
     kernels/KernelGridder.cl
     kernels/KernelDegridder.cl
+    kernels/KernelAdder.cl
     kernels/math.cl
     kernels/Types.cl
     DESTINATION
