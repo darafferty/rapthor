@@ -18,9 +18,11 @@ void kernel_fft_grid(
 		fftwf_complex *data = (fftwf_complex *) _data + pol * (size * size);
 	
         // Create plan
-		fftwf_plan plan = fftwf_plan_dft_2d(size, size,
-            		    data, data,
-            		    sign, FFTW_ESTIMATE);
+        fftwf_plan plan;
+        #pragma omp critical
+        plan = fftwf_plan_dft_2d(size, size,
+                                 data, data,
+                                 sign, FFTW_ESTIMATE);
 
         // Execute FFTs
         fftwf_execute_dft(plan, data, data);
@@ -69,7 +71,9 @@ void kernel_fft_subgrid(
         
         // Planner flags
         int flags = FFTW_ESTIMATE;
-        fftwf_plan plan = fftwf_plan_many_dft(
+        fftwf_plan plan;
+        #pragma omp critical
+        plan = fftwf_plan_many_dft(
             rank, n, NR_POLARIZATIONS, data, n,
             istride, idist, data, n,
             ostride, odist, sign, flags);
