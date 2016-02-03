@@ -206,12 +206,12 @@ namespace idg {
                     kernel::GridFFT kernel_fft(mParams);
 
                     // Events
-                    vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
-                    htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+                    vector<cl::Event> inputReady(1), outputReady(1);
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Private device memory
-                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof_uvw(jobsize));
+                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
 
                     // Performance counters
                     PerformanceCounter counters[4];
@@ -236,12 +236,12 @@ namespace idg {
 
                         // Private device memory
                         cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(current_nr_subgrids));
-                        cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof_metadata(current_nr_subgrids));
+                        cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(current_nr_subgrids));
 
                         #pragma omp critical (GPU)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&computeReady, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
@@ -264,13 +264,13 @@ namespace idg {
 
                             // Launch adder kernel
                             kernel_adder.launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
-
-                        // Wait for computation to finish
-                        computeReady[0].wait();
                     }
                 }
+
+                // Copy grid to host
+                dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 PowerSensor::State stopState = powerSensor.read();
