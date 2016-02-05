@@ -40,7 +40,61 @@ namespace idg {
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
-            }
+
+                // Constants
+                auto gridsize = mParams.get_grid_size();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                // Initialize
+                cu::Context &context = get_context();
+                //cu::HostMemory h_grid(grid, sizeof_grid());
+                //cu::HostMemory h_grid((void *) grid, sizeof_grid(), CU_MEMHOSTALLOC_DEVICEMAP);
+
+                // Load kernels
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+
+                // Initialize
+                cu::Stream stream;
+                context.setCurrent();
+
+                // Performance measurements
+                PowerRecord powerRecords[4];
+
+                // Copy grid to device
+                cu::DeviceMemory d_grid(grid);
+                return;
+                //powerRecords[0].enqueue(stream);
+                //stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
+
+                // Execute fft
+                kernel_fft->plan(gridsize, 1);
+                powerRecords[0].enqueue(stream);
+                kernel_fft->launch(stream, d_grid, sign);
+                powerRecords[1].enqueue(stream);
+
+                // Copy grid to host
+                //stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
+                powerRecords[3].enqueue(stream);
+                stream.synchronize();
+
+                #if defined(REPORT_TOTAL)
+                //auxiliary::report(" input",
+                //                  PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                //                  0, sizeof_grid(),
+                //                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                auxiliary::report("   fft",
+                                  PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                                  kernel_fft->flops(gridsize, 1),
+                                  kernel_fft->bytes(gridsize, 1),
+                                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                //auxiliary::report("output",
+                //                  PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
+                //                  0, sizeof_grid(),
+                //                  PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                std::cout << std::endl;
+                #endif
+}
 
             void Jetson::grid_visibilities(
                 const std::complex<float> *visibilities,
@@ -167,7 +221,7 @@ namespace idg {
                             powerRecords[1].enqueue(executestream);
 
                             // Launch FFT
-                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            //kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
                             powerRecords[2].enqueue(executestream);
 
                             // Launch scaler kernel
