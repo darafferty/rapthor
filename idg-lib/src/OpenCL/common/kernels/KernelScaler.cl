@@ -8,11 +8,11 @@
 __kernel void kernel_scaler(
     __global SubGridType subgrid
 	) {
-    int s = get_global_id(0);
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
     int blocksize = get_local_size(0) * get_local_size(1);
+    int s = get_group_id(0);
 
     // Compute scaling factor
     const float scale = 1.0 / (SUBGRIDSIZE * SUBGRIDSIZE);

@@ -10,12 +10,11 @@ __kernel void kernel_adder(
 	__global const SubGridType  subgrid,
 	__global GridType           grid
 	) {
-
-    int s = get_global_id(0);
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
     int blocksize = get_local_size(0) * get_local_size(1);
+    int s = get_group_id(0);
 
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
         int x = tid % SUBGRIDSIZE;

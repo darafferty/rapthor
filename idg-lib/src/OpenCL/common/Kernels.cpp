@@ -303,6 +303,7 @@ namespace idg {
             int nr_polarizations = parameters.get_nr_polarizations();
             uint64_t flops = 0;
             flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
+            return flops;
         }
 
         uint64_t Scaler::bytes(int nr_subgrids) {
