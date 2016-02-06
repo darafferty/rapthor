@@ -1,11 +1,7 @@
 #include <complex>
-
-#include <math.h>
-#include <stdio.h>
-#include <immintrin.h>
+#include <cmath>
+#include <cstring>
 #include <omp.h>
-#include <string.h>
-#include <stdint.h>
 
 #if defined(__INTEL_COMPILER)
 #define USE_VML
@@ -28,9 +24,9 @@ void kernel_gridder(
     )
 {
     // Find offset of first subgrid
-    const Metadata m = (*metadata)[0];
+    const Metadata m            = (*metadata)[0];
     const int baseline_offset_1 = m.baseline_offset;
-    const int time_offset_1 = m.time_offset; // should be 0
+    const int time_offset_1     = m.time_offset; // should be 0
 
     // Iterate all subgrids
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
@@ -92,7 +88,9 @@ void kernel_gridder(
                     float phasor_imag[nr_timesteps][NR_CHANNELS] __attribute__((aligned(32)));
 
                     // Iterate all timesteps
+                    #if defined(__INTEL_COMPILER)
                     #pragma nofusion
+                    #endif
                     for (int time = 0; time < nr_timesteps; time++) {
                         // Load UVW coordinates
                         float u = (*uvw)[offset + time].u;
@@ -114,10 +112,19 @@ void kernel_gridder(
                     } // end time
 
                     // Compute phasor
+                    #if defined(USE_VML)
                     vmsSinCos(nr_timesteps * NR_CHANNELS,
                               &phase[0][0],
                               &phasor_imag[0][0],
                               &phasor_real[0][0], VML_PRECISION);
+                    #else
+                    for (int time = 0; time < nr_timesteps; time++) {
+                        for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                            phasor_imag[time][chan] = sinf(phase[time][chan]);
+                            phasor_real[time][chan] = cosf(phase[time][chan]);
+                        }
+                    }
+                    #endif
 
                     for (int time = 0; time < nr_timesteps; time++) {
                         // Update pixel for every channel
