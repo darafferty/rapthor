@@ -415,19 +415,23 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-#if 0
                 // Constants
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
+                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
 
                 // Command queue
                 cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
                 // Events
-                vector<cl::Event> outputReady(1);
+                vector<cl::Event> events(4);
+
+                // Host memory
+                cl::Buffer h_grid(context, CL_MEM_READ_WRITE, sizeof_grid());
+                queue.enqueueWriteBuffer(h_grid, true, 0, sizeof_grid(), grid);
 
                 // Device memory
-                cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, SIZEOF_GRID);
+                cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
 
                 // Performance counter
                 PerformanceCounter counter_fft;
@@ -439,21 +443,38 @@ namespace idg {
                 kernel::GridFFT kernel_fft(mParams);
 
                 // Copy grid to device
-                queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, SIZEOF_GRID, NULL, NULL);
+                queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
 
                 // Create FFT plan
-                kernel_fft.plan(context, queue, gridsize, nr_polarizations);
+                kernel_fft.plan(context, queue, gridsize, 1);
 
         		// Launch FFT
-                kernel_fft.launchAsync(queue, d_grid, direction, counter_fft);
+                queue.enqueueMarkerWithWaitList(NULL, &events[1]);
+                kernel_fft.launchAsync(queue, d_grid, sign, counter_fft);
+                queue.enqueueMarkerWithWaitList(NULL, &events[2]);
 
                 // Copy grid to host
-                queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, SIZEOF_GRID, NULL, &outputReady[0]);
+                queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
 
                 // Wait for fft to finish
-                outputReady[0].wait();
+                queue.finish();
+
+                #if defined(REPORT_TOTAL)
+                //auxiliary::report(" input",
+                //                  PerformanceCounter::get_runtime((cl_event) events[0]()),
+                //                  0, sizeof_grid(),
+                //                  0);
+                auxiliary::report("   fft",
+                                  PerformanceCounter::get_runtime((cl_event) events[1](), (cl_event) events[2]()),
+                                  kernel_fft.flops(gridsize, 1),
+                                  kernel_fft.bytes(gridsize, 1),
+                                  0);
+                //auxiliary::report("output",
+                //                  PerformanceCounter::get_runtime((cl_event) events[3]()),
+                //                  0, sizeof_grid(),
+                //                  0);
                 clog << endl;
-#endif
+                #endif
             } // transform
 
             void OpenCL::compile(Compilerflags flags)
@@ -498,7 +519,7 @@ namespace idg {
                 // Add all kernels to build
                 vector<string> v;
                 v.push_back("KernelGridder.cl");
-                //v.push_back("KernelDegridder.cl");
+                v.push_back("KernelDegridder.cl");
                 v.push_back("KernelAdder.cl");
                 v.push_back("KernelScaler.cl");
 
@@ -539,9 +560,9 @@ namespace idg {
 
                 // Fill which_program structure
                 which_program[kernel::name_gridder] = 0;
-                //which_program[kernel::name_degridder] = 1;
-                which_program[kernel::name_adder] = 1;
-                which_program[kernel::name_scaler] = 2;
+                which_program[kernel::name_degridder] = 1;
+                which_program[kernel::name_adder] = 2;
+                which_program[kernel::name_scaler] = 3;
             } // compile
 
             void OpenCL::parameter_sanity_check()

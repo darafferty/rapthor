@@ -19,13 +19,18 @@ __kernel void kernel_degridder(
 	int s = get_group_id(0);
     int tid = get_local_id(0);
 
+    // Load metadata for first subgrid
+    const Metadata m_0 = metadata[0];
+
     // Load metadata
-	Metadata m = metadata[s];
-	int time_nr = m.time_nr;
-	int station1 = m.baseline.station1;
-	int station2 = m.baseline.station2;
-	int x_coordinate = m.coordinate.x;
-	int y_coordinate = m.coordinate.y;
+	const Metadata m = metadata[s];
+    const int offset = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
+    const int nr_timesteps = m.nr_timesteps;
+	const int aterm_index = m.aterm_index;
+	const int station1 = m.baseline.station1;
+	const int station2 = m.baseline.station2;
+	const int x_coordinate = m.coordinate.x;
+	const int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
 	float u_offset = (x_coordinate + SUBGRIDSIZE/2) / (float) IMAGESIZE;
@@ -35,7 +40,7 @@ __kernel void kernel_degridder(
     __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__local float4 _lmn_phaseoffset[NR_THREADS];
 
- 	for (int i = tid; i < NR_TIMESTEPS * NR_CHANNELS; i += NR_THREADS) {
+ 	for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += NR_THREADS) {
 		int time = i / NR_CHANNELS;
 		int chan = i % NR_CHANNELS;
 
@@ -43,8 +48,9 @@ __kernel void kernel_degridder(
         float4 _uvw;
 		float wavenumber;
 
-		if (time < NR_TIMESTEPS) {
-            _uvw = (float4) (uvw[s][time].u, uvw[s][time].v, uvw[s][time].w, 0);
+		if (time < nr_timesteps) {
+            UVW a = uvw[offset + time];
+            _uvw = (float4) (a.u, a.v, a.w, 0);
 			wavenumber = wavenumbers[chan];
 		}
 
@@ -54,51 +60,51 @@ __kernel void kernel_degridder(
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
-			if (y < SUBGRIDSIZE) {
+            if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
-				float2 aXX1 = aterm[station1][time_nr][0][y][x];
-				float2 aXY1 = aterm[station1][time_nr][1][y][x];
-				float2 aYX1 = aterm[station1][time_nr][2][y][x];
-				float2 aYY1 = aterm[station1][time_nr][3][y][x];
+                float2 aXX1 = aterm[station1][aterm_index][0][y][x];
+                float2 aXY1 = aterm[station1][aterm_index][1][y][x];
+                float2 aYX1 = aterm[station1][aterm_index][2][y][x];
+                float2 aYY1 = aterm[station1][aterm_index][3][y][x];
 
-				// Load aterm for station2
-				float2 aXX2 = conj(aterm[station2][time_nr][0][y][x]);
-				float2 aXY2 = conj(aterm[station2][time_nr][1][y][x]);
-				float2 aYX2 = conj(aterm[station2][time_nr][2][y][x]);
-				float2 aYY2 = conj(aterm[station2][time_nr][3][y][x]);
+                // Load aterm for station2
+                float2 aXX2 = conj(aterm[station2][aterm_index][0][y][x]);
+                float2 aXY2 = conj(aterm[station2][aterm_index][1][y][x]);
+                float2 aYX2 = conj(aterm[station2][aterm_index][2][y][x]);
+                float2 aYY2 = conj(aterm[station2][aterm_index][3][y][x]);
 
-				// Load spheroidal
-				float _spheroidal = spheroidal[y][x];
+                // Load spheroidal
+                float _spheroidal = spheroidal[y][x];
 
-				// Compute shifted position in subgrid
-				int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-				int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                // Compute shifted position in subgrid
+                int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-				// Load uv values
-				float2 pixelsXX = _spheroidal * subgrid[s][0][y_src][x_src];
-				float2 pixelsXY = _spheroidal * subgrid[s][1][y_src][x_src];
-				float2 pixelsYX = _spheroidal * subgrid[s][2][y_src][x_src];
-				float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
+                // Load uv values
+                float2 pixelsXX = _spheroidal * subgrid[s][0][y_src][x_src];
+                float2 pixelsXY = _spheroidal * subgrid[s][1][y_src][x_src];
+                float2 pixelsYX = _spheroidal * subgrid[s][2][y_src][x_src];
+                float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
 
-				// Apply aterm to subgrid
-				float2 pixXX = pixelsXX * aXX1 + pixelsXY * aYX1 + pixelsXX * aXX2 + pixelsYX * aYX2;
-				float2 pixXY = pixelsXX * aXY1 + pixelsXY * aYY1 + pixelsXY * aXX2 + pixelsYY * aYX2;
-				float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
-				float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
+                // Apply aterm to subgrid
+                float2 pixXX = pixelsXX * aXX1 + pixelsXY * aYX1 + pixelsXX * aXX2 + pixelsYX * aYX2;
+                float2 pixXY = pixelsXX * aXY1 + pixelsXY * aYY1 + pixelsXY * aXX2 + pixelsYY * aYX2;
+                float2 pixYX = pixelsYX * aXX1 + pixelsYY * aYX1 + pixelsXX * aXY2 + pixelsYX * aYY2;
+                float2 pixYY = pixelsYX * aXY1 + pixelsYY * aYY1 + pixelsXY * aXY2 + pixelsYY * aYY2;
 
-				_pix[0][tid] = (float4) (pixXX.x, pixXX.y, pixXY.x, pixXY.y);
-				_pix[1][tid] = (float4) (pixYX.x, pixYX.y, pixYY.x, pixYY.y);
+                _pix[0][tid] = (float4) (pixXX.x, pixXX.y, pixXY.x, pixXY.y);
+                _pix[1][tid] = (float4) (pixYX.x, pixYX.y, pixYY.x, pixYY.y);
 
-				float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
-				float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
-				float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
-				float phase_offset = u_offset * l + v_offset * m + w_offset * n;
-				_lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
-			}
+                float l = -(x - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
+                float m =  (y - (SUBGRIDSIZE / 2)) * (float) IMAGESIZE / SUBGRIDSIZE;
+                float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+                float phase_offset = u_offset * l + v_offset * m + w_offset * n;
+                _lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
+            }
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
-			if (time < NR_TIMESTEPS) {
+			if (time < nr_timesteps) {
                 #if SUBGRIDSIZE * SUBGRIDSIZE % NR_THREADS == 0
 				int last_k = NR_THREADS;
                 #else
@@ -106,7 +112,6 @@ __kernel void kernel_degridder(
 				int last_k =  first_j + NR_THREADS < SUBGRIDSIZE * SUBGRIDSIZE ? NR_THREADS : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
                 #endif
 
-                #pragma unroll 2
 				for (int k = 0; k < last_k; k ++) {
 					float  l = _lmn_phaseoffset[k].x;
 					float  m = _lmn_phaseoffset[k].y;
@@ -144,11 +149,11 @@ __kernel void kernel_degridder(
 			}
         }
 
-        if (time < NR_TIMESTEPS) {
-            visibilities[s][time][chan][0] = (float2) (vis.s0, vis.s1);
-            visibilities[s][time][chan][1] = (float2) (vis.s2, vis.s3);
-            visibilities[s][time][chan][2] = (float2) (vis.s4, vis.s5);
-            visibilities[s][time][chan][3] = (float2) (vis.s6, vis.s7);
+        if (time < nr_timesteps) {
+            visibilities[offset + time][chan][0] = (float2) (vis.s0, vis.s1);
+            visibilities[offset + time][chan][1] = (float2) (vis.s2, vis.s3);
+            visibilities[offset + time][chan][2] = (float2) (vis.s4, vis.s5);
+            visibilities[offset + time][chan][3] = (float2) (vis.s6, vis.s7);
 		}
 	}
 }
