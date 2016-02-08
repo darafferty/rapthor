@@ -33,10 +33,10 @@ __kernel void kernel_adder(
             int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Add subgrid value to grid
-            atomicAdd(&(grid[0][grid_y+y][grid_x+x]), subgrid[x][0][y_src][x_src]);
-            atomicAdd(&(grid[1][grid_y+y][grid_x+x]), subgrid[x][1][y_src][x_src]);
-            atomicAdd(&(grid[2][grid_y+y][grid_x+x]), subgrid[x][2][y_src][x_src]);
-            atomicAdd(&(grid[3][grid_y+y][grid_x+x]), subgrid[x][3][y_src][x_src]);
+            atomicAdd(&(grid[0][grid_y+y][grid_x+x]), subgrid[s][0][y_src][x_src]);
+            atomicAdd(&(grid[1][grid_y+y][grid_x+x]), subgrid[s][1][y_src][x_src]);
+            atomicAdd(&(grid[2][grid_y+y][grid_x+x]), subgrid[s][2][y_src][x_src]);
+            atomicAdd(&(grid[3][grid_y+y][grid_x+x]), subgrid[s][3][y_src][x_src]);
         }
     }
 }
