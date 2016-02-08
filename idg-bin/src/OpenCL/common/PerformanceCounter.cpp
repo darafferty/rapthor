@@ -5,7 +5,7 @@ using namespace idg;
 /*
     Utility
 */
-double get_runtime(cl_event event) {
+double PerformanceCounter::get_runtime(cl_event event) {
     cl_ulong start, end;
     double runtime = 0;
     if (clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
@@ -15,6 +15,15 @@ double get_runtime(cl_event event) {
     return runtime;
 }
 
+double PerformanceCounter::get_runtime(cl_event event1, cl_event event2) {
+    cl_ulong start, end;
+    double runtime = 0;
+    if (clGetEventProfilingInfo(event1, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL) == CL_SUCCESS &&
+        clGetEventProfilingInfo(event2, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL) == CL_SUCCESS) {
+        runtime = (end - start) * 1e-9;
+    }
+    return runtime;
+}
 
 /*
     Performance Counter for one event

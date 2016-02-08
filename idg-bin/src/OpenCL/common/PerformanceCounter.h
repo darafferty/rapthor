@@ -30,6 +30,8 @@ class PerformanceCounter {
         PowerSensor *powerSensor;
         void setPowerSensor(PowerSensor *_powerSensor);
         #endif
+        static double get_runtime(cl_event event);
+        static double get_runtime(cl_event event1, cl_event event2);
 
    private:
         static void startPowerMeasurement(cl_event event, cl_int, void *user_data);
