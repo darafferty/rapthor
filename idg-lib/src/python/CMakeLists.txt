@@ -6,6 +6,7 @@ install(FILES
         CPU.py
         Hybrid.py
         KNC.py
+        OpenCL.py
         Proxy.py
         utils.py
         DESTINATION
