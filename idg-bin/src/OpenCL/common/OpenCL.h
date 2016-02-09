@@ -14,6 +14,8 @@
 #include <CL/cl.hpp>
 #include <CL/cl.h>
 
+#include <memory>
+
 #include "idg-common.h"
 #include "Kernels.h"
 
@@ -79,6 +81,15 @@ namespace idg {
                    uint64_t sizeof_wavenumbers();
                    uint64_t sizeof_aterm();
                    uint64_t sizeof_spheroidal();
+
+                public:
+                   virtual std::unique_ptr<kernel::opencl::Gridder> get_kernel_gridder() const = 0;
+                   virtual std::unique_ptr<kernel::opencl::Degridder> get_kernel_degridder() const = 0;
+                   virtual std::unique_ptr<kernel::opencl::GridFFT> get_kernel_fft() const = 0;
+                   virtual std::unique_ptr<kernel::opencl::Scaler> get_kernel_scaler() const = 0;
+                   virtual std::unique_ptr<kernel::opencl::Adder> get_kernel_adder() const = 0;
+                   virtual std::unique_ptr<kernel::opencl::Splitter> get_kernel_splitter() const = 0;
+
 
                 protected:
                     ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);

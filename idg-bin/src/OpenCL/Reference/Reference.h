@@ -30,6 +30,14 @@ namespace idg {
                 // Get default values for ProxyInfo
                 static std::string default_compiler_flags();
 
+            public:
+                virtual std::unique_ptr<idg::kernel::opencl::Gridder> get_kernel_gridder() const override;
+                virtual std::unique_ptr<idg::kernel::opencl::Degridder> get_kernel_degridder() const override;
+                virtual std::unique_ptr<idg::kernel::opencl::GridFFT> get_kernel_fft() const override;
+                virtual std::unique_ptr<idg::kernel::opencl::Scaler> get_kernel_scaler() const override;
+                virtual std::unique_ptr<idg::kernel::opencl::Adder> get_kernel_adder() const override;
+                virtual std::unique_ptr<idg::kernel::opencl::Splitter> get_kernel_splitter() const override;
+
             }; // class Reference
 
         } // namespace opencl

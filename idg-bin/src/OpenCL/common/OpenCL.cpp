@@ -14,6 +14,7 @@
 #include "OpenCL.h"
 
 using namespace std;
+using namespace idg::kernel::opencl;
 
 namespace idg {
     namespace proxy {
@@ -155,9 +156,9 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                kernel::Gridder kernel_gridder(*programs[which_program[kernel::name_gridder]], mParams);
-                kernel::Adder kernel_adder(*programs[which_program[kernel::name_adder]], mParams);
-                kernel::Scaler kernel_scaler(*programs[which_program[kernel::name_scaler]], mParams);
+                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
+                unique_ptr<Adder> kernel_adder = get_kernel_adder();
+                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
 
                 // Initialize metadata
                 // TODO
@@ -203,7 +204,7 @@ namespace idg {
                 #pragma omp parallel num_threads(nr_streams)
                 {
                     // Load private kernels
-                    kernel::GridFFT kernel_fft(mParams);
+                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                     // Events
                     vector<cl::Event> inputReady(1), outputReady(1);
@@ -248,22 +249,22 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
         					// Create FFT plan
-                            kernel_fft.plan(context, executequeue, subgridsize, current_nr_subgrids);
+                            kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
         					// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_gridder.launchAsync(
+                            kernel_gridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
         					// Launch FFT
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
 
                             // Launch scaler kernel
-                            kernel_scaler.launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
+                            kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
 
                             // Launch adder kernel
-                            kernel_adder.launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
+                            kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
                     }
@@ -274,15 +275,15 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 PowerSensor::State stopState = powerSensor.read();
-                kernel::GridFFT kernel_fft(mParams);
-                uint64_t total_flops_gridder  = kernel_gridder.flops(nr_baselines, nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder.bytes(nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft.bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_scaler   = kernel_scaler.flops(nr_subgrids);
-                uint64_t total_bytes_scaler   = kernel_scaler.bytes(nr_subgrids);
-                uint64_t total_flops_adder    = kernel_adder.flops(nr_subgrids);
-                uint64_t total_bytes_adder    = kernel_adder.bytes(nr_subgrids);
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_scaler   = kernel_scaler->flops(nr_subgrids);
+                uint64_t total_bytes_scaler   = kernel_scaler->bytes(nr_subgrids);
+                uint64_t total_flops_adder    = kernel_adder->flops(nr_subgrids);
+                uint64_t total_bytes_adder    = kernel_adder->bytes(nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
@@ -322,8 +323,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_degridder();
 
                 // Load kernels
-                kernel::Degridder kernel_degridder(*programs[which_program[kernel::name_degridder]], mParams);
-                kernel::Splitter kernel_splitter(*programs[which_program[kernel::name_splitter]], mParams);
+                unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
+                unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();;
 
                 // Initialize metadata
                 // TODO
@@ -369,7 +370,7 @@ namespace idg {
                 #pragma omp parallel num_threads(nr_streams)
                 {
                     // Load kernel functions
-                    kernel::GridFFT kernel_fft(mParams);
+                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
@@ -413,17 +414,17 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
         					// Create FFT plan
-                            kernel_fft.plan(context, executequeue, subgridsize, current_nr_subgrids);
+                            kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                             // Launch splitter kernel
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_splitter.launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
+                            kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
 
         					// Launch FFT
-                            kernel_fft.launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
 
         					// Launch degridder kernel
-                            kernel_degridder.launchAsync(
+                            kernel_degridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
@@ -440,13 +441,13 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 PowerSensor::State stopState = powerSensor.read();
-                kernel::GridFFT kernel_fft(mParams);
-                uint64_t total_flops_degridder  = kernel_degridder.flops(nr_baselines, nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder.bytes(nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft.flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft.bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_splitter   = kernel_splitter.flops(nr_subgrids);
-                uint64_t total_bytes_splitter   = kernel_splitter.bytes(nr_subgrids);
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_splitter   = kernel_splitter->flops(nr_subgrids);
+                uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
@@ -491,17 +492,17 @@ namespace idg {
                 #endif
 
                 // Load kernel function
-                kernel::GridFFT kernel_fft(mParams);
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                 // Copy grid to device
                 queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
 
                 // Create FFT plan
-                kernel_fft.plan(context, queue, gridsize, 1);
+                kernel_fft->plan(context, queue, gridsize, 1);
 
         		// Launch FFT
                 queue.enqueueMarkerWithWaitList(NULL, &events[1]);
-                kernel_fft.launchAsync(queue, d_grid, sign, counter_fft);
+                kernel_fft->launchAsync(queue, d_grid, sign, counter_fft);
                 queue.enqueueMarkerWithWaitList(NULL, &events[2]);
 
                 // Copy grid to host
@@ -517,8 +518,8 @@ namespace idg {
                 //                  0);
                 auxiliary::report("   fft",
                                   PerformanceCounter::get_runtime((cl_event) events[1](), (cl_event) events[2]()),
-                                  kernel_fft.flops(gridsize, 1),
-                                  kernel_fft.bytes(gridsize, 1),
+                                  kernel_fft->flops(gridsize, 1),
+                                  kernel_fft->bytes(gridsize, 1),
                                   0);
                 //auxiliary::report("output",
                 //                  PerformanceCounter::get_runtime((cl_event) events[3]()),
@@ -611,11 +612,11 @@ namespace idg {
                 } // for each library
 
                 // Fill which_program structure
-                which_program[kernel::name_gridder] = 0;
-                which_program[kernel::name_degridder] = 1;
-                which_program[kernel::name_adder] = 2;
-                which_program[kernel::name_splitter] = 3;
-                which_program[kernel::name_scaler] = 4;
+                which_program[name_gridder] = 0;
+                which_program[name_degridder] = 1;
+                which_program[name_adder] = 2;
+                which_program[name_splitter] = 3;
+                which_program[name_scaler] = 4;
             } // compile
 
             void OpenCL::parameter_sanity_check()

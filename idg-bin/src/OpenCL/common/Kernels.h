@@ -15,8 +15,8 @@
 #include "PerformanceCounter.h"
 
 namespace idg {
-
     namespace kernel {
+        namespace opencl {
 
         // define the kernel function names
         static const std::string name_gridder   = "kernel_gridder";
@@ -25,137 +25,139 @@ namespace idg {
         static const std::string name_splitter  = "kernel_splitter";
         static const std::string name_scaler    = "kernel_scaler";
 
-        class Gridder {
-            public:
-                Gridder(cl::Program &program, Parameters &parameters);
-                 void launchAsync(
-                    cl::CommandQueue &queue,
-                    int nr_baselines,
-                    int nr_subgrids,
-                    float w_offset,
-                    cl::Buffer &d_uvw,
-                    cl::Buffer &d_wavenumbers,
-                    cl::Buffer &d_visibilities,
-                    cl::Buffer &d_spheroidal,
-                    cl::Buffer &d_aterm,
-                    cl::Buffer &d_metadata,
-                    cl::Buffer &d_subgrid,
-                    PerformanceCounter &counter);
-                uint64_t flops(int nr_baselines, int nr_subgrids);
-                uint64_t bytes(int nr_baselines, int nr_subgrids);
+            class Gridder {
+                public:
+                    Gridder(cl::Program &program, const Parameters &parameters);
+                     void launchAsync(
+                        cl::CommandQueue &queue,
+                        int nr_baselines,
+                        int nr_subgrids,
+                        float w_offset,
+                        cl::Buffer &d_uvw,
+                        cl::Buffer &d_wavenumbers,
+                        cl::Buffer &d_visibilities,
+                        cl::Buffer &d_spheroidal,
+                        cl::Buffer &d_aterm,
+                        cl::Buffer &d_metadata,
+                        cl::Buffer &d_subgrid,
+                        PerformanceCounter &counter);
+                    uint64_t flops(int nr_baselines, int nr_subgrids);
+                    uint64_t bytes(int nr_baselines, int nr_subgrids);
 
-        	private:
-                cl::Event event;
-        	    cl::Kernel kernel;
-                Parameters &parameters;
-        };
-
-
-        class Degridder {
-            public:
-                Degridder(cl::Program &program, Parameters &parameters);
-                void launchAsync(
-                    cl::CommandQueue &queue,
-                    int nr_baselines,
-                    int nr_subgrids,
-                    float w_offset,
-                    cl::Buffer &d_uvw,
-                    cl::Buffer &d_wavenumbers,
-                    cl::Buffer &d_visibilities,
-                    cl::Buffer &d_spheroidal,
-                    cl::Buffer &d_aterm,
-                    cl::Buffer &d_metadata,
-                    cl::Buffer &d_subgrid,
-                    PerformanceCounter &counter);
-                uint64_t flops(int nr_baselines, int nr_subgrids);
-                uint64_t bytes(int nr_baselines, int nr_subgrids);
-
-        	private:
-                cl::Event event;
-                cl::Kernel kernel;
-                Parameters &parameters;
-        };
+                private:
+                    cl::Event event;
+                    cl::Kernel kernel;
+                    const Parameters &parameters;
+            };
 
 
-        class GridFFT {
-        	public:
-                GridFFT(Parameters &parameters);
-                ~GridFFT();
-                void plan(
-                    cl::Context &context, cl::CommandQueue &queue,
-                    int size, int batch);
-                void launchAsync(
-                    cl::CommandQueue &queue,
-                    cl::Buffer &d_data,
-                    clfftDirection direction,
-                    PerformanceCounter &counter);
-        		uint64_t flops(int size, int batch);
-        		uint64_t bytes(int size, int batch);
+            class Degridder {
+                public:
+                    Degridder(cl::Program &program, const Parameters &parameters);
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        int nr_baselines,
+                        int nr_subgrids,
+                        float w_offset,
+                        cl::Buffer &d_uvw,
+                        cl::Buffer &d_wavenumbers,
+                        cl::Buffer &d_visibilities,
+                        cl::Buffer &d_spheroidal,
+                        cl::Buffer &d_aterm,
+                        cl::Buffer &d_metadata,
+                        cl::Buffer &d_subgrid,
+                        PerformanceCounter &counter);
+                    uint64_t flops(int nr_baselines, int nr_subgrids);
+                    uint64_t bytes(int nr_baselines, int nr_subgrids);
 
-            private:
-                cl::Event start;
-                cl::Event end;
-                bool uninitialized;
-                Parameters &parameters;
-                int planned_size;
-                int planned_batch;
-                clfftPlanHandle fft;
-        };
+                private:
+                    cl::Event event;
+                    cl::Kernel kernel;
+                    const Parameters &parameters;
+            };
 
-        class Adder {
-            public:
-                Adder(cl::Program &program, Parameters &parameters);
-                void launchAsync(
-                    cl::CommandQueue &queue,
-                    int nr_subgrids,
-                    cl::Buffer d_metadata,
-                    cl::Buffer d_subgrid,
-                    cl::Buffer d_grid,
-                    PerformanceCounter &counter);
-                uint64_t flops(int nr_subgrids);
-                uint64_t bytes(int nr_subgrids);
 
-            private:
-                cl::Event event;
-                cl::Kernel kernel;
-                Parameters &parameters;
-        };
+            class GridFFT {
+                public:
+                    GridFFT(const Parameters &parameters);
+                    ~GridFFT();
+                    void plan(
+                        cl::Context &context, cl::CommandQueue &queue,
+                        int size, int batch);
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        cl::Buffer &d_data,
+                        clfftDirection direction,
+                        PerformanceCounter &counter);
+                    uint64_t flops(int size, int batch);
+                    uint64_t bytes(int size, int batch);
 
-        class Splitter {
-            public:
-                Splitter(cl::Program &program, Parameters &parameters);
-                void launchAsync(
-                    cl::CommandQueue &queue,
-                    int nr_subgrids,
-                    cl::Buffer d_metadata,
-                    cl::Buffer d_subgrid,
-                    cl::Buffer d_grid,
-                    PerformanceCounter &counter);
-                uint64_t flops(int nr_subgrids);
-                uint64_t bytes(int nr_subgrids);
+                private:
+                    cl::Event start;
+                    cl::Event end;
+                    bool uninitialized;
+                    const Parameters &parameters;
+                    int planned_size;
+                    int planned_batch;
+                    clfftPlanHandle fft;
+            };
 
-            private:
-                cl::Event event;
-                cl::Kernel kernel;
-                Parameters &parameters;
-        };
+            class Adder {
+                public:
+                    Adder(cl::Program &program, const Parameters &parameters);
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        int nr_subgrids,
+                        cl::Buffer d_metadata,
+                        cl::Buffer d_subgrid,
+                        cl::Buffer d_grid,
+                        PerformanceCounter &counter);
+                    uint64_t flops(int nr_subgrids);
+                    uint64_t bytes(int nr_subgrids);
 
-        class Scaler {
-            public:
-                Scaler(cl::Program &program, Parameters &parameters);
-                void launchAsync(
-                    cl::CommandQueue &queue,
-                    int nr_subgrids,
-                    cl::Buffer d_subgrid,
-                    PerformanceCounter &counter);
-                uint64_t flops(int nr_subgrids);
-                uint64_t bytes(int nr_subgrids);
+                private:
+                    cl::Event event;
+                    cl::Kernel kernel;
+                    const Parameters &parameters;
+            };
 
-            private:
-                cl::Event event;
-                cl::Kernel kernel;
-                Parameters &parameters;
-        };
+            class Splitter {
+                public:
+                    Splitter(cl::Program &program, const Parameters &parameters);
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        int nr_subgrids,
+                        cl::Buffer d_metadata,
+                        cl::Buffer d_subgrid,
+                        cl::Buffer d_grid,
+                        PerformanceCounter &counter);
+                    uint64_t flops(int nr_subgrids);
+                    uint64_t bytes(int nr_subgrids);
+
+                private:
+                    cl::Event event;
+                    cl::Kernel kernel;
+                    const Parameters &parameters;
+            };
+
+            class Scaler {
+                public:
+                    Scaler(cl::Program &program, const Parameters &parameters);
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        int nr_subgrids,
+                        cl::Buffer d_subgrid,
+                        PerformanceCounter &counter);
+                    uint64_t flops(int nr_subgrids);
+                    uint64_t bytes(int nr_subgrids);
+
+                private:
+                    cl::Event event;
+                    cl::Kernel kernel;
+                    const Parameters &parameters;
+            };
+
+        } // namespace opencl
     } // namespace kernel
 } // namespace idg
 
