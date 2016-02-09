@@ -56,10 +56,15 @@ namespace idg {
                 Degridder(cl::Program &program, Parameters &parameters);
                 void launchAsync(
                     cl::CommandQueue &queue,
-                    int nr_baselines, int nr_subgrids, float w_offset,
-                    cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
-                    cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
-                    cl::Buffer &d_aterm, cl::Buffer &d_metadata,
+                    int nr_baselines,
+                    int nr_subgrids,
+                    float w_offset,
+                    cl::Buffer &d_uvw,
+                    cl::Buffer &d_wavenumbers,
+                    cl::Buffer &d_visibilities,
+                    cl::Buffer &d_spheroidal,
+                    cl::Buffer &d_aterm,
+                    cl::Buffer &d_metadata,
                     cl::Buffer &d_subgrid,
                     PerformanceCounter &counter);
                 uint64_t flops(int nr_baselines, int nr_subgrids);
@@ -100,6 +105,25 @@ namespace idg {
         class Adder {
             public:
                 Adder(cl::Program &program, Parameters &parameters);
+                void launchAsync(
+                    cl::CommandQueue &queue,
+                    int nr_subgrids,
+                    cl::Buffer d_metadata,
+                    cl::Buffer d_subgrid,
+                    cl::Buffer d_grid,
+                    PerformanceCounter &counter);
+                uint64_t flops(int nr_subgrids);
+                uint64_t bytes(int nr_subgrids);
+
+            private:
+                cl::Event event;
+                cl::Kernel kernel;
+                Parameters &parameters;
+        };
+
+        class Splitter {
+            public:
+                Splitter(cl::Program &program, Parameters &parameters);
                 void launchAsync(
                     cl::CommandQueue &queue,
                     int nr_subgrids,

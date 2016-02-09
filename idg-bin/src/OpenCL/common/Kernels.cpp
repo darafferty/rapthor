@@ -196,6 +196,9 @@ namespace idg {
 
         void GridFFT::launchAsync(
             cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
+            #if 1
+            clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
+            #else
             counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
             // Retrieve fft plan from handle
@@ -218,6 +221,7 @@ namespace idg {
                 std::cerr << "clfftEnqueueTransform for column failed" << std::endl;
                 exit(EXIT_FAILURE);
             }
+            #endif
         }
 
         uint64_t GridFFT::flops(int size, int batch) {
@@ -251,7 +255,7 @@ namespace idg {
                 queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                 counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
             } catch (cl::Error &error) {
-                std::cerr << "Error launching gridder: " << error.what() << std::endl;
+                std::cerr << "Error launching adder: " << error.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
@@ -272,6 +276,50 @@ namespace idg {
             bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
             bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
             bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
+            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+            return bytes;
+        }
+
+        // Splitter class
+        Splitter::Splitter(cl::Program &program, Parameters &parameters) :
+            kernel(program, name_splitter.c_str()),
+            parameters(parameters) {}
+
+        void Splitter::launchAsync(
+            cl::CommandQueue &queue,
+            int nr_subgrids,
+            cl::Buffer d_metadata,
+            cl::Buffer d_subgrid,
+            cl::Buffer d_grid,
+            PerformanceCounter &counter) {
+            cl::NDRange globalSize(128 * nr_subgrids, 1);
+            cl::NDRange localSize(128, 1);
+            kernel.setArg(0, d_metadata);
+            kernel.setArg(1, d_subgrid);
+            kernel.setArg(2, d_grid);
+            try {
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                counter.doOperation(event, "splitter", flops(nr_subgrids), bytes(nr_subgrids));
+            } catch (cl::Error &error) {
+                std::cerr << "Error launching splitter: " << error.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        uint64_t Splitter::flops(int nr_subgrids) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            uint64_t flops = 0;
+            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
+            return flops;
+        }
+
+        uint64_t Splitter::bytes(int nr_subgrids) {
+            int subgridsize = parameters.get_subgrid_size();
+            int nr_polarizations = parameters.get_nr_polarizations();
+            uint64_t bytes = 0;
+            bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
+            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
             bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
             return bytes;
         }
