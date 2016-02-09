@@ -282,7 +282,7 @@ namespace idg {
 
         // Splitter class
         Splitter::Splitter(cl::Program &program, Parameters &parameters) :
-            kernel(program, name_adder.c_str()),
+            kernel(program, name_splitter.c_str()),
             parameters(parameters) {}
 
         void Splitter::launchAsync(
