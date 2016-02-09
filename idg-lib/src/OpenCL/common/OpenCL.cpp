@@ -373,7 +373,7 @@ namespace idg {
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
-                    htodqueue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Private device memory
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
@@ -408,7 +408,6 @@ namespace idg {
                         {
         					// Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
