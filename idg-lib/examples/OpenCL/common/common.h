@@ -56,7 +56,7 @@ void printDevices(int deviceNumber) {
 
 	// Get devices
 	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-	
+
 	std::clog << "Devices" << std::endl;
 	for (int d = 0; d < devices.size(); d++) {
 		cl::Device device = devices[d];
