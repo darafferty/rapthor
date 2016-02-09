@@ -22,8 +22,6 @@ target_link_libraries (
   ${PROJECT_NAME} 
   idg-utility
   idg-opencl
-  ${OPENCL_LIBRARIES}
-  ${CLFFT_LIBRARIES}
 )
 
 # install

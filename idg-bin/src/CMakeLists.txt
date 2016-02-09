@@ -155,6 +155,13 @@ add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-reference>
 )
 
+set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+
+target_link_libraries (
+  idg-opencl
+  ${LINK_LIRBRARIES}
+)
+
 set_target_properties(idg-opencl PROPERTIES
                       PUBLIC_HEADER idg-opencl.h)
 

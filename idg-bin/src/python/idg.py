@@ -19,6 +19,11 @@ except OSError:
     pass
 
 try:
+    import OpenCL
+except OSError:
+    pass
+
+try:
     import utils
 except OSError:
     pass
