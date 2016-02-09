@@ -5,10 +5,10 @@
 /*
 	Kernel
 */
-__kernel void kernel_adder(
+__kernel void kernel_splitter(
 	__global const MetadataType metadata,
-	__global const SubGridType  subgrid,
-	__global GridType           grid
+	__global SubGridType        subgrid,
+	__global const GridType     grid
 	) {
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
@@ -29,14 +29,14 @@ __kernel void kernel_adder(
         if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
             grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
             // Compute shifted position in subgrid
-            int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-            int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Add subgrid value to grid
-            atomicAdd(&(grid[0][grid_y+y][grid_x+x]), subgrid[s][0][y_src][x_src]);
-            atomicAdd(&(grid[1][grid_y+y][grid_x+x]), subgrid[s][1][y_src][x_src]);
-            atomicAdd(&(grid[2][grid_y+y][grid_x+x]), subgrid[s][2][y_src][x_src]);
-            atomicAdd(&(grid[3][grid_y+y][grid_x+x]), subgrid[s][3][y_src][x_src]);
+            subgrid[s][0][y_dst][x_dst] = grid[0][grid_y+y][grid_x+x];
+            subgrid[s][1][y_dst][x_dst] = grid[1][grid_y+y][grid_x+x];
+            subgrid[s][2][y_dst][x_dst] = grid[2][grid_y+y][grid_x+x];
+            subgrid[s][3][y_dst][x_dst] = grid[3][grid_y+y][grid_x+x];
         }
     }
 }
