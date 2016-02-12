@@ -22,8 +22,9 @@ if __name__ == "__main__":
     nr_channels = 1
     nr_time = 4800            # samples per baseline
     nr_timeslots = 10         # A-term time slots
-    image_size = 0.08
-    subgrid_size = 24
+    image_size = 0.12
+    #subgrid_size = 24
+    subgrid_size = 32
     grid_size = 1024
     integration_time = 10
     kernel_size = (subgrid_size / 2) + 1
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
+    #p = idg.CPU.Reference(nr_stations, nr_channels,
     p = idg.OpenCL.Reference(nr_stations, nr_channels,
                              nr_time, nr_timeslots,
                              image_size, grid_size, subgrid_size)
@@ -128,12 +130,12 @@ if __name__ == "__main__":
     ############
     # degridding
     ############
-    p.transform(idg.ImageDomainToFourierDomain, grid)
+    #p.transform(idg.ImageDomainToFourierDomain, grid)
 
     #idg.utils.plot_grid(grid)
 
-    p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
-                          w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    idg.utils.plot_visibilities(visibilities)
+    #p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
+    #                      w_offset, kernel_size, aterms, aterms_offset, spheroidal)
+    #idg.utils.plot_visibilities(visibilities)
 
     plt.show()
