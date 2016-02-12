@@ -174,7 +174,7 @@ namespace idg {
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                const int nr_streams = 3;
+                const int nr_streams = 1;
 
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_USE_HOST_PTR, sizeof_visibilities(nr_baselines), (void *) visibilities);
@@ -198,6 +198,7 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
                 htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
+                htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
                 htodqueue.finish();
 
                 // Start gridder
@@ -271,6 +272,7 @@ namespace idg {
                 }
 
                 // Copy grid to host
+                executequeue.finish();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
