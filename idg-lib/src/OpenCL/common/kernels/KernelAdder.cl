@@ -16,14 +16,15 @@ __kernel void kernel_adder(
     int blocksize = get_local_size(0) * get_local_size(1);
     int s = get_group_id(0);
 
-    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        int x = tid % SUBGRIDSIZE;
-        int y = tid / SUBGRIDSIZE;
+    // Load position in grid
+    const Metadata m = metadata[s];
+    int grid_x = m.coordinate.x;
+    int grid_y = m.coordinate.y;
 
-        // Load position in grid
-        const Metadata m = metadata[s];
-        int grid_x = m.coordinate.x;
-        int grid_y = m.coordinate.y;
+    // Iterate all pixels in subgrid
+    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
+        int x = i % SUBGRIDSIZE;
+        int y = i / SUBGRIDSIZE;
 
         // Check wheter subgrid fits in grid
         if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
