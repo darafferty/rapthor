@@ -159,7 +159,14 @@ namespace idg {
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
+                    //clfftSetPlanBatchSize(fft, batch * nr_polarizations);
+                    //clfftSetPlanBatchSize(fft, batch/4);
+
+
+                    // Set plan parameters
+                    clfftSetPlanPrecision(fft, CLFFT_SINGLE);
+                    clfftSetLayout(fft, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
+                    clfftSetResultLocation(fft, CLFFT_INPLACE);
                     size_t dist = size * size;
                     clfftSetPlanDistance(fft, dist, dist);
 
@@ -180,7 +187,8 @@ namespace idg {
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
                 #if 1
-                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
+                //clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
+                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 #else
                 counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
