@@ -80,10 +80,12 @@ __kernel void kernel_gridder(
             // Iterate all timesteps
             for (int time = 0; time < nr_timesteps; time++) {
                  // Load UVW coordinates
-                float4 uvw = (float4) _uvw[time];
+                float u = _uvw[time].x;
+                float v = _uvw[time].y;
+                float w = _uvw[time].z;
 
                 // Compute phase index
-                float ulvmwn = uvw.x*l + uvw.y*m + uvw.z*n;
+                float ulvmwn = u*l + v*m + w*n;
 
                 // Compute phase offset
 				float phase_offset = u_offset*l + v_offset*m + w_offset*n;
