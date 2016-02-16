@@ -146,6 +146,7 @@ namespace idg {
                 clfftDestroyPlan(&fft);
             }
 
+            // TODO: incorrect
             void GridFFT::plan(cl::Context &context, cl::CommandQueue &queue, int size, int batch) {
                 // Check wheter a new plan has to be created
                 if (uninitialized ||
@@ -159,8 +160,7 @@ namespace idg {
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    //clfftSetPlanBatchSize(fft, batch * nr_polarizations);
-                    //clfftSetPlanBatchSize(fft, batch/4);
+                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
 
                     // Set plan parameters
@@ -184,11 +184,11 @@ namespace idg {
                 uninitialized = false;
             }
 
+            // TODO: incorrect
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
                 #if 1
-                //clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
-                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
                 #else
                 counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
