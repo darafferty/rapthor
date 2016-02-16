@@ -174,12 +174,17 @@ namespace idg {
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                const int nr_streams = 1;
+                const int nr_streams = 3;
 
                 // Host memory
-                cl::Buffer h_visibilities(context, CL_MEM_USE_HOST_PTR, sizeof_visibilities(nr_baselines), (void *) visibilities);
-                cl::Buffer h_uvw(context, CL_MEM_USE_HOST_PTR, sizeof_uvw(nr_baselines), (void *) uvw);
-                cl::Buffer h_metadata(context, CL_MEM_USE_HOST_PTR, sizeof_metadata(nr_subgrids), (void *) metadata);
+                cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(nr_baselines));
+                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(nr_baselines));
+                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(plan.get_nr_subgrids()));
+
+                // Copy input data to host memory
+                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  sizeof_visibilities(nr_baselines), visibilities);
+                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  sizeof_uvw(nr_baselines), uvw);
+                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  sizeof_metadata(nr_subgrids), metadata);
 
                 // Device memory
                 cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
@@ -199,7 +204,6 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
                 htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
-                htodqueue.finish();
 
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -223,6 +227,11 @@ namespace idg {
                     }
                     #endif
 
+                    // Private device memory
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
+
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -236,9 +245,8 @@ namespace idg {
                         size_t visibilities_offset = bl * sizeof_visibilities(1);
                         size_t metadata_offset     = bl * sizeof_metadata(1);
 
-                        // Private device memory
-                        cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(current_nr_subgrids));
-                        cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(current_nr_subgrids));
+                        // Create FFT plan
+                        //kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -249,9 +257,6 @@ namespace idg {
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-        					// Create FFT plan
-                            kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
-
         					// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder->launchAsync(
@@ -259,7 +264,7 @@ namespace idg {
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
         					// Launch FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
+                            //kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
 
                             // Launch scaler kernel
                             kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
