@@ -24,8 +24,10 @@ namespace idg {
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
-                cl::NDRange globalSize(32 * nr_subgrids, 4);
-                cl::NDRange localSize(32, 4);
+                int localSizeX = 16;
+                int localSizeY = 16;
+                cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
+                cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
                 kernel.setArg(1, d_uvw);
                 kernel.setArg(2, d_wavenumbers);
