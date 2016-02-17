@@ -45,6 +45,10 @@ namespace idg {
                 }
             }
 
+            int Gridder::get_max_nr_timesteps() {
+                return 32;
+            }
+
             uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_time = parameters.get_nr_time();
@@ -108,6 +112,10 @@ namespace idg {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
+            }
+
+            int Degridder::get_max_nr_timesteps() {
+                return 32;
             }
 
             uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {
