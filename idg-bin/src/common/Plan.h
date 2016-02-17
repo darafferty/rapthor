@@ -44,6 +44,9 @@ namespace idg {
             // number of subgrids for baselines b1 to b1+n-1
             int get_nr_subgrids(int baseline, int n) const;
 
+            // max number of subgrids for n baselines between bl1 and bl2+n
+            int get_max_nr_subgrids(int bl1, int bl2, int n);
+
             void print_subgrid_offset() const;
 
             const Metadata* get_metadata_ptr(int baseline = 0) const;

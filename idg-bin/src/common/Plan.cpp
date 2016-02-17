@@ -44,6 +44,19 @@ namespace idg {
     }
 
 
+    int Plan::get_max_nr_subgrids(int bl1, int bl2, int n) {
+        int nr_baselines = bl1 + n > bl2 ? bl2 - bl1 : n;
+        int max_nr_subgrids = get_nr_subgrids(bl1, nr_baselines);
+        for (int bl = bl1 + n; bl <  bl2; bl += n) {
+            nr_baselines = bl + n > bl2 ? bl2 - bl : n;
+            int nr_subgrids = get_nr_subgrids(bl, nr_baselines);
+            if (nr_subgrids > max_nr_subgrids) {
+                max_nr_subgrids = nr_subgrids;
+            }
+        }
+        return max_nr_subgrids;
+    }
+
     const Metadata* Plan::get_metadata_ptr(int bl) const {
         auto offset = get_subgrid_offset(bl);
         return &(metadata[offset]);
