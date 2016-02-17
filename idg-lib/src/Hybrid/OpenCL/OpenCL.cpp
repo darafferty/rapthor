@@ -9,7 +9,7 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "Reference.h"
+#include "OpenCL.h"
 
 using namespace std;
 
@@ -18,7 +18,7 @@ namespace idg {
         namespace hybrid {
 
             /// Constructors
-            Reference::Reference(
+            OpenCL::OpenCL(
                 Parameters params) :
                 cpu(params), opencl(params)
             {
@@ -31,14 +31,14 @@ namespace idg {
             }
 
             /// Destructor
-            Reference::~Reference() {
+            OpenCL::~OpenCL() {
             }
 
             /*
                 High level routines
                 These routines operate on grids
             */
-            void Reference::grid_visibilities(
+            void OpenCL::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -54,7 +54,7 @@ namespace idg {
                 #endif
             }
 
-            void Reference::degrid_visibilities(
+            void OpenCL::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -70,7 +70,7 @@ namespace idg {
                 #endif
             }
 
-            void Reference::transform(DomainAtoDomainB direction,
+            void OpenCL::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -88,9 +88,9 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::hybrid::Reference Hybrid_Reference;
+    typedef idg::proxy::hybrid::OpenCL Hybrid_OpenCL;
 
-    Hybrid_Reference* Hybrid_Reference_init(
+    Hybrid_OpenCL* Hybrid_OpenCL_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
                 unsigned int nr_time,
@@ -108,10 +108,10 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
-        return new Hybrid_Reference(P);
+        return new Hybrid_OpenCL(P);
     }
 
-    void Hybrid_Reference_grid(Hybrid_Reference* p,
+    void Hybrid_OpenCL_grid(Hybrid_OpenCL* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -136,7 +136,7 @@ extern "C" {
                 (const float*) spheroidal);
     }
 
-    void Hybrid_Reference_degrid(Hybrid_Reference* p,
+    void Hybrid_OpenCL_degrid(Hybrid_OpenCL* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -161,7 +161,7 @@ extern "C" {
                     (const float*) spheroidal);
      }
 
-    void Hybrid_Reference_transform(Hybrid_Reference* p,
+    void Hybrid_OpenCL_transform(Hybrid_OpenCL* p,
                     int direction,
                     void *grid)
     {
@@ -173,7 +173,7 @@ extern "C" {
                     (std::complex<float>*) grid);
     }
 
-    void Hybrid_Reference_destroy(Hybrid_Reference* p) {
+    void Hybrid_OpenCL_destroy(Hybrid_OpenCL* p) {
        delete p;
     }
 

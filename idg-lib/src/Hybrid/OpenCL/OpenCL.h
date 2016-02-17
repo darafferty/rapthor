@@ -1,5 +1,5 @@
 /**
- *  \class Reference
+ *  \class OpenCL
  *
  *  \brief Class for ...
  *
@@ -19,17 +19,17 @@
 namespace idg {
     namespace proxy {
         namespace hybrid {
-            class Reference : public Proxy {
+            class OpenCL : public Proxy {
 
                 public:
                     /// Constructors
-                    Reference(Parameters params);
+                    OpenCL(Parameters params);
 
                     /// Destructor
-                    ~Reference();
+                    ~OpenCL();
 
                     /// Assignment
-                    Reference& operator=(const Reference& rhs) = delete;
+                    OpenCL& operator=(const OpenCL& rhs) = delete;
 
                 /*
                     High level routines
@@ -66,7 +66,7 @@ namespace idg {
                     idg::proxy::cpu::HaswellEP cpu;
                     idg::proxy::opencl::Reference opencl;
 
-            }; // class Reference
+            }; // class OpenCL
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
