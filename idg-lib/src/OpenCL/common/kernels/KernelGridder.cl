@@ -39,12 +39,6 @@ __kernel void kernel_gridder(
     // Shared data
 	__local float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
 	__local float4 _uvw[MAX_NR_TIMESTEPS];
-	__local float _wavenumbers[NR_CHANNELS];
-
-    // Load wavenumbers
-    for (int i = tid; i < NR_CHANNELS; i+= blocksize) {
-        _wavenumbers[tid] = wavenumbers[tid];
-    }
 
     // Load UVW
     for (int time = tid; time < nr_timesteps; time += blocksize) {
@@ -91,9 +85,9 @@ __kernel void kernel_gridder(
 				float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                 // Compute phasor
-                //#pragma unroll 4
+                #pragma unroll
                 for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                    float wavenumber = _wavenumbers[chan];
+                    float wavenumber = wavenumbers[chan];
                     float phase = (ulvmwn * wavenumber) - phase_offset;
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 

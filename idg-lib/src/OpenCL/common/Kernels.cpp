@@ -24,8 +24,10 @@ namespace idg {
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
-                cl::NDRange globalSize(32 * nr_subgrids, 4);
-                cl::NDRange localSize(32, 4);
+                int localSizeX = 16;
+                int localSizeY = 16;
+                cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
+                cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
                 kernel.setArg(1, d_uvw);
                 kernel.setArg(2, d_wavenumbers);
@@ -41,6 +43,10 @@ namespace idg {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
+            }
+
+            int Gridder::get_max_nr_timesteps() {
+                return 32;
             }
 
             uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
@@ -108,6 +114,10 @@ namespace idg {
                 }
             }
 
+            int Degridder::get_max_nr_timesteps() {
+                return 32;
+            }
+
             uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_time = parameters.get_nr_time();
@@ -146,6 +156,7 @@ namespace idg {
                 clfftDestroyPlan(&fft);
             }
 
+            // TODO: incorrect
             void GridFFT::plan(cl::Context &context, cl::CommandQueue &queue, int size, int batch) {
                 // Check wheter a new plan has to be created
                 if (uninitialized ||
@@ -159,8 +170,7 @@ namespace idg {
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
                     int nr_polarizations = parameters.get_nr_polarizations();
-                    //clfftSetPlanBatchSize(fft, batch * nr_polarizations);
-                    //clfftSetPlanBatchSize(fft, batch/4);
+                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
 
                     // Set plan parameters
@@ -184,11 +194,11 @@ namespace idg {
                 uninitialized = false;
             }
 
+            // TODO: incorrect
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
                 #if 1
-                //clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
-                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
                 #else
                 counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
