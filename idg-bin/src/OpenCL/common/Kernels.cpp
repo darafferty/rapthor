@@ -239,16 +239,11 @@ namespace idg {
                 cl::Buffer d_subgrid,
                 cl::Buffer d_grid,
                 PerformanceCounter &counter) {
-                int globalSizeX = 4;
-                int globalSizeY = 4;
-                int localSizeX = 16;
-                int localSizeY = 16;
-                cl::NDRange globalSize(globalSizeX * localSizeX, globalSizeY * localSizeY);
-                cl::NDRange localSize(localSizeX, localSizeY);
-                kernel.setArg(0, sizeof(int), &nr_subgrids);
-                kernel.setArg(1, d_metadata);
-                kernel.setArg(2, d_subgrid);
-                kernel.setArg(3, d_grid);
+                cl::NDRange globalSize(128 * nr_subgrids, 1);
+                cl::NDRange localSize(128, 1);
+                kernel.setArg(0, d_metadata);
+                kernel.setArg(1, d_subgrid);
+                kernel.setArg(2, d_grid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
