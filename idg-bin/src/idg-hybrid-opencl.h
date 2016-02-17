@@ -3,5 +3,5 @@
 
 #include "idg-cpu.h"
 #include "idg-opencl.h"
-#include "Hybrid/OpenCL/Reference/Reference.h"
+#include "Hybrid/OpenCL/OpenCL.h"
 #endif
