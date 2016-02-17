@@ -216,8 +216,11 @@ namespace idg {
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Private device memory
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
+                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
                     // Performance counters
                     PerformanceCounter counters[4];
@@ -226,11 +229,6 @@ namespace idg {
                         counters[i].setPowerSensor(&powerSensor);
                     }
                     #endif
-
-                    // Private device memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -350,9 +348,14 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
-                cl::Buffer h_visibilities(context, CL_MEM_USE_HOST_PTR, sizeof_visibilities(nr_baselines), (void *) visibilities);
-                cl::Buffer h_uvw(context, CL_MEM_USE_HOST_PTR, sizeof_uvw(nr_baselines), (void *) uvw);
-                cl::Buffer h_metadata(context, CL_MEM_USE_HOST_PTR, sizeof_metadata(nr_subgrids), (void *) metadata);
+                cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(nr_baselines));
+                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(nr_baselines));
+                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(plan.get_nr_subgrids()));
+
+                // Copy input data to host memory
+                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  sizeof_visibilities(nr_baselines), visibilities);
+                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  sizeof_uvw(nr_baselines), uvw);
+                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  sizeof_metadata(nr_subgrids), metadata);
 
                 // Device memory
                 cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
@@ -384,8 +387,11 @@ namespace idg {
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Private device memory
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  sizeof_uvw(jobsize));
+                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
                     // Performance counters
                     PerformanceCounter counters[3];
@@ -403,14 +409,13 @@ namespace idg {
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
-                        // Private device memory
-                        cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(current_nr_subgrids));
-                        cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_ONLY,  sizeof_metadata(current_nr_subgrids));
-
                         // Offsets
                         size_t uvw_offset          = bl * sizeof_uvw(1);
                         size_t visibilities_offset = bl * sizeof_visibilities(1);
                         size_t metadata_offset     = bl * sizeof_metadata(1);
+
+                        // Create FFT plan
+                        //kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -420,15 +425,12 @@ namespace idg {
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-        					// Create FFT plan
-                            kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
-
                             // Launch splitter kernel
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
                             kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
 
         					// Launch FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
+                            //kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
 
         					// Launch degridder kernel
                             kernel_degridder->launchAsync(
@@ -440,11 +442,14 @@ namespace idg {
                             dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
                         }
-
-                        // Wait for device to host transfer to finish
-                        outputReady[0].wait();
                     }
                 }
+
+                // Wait for device to host transfers to finish
+                dtohqueue.finish();
+
+                // Copy visibilities
+                dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 PowerSensor::State stopState = powerSensor.read();
