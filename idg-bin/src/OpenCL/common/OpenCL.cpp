@@ -161,9 +161,7 @@ namespace idg {
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
 
                 // Initialize metadata
-                // TODO
-                //auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
-                auto max_nr_timesteps = 32;
+                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
                 auto plan = create_plan(uvw, wavenumbers, baselines,
                                         aterm_offsets, kernel_size,
                                         max_nr_timesteps);
@@ -332,9 +330,7 @@ namespace idg {
                 unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();;
 
                 // Initialize metadata
-                // TODO
-                //auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
-                auto max_nr_timesteps = 32;
+                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
                 auto plan = create_plan(uvw, wavenumbers, baselines,
                                         aterm_offsets, kernel_size,
                                         max_nr_timesteps);
