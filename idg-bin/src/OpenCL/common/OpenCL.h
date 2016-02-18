@@ -43,6 +43,12 @@ namespace idg {
                     // Get parameters of proxy
                     const Parameters& get_parameters() const { return mParams; }
 
+                    // Get context of proxy
+                    cl::Context get_context() const { return context; }
+
+                    // Get device of proxy
+                    cl::Device get_device() const { return device; }
+
                 public:
                     // High level interface, inherited from Proxy
                     virtual void grid_visibilities(
