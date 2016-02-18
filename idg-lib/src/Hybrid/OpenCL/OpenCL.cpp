@@ -28,6 +28,19 @@ namespace idg {
                 #endif
 
                 mParams = params;
+
+                // Initialize power sensor
+                #if defined(MEASURE_POWER_ARDUINO)
+                const char *str_power_sensor = getenv("POWER_SENSOR");
+                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
+                const char *str_power_file = getenv("POWER_FILE");
+                if (!str_power_file) str_power_file = POWER_FILE;
+                cout << "Opening power sensor: " << str_power_sensor << endl;
+                cout << "Writing power consumption to file: " << str_power_file << endl;
+                opencl::powerSensor.init(str_power_sensor, str_power_file);
+                #else
+                opencl::powerSensor.init();
+                #endif
             }
 
             /// Destructor
@@ -133,7 +146,7 @@ namespace idg {
                     PerformanceCounter counters[4];
                     #if defined(MEASURE_POWER_ARDUINO)
                     for (int i = 0; i < 4; i++) {
-                        counters[i].setPowerSensor(&powerSensor);
+                        counters[i].setPowerSensor(&opencl::powerSensor);
                     }
                     #endif
 
@@ -319,7 +332,7 @@ namespace idg {
                     PerformanceCounter counters[4];
                     #if defined(MEASURE_POWER_ARDUINO)
                     for (int i = 0; i < 4; i++) {
-                        counters[i].setPowerSensor(&powerSensor);
+                        counters[i].setPowerSensor(&opencl::powerSensor);
                     }
                     #endif
 
