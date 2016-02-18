@@ -182,9 +182,13 @@ namespace idg {
                         }
 
                         outputReady[0].wait();
+
+                        // Run fft
                         powerStates[0] = cpu.read_power();
                         kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                         powerStates[1] = cpu.read_power();
+
+                        // Run adder
                         #pragma omp critical (CPU)
                         {
                             kernel_adder->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, grid);
@@ -220,7 +224,6 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-
             }
 
             void OpenCL::degrid_visibilities(
