@@ -46,7 +46,7 @@ namespace idg {
             }
 
             int Gridder::get_max_nr_timesteps() {
-                return 32;
+                return 128;
             }
 
             uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
@@ -115,7 +115,7 @@ namespace idg {
             }
 
             int Degridder::get_max_nr_timesteps() {
-                return 32;
+                return 128;
             }
 
             uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {

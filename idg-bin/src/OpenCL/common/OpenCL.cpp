@@ -58,6 +58,8 @@ namespace idg {
                 cout << "Opening power sensor: " << str_power_sensor << endl;
                 cout << "Writing power consumption to file: " << str_power_file << endl;
                 powerSensor.init(str_power_sensor, str_power_file);
+                #else
+                powerSensor.init();
                 #endif
             }
 
