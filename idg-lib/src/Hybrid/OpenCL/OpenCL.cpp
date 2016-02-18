@@ -90,7 +90,9 @@ namespace idg {
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
                 cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
-                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(plan.get_nr_subgrids()));
+                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
+                cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(nr_subgrids));
+                void *subgrids = htodqueue.enqueueMapBuffer( h_subgrids, CL_FALSE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
 
                 // Copy input data to host memory
                 htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
@@ -120,11 +122,8 @@ namespace idg {
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
 
-                    // Private host memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cl::Buffer h_subgrids = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(max_nr_subgrids));
-
                     // Private device memory
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_visibilities(jobsize));
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
@@ -155,11 +154,12 @@ namespace idg {
                         size_t metadata_offset     = bl * opencl.sizeof_metadata(1);
                         size_t subgrid_offset      = bl * opencl.sizeof_subgrids(1);
 
+                        // Number of subgrids for all baselines in job
+                        auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+
                         // Get pointers
                         void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                        void *subgrids_ptr = dtohqueue.enqueueMapBuffer(
-                            h_subgrids, CL_FALSE, CL_MAP_READ, 0,
-                            opencl.sizeof_subgrids(max_nr_subgrids));
+                        void *subgrids_ptr = subgrids + subgrid_elements*plan.get_subgrid_offset(bl);
 
                         #pragma omp critical (GPU)
                         {
@@ -178,7 +178,7 @@ namespace idg {
 
                             // Copy subgrid to host
                             dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, 0, opencl.sizeof_subgrids(current_nr_subgrids), NULL, &outputReady[0]);
+                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrid_offset, opencl.sizeof_subgrids(current_nr_subgrids), NULL, &outputReady[0]);
                         }
 
                         outputReady[0].wait();
