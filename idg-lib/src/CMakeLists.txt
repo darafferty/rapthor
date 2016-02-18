@@ -145,6 +145,40 @@ endif()
 
 
 
+##################################################################
+# build libidg-hybrid-opencl: containing all for CPU/OpenCL code #
+##############################################################
+if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
+add_library(idg-hybrid-opencl
+  $<TARGET_OBJECTS:common>
+  $<TARGET_OBJECTS:cpu-common>
+  $<TARGET_OBJECTS:cpu-haswellep>
+  $<TARGET_OBJECTS:opencl-common>
+  $<TARGET_OBJECTS:opencl-reference>
+  $<TARGET_OBJECTS:hybrid-opencl-reference>
+)
+
+set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+
+target_link_libraries (
+  idg-hybrid-opencl
+  ${LINK_LIRBRARIES}
+)
+
+set_target_properties(idg-hybrid-opencl PROPERTIES
+                      PUBLIC_HEADER idg-hybrid-opencl.h)
+
+install(TARGETS idg-hybrid-opencl
+  EXPORT IDGTargets
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+  PUBLIC_HEADER DESTINATION include
+)
+endif()
+
+
+
 ###################################################
 # build libidg-opencl, containing all common code #
 ###################################################
