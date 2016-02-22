@@ -84,6 +84,16 @@ namespace idg {
                 cu::Stream dtohstream;
                 const int nr_streams = 3;
 
+                // Shared host memory
+                cu::HostMemory h_visibilities(cuda.sizeof_visibilities(nr_baselines));
+                cu::HostMemory h_uvw(cuda.sizeof_uvw(nr_baselines));
+                cu::HostMemory h_metadata(cuda.sizeof_metadata(nr_subgrids));
+
+                // Copy input data to host memory
+                h_visibilities.set((void *) visibilities);
+                h_uvw.set((void *) uvw);
+                h_metadata.set((void *) metadata);
+
                 // Shared device memory
                 cu::DeviceMemory d_wavenumbers(cuda.sizeof_wavenumbers());
                 cu::DeviceMemory d_spheroidal(cuda.sizeof_spheroidal());
@@ -115,12 +125,14 @@ namespace idg {
                     unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
 
                     // Private host memory
-			        cu::HostMemory h_visibilities(cuda.sizeof_visibilities(jobsize));
-                    cu::HostMemory h_uvw(cuda.sizeof_uvw(jobsize));
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+			        cu::HostMemory h_subgrids(cuda.sizeof_subgrids(max_nr_subgrids));
 
                     // Private device memory
                 	cu::DeviceMemory d_visibilities(cuda.sizeof_visibilities(jobsize));
                 	cu::DeviceMemory d_uvw(cuda.sizeof_uvw(jobsize));
+                    cu::DeviceMemory d_subgrids(cuda.sizeof_subgrids(max_nr_subgrids));
+                    cu::DeviceMemory d_metadata(cuda.sizeof_metadata(max_nr_subgrids));
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -135,23 +147,10 @@ namespace idg {
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
-                        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-                        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+                        void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
+                        void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
+                        size_t metadata_offset = plan.get_metadata_ptr(bl) - plan.get_metadata_ptr(0);
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
-
-                        // Private host memory
-    			        cu::HostMemory h_subgrids(cuda.sizeof_subgrids(current_nr_subgrids));
-    			        cu::HostMemory h_metadata(cuda.sizeof_metadata(current_nr_subgrids));
-
-                        // Private device memory
-                        cu::DeviceMemory d_subgrids(cuda.sizeof_subgrids(current_nr_subgrids));
-                        d_subgrids.zero();
-                        cu::DeviceMemory d_metadata(cuda.sizeof_metadata(current_nr_subgrids));
-
-                        // Copy memory to host memory
-                        h_visibilities.set(visibilities_ptr, cuda.sizeof_visibilities(current_nr_baselines));
-                        h_uvw.set(uvw_ptr, cuda.sizeof_uvw(current_nr_baselines));
-                        h_metadata.set(metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
 
                         // Power measurement
                         cuda::PowerRecord powerRecords[4];
@@ -161,12 +160,10 @@ namespace idg {
                         {
                 			// Copy input data to device
                 			htodstream.waitEvent(inputFree);
-                			htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
-                            htodstream.memcpyHtoDAsync(d_uvw, h_uvw, cuda.sizeof_uvw(current_nr_baselines));
-                            htodstream.memcpyHtoDAsync(d_metadata, h_metadata, cuda.sizeof_metadata(current_nr_subgrids));
+                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, cuda.sizeof_visibilities(current_nr_baselines));
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, cuda.sizeof_uvw(current_nr_baselines));
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
-
-                			htodstream.record(inputReady);
 
                 			// Create FFT plan
                             kernel_fft->plan(subgridsize, current_nr_subgrids);
