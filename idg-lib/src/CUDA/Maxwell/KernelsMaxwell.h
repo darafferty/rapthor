@@ -15,7 +15,7 @@ namespace idg {
                     : Gridder(module, params)
                     {}
 
-                static const int max_nr_timesteps = 32;
+                static const int max_nr_timesteps = 64;
 
                 virtual void launch(
                     cu::Stream &stream,
