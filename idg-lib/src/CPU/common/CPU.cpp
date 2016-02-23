@@ -135,24 +135,26 @@ namespace idg {
                 #endif
 
                 try {
-                    // proxy constants
+                    // Proxy constants
                     auto nr_baselines = mParams.get_nr_baselines();
                     auto subgridsize = mParams.get_subgrid_size();
                     auto nr_polarizations = mParams.get_nr_polarizations();;
+                    auto nr_time = mParams.get_nr_time();
+                    auto nr_channels = mParams.get_nr_channels();
 
-                    // checks arguments
+                    // Checks arguments
                     if (kernel_size <= 0 || kernel_size >= subgridsize-1) {
                         throw invalid_argument("0 < kernel_size < subgridsize-1 not true");
                     }
 
                     double runtime = -omp_get_wtime();
 
-                    // initialize metadata
+                    // Initialize metadata
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
                     auto nr_subgrids = plan.get_nr_subgrids();
 
-                    // allocate 'subgrids' memory for subgrids
+                    // Allocate 'subgrids' memory for subgrids
                     auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
                                         subgridsize*subgridsize;
                     auto subgrids = new complex<float>[size_subgrids];
@@ -162,6 +164,9 @@ namespace idg {
                     auxiliary::report("init", runtime);
                     #endif
 
+                    runtime -= omp_get_wtime();
+
+                    // Run subroutines
                     grid_onto_subgrids(
                         plan,
                         w_offset,
@@ -176,6 +181,27 @@ namespace idg {
                         plan,
                         subgrids,
                         grid);
+
+                    runtime += omp_get_wtime();
+
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
+                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
+                    unique_ptr<kernel::cpu::Adder> kernel_adder = get_kernel_adder();
+                    uint64_t flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
+                    uint64_t bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
+                    uint64_t flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
+                    uint64_t bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
+                    uint64_t flops_adder    = kernel_adder->flops(nr_subgrids);
+                    uint64_t bytes_adder    = kernel_adder->bytes(nr_subgrids);
+                    uint64_t flops_gridding = flops_gridder + flops_fft + flops_adder;
+                    uint64_t bytes_gridding = bytes_gridder + bytes_fft + bytes_adder;
+                    auxiliary::report("|gridding", runtime,
+                        flops_gridding, bytes_gridding);
+                    auxiliary::report_visibilities("|gridding",
+                        runtime, nr_baselines, nr_time, nr_channels);
+                    clog << endl;
+                    #endif
 
                     delete[] subgrids;
 
@@ -211,24 +237,26 @@ namespace idg {
                 #endif
 
                 try {
-                    // proxy constants
+                    // Proxy constants
                     auto nr_baselines = mParams.get_nr_baselines();
                     auto subgridsize = mParams.get_subgrid_size();
                     auto nr_polarizations = mParams.get_nr_polarizations();;
+                    auto nr_time = mParams.get_nr_time();
+                    auto nr_channels = mParams.get_nr_channels();
 
-                    // checks arguments
+                    // Checks arguments
                     if (kernel_size <= 0 || kernel_size >= subgridsize-1) {
                         throw invalid_argument("0 < kernel_size < subgridsize-1 not true");
                     }
 
                     double runtime = -omp_get_wtime();
 
-                    // initialize metadata
+                    // Initialize metadata
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
                     auto nr_subgrids = plan.get_nr_subgrids();
 
-                    // allocate 'subgrids' memory for subgrids
+                    // Allocate 'subgrids' memory for subgrids
                     auto size_subgrids = 1ULL*nr_subgrids*nr_polarizations*
                                         subgridsize*subgridsize;
                     auto subgrids = new complex<float>[size_subgrids];
@@ -238,6 +266,9 @@ namespace idg {
                     auxiliary::report("init", runtime);
                     #endif
 
+                    runtime -= omp_get_wtime();
+
+                    // Run subroutines
                     split_grid_into_subgrids(
                          plan,
                          subgrids,
@@ -252,6 +283,27 @@ namespace idg {
                         spheroidal,
                         aterm,
                         subgrids);
+
+                    runtime += omp_get_wtime();
+
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
+                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
+                    unique_ptr<kernel::cpu::Splitter> kernel_splitter = get_kernel_splitter();
+                    uint64_t flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
+                    uint64_t bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
+                    uint64_t flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
+                    uint64_t bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
+                    uint64_t flops_splitter   = kernel_splitter->flops(nr_subgrids);
+                    uint64_t bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
+                    uint64_t flops_degridding   = flops_degridder + flops_fft + flops_splitter;
+                    uint64_t bytes_degridding   = bytes_degridder + bytes_fft + bytes_splitter;
+                    auxiliary::report("|degridding", runtime,
+                        flops_degridding, bytes_degridding);
+                    auxiliary::report_visibilities("|degridding",
+                        runtime, nr_baselines, nr_time, nr_channels);
+                    clog << endl;
+                    #endif
 
                     delete[] subgrids;
 
@@ -349,7 +401,7 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
 
-                // load kernel functions
+                // Load kernel functions
                 unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
                 unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
 
@@ -358,7 +410,6 @@ namespace idg {
                 double total_runtime_gridder = 0;
                 double total_runtime_fft = 0;
                 LikwidPowerSensor::State powerStates[4];
-                total_runtime_gridding -= omp_get_wtime();
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -407,15 +458,11 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
-                    double runtime_gridder = LikwidPowerSensor::seconds(
-                        powerStates[0], powerStates[1] );
-                    double runtime_fft     = LikwidPowerSensor::seconds(
-                        powerStates[2], powerStates[3] );
+                    double runtime_gridder = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
+                    double runtime_fft     = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
                     #if defined(REPORT_VERBOSE)
-                    double power_gridder   = LikwidPowerSensor::Watt(
-                        powerStates[0], powerStates[1] );
-                    double power_fft       = LikwidPowerSensor::Watt(
-                        powerStates[2], powerStates[3] );
+                    double power_gridder   = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
+                    double power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
                     auxiliary::report("gridder", runtime_gridder,
                                       kernel_gridder->flops(jobsize, nr_subgrids),
                                       kernel_gridder->bytes(jobsize, nr_subgrids),
@@ -432,27 +479,16 @@ namespace idg {
                 } // end for bl
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_gridding += omp_get_wtime();
                 clog << endl;
                 auto nr_subgrids = plan.get_nr_subgrids();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize,
-                                                                 nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize,
-                                                                 nr_subgrids);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
                 auxiliary::report("|gridder", total_runtime_gridder,
                                   total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft,
                                   total_bytes_fft);
-                auxiliary::report("|gridding", total_runtime_gridding,
-                                  total_flops_gridding, total_bytes_gridding);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding,
-                                               nr_baselines,
-                                               nr_time,
-                                               nr_channels);
                 clog << endl;
                 #endif
             }
@@ -517,12 +553,9 @@ namespace idg {
                 auto nr_subgrids = plan.get_nr_subgrids();
                 uint64_t total_flops_adder = kernel_adder->flops(nr_subgrids);
                 uint64_t total_bytes_adder = kernel_adder->bytes(nr_subgrids);
-                auxiliary::report("|adder", total_runtime_adder, total_flops_adder,
-                                  total_bytes_adder);
-                auxiliary::report("|adding", total_runtime_adding, total_flops_adder,
-                                  total_bytes_adder);
-                auxiliary::report_subgrids("|adding", total_runtime_adding,
-                                           nr_subgrids);
+                auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
+                auxiliary::report("|adding", total_runtime_adding, total_flops_adder, total_bytes_adder);
+                auxiliary::report_subgrids("|adding", total_runtime_adding, nr_subgrids);
                 clog << endl;
                 #endif
             }
@@ -629,7 +662,6 @@ namespace idg {
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
                 LikwidPowerSensor::State powerStates[4];
-                total_runtime_degridding = -omp_get_wtime();
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -675,15 +707,11 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
-                    double runtime_fft         = LikwidPowerSensor::seconds(
-                        powerStates[0], powerStates[1] );
-                    double runtime_degridder   = LikwidPowerSensor::seconds(
-                        powerStates[2], powerStates[3] );
+                    double runtime_fft       = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
+                    double runtime_degridder = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
                     #if defined(REPORT_VERBOSE)
-                    double power_fft           = LikwidPowerSensor::Watt(
-                        powerStates[0], powerStates[1] );
-                    double power_degridder     = LikwidPowerSensor::Watt(
-                        powerStates[2], powerStates[3] );
+                    double power_fft         = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
+                    double power_degridder   = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
 
                     auxiliary::report("degridder", runtime_degridder,
                                       kernel_degridder->flops(jobsize, nr_subgrids),
@@ -701,29 +729,16 @@ namespace idg {
                 } // end for bl
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_degridding += omp_get_wtime();
                 clog << endl;
                 auto nr_subgrids = plan.get_nr_subgrids();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize,
-                                                                   nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize,
-                                                                   nr_subgrids);
-                uint64_t total_flops_degridding = total_flops_degridder
-                                                  + total_flops_fft;
-                uint64_t total_bytes_degridding = total_bytes_degridder
-                                                  + total_bytes_fft;
-                auxiliary::report("|degridder", total_runtime_degridder,
-                                  total_flops_degridder, total_bytes_degridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft,
-                                  total_bytes_fft);
-                auxiliary::report("|degridding", total_runtime_degridding,
-                                  total_flops_degridding, total_bytes_degridding);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding,
-                                               nr_baselines,
-                                               nr_time,
-                                               nr_channels);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
+                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
+                auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
+                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 clog << endl;
                 #endif
             }
@@ -748,7 +763,7 @@ namespace idg {
                 #endif
 
                 // Note: grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
-                auto gridsize         = mParams.get_grid_size();
+                auto gridsize = mParams.get_grid_size();
 
                 #pragma omp parallel for
                 for (int p = 0; p < nr_polarizations; p++) {
@@ -761,7 +776,7 @@ namespace idg {
 
             void CPU::ifftshift(complex<float> *array)
             {
-                // to be implemented
+                // TOD: implement
             }
 
 
@@ -779,14 +794,14 @@ namespace idg {
                            gridsize*sizeof(complex<float>));
 
                     auto j = i + gridsize/2;
-                    memcpy( &array[i*gridsize + gridsize/2], &array[j*gridsize],
-                           (gridsize/2)*sizeof(complex<float>) );
-                    memcpy( &array[i*gridsize], &array[j*gridsize + gridsize/2],
-                           (gridsize/2)*sizeof(complex<float>) );
-                    memcpy( &array[j*gridsize], &buffer[gridsize/2],
-                           (gridsize/2)*sizeof(complex<float>) );
-                    memcpy( &array[j*gridsize + gridsize/2], &buffer[0],
-                           (gridsize/2)*sizeof(complex<float>) );
+                    memcpy(&array[i*gridsize + gridsize/2], &array[j*gridsize],
+                           (gridsize/2)*sizeof(complex<float>));
+                    memcpy(&array[i*gridsize], &array[j*gridsize + gridsize/2],
+                           (gridsize/2)*sizeof(complex<float>));
+                    memcpy(&array[j*gridsize], &buffer[gridsize/2],
+                           (gridsize/2)*sizeof(complex<float>));
+                    memcpy(&array[j*gridsize + gridsize/2], &buffer[0],
+                           (gridsize/2)*sizeof(complex<float>));
                 }
 
                 delete [] buffer;
