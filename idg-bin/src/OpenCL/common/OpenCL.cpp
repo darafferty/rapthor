@@ -77,7 +77,7 @@ namespace idg {
             }
 
             string OpenCL::default_compiler_flags() {
-                return "-cl-fast-relaxed-math";
+                return "-cl-fast-relaxed-math -cl-std=CL2.0";
             }
 
 

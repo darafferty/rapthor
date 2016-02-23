@@ -83,6 +83,7 @@ namespace idg {
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
                 const int nr_streams = 3;
+                omp_set_nested(true);
 
                 // Shared host memory
                 cu::HostMemory h_visibilities(cuda.sizeof_visibilities(nr_baselines));
@@ -300,6 +301,7 @@ namespace idg {
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
                 const int nr_streams = 3;
+                omp_set_nested(true);
 
                 // Shared host memory
                 cu::HostMemory h_visibilities(cuda.sizeof_visibilities(nr_baselines));
@@ -374,10 +376,7 @@ namespace idg {
 
                         // Extract subgrid from grid
                         powerStates[0] = cpu.read_power();
-                        #pragma omp critical (CPU)
-                        {
-                            kernel_splitter->run(current_nr_subgrids, h_metadata, h_subgrids, (void *) grid);
-                        }
+                        kernel_splitter->run(current_nr_subgrids, h_metadata, h_subgrids, (void *) grid);
                         powerStates[1] = cpu.read_power();
 
                         #pragma omp critical (GPU)
