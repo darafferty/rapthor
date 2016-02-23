@@ -198,10 +198,12 @@ namespace idg {
 
                         // Run fft
                         powerStates[0] = cpu.read_power();
+                        omp_set_nested(false);
                         kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                         powerStates[1] = cpu.read_power();
 
                         // Run adder
+                        omp_set_nested(true);
                         #pragma omp critical (CPU)
                         {
                             kernel_adder->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, grid);
@@ -362,10 +364,12 @@ namespace idg {
 
                         // Run splitter
                         powerStates[0] = cpu.read_power();
+                        omp_set_nested(true);
                         kernel_splitter->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, (void *) grid);
                         powerStates[1] = cpu.read_power();
 
-                         // Run fft
+                        // Run fft
+                        omp_set_nested(false);
                         kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                         powerStates[2] = cpu.read_power();
 
