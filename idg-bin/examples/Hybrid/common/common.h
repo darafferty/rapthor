@@ -74,6 +74,9 @@ void run() {
     std::clog << std::endl;
 
     // Run
+    std::clog << ">>> Run fft" << std::endl;
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
+
     std::clog << ">>> Run gridding" << std::endl;
     proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
