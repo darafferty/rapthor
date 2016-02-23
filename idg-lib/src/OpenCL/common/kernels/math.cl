@@ -36,8 +36,10 @@ inline void atomic_add_float(volatile __global float *a, const float b) {
 
 inline void atomicAdd(__global fcomplex *a, fcomplex b) {
     __global float *a_ptr = (__global float *) a;
-    atomic_add_float(a_ptr + 0, b.x);
-    atomic_add_float(a_ptr + 1, b.x);
+    //atomic_add_float(a_ptr + 0, b.x);
+    //atomic_add_float(a_ptr + 1, b.y);
+    atomic_fetch_add((atomic_int *) a_ptr + 0, b.x);
+    atomic_fetch_add((atomic_int *) a_ptr + 0, b.y);
 }
 
 inline fcomplex clConjf(fcomplex a) {
