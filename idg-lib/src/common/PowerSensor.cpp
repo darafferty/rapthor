@@ -50,6 +50,7 @@ void PowerSensor::init(const char *device, const char *dumpFileName) {
     }
 }
 
+PowerSensor::PowerSensor() {};
 
 PowerSensor::~PowerSensor() {
     stop = true;

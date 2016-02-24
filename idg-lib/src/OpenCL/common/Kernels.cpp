@@ -24,8 +24,17 @@ namespace idg {
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
+                int subgridsize = parameters.get_subgrid_size();
                 int localSizeX = 16;
                 int localSizeY = 16;
+                //int localSizeX, localSizeY;
+                //if (subgridsize % 16 == 0) {
+                //    localSizeX = 16;
+                //    localSizeY = 16;
+                //} else {
+                //    localSizeX = 24;
+                //    localSizeY = 8;
+                //}
                 cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
                 cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);

@@ -122,7 +122,7 @@ namespace idg {
                 double total_runtime_fft = 0;
                 double total_runtime_scaler = 0;
                 double total_runtime_adder = 0;
-                PowerSensor::State startState = opencl::powerSensor.read();
+                PowerSensor::State startState;
 
                 // Copy static device memory
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, opencl.sizeof_wavenumbers(), wavenumbers);
@@ -152,6 +152,8 @@ namespace idg {
 
                     // Power measurement
                     LikwidPowerSensor::State powerStates[3];
+                    #pragma omp single
+                    startState = opencl::powerSensor.read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -220,11 +222,12 @@ namespace idg {
                     }
                 }
 
+                PowerSensor::State stopState  = opencl::powerSensor.read();
+
                 // Unmap subgrids
                 dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState  = opencl::powerSensor.read();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -310,7 +313,7 @@ namespace idg {
                 double total_runtime_fft = 0;
                 double total_runtime_scaler = 0;
                 double total_runtime_splitter = 0;
-                PowerSensor::State startState = opencl::powerSensor.read();
+                PowerSensor::State startState;
 
                 // Copy static device memory
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, opencl.sizeof_wavenumbers(), wavenumbers);
@@ -340,6 +343,8 @@ namespace idg {
 
                     // Power measurement
                     LikwidPowerSensor::State powerStates[3];
+                    #pragma omp single
+                    startState = opencl::powerSensor.read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -406,11 +411,12 @@ namespace idg {
                     }
                 }
 
+                PowerSensor::State stopState  = opencl::powerSensor.read();
+
                 // Copy visibilities from host memory
                 htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState  = opencl::powerSensor.read();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
