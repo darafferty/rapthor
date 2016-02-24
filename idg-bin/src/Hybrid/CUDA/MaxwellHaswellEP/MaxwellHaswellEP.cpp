@@ -112,7 +112,6 @@ namespace idg {
                 double total_runtime_fft = 0;
                 double total_runtime_scaler = 0;
                 double total_runtime_adder = 0;
-                total_runtime_gridding = -omp_get_wtime();
 
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -134,6 +133,9 @@ namespace idg {
                 	cu::DeviceMemory d_uvw(cuda.sizeof_uvw(jobsize));
                     cu::DeviceMemory d_subgrids(cuda.sizeof_subgrids(max_nr_subgrids));
                     cu::DeviceMemory d_metadata(cuda.sizeof_metadata(max_nr_subgrids));
+
+                    #pragma omp single
+                    total_runtime_gridding = -omp_get_wtime();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -274,7 +276,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-               // Constants
+                // Constants
                 auto nr_time = mParams.get_nr_time();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_channels = mParams.get_nr_channels();
@@ -329,7 +331,6 @@ namespace idg {
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
                 double total_runtime_splitter = 0;
-                total_runtime_degridding = -omp_get_wtime();
 
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -351,6 +352,9 @@ namespace idg {
                     cu::DeviceMemory d_uvw(cuda.sizeof_uvw(jobsize));
                     cu::DeviceMemory d_subgrids(cuda.sizeof_subgrids(max_nr_subgrids));
                     cu::DeviceMemory d_metadata(cuda.sizeof_metadata(max_nr_subgrids));
+
+                    #pragma omp single
+                    total_runtime_degridding = -omp_get_wtime();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -441,7 +445,6 @@ namespace idg {
                         #endif
                     } // end for s
                 }
-
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_degridding += omp_get_wtime();
