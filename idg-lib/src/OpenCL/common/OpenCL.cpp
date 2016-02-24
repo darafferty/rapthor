@@ -197,7 +197,7 @@ namespace idg {
                 double total_runtime_fft = 0;
                 double total_runtime_scaler = 0;
                 double total_runtime_adder = 0;
-                PowerSensor::State startState = powerSensor.read();
+                PowerSensor::State startState;
 
                 // Copy static device memory
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
@@ -229,6 +229,8 @@ namespace idg {
                         counters[i].setPowerSensor(&powerSensor);
                     }
                     #endif
+                    #pragma omp single
+                    startState = powerSensor.read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -276,10 +278,10 @@ namespace idg {
 
                 // Copy grid to host
                 executequeue.finish();
+                PowerSensor::State stopState = powerSensor.read();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState = powerSensor.read();
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
@@ -365,7 +367,7 @@ namespace idg {
                 double total_runtime_gridder = 0;
                 double total_runtime_fft = 0;
                 double total_runtime_adder = 0;
-                PowerSensor::State startState = powerSensor.read();
+                PowerSensor::State startState;
 
                 // Copy static device memory
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
@@ -398,6 +400,8 @@ namespace idg {
                         counters[i].setPowerSensor(&powerSensor);
                     }
                     #endif
+                    #pragma omp single
+                    startState = powerSensor.read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -443,14 +447,12 @@ namespace idg {
                     }
                 }
 
-                // Wait for device to host transfers to finish
-                dtohqueue.finish();
-
                 // Copy visibilities
+                dtohqueue.finish();
+                PowerSensor::State stopState = powerSensor.read();
                 dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState = powerSensor.read();
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
@@ -522,19 +524,11 @@ namespace idg {
                 queue.finish();
 
                 #if defined(REPORT_TOTAL)
-                //auxiliary::report(" input",
-                //                  PerformanceCounter::get_runtime((cl_event) events[0]()),
-                //                  0, sizeof_grid(),
-                //                  0);
                 auxiliary::report("   fft",
                                   PerformanceCounter::get_runtime((cl_event) events[1](), (cl_event) events[2]()),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   0);
-                //auxiliary::report("output",
-                //                  PerformanceCounter::get_runtime((cl_event) events[3]()),
-                //                  0, sizeof_grid(),
-                //                  0);
                 clog << endl;
                 #endif
             } // transform
