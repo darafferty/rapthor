@@ -32,6 +32,7 @@
 #include "idg-common.h"
 #include "Kernels.h"
 
+#define REUSE_HOST_MEMORY 0
 
 namespace idg {
     namespace proxy {
