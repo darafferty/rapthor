@@ -246,7 +246,14 @@ namespace idg {
 
                 // Initialize
                 cu::Context &context = get_context();
+
+                // Host memory
+                #if REUSE_HOST_MEMORY
                 cu::HostMemory h_grid(grid, sizeof_grid());
+                #else
+                cu::HostMemory h_grid(sizeof_grid());
+                h_grid.set(grid);
+                #endif
 
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
@@ -341,9 +348,18 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
+                #if REUSE_HOST_MEMORY
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
                 cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
+                #else
+                cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
+                cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
+                cu::HostMemory h_metadata(sizeof_metadata(nr_subgrids));
+                h_visibilities.set((void *) visibilities);
+                h_uvw.set((void *) uvw);
+                h_metadata.set((void *) metadata);
+                #endif
 
                 // Device memory
                 cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers());
@@ -550,9 +566,18 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
+                #if REUSE_HOST_MEMORY
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
                 cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
+                #else
+                cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
+                cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
+                cu::HostMemory h_metadata(sizeof_metadata(nr_subgrids));
+                h_visibilities.set((void *) visibilities);
+                h_uvw.set((void *) uvw);
+                h_metadata.set((void *) metadata);
+                #endif
 
                 // Device memory
                 cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers());
