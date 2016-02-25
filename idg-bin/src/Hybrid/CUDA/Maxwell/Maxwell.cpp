@@ -9,7 +9,7 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "MaxwellHaswellEP.h"
+#include "Maxwell.h"
 
 using namespace std;
 
@@ -18,7 +18,7 @@ namespace idg {
         namespace hybrid {
 
             /// Constructors
-            MaxwellHaswellEP::MaxwellHaswellEP(
+            Maxwell::Maxwell(
                 Parameters params) :
                 cpu(params), cuda(params)
             {
@@ -32,7 +32,7 @@ namespace idg {
             }
 
             /// Destructor
-            MaxwellHaswellEP::~MaxwellHaswellEP() {
+            Maxwell::~Maxwell() {
                 cuProfilerStop();
             }
 
@@ -40,7 +40,7 @@ namespace idg {
                 High level routines
                 These routines operate on grids
             */
-            void MaxwellHaswellEP::grid_visibilities(
+            void Maxwell::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -261,7 +261,7 @@ namespace idg {
                 #endif
             }
 
-            void MaxwellHaswellEP::degrid_visibilities(
+            void Maxwell::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -466,7 +466,7 @@ namespace idg {
                 #endif
             }
 
-            void MaxwellHaswellEP::transform(DomainAtoDomainB direction,
+            void Maxwell::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -484,9 +484,9 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::hybrid::MaxwellHaswellEP Hybrid_MaxwellHaswellEP;
+    typedef idg::proxy::hybrid::Maxwell Hybrid_Maxwell;
 
-    Hybrid_MaxwellHaswellEP* Hybrid_MaxwellHaswellEP_init(
+    Hybrid_Maxwell* Hybrid_Maxwell_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
                 unsigned int nr_time,
@@ -504,10 +504,10 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
-        return new Hybrid_MaxwellHaswellEP(P);
+        return new Hybrid_Maxwell(P);
     }
 
-    void Hybrid_MaxwellHaswellEP_grid(Hybrid_MaxwellHaswellEP* p,
+    void Hybrid_Maxwell_grid(Hybrid_Maxwell* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -532,7 +532,7 @@ extern "C" {
                 (const float*) spheroidal);
     }
 
-    void Hybrid_MaxwellHaswellEP_degrid(Hybrid_MaxwellHaswellEP* p,
+    void Hybrid_Maxwell_degrid(Hybrid_Maxwell* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -557,7 +557,7 @@ extern "C" {
                     (const float*) spheroidal);
      }
 
-    void Hybrid_MaxwellHaswellEP_transform(Hybrid_MaxwellHaswellEP* p,
+    void Hybrid_Maxwell_transform(Hybrid_Maxwell* p,
                     int direction,
                     void *grid)
     {
@@ -569,7 +569,7 @@ extern "C" {
                     (std::complex<float>*) grid);
     }
 
-    void Hybrid_MaxwellHaswellEP_destroy(Hybrid_MaxwellHaswellEP* p) {
+    void Hybrid_Maxwell_destroy(Hybrid_Maxwell* p) {
        delete p;
     }
 

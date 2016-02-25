@@ -121,7 +121,7 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cuda-common>
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
-  $<TARGET_OBJECTS:hybrid-cuda-maxwellhaswellep>
+  $<TARGET_OBJECTS:hybrid-maxwell>
 )
 
 set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})

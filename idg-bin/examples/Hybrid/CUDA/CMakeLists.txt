@@ -1,3 +1,3 @@
 project(examples-hybrid-cuda)
 
-add_subdirectory(MaxwellHaswellEP)
+add_subdirectory(Maxwell)
