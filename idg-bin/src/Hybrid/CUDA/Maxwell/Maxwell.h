@@ -1,5 +1,5 @@
 /**
- *  \class MaxwellHaswellEP
+ *  \class Maxwell
  *
  *  \brief Class for ...
  *
@@ -19,17 +19,17 @@
 namespace idg {
     namespace proxy {
         namespace hybrid {
-            class MaxwellHaswellEP : public Proxy {
+            class Maxwell : public Proxy {
 
                 public:
                     /// Constructors
-                    MaxwellHaswellEP(Parameters params);
+                    Maxwell(Parameters params);
 
                     /// Destructor
-                    ~MaxwellHaswellEP();
+                    ~Maxwell();
 
                     /// Assignment
-                    MaxwellHaswellEP& operator=(const MaxwellHaswellEP& rhs) = delete;
+                    Maxwell& operator=(const Maxwell& rhs) = delete;
 
                 /*
                     High level routines
@@ -66,7 +66,7 @@ namespace idg {
                     idg::proxy::cpu::HaswellEP cpu;
                     idg::proxy::cuda::Maxwell cuda;
 
-            }; // class MaxwellHaswellEP
+            }; // class Maxwell
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
