@@ -246,7 +246,14 @@ namespace idg {
 
                 // Initialize
                 cu::Context &context = get_context();
+
+                // Host memory
+                #if REUSE_HOST_MEMORY
                 cu::HostMemory h_grid(grid, sizeof_grid());
+                #else
+                cu::HostMemory h_grid(sizeof_grid());
+                h_grid.set(grid);
+                #endif
 
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
@@ -341,9 +348,18 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
+                #if REUSE_HOST_MEMORY
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
                 cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
+                #else
+                cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
+                cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
+                cu::HostMemory h_metadata(sizeof_metadata(nr_subgrids));
+                h_visibilities.set((void *) visibilities);
+                h_uvw.set((void *) uvw);
+                h_metadata.set((void *) metadata);
+                #endif
 
                 // Device memory
                 cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers());
@@ -390,17 +406,18 @@ namespace idg {
                         // Compute the number of baselines to process in current iteration
                         int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
-                        // Number of elements in batch
+                        // Number of elements in job
                         int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+                        int metadata_elements     = sizeof(Metadata) / sizeof(int);
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
-                        // Pointers to data for current batch
+                        // Pointers to data for current job
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        void *metadata_ptr     = (int *) h_metadata + plan.get_subgrid_offset(bl) * metadata_elements;
 
                         // Create FFT plan
                         kernel_fft->plan(subgridsize, current_nr_subgrids);
@@ -549,9 +566,18 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Host memory
+                #if REUSE_HOST_MEMORY
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
                 cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
+                #else
+                cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
+                cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
+                cu::HostMemory h_metadata(sizeof_metadata(nr_subgrids));
+                h_visibilities.set((void *) visibilities);
+                h_uvw.set((void *) uvw);
+                h_metadata.set((void *) metadata);
+                #endif
 
                 // Device memory
                 cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers());
@@ -600,17 +626,18 @@ namespace idg {
                         // Compute the number of baselines to process in current iteration
                         int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
-                        // Number of elements in batch
+                        // Number of elements in job
                         int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+                        int metadata_elements     = sizeof(Metadata) / sizeof(int);
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
-                        // Pointers to data for current batch
+                        // Pointers to data for current job
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        void *metadata_ptr     = (int *) h_metadata + plan.get_subgrid_offset(bl) * metadata_elements;
 
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
                         {

@@ -1,4 +1,4 @@
-project(hybrid-cuda-maxwellhaswellep)
+project(hybrid-maxwell)
 
 # external header files needed
 include_directories (
@@ -8,11 +8,11 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    MaxwellHaswellEP.h
+    Maxwell.h
 )
 
 set (${PROJECT_NAME}_sources
-    MaxwellHaswellEP.cpp
+    Maxwell.cpp
 )
 
 # create library
