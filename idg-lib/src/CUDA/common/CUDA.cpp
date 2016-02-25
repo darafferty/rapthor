@@ -390,17 +390,18 @@ namespace idg {
                         // Compute the number of baselines to process in current iteration
                         int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
-                        // Number of elements in batch
+                        // Number of elements in job
                         int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+                        int metadata_elements     = sizeof(Metadata) / sizeof(int);
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
-                        // Pointers to data for current batch
+                        // Pointers to data for current job
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        void *metadata_ptr     = (int *) h_metadata + plan.get_subgrid_offset(bl) * metadata_elements;
 
                         // Create FFT plan
                         kernel_fft->plan(subgridsize, current_nr_subgrids);
@@ -600,17 +601,18 @@ namespace idg {
                         // Compute the number of baselines to process in current iteration
                         int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
-                        // Number of elements in batch
+                        // Number of elements in job
                         int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
+                        int metadata_elements     = sizeof(Metadata) / sizeof(int);
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
-                        // Pointers to data for current batch
+                        // Pointers to data for current job
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        void *metadata_ptr     = (int *) h_metadata + plan.get_subgrid_offset(bl) * metadata_elements;
 
                         #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
                         {
