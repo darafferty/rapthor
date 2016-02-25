@@ -3,7 +3,7 @@ install(FILES
   cpu-reference.py
   cpu-sandybridgeep.py
   cpu-haswellep.py
-  hybrid-maxwellhaswellep.py
+  hybrid-maxwell.py
   hybrid-knc.py
   demo-idg.py
   cpu-clean-reference.py
