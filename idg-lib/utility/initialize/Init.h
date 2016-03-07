@@ -21,8 +21,9 @@
 #define SPEED_OF_LIGHT      299792458.0
 
 /* Observation parameters */
-#define LAYOUT_DIR          "utility/initialize"
-#define LAYOUT_FILE         "SKA1_low_ecef.txt"
+static const std::string ENV_LAYOUT_FILE;
+#define LAYOUT_DIR          "utility/data"
+#define LAYOUT_FILE         "SKA1_low_ecef"
 #define START_FREQUENCY     150e6
 #define FREQUENCY_INCREMENT 0.7e6
 #define RIGHT_ASCENSION     (10.0 * (M_PI/180.))
