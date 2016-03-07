@@ -458,7 +458,7 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
         v_pixels.append(v * scaling)
     u_pixels = numpy.asarray(u_pixels).flatten() + (grid_size / 2)
     v_pixels = numpy.asarray(v_pixels).flatten() + (grid_size / 2)
-    plt.plot(u_pixels, v_pixels, 'r.', markersize=2, alpha=0.9)
+    #plt.plot(u_pixels, v_pixels, 'r.', markersize=2, alpha=0.9)
 
     # Make mouseover show value of grid
     def format_coord(x, y):
