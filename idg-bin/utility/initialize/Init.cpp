@@ -17,6 +17,7 @@
 
 
 namespace idg {
+    const std::string ENV_LAYOUT_FILE  = "LAYOUT_FILE";
 
 /* Methods where pointed to allocated memory is provided */
     void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int integration_time) {
@@ -25,10 +26,16 @@ namespace idg {
 
         UVWType *uvw = (UVWType *) ptr;
 
+        // Try to load layout file from environment
+        char *cstr_layout_file = getenv(ENV_LAYOUT_FILE.c_str());
+
         // Check whether layout file exists
-        bool found = false;
         char filename[512];
-        sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
+        if (cstr_layout_file) {
+            sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, cstr_layout_file);
+        } else {
+            sprintf(filename, "%s/%s/%s", IDG_SOURCE_DIR, LAYOUT_DIR, LAYOUT_FILE);
+        }
 
         //if (!uvwsim_file_exists(filename)) {
         //    std::cerr << "Unable to find specified layout file: "
