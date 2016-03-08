@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE,
     // GRIDSIZE; if non-default jobsize wanted, set jobsizes parameters.
 
-    int info = run_test<idg::proxy::hybrid::MaxwellHaswellEP>();
+    int info = run_test<idg::proxy::hybrid::Maxwell>();
 
     return info;
 }

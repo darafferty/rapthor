@@ -1,4 +1,4 @@
-project(test-hybrid-maxwellhaswellep.x)
+project(test-hybrid-maxwell.x)
 
 # Set external header files
 include_directories(
