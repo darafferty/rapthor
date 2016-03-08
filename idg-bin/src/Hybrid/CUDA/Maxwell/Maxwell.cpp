@@ -69,11 +69,7 @@ namespace idg {
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
-                //auto plan = create_plan(uvw, wavenumbers, baselines,
-                //                        aterm_offsets, kernel_size, max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -291,9 +287,7 @@ namespace idg {
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size, max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 

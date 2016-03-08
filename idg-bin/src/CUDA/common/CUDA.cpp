@@ -333,8 +333,7 @@ namespace idg {
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -398,7 +397,7 @@ namespace idg {
                     PowerRecord powerRecords[5];
                     #pragma omp single
                     startState = powerSensor.read();
- 
+
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -549,10 +548,7 @@ namespace idg {
                 cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
