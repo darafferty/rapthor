@@ -26,12 +26,20 @@ __global__ void kernel_gridder(
 	int blockSize = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
+    // Set subgrid to zero
+    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
+        subgrid[s][0][0][i] = make_float2(0, 0);
+        subgrid[s][1][0][i] = make_float2(0, 0);
+        subgrid[s][2][0][i] = make_float2(0, 0);
+        subgrid[s][3][0][i] = make_float2(0, 0);
+    }
+
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
 
     // Load metadata for current subgrid
 	const Metadata &m = metadata[s];
-    const int offset = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
+    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
     const int nr_timesteps = m.nr_timesteps;
 	const int aterm_index = m.aterm_index;
 	const int station1 = m.baseline.station1;
@@ -48,126 +56,132 @@ __global__ void kernel_gridder(
     for (int i = tid; i < NR_CHANNELS; i += blockSize)
         _wavenumbers[i] = wavenumbers[i];
 
-	// Load UVW
-	for (int time = tid; time < nr_timesteps; time += blockSize) {
-		UVW a = uvw[offset + time];
-        _uvw[time] = make_float4(a.u, a.v, a.w, 0);
+    // Iterate all timesteps
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += MAX_NR_TIMESTEPS) {
+        int current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
+                                   nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
+
+	    // Load UVW
+	    for (int time = tid; time < current_nr_timesteps; time += blockSize) {
+            UVW a = uvw[time_offset_global + time_offset_local + time];
+            _uvw[time] = make_float4(a.u, a.v, a.w, 0);
+        }
+
+	    // Load visibilities
+	    for (int i = tid; i < current_nr_timesteps * NR_CHANNELS; i += blockSize) {
+            float2 a = visibilities[time_offset_global + time_offset_local][i][0];
+            float2 b = visibilities[time_offset_global + time_offset_local][i][1];
+            float2 c = visibilities[time_offset_global + time_offset_local][i][2];
+            float2 d = visibilities[time_offset_global + time_offset_local][i][3];
+            _visibilities[0][i][0] = make_float4(a.x, a.y, b.x, b.y);
+            _visibilities[0][i][1] = make_float4(c.x, c.y, d.x, d.y);
+        }
+
+	    syncthreads();
+
+        // Compute u and v offset in wavelenghts
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+
+	    // Iterate all pixels in subgrid
+        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
+            int y = i / SUBGRIDSIZE;
+            int x = i % SUBGRIDSIZE;
+
+            // Load visibilities for all channels and polarizations
+            float2 uvXX = {0, 0};
+            float2 uvXY = {0, 0};
+            float2 uvYX = {0, 0};
+            float2 uvYY = {0, 0};
+
+            // Compute l,m,n
+            float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+            float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+            float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+
+            // Iterate all timesteps
+            for (int time = 0; time < current_nr_timesteps; time++) {
+                // Load UVW coordinates
+                float u = _uvw[time].x;
+                float v = _uvw[time].y;
+                float w = _uvw[time].z;
+
+                // Compute phase index
+                float phase_index = u*l + v*m + w*n;
+
+                // Compute phase offset
+                float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+
+                // Compute phasor
+                #pragma unroll 8
+                for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                    float wavenumber = _wavenumbers[chan];
+                    float phase = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(cos(phase), sin(phase));
+
+                    // Load visibilities from shared memory
+                    float4 a = _visibilities[time][chan][0];
+                    float4 b = _visibilities[time][chan][1];
+                    float2 visXX = make_float2(a.x, a.y);
+                    float2 visXY = make_float2(a.z, a.w);
+                    float2 visYX = make_float2(b.x, b.y);
+                    float2 visYY = make_float2(b.z, b.w);
+
+                    // Multiply visibility by phasor
+                    uvXX.x += phasor.x * visXX.x;
+                    uvXX.y += phasor.x * visXX.y;
+                    uvXX.x -= phasor.y * visXX.y;
+                    uvXX.y += phasor.y * visXX.x;
+
+                    uvXY.x += phasor.x * visXY.x;
+                    uvXY.y += phasor.x * visXY.y;
+                    uvXY.x -= phasor.y * visXY.y;
+                    uvXY.y += phasor.y * visXY.x;
+
+                    uvYX.x += phasor.x * visYX.x;
+                    uvYX.y += phasor.x * visYX.y;
+                    uvYX.x -= phasor.y * visYX.y;
+                    uvYX.y += phasor.y * visYX.x;
+
+                    uvYY.x += phasor.x * visYY.x;
+                    uvYY.y += phasor.x * visYY.y;
+                    uvYY.x -= phasor.y * visYY.y;
+                    uvYY.y += phasor.y * visYY.x;
+                }
+            }
+
+            // Get a term for station1
+            float2 aXX1 = aterm[station1][aterm_index][0][y][x];
+            float2 aXY1 = aterm[station1][aterm_index][1][y][x];
+            float2 aYX1 = aterm[station1][aterm_index][2][y][x];
+            float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+
+            // Get aterm for station2
+            float2 aXX2 = aterm[station2][aterm_index][0][y][x];
+            float2 aXY2 = aterm[station2][aterm_index][1][y][x];
+            float2 aYX2 = aterm[station2][aterm_index][2][y][x];
+            float2 aYY2 = aterm[station2][aterm_index][3][y][x];
+
+            // Apply aterm
+            float2 tXX, tXY, tYX, tYY;
+            Matrix2x2mul(tXX, tXY, tYX, tYY,
+                         cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1),
+                         uvXX, uvXY, uvYX, uvYY);
+            Matrix2x2mul(tXX, tXY, tYX, tYY, tXX, tXY, tYX, tYY, aXX2, aXY2, aYX2, aYY2);
+
+            // Load spheroidal
+            float sph = spheroidal[y][x];
+
+            // Compute shifted position in subgrid
+            int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
+            // Set subgrid value
+            subgrid[s][0][y_dst][x_dst] += tXX * sph;
+            subgrid[s][1][y_dst][x_dst] += tXY * sph;
+            subgrid[s][2][y_dst][x_dst] += tYX * sph;
+            subgrid[s][3][y_dst][x_dst] += tYY * sph;
+	    }
     }
-
-	// Load visibilities
-	for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += blockSize) {
-        float2 a = visibilities[offset][i][0];
-        float2 b = visibilities[offset][i][1];
-        float2 c = visibilities[offset][i][2];
-        float2 d = visibilities[offset][i][3];
-        _visibilities[0][i][0] = make_float4(a.x, a.y, b.x, b.y);
-        _visibilities[0][i][1] = make_float4(c.x, c.y, d.x, d.y);
-    }
-
-	syncthreads();
-
-    // Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-
-	// Iterate all pixels in subgrid
-    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
-        int y = i / SUBGRIDSIZE;
-        int x = i % SUBGRIDSIZE;
-
-		// Load visibilities for all channels and polarizations
-		float2 uvXX = {0, 0};
-		float2 uvXY = {0, 0};
-		float2 uvYX = {0, 0};
-		float2 uvYY = {0, 0};
-
-		// Compute l,m,n
-		float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-		float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-		float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
-
-		// Iterate all timesteps
-		for (int time = 0; time < nr_timesteps; time++) {
-            // Load UVW coordinates
-			float u = _uvw[time].x;
-			float v = _uvw[time].y;
-			float w = _uvw[time].z;
-
-			// Compute phase index
-			float phase_index = u*l + v*m + w*n;
-
-			// Compute phase offset
-			float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-
-			// Compute phasor
-            #pragma unroll 8
-			for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                float wavenumber = _wavenumbers[chan];
-				float phase = (phase_index * wavenumber) - phase_offset;
-				float2 phasor = make_float2(cos(phase), sin(phase));
-
-				// Load visibilities from shared memory
-				float4 a = _visibilities[time][chan][0];
-				float4 b = _visibilities[time][chan][1];
-				float2 visXX = make_float2(a.x, a.y);
-				float2 visXY = make_float2(a.z, a.w);
-				float2 visYX = make_float2(b.x, b.y);
-				float2 visYY = make_float2(b.z, b.w);
-
-				// Multiply visibility by phasor
-				uvXX.x += phasor.x * visXX.x;
-				uvXX.y += phasor.x * visXX.y;
-				uvXX.x -= phasor.y * visXX.y;
-				uvXX.y += phasor.y * visXX.x;
-
-				uvXY.x += phasor.x * visXY.x;
-				uvXY.y += phasor.x * visXY.y;
-				uvXY.x -= phasor.y * visXY.y;
-				uvXY.y += phasor.y * visXY.x;
-
-				uvYX.x += phasor.x * visYX.x;
-				uvYX.y += phasor.x * visYX.y;
-				uvYX.x -= phasor.y * visYX.y;
-				uvYX.y += phasor.y * visYX.x;
-
-				uvYY.x += phasor.x * visYY.x;
-				uvYY.y += phasor.x * visYY.y;
-				uvYY.x -= phasor.y * visYY.y;
-				uvYY.y += phasor.y * visYY.x;
-			}
-		}
-
-		// Get a term for station1
-		float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-		float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-		float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-		float2 aYY1 = aterm[station1][aterm_index][3][y][x];
-
-		// Get aterm for station2
-		float2 aXX2 = aterm[station2][aterm_index][0][y][x];
-		float2 aXY2 = aterm[station2][aterm_index][1][y][x];
-		float2 aYX2 = aterm[station2][aterm_index][2][y][x];
-		float2 aYY2 = aterm[station2][aterm_index][3][y][x];
-
-		// Apply aterm
-		float2 tXX, tXY, tYX, tYY;
-		Matrix2x2mul(tXX, tXY, tYX, tYY,
-                     cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1),
-                     uvXX, uvXY, uvYX, uvYY);
-		Matrix2x2mul(tXX, tXY, tYX, tYY, tXX, tXY, tYX, tYY, aXX2, aXY2, aYX2, aYY2);
-
-		// Load spheroidal
-		float sph = spheroidal[y][x];
-
-		// Compute shifted position in subgrid
-		int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-		int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-
-		// Set subgrid value
-        subgrid[s][0][y_dst][x_dst] = tXX * sph;
-        subgrid[s][1][y_dst][x_dst] = tXY * sph;
-        subgrid[s][2][y_dst][x_dst] = tYX * sph;
-        subgrid[s][3][y_dst][x_dst] = tYY * sph;
-	}
 }
 }
