@@ -410,12 +410,11 @@ namespace idg {
 
                             // Copy visibilities to host
                             dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
+                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
                             dtohstream.record(outputFree);
                 		}
 
                 		outputFree.synchronize();
-                        memcpy(visibilities_ptr, h_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
 
                         double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
@@ -442,8 +441,13 @@ namespace idg {
                     } // end for s
                 }
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // End runtime measurement
                 total_runtime_degridding += omp_get_wtime();
+
+                // Copy visibilities from host memory
+                memcpy(visibilities, h_visibilities, cuda.sizeof_visibilities(nr_baselines));
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
