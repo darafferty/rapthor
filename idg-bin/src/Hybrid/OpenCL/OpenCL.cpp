@@ -80,17 +80,13 @@ namespace idg {
                 // Load kernels
                 unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = opencl.get_kernel_gridder();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
-                unique_ptr<idg::kernel::cpu::GridFFT> kernel_fft = cpu.get_kernel_fft();
 
                 // Load context and device
                 cl::Context context = opencl.get_context();
                 cl::Device device = opencl.get_device();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -132,6 +128,9 @@ namespace idg {
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
+                    // Load private kernels
+                    unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
+
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
 
@@ -143,15 +142,15 @@ namespace idg {
                     cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
 
                     // Performance counters
-                    PerformanceCounter counters[4];
+                    PerformanceCounter counters[2];
                     #if defined(MEASURE_POWER_ARDUINO)
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < 2; i++) {
                         counters[i].setPowerSensor(&opencl::powerSensor);
                     }
                     #endif
 
                     // Power measurement
-                    LikwidPowerSensor::State powerStates[3];
+                    LikwidPowerSensor::State powerStates[2];
                     #pragma omp single
                     startState = opencl::powerSensor.read();
 
@@ -176,6 +175,9 @@ namespace idg {
                         void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
                         void *subgrids_ptr = subgrids + subgrid_elements*plan.get_subgrid_offset(bl);
 
+                        // Create FFT plan
+                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
+
                         #pragma omp critical (GPU)
                         {
                             // Copy input data to device
@@ -189,6 +191,9 @@ namespace idg {
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
+
+                            // Launch fft kernel
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy subgrid to host
@@ -198,27 +203,19 @@ namespace idg {
 
                         outputReady[0].wait();
 
-                        // Run fft
-                        powerStates[0] = cpu.read_power();
-                        omp_set_nested(false);
-                        kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
-                        powerStates[1] = cpu.read_power();
 
                         // Run adder
                         omp_set_nested(true);
                         #pragma omp critical (CPU)
                         {
+                            powerStates[0] = cpu.read_power();
                             kernel_adder->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, grid);
+                            powerStates[1] = cpu.read_power();
                         }
-                        powerStates[2] = cpu.read_power();
-                        auxiliary::report("    fft", LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
-                                                     kernel_fft->flops(subgridsize, current_nr_subgrids),
-                                                     kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                     LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
-                        auxiliary::report("  adder", LikwidPowerSensor::seconds(powerStates[1], powerStates[2]),
+                        auxiliary::report("  adder", LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
                                                      kernel_adder->flops(current_nr_subgrids),
                                                      kernel_adder->bytes(current_nr_subgrids),
-                                                     LikwidPowerSensor::Watt(powerStates[1], powerStates[2]));
+                                                     LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                     }
                 }
 
@@ -228,6 +225,7 @@ namespace idg {
                 dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -272,17 +270,13 @@ namespace idg {
                 // Load kernels
                 unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = opencl.get_kernel_degridder();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
-                unique_ptr<idg::kernel::cpu::GridFFT> kernel_fft = cpu.get_kernel_fft();
 
                 // Load context and device
                 cl::Context context = opencl.get_context();
                 cl::Device device = opencl.get_device();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -323,6 +317,9 @@ namespace idg {
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
+                    // Load private kernels
+                    unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
+
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
 
@@ -334,15 +331,15 @@ namespace idg {
                     cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
 
                     // Performance counters
-                    PerformanceCounter counters[4];
+                    PerformanceCounter counters[2];
                     #if defined(MEASURE_POWER_ARDUINO)
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < 2; i++) {
                         counters[i].setPowerSensor(&opencl::powerSensor);
                     }
                     #endif
 
                     // Power measurement
-                    LikwidPowerSensor::State powerStates[3];
+                    LikwidPowerSensor::State powerStates[2];
                     #pragma omp single
                     startState = opencl::powerSensor.read();
 
@@ -373,10 +370,8 @@ namespace idg {
                         kernel_splitter->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, (void *) grid);
                         powerStates[1] = cpu.read_power();
 
-                        // Run fft
-                        omp_set_nested(false);
-                        kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
-                        powerStates[2] = cpu.read_power();
+                        // Create FFT plan
+                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -386,11 +381,14 @@ namespace idg {
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-                            // Launch degridder kernel
+                            // Launch fft kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[0]);
+
+                            // Launch degridder kernel
                             kernel_degridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
+                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[1]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy visibilities to host
@@ -404,10 +402,6 @@ namespace idg {
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
                                                        LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
-                        auxiliary::report("      fft", LikwidPowerSensor::seconds(powerStates[1], powerStates[2]),
-                                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
-                                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                       LikwidPowerSensor::Watt(powerStates[1], powerStates[2]));
                     }
                 }
 
@@ -417,6 +411,7 @@ namespace idg {
                 htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);

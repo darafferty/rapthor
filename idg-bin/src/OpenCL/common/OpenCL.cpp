@@ -163,10 +163,7 @@ namespace idg {
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -246,7 +243,7 @@ namespace idg {
                         size_t metadata_offset     = bl * sizeof_metadata(1);
 
                         // Create FFT plan
-                        //kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
+                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -264,7 +261,7 @@ namespace idg {
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
         					// Launch FFT
-                            //kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
 
                             // Launch scaler kernel
                             kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
@@ -334,10 +331,7 @@ namespace idg {
                 unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();;
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
@@ -417,7 +411,7 @@ namespace idg {
                         size_t metadata_offset     = bl * sizeof_metadata(1);
 
                         // Create FFT plan
-                        //kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
+                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -432,7 +426,7 @@ namespace idg {
                             kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
 
         					// Launch FFT
-                            //kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
 
         					// Launch degridder kernel
                             kernel_degridder->launchAsync(
@@ -519,6 +513,7 @@ namespace idg {
 
                 // Copy grid to host
                 queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
+                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();
