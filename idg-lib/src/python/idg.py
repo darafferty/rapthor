@@ -5,27 +5,32 @@ from ctypes.util import find_library
 
 try:
     import CPU
-except OSError:
+except OSError as e:
+    print("Error importing CPU: ", e)
     pass
 
 try:
     import Hybrid
-except OSError:
+except OSError as e:
+    print("Error importing Hybrid: ", e)
     pass
 
 try:
     import KNC
-except OSError:
+except OSError as e:
+    print("Error importing KNC: ", e)
     pass
 
 try:
     import OpenCL
-except OSError:
+except OSError as e:
+    print("Error importing OpenCL: ", e)
     pass
 
 try:
     import utils
 except OSError:
+    print("Error importing utils: ", e)
     pass
 
 visibilitiestype = numpy.complex64
