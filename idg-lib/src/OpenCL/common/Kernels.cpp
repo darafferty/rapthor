@@ -27,14 +27,6 @@ namespace idg {
                 int subgridsize = parameters.get_subgrid_size();
                 int localSizeX = 16;
                 int localSizeY = 16;
-                //int localSizeX, localSizeY;
-                //if (subgridsize % 16 == 0) {
-                //    localSizeX = 16;
-                //    localSizeY = 16;
-                //} else {
-                //    localSizeX = 24;
-                //    localSizeY = 8;
-                //}
                 cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
                 cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
@@ -165,29 +157,26 @@ namespace idg {
                 clfftDestroyPlan(&fft);
             }
 
-            // TODO: incorrect
             void GridFFT::plan(cl::Context &context, cl::CommandQueue &queue, int size, int batch) {
                 // Check wheter a new plan has to be created
                 if (uninitialized ||
-                   size  != planned_size ||
-                   batch != planned_batch) {
+                    size  != planned_size ||
+                    batch != planned_batch) {
                     // Destroy old plan (if any)
                     if (!uninitialized) {
                         clfftDestroyPlan(&fft);
                     }
+
                     // Create new plan
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
                     int nr_polarizations = parameters.get_nr_polarizations();
                     clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
-
                     // Set plan parameters
                     clfftSetPlanPrecision(fft, CLFFT_SINGLE);
                     clfftSetLayout(fft, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
                     clfftSetResultLocation(fft, CLFFT_INPLACE);
-                    size_t dist = size * size;
-                    clfftSetPlanDistance(fft, dist, dist);
 
                     // Update parameters
                     planned_size = size;
@@ -203,16 +192,19 @@ namespace idg {
                 uninitialized = false;
             }
 
-            // TODO: incorrect
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
                 #if 1
-                clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
+                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                if (status != CL_SUCCESS) {
+                    std::cerr << "Error enqueing fft plan" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
                 #else
                 counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
                 // Retrieve fft plan from handle
-                FFTRepo &fftRepo   = FFTRepo::getInstance();
+                FFTRepo& fftRepo   = FFTRepo::getInstance();
                 FFTPlan* fftPlan   = NULL;
                 lockRAII* planLock = NULL;
                 fftRepo.getPlan(fft, fftPlan, planLock);
