@@ -91,8 +91,9 @@ namespace idg {
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
                 // IF wgSize IS MODIFIED, ALSO MODIFY NR_THREADS in KernelDegridder.cl
-                int wgSize = 256;
-                cl::NDRange globalSize(nr_subgrids * wgSize);
+                int subgridsize = parameters.get_subgrid_size();
+                int wgSize = subgridsize % 16 == 0 ? 256 : 64;
+                cl::NDRange globalSize(wgSize * nr_subgrids);
                 cl::NDRange localSize(wgSize);
                 kernel.setArg(0, w_offset);
                 kernel.setArg(1, d_uvw);
