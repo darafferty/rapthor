@@ -1,7 +1,7 @@
 #include "math.cl"
 #include "Types.cl"
 
-#define NR_THREADS 256
+#define NR_THREADS ((SUBGRIDSIZE % 16 == 0) ? 256 : 64)
 
 /*
 	Kernel

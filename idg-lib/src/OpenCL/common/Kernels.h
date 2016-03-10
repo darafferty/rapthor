@@ -41,7 +41,6 @@ namespace idg {
                         cl::Buffer &d_metadata,
                         cl::Buffer &d_subgrid,
                         PerformanceCounter &counter);
-                    int get_max_nr_timesteps();
                     uint64_t flops(int nr_baselines, int nr_subgrids);
                     uint64_t bytes(int nr_baselines, int nr_subgrids);
 
@@ -68,7 +67,6 @@ namespace idg {
                         cl::Buffer &d_metadata,
                         cl::Buffer &d_subgrid,
                         PerformanceCounter &counter);
-                    int get_max_nr_timesteps();
                     uint64_t flops(int nr_baselines, int nr_subgrids);
                     uint64_t bytes(int nr_baselines, int nr_subgrids);
 
