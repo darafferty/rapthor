@@ -25,8 +25,8 @@ namespace idg {
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
                 int subgridsize = parameters.get_subgrid_size();
-                int localSizeX = 16;
-                int localSizeY = 16;
+                int localSizeX = 256;
+                int localSizeY = 1;
                 cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
                 cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
@@ -44,10 +44,6 @@ namespace idg {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-            }
-
-            int Gridder::get_max_nr_timesteps() {
-                return 128;
             }
 
             uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
@@ -113,10 +109,6 @@ namespace idg {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-            }
-
-            int Degridder::get_max_nr_timesteps() {
-                return 128;
             }
 
             uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {

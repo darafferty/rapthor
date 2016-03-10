@@ -2,7 +2,7 @@
 
 #include "Types.cl"
 
-#define MAX_NR_TIMESTEPS 32
+#define MAX_NR_TIMESTEPS 64
 
 /*
 	Kernel
@@ -60,7 +60,7 @@ __kernel void kernel_gridder(
         }
 
         // Load visibilities
-        for (int i = tid; i < nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blocksize) {
+        for (int i = tid; i < current_nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blocksize) {
             _visibilities[0][0][i] = visibilities[time_offset_global + time_offset_local][0][i];
         }
 
