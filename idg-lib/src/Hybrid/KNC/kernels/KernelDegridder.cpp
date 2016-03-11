@@ -13,6 +13,8 @@
 #define NR_POLARIZATIONS 4
 
 namespace idg {
+namespace kernel {
+namespace knc {
 
 void kernel_degridder(
     const int jobsize,
@@ -179,6 +181,9 @@ void kernel_degridder(
 	}
     }
 }
+
+} // end namespace knc
+} // end namespace kernel
 } // end namespace idg
 
 #pragma omp end declare target

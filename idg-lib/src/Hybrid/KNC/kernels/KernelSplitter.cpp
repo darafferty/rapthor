@@ -9,6 +9,8 @@
 #include "Types.h"
 
 namespace idg {
+namespace kernel {
+namespace knc {
 
 void kernel_splitter(
     const int jobsize,
@@ -55,6 +57,9 @@ void kernel_splitter(
         }
     }
 }
+
+} // end namespace knc
+} // end namespace kernel
 } // end namespace idg
 
 #pragma omp end declare target
