@@ -13,6 +13,8 @@
 #define NR_POLARIZATIONS 4
 
 namespace idg {
+namespace kernel {
+namespace knc {
 
 void update_4(
     const int subgridsize,
@@ -278,6 +280,9 @@ void kernel_gridder (
     }
     }
 }
+
+} // end namespace knc
+} // end namespace kernel
 } // end namespace idg
 
 #pragma omp end declare target
