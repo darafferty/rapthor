@@ -539,8 +539,8 @@ namespace idg {
 
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("adder", runtime_adder,
-                                      kernel_adder->flops(jobsize),
-                                      kernel_adder->bytes(jobsize));
+                                      kernel_adder->flops(nr_subgrids),
+                                      kernel_adder->bytes(nr_subgrids));
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_adder += runtime_adder;
@@ -606,8 +606,8 @@ namespace idg {
 
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("splitter", runtime_splitter,
-                                      kernel_splitter->flops(jobsize),
-                                      kernel_splitter->bytes(jobsize));
+                                      kernel_splitter->flops(nr_subgrids),
+                                      kernel_splitter->bytes(nr_subgrids));
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_splitter += runtime_splitter;
