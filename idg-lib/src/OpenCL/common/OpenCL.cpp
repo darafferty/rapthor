@@ -161,6 +161,7 @@ namespace idg {
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
                 unique_ptr<Adder> kernel_adder = get_kernel_adder();
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -202,18 +203,18 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
                 htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
+                // Initialize fft
+                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
+
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
-                    // Load private kernels
-                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-
                     // Events
                     vector<cl::Event> inputReady(1), outputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Private device memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
@@ -241,9 +242,6 @@ namespace idg {
                         size_t uvw_offset          = bl * sizeof_uvw(1);
                         size_t visibilities_offset = bl * sizeof_visibilities(1);
                         size_t metadata_offset     = bl * sizeof_metadata(1);
-
-                        // Create FFT plan
-                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -279,7 +277,6 @@ namespace idg {
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -329,6 +326,7 @@ namespace idg {
                 // Load kernels
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
                 unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();;
+                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -370,12 +368,13 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
                 htodqueue.finish();
 
+                // Initialize fft
+                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
+
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
-                    // Load kernel functions
-                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
@@ -409,9 +408,6 @@ namespace idg {
                         size_t uvw_offset          = bl * sizeof_uvw(1);
                         size_t visibilities_offset = bl * sizeof_visibilities(1);
                         size_t metadata_offset     = bl * sizeof_metadata(1);
-
-                        // Create FFT plan
-                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
@@ -447,7 +443,6 @@ namespace idg {
                 dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
