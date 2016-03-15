@@ -186,13 +186,19 @@ namespace idg {
             }
 
             void GridFFT::launchAsync(
-                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
-                #if 1
+                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
                 clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
                 }
+            }
+
+            void GridFFT::launchAsync(
+                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
+                #if 1
+                std::cerr << "FFT with performance counter is not supported" << std::endl;
+                exit(EXIT_FAILURE);
                 #else
                 counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
