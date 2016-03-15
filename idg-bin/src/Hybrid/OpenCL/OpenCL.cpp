@@ -11,6 +11,8 @@
 #include "idg-config.h"
 #include "OpenCL.h"
 
+#define WARMUP 1
+
 using namespace std;
 
 namespace idg {
@@ -80,6 +82,7 @@ namespace idg {
                 // Load kernels
                 unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = opencl.get_kernel_gridder();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
 
                 // Load context and device
                 cl::Context context = opencl.get_context();
@@ -95,6 +98,7 @@ namespace idg {
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 const int nr_streams = 3;
+                omp_set_nested(true);
 
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
@@ -125,29 +129,40 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, opencl.sizeof_aterm(), aterm);
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, opencl.sizeof_spheroidal(), spheroidal);
 
+                // Initialize fft
+                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
+
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
-                    // Load private kernels
-                    unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
+                    // Private device memory
+                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_visibilities(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
+                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
+                    // Warmup
+                    #if WARMUP
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, opencl.sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.finish();
+                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    executequeue.finish();
+                    #endif
+
+                    // Performance counters
+                    vector<PerformanceCounter> counters(2);
+                    #if defined(MEASURE_POWER_ARDUINO)
+                    for (PerformanceCounter& counter : counters) {
+                        counter.setPowerSensor(&opencl::powerSensor);
+                    }
+                    #endif
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
-
-                    // Private device memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
-
-                    // Performance counters
-                    PerformanceCounter counters[2];
-                    #if defined(MEASURE_POWER_ARDUINO)
-                    for (int i = 0; i < 2; i++) {
-                        counters[i].setPowerSensor(&opencl::powerSensor);
-                    }
-                    #endif
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Power measurement
                     LikwidPowerSensor::State powerStates[2];
@@ -175,12 +190,10 @@ namespace idg {
                         void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
                         void *subgrids_ptr = subgrids + subgrid_elements*plan.get_subgrid_offset(bl);
 
-                        // Create FFT plan
-                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
-
                         #pragma omp critical (GPU)
                         {
                             // Copy input data to device
+                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, opencl.sizeof_visibilities(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids), NULL, NULL);
@@ -193,7 +206,7 @@ namespace idg {
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy subgrid to host
@@ -205,7 +218,6 @@ namespace idg {
 
 
                         // Run adder
-                        omp_set_nested(true);
                         #pragma omp critical (CPU)
                         {
                             powerStates[0] = cpu.read_power();
@@ -225,7 +237,6 @@ namespace idg {
                 dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -270,6 +281,7 @@ namespace idg {
                 // Load kernels
                 unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = opencl.get_kernel_degridder();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
 
                 // Load context and device
                 cl::Context context = opencl.get_context();
@@ -285,6 +297,7 @@ namespace idg {
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 const int nr_streams = 3;
+                omp_set_nested(true);
 
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
@@ -314,29 +327,42 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, opencl.sizeof_aterm(), aterm);
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, opencl.sizeof_spheroidal(), spheroidal);
 
+                // Initialize fft
+                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
+
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
-                    // Load private kernels
-                    unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
-
-                    // Events
-                    vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
-
                     // Private device memory
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_visibilities(jobsize));
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
+                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
+
+                    // Warmup
+                    #if WARMUP
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, opencl.sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.finish();
+                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    executequeue.finish();
+                    #endif
 
                     // Performance counters
-                    PerformanceCounter counters[2];
+                    vector<PerformanceCounter> counters(2);
                     #if defined(MEASURE_POWER_ARDUINO)
-                    for (int i = 0; i < 2; i++) {
-                        counters[i].setPowerSensor(&opencl::powerSensor);
+                    for (PerformanceCounter& counter : counters) {
+                        counter.setPowerSensor(&opencl::powerSensor);
                     }
                     #endif
+
+                    // Events
+                    vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Power measurement
                     LikwidPowerSensor::State powerStates[2];
@@ -366,16 +392,13 @@ namespace idg {
 
                         // Run splitter
                         powerStates[0] = cpu.read_power();
-                        omp_set_nested(true);
                         kernel_splitter->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, (void *) grid);
                         powerStates[1] = cpu.read_power();
-
-                        // Create FFT plan
-                        kernel_fft->plan(context, executequeue, subgridsize, current_nr_subgrids);
 
                         #pragma omp critical (GPU)
                         {
                             // Copy input data to device
+                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrid_offset, 0, opencl.sizeof_subgrids(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids), NULL, NULL);
@@ -383,7 +406,7 @@ namespace idg {
 
                             // Launch fft kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[0]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch degridder kernel
                             kernel_degridder->launchAsync(
@@ -411,13 +434,12 @@ namespace idg {
                 htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_splitter    = kernel_splitter->flops(nr_subgrids);
-                uint64_t total_bytes_splitter    = kernel_splitter->bytes(nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
+                uint64_t total_flops_splitter   = kernel_splitter->flops(nr_subgrids);
+                uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
