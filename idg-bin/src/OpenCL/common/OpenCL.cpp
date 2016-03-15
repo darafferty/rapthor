@@ -13,6 +13,8 @@
 #include "idg-config.h"
 #include "OpenCL.h"
 
+#define WARMUP 1
+
 using namespace std;
 using namespace idg::kernel::opencl;
 
@@ -170,8 +172,8 @@ namespace idg {
 
                 // Initialize
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 const int nr_streams = 3;
 
                 // Host memory
@@ -210,21 +212,31 @@ namespace idg {
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
+                    // Private device memory
+                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
+                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
+
+                    // Warmup
+                    #if WARMUP
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.finish();
+                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    executequeue.finish();
+                    #endif
+
                     // Events
                     vector<cl::Event> inputReady(1), outputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
-                    // Private device memory
-                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
-
                     // Performance counters
-                    PerformanceCounter counters[4];
+                    vector<PerformanceCounter> counters(4);
                     #if defined(MEASURE_POWER_ARDUINO)
-                    for (int i = 0; i < 4; i++) {
-                        counters[i].setPowerSensor(&powerSensor);
+                    for (PerformanceCounter& counter : counters) {
+                        counter.setPowerSensor(&powerSensor);
                     }
                     #endif
                     #pragma omp single
@@ -259,7 +271,7 @@ namespace idg {
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
         					// Launch FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch scaler kernel
                             kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
@@ -335,8 +347,8 @@ namespace idg {
 
                 // Initialize
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 const int nr_streams = 3;
 
                 // Host memory
@@ -375,22 +387,32 @@ namespace idg {
                 // Start degridder
                 #pragma omp parallel num_threads(nr_streams)
                 {
+                    // Private device memory
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE,  sizeof_uvw(jobsize));
+                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
+
+                    // Warmup
+                    #if WARMUP
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.finish();
+                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    executequeue.finish();
+                    #endif
+
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
-                    // Private device memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_ONLY,  sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
-
                     // Performance counters
-                    PerformanceCounter counters[3];
+                    vector<PerformanceCounter> counters(3);
                     #if defined(MEASURE_POWER_ARDUINO)
-                    for (int i = 0; i < 3; i++) {
-                        counters[i].setPowerSensor(&powerSensor);
+                    for (PerformanceCounter& counter : counters) {
+                        counter.setPowerSensor(&powerSensor);
                     }
                     #endif
                     #pragma omp single
@@ -422,7 +444,7 @@ namespace idg {
                             kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
 
         					// Launch FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[1]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
 
         					// Launch degridder kernel
                             kernel_degridder->launchAsync(
@@ -503,7 +525,7 @@ namespace idg {
 
         		// Launch FFT
                 queue.enqueueMarkerWithWaitList(NULL, &events[1]);
-                kernel_fft->launchAsync(queue, d_grid, sign, counter_fft);
+                kernel_fft->launchAsync(queue, d_grid, sign);
                 queue.enqueueMarkerWithWaitList(NULL, &events[2]);
 
                 // Copy grid to host
