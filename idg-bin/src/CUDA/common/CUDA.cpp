@@ -363,6 +363,7 @@ namespace idg {
                 cu::DeviceMemory d_spheroidal(sizeof_spheroidal());
                 cu::DeviceMemory d_aterm(sizeof_aterm());
                 cu::DeviceMemory d_grid(sizeof_grid());
+                d_grid.zero();
 
                 // Performance measurements
                 double total_runtime_gridder = 0;
