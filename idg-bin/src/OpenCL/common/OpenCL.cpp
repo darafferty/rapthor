@@ -158,6 +158,7 @@ namespace idg {
                 auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
@@ -334,6 +335,7 @@ namespace idg {
                 auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_degridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
@@ -503,7 +505,7 @@ namespace idg {
 
                 // Host memory
                 cl::Buffer h_grid(context, CL_MEM_READ_WRITE, sizeof_grid());
-                queue.enqueueWriteBuffer(h_grid, true, 0, sizeof_grid(), grid);
+                queue.enqueueWriteBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
