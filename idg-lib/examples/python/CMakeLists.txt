@@ -1,5 +1,6 @@
 # Install Python examples
 install(FILES
+  common.py
   cpu-reference.py
   cpu-sandybridgeep.py
   cpu-haswellep.py
