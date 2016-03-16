@@ -31,7 +31,7 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    p = HybridOpenCL.Reference(
+    p = idg.HybridOpenCL.Reference(
         nr_stations, nr_channels,
         nr_time, nr_timeslots,
         image_size, grid_size, subgrid_size)
