@@ -10,9 +10,15 @@ except OSError as e:
     pass
 
 try:
-    import Hybrid
+    import HybridCUDA
 except OSError as e:
-    print("Error importing Hybrid: ", e)
+    print("Error importing Hybrid CUDA: ", e)
+    pass
+
+try:
+    import HybridOpenCL
+except OSError as e:
+    print("Error importing Hybrid OpenCL: ", e)
     pass
 
 try:
