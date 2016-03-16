@@ -7,6 +7,7 @@ install(FILES
         HybridCUDA.py
         HybridOpenCL.py
         KNC.py
+        CUDA.py
         OpenCL.py
         Proxy.py
         utils.py
