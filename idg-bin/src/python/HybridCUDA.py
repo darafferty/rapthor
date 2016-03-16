@@ -10,7 +10,6 @@ from Proxy import *
 path = os.path.dirname(os.path.realpath(__file__))
 path, junk = os.path.split(path)
 path, junk = os.path.split(path)
-# Currently only the hybrid-cuda library is supported
 libpath = os.path.join(path, 'libidg-hybrid-cuda.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 

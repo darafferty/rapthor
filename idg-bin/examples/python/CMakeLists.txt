@@ -5,6 +5,7 @@ install(FILES
   cpu-haswellep.py
   hybrid-maxwell.py
   hybrid-knc.py
+  hybrid-opencl.py
   demo-idg.py
   cpu-clean-reference.py
   cpu-image-haswellep.py
