@@ -194,6 +194,7 @@ namespace idg {
                 }
             }
 
+            #if 0
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
                 #if 1
@@ -224,6 +225,7 @@ namespace idg {
                 }
                 #endif
             }
+            #endif
 
             uint64_t GridFFT::flops(int size, int batch) {
                 int nr_polarizations = parameters.get_nr_polarizations();
