@@ -9,9 +9,13 @@
 #ifndef IDG_PARAMETERS_H_
 #define IDG_PARAMETERS_H_
 
-#include <iostream>
-
 #include "idg-config.h"
+
+#if defined(BUILD_LIB_KNC)
+#pragma omp declare target
+#endif
+
+#include <iostream>
 
 namespace idg {
 
@@ -119,5 +123,9 @@ namespace idg {
   std::ostream& operator<<(std::ostream& os, const Parameters& c);
 
 } // namespace idg
+
+#if defined(BUILD_LIB_KNC)
+#pragma omp end declare target
+#endif
 
 #endif
