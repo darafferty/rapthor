@@ -222,7 +222,11 @@ add_library(idg-knc
 set_target_properties(idg-knc PROPERTIES
                       PUBLIC_HEADER idg-knc.h)
 
-install(TARGETS idg-knc
+add_library(idg-knc-nocommon
+  $<TARGET_OBJECTS:hybrid-knc>
+)
+
+install(TARGETS idg-knc idg-knc-nocommon
   EXPORT IDGTargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib

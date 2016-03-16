@@ -16,7 +16,7 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories (${LIBRARY_OUTPUT_PATH}) 
 
-set(LINK_LIRBRARIES idg-utility idg-cpu idg-knc ${CMAKE_DL_LIBS})
+set(LINK_LIRBRARIES idg-utility idg-knc-nocommon idg-cpu ${CMAKE_DL_LIBS})
 
 target_link_libraries (
   ${PROJECT_NAME}
