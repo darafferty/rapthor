@@ -227,6 +227,37 @@ namespace idg {
             }
             #endif
 
+            void GridFFT::shift(std::complex<float> *data) {
+                int gridsize = parameters.get_grid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+
+                std::complex<float> tmp13, tmp24;
+
+                // Dimensions
+                int n = gridsize;
+                int n2 = n / 2;
+
+                // Pointer
+                typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+                GridType *x = (GridType *) data;
+
+                // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
+                #pragma omp parallel for
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    for (int i = 0; i < n2; i++) {
+                        for (int k = 0; k < n2; k++) {
+                            tmp13                 = (*x)[pol][i][k];
+                            (*x)[pol][i][k]       = (*x)[pol][i+n2][k+n2];
+                            (*x)[pol][i+n2][k+n2] = tmp13;
+
+                            tmp24              = (*x)[pol][i+n2][k];
+                            (*x)[pol][i+n2][k] = (*x)[pol][i][k+n2];
+                            (*x)[pol][i][k+n2] = tmp24;
+                         }
+                    }
+                }
+            }
+
             uint64_t GridFFT::flops(int size, int batch) {
                 int nr_polarizations = parameters.get_nr_polarizations();
                 return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);

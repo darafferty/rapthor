@@ -125,9 +125,6 @@ if __name__ == "__main__":
 
     p.transform(idg.FourierDomainToImageDomain, grid)
 
-    # TODO: add fft shift to OpenCL fft routine
-    grid = numpy.fft.fftshift(grid)
-
     idg.utils.plot_grid(grid)
 
     ############
