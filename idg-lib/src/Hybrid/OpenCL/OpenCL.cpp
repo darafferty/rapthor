@@ -78,6 +78,7 @@ namespace idg {
                 auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
                 unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = opencl.get_kernel_gridder();
@@ -277,6 +278,7 @@ namespace idg {
                 auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_degridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
                 unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = opencl.get_kernel_degridder();
