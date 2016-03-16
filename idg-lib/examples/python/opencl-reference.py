@@ -31,7 +31,7 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    p = OpenCL.Reference(
+    p = idg.OpenCL.Reference(
         nr_stations, nr_channels,
         nr_time, nr_timeslots,
         image_size, grid_size, subgrid_size)
@@ -124,6 +124,9 @@ if __name__ == "__main__":
     #idg.utils.plot_grid(grid)
 
     p.transform(idg.FourierDomainToImageDomain, grid)
+
+    # TODO: add fft shift to OpenCL fft routine
+    grid = numpy.fft.fftshift(grid)
 
     idg.utils.plot_grid(grid)
 
