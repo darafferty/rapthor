@@ -13,21 +13,20 @@ __global__ void kernel_adder(
 	const SubGridType  __restrict__ subgrid,
 	GridType           __restrict__ grid
 	) {
-
-    int s = blockIdx.x;
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
-    int tid = tidx + tidy * blockDim.y;
+    int tid = tidx + tidy * blockDim.x;
     int blockSize = blockDim.x * blockDim.y;
+    int s = blockIdx.x;
+
+    // Load position in grid
+    const Metadata &m = metadata[s];
+    int grid_x = m.coordinate.x;
+    int grid_y = m.coordinate.y;
 
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
-        int x = tid % SUBGRIDSIZE;
-        int y = tid / SUBGRIDSIZE;
-
-        // Load position in grid
-        const Metadata &m = metadata[s];
-        int grid_x = m.coordinate.x;
-        int grid_y = m.coordinate.y;
+        int x = i % SUBGRIDSIZE;
+        int y = i / SUBGRIDSIZE;
 
         // Check wheter subgrid fits in grid
         if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
