@@ -537,12 +537,18 @@ namespace idg {
                 // Wait for fft to finish
                 queue.finish();
 
+                // Perform fft shift
+                double runtime = -omp_get_wtime();
+                kernel_fft->shift(grid);
+                runtime += omp_get_wtime();
+
                 #if defined(REPORT_TOTAL)
-                auxiliary::report("   fft",
+                auxiliary::report("     fft",
                                   PerformanceCounter::get_runtime((cl_event) events[1](), (cl_event) events[2]()),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   0);
+                auxiliary::report("fftshift", runtime, 0, sizeof_grid() * 2, 0);
                 clog << endl;
                 #endif
             } // transform
