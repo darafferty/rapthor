@@ -87,14 +87,23 @@ namespace idg {
                     void launchAsync(
                         cl::CommandQueue &queue,
                         cl::Buffer &d_data,
+                        clfftDirection direction);
+                    #if 0
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        cl::Buffer &d_data,
                         clfftDirection direction,
                         PerformanceCounter &counter);
+                    #endif
+                    void shift(std::complex<float> *data);
                     uint64_t flops(int size, int batch);
                     uint64_t bytes(int size, int batch);
 
                 private:
+                    #if 0
                     cl::Event start;
                     cl::Event end;
+                    #endif
                     bool uninitialized;
                     const Parameters &parameters;
                     int planned_size;

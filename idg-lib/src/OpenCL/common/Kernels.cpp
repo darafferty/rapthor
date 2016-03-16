@@ -186,13 +186,20 @@ namespace idg {
             }
 
             void GridFFT::launchAsync(
-                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
-                #if 1
+                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
                 clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
                 }
+            }
+
+            #if 0
+            void GridFFT::launchAsync(
+                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
+                #if 1
+                std::cerr << "FFT with performance counter is not supported" << std::endl;
+                exit(EXIT_FAILURE);
                 #else
                 counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
 
@@ -217,6 +224,38 @@ namespace idg {
                     exit(EXIT_FAILURE);
                 }
                 #endif
+            }
+            #endif
+
+            void GridFFT::shift(std::complex<float> *data) {
+                int gridsize = parameters.get_grid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+
+                std::complex<float> tmp13, tmp24;
+
+                // Dimensions
+                int n = gridsize;
+                int n2 = n / 2;
+
+                // Pointer
+                typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+                GridType *x = (GridType *) data;
+
+                // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
+                #pragma omp parallel for
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    for (int i = 0; i < n2; i++) {
+                        for (int k = 0; k < n2; k++) {
+                            tmp13                 = (*x)[pol][i][k];
+                            (*x)[pol][i][k]       = (*x)[pol][i+n2][k+n2];
+                            (*x)[pol][i+n2][k+n2] = tmp13;
+
+                            tmp24              = (*x)[pol][i+n2][k];
+                            (*x)[pol][i+n2][k] = (*x)[pol][i][k+n2];
+                            (*x)[pol][i][k+n2] = tmp24;
+                         }
+                    }
+                }
             }
 
             uint64_t GridFFT::flops(int size, int batch) {
