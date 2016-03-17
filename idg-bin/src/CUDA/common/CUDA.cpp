@@ -330,7 +330,6 @@ namespace idg {
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
                 unique_ptr<Adder> kernel_adder = get_kernel_adder();
-                cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -546,7 +545,6 @@ namespace idg {
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
                 unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
                 unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();
-                cu::Module *module_fft = (modules[which_module[name_fft]]);
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
