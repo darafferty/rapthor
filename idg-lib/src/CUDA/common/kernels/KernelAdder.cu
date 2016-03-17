@@ -25,8 +25,8 @@ __global__ void kernel_adder(
     int grid_y = m.coordinate.y;
 
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
-        int x = i % SUBGRIDSIZE;
         int y = i / SUBGRIDSIZE;
+        int x = i % SUBGRIDSIZE;
 
         // Check wheter subgrid fits in grid
         if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
@@ -36,10 +36,10 @@ __global__ void kernel_adder(
             int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Add subgrid value to grid
-            atomicAdd(&(grid[0][grid_y+y][grid_x+x]), subgrid[x][0][y_src][x_src]);
-            atomicAdd(&(grid[1][grid_y+y][grid_x+x]), subgrid[x][1][y_src][x_src]);
-            atomicAdd(&(grid[2][grid_y+y][grid_x+x]), subgrid[x][2][y_src][x_src]);
-            atomicAdd(&(grid[3][grid_y+y][grid_x+x]), subgrid[x][3][y_src][x_src]);
+            atomicAdd(&(grid[0][grid_y+y][grid_x+x]), subgrid[s][0][y_src][x_src]);
+            atomicAdd(&(grid[1][grid_y+y][grid_x+x]), subgrid[s][1][y_src][x_src]);
+            atomicAdd(&(grid[2][grid_y+y][grid_x+x]), subgrid[s][2][y_src][x_src]);
+            atomicAdd(&(grid[3][grid_y+y][grid_x+x]), subgrid[s][3][y_src][x_src]);
         }
     }
 }

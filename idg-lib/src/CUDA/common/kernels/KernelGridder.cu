@@ -34,6 +34,8 @@ __global__ void kernel_gridder(
         subgrid[s][3][0][i] = make_float2(0, 0);
     }
 
+    syncthreads();
+
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
 
@@ -57,9 +59,12 @@ __global__ void kernel_gridder(
         _wavenumbers[i] = wavenumbers[i];
 
     // Iterate all timesteps
-    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += MAX_NR_TIMESTEPS) {
-        int current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
-                                   nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
+    int current_nr_timesteps = MAX_NR_TIMESTEPS;
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+        current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
+                               nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
+
+        syncthreads();
 
 	    // Load UVW
 	    for (int time = tid; time < current_nr_timesteps; time += blockSize) {
@@ -88,11 +93,11 @@ __global__ void kernel_gridder(
             int y = i / SUBGRIDSIZE;
             int x = i % SUBGRIDSIZE;
 
-            // Load visibilities for all channels and polarizations
-            float2 uvXX = {0, 0};
-            float2 uvXY = {0, 0};
-            float2 uvYX = {0, 0};
-            float2 uvYY = {0, 0};
+            // Private pixels
+            float2 uvXX = make_float2(0, 0);
+            float2 uvXY = make_float2(0, 0);
+            float2 uvYX = make_float2(0, 0);
+            float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
             float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
@@ -150,7 +155,7 @@ __global__ void kernel_gridder(
                 }
             }
 
-            // Get a term for station1
+            // Get aterm for station1
             float2 aXX1 = aterm[station1][aterm_index][0][y][x];
             float2 aXY1 = aterm[station1][aterm_index][1][y][x];
             float2 aYX1 = aterm[station1][aterm_index][2][y][x];
@@ -164,10 +169,14 @@ __global__ void kernel_gridder(
 
             // Apply aterm
             float2 tXX, tXY, tYX, tYY;
-            Matrix2x2mul(tXX, tXY, tYX, tYY,
-                         cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1),
-                         uvXX, uvXY, uvYX, uvYY);
-            Matrix2x2mul(tXX, tXY, tYX, tYY, tXX, tXY, tYX, tYY, aXX2, aXY2, aYX2, aYY2);
+            Matrix2x2mul<float2>(
+                tXX, tXY, tYX, tYY,
+                cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1),
+                uvXX, uvXY, uvYX, uvYY);
+            Matrix2x2mul<float2>(
+                uvXX, uvXY, uvYX, uvYY,
+                uvXX, tXY, tYX, tYY,
+                aXX2, aXY2, aYX2, aYY2);
 
             // Load spheroidal
             float sph = spheroidal[y][x];
@@ -177,10 +186,10 @@ __global__ void kernel_gridder(
             int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Set subgrid value
-            subgrid[s][0][y_dst][x_dst] += tXX * sph;
-            subgrid[s][1][y_dst][x_dst] += tXY * sph;
-            subgrid[s][2][y_dst][x_dst] += tYX * sph;
-            subgrid[s][3][y_dst][x_dst] += tYY * sph;
+            subgrid[s][0][y_dst][x_dst] += uvXX * sph;
+            subgrid[s][1][y_dst][x_dst] += uvXX * sph;
+            subgrid[s][2][y_dst][x_dst] += uvXY * sph;
+            subgrid[s][3][y_dst][x_dst] += uvYX * sph;
 	    }
     }
 }
