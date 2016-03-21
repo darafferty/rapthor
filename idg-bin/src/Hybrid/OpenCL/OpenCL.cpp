@@ -84,6 +84,7 @@ namespace idg {
                 unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = opencl.get_kernel_gridder();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
                 unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
+                unique_ptr<idg::kernel::opencl::Scaler> kernel_scaler = opencl.get_kernel_scaler();
 
                 // Load context and device
                 cl::Context context = opencl.get_context();
@@ -98,7 +99,7 @@ namespace idg {
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                const int nr_streams = 3;
+                const int nr_streams = 1;
                 omp_set_nested(true);
 
                 // Host memory
@@ -154,7 +155,7 @@ namespace idg {
                     #endif
 
                     // Performance counters
-                    vector<PerformanceCounter> counters(2);
+                    vector<PerformanceCounter> counters(3);
                     #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
                         counter.setPowerSensor(&opencl::powerSensor);
@@ -207,7 +208,10 @@ namespace idg {
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
+
+                            // Launch scaler kernel
+                            kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy subgrid to host

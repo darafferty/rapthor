@@ -1,44 +1,42 @@
-#  This file taken from FindOpenCL project @ http://gitorious.com/findopencl
-#
 # - Try to find OpenCL
-# This module tries to find an OpenCL implementation on your system. It supports
-# AMD / ATI, Apple and NVIDIA implementations, but shoudl work, too.
+# This module tries to find an OpenCL implementation on your system.
+# It supports AMD and NVIDIA implementations.
+#
+# It looks for OpenCL libraries in your LD_LIBRARY_PATH and tries
+# to resolve the include directory relative to the libraries.
+# As an alternative, specify OPENCL_LIB and OPENCL_INCLUDE manually
 #
 # Once done this will define
 #  OPENCL_FOUND        - system has OpenCL
-#  OPENCL_INCLUDE_DIRS  - the OpenCL include directory
+#  OPENCL_INCLUDE_DIRS - the OpenCL include directory
 #  OPENCL_LIBRARIES    - link these to use OpenCL
 
-FIND_PACKAGE( PackageHandleStandardArgs )
+find_package(PackageHandleStandardArgs)
 
-SET (OPENCL_VERSION_STRING "0.1.0")
-SET (OPENCL_VERSION_MAJOR 0)
-SET (OPENCL_VERSION_MINOR 1)
-SET (OPENCL_VERSION_PATCH 0)
-
-# Unix style platforms
-FIND_LIBRARY(OPENCL_LIBRARIES OpenCL
+# Find libOpenCL.so
+find_library(OPENCL_LIBRARIES OpenCL
+    ENV OPENCL_LIB
     ENV LD_LIBRARY_PATH
 )
+get_filename_component(OPENCL_LIB_DIR ${OPENCL_LIBRARIES} PATH)
 
-GET_FILENAME_COMPONENT(OPENCL_LIB_DIR ${OPENCL_LIBRARIES} PATH)
-GET_FILENAME_COMPONENT(_OPENCL_INC_CAND ${OPENCL_LIB_DIR}/../../include ABSOLUTE)
+# Look for OpenCL header files in default location (relative to library)
+get_filename_component(_OPENCL_INCLUDE_DIR ${OPENCL_LIB_DIR}/../../include ABSOLUTE)
+find_path(OPENCL_INCLUDE_DIRS CL/cl.h PATHS ${_OPENCL_INCLUDE_DIR})
+set (_OPENCL_CPP_INCLUDE_DIRS INTERNAL)
+find_path(_OPENCL_CPP_INCLUDE_DIRS CL/cl.hpp PATHS ${_OPENCL_INCLUDE_DIR})
 
-# The AMD SDK currently does not place its headers
-# in /usr/include, therefore also search relative
-# to the library
-FIND_PATH(OPENCL_INCLUDE_DIRS CL/cl.h PATHS ${_OPENCL_INC_CAND} "/usr/local/cuda/include")
-FIND_PATH(_OPENCL_CPP_INCLUDE_DIRS CL/cl.hpp PATHS ${_OPENCL_INC_CAND} "/usr/local/cuda/include")
+# Look for OpenCL header files in $OPENCL_INCLUDE directory
+set(_OPENCL_INCLUDE_DIR $ENV{OPENCL_INCLUDE})
+find_path(OPENCL_INCLUDE_DIRS CL/cl.h PATHS ${_OPENCL_INCLUDE_DIR})
+find_path(_OPENCL_CPP_INCLUDE_DIRS CL/cl.hpp PATHS ${_OPENCL_INCLUDE_DIR})
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS( OpenCL DEFAULT_MSG OPENCL_LIBRARIES OPENCL_INCLUDE_DIRS )
+if(_OPENCL_CPP_INCLUDE_DIRS)
+    # Add include directory for cpp bindings
+	list(APPEND OPENCL_INCLUDE_DIRS ${_OPENCL_CPP_INCLUDE_DIRS})
 
-IF( _OPENCL_CPP_INCLUDE_DIRS )
-	SET( OPENCL_HAS_CPP_BINDINGS TRUE )
-	LIST( APPEND OPENCL_INCLUDE_DIRS ${_OPENCL_CPP_INCLUDE_DIRS} )
 	# This is often the same, so clean up
-	LIST( REMOVE_DUPLICATES OPENCL_INCLUDE_DIRS )
-ENDIF( _OPENCL_CPP_INCLUDE_DIRS )
+	list( REMOVE_DUPLICATES OPENCL_INCLUDE_DIRS )
+endif(_OPENCL_CPP_INCLUDE_DIRS)
 
-MARK_AS_ADVANCED(
-  OPENCL_INCLUDE_DIRS
-)
+find_package_handle_standard_args(OpenCL DEFAULT_MSG OPENCL_LIBRARIES OPENCL_INCLUDE_DIRS)

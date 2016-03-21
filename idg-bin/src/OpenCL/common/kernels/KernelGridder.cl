@@ -25,11 +25,13 @@ __kernel void kernel_gridder(
 
     // Set subgrid to zero
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        subgrid[s][0][0][i] = (float2) {0, 0};
-        subgrid[s][1][0][i] = (float2) {0, 0};
-        subgrid[s][2][0][i] = (float2) {0, 0};
-        subgrid[s][3][0][i] = (float2) {0, 0};
+        subgrid[s][0][0][i] = (float2) (0, 0);
+        subgrid[s][1][0][i] = (float2) (0, 0);
+        subgrid[s][2][0][i] = (float2) (0, 0);
+        subgrid[s][3][0][i] = (float2) (0, 0);
     }
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
 
     // Load metadata for first subgrid
     const Metadata m_0 = metadata[0];
@@ -45,13 +47,16 @@ __kernel void kernel_gridder(
 	const int y_coordinate = m.coordinate.y;
 
     // Shared data
-	__local float2 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS];
+	__local float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS/2];
 	__local float4 _uvw[MAX_NR_TIMESTEPS];
 
     // Iterate all timesteps
-    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += MAX_NR_TIMESTEPS) {
-        int current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
-                                   nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
+    int current_nr_timesteps = MAX_NR_TIMESTEPS;
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+        current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
+                               nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
+
+        barrier(CLK_LOCAL_MEM_FENCE);
 
         // Load UVW
         for (int time = tid; time < current_nr_timesteps; time += blocksize) {
@@ -60,8 +65,13 @@ __kernel void kernel_gridder(
         }
 
         // Load visibilities
-        for (int i = tid; i < current_nr_timesteps * NR_CHANNELS * NR_POLARIZATIONS; i += blocksize) {
-            _visibilities[0][0][i] = visibilities[time_offset_global + time_offset_local][0][i];
+        for (int i = tid; i < current_nr_timesteps * NR_CHANNELS; i += blocksize) {
+            float2 a = visibilities[time_offset_global + time_offset_local][i][0];
+            float2 b = visibilities[time_offset_global + time_offset_local][i][1];
+            float2 c = visibilities[time_offset_global + time_offset_local][i][2];
+            float2 d = visibilities[time_offset_global + time_offset_local][i][3];
+            _visibilities[0][i][0] = (float4) (a.x, a.y, b.x, b.y);
+            _visibilities[0][i][1] = (float4) (c.x, c.y, d.x, d.y);
         }
 
         barrier(CLK_LOCAL_MEM_FENCE);
@@ -107,10 +117,12 @@ __kernel void kernel_gridder(
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load visibilities from shared memory
-                    float2 visXX = _visibilities[time][chan][0];
-                    float2 visXY = _visibilities[time][chan][1];
-                    float2 visYX = _visibilities[time][chan][2];
-                    float2 visYY = _visibilities[time][chan][3];
+                    float4 a = _visibilities[time][chan][0];
+                    float4 b = _visibilities[time][chan][1];
+                    float2 visXX = (float2) (a.x, a.y);
+                    float2 visXY = (float2) (a.z, a.w);
+                    float2 visYX = (float2) (b.x, b.y);
+                    float2 visYY = (float2) (b.z, b.w);
 
                     // Multiply visibility by phasor
                     uvXX.x += phasor.x * visXX.x;
@@ -136,22 +148,44 @@ __kernel void kernel_gridder(
             }
 
             // Get a term for station1
-            float2 aXX1 = conj(aterm[station1][aterm_index][0][y][x]);
-            float2 aXY1 = conj(aterm[station1][aterm_index][1][y][x]);
-            float2 aYX1 = conj(aterm[station1][aterm_index][2][y][x]);
-            float2 aYY1 = conj(aterm[station1][aterm_index][3][y][x]);
+            float2 aXX1 = aterm[station1][aterm_index][0][y][x];
+            float2 aXY1 = aterm[station1][aterm_index][1][y][x];
+            float2 aYX1 = aterm[station1][aterm_index][2][y][x];
+            float2 aYY1 = aterm[station1][aterm_index][3][y][x];
 
             // Get aterm for station2
-            float2 aXX2 = aterm[station2][aterm_index][0][y][x];
-            float2 aXY2 = aterm[station2][aterm_index][1][y][x];
-            float2 aYX2 = aterm[station2][aterm_index][2][y][x];
-            float2 aYY2 = aterm[station2][aterm_index][3][y][x];
+            float2 aXX2 = conj(aterm[station2][aterm_index][0][y][x]);
+            float2 aXY2 = conj(aterm[station2][aterm_index][1][y][x]);
+            float2 aYX2 = conj(aterm[station2][aterm_index][2][y][x]);
+            float2 aYY2 = conj(aterm[station2][aterm_index][3][y][x]);
 
-            // Apply aterm
-            float2 auvXX = uvXX * aXX1 + uvXY * aYX1 + uvXX * aXX2 + uvXY * aYX2;
-            float2 auvXY = uvXX * aXY1 + uvXY * aYY1 + uvXX * aXY2 + uvXY * aYY2;
-            float2 auvYX = uvYX * aXX1 + uvYY * aYX1 + uvYX * aXX2 + uvYY * aYX2;
-            float2 auvYY = uvYY * aXY1 + uvYY * aYY1 + uvYY * aXY2 + uvYY * aYY2;
+            // Apply aterm to pixel: P*A1
+            float2 pixelsXX = uvXX;
+            float2 pixelsXY = uvXY;
+            float2 pixelsYX = uvYX;
+            float2 pixelsYY = uvYY;
+            uvXX  = cmul(pixelsXX, aXX1);
+            uvXX += cmul(pixelsXY, aYX1);
+            uvXY  = cmul(pixelsXX, aXY1);
+            uvXY += cmul(pixelsXY, aYY1);
+            uvYX  = cmul(pixelsYX, aXX1);
+            uvYX += cmul(pixelsYY, aYX1);
+            uvYY  = cmul(pixelsYX, aXY1);
+            uvYY += cmul(pixelsYY, aYY1);
+
+            // Apply aterm to subgrid: A2^H*P
+            pixelsXX = uvXX;
+            pixelsXY = uvXY;
+            pixelsYX = uvYX;
+            pixelsYY = uvYY;
+            uvXX  = cmul(pixelsXX, aXX2);
+            uvXX += cmul(pixelsYX, aYX2);
+            uvXY  = cmul(pixelsXY, aXX2);
+            uvXY += cmul(pixelsYY, aYX2);
+            uvYX  = cmul(pixelsXX, aXY2);
+            uvYX += cmul(pixelsYX, aYY2);
+            uvYY  = cmul(pixelsXY, aXY2);
+            uvYY += cmul(pixelsYY, aYY2);
 
             // Load spheroidal
             float sph = spheroidal[y][x];
@@ -161,10 +195,10 @@ __kernel void kernel_gridder(
             int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Apply spheroidal and update uv grid
-            subgrid[s][0][y_dst][x_dst] += auvXX * sph;
-            subgrid[s][1][y_dst][x_dst] += auvXY * sph;
-            subgrid[s][2][y_dst][x_dst] += auvYX * sph;
-            subgrid[s][3][y_dst][x_dst] += auvYY * sph;
+            subgrid[s][0][y_dst][x_dst] += uvXX * sph;
+            subgrid[s][1][y_dst][x_dst] += uvXY * sph;
+            subgrid[s][2][y_dst][x_dst] += uvYX * sph;
+            subgrid[s][3][y_dst][x_dst] += uvYY * sph;
         }
     }
 }

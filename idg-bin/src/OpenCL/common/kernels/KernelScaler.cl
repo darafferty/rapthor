@@ -15,13 +15,16 @@ __kernel void kernel_scaler(
     int s = get_group_id(0);
 
     // Compute scaling factor
-    const float scale = 1.0 / (SUBGRIDSIZE * SUBGRIDSIZE);
+    const float scale = 1.0 / ((float) SUBGRIDSIZE * (float) SUBGRIDSIZE);
 
 	// Iterate all pixels in subgrid
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
+        int y = i / SUBGRIDSIZE;
+        int x = i % SUBGRIDSIZE;
+
         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            float2 value = subgrid[s][pol][0][i];
-            subgrid[s][pol][0][i] = (float2) (value.x * scale, value.y * scale);
+            float2 value = subgrid[s][pol][y][x];
+            subgrid[s][pol][y][x] = (float2) (value.x * scale, value.y * scale);
         }
     }
 }
