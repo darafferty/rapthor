@@ -4,7 +4,6 @@ project(hybrid-opencl-reference)
 include_directories (
     ${OPENCL_INCLUDE_DIRS}
     ${CLFFT_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/src/external
 )
 
 # sources and header files
