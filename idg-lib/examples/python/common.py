@@ -228,3 +228,5 @@ def main(proxyname):
     degridding(
         p, visibilities, uvw, wavenumbers, baselines, grid,
         kernel_size, aterms, aterms_offset, spheroidal)
+
+    plt.show()

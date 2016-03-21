@@ -163,13 +163,15 @@ namespace idg {
                     // Create new plan
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
-                    int nr_polarizations = parameters.get_nr_polarizations();
-                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
                     // Set plan parameters
                     clfftSetPlanPrecision(fft, CLFFT_SINGLE);
                     clfftSetLayout(fft, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
                     clfftSetResultLocation(fft, CLFFT_INPLACE);
+                    int distance = size*size;
+                    clfftSetPlanDistance(fft, distance, distance);
+                    int nr_polarizations = parameters.get_nr_polarizations();
+                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
                     // Update parameters
                     planned_size = size;
@@ -187,45 +189,12 @@ namespace idg {
 
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
-
-            #if 0
-            void GridFFT::launchAsync(
-                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
-                #if 1
-                std::cerr << "FFT with performance counter is not supported" << std::endl;
-                exit(EXIT_FAILURE);
-                #else
-                counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
-
-                // Retrieve fft plan from handle
-                FFTRepo& fftRepo   = FFTRepo::getInstance();
-                FFTPlan* fftPlan   = NULL;
-                lockRAII* planLock = NULL;
-                fftRepo.getPlan(fft, fftPlan, planLock);
-                clfftStatus status;
-
-                // Enqueue row transformation
-                status = clfftEnqueueTransform(fftPlan->planX, direction, 1, &queue(), 0, NULL, &start(), &d_data(), &d_data(), NULL);
-                if (status != CL_SUCCESS) {
-                    std::cerr << "clfftEnqueueTransform for row failed" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-
-                // Enqueue column transformation
-                status = clfftEnqueueTransform(fftPlan->planY, direction, 1, &queue(), 1, &start(), &end(), &d_data(), &d_data(), NULL);
-                if (status != CL_SUCCESS) {
-                    std::cerr << "clfftEnqueueTransform for column failed" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-                #endif
-            }
-            #endif
 
             void GridFFT::shift(std::complex<float> *data) {
                 int gridsize = parameters.get_grid_size();
@@ -254,6 +223,25 @@ namespace idg {
                             (*x)[pol][i+n2][k] = (*x)[pol][i][k+n2];
                             (*x)[pol][i][k+n2] = tmp24;
                          }
+                    }
+                }
+            }
+
+            void GridFFT::scale(std::complex<float> *data, std::complex<float> scale) {
+                int gridsize = parameters.get_grid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+
+                // Pointer
+                typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+                GridType *x = (GridType *) data;
+
+                #pragma omp parallel for collapse(2)
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    for (int i = 0; i < gridsize * gridsize; i++) {
+                        std::complex<float> value = (*x)[pol][0][i];
+                        (*x)[pol][0][i] = std::complex<float>(
+                            value.real() * scale.real(),
+                            value.imag() * scale.imag());
                     }
                 }
             }
@@ -385,6 +373,7 @@ namespace idg {
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t flops = 0;
                 flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
+                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
                 return flops;
             }
 

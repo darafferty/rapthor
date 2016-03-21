@@ -28,6 +28,12 @@ except OSError as e:
     pass
 
 try:
+    import CUDA
+except OSError as e:
+    print("Error importing CUDA: ", e)
+    pass
+
+try:
     import OpenCL
 except OSError as e:
     print("Error importing OpenCL: ", e)

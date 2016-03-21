@@ -275,19 +275,23 @@ namespace idg {
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch scaler kernel
-                            kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
+                            // TODO: remove
+                            //kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
 
                             // Launch adder kernel
                             kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
                     }
+
+                    outputReady[0].wait();
                 }
 
                 // Copy grid to host
                 executequeue.finish();
                 PowerSensor::State stopState = powerSensor.read();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
+                dtohqueue.finish();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
@@ -459,6 +463,8 @@ namespace idg {
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
                         }
                     }
+
+                    outputReady[0].wait();
                 }
 
                 // Copy visibilities
@@ -523,7 +529,7 @@ namespace idg {
                 queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
 
                 // Create FFT plan
-                kernel_fft->plan(context, queue, gridsize, 1);
+                kernel_fft->plan(context, queue, gridsize, nr_polarizations);
 
         		// Launch FFT
                 queue.enqueueMarkerWithWaitList(NULL, &events[1]);
@@ -532,15 +538,23 @@ namespace idg {
 
                 // Copy grid to host
                 queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
-                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(h_grid, CL_TRUE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();
 
                 // Perform fft shift
-                double runtime = -omp_get_wtime();
+                double time_shift = -omp_get_wtime();
                 kernel_fft->shift(grid);
-                runtime += omp_get_wtime();
+                time_shift += omp_get_wtime();
+
+                // Perform fft scaling
+                double time_scale = -omp_get_wtime();
+                complex<float> scale = complex<float>(2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                    kernel_fft->scale(grid, scale);
+                }
+                time_scale += omp_get_wtime();
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("     fft",
@@ -548,7 +562,10 @@ namespace idg {
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   0);
-                auxiliary::report("fftshift", runtime, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                }
                 clog << endl;
                 #endif
             } // transform

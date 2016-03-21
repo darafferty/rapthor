@@ -4,9 +4,8 @@ project(hybrid-opencl-reference.x)
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/utility
-    ${_OPENCL_CPP_INCLUDE_DIRS}
-    ${_CLFFT_CPP_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/src/external
+    ${OPENCL_INCLUDE_DIRS}
+    ${CLFFT_INCLUDE_DIRS}
  )
 
 set (${PROJECT_NAME}_sources
