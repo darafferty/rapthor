@@ -23,8 +23,8 @@ __kernel void kernel_adder(
 
     // Iterate all pixels in subgrid
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        int x = i % SUBGRIDSIZE;
         int y = i / SUBGRIDSIZE;
+        int x = i % SUBGRIDSIZE;
 
         // Check wheter subgrid fits in grid
         if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&

@@ -160,16 +160,20 @@ namespace idg {
                         clfftDestroyPlan(&fft);
                     }
 
+                    int subgridsize = parameters.get_subgrid_size();
+                    int nr_polarizations = parameters.get_nr_polarizations();
+
                     // Create new plan
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
-                    int nr_polarizations = parameters.get_nr_polarizations();
-                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
                     // Set plan parameters
                     clfftSetPlanPrecision(fft, CLFFT_SINGLE);
                     clfftSetLayout(fft, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
                     clfftSetResultLocation(fft, CLFFT_INPLACE);
+                    int distance = subgridsize*subgridsize;
+                    clfftSetPlanDistance(fft, distance, distance);
+                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
                     // Update parameters
                     planned_size = size;
@@ -187,7 +191,7 @@ namespace idg {
 
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
@@ -385,6 +389,7 @@ namespace idg {
                 int nr_polarizations = parameters.get_nr_polarizations();
                 uint64_t flops = 0;
                 flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
+                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
                 return flops;
             }
 
