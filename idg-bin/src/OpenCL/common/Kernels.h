@@ -1,13 +1,14 @@
 #ifndef IDG_OPENCL_KERNELS_H_
 #define IDG_OPENCL_KERNELS_H_
 
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define __CL_ENABLE_EXCEPTIONS
+#include <CL/cl.hpp>
+
 #include <cstdint>
 #include <ccomplex>
 #include <cmath>
 #include <string>
-
-#define __CL_ENABLE_EXCEPTIONS
-#include <CL/cl.hpp>
 
 #include <clFFT.h>
 
