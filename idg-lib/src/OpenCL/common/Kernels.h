@@ -89,6 +89,7 @@ namespace idg {
                         cl::Buffer &d_data,
                         clfftDirection direction);
                     void shift(std::complex<float> *data);
+                    void scale(std::complex<float> *data, std::complex<float> scale);
                     uint64_t flops(int size, int batch);
                     uint64_t bytes(int size, int batch);
 
