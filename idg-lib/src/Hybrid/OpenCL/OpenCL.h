@@ -10,10 +10,6 @@
 #ifndef IDG_HYBRID_OPENCL_REFERENCE_H_
 #define IDG_HYBRID_OPENCL_REFERENCE_H_
 
-#define __CL_ENABLE_EXCEPTIONS
-#include <CL/cl.hpp>
-#include <CL/cl.h>
-
 #include "idg-hybrid-opencl.h"
 
 namespace idg {
