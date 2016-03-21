@@ -198,39 +198,6 @@ namespace idg {
                 }
             }
 
-            #if 0
-            void GridFFT::launchAsync(
-                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction, PerformanceCounter &counter) {
-                #if 1
-                std::cerr << "FFT with performance counter is not supported" << std::endl;
-                exit(EXIT_FAILURE);
-                #else
-                counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
-
-                // Retrieve fft plan from handle
-                FFTRepo& fftRepo   = FFTRepo::getInstance();
-                FFTPlan* fftPlan   = NULL;
-                lockRAII* planLock = NULL;
-                fftRepo.getPlan(fft, fftPlan, planLock);
-                clfftStatus status;
-
-                // Enqueue row transformation
-                status = clfftEnqueueTransform(fftPlan->planX, direction, 1, &queue(), 0, NULL, &start(), &d_data(), &d_data(), NULL);
-                if (status != CL_SUCCESS) {
-                    std::cerr << "clfftEnqueueTransform for row failed" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-
-                // Enqueue column transformation
-                status = clfftEnqueueTransform(fftPlan->planY, direction, 1, &queue(), 1, &start(), &end(), &d_data(), &d_data(), NULL);
-                if (status != CL_SUCCESS) {
-                    std::cerr << "clfftEnqueueTransform for column failed" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-                #endif
-            }
-            #endif
-
             void GridFFT::shift(std::complex<float> *data) {
                 int gridsize = parameters.get_grid_size();
                 int nr_polarizations = parameters.get_nr_polarizations();

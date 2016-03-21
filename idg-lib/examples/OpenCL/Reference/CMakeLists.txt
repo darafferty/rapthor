@@ -4,7 +4,6 @@ project(opencl-reference.x)
 include_directories(
     ${OPENCL_INCLUDE_DIRS}
     ${CLFFT_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/src/external
     ${CMAKE_SOURCE_DIR}/utility
  )
 
