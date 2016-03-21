@@ -96,7 +96,6 @@ namespace idg {
                    virtual std::unique_ptr<kernel::opencl::Adder> get_kernel_adder() const = 0;
                    virtual std::unique_ptr<kernel::opencl::Splitter> get_kernel_splitter() const = 0;
 
-
                 protected:
                     ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
 

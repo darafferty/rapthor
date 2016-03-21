@@ -282,12 +282,15 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
                     }
+
+                    outputReady[0].wait();
                 }
 
                 // Copy grid to host
                 executequeue.finish();
                 PowerSensor::State stopState = powerSensor.read();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
+                dtohqueue.finish();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
@@ -459,6 +462,8 @@ namespace idg {
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
                         }
                     }
+
+                    outputReady[0].wait();
                 }
 
                 // Copy visibilities
@@ -532,7 +537,7 @@ namespace idg {
 
                 // Copy grid to host
                 queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
-                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(h_grid, CL_TRUE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();
