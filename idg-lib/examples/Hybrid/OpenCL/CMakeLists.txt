@@ -5,7 +5,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/utility
     ${OPENCL_INCLUDE_DIRS}
-    ${_CLFFT_CPP_INCLUDE_DIRS}
+    ${CLFFT_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/src/external
  )
 
