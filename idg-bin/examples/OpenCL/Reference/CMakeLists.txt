@@ -3,7 +3,7 @@ project(opencl-reference.x)
 # Set external header files
 include_directories(
     ${OPENCL_INCLUDE_DIRS}
-    ${_CLFFT_CPP_INCLUDE_DIRS}
+    ${CLFFT_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/src/external
     ${CMAKE_SOURCE_DIR}/utility
  )
