@@ -275,7 +275,8 @@ namespace idg {
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch scaler kernel
-                            kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
+                            // TODO: remove
+                            //kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
 
                             // Launch adder kernel
                             kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
@@ -528,7 +529,7 @@ namespace idg {
                 queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
 
                 // Create FFT plan
-                kernel_fft->plan(context, queue, gridsize, 1);
+                kernel_fft->plan(context, queue, gridsize, nr_polarizations);
 
         		// Launch FFT
                 queue.enqueueMarkerWithWaitList(NULL, &events[1]);
@@ -543,9 +544,17 @@ namespace idg {
                 queue.finish();
 
                 // Perform fft shift
-                double runtime = -omp_get_wtime();
+                double time_shift = -omp_get_wtime();
                 kernel_fft->shift(grid);
-                runtime += omp_get_wtime();
+                time_shift += omp_get_wtime();
+
+                // Perform fft scaling
+                double time_scale = -omp_get_wtime();
+                complex<float> scale = complex<float>(2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                    kernel_fft->scale(grid, scale);
+                }
+                time_scale += omp_get_wtime();
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("     fft",
@@ -553,7 +562,10 @@ namespace idg {
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   0);
-                auxiliary::report("fftshift", runtime, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                }
                 clog << endl;
                 #endif
             } // transform

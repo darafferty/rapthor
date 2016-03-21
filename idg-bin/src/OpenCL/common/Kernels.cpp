@@ -160,9 +160,6 @@ namespace idg {
                         clfftDestroyPlan(&fft);
                     }
 
-                    int subgridsize = parameters.get_subgrid_size();
-                    int nr_polarizations = parameters.get_nr_polarizations();
-
                     // Create new plan
                     size_t lengths[2] = {(size_t) size, (size_t) size};
                     clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
@@ -171,8 +168,9 @@ namespace idg {
                     clfftSetPlanPrecision(fft, CLFFT_SINGLE);
                     clfftSetLayout(fft, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
                     clfftSetResultLocation(fft, CLFFT_INPLACE);
-                    int distance = subgridsize*subgridsize;
+                    int distance = size*size;
                     clfftSetPlanDistance(fft, distance, distance);
+                    int nr_polarizations = parameters.get_nr_polarizations();
                     clfftSetPlanBatchSize(fft, batch * nr_polarizations);
 
                     // Update parameters
@@ -225,6 +223,25 @@ namespace idg {
                             (*x)[pol][i+n2][k] = (*x)[pol][i][k+n2];
                             (*x)[pol][i][k+n2] = tmp24;
                          }
+                    }
+                }
+            }
+
+            void GridFFT::scale(std::complex<float> *data, std::complex<float> scale) {
+                int gridsize = parameters.get_grid_size();
+                int nr_polarizations = parameters.get_nr_polarizations();
+
+                // Pointer
+                typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+                GridType *x = (GridType *) data;
+
+                #pragma omp parallel for collapse(2)
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    for (int i = 0; i < gridsize * gridsize; i++) {
+                        std::complex<float> value = (*x)[pol][0][i];
+                        (*x)[pol][0][i] = std::complex<float>(
+                            value.real() * scale.real(),
+                            value.imag() * scale.imag());
                     }
                 }
             }
