@@ -3,47 +3,48 @@ import ctypes
 import numpy
 from ctypes.util import find_library
 
+def handle_error(library, e):
+    if "libidg" in e.message:
+        # cannot load idg library (probably because it is not build
+        pass
+    else:
+        print("Error importing %s: %s" % (library, e.message))
+        exit(0)
+
 try:
     import CPU
 except OSError as e:
-    print("Error importing CPU: ", e)
-    pass
+    handle_error("CPU", e)
 
 try:
     import HybridCUDA
 except OSError as e:
-    print("Error importing Hybrid CUDA: ", e)
-    pass
+    handle_error("Hybrid CUDA", e)
 
 try:
     import HybridOpenCL
 except OSError as e:
-    print("Error importing Hybrid OpenCL: ", e)
-    pass
+    handle_error("Hybrid OpenCL", e)
 
 try:
     import KNC
 except OSError as e:
-    print("Error importing KNC: ", e)
-    pass
+    handle_error("KNC", e)
 
 try:
     import CUDA
 except OSError as e:
-    print("Error importing CUDA: ", e)
-    pass
+    handle_error("CUDA", e)
 
 try:
     import OpenCL
 except OSError as e:
-    print("Error importing OpenCL: ", e)
-    pass
+    handle_error("OpenCL", e)
 
 try:
     import utils
 except OSError:
-    print("Error importing utils: ", e)
-    pass
+    handle_error("utils", e)
 
 visibilitiestype = numpy.complex64
 uvwtype = numpy.dtype([('u', numpy.float32),
