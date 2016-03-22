@@ -109,6 +109,7 @@ int run_test()
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
     idg::init_grid(grid_ref, gridsize, nr_polarizations);
+    idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
     // Initialize interface to kernels
@@ -174,6 +175,7 @@ int run_test()
 
     // Free memory for data structures
     delete[] visibilities;
+    delete[] visibilities_ref;
     delete[] uvw;
     delete[] wavenumbers;
     delete[] aterm;
