@@ -280,6 +280,21 @@ namespace idg {
                 stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
                 powerRecords[3].enqueue(stream);
                 stream.synchronize();
+                memcpy(grid, h_grid, sizeof_grid());
+
+                // Perform fft shift
+                double time_shift = -omp_get_wtime();
+                kernel_fft->shift(grid);
+                time_shift += omp_get_wtime();
+
+                // Perform fft scaling
+                double time_scale = -omp_get_wtime();
+                complex<float> scale = complex<float>(2.0/(gridsize*gridsize), 0);
+                if (direction == FourierDomainToImageDomain) {
+                    kernel_fft->scale(grid, scale);
+                }
+                time_scale += omp_get_wtime();
+
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report(" input",
@@ -295,6 +310,10 @@ namespace idg {
                                   PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
                                   0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                }
                 std::cout << std::endl;
                 #endif
             }
