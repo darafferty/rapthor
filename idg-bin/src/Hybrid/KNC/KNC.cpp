@@ -8,7 +8,7 @@
 #include "KNC.h"
 
 using namespace std;
-using namespace idg::kernel::knc;
+using namespace idg::kernel::knc; // TODO: remove!
 
 namespace idg {
     namespace proxy {
@@ -364,7 +364,7 @@ namespace idg {
                         float *uvw_ptr = (float *) uvw + bl * uvw_elements;
                         complex<float> *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
                         complex<float> *subgrids_ptr = (complex<float>*) subgrids + plan.get_subgrid_offset(bl);
-                        int *metadata_ptr = (int *) plan.get_subgrid_offset(bl);
+                        int *metadata_ptr     = (int *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
                         PowerSensor::State powerStates[3];
@@ -378,28 +378,28 @@ namespace idg {
                        #pragma omp target \
                                map(to:uvw_ptr[0:(current_nr_baselines * uvw_elements)]) \
                                map(to:visibilities_ptr[0:(current_nr_baselines * visibilities_elements)]) \
-                               map(from:subgrids_ptr[0:(current_nr_baselines * subgrid_elements)]) \
-                               map(to:metadata_ptr[0:(current_nr_baselines * metadata_elements)])
+                               map(from:subgrids_ptr[0:(current_nr_subgrids * subgrid_elements)]) \
+                               map(to:metadata_ptr[0:(current_nr_subgrids * metadata_elements)])
                         {
                             runtime_gridder = -omp_get_wtime();
 
-                            kernel_gridder(current_nr_baselines,
-                                           w_offset,
-                                           uvw_ptr,
-                                           wavenumbers_ptr,
-                                           visibilities_ptr,
-                                           spheroidal_ptr,
-                                           aterm_ptr,
-                                           metadata_ptr,
-                                           subgrids_ptr,
-                                           nr_stations,
-                                           nr_time,
-                                           nr_timeslots,
-                                           nr_channels,
-                                           gridsize,
-                                           subgridsize,
-                                           imagesize,
-                                           nr_polarizations);
+                            // kernel_gridder(current_nr_subgrids,
+                            //                w_offset,
+                            //                uvw_ptr,
+                            //                wavenumbers_ptr,
+                            //                visibilities_ptr,
+                            //                spheroidal_ptr,
+                            //                aterm_ptr,
+                            //                metadata_ptr,
+                            //                subgrids_ptr,
+                            //                nr_stations,
+                            //                nr_time,
+                            //                nr_timeslots,
+                            //                nr_channels,
+                            //                gridsize,
+                            //                subgridsize,
+                            //                imagesize,
+                            //                nr_polarizations);
 
                             runtime_gridder += omp_get_wtime();
                         }
@@ -411,13 +411,13 @@ namespace idg {
                         #pragma omp target \
                                 map(to:uvw_ptr[0:(current_nr_baselines * uvw_elements)]) \
                                 map(to:visibilities_ptr[0:(current_nr_baselines * visibilities_elements)]) \
-                                map(from:subgrids_ptr[0:(current_nr_baselines * subgrid_elements)]) \
-                                map(to:metadata_ptr[0:(current_nr_baselines * metadata_elements)])
+                                map(tofrom:subgrids_ptr[0:(current_nr_subgrids * subgrid_elements)]) \
+                                map(to:metadata_ptr[0:(current_nr_subgrids * metadata_elements)])
                         {
                             runtime_fft = -omp_get_wtime();
 
                             kernel_fft(subgridsize,
-                                       current_nr_baselines,
+                                       current_nr_subgrids,
                                        subgrids_ptr,
                                        1,
                                        nr_polarizations);
@@ -441,7 +441,8 @@ namespace idg {
                             kernel_fft_bytes(mParams, subgridsize, current_nr_subgrids),
                             PowerSensor::Watt(powerStates[1], powerStates[2]));
                         #endif
-                    } // end for s
+                    } // end for bl
+
                 } // end omp target data
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -554,7 +555,7 @@ namespace idg {
                         float *uvw_ptr = (float *) uvw + bl * uvw_elements;
                         complex<float> *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
                         complex<float> *subgrids_ptr = (complex<float>*) subgrids + plan.get_subgrid_offset(bl);
-                        int *metadata_ptr = (int *) plan.get_subgrid_offset(bl);
+                        int *metadata_ptr     = (int *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
                         PowerSensor::State powerStates[3];
@@ -568,13 +569,13 @@ namespace idg {
                         #pragma omp target \
                             map(to:uvw_ptr[0:(current_nr_baselines * uvw_elements)]) \
                             map(from:visibilities_ptr[0:(current_nr_baselines * visibilities_elements)]) \
-                            map(tofrom:subgrids_ptr[0:(current_nr_baselines * subgrid_elements)]) \
-                            map(to:metadata_ptr[0:(current_nr_baselines * metadata_elements)])
+                            map(tofrom:subgrids_ptr[0:(current_nr_subgrids * subgrid_elements)]) \
+                            map(to:metadata_ptr[0:(current_nr_subgrids * metadata_elements)])
                         {
                             runtime_fft = -omp_get_wtime();
 
                             kernel_fft(subgridsize,
-                                       current_nr_baselines,
+                                       current_nr_subgrids,
                                        subgrids_ptr,
                                        -1,
                                        nr_polarizations);
@@ -594,24 +595,24 @@ namespace idg {
                         {
                             runtime_degridder = -omp_get_wtime();
 
-                            kernel_degridder(
-                                current_nr_baselines,
-                                w_offset,
-                                uvw_ptr,
-                                wavenumbers_ptr,
-                                visibilities_ptr,
-                                spheroidal_ptr,
-                                aterm_ptr,
-                                metadata_ptr,
-                                subgrids_ptr,
-                                nr_stations,
-                                nr_time,
-                                nr_timeslots,
-                                nr_channels,
-                                gridsize,
-                                subgridsize,
-                                imagesize,
-                                nr_polarizations);
+                            // kernel_degridder(
+                            //     current_nr_baselines,
+                            //     w_offset,
+                            //     uvw_ptr,
+                            //     wavenumbers_ptr,
+                            //     visibilities_ptr,
+                            //     spheroidal_ptr,
+                            //     aterm_ptr,
+                            //     metadata_ptr,
+                            //     subgrids_ptr,
+                            //     nr_stations,
+                            //     nr_time,
+                            //     nr_timeslots,
+                            //     nr_channels,
+                            //     gridsize,
+                            //     subgridsize,
+                            //     imagesize,
+                            //     nr_polarizations);
 
                             runtime_degridder += omp_get_wtime();
                         }
@@ -632,7 +633,7 @@ namespace idg {
                             kernel_degridder_bytes(mParams, current_nr_baselines, current_nr_subgrids),
                             PowerSensor::Watt(powerStates[1], powerStates[2]) );
                         #endif
-                    } // end for s
+                    } // end for bl
 
                 } // end pragma omp target data
 
