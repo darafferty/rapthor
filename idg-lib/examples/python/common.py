@@ -3,19 +3,20 @@
 import idg
 import numpy
 import matplotlib.pyplot as plt
+import random
 
 ############
 # paramaters
 ############
-_nr_stations = 8
+_nr_stations = 70
 _nr_baselines = _nr_stations*(_nr_stations-1)/2
 _nr_channels = 1
-_nr_time = 4800            # samples per baseline
-_nr_timeslots = 10         # A-term time slots
-_image_size = 0.08
-_subgrid_size = 24
+_nr_time = 4096           # samples per baseline
+_nr_timeslots = 32        # A-term time slots
+_image_size = 0.1
+_subgrid_size = 32
 _grid_size = 1024
-_integration_time = 10
+_integration_time = 1
 _kernel_size = (_subgrid_size / 2) + 1
 _nr_polarizations = 4
 
@@ -48,16 +49,44 @@ def get_integration_time():
 def get_kernel_size():
     return _kernel_size
 
+def get_nr_polarizations():
+    return _nr_polarizations
 
 #################
 # initialize data
 #################
-def init_visibilities(nr_baselines, nr_time, nr_channels):
+def init_visibilities_dummy(nr_baselines, nr_time, nr_channels):
     visibilities =  numpy.ones(
         (nr_baselines, nr_time, nr_channels, _nr_polarizations),
         dtype = idg.visibilitiestype)
     idg.utils.init_visibilities(visibilities)
-    idg.utils.plot_visibilities(visibilities)
+    #idg.utils.plot_visibilities(visibilities)
+    return visibilities
+
+def init_visibilities_real(
+    nr_pt_sources, max_offset, seed,
+    nr_baselines, nr_time, nr_channels, nr_polarizations,
+    image_size, grid_size, uvw, wavenumbers):
+
+    # Initialize visibilities to zero
+    visibilities =  numpy.zeros(
+        (nr_baselines, nr_time, nr_channels, _nr_polarizations),
+        dtype = idg.visibilitiestype)
+
+    # Create offsets for fake point sources
+    offsets = list()
+    random.seed(seed)
+    for _ in range(nr_pt_sources):
+        x = (random.random() * (max_offset)) - (max_offset/2)
+        y = (random.random() * (max_offset)) - (max_offset/2)
+        offsets.append((x, y))
+
+    # Update visibilities
+    for offset in offsets:
+        amplitude = 1
+        idg.utils.add_pt_src(offset[0], offset[1], amplitude,
+            nr_baselines, nr_time, nr_channels, nr_polarizations,
+            image_size, grid_size, uvw, wavenumbers, visibilities)
     return visibilities
 
 def init_uvw(nr_baselines, nr_time, integration_time):
@@ -143,6 +172,7 @@ def gridding(
     idg.utils.plot_grid(grid, scaling='log')
     p.transform(idg.FourierDomainToImageDomain, grid)
     idg.utils.plot_grid(grid)
+    #idg.utils.plot_grid(grid, pol=0)
 
 
 ############
@@ -156,8 +186,7 @@ def degridding(
     p.degrid_visibilities(
         visibilities, uvw, wavenumbers, baselines, grid,
         w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    idg.utils.plot_visibilities(visibilities)
-    plt.show()
+    #idg.utils.plot_visibilities(visibilities)
 
 
 ######
@@ -175,6 +204,7 @@ def main(proxyname):
     grid_size = get_grid_size()
     integration_time = get_integration_time()
     kernel_size = get_kernel_size()
+    nr_polarizations = get_nr_polarizations()
 
     ##################
     # initialize proxy
@@ -190,6 +220,7 @@ def main(proxyname):
     print "nr_stations = ", p.get_nr_stations()
     print "nr_baselines = ", p.get_nr_baselines()
     print "nr_channels = ", p.get_nr_channels()
+    print "nr_timesteps = ", p.get_nr_time()
     print "nr_timeslots = ", p.get_nr_timeslots()
     print "nr_polarizations = ", p.get_nr_polarizations()
     print "subgrid_size = ", p.get_subgrid_size()
@@ -202,7 +233,7 @@ def main(proxyname):
     #################
     # initialize data
     #################
-    visibilities = init_visibilities(nr_baselines, nr_time, nr_channels)
+    visibilities = init_visibilities_dummy(nr_baselines, nr_time, nr_channels)
     uvw = init_uvw(nr_baselines, nr_time, integration_time)
     wavenumbers = init_wavenumbers(nr_channels)
     baselines = init_baselines(nr_baselines)
@@ -210,13 +241,17 @@ def main(proxyname):
     aterms = init_aterms(nr_stations, nr_timeslots, subgrid_size)
     aterms_offset = init_aterms_offset(nr_timeslots, nr_time)
     spheroidal = init_spheroidal(subgrid_size)
+    visibilities = init_visibilities_real(
+        4, 500, 2,
+        nr_baselines, nr_time, nr_channels, nr_polarizations,
+        image_size, grid_size, uvw, wavenumbers)
 
     ###########
     # debugging
     ###########
-    plot_metadata(
-        p, uvw, wavenumbers, baselines, aterms_offset,
-        kernel_size, grid_size, subgrid_size, image_size)
+    #plot_metadata(
+    #    p, uvw, wavenumbers, baselines, aterms_offset,
+    #    kernel_size, grid_size, subgrid_size, image_size)
 
     ##########
     # routines
