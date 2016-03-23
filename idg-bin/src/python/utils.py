@@ -103,6 +103,40 @@ def init_visibilities(visibilities):
                                 ctypes.c_int(nr_channels),
                                 ctypes.c_int(nr_polarizations) )
 
+def add_pt_src(
+    x, y, amplitude,
+    nr_baselines, nr_time, nr_channels, nr_polarizations,
+    image_size, grid_size,
+    uvw, wavenumbers, vis):
+
+    lib.utils_add_pt_src.argtypes = [
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p]
+
+    lib.utils_add_pt_src(
+        ctypes.c_float(x),
+        ctypes.c_float(y),
+        ctypes.c_float(amplitude),
+        ctypes.c_int(nr_baselines),
+        ctypes.c_int(nr_time),
+        ctypes.c_int(nr_channels),
+        ctypes.c_int(nr_polarizations),
+        ctypes.c_float(image_size),
+        ctypes.c_float(grid_size),
+        uvw.ctypes.data_as(ctypes.c_void_p),
+        wavenumbers.ctypes.data_as(ctypes.c_void_p),
+        vis.ctypes.data_as(ctypes.c_void_p))
+
 
 def plot_visibilities(visibilities, form='abs'):
     """Plot Grid data
@@ -326,7 +360,7 @@ def init_baselines(baselines):
                              ctypes.c_int(nr_stations),
                              ctypes.c_int(nr_baselines))
 
-def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
+def plot_grid_all(grid, form='abs', scaling='none', interpolation_method='none'):
     """Plot Grid data
     Input:
     grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
@@ -433,6 +467,56 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none'):
         labelbottom='off',
         labelleft='off')
 
+def plot_grid(grid, form='abs', scaling='none', interpolation_method='none', pol='all'):
+    """Plot Grid data
+    Input:
+    grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+                         dtype = idg.gridtype)
+    form - 'real', 'imag', 'abs', 'phase'
+    scaling - 'none', 'log', 'sqrt'
+    interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
+                           'spline16', ... (see matplotlib imshow)
+    """
+    if (pol=='all'):
+        plot_grid_all(grid, form, scaling, interpolation_method)
+        return
+
+    if (scaling=='log'):
+        grid = numpy.abs(grid) + 1
+        grid = numpy.log(grid)
+    if (scaling=='sqrt'):
+        grid = numpy.sqrt(grid)
+
+    if (form=='real'):
+        grid = numpy.real(grid[pol,:,:])
+        title = 'Real'
+    elif (form=='imag'):
+        grid = numpy.imag(grid[pol,:,:])
+        title = 'Imag'
+    elif (form=='angle'):
+        grid = numpy.angle(grid[pol,:,:])
+        title = 'Angle'
+    else:
+        grid = numpy.abs(grid[pol,:,:])
+        title = 'Abs'
+
+    fig = plt.figure(get_figure_name("grid"))
+    fig.suptitle(title, fontsize=14)
+
+    plt.imshow(grid, interpolation=interpolation_method)
+    plt.colorbar(format='%.1e')
+
+    plt.title(["XX", "XY", "YX", "YY"][pol])
+
+    plt.tick_params(
+        axis='both',
+        which='both',
+        bottom='off',
+        top='off',
+        right='off',
+        left='off',
+        labelbottom='off',
+        labelleft='off')
 
 def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size):
     # Show subgrids (from metadata)

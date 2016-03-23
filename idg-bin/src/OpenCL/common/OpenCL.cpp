@@ -36,9 +36,12 @@ namespace idg {
                 // Create context
                 context = cl::Context(CL_DEVICE_TYPE_ALL);
 
-            	// Get devices
+                // Get device
+                const char *str_device_number = getenv("OPENCL_DEVICE");
+                if (str_device_number) deviceNumber = atoi(str_device_number);
             	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
                 device = devices[deviceNumber];
+                printDevices(deviceNumber);
 
                 // Set/check parameters
                 mParams = params;
@@ -49,6 +52,7 @@ namespace idg {
 
                 // Initialize clFFT
                 clfftSetupData setup;
+                clfftInitSetupData(&setup);
                 clfftSetup(&setup);
 
                 // Initialize power sensor
@@ -183,9 +187,9 @@ namespace idg {
                 cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(plan.get_nr_subgrids()));
 
                 // Copy input data to host memory
-                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  sizeof_visibilities(nr_baselines), visibilities);
-                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  sizeof_uvw(nr_baselines), uvw);
-                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  sizeof_metadata(nr_subgrids), metadata);
+                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
+                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(nr_subgrids), metadata);
 
                 // Device memory
                 cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
@@ -250,11 +254,12 @@ namespace idg {
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto subgrid_offset      = plan.get_subgrid_offset(bl);
 
                         // Offsets
                         size_t uvw_offset          = bl * sizeof_uvw(1);
                         size_t visibilities_offset = bl * sizeof_visibilities(1);
-                        size_t metadata_offset     = bl * sizeof_metadata(1);
+                        size_t metadata_offset     = subgrid_offset * sizeof_metadata(1);
 
                         #pragma omp critical (GPU)
                         {
@@ -273,6 +278,7 @@ namespace idg {
 
         					// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+executequeue.finish();
 
                             // Launch scaler kernel
                             // TODO: remove
@@ -431,11 +437,12 @@ namespace idg {
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto subgrid_offset      = plan.get_subgrid_offset(bl);
 
                         // Offsets
                         size_t uvw_offset          = bl * sizeof_uvw(1);
                         size_t visibilities_offset = bl * sizeof_visibilities(1);
-                        size_t metadata_offset     = bl * sizeof_metadata(1);
+                        size_t metadata_offset     = subgrid_offset * sizeof_metadata(1);
 
                         #pragma omp critical (GPU)
                         {
@@ -529,7 +536,7 @@ namespace idg {
                 queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
 
                 // Create FFT plan
-                kernel_fft->plan(context, queue, gridsize, nr_polarizations);
+                kernel_fft->plan(context, queue, gridsize, 1);
 
         		// Launch FFT
                 queue.enqueueMarkerWithWaitList(NULL, &events[1]);
@@ -538,7 +545,7 @@ namespace idg {
 
                 // Copy grid to host
                 queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
-                queue.enqueueReadBuffer(h_grid, CL_TRUE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();

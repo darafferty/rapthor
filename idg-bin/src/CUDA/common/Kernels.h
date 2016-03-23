@@ -217,6 +217,10 @@ namespace idg {
                     //                    blockX, blockY, blockZ, 0, parameters);
                 }
 
+                void shift(std::complex<float> *data);
+
+                void scale(std::complex<float> *data, std::complex<float> scale);
+
                 uint64_t flops(int size, int batch) {
                     int nr_polarizations = parameters.get_nr_polarizations();
                     return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);

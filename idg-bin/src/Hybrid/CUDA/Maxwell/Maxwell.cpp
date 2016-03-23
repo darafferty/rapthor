@@ -86,12 +86,10 @@ namespace idg {
                 // Shared host memory
                 cu::HostMemory h_visibilities(cuda.sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw(cuda.sizeof_uvw(nr_baselines));
-                cu::HostMemory h_metadata(cuda.sizeof_metadata(nr_subgrids));
 
                 // Copy input data to host memory
                 h_visibilities.set((void *) visibilities);
                 h_uvw.set((void *) uvw);
-                h_metadata.set((void *) metadata);
 
                 // Shared device memory
                 cu::DeviceMemory d_wavenumbers(cuda.sizeof_wavenumbers());
@@ -150,7 +148,6 @@ namespace idg {
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        size_t metadata_offset = plan.get_metadata_ptr(bl) - plan.get_metadata_ptr(0);
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
@@ -201,7 +198,7 @@ namespace idg {
                         powerStates[0] = cpu.read_power();
                         #pragma omp critical (CPU)
                         {
-                            kernel_adder->run(current_nr_subgrids, h_metadata, h_subgrids, grid);
+                            kernel_adder->run(current_nr_subgrids, metadata_ptr, h_subgrids, grid);
                         }
                         powerStates[1] = cpu.read_power();
 
@@ -304,12 +301,10 @@ namespace idg {
                 // Shared host memory
                 cu::HostMemory h_visibilities(cuda.sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw(cuda.sizeof_uvw(nr_baselines));
-                cu::HostMemory h_metadata(cuda.sizeof_metadata(nr_subgrids));
 
                 // Copy input data to host memory
                 h_visibilities.set((void *) visibilities);
                 h_uvw.set((void *) uvw);
-                h_metadata.set((void *) metadata);
 
                 // Shared device memory
                 cu::DeviceMemory d_wavenumbers(cuda.sizeof_wavenumbers());
@@ -367,7 +362,6 @@ namespace idg {
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        size_t metadata_offset = plan.get_metadata_ptr(bl) - plan.get_metadata_ptr(0);
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
@@ -376,7 +370,7 @@ namespace idg {
 
                         // Extract subgrid from grid
                         powerStates[0] = cpu.read_power();
-                        kernel_splitter->run(current_nr_subgrids, h_metadata, h_subgrids, (void *) grid);
+                        kernel_splitter->run(current_nr_subgrids, metadata_ptr, h_subgrids, (void *) grid);
                         powerStates[1] = cpu.read_power();
 
                         #pragma omp critical (GPU)
@@ -386,7 +380,7 @@ namespace idg {
                             htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, cuda.sizeof_subgrids(current_nr_subgrids));
                             htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, cuda.sizeof_visibilities(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_uvw, h_uvw, cuda.sizeof_uvw(current_nr_baselines));
-                            htodstream.memcpyHtoDAsync(d_metadata, h_metadata, cuda.sizeof_metadata(current_nr_subgrids));
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, cuda.sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
                 			// Create FFT plan
