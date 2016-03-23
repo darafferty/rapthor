@@ -11,12 +11,14 @@ set (${PROJECT_NAME}_headers
     OpenCL.h
     Kernels.h
     PerformanceCounter.h
+    Util.h
 )
 
 set (${PROJECT_NAME}_sources
     OpenCL.cpp
     Kernels.cpp
     PerformanceCounter.cpp
+    Util.cpp
 )
 
 # create library

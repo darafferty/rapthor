@@ -18,6 +18,7 @@
 
 #include "idg-common.h"
 #include "Kernels.h"
+#include "Util.h"
 
 
 namespace idg {
