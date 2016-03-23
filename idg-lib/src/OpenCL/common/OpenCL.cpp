@@ -49,6 +49,7 @@ namespace idg {
 
                 // Initialize clFFT
                 clfftSetupData setup;
+                clfftInitSetupData(&setup);
                 clfftSetup(&setup);
 
                 // Initialize power sensor
@@ -531,7 +532,7 @@ namespace idg {
                 queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
 
                 // Create FFT plan
-                kernel_fft->plan(context, queue, gridsize, nr_polarizations);
+                kernel_fft->plan(context, queue, gridsize, 1);
 
         		// Launch FFT
                 queue.enqueueMarkerWithWaitList(NULL, &events[1]);
@@ -540,7 +541,7 @@ namespace idg {
 
                 // Copy grid to host
                 queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
-                queue.enqueueReadBuffer(h_grid, CL_TRUE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();
