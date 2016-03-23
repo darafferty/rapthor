@@ -2,25 +2,11 @@
 #include <cstdlib>
 #include <complex>
 
-#include <cuda.h>
 #include <cudaProfiler.h>
 
 #include "idg-utility.h"  // Data init routines
 
 using namespace std;
-
-void printDevices(int deviceNumber) {
-	std::clog << "Devices";
-	for (int device = 0; device < cu::Device::getCount(); device++) {
-		std::clog << "\t" << device << ": ";
-		std::clog << cu::Device(device).getName();
-		if (device == deviceNumber) {
-			std::clog << "\t" << "<---";
-		}
-		std::clog << std::endl;
-	}
-	std::clog << "\n";
-}
 
 void run(
     idg::Parameters params,
@@ -107,10 +93,6 @@ void run() {
     clog << ">>> Initialize proxy" << endl;
     PROXYNAME proxy(params, deviceNumber);
     clog << endl;
-
-    // Print all CUDA devices
-    clog << ">>> CUDA devices" << endl;
-    printDevices(deviceNumber);
 
     // Start profiling
     cuProfilerStart();

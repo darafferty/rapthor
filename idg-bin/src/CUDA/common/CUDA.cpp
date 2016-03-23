@@ -16,6 +16,19 @@ namespace idg {
                 *static_cast<PowerSensor::State *>(userData) = powerSensor.read();
             }
 
+            void printDevices(int deviceNumber) {
+                std::clog << "Devices";
+                for (int device = 0; device < cu::Device::getCount(); device++) {
+                std::clog << "\t" << device << ": ";
+                std::clog << cu::Device(device).getName();
+                    if (device == deviceNumber) {
+                        std::clog << "\t" << "<---";
+                    }
+                    std::clog << std::endl;
+                }
+                std::clog << "\n";
+            }
+
             /// Constructors
             CUDA::CUDA(
                 Parameters params,
@@ -34,9 +47,17 @@ namespace idg {
 
                 // Initialize CUDA
                 cu::init();
+
+                // Initialize device
+                const char *str_device_number = getenv("CUDA_DEVICE");
+                if (str_device_number) deviceNumber = atoi(str_device_number);
+                printDevices(deviceNumber);
                 device = new cu::Device(deviceNumber);
+
+                // Initialize context
                 context = new cu::Context(*device);
                 context->setCurrent();
+
 
                 // Set/check parameters
                 mParams = params;
@@ -401,6 +422,8 @@ namespace idg {
                 {
                     // Initialize
                     context.setCurrent();
+                    cu::Event inputFree;
+                    cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
                     unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
@@ -422,32 +445,36 @@ namespace idg {
                         // Compute the number of baselines to process in current iteration
                         int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
-                        // Number of elements in job
+                        // Number of elements in batch
                         int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-                        int metadata_elements     = sizeof(Metadata) / sizeof(int);
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
-                        // Pointers to data for current job
+                        // Pointers to data for current batch
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (int *) h_metadata + plan.get_subgrid_offset(bl) * metadata_elements;
+                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
-                        // Create FFT plan
-                        kernel_fft->plan(subgridsize, current_nr_subgrids);
+                        // Power measurement
+                        cuda::PowerRecord powerRecords[5];
 
-                        #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
+                        #pragma omp critical (GPU)
                         {
                             // Copy input data to device
+                            htodstream.waitEvent(inputFree);
                             htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities(current_nr_baselines));
-                            htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw(current_nr_baselines));
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
+                            // Create FFT plan
+                            kernel_fft->plan(subgridsize, current_nr_subgrids);
+
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
+                            executestream.waitEvent(outputFree);
                             powerRecords[0].enqueue(executestream);
                             kernel_gridder->launch(
                                 executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
@@ -462,6 +489,8 @@ namespace idg {
                             kernel_scaler->launch(
                                 executestream, current_nr_subgrids, d_subgrids);
                             powerRecords[3].enqueue(executestream);
+                            executestream.record(outputReady);
+                            executestream.record(inputFree);
 
                             // Launch adder kernel
                             kernel_adder->launch(
@@ -581,14 +610,11 @@ namespace idg {
                 #if REUSE_HOST_MEMORY
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
-                cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
                 #else
                 cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
-                cu::HostMemory h_metadata(sizeof_metadata(nr_subgrids));
                 h_visibilities.set((void *) visibilities);
                 h_uvw.set((void *) uvw);
-                h_metadata.set((void *) metadata);
                 #endif
 
                 // Device memory
@@ -641,7 +667,6 @@ namespace idg {
                         // Number of elements in job
                         int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-                        int metadata_elements     = sizeof(Metadata) / sizeof(int);
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
@@ -649,9 +674,9 @@ namespace idg {
                         // Pointers to data for current job
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
-                        void *metadata_ptr     = (int *) h_metadata + plan.get_subgrid_offset(bl) * metadata_elements;
+                        void *metadata_ptr     = (int *) plan.get_metadata_ptr(bl);
 
-                        #pragma omp critical (GPU) // TODO: use multiple locks for multiple GPUs
+                        #pragma omp critical (GPU)
                         {
                             // Copy input data to device
                             htodstream.waitEvent(inputFree);
