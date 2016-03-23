@@ -117,11 +117,7 @@ namespace idg {
             }
 
             string CUDA::default_compiler_flags() {
-                #if defined(DEBUG)
                 return "-use_fast_math -lineinfo -src-in-ptx";
-                #else
-                return "-use_fast_math";
-                #endif
             }
 
             ProxyInfo CUDA::default_info() {
