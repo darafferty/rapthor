@@ -43,6 +43,11 @@ void init_uvw(void *ptr, int nr_stations, int nr_baselines,
               int nr_time, int integration_time = INTEGRATION_TIME);
 void init_visibilities(void *ptr, int nr_baselines, int nr_time,
                        int nr_channels, int nr_polarizations);
+void add_pt_src(
+    float x, float y, float amplitude,
+    int nr_baselines, int nr_time, int nr_channels, int nr_polarizations,
+    float imagesize, float gridsize,
+    void *uvw, void *wavenumbers, void *visibilities);
 void init_wavenumbers(void *ptr, int nr_channels);
 void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
                 int nr_polarizations, int subgridsize);

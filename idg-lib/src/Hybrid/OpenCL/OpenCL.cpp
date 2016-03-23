@@ -178,12 +178,13 @@ namespace idg {
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto _subgrid_offset      = plan.get_subgrid_offset(bl);
 
                         // Offsets
                         size_t uvw_offset          = bl * opencl.sizeof_uvw(1);
                         size_t visibilities_offset = bl * opencl.sizeof_visibilities(1);
-                        size_t metadata_offset     = bl * opencl.sizeof_metadata(1);
-                        size_t subgrid_offset      = bl * opencl.sizeof_subgrids(1);
+                        size_t metadata_offset     = _subgrid_offset * opencl.sizeof_metadata(1);
+                        size_t subgrid_offset      = _subgrid_offset * opencl.sizeof_subgrids(1);
 
                         // Number of subgrids for all baselines in job
                         auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
@@ -208,10 +209,10 @@ namespace idg {
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch scaler kernel
-                            kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
+                            //kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy subgrid to host
@@ -382,12 +383,13 @@ namespace idg {
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto _subgrid_offset      = plan.get_subgrid_offset(bl);
 
                         // Offsets
                         size_t uvw_offset          = bl * opencl.sizeof_uvw(1);
                         size_t visibilities_offset = bl * opencl.sizeof_visibilities(1);
-                        size_t metadata_offset     = bl * opencl.sizeof_metadata(1);
-                        size_t subgrid_offset      = bl * opencl.sizeof_subgrids(1);
+                        size_t metadata_offset     = _subgrid_offset * opencl.sizeof_metadata(1);
+                        size_t subgrid_offset      = _subgrid_offset * opencl.sizeof_subgrids(1);
 
                         // Number of subgrids for all baselines in job
                         auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
@@ -412,7 +414,7 @@ namespace idg {
 
                             // Launch fft kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
 
                             // Launch degridder kernel
                             kernel_degridder->launchAsync(

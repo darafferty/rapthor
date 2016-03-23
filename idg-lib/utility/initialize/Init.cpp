@@ -170,6 +170,39 @@ void init_visibilities(void *ptr, int nr_baselines, int nr_time,
 	}
 }
 
+void add_pt_src(
+    float x, float y, float amplitude,
+    int nr_baselines, int nr_time, int nr_channels, int nr_polarizations,
+    float imagesize, float gridsize,
+    void *uvw_, void *wavenumbers_, void *visibilities_) {
+    TYPEDEF_UVW
+    TYPEDEF_UVW_TYPE
+	TYPEDEF_WAVENUMBER_TYPE
+    TYPEDEF_VISIBILITIES_TYPE
+
+    UVWType *uvw = (UVWType *) uvw_;
+    WavenumberType *wavenumbers = (WavenumberType *) wavenumbers_;
+	VisibilitiesType *visibilities = (VisibilitiesType *) visibilities_;
+
+    float l = x*imagesize/gridsize;
+    float m = y*imagesize/gridsize;
+
+    #pragma omp parallel for
+    for (int b = 0; b < nr_baselines; b++) {
+        for (int t = 0; t < nr_time; t++) {
+            for (int c = 0; c < nr_channels; c++) {
+                float u = (*wavenumbers)[c] * (*uvw)[b][t].u / (2 * M_PI);
+                float v = (*wavenumbers)[c] * (*uvw)[b][t].v / (2 * M_PI);
+                std::complex<float> value = amplitude *
+                    std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
+                for (int p = 0; p < nr_polarizations; p++) {
+                    (*visibilities)[b][t][c][p] += value;
+                }
+            }
+        }
+    }
+}
+
 void init_wavenumbers(void *ptr, int nr_channels) {
 	TYPEDEF_WAVENUMBER_TYPE
     WavenumberType *wavenumbers = (WavenumberType *) ptr;
@@ -366,6 +399,20 @@ extern "C" {
     {
         idg::init_visibilities(ptr, nr_baselines, nr_time,
                                nr_channels, nr_polarizations);
+    }
+
+
+    void utils_add_pt_src(
+        float x, float y, float amplitude,
+        int nr_baselines, int nr_time, int nr_channels, int nr_polarizations,
+        float imagesize, float gridsize,
+        void *uvw, void *wavenumbers, void *visibilities)
+    {
+        idg::add_pt_src(
+            x, y, amplitude,
+            nr_baselines, nr_time, nr_channels, nr_polarizations,
+            imagesize, gridsize,
+            uvw, wavenumbers, visibilities);
     }
 
 
