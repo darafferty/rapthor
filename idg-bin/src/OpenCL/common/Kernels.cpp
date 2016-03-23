@@ -189,7 +189,7 @@ namespace idg {
 
             void GridFFT::launchAsync(
                 cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
-                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), &d_data(), NULL);
+                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
