@@ -36,9 +36,12 @@ namespace idg {
                 // Create context
                 context = cl::Context(CL_DEVICE_TYPE_ALL);
 
-            	// Get devices
+                // Get device
+                const char *str_device_number = getenv("OPENCL_DEVICE");
+                if (str_device_number) deviceNumber = atoi(str_device_number);
             	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
                 device = devices[deviceNumber];
+                printDevices(deviceNumber);
 
                 // Set/check parameters
                 mParams = params;
@@ -275,6 +278,7 @@ namespace idg {
 
         					// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+executequeue.finish();
 
                             // Launch scaler kernel
                             // TODO: remove
