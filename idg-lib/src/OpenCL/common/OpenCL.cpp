@@ -13,7 +13,8 @@
 #include "idg-config.h"
 #include "OpenCL.h"
 
-#define WARMUP 1
+#define ENABLE_WARMUP 1
+#define ENABLE_SYNC_BUG 0
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -224,7 +225,7 @@ namespace idg {
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
                     // Warmup
-                    #if WARMUP
+                    #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
@@ -271,7 +272,9 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
         					// Launch gridder kernel
+                            #if ENABLE_SYNC_BUG
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                            #endif
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
@@ -279,10 +282,6 @@ namespace idg {
         					// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 executequeue.finish();
-
-                            // Launch scaler kernel
-                            // TODO: remove
-                            //kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
 
                             // Launch adder kernel
                             kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
@@ -407,7 +406,7 @@ executequeue.finish();
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
                     // Warmup
-                    #if WARMUP
+                    #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
@@ -516,12 +515,9 @@ executequeue.finish();
                 // Events
                 vector<cl::Event> events(4);
 
-                // Host memory
-                cl::Buffer h_grid(context, CL_MEM_READ_WRITE, sizeof_grid());
-                queue.enqueueWriteBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
-
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
+                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Performance counter
                 PerformanceCounter counter_fft;
@@ -532,9 +528,6 @@ executequeue.finish();
                 // Load kernel function
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
-                // Copy grid to device
-                queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
-
                 // Create FFT plan
                 kernel_fft->plan(context, queue, gridsize, 1);
 
@@ -544,8 +537,7 @@ executequeue.finish();
                 queue.enqueueMarkerWithWaitList(NULL, &events[2]);
 
                 // Copy grid to host
-                queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
-                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();

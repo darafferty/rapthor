@@ -11,7 +11,8 @@
 #include "idg-config.h"
 #include "OpenCL.h"
 
-#define WARMUP 1
+#define ENABLE_WARMUP 1
+#define ENABLE_SYNC_BUG 0
 
 using namespace std;
 
@@ -144,7 +145,7 @@ namespace idg {
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
                     // Warmup
-                    #if WARMUP
+                    #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(max_nr_subgrids), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids), NULL, NULL);
@@ -203,16 +204,15 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch gridder kernel
+                            #if ENABLE_SYNC_BUG
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                            #endif
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-
-                            // Launch scaler kernel
-                            //kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy subgrid to host
@@ -349,7 +349,7 @@ namespace idg {
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
 
                     // Warmup
-                    #if WARMUP
+                    #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(max_nr_subgrids), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids), NULL, NULL);
