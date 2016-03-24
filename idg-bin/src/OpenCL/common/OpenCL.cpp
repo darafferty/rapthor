@@ -280,10 +280,6 @@ namespace idg {
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 executequeue.finish();
 
-                            // Launch scaler kernel
-                            // TODO: remove
-                            //kernel_scaler->launchAsync(executequeue, current_nr_subgrids, d_subgrids, counters[2]);
-
                             // Launch adder kernel
                             kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
