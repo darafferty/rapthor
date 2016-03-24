@@ -3,6 +3,8 @@
 #include "idg-config.h"
 #include "Kernels.h"
 
+#define ENABLE_PERFORMANCE_COUNTERS 1
+
 using namespace std;
 
 namespace idg {
@@ -39,7 +41,9 @@ namespace idg {
                 kernel.setArg(7, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "gridder", flops(nr_baselines, nr_subgrids), bytes(nr_baselines, nr_subgrids));
+                    #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -105,7 +109,9 @@ namespace idg {
                 kernel.setArg(7, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "degridder", flops(nr_baselines, nr_subgrids), bytes(nr_baselines, nr_subgrids));
+                    #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -275,7 +281,9 @@ namespace idg {
                 kernel.setArg(2, d_grid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
+                    #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching adder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -321,7 +329,9 @@ namespace idg {
                 kernel.setArg(2, d_grid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "splitter", flops(nr_subgrids), bytes(nr_subgrids));
+                    #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching splitter: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -361,7 +371,9 @@ namespace idg {
                 kernel.setArg(0, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "scaler", flops(nr_subgrids), bytes(nr_subgrids));
+                    #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
