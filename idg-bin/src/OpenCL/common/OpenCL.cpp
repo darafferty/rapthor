@@ -516,12 +516,9 @@ executequeue.finish();
                 // Events
                 vector<cl::Event> events(4);
 
-                // Host memory
-                cl::Buffer h_grid(context, CL_MEM_READ_WRITE, sizeof_grid());
-                queue.enqueueWriteBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
-
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
+                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Performance counter
                 PerformanceCounter counter_fft;
@@ -532,9 +529,6 @@ executequeue.finish();
                 // Load kernel function
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
-                // Copy grid to device
-                queue.enqueueCopyBuffer(h_grid, d_grid, 0, 0, sizeof_grid(), NULL, &events[0]);
-
                 // Create FFT plan
                 kernel_fft->plan(context, queue, gridsize, 1);
 
@@ -544,8 +538,7 @@ executequeue.finish();
                 queue.enqueueMarkerWithWaitList(NULL, &events[2]);
 
                 // Copy grid to host
-                queue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, &events[3]);
-                queue.enqueueReadBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Wait for fft to finish
                 queue.finish();
