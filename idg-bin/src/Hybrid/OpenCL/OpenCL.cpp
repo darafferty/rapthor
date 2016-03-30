@@ -100,7 +100,7 @@ namespace idg {
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                const int nr_streams = 1;
+                const int nr_streams = 3;
                 omp_set_nested(true);
 
                 // Host memory
@@ -221,7 +221,6 @@ namespace idg {
                         }
 
                         outputReady[0].wait();
-
 
                         // Run adder
                         #pragma omp critical (CPU)
