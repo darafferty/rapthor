@@ -49,7 +49,7 @@ namespace idg {
             /** \brief Grid the visibilities onto a uniform grid
              * Using:
              * ST = NR_STATIONS
-             * BL = NR_BASELINES = NR_STATIONS*(NR_STATIONS-1)/2
+             * BL = NR_BASELINES
              * CH = NR_CHANNELS
              * TS = NR_TIMESLOTS
              * TI = NR_TIMESTEPS*NR_TIMESLOTS
@@ -83,7 +83,7 @@ namespace idg {
              *  (grid -> visibilities)
              * Using:
              * ST = NR_STATIONS
-             * BL = NR_BASELINES = NR_STATIONS*(NR_STATIONS-1)/2
+             * BL = NR_BASELINES
              * CH = NR_CHANNELS
              * TS = NR_TIMESLOTS
              * TI = NR_TIMESTEPS*NR_TIMESLOTS
