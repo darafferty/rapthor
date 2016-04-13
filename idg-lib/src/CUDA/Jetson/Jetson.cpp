@@ -48,8 +48,6 @@ namespace idg {
 
                 // Initialize
                 cu::Context &context = get_context();
-                //cu::HostMemory h_grid(grid, sizeof_grid());
-                //cu::HostMemory h_grid((void *) grid, sizeof_grid(), CU_MEMHOSTALLOC_DEVICEMAP);
 
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
@@ -61,11 +59,8 @@ namespace idg {
                 // Performance measurements
                 PowerRecord powerRecords[4];
 
-                // Copy grid to device
+                // Get device pointer for grid
                 cu::DeviceMemory d_grid(grid);
-                return;
-                //powerRecords[0].enqueue(stream);
-                //stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
@@ -79,19 +74,11 @@ namespace idg {
                 stream.synchronize();
 
                 #if defined(REPORT_TOTAL)
-                //auxiliary::report(" input",
-                //                  PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
-                //                  0, sizeof_grid(),
-                //                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                 auxiliary::report("   fft",
                                   PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
-                //auxiliary::report("output",
-                //                  PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
-                //                  0, sizeof_grid(),
-                //                  PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                 std::cout << std::endl;
                 #endif
 }

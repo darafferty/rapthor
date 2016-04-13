@@ -40,41 +40,57 @@ int main(int argc, char **argv) {
     auto size_wavenumbers = 1ULL * nr_channels;
     auto size_aterm = 1ULL * nr_stations*nr_timeslots*
         nr_polarizations*subgridsize*subgridsize;
+    auto size_aterm_offsets = 1ULL * (nr_timeslots+1);
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
     auto size_baselines = 1ULL * nr_baselines*2;
 
-    auto visibilities = new std::complex<float>[size_visibilities];
-    auto uvw = new float[size_uvw];
-    auto wavenumbers = new float[size_wavenumbers];
-    auto aterm = new std::complex<float>[size_aterm];
-    auto aterm_offsets = new int[nr_timeslots+1];
-    auto spheroidal = new float[size_spheroidal];
+    //auto visibilities = new std::complex<float>[size_visibilities];
+    //auto uvw = new float[size_uvw];
+    //auto wavenumbers = new float[size_wavenumbers];
+    //auto aterm = new std::complex<float>[size_aterm];
+    //auto aterm_offsets = new int[nr_timeslots+1];
+    //auto spheroidal = new float[size_spheroidal];
     //auto grid = new std::complex<float>[size_grid];
-    auto baselines = new int[size_baselines];
+    //auto baselines = new int[size_baselines];
 
-    //void *h_grid = NULL;
-    //cuMemHostAlloc(&h_grid, size_grid * sizeof(std::complex<float>), CU_MEMHOSTALLOC_DEVICEMAP);
-    void *grid;
-    //cuMemHostAlloc(&grid_ptr, size_grid * sizeof(std::complex<float>), CU_MEMHOSTALLOC_DEVICEMAP);
-    std::cout << "sizeof_grid: " << size_grid * sizeof(std::complex<float>) << std::endl;
-    printf("test 1: %p\n", grid);
-    //cuMemHostAlloc(&grid, size_grid * sizeof(std::complex<float>), 0);
-    cuMemHostAlloc(&grid, 10, CU_MEMHOSTALLOC_WRITECOMBINED);
-    printf("test 2: %p\n", grid);
+    // Initialize interface to kernels
+    clog << ">>> Initialize proxy" << endl;
+    idg::proxy::cuda::Jetson proxy(params, deviceNumber);
+    clog << endl;
 
+    // Print all CUDA devices
+    clog << ">>> CUDA devices" << endl;
+    printDevices(deviceNumber);
 
-    idg::init_visibilities(visibilities, nr_baselines,
-                           nr_time,
-                           nr_channels, nr_polarizations);
+    // Allocate CUDA host memory
+    clog << ">>> Allocate CUDA host memory" << endl;
+    void *visibilities;
+    void *uvw;
+    void *wavenumbers;
+    void *aterm;
+    void *aterm_offsets;
+    void *spheroidal;
+    std::complex<float> *grid;
+    void *baselines;
+    cuMemHostAlloc(&visibilities, size_visibilities * sizeof(std::complex<float>), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &uvw, size_uvw * sizeof(float), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &wavenumbers, size_wavenumbers * sizeof(float), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &aterm, size_aterm * sizeof(int), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &aterm_offsets, size_aterm_offsets * sizeof(int), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &spheroidal, size_spheroidal * sizeof(float), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &grid, size_grid * sizeof(std::complex<float>), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &baselines, size_baselines * sizeof(int), CU_MEMHOSTREGISTER_DEVICEMAP);
+
+    // Initialize data
+    clog << ">>> Initialize data" << endl;
+    idg::init_visibilities(visibilities, nr_baselines, nr_time, nr_channels, nr_polarizations);
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
     idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations,
-                    subgridsize);
+    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
     idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
-    //idg::init_grid(h_grid, gridsize, nr_polarizations);
     idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
@@ -87,23 +103,14 @@ int main(int argc, char **argv) {
     //cuMemHostGetDevicePointer(&d_grid, h_grid, 0);
 
 
-    // Initialize interface to kernels
-    clog << ">>> Initialize proxy" << endl;
-    idg::proxy::cuda::Jetson proxy(params, deviceNumber);
-    clog << endl;
-
-    // Print all CUDA devices
-    clog << ">>> CUDA devices" << endl;
-    printDevices(deviceNumber);
-
     // Start profiling
     cuProfilerStart();
 
     // Run
     clog << ">>> Run fft" << endl;
-    CUdeviceptr d_grid;
-    cuMemHostGetDevicePointer(&d_grid, grid, 0);
-    //proxy.transform(idg::FourierDomainToImageDomain, grid);
+    //CUdeviceptr d_grid;
+    //cuMemHostGetDevicePointer(&d_grid, grid, 0);
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
     //proxy.transform(idg::FourierDomainToImageDomain, (std::complex<float>*) h_grid);
 
     //clog << ">>> Run gridder" << endl;
@@ -119,13 +126,13 @@ int main(int argc, char **argv) {
     cuProfilerStop();
 
     // Free memory for data structures
-    delete[] visibilities;
-    delete[] uvw;
-    delete[] wavenumbers;
-    delete[] aterm;
-    delete[] aterm_offsets;
-    delete[] spheroidal;
+    //delete[] visibilities;
+    //delete[] uvw;
+    //delete[] wavenumbers;
+    //delete[] aterm;
+    //delete[] aterm_offsets;
+    //delete[] spheroidal;
     //delete[] grid;
-    delete[] baselines;
+    //delete[] baselines;
     //cuMemFreeHost((void *) grid);
 }
