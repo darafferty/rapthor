@@ -34,25 +34,38 @@ int main(int argc, char **argv) {
     // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
 
-    auto size_visibilities = 1ULL * nr_baselines*nr_time*
-        nr_channels*nr_polarizations;
-    auto size_uvw = 1ULL * nr_baselines*nr_time*3;
-    auto size_wavenumbers = 1ULL * nr_channels;
-    auto size_aterm = 1ULL * nr_stations*nr_timeslots*
-        nr_polarizations*subgridsize*subgridsize;
+    // Size of datastructures in elements
+    auto size_visibilities  = 1ULL * nr_baselines*nr_time* nr_channels*nr_polarizations;
+    auto size_uvw           = 1ULL * nr_baselines*nr_time*3;
+    auto size_wavenumbers   = 1ULL * nr_channels;
+    auto size_aterm         = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize;
     auto size_aterm_offsets = 1ULL * (nr_timeslots+1);
-    auto size_spheroidal = 1ULL * subgridsize*subgridsize;
-    auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
-    auto size_baselines = 1ULL * nr_baselines*2;
+    auto size_spheroidal    = 1ULL * subgridsize*subgridsize;
+    auto size_grid          = 1ULL * nr_polarizations*gridsize*gridsize;
+    auto size_baselines     = 1ULL * nr_baselines*2;
 
-    //auto visibilities = new std::complex<float>[size_visibilities];
-    //auto uvw = new float[size_uvw];
-    //auto wavenumbers = new float[size_wavenumbers];
-    //auto aterm = new std::complex<float>[size_aterm];
-    //auto aterm_offsets = new int[nr_timeslots+1];
-    //auto spheroidal = new float[size_spheroidal];
-    //auto grid = new std::complex<float>[size_grid];
-    //auto baselines = new int[size_baselines];
+    // Size of datastructures in bytes
+    auto sizeof_visibilities  = 1ULL * size_visibilities * sizeof(std::complex<float>);
+    auto sizeof_uvw           = 1ULL * size_uvw * sizeof(float);
+    auto sizeof_wavenumbers   = 1ULL * size_wavenumbers * sizeof(float);
+    auto sizeof_aterm         = 1ULL * size_aterm * sizeof(int);
+    auto sizeof_aterm_offsets = 1ULL * size_aterm_offsets * sizeof(int);
+    auto sizeof_spheroidal    = 1ULL * size_spheroidal * sizeof(float);
+    auto sizeof_grid          = 1ULL * size_grid * sizeof(std::complex<float>);
+    auto sizeof_baselines     = 1ULL * size_baselines * sizeof(int);
+
+    // Print size of datastructures
+    std::clog << ">> Sizeof datastructures" << endl;
+    std::clog.precision(3);
+    std::clog << "visibilities:  " << std::fixed << sizeof_visibilities  / 1e6 << " Mb" << std::endl;
+    std::clog << "uvw:           " << std::fixed << sizeof_uvw           / 1e6 << " Mb" << std::endl;
+    std::clog << "wavenumbers:   " << std::fixed << sizeof_wavenumbers   / 1e6 << " Mb" << std::endl;
+    std::clog << "aterm:         " << std::fixed << sizeof_aterm         / 1e6 << " Mb" << std::endl;
+    std::clog << "aterm offsets: " << std::fixed << sizeof_aterm_offsets / 1e6 << " Mb" << std::endl;
+    std::clog << "spheroidal:    " << std::fixed << sizeof_spheroidal    / 1e6 << " Mb" << std::endl;
+    std::clog << "grid:          " << std::fixed << sizeof_grid          / 1e6 << " Mb" << std::endl;
+    std::clog << "baselines:     " << std::fixed << sizeof_baselines     / 1e6 << " Mb" << std::endl;
+    std::clog << std::endl;
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
@@ -73,14 +86,14 @@ int main(int argc, char **argv) {
     void *spheroidal;
     std::complex<float> *grid;
     void *baselines;
-    cuMemHostAlloc(&visibilities, size_visibilities * sizeof(std::complex<float>), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &uvw, size_uvw * sizeof(float), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &wavenumbers, size_wavenumbers * sizeof(float), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &aterm, size_aterm * sizeof(int), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &aterm_offsets, size_aterm_offsets * sizeof(int), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &spheroidal, size_spheroidal * sizeof(float), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &grid, size_grid * sizeof(std::complex<float>), CU_MEMHOSTREGISTER_DEVICEMAP);
-    cuMemHostAlloc((void **) &baselines, size_baselines * sizeof(int), CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &visibilities, sizeof_visibilities, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &uvw, sizeof_uvw, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &wavenumbers, sizeof_wavenumbers, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &aterm, sizeof_aterm, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &aterm_offsets, sizeof_aterm_offsets, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &spheroidal, sizeof_spheroidal, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &grid, sizeof_grid, CU_MEMHOSTREGISTER_DEVICEMAP);
+    cuMemHostAlloc((void **) &baselines, sizeof_baselines, CU_MEMHOSTREGISTER_DEVICEMAP);
 
     // Initialize data
     clog << ">>> Initialize data" << endl;
@@ -94,24 +107,12 @@ int main(int argc, char **argv) {
     idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
-    //void *h_grid;
-    //std::cout << "CU_MEMHOSTALLOC_DEVICEMAP=" << CU_MEMHOSTALLOC_DEVICEMAP << std::endl;
-    //std::cout << "CU_MEMHOSTREGISTER_DEVICEMAP=" << CU_MEMHOSTREGISTER_DEVICEMAP << std::endl;
-    //cuMemHostAlloc((void **) &grid, size_grid * sizeof(std::complex<float>), CU_MEMHOSTALLOC_DEVICEMAP);
-    //void *d_grid;
-    //CUdeviceptr d_grid;
-    //cuMemHostGetDevicePointer(&d_grid, h_grid, 0);
-
-
     // Start profiling
     cuProfilerStart();
 
     // Run
     clog << ">>> Run fft" << endl;
-    //CUdeviceptr d_grid;
-    //cuMemHostGetDevicePointer(&d_grid, grid, 0);
     proxy.transform(idg::FourierDomainToImageDomain, grid);
-    //proxy.transform(idg::FourierDomainToImageDomain, (std::complex<float>*) h_grid);
 
     //clog << ">>> Run gridder" << endl;
     //proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
