@@ -78,14 +78,14 @@ int main(int argc, char **argv) {
 
     // Allocate CUDA host memory
     clog << ">>> Allocate CUDA host memory" << endl;
-    void *visibilities;
-    void *uvw;
-    void *wavenumbers;
-    void *aterm;
-    void *aterm_offsets;
-    void *spheroidal;
+    std::complex<float> *visibilities;
+    float *uvw;
+    float *wavenumbers;
+    std::complex<float> *aterm;
+    int *aterm_offsets;
+    float *spheroidal;
     std::complex<float> *grid;
-    void *baselines;
+    int *baselines;
     cuMemHostAlloc((void **) &visibilities, sizeof_visibilities, CU_MEMHOSTREGISTER_DEVICEMAP);
     cuMemHostAlloc((void **) &uvw, sizeof_uvw, CU_MEMHOSTREGISTER_DEVICEMAP);
     cuMemHostAlloc((void **) &wavenumbers, sizeof_wavenumbers, CU_MEMHOSTREGISTER_DEVICEMAP);
@@ -114,26 +114,15 @@ int main(int argc, char **argv) {
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    //clog << ">>> Run gridder" << endl;
-    //proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
+    clog << ">>> Run gridder" << endl;
+    proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
-    //clog << ">>> Run fft" << endl;
-    //proxy.transform(idg::FourierDomainToImageDomain, grid);
+    clog << ">>> Run fft" << endl;
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    //clog << ">>> Run degridder" << endl;
-    //proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
+    clog << ">>> Run degridder" << endl;
+    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     // Stop profiling
     cuProfilerStop();
-
-    // Free memory for data structures
-    //delete[] visibilities;
-    //delete[] uvw;
-    //delete[] wavenumbers;
-    //delete[] aterm;
-    //delete[] aterm_offsets;
-    //delete[] spheroidal;
-    //delete[] grid;
-    //delete[] baselines;
-    //cuMemFreeHost((void *) grid);
 }
