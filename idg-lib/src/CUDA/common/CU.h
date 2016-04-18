@@ -234,6 +234,10 @@ namespace cu {
                 cuMemcpyDtoH(out, _ptr, _size);
             }
 
+            void* get(size_t offset) {
+                return (void *) (_ptr + offset);
+            }
+
 			void zero() {
 				cuMemsetD8(_ptr, 0, _size);
 			}
