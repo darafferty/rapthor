@@ -72,10 +72,6 @@ int main(int argc, char **argv) {
     idg::proxy::cuda::Jetson proxy(params, deviceNumber);
     clog << endl;
 
-    // Print all CUDA devices
-    clog << ">>> CUDA devices" << endl;
-    printDevices(deviceNumber);
-
     // Allocate CUDA host memory
     clog << ">>> Allocate CUDA host memory" << endl;
     std::complex<float> *visibilities;
