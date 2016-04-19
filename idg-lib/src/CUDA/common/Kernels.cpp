@@ -31,8 +31,8 @@ namespace idg {
             int nr_polarizations = parameters.get_nr_polarizations();
 
             // Plan bulk fft
-            if ((fft_bulk == NULL ||
-                size != planned_size) &&
+            if (fft_bulk == NULL ||
+                size != planned_size ||
                 batch > bulk_size)
             {
                 fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
