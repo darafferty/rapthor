@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     auto sizeof_visibilities  = 1ULL * size_visibilities * sizeof(std::complex<float>);
     auto sizeof_uvw           = 1ULL * size_uvw * sizeof(float);
     auto sizeof_wavenumbers   = 1ULL * size_wavenumbers * sizeof(float);
-    auto sizeof_aterm         = 1ULL * size_aterm * sizeof(int);
+    auto sizeof_aterm         = 1ULL * size_aterm * sizeof(std::complex<float>);
     auto sizeof_aterm_offsets = 1ULL * size_aterm_offsets * sizeof(int);
     auto sizeof_spheroidal    = 1ULL * size_spheroidal * sizeof(float);
     auto sizeof_grid          = 1ULL * size_grid * sizeof(std::complex<float>);
