@@ -216,7 +216,7 @@ namespace idg {
 
             uint64_t CUDA::sizeof_spheroidal() {
                 auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * subgridsize * subgridsize * sizeof(complex<float>);
+                return 1ULL * subgridsize * subgridsize * sizeof(float);
             }
 
 
