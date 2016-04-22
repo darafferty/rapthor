@@ -31,9 +31,6 @@ int main(int argc, char **argv) {
     clog << params;
     clog << endl;
 
-    // Allocate and initialize data structures
-    std::clog << ">>> Initialize data structures" << std::endl;
-
     // Size of datastructures in elements
     auto size_visibilities  = 1ULL * nr_baselines*nr_time* nr_channels*nr_polarizations;
     auto size_uvw           = 1ULL * nr_baselines*nr_time*3;
@@ -55,7 +52,7 @@ int main(int argc, char **argv) {
     auto sizeof_baselines     = 1ULL * size_baselines * sizeof(int);
 
     // Print size of datastructures
-    std::clog << ">> Sizeof datastructures" << endl;
+    std::clog << ">>> Sizeof datastructures" << endl;
     std::clog.precision(3);
     std::clog << "visibilities:  " << std::fixed << sizeof_visibilities  / 1e6 << " Mb" << std::endl;
     std::clog << "uvw:           " << std::fixed << sizeof_uvw           / 1e6 << " Mb" << std::endl;
