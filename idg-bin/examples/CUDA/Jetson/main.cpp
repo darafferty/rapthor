@@ -31,9 +31,6 @@ int main(int argc, char **argv) {
     clog << params;
     clog << endl;
 
-    // Allocate and initialize data structures
-    std::clog << ">>> Initialize data structures" << std::endl;
-
     // Size of datastructures in elements
     auto size_visibilities  = 1ULL * nr_baselines*nr_time* nr_channels*nr_polarizations;
     auto size_uvw           = 1ULL * nr_baselines*nr_time*3;
@@ -48,14 +45,14 @@ int main(int argc, char **argv) {
     auto sizeof_visibilities  = 1ULL * size_visibilities * sizeof(std::complex<float>);
     auto sizeof_uvw           = 1ULL * size_uvw * sizeof(float);
     auto sizeof_wavenumbers   = 1ULL * size_wavenumbers * sizeof(float);
-    auto sizeof_aterm         = 1ULL * size_aterm * sizeof(int);
+    auto sizeof_aterm         = 1ULL * size_aterm * sizeof(std::complex<float>);
     auto sizeof_aterm_offsets = 1ULL * size_aterm_offsets * sizeof(int);
     auto sizeof_spheroidal    = 1ULL * size_spheroidal * sizeof(float);
     auto sizeof_grid          = 1ULL * size_grid * sizeof(std::complex<float>);
     auto sizeof_baselines     = 1ULL * size_baselines * sizeof(int);
 
     // Print size of datastructures
-    std::clog << ">> Sizeof datastructures" << endl;
+    std::clog << ">>> Sizeof datastructures" << endl;
     std::clog.precision(3);
     std::clog << "visibilities:  " << std::fixed << sizeof_visibilities  / 1e6 << " Mb" << std::endl;
     std::clog << "uvw:           " << std::fixed << sizeof_uvw           / 1e6 << " Mb" << std::endl;
@@ -71,10 +68,6 @@ int main(int argc, char **argv) {
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::cuda::Jetson proxy(params, deviceNumber);
     clog << endl;
-
-    // Print all CUDA devices
-    clog << ">>> CUDA devices" << endl;
-    printDevices(deviceNumber);
 
     // Allocate CUDA host memory
     clog << ">>> Allocate CUDA host memory" << endl;

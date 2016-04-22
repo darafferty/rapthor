@@ -113,17 +113,13 @@ namespace idg {
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_gridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
                 cu::Context &context = get_context();
-                cu::Stream executestream;
-                const int nr_streams = 1;
+                cu::Stream stream;
 
                 // Get device memory pointers
                 cu::DeviceMemory d_visibilities((void *) visibilities);
@@ -133,14 +129,8 @@ namespace idg {
                 cu::DeviceMemory d_aterm((void *) aterm);
                 cu::DeviceMemory d_grid((void *) grid);
                 cu::DeviceMemory d_metadata(sizeof_metadata(nr_subgrids));
-                d_metadata.set((void *) metadata);
-
-                // Performance measurements
-                double total_runtime_gridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
-                double total_runtime_adder = 0;
-                PowerSensor::State startState = powerSensor.read();
+                stream.memcpyHtoDAsync(d_metadata, metadata);
+                stream.synchronize();
 
                 // Initialize
                 context.setCurrent();
@@ -149,6 +139,13 @@ namespace idg {
                 // Device memory
                 int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                 cu::DeviceMemory d_subgrids(sizeof_subgrids(max_nr_subgrids));
+
+                // Performance measurements
+                double total_runtime_gridder = 0;
+                double total_runtime_fft = 0;
+                double total_runtime_scaler = 0;
+                double total_runtime_adder = 0;
+                PowerSensor::State startState = powerSensor.read();
 
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Compute the number of baselines to process in current iteration
@@ -173,27 +170,27 @@ namespace idg {
                     kernel_fft->plan(subgridsize, current_nr_subgrids);
 
                     // Launch gridder kernel
-                    powerRecords[0].enqueue(executestream);
+                    powerRecords[0].enqueue(stream);
                     kernel_gridder->launch(
-                        executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                        stream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                    powerRecords[1].enqueue(executestream);
+                    powerRecords[1].enqueue(stream);
 
                     // Launch FFT
-                    kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
-                    powerRecords[2].enqueue(executestream);
+                    kernel_fft->launch(stream, d_subgrids, CUFFT_INVERSE);
+                    powerRecords[2].enqueue(stream);
 
                     // Launch scaler kernel
                     kernel_scaler->launch(
-                        executestream, current_nr_subgrids, d_subgrids);
-                    powerRecords[3].enqueue(executestream);
+                        stream, current_nr_subgrids, d_subgrids);
+                    powerRecords[3].enqueue(stream);
 
                     // Launch adder kernel
                     kernel_adder->launch(
-                        executestream, current_nr_subgrids,
+                        stream, current_nr_subgrids,
                         d_metadata, d_subgrids, d_grid);
-                    powerRecords[4].enqueue(executestream);
-                    executestream.record(executeFinished);
+                    powerRecords[4].enqueue(stream);
+                    stream.record(executeFinished);
 
                     executeFinished.synchronize();
 
@@ -226,6 +223,7 @@ namespace idg {
                     total_runtime_adder   += runtime_adder;
                     #endif
                 } // end for s
+                stream.synchronize();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 PowerSensor::State stopState = powerSensor.read();
@@ -284,17 +282,13 @@ namespace idg {
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
 
                 // Initialize metadata
-                auto max_nr_timesteps = kernel_degridder->get_max_nr_timesteps();
-                auto plan = create_plan(uvw, wavenumbers, baselines,
-                                        aterm_offsets, kernel_size,
-                                        max_nr_timesteps);
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto nr_subgrids = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
                 cu::Context &context = get_context();
-                cu::Stream executestream;
-                const int nr_streams = 1;
+                cu::Stream stream;
 
                 // Get device memory pointers
                 cu::DeviceMemory d_visibilities((void *) visibilities);
@@ -306,12 +300,6 @@ namespace idg {
                 cu::DeviceMemory d_metadata(sizeof_metadata(nr_subgrids));
                 d_metadata.set((void *) metadata);
 
-                // Performance measurements
-                double total_runtime_splitter = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_degridder = 0;
-                PowerSensor::State startState = powerSensor.read();
-
                 // Initialize
                 context.setCurrent();
                 cu::Event executeFinished;
@@ -319,6 +307,12 @@ namespace idg {
                 // Device memory
                 int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                 cu::DeviceMemory d_subgrids(sizeof_subgrids(max_nr_subgrids));
+
+                // Performance measurements
+                double total_runtime_splitter = 0;
+                double total_runtime_fft = 0;
+                double total_runtime_degridder = 0;
+                PowerSensor::State startState = powerSensor.read();
 
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Compute the number of baselines to process in current iteration
@@ -343,22 +337,22 @@ namespace idg {
                     kernel_fft->plan(subgridsize, current_nr_subgrids);
 
                     // Launch splitter kernel
-                    powerRecords[0].enqueue(executestream);
+                    powerRecords[0].enqueue(stream);
                     kernel_splitter->launch(
-                        executestream, current_nr_subgrids,
+                        stream, current_nr_subgrids,
                         d_metadata, d_subgrids, d_grid);
-                    powerRecords[1].enqueue(executestream);
+                    powerRecords[1].enqueue(stream);
 
                     // Launch FFT
-                    kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
-                    powerRecords[2].enqueue(executestream);
+                    kernel_fft->launch(stream, d_subgrids, CUFFT_FORWARD);
+                    powerRecords[2].enqueue(stream);
 
                     // Launch degridder kernel
                     kernel_degridder->launch(
-                        executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                        stream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                    powerRecords[3].enqueue(executestream);
-                    executestream.record(executeFinished);
+                    powerRecords[3].enqueue(stream);
+                    stream.record(executeFinished);
 
                     executeFinished.synchronize();
 
