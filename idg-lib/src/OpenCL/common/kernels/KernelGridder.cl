@@ -2,7 +2,7 @@
 
 #include "Types.cl"
 
-#define MAX_NR_TIMESTEPS 64
+#define MAX_NR_TIMESTEPS 32
 
 /*
 	Kernel
