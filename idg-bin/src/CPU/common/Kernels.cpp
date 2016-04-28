@@ -18,42 +18,77 @@ namespace idg {
                 parameters(parameters) {}
 
             void Gridder::run(
-                    int jobsize, float w_offset, void *uvw, void *wavenumbers,
+                    int nr_subgrids, float w_offset, void *uvw, void *wavenumbers,
                     void *visibilities, void *spheroidal, void *aterm,
                     void *metadata, void *subgrid) {
-                  (sig_gridder (void *) _run)(jobsize, w_offset, uvw, wavenumbers,
+                  (sig_gridder (void *) _run)(nr_subgrids, w_offset, uvw, wavenumbers,
                   visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
-            uint64_t Gridder::flops(int jobsize, int nr_subgrids) {
+            uint64_t gridder_flops(Parameters &parameters, int nr_baselines, int nr_subgrids) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_time = parameters.get_nr_time();
                 int nr_channels = parameters.get_nr_channels();
                 int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase index
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase offset
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
+
+                // Number of flops per uvw coordinate
+                uint64_t flops_per_uvw = 0;
+                flops_per_uvw += 1ULL * nr_time * 5; // phase index
+                flops_per_uvw += 1ULL * nr_time * 5; // phase offset
+
+                // Number of flops per visibility
+                uint64_t flops_per_vis = 0;
+                flops_per_vis += 1ULL * nr_time * nr_channels * 2; // phase
                 #if defined(COUNT_SINCOS_AS_FLOPS)
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
+                flops_per_vis += 1ULL * nr_time * nr_channels * FLOPS_PER_SINCOS; // phasor
                 #endif
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
-                return flops;
+
+                // Number of flops per pixel
+                uint64_t flops_per_pix = 0;
+                flops_per_pix += 1ULL * nr_baselines * nr_time * nr_channels * (nr_polarizations * 8); // update
+                flops_per_pix += 1ULL * nr_subgrids * nr_polarizations * 30; // aterm
+                flops_per_pix += 1ULL * nr_subgrids * nr_polarizations * 2; // spheroidal
+                flops_per_pix += 1ULL * nr_subgrids * 6; // shift
+
+                // Total number of flops
+                uint64_t flops_total = 0;
+                flops_total += 1ULL * nr_subgrids * subgridsize * subgridsize * (flops_per_uvw + flops_per_vis);
+                flops_total += 1ULL * subgridsize * subgridsize * flops_per_pix;
+                return flops_total;
             }
 
-            uint64_t Gridder::bytes(int jobsize, int nr_subgrids) {
+            uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
+                return gridder_flops(parameters, nr_baselines, nr_subgrids);
+            }
+
+            uint64_t gridder_bytes(Parameters &parameters, int nr_baselines, int nr_subgrids) {
                 int subgridsize = parameters.get_subgrid_size();
                 int nr_time = parameters.get_nr_time();
                 int nr_channels = parameters.get_nr_channels();
                 int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * jobsize * nr_time * 3 * sizeof(float); // uvw
-                bytes += 1ULL * jobsize * nr_time * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
-                bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
-                return bytes;
+
+                // Number of bytes per uvw coordinate
+                uint64_t bytes_per_uvw = 0;
+                bytes_per_uvw += 1ULL * 3 * sizeof(float); // uvw
+
+                // Number of bytes per visibility
+                uint64_t bytes_per_vis = 0;
+                bytes_per_vis += 1ULL * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
+
+                // Number of bytes per pixel
+                uint64_t bytes_per_pix = 0;
+                bytes_per_pix += 1ULL * nr_polarizations * 2 * sizeof(float); // pixel
+
+                // Total number of bytes
+                uint64_t bytes_total = 0;
+                bytes_total += 1ULL * nr_baselines * nr_time * bytes_per_uvw;
+                bytes_total += 1ULL * nr_baselines * nr_time * bytes_per_vis;
+                bytes_total += 1ULL * nr_subgrids * subgridsize * subgridsize * bytes_per_pix;
+                return bytes_total;
+            }
+
+            uint64_t Gridder::bytes(int nr_baselines, int nr_subgrids) {
+                return gridder_bytes(parameters, nr_baselines, nr_subgrids);
             }
 
 
@@ -63,42 +98,19 @@ namespace idg {
                 parameters(parameters) {}
 
             void Degridder::run(
-                    int jobsize, float w_offset, void *uvw, void *wavenumbers,
+                    int nr_subgrids, float w_offset, void *uvw, void *wavenumbers,
                     void *visibilities, void *spheroidal, void *aterm,
                     void *metadata, void *subgrid) {
-                  (sig_degridder (void *) _run)(jobsize, w_offset, uvw, wavenumbers,
+                  (sig_degridder (void *) _run)(nr_subgrids, w_offset, uvw, wavenumbers,
                   visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
-            uint64_t Degridder::flops(int jobsize, int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_time = parameters.get_nr_time();
-                int nr_channels = parameters.get_nr_channels();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase index
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * 5; // phase offset
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
-                #if defined(COUNT_SINCOS_AS_FLOPS)
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * FLOPS_PER_SINCOS; // phasor
-                #endif
-                flops += 1ULL * jobsize * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
-                return flops;
+            uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {
+                return gridder_flops(parameters, nr_baselines, nr_subgrids);
             }
 
-            uint64_t Degridder::bytes(int jobsize, int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_time = parameters.get_nr_time();
-                int nr_channels = parameters.get_nr_channels();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * jobsize * nr_time * 3 * sizeof(float); // uvw
-                bytes += 1ULL * jobsize * nr_time * nr_channels * nr_polarizations * 2 * sizeof(float); // visibilities
-                bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * 2 * sizeof(float); // subgrids
-                return bytes;
+            uint64_t Degridder::bytes(int nr_baselines, int nr_subgrids) {
+                return gridder_bytes(parameters, nr_baselines, nr_subgrids);
             }
 
 
@@ -127,8 +139,8 @@ namespace idg {
                 _run(module, name_adder.c_str()),
                 parameters(parameters) {}
 
-            void Adder::run(int jobsize, void *metadata, void *subgrid, void *grid) {
-                (sig_adder (void *) _run)(jobsize, metadata, subgrid, grid);
+            void Adder::run(int nr_subgrids, void *metadata, void *subgrid, void *grid) {
+                (sig_adder (void *) _run)(nr_subgrids, metadata, subgrid, grid);
             }
 
             uint64_t Adder::flops(int nr_subgrids) {
@@ -157,8 +169,8 @@ namespace idg {
                 _run(module, name_splitter.c_str()),
                 parameters(parameters) {}
 
-            void Splitter::run(int jobsize, void *metadata, void *subgrid, void *grid) {
-                (sig_splitter (void *) _run)(jobsize, metadata, subgrid, grid);
+            void Splitter::run(int nr_subgrids, void *metadata, void *subgrid, void *grid) {
+                (sig_splitter (void *) _run)(nr_subgrids, metadata, subgrid, grid);
             }
 
             uint64_t Splitter::flops(int nr_subgrids) {
