@@ -71,7 +71,7 @@ namespace idg {
             {
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
                 char *tmpdir = mkdtemp(_tmpdir);
-                
+
                 if (tmpdir == NULL) {
                     throw runtime_error("Cannot create tmp directory");
                 }
@@ -440,6 +440,7 @@ namespace idg {
                     kernel_gridder->run(
                         current_nr_subgrids,
                         w_offset,
+                        nr_channels,
                         uvw_ptr,
                         wavenumbers_ptr,
                         visibilities_ptr,
