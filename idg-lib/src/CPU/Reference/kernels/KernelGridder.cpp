@@ -13,7 +13,7 @@
 
 extern "C" {
     void kernel_gridder(
-        const int jobsize,
+        const int nr_subgrids,
         const float w_offset,
         const UVWType __restrict__ *uvw,
         const WavenumberType __restrict__ *wavenumbers,
@@ -32,7 +32,7 @@ extern "C" {
         {
             // Iterate all subgrids
             #pragma omp for
-            for (int s = 0; s < jobsize; s++) {
+            for (int s = 0; s < nr_subgrids; s++) {
                 // Load metadata
                 const Metadata m = (*metadata)[s];
                 const int offset = (m.baseline_offset - baseline_offset_1)
@@ -68,7 +68,6 @@ extern "C" {
                         // Iterate all timesteps
                         for (int time = 0; time < nr_timesteps; time++) {
                             // Load UVW coordinates
-
                             float u = (*uvw)[offset + time].u;
                             float v = (*uvw)[offset + time].v;
                             float w = (*uvw)[offset + time].w;
@@ -153,8 +152,8 @@ extern "C" {
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             (*subgrid)[s][pol][y_dst][x_dst] = pixels[pol] * sph;
                         }
-                    }
-                }
+                    } // end x
+                } // end y
             } // end s
         } // end pragma parallel
     }  // end kernel_gridder
