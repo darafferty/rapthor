@@ -413,17 +413,16 @@ namespace idg {
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Prevent overflow
-                    jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
                     // Number of elements per baseline
                     auto uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                     auto visibilities_elements = nr_time * nr_channels * nr_polarizations;
 
+                    // Number of baselines in job
+                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+
                     // Number of subgrids for all baselines in job
-                    auto nr_subgrids           = plan.get_nr_subgrids(bl, jobsize);
-                    auto subgrid_elements      = subgridsize * subgridsize
-                                                 * nr_polarizations;
+                    auto current_nr_subgrids   = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
@@ -433,13 +432,13 @@ namespace idg {
                     void *visibilities_ptr = const_cast<complex<float>*>(visibilities
                                              + bl * visibilities_elements);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr     = subgrids + subgrid_elements*plan.get_subgrid_offset(bl);
+                    void *subgrids_ptr     = subgrids + subgrid_elements * plan.get_subgrid_offset(bl);
 
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
 
                     kernel_gridder->run(
-                        nr_subgrids,
+                        current_nr_subgrids,
                         w_offset,
                         uvw_ptr,
                         wavenumbers_ptr,
@@ -454,7 +453,7 @@ namespace idg {
 
                     // FFT kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_fft->run(subgridsize, nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
+                    kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
@@ -464,12 +463,12 @@ namespace idg {
                     double power_gridder   = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
                     double power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
                     auxiliary::report("gridder", runtime_gridder,
-                                      kernel_gridder->flops(jobsize, nr_subgrids),
-                                      kernel_gridder->bytes(jobsize, nr_subgrids),
+                                      kernel_gridder->flops(current_nr_baselines, current_nr_subgrids),
+                                      kernel_gridder->bytes(current_nr_baselines, current_nr_subgrids),
                                       power_gridder);
                     auxiliary::report("fft", runtime_fft,
-                                      kernel_fft->flops(subgridsize, nr_subgrids),
-                                      kernel_fft->bytes(subgridsize, nr_subgrids),
+                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
+                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                       power_fft);
                     #endif
                     #if defined(REPORT_TOTAL)
@@ -519,11 +518,11 @@ namespace idg {
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Prevent overflow
-                    jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+                    // Number of baselines in job
+                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
                     // Number of elements in batch
-                    auto nr_subgrids = plan.get_nr_subgrids(bl, jobsize);
+                    auto nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
                     auto elems_per_subgrid     = subgridsize * subgridsize
                                                  * nr_polarizations;
 
@@ -586,11 +585,11 @@ namespace idg {
 
                 // Run splitter
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Prevent overflow
-                    jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+                    // Number of baselines in job
+                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
                     // Number of elements in batch
-                    auto nr_subgrids = plan.get_nr_subgrids(bl, jobsize);
+                    auto nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
                     auto elems_per_subgrid     = subgridsize * subgridsize
                                                  * nr_polarizations;
 
@@ -665,15 +664,15 @@ namespace idg {
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Prevent overflow
-                    jobsize = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
                     // Number of elements per baseline
                     auto uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
                     auto visibilities_elements = nr_time * nr_channels * nr_polarizations;
 
+                    // Number of baselines in job
+                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+
                     // Number of subgrids for all baselines in job
-                    auto nr_subgrids           = plan.get_nr_subgrids(bl, jobsize);
+                    auto current_nr_subgrids   = plan.get_nr_subgrids(bl, current_nr_baselines);
                     auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
 
                     // Pointers to the first element in processed batch
@@ -685,17 +684,17 @@ namespace idg {
                                              + bl * visibilities_elements;
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
                     void *subgrids_ptr     = const_cast<complex<float>*>(subgrids
-                                             + subgrid_elements*plan.get_subgrid_offset(bl));
+                                             + subgrid_elements * plan.get_subgrid_offset(bl));
 
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
-                    kernel_fft->run(subgridsize, nr_subgrids, subgrids_ptr, FFTW_FORWARD);
+                    kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
                     powerStates[1] = powerSensor->read();
 
                     // Degridder kernel
                     powerStates[2] = powerSensor->read();
                     kernel_degridder->run(
-                        nr_subgrids,
+                        current_nr_subgrids,
                         w_offset,
                         uvw_ptr,
                         wavenumbers_ptr,
@@ -714,12 +713,12 @@ namespace idg {
                     double power_degridder   = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
 
                     auxiliary::report("degridder", runtime_degridder,
-                                      kernel_degridder->flops(jobsize, nr_subgrids),
-                                      kernel_degridder->bytes(jobsize, nr_subgrids),
+                                      kernel_degridder->flops(current_nr_baselines, current_nr_subgrids),
+                                      kernel_degridder->bytes(current_nr_baselines, current_nr_subgrids),
                                       power_degridder);
                     auxiliary::report("fft", runtime_fft,
-                                      kernel_fft->flops(subgridsize, jobsize),
-                                      kernel_fft->bytes(subgridsize, jobsize),
+                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
+                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                       power_fft);
                     #endif
                     #if defined(REPORT_TOTAL)
