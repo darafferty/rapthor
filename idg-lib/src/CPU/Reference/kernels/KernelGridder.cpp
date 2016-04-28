@@ -15,6 +15,7 @@ extern "C" {
     void kernel_gridder(
         const int nr_subgrids,
         const float w_offset,
+        const int nr_channels,
         const UVWType __restrict__ *uvw,
         const WavenumberType __restrict__ *wavenumbers,
         const VisibilitiesType __restrict__ *visibilities,

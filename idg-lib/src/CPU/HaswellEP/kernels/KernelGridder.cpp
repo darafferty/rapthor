@@ -85,7 +85,7 @@ template<int NR_CHANNELS_> void kernel_gridder_(
 
                 // Multiply visibilities with phasor and reduce for all timesteps and channels
                 FLOAT_COMPLEX pixels[NR_POLARIZATIONS];
-                cmul_reduce(
+                cmul_reduce_gridder(
                     nr_timesteps, NR_CHANNELS_,
                     vis_real, vis_imag,
                     phasor_real, phasor_imag,

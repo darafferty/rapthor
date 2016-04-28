@@ -22,7 +22,7 @@ namespace idg {
 
             // Function signatures
             #define sig_gridder   (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_fft		  (void (*)(int,int,void*,int))
             #define sig_adder	  (void (*)(int,void*,void*,void*))
             #define sig_splitter  (void (*)(int,void*,void*,void*))
@@ -66,9 +66,17 @@ namespace idg {
             class Degridder {
                 public:
                     Degridder(runtime::Module &module, const Parameters &parameters);
-                    void run(int nr_subgrids, float w_offset, void *uvw, void *wavenumbers,
-                             void *visibilities, void *spheroidal, void *aterm,
-                             void *metadata, void *subgrid);
+                    void run(
+                        int nr_subgrids,
+                        float w_offset,
+                        int nr_channels,
+                        void *uvw,
+                        void *wavenumbers,
+                        void *visibilities,
+                        void *spheroidal,
+                        void *aterm,
+                        void *metadata,
+                        void *subgrid);
                     uint64_t flops(int nr_baselines, int nr_subgrids);
                     uint64_t bytes(int nr_baselines, int nr_subgrids);
 
