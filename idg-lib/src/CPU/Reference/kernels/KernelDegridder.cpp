@@ -10,7 +10,9 @@
 
 extern "C" {
     void kernel_degridder(
-        const int jobsize, const float w_offset,
+        const int nr_subgrids,
+        const float w_offset,
+        const int nr_channels,
         const UVWType		 __restrict__ *uvw,
         const WavenumberType __restrict__ *wavenumbers,
         VisibilitiesType	 __restrict__ *visibilities,
@@ -29,7 +31,7 @@ extern "C" {
         {
             // Iterate all subgrids
             #pragma omp for
-            for (int s = 0; s < jobsize; s++) {
+            for (int s = 0; s < nr_subgrids; s++) {
 
                 // Load metadata
                 const Metadata m = (*metadata)[s];

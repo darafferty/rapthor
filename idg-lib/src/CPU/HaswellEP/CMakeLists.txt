@@ -27,6 +27,7 @@ install(
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
     kernels/Types.h
+    kernels/Math.h
     DESTINATION
     lib/kernels/CPU/HaswellEP
 )

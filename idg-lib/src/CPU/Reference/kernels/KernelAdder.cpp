@@ -9,7 +9,7 @@
 
 extern "C" {
 void kernel_adder(
-    const int jobsize,
+    const int nr_subgrids,
     const MetadataType __restrict__ *metadata,
     const SubGridType  __restrict__ *subgrid,
     GridType           __restrict__ *grid
@@ -17,7 +17,7 @@ void kernel_adder(
 
     #pragma omp parallel for
     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-        for (int s = 0; s < jobsize; s++) {
+        for (int s = 0; s < nr_subgrids; s++) {
             // Load position in grid
             int grid_x = metadata[s]->coordinate.x;
             int grid_y = metadata[s]->coordinate.y;

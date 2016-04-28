@@ -21,8 +21,8 @@ namespace idg {
             static const std::string name_splitter = "kernel_splitter";
 
             // Function signatures
-            #define sig_gridder   (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder (void (*)(int,float,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_gridder   (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_fft		  (void (*)(int,int,void*,int))
             #define sig_adder	  (void (*)(int,void*,void*,void*))
             #define sig_splitter  (void (*)(int,void*,void*,void*))
@@ -43,11 +43,19 @@ namespace idg {
             class Gridder {
                 public:
                     Gridder(runtime::Module &module, const Parameters &parameters);
-                    void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
-                             void *visibilities, void *spheroidal, void *aterm,
-                             void *metadata, void *subgrid);
-                    uint64_t flops(int jobsize, int nr_subgrids);
-                    uint64_t bytes(int jobsize, int nr_subgrids);
+                    void run(
+                        int nr_subgrids,
+                        float w_offset,
+                        int nr_channels,
+                        void *uvw,
+                        void *wavenumbers,
+                        void *visibilities,
+                        void *spheroidal,
+                        void *aterm,
+                        void *metadata,
+                        void *subgrid);
+                    uint64_t flops(int nr_baselines, int nr_subgrids);
+                    uint64_t bytes(int nr_baselines, int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -58,11 +66,19 @@ namespace idg {
             class Degridder {
                 public:
                     Degridder(runtime::Module &module, const Parameters &parameters);
-                    void run(int jobsize, float w_offset, void *uvw, void *wavenumbers,
-                             void *visibilities, void *spheroidal, void *aterm,
-                             void *metadata, void *subgrid);
-                    uint64_t flops(int jobsize, int nr_subgrids);
-                    uint64_t bytes(int jobsize, int nr_subgrids);
+                    void run(
+                        int nr_subgrids,
+                        float w_offset,
+                        int nr_channels,
+                        void *uvw,
+                        void *wavenumbers,
+                        void *visibilities,
+                        void *spheroidal,
+                        void *aterm,
+                        void *metadata,
+                        void *subgrid);
+                    uint64_t flops(int nr_baselines, int nr_subgrids);
+                    uint64_t bytes(int nr_baselines, int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -86,7 +102,7 @@ namespace idg {
             class Adder {
                 public:
                     Adder(runtime::Module &module, const Parameters &parameters);
-                    void run(int jobsize, void *metadata, void *subgrid, void *grid);
+                    void run(int nr_subgrids, void *metadata, void *subgrid, void *grid);
                     uint64_t flops(int nr_subgrids);
                     uint64_t bytes(int nr_subgrids);
 
@@ -99,7 +115,7 @@ namespace idg {
             class Splitter {
                 public:
                     Splitter(runtime::Module &module, const Parameters &parameters);
-                    void run(int jobsize, void *metadata, void *subgrid, void *grid);
+                    void run(int nr_subgrids, void *metadata, void *subgrid, void *grid);
                     uint64_t flops(int nr_subgrids);
                     uint64_t bytes(int nr_subgrids);
 

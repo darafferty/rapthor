@@ -9,7 +9,6 @@ def handle_error(library, e):
         pass
     else:
         print("Error importing %s: %s" % (library, e.message))
-        exit(0)
 
 try:
     import CPU
