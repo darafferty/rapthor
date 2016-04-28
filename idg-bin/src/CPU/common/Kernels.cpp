@@ -98,10 +98,11 @@ namespace idg {
                 parameters(parameters) {}
 
             void Degridder::run(
-                    int nr_subgrids, float w_offset, void *uvw, void *wavenumbers,
+                    int nr_subgrids, float w_offset, int nr_channels,
+                    void *uvw, void *wavenumbers,
                     void *visibilities, void *spheroidal, void *aterm,
                     void *metadata, void *subgrid) {
-                  (sig_degridder (void *) _run)(nr_subgrids, w_offset, uvw, wavenumbers,
+                  (sig_degridder (void *) _run)(nr_subgrids, w_offset, nr_channels, uvw, wavenumbers,
                   visibilities, spheroidal, aterm, metadata, subgrid);
             }
 

@@ -697,6 +697,7 @@ namespace idg {
                     kernel_degridder->run(
                         current_nr_subgrids,
                         w_offset,
+                        nr_channels,
                         uvw_ptr,
                         wavenumbers_ptr,
                         visibilities_ptr,

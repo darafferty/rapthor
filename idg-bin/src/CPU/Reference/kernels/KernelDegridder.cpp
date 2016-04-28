@@ -10,7 +10,9 @@
 
 extern "C" {
     void kernel_degridder(
-        const int nr_subgrids, const float w_offset,
+        const int nr_subgrids,
+        const float w_offset,
+        const int nr_channels,
         const UVWType		 __restrict__ *uvw,
         const WavenumberType __restrict__ *wavenumbers,
         VisibilitiesType	 __restrict__ *visibilities,

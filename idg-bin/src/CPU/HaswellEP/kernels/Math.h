@@ -55,7 +55,7 @@ inline void compute_sincos(
     #endif
 }
 
-inline void cmul_reduce(
+inline void cmul_reduce_gridder(
     const int nr_timesteps,
     const int nr_channels,
     const float a_real[nr_timesteps][NR_POLARIZATIONS][nr_channels],
@@ -104,6 +104,60 @@ inline void cmul_reduce(
             c_yy_imag +=  a_real[time][3][chan] * b_imag[time][chan];
             c_yy_real += -a_imag[time][3][chan] * b_imag[time][chan];
             c_yy_imag +=  a_imag[time][3][chan] * b_real[time][chan];
+        }
+    }
+
+    // Combine real and imaginary parts
+    c[0] = FLOAT_COMPLEX(c_xx_real, c_xx_imag);
+    c[1] = FLOAT_COMPLEX(c_xy_real, c_xy_imag);
+    c[2] = FLOAT_COMPLEX(c_yx_real, c_yx_imag);
+    c[3] = FLOAT_COMPLEX(c_yy_real, c_yy_imag);
+}
+
+inline void cmul_reduce_degridder(
+    const float a_real[SUBGRIDSIZE][SUBGRIDSIZE],
+    const float a_imag[SUBGRIDSIZE][SUBGRIDSIZE],
+    const float b_real[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    const float b_imag[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    FLOAT_COMPLEX *c
+) {
+    // Initialize pixel for every polarization
+    float c_xx_real = 0.0f;
+    float c_xy_real = 0.0f;
+    float c_yx_real = 0.0f;
+    float c_yy_real = 0.0f;
+    float c_xx_imag = 0.0f;
+    float c_xy_imag = 0.0f;
+    float c_yx_imag = 0.0f;
+    float c_yy_imag = 0.0f;
+
+    for (int y = 0; y < SUBGRIDSIZE; y++) {
+        #pragma omp simd reduction(+:c_xx_real,c_xx_imag,\
+                                     c_xy_real,c_xy_imag,\
+                                     c_yx_real,c_yx_imag,\
+                                     c_yy_real,c_yy_imag)
+        for (int x = 0; x < SUBGRIDSIZE; x++) {
+            c_xx_real +=  a_real[y][x] * b_real[0][y][x];
+            c_xx_imag +=  a_real[y][x] * b_imag[0][y][x];
+            c_xx_real += -a_imag[y][x] * b_imag[0][y][x];
+            c_xx_imag +=  a_imag[y][x] * b_real[0][y][x];
+
+            c_xy_real +=  a_real[y][x] * b_real[1][y][x];
+            c_xy_imag +=  a_real[y][x] * b_imag[1][y][x];
+            c_xy_real += -a_imag[y][x] * b_imag[1][y][x];
+            c_xy_imag +=  a_imag[y][x] * b_real[1][y][x];
+
+            // #pragma distribute_point
+
+            c_yx_real +=  a_real[y][x] * b_real[2][y][x];
+            c_yx_imag +=  a_real[y][x] * b_imag[2][y][x];
+            c_yx_real += -a_imag[y][x] * b_imag[2][y][x];
+            c_yx_imag +=  a_imag[y][x] * b_real[2][y][x];
+
+            c_yy_real +=  a_real[y][x] * b_real[3][y][x];
+            c_yy_imag +=  a_real[y][x] * b_imag[3][y][x];
+            c_yy_real += -a_imag[y][x] * b_imag[3][y][x];
+            c_yy_imag +=  a_imag[y][x] * b_real[3][y][x];
         }
     }
 
