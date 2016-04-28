@@ -9,14 +9,14 @@
 
 extern "C" {
 void kernel_splitter(
-    const int jobsize,
+    const int nr_subgrids,
     const MetadataType __restrict__ *metadata,
     SubGridType        __restrict__ *subgrid,
     const GridType     __restrict__ *grid
     ) {
 
     #pragma omp parallel for
-    for (int s = 0; s < jobsize; s++) {
+    for (int s = 0; s < nr_subgrids; s++) {
         // Load position in grid
         int grid_x = metadata[s]->coordinate.x;
         int grid_y = metadata[s]->coordinate.y;

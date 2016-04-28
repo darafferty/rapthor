@@ -13,7 +13,7 @@
 
 extern "C" {
 void kernel_gridder(
-    const int jobsize, const float w_offset,
+    const int nr_subgrids, const float w_offset,
     const UVWType		   __restrict__ *uvw,
     const WavenumberType   __restrict__ *wavenumbers,
     const VisibilitiesType __restrict__ *visibilities,
@@ -33,11 +33,11 @@ void kernel_gridder(
     {
         // Iterate all subgrids
         #pragma omp for // schedule(dynamic)
-        for (int s = 0; s < jobsize; s++) {
+        for (int s = 0; s < nr_subgrids; s++) {
             // Load metadata
             const Metadata m = (*metadata)[s];
             const int offset = (m.baseline_offset - baseline_offset_1)
-                  + (m.time_offset - time_offset_1);
+                             + (m.time_offset - time_offset_1);
             const int nr_timesteps = m.nr_timesteps;
             const int aterm_index = m.aterm_index;
             const int station1 = m.baseline.station1;
@@ -46,13 +46,13 @@ void kernel_gridder(
             const int y_coordinate = m.coordinate.y;
 
             // Compute u and v offset in wavelenghts
-            const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
-                * (2*M_PI / IMAGESIZE);
-            const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
-                * (2*M_PI / IMAGESIZE);
+            const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) * (2*M_PI / IMAGESIZE);
+            const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) * (2*M_PI / IMAGESIZE);
 
+            // Preload visibilities
             float vis_real[nr_timesteps][NR_POLARIZATIONS][NR_CHANNELS] __attribute__((aligned(32)));
             float vis_imag[nr_timesteps][NR_POLARIZATIONS][NR_CHANNELS] __attribute__((aligned(32)));
+
             for (int time = 0; time < nr_timesteps; time++) {
                 for (int chan = 0; chan < NR_CHANNELS; chan++) {
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -83,9 +83,8 @@ void kernel_gridder(
                     const float tmp = (l * l) + (m * m);
                     const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
 
+                    // Compute phase
                     float phase[nr_timesteps][NR_CHANNELS] __attribute__((aligned(32)));
-                    float phasor_real[nr_timesteps][NR_CHANNELS] __attribute__((aligned(32)));
-                    float phasor_imag[nr_timesteps][NR_CHANNELS] __attribute__((aligned(32)));
 
                     // Iterate all timesteps
                     #if defined(__INTEL_COMPILER)
@@ -112,6 +111,9 @@ void kernel_gridder(
                     } // end time
 
                     // Compute phasor
+                    float phasor_real[nr_timesteps][NR_CHANNELS] __attribute__((aligned(32)));
+                    float phasor_imag[nr_timesteps][NR_CHANNELS] __attribute__((aligned(32)));
+
                     #if defined(USE_VML)
                     vmsSinCos(nr_timesteps * NR_CHANNELS,
                               &phase[0][0],
@@ -126,6 +128,7 @@ void kernel_gridder(
                     }
                     #endif
 
+                    // Update pixel for every timestep
                     for (int time = 0; time < nr_timesteps; time++) {
                         // Update pixel for every channel
                         #pragma omp simd reduction(+:pixels_xx_real,pixels_xx_imag,pixels_xy_real,pixels_xy_imag,pixels_yx_real,pixels_yx_imag,pixels_yy_real,pixels_yy_imag)
@@ -155,6 +158,7 @@ void kernel_gridder(
                         }
                     }
 
+                    // Combine real and imaginary parts
                     FLOAT_COMPLEX pixels[NR_POLARIZATIONS];
                     pixels[0] = FLOAT_COMPLEX(pixels_xx_real, pixels_xx_imag);
                     pixels[1] = FLOAT_COMPLEX(pixels_xy_real, pixels_xy_imag);
