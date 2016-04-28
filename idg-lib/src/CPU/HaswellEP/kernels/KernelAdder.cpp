@@ -10,7 +10,7 @@
 
 extern "C" {
 void kernel_adder(
-    const int jobsize,
+    const int nr_subgrids,
     const MetadataType __restrict__ *metadata,
     const SubGridType  __restrict__ *subgrid,
     GridType           __restrict__ *grid
@@ -18,7 +18,7 @@ void kernel_adder(
     // Iterate all colums of grid
     #pragma omp parallel for schedule(guided)
     for (int row = 0; row < GRIDSIZE; row++) {
-        for (int s = 0; s < jobsize; s++) {
+        for (int s = 0; s < nr_subgrids; s++) {
             // Load topleft corner of subgrid
             int subgrid_x = metadata[s]->coordinate.x;
             int subgrid_y = metadata[s]->coordinate.y;
