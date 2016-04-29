@@ -7,13 +7,13 @@
 #define NR_THREADS NR_THREADS_DEGRIDDER
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
-extern "C" {
-
 /*
 	Kernel
 */
-__global__ void kernel_degridder(
+template<int current_nr_channels> __device__ void kernel_degridder_(
     const float w_offset,
+    const int nr_channels,
+    const int channel_offset,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
 	VisibilitiesType	    __restrict__ visibilities,
@@ -47,9 +47,9 @@ __global__ void kernel_degridder(
 	__shared__ float4 _lmn_phaseoffset[NR_THREADS];
 
     // Iterate all visibilities
-    for (int i = tidx; i < ALIGN(nr_timesteps * NR_CHANNELS, NR_THREADS); i += NR_THREADS) {
-        int time = i / NR_CHANNELS;
-        int chan = i % NR_CHANNELS;
+    for (int i = tidx; i < ALIGN(nr_timesteps * current_nr_channels, NR_THREADS); i += NR_THREADS) {
+        int time = i / current_nr_channels;
+        int chan = i % current_nr_channels;
 
         float2 visXX, visXY, visYX, visYY;
         float  u, v, w;
@@ -173,12 +173,39 @@ __global__ void kernel_degridder(
         }
 
         // Set visibility value
+        int vis_offset = ((time_offset_global + time) * nr_channels) + channel_offset;
         if (time < nr_timesteps) {
-            visibilities[time_offset_global + time][chan][0] = visXX;
-            visibilities[time_offset_global + time][chan][1] = visXY;
-            visibilities[time_offset_global + time][chan][2] = visYX;
-            visibilities[time_offset_global + time][chan][3] = visYY;
+            visibilities[vis_offset + chan][0] = visXX;
+            visibilities[vis_offset + chan][1] = visXY;
+            visibilities[vis_offset + chan][2] = visYX;
+            visibilities[vis_offset + chan][3] = visYY;
         }
+    }
+}
+
+extern "C" {
+__global__ void kernel_degridder(
+    const float w_offset,
+    const int nr_channels,
+	const UVWType			__restrict__ uvw,
+	const WavenumberType	__restrict__ wavenumbers,
+	VisibilitiesType	    __restrict__ visibilities,
+	const SpheroidalType	__restrict__ spheroidal,
+	const ATermType			__restrict__ aterm,
+	const MetadataType		__restrict__ metadata,
+	const SubGridType	    __restrict__ subgrid
+	) {
+    int channel_offset = 0;
+    for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
+        kernel_degridder_<8>(
+            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities,spheroidal, aterm, metadata, subgrid);
+    }
+
+    for (; channel_offset < nr_channels; channel_offset++) {
+        kernel_degridder_<1>(
+            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities,spheroidal, aterm, metadata, subgrid);
     }
 }
 }

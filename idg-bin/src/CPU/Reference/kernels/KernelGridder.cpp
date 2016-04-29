@@ -24,6 +24,10 @@ extern "C" {
         const MetadataType __restrict__ *metadata,
         SubGridType	__restrict__ *subgrid)
     {
+        // Get pointer to visibilities with time and channel dimension
+        typedef FLOAT_COMPLEX VisibilityType[NR_TIME][nr_channels][NR_POLARIZATIONS];
+        VisibilityType *vis_ptr = (VisibilityType *) visibilities;
+
         // Find offset of first subgrid
         const Metadata m = (*metadata)[0];
         const int baseline_offset_1 = m.baseline_offset;
@@ -80,7 +84,7 @@ extern "C" {
                             float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                             // Update pixel for every channel
-                            for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                            for (int chan = 0; chan < nr_channels; chan++) {
                                 // Compute phase
                                 float wavenumber = (*wavenumbers)[chan];
                                 float phase  = (phase_index * wavenumber) - phase_offset;
@@ -92,7 +96,7 @@ extern "C" {
 
                                 // Update pixel for every polarization
                                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                    FLOAT_COMPLEX visibility = (*visibilities)[offset + time][chan][pol];
+                                    FLOAT_COMPLEX visibility = (*vis_ptr)[offset + time][chan][pol];
                                     pixels[pol] += visibility * phasor;
                                 }
                             }

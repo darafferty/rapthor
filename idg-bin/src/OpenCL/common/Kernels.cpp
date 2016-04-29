@@ -21,6 +21,7 @@ namespace idg {
                 int nr_baselines,
                 int nr_subgrids,
                 float w_offset,
+                int nr_channels,
                 cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                 cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -32,13 +33,14 @@ namespace idg {
                 cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
                 cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
-                kernel.setArg(1, d_uvw);
-                kernel.setArg(2, d_wavenumbers);
-                kernel.setArg(3, d_visibilities);
-                kernel.setArg(4, d_spheroidal);
-                kernel.setArg(5, d_aterm);
-                kernel.setArg(6, d_metadata);
-                kernel.setArg(7, d_subgrid);
+                kernel.setArg(1, nr_subgrids);
+                kernel.setArg(2, d_uvw);
+                kernel.setArg(3, d_wavenumbers);
+                kernel.setArg(4, d_visibilities);
+                kernel.setArg(5, d_spheroidal);
+                kernel.setArg(6, d_aterm);
+                kernel.setArg(7, d_metadata);
+                kernel.setArg(8, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
@@ -51,31 +53,11 @@ namespace idg {
             }
 
             uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_time = parameters.get_nr_time();
-                int nr_channels = parameters.get_nr_channels();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase index
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase offset
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
-                return flops;
+                return idg::kernel::flops_gridder(parameters, nr_baselines, nr_subgrids);
             }
 
             uint64_t Gridder::bytes(int nr_baselines, int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_time = parameters.get_nr_time();
-                int nr_channels = parameters.get_nr_channels();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * nr_baselines * nr_time * 3 * sizeof(float); // uvw
-                bytes += 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>); // visibilities
-                bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(std::complex<float>); // subgrids
-                return bytes;
+                return idg::kernel::bytes_gridder(parameters, nr_baselines, nr_subgrids);
             }
 
 
@@ -89,6 +71,7 @@ namespace idg {
                 int nr_baselines,
                 int nr_subgrids,
                 float w_offset,
+                int nr_channels,
                 cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                 cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -100,13 +83,14 @@ namespace idg {
                 cl::NDRange globalSize(wgSize * nr_subgrids);
                 cl::NDRange localSize(wgSize);
                 kernel.setArg(0, w_offset);
-                kernel.setArg(1, d_uvw);
-                kernel.setArg(2, d_wavenumbers);
-                kernel.setArg(3, d_visibilities);
-                kernel.setArg(4, d_spheroidal);
-                kernel.setArg(5, d_aterm);
-                kernel.setArg(6, d_metadata);
-                kernel.setArg(7, d_subgrid);
+                kernel.setArg(1, nr_channels);
+                kernel.setArg(2, d_uvw);
+                kernel.setArg(3, d_wavenumbers);
+                kernel.setArg(4, d_visibilities);
+                kernel.setArg(5, d_spheroidal);
+                kernel.setArg(6, d_aterm);
+                kernel.setArg(7, d_metadata);
+                kernel.setArg(8, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
@@ -119,31 +103,11 @@ namespace idg {
             }
 
             uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_time = parameters.get_nr_time();
-                int nr_channels = parameters.get_nr_channels();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase index
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * 5; // phase offset
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * 2; // phase
-                flops += 1ULL * nr_baselines * nr_time * subgridsize * subgridsize * nr_channels * (nr_polarizations * 8); // update
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 30; // aterm
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // spheroidal
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
-                return flops;
+                return idg::kernel::flops_degridder(parameters, nr_baselines, nr_subgrids);
             }
 
             uint64_t Degridder::bytes(int nr_baselines, int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_time = parameters.get_nr_time();
-                int nr_channels = parameters.get_nr_channels();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * nr_baselines * nr_time * 3 * sizeof(float); // uvw
-                bytes += 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>); // visibilities
-                bytes += 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize  * sizeof(std::complex<float>); // subgrids
-                return bytes;
+                return idg::kernel::bytes_degridder(parameters, nr_baselines, nr_subgrids);
             }
 
 
@@ -253,13 +217,11 @@ namespace idg {
             }
 
             uint64_t GridFFT::flops(int size, int batch) {
-                int nr_polarizations = parameters.get_nr_polarizations();
-                return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2.0);
+                return idg::kernel::flops_fft(parameters, size, batch);
             }
 
             uint64_t GridFFT::bytes(int size, int batch) {
-                int nr_polarizations = parameters.get_nr_polarizations();
-                return 1ULL * 2 * batch * size * size * nr_polarizations * sizeof(std::complex<float>);
+                return idg::kernel::bytes_fft(parameters, size, batch);
             }
 
             // Adder class
@@ -291,23 +253,11 @@ namespace idg {
             }
 
             uint64_t Adder::flops(int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // add
-                return flops;
+                return idg::kernel::flops_adder(parameters, nr_subgrids);
             }
 
             uint64_t Adder::bytes(int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
-                bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
-                bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
-                bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
-                return bytes;
+                return idg::kernel::bytes_adder(parameters, nr_subgrids);
             }
 
             // Splitter class
@@ -339,21 +289,11 @@ namespace idg {
             }
 
             uint64_t Splitter::flops(int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
-                return flops;
+                return idg::kernel::flops_splitter(parameters, nr_subgrids);
             }
 
             uint64_t Splitter::bytes(int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
-                bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
-                bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
-                return bytes;
+                return idg::kernel::bytes_splitter(parameters, nr_subgrids);
             }
 
             // Scaler class

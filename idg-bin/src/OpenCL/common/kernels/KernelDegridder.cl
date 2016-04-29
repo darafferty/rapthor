@@ -8,6 +8,7 @@
 */
 __kernel void kernel_degridder(
 	const float w_offset,
+    const int nr_channels,
 	__global const UVWType			uvw,
 	__global const WavenumberType	wavenumbers,
 	__global       VisibilitiesType	visibilities,
@@ -16,6 +17,7 @@ __kernel void kernel_degridder(
 	__global const MetadataType		metadata,
 	__global const SubGridType		subgrid
 	) {
+#if 0
 	int s = get_group_id(0);
     int tid = get_local_id(0);
 
@@ -40,9 +42,9 @@ __kernel void kernel_degridder(
     __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__local float4 _lmn_phaseoffset[NR_THREADS];
 
- 	for (int i = tid; i < nr_timesteps * NR_CHANNELS; i += NR_THREADS) {
-		int time = i / NR_CHANNELS;
-		int chan = i % NR_CHANNELS;
+    for (int i = tid; i < nr_timesteps * nr_channels; i += NR_THREADS) {
+		int time = i / nr_channels;
+		int chan = i % nr_channels;
 
         float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
         float4 _uvw;
@@ -156,4 +158,5 @@ __kernel void kernel_degridder(
             visibilities[offset + time][chan][3] = (float2) (vis.s6, vis.s7);
 		}
 	}
+#endif
 }

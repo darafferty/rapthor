@@ -208,7 +208,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             #endif
                             kernel_gridder->launchAsync(
-                                executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                                executequeue, current_nr_baselines, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
@@ -417,7 +417,7 @@ namespace idg {
 
                             // Launch degridder kernel
                             kernel_degridder->launchAsync(
-                                executequeue, current_nr_baselines, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                                executequeue, current_nr_baselines, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[1]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
