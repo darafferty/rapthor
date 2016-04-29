@@ -171,7 +171,7 @@ namespace idg {
                 			executestream.waitEvent(outputFree);
                             powerRecords[0].enqueue(executestream);
                             kernel_gridder->launch(
-                				executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                                executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                 				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[1].enqueue(executestream);
 
@@ -396,7 +396,7 @@ namespace idg {
                 			executestream.waitEvent(outputFree);
                             powerRecords[2].enqueue(executestream);
                             kernel_degridder->launch(
-                                executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                                executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[3].enqueue(executestream);
                 			executestream.record(outputReady);

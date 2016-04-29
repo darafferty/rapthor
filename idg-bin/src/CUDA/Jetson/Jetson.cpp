@@ -172,7 +172,7 @@ namespace idg {
                     // Launch gridder kernel
                     powerRecords[0].enqueue(stream);
                     kernel_gridder->launch(
-                        stream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                        stream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                     powerRecords[1].enqueue(stream);
 
@@ -349,7 +349,7 @@ namespace idg {
 
                     // Launch degridder kernel
                     kernel_degridder->launch(
-                        stream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                        stream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                     powerRecords[3].enqueue(stream);
                     stream.record(executeFinished);
