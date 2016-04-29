@@ -22,6 +22,10 @@ extern "C" {
         const SubGridType	 __restrict__ *subgrid
         )
     {
+        // Get pointer to visibilities with time and channel dimension
+        typedef FLOAT_COMPLEX VisibilityType[NR_TIME][nr_channels][NR_POLARIZATIONS];
+        VisibilityType *vis_ptr = (VisibilityType *) visibilities;
+
         // Find offset of first subgrid
         const Metadata m = (*metadata)[0];
         const int baseline_offset_1 = m.baseline_offset;
@@ -97,8 +101,6 @@ extern "C" {
                         pixels[y][x][2] += pixelsYX * aYY2;
                         pixels[y][x][3]  = pixelsXY * aXY2;
                         pixels[y][x][3] += pixelsYY * aYY2;
-
-
                     } // end x
                 } // end y
 
@@ -115,12 +117,14 @@ extern "C" {
                     float v = (*uvw)[local_offset + time].v;
                     float w = (*uvw)[local_offset + time].w;
 
-                    // Compute phasor
-                    for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                    // Iterate all channels
+                    for (int chan = 0; chan < nr_channels; chan++) {
 
                         // Update all polarizations
                         FLOAT_COMPLEX sum[NR_POLARIZATIONS];
                         memset(sum, 0, NR_POLARIZATIONS * sizeof(FLOAT_COMPLEX));
+
+                        // Iterate all pixels in subgrid
                         for (int y = 0; y < SUBGRIDSIZE; y++) {
                             for (int x = 0; x < SUBGRIDSIZE; x++) {
 
@@ -149,7 +153,6 @@ extern "C" {
                                 FLOAT_COMPLEX phasor = FLOAT_COMPLEX(phasor_real,
                                                                      phasor_imag);
 
-
                                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                     sum[pol] += pixels[y][x][pol] * phasor;
                                 }
@@ -158,7 +161,7 @@ extern "C" {
 
                         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            (*visibilities)[local_offset + time][chan][pol] = sum[pol] * scale;
+                            (*vis_ptr)[local_offset + time][chan][pol] = sum[pol] * scale;
                         }
 
                     } // end for channel

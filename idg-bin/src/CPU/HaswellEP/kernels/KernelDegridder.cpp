@@ -12,9 +12,10 @@
 #include "Types.h"
 #include "Math.h"
 
-template<int NR_CHANNELS_> void kernel_degridder_(
+template<int current_nr_channels> void kernel_degridder_(
     const int nr_subgrids,
     const float w_offset,
+    const int nr_channels,
     const int channel_offset,
     const UVWType		 __restrict__ *uvw,
     const WavenumberType __restrict__ *wavenumbers,
@@ -25,6 +26,10 @@ template<int NR_CHANNELS_> void kernel_degridder_(
     const SubGridType	 __restrict__ *subgrid
     )
 {
+    // Get pointer to visibilities with time and channel dimension
+    typedef FLOAT_COMPLEX VisibilityType[NR_TIME][nr_channels][NR_POLARIZATIONS];
+    VisibilityType *vis_ptr = (VisibilityType *) visibilities;
+
     // Find offset of first subgrid
     const Metadata m = (*metadata)[0];
     const int baseline_offset_1 = m.baseline_offset;
@@ -138,8 +143,8 @@ template<int NR_CHANNELS_> void kernel_degridder_(
             }
 
             // Iterate all channels
-            for (int chan = 0; chan < NR_CHANNELS_; chan++) {
-
+            for (int chan = 0; chan < current_nr_channels; chan++) {
+                // Compute phasor
                 float phase[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
                 float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
                 float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
@@ -170,10 +175,10 @@ template<int NR_CHANNELS_> void kernel_degridder_(
 
                 // Store visibilities
                 const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
-                (*visibilities)[offset + time][chan][0] = {scale*sums[0].real(), scale*sums[0].imag()};
-                (*visibilities)[offset + time][chan][1] = {scale*sums[1].real(), scale*sums[1].imag()};
-                (*visibilities)[offset + time][chan][2] = {scale*sums[2].real(), scale*sums[2].imag()};
-                (*visibilities)[offset + time][chan][3] = {scale*sums[3].real(), scale*sums[3].imag()};
+                (*vis_ptr)[offset + time][channel_offset + chan][0] = {scale*sums[0].real(), scale*sums[0].imag()};
+                (*vis_ptr)[offset + time][channel_offset + chan][1] = {scale*sums[1].real(), scale*sums[1].imag()};
+                (*vis_ptr)[offset + time][channel_offset + chan][2] = {scale*sums[2].real(), scale*sums[2].imag()};
+                (*vis_ptr)[offset + time][channel_offset + chan][3] = {scale*sums[3].real(), scale*sums[3].imag()};
             } // end for channel
         } // end for time
     } // end #pragma parallel
@@ -197,13 +202,13 @@ void kernel_degridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_<8>(
-            nr_subgrids, w_offset, channel_offset, uvw, wavenumbers,
+            nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
             visibilities,spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_<1>(
-            nr_subgrids, w_offset, channel_offset, uvw, wavenumbers,
+            nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
             visibilities,spheroidal, aterm, metadata, subgrid);
     }
 } // end kernel_degridder
