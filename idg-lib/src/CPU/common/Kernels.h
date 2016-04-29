@@ -1,5 +1,5 @@
-#ifndef IDG_KERNELS_H_
-#define IDG_KERNELS_H_
+#ifndef IDG_KERNELS_CPU_H_
+#define IDG_KERNELS_CPU_H_
 
 #include <cstdint>
 #include <ccomplex>
@@ -12,13 +12,13 @@
 namespace idg {
     namespace kernel {
         namespace cpu {
-
-            // define the kernel function names
-            static const std::string name_gridder = "kernel_gridder";
+            // Kernel names
+            static const std::string name_gridder   = "kernel_gridder";
             static const std::string name_degridder = "kernel_degridder";
-            static const std::string name_fft = "kernel_fft";
-            static const std::string name_adder = "kernel_adder";
-            static const std::string name_splitter = "kernel_splitter";
+            static const std::string name_adder     = "kernel_adder";
+            static const std::string name_splitter  = "kernel_splitter";
+            static const std::string name_fft       = "kernel_fft";
+            static const std::string name_scaler    = "kernel_scaler";
 
             // Function signatures
             #define sig_gridder   (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))

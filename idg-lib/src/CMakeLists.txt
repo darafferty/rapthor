@@ -53,7 +53,6 @@ add_library(idg-cpu
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
-  $<TARGET_OBJECTS:cpu-sandybridgeep>
 )
 
 target_link_libraries (
@@ -117,7 +116,6 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
-  $<TARGET_OBJECTS:cpu-sandybridgeep>
   $<TARGET_OBJECTS:cuda-common>
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>

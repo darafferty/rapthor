@@ -13,6 +13,7 @@
 #include <clFFT.h>
 
 #include "PerformanceCounter.h"
+#include "../../common/Kernels.h"
 
 namespace idg {
     namespace kernel {
@@ -33,6 +34,7 @@ namespace idg {
                         int nr_baselines,
                         int nr_subgrids,
                         float w_offset,
+                        int nr_channels,
                         cl::Buffer &d_uvw,
                         cl::Buffer &d_wavenumbers,
                         cl::Buffer &d_visibilities,
@@ -47,7 +49,7 @@ namespace idg {
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    const Parameters &parameters;
+                    Parameters parameters;
             };
 
 
@@ -59,6 +61,7 @@ namespace idg {
                         int nr_baselines,
                         int nr_subgrids,
                         float w_offset,
+                        int nr_channels,
                         cl::Buffer &d_uvw,
                         cl::Buffer &d_wavenumbers,
                         cl::Buffer &d_visibilities,
@@ -73,7 +76,7 @@ namespace idg {
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    const Parameters &parameters;
+                    Parameters parameters;
             };
 
 
@@ -95,7 +98,7 @@ namespace idg {
 
                 private:
                     bool uninitialized;
-                    const Parameters &parameters;
+                    Parameters parameters;
                     int planned_size;
                     int planned_batch;
                     clfftPlanHandle fft;
@@ -117,7 +120,7 @@ namespace idg {
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    const Parameters &parameters;
+                    Parameters parameters;
             };
 
             class Splitter {
@@ -136,7 +139,7 @@ namespace idg {
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    const Parameters &parameters;
+                    Parameters parameters;
             };
 
             class Scaler {
@@ -153,7 +156,7 @@ namespace idg {
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    const Parameters &parameters;
+                    Parameters parameters;
             };
 
         } // namespace opencl
