@@ -21,6 +21,7 @@ namespace idg {
                 int nr_baselines,
                 int nr_subgrids,
                 float w_offset,
+                int nr_channels,
                 cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                 cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -32,13 +33,14 @@ namespace idg {
                 cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
                 cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
-                kernel.setArg(1, d_uvw);
-                kernel.setArg(2, d_wavenumbers);
-                kernel.setArg(3, d_visibilities);
-                kernel.setArg(4, d_spheroidal);
-                kernel.setArg(5, d_aterm);
-                kernel.setArg(6, d_metadata);
-                kernel.setArg(7, d_subgrid);
+                kernel.setArg(1, nr_subgrids);
+                kernel.setArg(2, d_uvw);
+                kernel.setArg(3, d_wavenumbers);
+                kernel.setArg(4, d_visibilities);
+                kernel.setArg(5, d_spheroidal);
+                kernel.setArg(6, d_aterm);
+                kernel.setArg(7, d_metadata);
+                kernel.setArg(8, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
@@ -69,6 +71,7 @@ namespace idg {
                 int nr_baselines,
                 int nr_subgrids,
                 float w_offset,
+                int nr_channels,
                 cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
                 cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
                 cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -80,13 +83,14 @@ namespace idg {
                 cl::NDRange globalSize(wgSize * nr_subgrids);
                 cl::NDRange localSize(wgSize);
                 kernel.setArg(0, w_offset);
-                kernel.setArg(1, d_uvw);
-                kernel.setArg(2, d_wavenumbers);
-                kernel.setArg(3, d_visibilities);
-                kernel.setArg(4, d_spheroidal);
-                kernel.setArg(5, d_aterm);
-                kernel.setArg(6, d_metadata);
-                kernel.setArg(7, d_subgrid);
+                kernel.setArg(1, nr_channels);
+                kernel.setArg(2, d_uvw);
+                kernel.setArg(3, d_wavenumbers);
+                kernel.setArg(4, d_visibilities);
+                kernel.setArg(5, d_spheroidal);
+                kernel.setArg(6, d_aterm);
+                kernel.setArg(7, d_metadata);
+                kernel.setArg(8, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
