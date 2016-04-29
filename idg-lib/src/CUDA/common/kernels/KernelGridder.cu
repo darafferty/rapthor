@@ -3,15 +3,15 @@
 #include "Types.h"
 #include "math.cu"
 
-extern "C" {
-
 #define MAX_NR_TIMESTEPS MAX_NR_TIMESTEPS_GRIDDER
 
 /*
 	Kernel
 */
-__global__ void kernel_gridder(
+template<int current_nr_channels> __device__ void kernel_gridder_(
     const float w_offset,
+    const int nr_channels,
+    const int channel_offset,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
 	const VisibilitiesType	__restrict__ visibilities,
@@ -50,12 +50,12 @@ __global__ void kernel_gridder(
 	const int y_coordinate = m.coordinate.y;
 
     // Shared data
-	__shared__ float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS][NR_POLARIZATIONS/2];
+	__shared__ float4 _visibilities[MAX_NR_TIMESTEPS][current_nr_channels][NR_POLARIZATIONS/2];
 	__shared__ float4 _uvw[MAX_NR_TIMESTEPS];
-	__shared__ float _wavenumbers[NR_CHANNELS];
+	__shared__ float _wavenumbers[current_nr_channels];
 
     // Load wavenumbers
-    for (int i = tid; i < NR_CHANNELS; i += blockSize)
+    for (int i = tid; i < current_nr_channels; i += blockSize)
         _wavenumbers[i] = wavenumbers[i];
 
     // Iterate all timesteps
@@ -73,11 +73,12 @@ __global__ void kernel_gridder(
         }
 
 	    // Load visibilities
-	    for (int i = tid; i < current_nr_timesteps * NR_CHANNELS; i += blockSize) {
-            float2 a = visibilities[time_offset_global + time_offset_local][i][0];
-            float2 b = visibilities[time_offset_global + time_offset_local][i][1];
-            float2 c = visibilities[time_offset_global + time_offset_local][i][2];
-            float2 d = visibilities[time_offset_global + time_offset_local][i][3];
+        int vis_offset = ((time_offset_global + time_offset_local) * nr_channels) + channel_offset;
+	    for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += blockSize) {
+            float2 a = visibilities[vis_offset + i][0];
+            float2 b = visibilities[vis_offset + i][1];
+            float2 c = visibilities[vis_offset + i][2];
+            float2 d = visibilities[vis_offset + i][3];
             _visibilities[0][i][0] = make_float4(a.x, a.y, b.x, b.y);
             _visibilities[0][i][1] = make_float4(c.x, c.y, d.x, d.y);
         }
@@ -119,7 +120,7 @@ __global__ void kernel_gridder(
 
                 // Compute phasor
                 #pragma unroll 8
-                for (int chan = 0; chan < NR_CHANNELS; chan++) {
+                for (int chan = 0; chan < current_nr_channels; chan++) {
                     float wavenumber = _wavenumbers[chan];
                     float phase = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = make_float2(cos(phase), sin(phase));
@@ -191,6 +192,32 @@ __global__ void kernel_gridder(
             subgrid[s][2][y_dst][x_dst] += uvXY * sph;
             subgrid[s][3][y_dst][x_dst] += uvYX * sph;
 	    }
+    }
+}
+
+extern "C" {
+__global__ void kernel_gridder(
+    const float w_offset,
+    const int nr_channels,
+	const UVWType			__restrict__ uvw,
+	const WavenumberType	__restrict__ wavenumbers,
+	const VisibilitiesType	__restrict__ visibilities,
+	const SpheroidalType	__restrict__ spheroidal,
+	const ATermType			__restrict__ aterm,
+	const MetadataType		__restrict__ metadata,
+	SubGridType				__restrict__ subgrid
+	) {
+    int channel_offset = 0;
+    for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
+        kernel_gridder_<8>(
+            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities,spheroidal, aterm, metadata, subgrid);
+    }
+
+    for (; channel_offset < nr_channels; channel_offset++) {
+        kernel_gridder_<1>(
+            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities,spheroidal, aterm, metadata, subgrid);
     }
 }
 }

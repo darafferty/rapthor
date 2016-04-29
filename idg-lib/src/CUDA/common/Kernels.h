@@ -32,6 +32,7 @@ namespace idg {
                     cu::Stream &stream,
                     int nr_subgrids,
                     float w_offset,
+                    int nr_channels,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
                     cu::DeviceMemory &d_visibilities,
@@ -47,6 +48,7 @@ namespace idg {
                     cu::Stream &stream,
                     int nr_subgrids,
                     float w_offset,
+                    int nr_channels,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
                     cu::DeviceMemory &d_visibilities,
@@ -56,7 +58,7 @@ namespace idg {
                     cu::DeviceMemory &d_subgrid) {
 
                     const void *parameters[] = {
-                        &w_offset, d_uvw, d_wavenumbers, d_visibilities,
+                        &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
                         d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                     stream.launchKernel(function, nr_subgrids, 1, 1,
@@ -105,6 +107,7 @@ namespace idg {
                     cu::Stream &stream,
                     int nr_subgrids,
                     float w_offset,
+                    int nr_channels,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
                     cu::DeviceMemory &d_visibilities,
@@ -120,6 +123,7 @@ namespace idg {
                     cu::Stream &stream,
                     int nr_subgrids,
                     float w_offset,
+                    int nr_channels,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
                     cu::DeviceMemory &d_visibilities,
@@ -129,7 +133,7 @@ namespace idg {
                     cu::DeviceMemory &d_subgrid) {
 
                     const void *parameters[] = {
-                        &w_offset, d_uvw, d_wavenumbers, d_visibilities,
+                        &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
                         d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                     stream.launchKernel(function, nr_subgrids, 1, 1,

@@ -20,6 +20,7 @@ namespace idg {
                     cu::Stream &stream,
                     int nr_baselines,
                     float w_offset,
+                    int nr_channels,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
                     cu::DeviceMemory &d_visibilities,
@@ -32,6 +33,7 @@ namespace idg {
                             stream,
                             nr_baselines,
                             w_offset,
+                            nr_channels,
                             d_uvw,
                             d_wavenumbers,
                             d_visibilities,
@@ -61,6 +63,7 @@ namespace idg {
                     cu::Stream &stream,
                     int nr_baselines,
                     float w_offset,
+                    int nr_channels,
                     cu::DeviceMemory &d_uvw,
                     cu::DeviceMemory &d_wavenumbers,
                     cu::DeviceMemory &d_visibilities,
@@ -70,16 +73,17 @@ namespace idg {
                     cu::DeviceMemory &d_subgrid) override
                     {
                         launchAsync<nr_threads,1,1>(
-                        stream,
-                        nr_baselines,
-                        w_offset,
-                        d_uvw,
-                        d_wavenumbers,
-                        d_visibilities,
-                        d_spheroidal,
-                        d_aterm,
-                        d_metadata,
-                        d_subgrid);
+                            stream,
+                            nr_baselines,
+                            w_offset,
+                            nr_channels,
+                            d_uvw,
+                            d_wavenumbers,
+                            d_visibilities,
+                            d_spheroidal,
+                            d_aterm,
+                            d_metadata,
+                            d_subgrid);
                     }
 
                 virtual int get_max_nr_timesteps() {

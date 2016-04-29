@@ -473,7 +473,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             powerRecords[0].enqueue(executestream);
                             kernel_gridder->launch(
-                                executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                                executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[1].enqueue(executestream);
 
@@ -700,7 +700,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             powerRecords[3].enqueue(executestream);
                             kernel_degridder->launch(
-                                executestream, current_nr_subgrids, w_offset, d_uvw, d_wavenumbers,
+                                executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             powerRecords[4].enqueue(executestream);
                             executestream.record(outputReady);
@@ -774,7 +774,6 @@ namespace idg {
                 string mparameters =  Parameters::definitions(
                   mParams.get_nr_stations(),
                   mParams.get_nr_baselines(),
-                  mParams.get_nr_channels(),
                   mParams.get_nr_time(),
                   mParams.get_nr_timeslots(),
                   mParams.get_imagesize(),
@@ -803,7 +802,7 @@ namespace idg {
 
                     string source;
                     for (auto src : source_files) {
-                        source += mInfo.get_path_to_src() + "/" + src + " ";
+                        source += mInfo.get_path_to_src() + src + " ";
                     } // source = a.cpp b.cpp c.cpp ...
 
                     #if defined(DEBUG)
