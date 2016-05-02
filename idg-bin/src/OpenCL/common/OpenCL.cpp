@@ -14,7 +14,6 @@
 #include "OpenCL.h"
 
 #define ENABLE_WARMUP 1
-#define ENABLE_SYNC_BUG 0
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -272,9 +271,7 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
         					// Launch gridder kernel
-                            #if ENABLE_SYNC_BUG
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            #endif
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);

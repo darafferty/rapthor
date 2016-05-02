@@ -56,7 +56,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += blockSize)
-        _wavenumbers[i] = wavenumbers[i];
+        _wavenumbers[i] = wavenumbers[channel_offset + i];
 
     // Iterate all timesteps
     int current_nr_timesteps = MAX_NR_TIMESTEPS;
@@ -210,6 +210,12 @@ __global__ void kernel_gridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(
+            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities,spheroidal, aterm, metadata, subgrid);
+    }
+
+    for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
+        kernel_gridder_<4>(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
             visibilities,spheroidal, aterm, metadata, subgrid);
     }
