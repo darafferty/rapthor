@@ -6,7 +6,8 @@
 #define TYPEDEF_UVW        typedef struct { float u, v, w; } UVW;
 #define TYPEDEF_COORDINATE typedef struct { int x, y; } Coordinate;
 #define TYPEDEF_BASELINE   typedef struct { int station1, station2; } Baseline;
-#define TYPEDEF_METADATA   typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
+#define TYPEDEF_METADATA   typedef struct { int baseline_offset; int time_offset; int nr_timesteps; \
+                                            int aterm_index; Baseline baseline; Coordinate coordinate; } Metadata;
 
 
 /*
@@ -17,8 +18,8 @@
 /*
 	Datatypes
 */
-#define TYPEDEF_UVW_TYPE          typedef UVW UVWType[1][nr_timesteps];
-#define TYPEDEF_VISIBILITIES_TYPE typedef FLOAT_COMPLEX VisibilitiesType[1][nr_timesteps][nr_channels][nr_polarizations];
+#define TYPEDEF_UVW_TYPE          typedef UVW UVWType[1];
+#define TYPEDEF_VISIBILITIES_TYPE typedef FLOAT_COMPLEX VisibilitiesType[1][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
 #define TYPEDEF_ATERM_TYPE        typedef FLOAT_COMPLEX ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
