@@ -65,7 +65,7 @@ template<int current_nr_channels> __device__ void kernel_degridder_(
             v = uvw[time_offset_global + time].v;
             w = uvw[time_offset_global + time].w;
 
-            wavenumber = wavenumbers[chan];
+            wavenumber = wavenumbers[chan + channel_offset];
         }
 
         for (int j = tidx; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
