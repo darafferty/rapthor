@@ -214,6 +214,12 @@ __global__ void kernel_gridder(
             visibilities,spheroidal, aterm, metadata, subgrid);
     }
 
+    for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
+        kernel_gridder_<4>(
+            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities,spheroidal, aterm, metadata, subgrid);
+    }
+
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_gridder_<1>(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
