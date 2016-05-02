@@ -8,7 +8,6 @@
 #include "KNC.h"
 
 using namespace std;
-using namespace idg::kernel::knc; // TODO: remove!
 
 namespace idg {
     namespace proxy {
@@ -110,12 +109,12 @@ namespace idg {
                     runtime += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    uint64_t flops_gridder  = kernel_gridder_flops(mParams, nr_baselines, nr_subgrids);
-                    uint64_t bytes_gridder  = kernel_gridder_bytes(mParams, nr_baselines, nr_subgrids);
-                    uint64_t flops_fft      = kernel_fft_flops(mParams, subgridsize, nr_subgrids);
-                    uint64_t bytes_fft      = kernel_fft_bytes(mParams, subgridsize, nr_subgrids);
-                    uint64_t flops_adder    = kernel_adder_flops(mParams, nr_subgrids);
-                    uint64_t bytes_adder    = kernel_adder_bytes(mParams, nr_subgrids);
+                    uint64_t flops_gridder  = kernel::flops_gridder(mParams, nr_baselines, nr_subgrids);
+                    uint64_t bytes_gridder  = kernel::bytes_gridder(mParams, nr_baselines, nr_subgrids);
+                    uint64_t flops_fft      = kernel::flops_fft(mParams, subgridsize, nr_subgrids);
+                    uint64_t bytes_fft      = kernel::bytes_fft(mParams, subgridsize, nr_subgrids);
+                    uint64_t flops_adder    = kernel::flops_adder(mParams, nr_subgrids);
+                    uint64_t bytes_adder    = kernel::bytes_adder(mParams, nr_subgrids);
                     uint64_t flops_gridding = flops_gridder + flops_fft + flops_adder;
                     uint64_t bytes_gridding = bytes_gridder + bytes_fft + bytes_adder;
                     auxiliary::report("|gridding", runtime,
@@ -209,12 +208,12 @@ namespace idg {
                     runtime += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    uint64_t flops_degridder  = kernel_degridder_flops(mParams, nr_baselines, nr_subgrids);
-                    uint64_t bytes_degridder  = kernel_degridder_bytes(mParams, nr_baselines, nr_subgrids);
-                    uint64_t flops_fft        = kernel_fft_flops(mParams, subgridsize, nr_subgrids);
-                    uint64_t bytes_fft        = kernel_fft_bytes(mParams, subgridsize, nr_subgrids);
-                    uint64_t flops_splitter   = kernel_splitter_flops(mParams, nr_subgrids);
-                    uint64_t bytes_splitter   = kernel_splitter_bytes(mParams, nr_subgrids);
+                    uint64_t flops_degridder  = kernel::flops_degridder(mParams, nr_baselines, nr_subgrids);
+                    uint64_t bytes_degridder  = kernel::bytes_degridder(mParams, nr_baselines, nr_subgrids);
+                    uint64_t flops_fft        = kernel::flops_fft(mParams, subgridsize, nr_subgrids);
+                    uint64_t bytes_fft        = kernel::bytes_fft(mParams, subgridsize, nr_subgrids);
+                    uint64_t flops_splitter   = kernel::flops_splitter(mParams, nr_subgrids);
+                    uint64_t bytes_splitter   = kernel::bytes_splitter(mParams, nr_subgrids);
                     uint64_t flops_degridding   = flops_degridder + flops_fft + flops_splitter;
                     uint64_t bytes_degridding   = bytes_degridder + bytes_fft + bytes_splitter;
                     auxiliary::report("|degridding", runtime,
@@ -270,7 +269,7 @@ namespace idg {
                     #if defined(DEBUG)
                     cout << "FFT (direction: " << direction << ")" << endl;
                     #endif
-                    kernel_fft(gridsize, 1, grid, sign, nr_polarizations);
+                    //kernel_fft(gridsize, 1, grid, sign, nr_polarizations);
 
                     // TODO: implement fftshift
                     //if (direction == FourierDomainToImageDomain)
@@ -282,8 +281,8 @@ namespace idg {
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     auxiliary::report(">grid_fft", runtime,
-                        kernel_fft_flops(mParams, gridsize, 1),
-                        kernel_fft_bytes(mParams, gridsize, 1));
+                        kernel::flops_fft(mParams, gridsize, 1),
+                        kernel::bytes_fft(mParams, gridsize, 1));
                     clog << endl;
                     #endif
 
@@ -416,11 +415,11 @@ namespace idg {
                         {
                             runtime_fft = -omp_get_wtime();
 
-                            kernel_fft(subgridsize,
-                                       current_nr_subgrids,
-                                       subgrids_ptr,
-                                       1,
-                                       nr_polarizations);
+                            //kernel_fft(subgridsize,
+                            //           current_nr_subgrids,
+                            //           subgrids_ptr,
+                            //           1,
+                            //           nr_polarizations);
 
                             runtime_fft += omp_get_wtime();
                         }
@@ -433,12 +432,12 @@ namespace idg {
 
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
-                            kernel_gridder_flops(mParams, current_nr_baselines, current_nr_subgrids),
-                            kernel_gridder_bytes(mParams, current_nr_baselines, current_nr_subgrids),
+                            kernel::flops_gridder(mParams, current_nr_baselines, current_nr_subgrids),
+                            kernel::bytes_gridder(mParams, current_nr_baselines, current_nr_subgrids),
                             PowerSensor::Watt(powerStates[0], powerStates[1]));
                         auxiliary::report("fft", runtime_fft,
-                            kernel_fft_flops(mParams, subgridsize, current_nr_subgrids),
-                            kernel_fft_bytes(mParams, subgridsize, current_nr_subgrids),
+                            kernel::flops_fft(mParams, subgridsize, current_nr_subgrids),
+                            kernel::bytes_fft(mParams, subgridsize, current_nr_subgrids),
                             PowerSensor::Watt(powerStates[1], powerStates[2]));
                         #endif
                     } // end for bl
@@ -448,10 +447,10 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 clog << endl;
                 auto nr_subgrids = plan.get_nr_subgrids();
-                uint64_t total_flops_gridder  = kernel_gridder_flops(mParams, nr_baselines, nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder_bytes(mParams, nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft_flops(mParams, subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft_bytes(mParams, subgridsize, nr_subgrids);
+                uint64_t total_flops_gridder  = kernel::flops_gridder(mParams, nr_baselines, nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel::bytes_gridder(mParams, nr_baselines, nr_subgrids);
+                uint64_t total_flops_fft      = kernel::flops_fft(mParams, subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft      = kernel::bytes_fft(mParams, subgridsize, nr_subgrids);
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder,
                                   total_bytes_gridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
@@ -574,11 +573,11 @@ namespace idg {
                         {
                             runtime_fft = -omp_get_wtime();
 
-                            kernel_fft(subgridsize,
-                                       current_nr_subgrids,
-                                       subgrids_ptr,
-                                       -1,
-                                       nr_polarizations);
+                            //kernel_fft(subgridsize,
+                            //           current_nr_subgrids,
+                            //           subgrids_ptr,
+                            //           -1,
+                            //           nr_polarizations);
 
                             runtime_fft += omp_get_wtime();
                         }
@@ -625,12 +624,12 @@ namespace idg {
 
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("fft", runtime_fft,
-                            kernel_fft_flops(mParams, subgridsize, current_nr_subgrids),
-                            kernel_fft_bytes(mParams, subgridsize, current_nr_subgrids),
+                            kernel::flops_fft(mParams, subgridsize, current_nr_subgrids),
+                            kernel::bytes_fft(mParams, subgridsize, current_nr_subgrids),
                             PowerSensor::Watt(powerStates[0], powerStates[1]) );
                         auxiliary::report("degridder", runtime_degridder,
-                            kernel_degridder_flops(mParams, current_nr_baselines, current_nr_subgrids),
-                            kernel_degridder_bytes(mParams, current_nr_baselines, current_nr_subgrids),
+                            kernel::flops_degridder(mParams, current_nr_baselines, current_nr_subgrids),
+                            kernel::bytes_degridder(mParams, current_nr_baselines, current_nr_subgrids),
                             PowerSensor::Watt(powerStates[1], powerStates[2]) );
                         #endif
                     } // end for bl
@@ -640,10 +639,10 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 clog << endl;
                 auto nr_subgrids = plan.get_nr_subgrids();
-                uint64_t total_flops_degridder = kernel_degridder_flops(mParams, nr_baselines, nr_subgrids);
-                uint64_t total_bytes_degridder = kernel_degridder_bytes(mParams, nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft       = kernel_fft_flops(mParams, subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft       = kernel_fft_bytes(mParams, subgridsize, nr_subgrids);
+                uint64_t total_flops_degridder = kernel::flops_degridder(mParams, nr_baselines, nr_subgrids);
+                uint64_t total_bytes_degridder = kernel::bytes_degridder(mParams, nr_baselines, nr_subgrids);
+                uint64_t total_flops_fft       = kernel::flops_fft(mParams, subgridsize, nr_subgrids);
+                uint64_t total_bytes_fft       = kernel::bytes_fft(mParams, subgridsize, nr_subgrids);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 clog << endl;
