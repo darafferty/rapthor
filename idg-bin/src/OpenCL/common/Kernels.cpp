@@ -33,7 +33,7 @@ namespace idg {
                 cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
                 cl::NDRange localSize(localSizeX, localSizeY);
                 kernel.setArg(0, w_offset);
-                kernel.setArg(1, nr_subgrids);
+                kernel.setArg(1, nr_channels);
                 kernel.setArg(2, d_uvw);
                 kernel.setArg(3, d_wavenumbers);
                 kernel.setArg(4, d_visibilities);
