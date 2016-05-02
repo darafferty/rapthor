@@ -75,6 +75,7 @@ namespace idg {
                 const int subgridsize,
                 const int nr_polarizations);
 
+#if 0
             uint64_t kernel_gridder_flops(
                 const Parameters &parameters,
                 int jobsize,
@@ -120,6 +121,7 @@ namespace idg {
             uint64_t kernel_splitter_bytes(
                 const Parameters &parameters,
                 int jobsize);
+#endif
 
         } // namespace knc
     } // namespace kernel
