@@ -11,7 +11,7 @@ namespace idg {
     namespace kernel {
         namespace knc {
 
-            void kernel_gridder (
+            void gridder (
                 const int jobsize, const float w_offset,
                 const void *uvw,
                 const void *wavenumbers,
@@ -30,7 +30,7 @@ namespace idg {
                 const int nr_polarizations
                 );
 
-            void kernel_degridder(
+            void degridder(
                 const int jobsize, const float w_offset,
                 const void *_uvw,
                 const void *_wavenumbers,
@@ -49,7 +49,7 @@ namespace idg {
                 const int nr_polarizations
                 );
 
-            void kernel_fft(
+            void fft(
                 const int size,
                 const int batch,
                 void *data,
@@ -57,7 +57,7 @@ namespace idg {
                 const int nr_polarizations
                 );
 
-            void kernel_adder(
+            void adder(
                 const int jobsize,
                 const void *_metadata,
                 const void *_subgrid,
@@ -66,7 +66,7 @@ namespace idg {
                 const int subgridsize,
                 const int nr_polarizations);
 
-            void kernel_splitter(
+            void splitter(
                 const int jobsize,
                 const void *metadata,
                       void *subgrid,
@@ -74,54 +74,6 @@ namespace idg {
                 const int gridsize,
                 const int subgridsize,
                 const int nr_polarizations);
-
-#if 0
-            uint64_t kernel_gridder_flops(
-                const Parameters &parameters,
-                int jobsize,
-                int nr_subgrids);
-
-            uint64_t kernel_gridder_bytes(
-                const Parameters &parameters,
-                int jobsize,
-                int nr_subgrids);
-
-            uint64_t kernel_degridder_flops(
-                const Parameters &parameters,
-                int jobsize,
-                int nr_subgrids);
-
-            uint64_t kernel_degridder_bytes(
-                const Parameters &parameters,
-                int jobsize,
-                int nr_subgrids);
-
-            uint64_t kernel_fft_flops(
-                const Parameters &parameters,
-                int size,
-                int batch);
-
-            uint64_t kernel_fft_bytes(
-                const Parameters &parameters,
-                int size,
-                int batch);
-
-            uint64_t kernel_adder_flops(
-                const Parameters &parameters,
-                int jobsize);
-
-            uint64_t kernel_adder_bytes(
-                const Parameters &parameters,
-                int jobsize);
-
-            uint64_t kernel_splitter_flops(
-                const Parameters &parameters,
-                int jobsize);
-
-            uint64_t kernel_splitter_bytes(
-                const Parameters &parameters,
-                int jobsize);
-#endif
 
         } // namespace knc
     } // namespace kernel

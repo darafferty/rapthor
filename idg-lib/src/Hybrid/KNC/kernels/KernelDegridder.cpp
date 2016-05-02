@@ -35,6 +35,7 @@ void kernel_degridder(
     const float imagesize,
     const int nr_polarizations
 	) {
+#if 0
     TYPEDEF_UVW
     TYPEDEF_UVW_TYPE
     TYPEDEF_WAVENUMBER_TYPE
@@ -180,6 +181,7 @@ void kernel_degridder(
         }
 	}
     }
+#endif
 }
 
 } // end namespace knc

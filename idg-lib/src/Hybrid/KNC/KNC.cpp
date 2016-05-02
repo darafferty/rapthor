@@ -382,23 +382,23 @@ namespace idg {
                         {
                             runtime_gridder = -omp_get_wtime();
 
-                            // kernel_gridder(current_nr_subgrids,
-                            //                w_offset,
-                            //                uvw_ptr,
-                            //                wavenumbers_ptr,
-                            //                visibilities_ptr,
-                            //                spheroidal_ptr,
-                            //                aterm_ptr,
-                            //                metadata_ptr,
-                            //                subgrids_ptr,
-                            //                nr_stations,
-                            //                nr_time,
-                            //                nr_timeslots,
-                            //                nr_channels,
-                            //                gridsize,
-                            //                subgridsize,
-                            //                imagesize,
-                            //                nr_polarizations);
+                            kernel::knc::gridder(current_nr_subgrids,
+                                           w_offset,
+                                           uvw_ptr,
+                                           wavenumbers_ptr,
+                                           visibilities_ptr,
+                                           spheroidal_ptr,
+                                           aterm_ptr,
+                                           metadata_ptr,
+                                           subgrids_ptr,
+                                           nr_stations,
+                                           nr_time,
+                                           nr_timeslots,
+                                           nr_channels,
+                                           gridsize,
+                                           subgridsize,
+                                           imagesize,
+                                           nr_polarizations);
 
                             runtime_gridder += omp_get_wtime();
                         }
