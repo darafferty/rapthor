@@ -17,7 +17,7 @@ namespace kernel {
 namespace knc {
 
 void gridder (
-	const int jobsize, const float w_offset,
+	const int nr_subgrids, const float w_offset,
 	const void *_uvw,
 	const void *_wavenumbers,
 	const void *_visibilities,
@@ -66,9 +66,9 @@ void gridder (
     // Iterate all subgrids
     #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     {
-    // Iterate all subgrids
-    #pragma omp for
-        for (int s = 0; s < jobsize; s++) {
+        // Iterate all subgrids
+        #pragma omp for
+        for (int s = 0; s < nr_subgrids; s++) {
             // Load metadata
             const Metadata m = (*metadata)[s];
             const int offset = (m.baseline_offset - baseline_offset_1)
