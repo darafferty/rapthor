@@ -12,8 +12,8 @@ namespace idg {
 namespace kernel {
 namespace knc {
 
-void kernel_adder(
-    const int jobsize,
+void adder(
+    const int nr_subgrids,
     const void *_metadata,
     const void *_subgrid,
           void *_grid,
@@ -32,26 +32,33 @@ void kernel_adder(
     SubGridType *subgrid = (SubGridType *) _subgrid;
     GridType *grid = (GridType *) _grid;
 
-    #pragma omp parallel for
-    for (int pol = 0; pol < nr_polarizations; pol++) {
-        for (int s = 0; s < jobsize; s++) {
-            // Load position in grid
-            int grid_x = metadata[s]->coordinate.x;
-            int grid_y = metadata[s]->coordinate.y;
+    // Iterate all rows of grid
+    #pragma omp parallel for schedule(guided)
+    for (int row = 0; row < gridsize; row++) {
+        for (int s = 0; s < nr_subgrids; s++) {
+            // Load topleft corner of subgrid
+            int subgrid_x = metadata[s]->coordinate.x;
+            int subgrid_y = metadata[s]->coordinate.y;
 
-            // Check wheter subgrid fits in grid
-            if (grid_x >= 0 && grid_x < gridsize-subgridsize &&
-                grid_y >= 0 && grid_y < gridsize-subgridsize) {
+            // Compute y offset
+            int offset_y = row - subgrid_y;
 
-                for (int y = 0; y < subgridsize; y++) {
-                    for (int x = 0; x < subgridsize; x++) {
-                        // Compute shifted position in subgrid
-                        int x_src = (x + (subgridsize/2)) % subgridsize;
-                        int y_src = (y + (subgridsize/2)) % subgridsize;
+            // Check wheter subgrid fits in grid and matches curent row
+            if (subgrid_x >= 0 && subgrid_x < gridsize-subgridsize &&
+                subgrid_y >= 0 && subgrid_y < gridsize-subgridsize &&
+                 offset_y >= 0 &&  offset_y < subgridsize) {
 
-                        // Add subgrid value to grid
-                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
-                    }
+                // Iterate all columns of subgrid
+                for (int x = 0; x < subgridsize; x++) {
+                    // Compute shifted position in subgrid
+                    int x_src = (x + (subgridsize/2)) % subgridsize;
+                    int y_src = (offset_y + (subgridsize/2)) % subgridsize;
+
+                    // Add subgrid value to grid
+                    (*grid)[0][row][subgrid_x+x] += (*subgrid)[s][0][y_src][x_src];
+                    (*grid)[1][row][subgrid_x+x] += (*subgrid)[s][1][y_src][x_src];
+                    (*grid)[2][row][subgrid_x+x] += (*subgrid)[s][2][y_src][x_src];
+                    (*grid)[3][row][subgrid_x+x] += (*subgrid)[s][3][y_src][x_src];
                 }
             }
         }

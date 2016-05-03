@@ -16,7 +16,6 @@ namespace idg {
 namespace kernel {
 namespace knc {
 
-
 void gridder (
 	const int jobsize, const float w_offset,
 	const void *_uvw,
