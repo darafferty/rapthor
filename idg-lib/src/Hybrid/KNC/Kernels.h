@@ -57,6 +57,15 @@ namespace idg {
                 const int nr_polarizations
                 );
 
+            void ifftshift(
+                int nr_polarizations,
+                int gridsize,
+                std::complex<float> *grid);
+            void fftshift(
+                int nr_polarizations,
+                int gridsize,
+                std::complex<float> *grid);
+
             void adder(
                 const int jobsize,
                 const void *_metadata,

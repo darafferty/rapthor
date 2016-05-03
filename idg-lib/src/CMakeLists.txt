@@ -189,7 +189,7 @@ add_library(idg-opencl
 
 set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
-target_link_libraries (
+target_link_libraries(
   idg-opencl
   ${LINK_LIRBRARIES}
 )
@@ -215,6 +215,13 @@ if (BUILD_LIB_KNC)
 add_library(idg-knc
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:hybrid-knc>
+)
+
+set(LINK_LIRBRARIES mkl_avx2 mkl_def)
+
+target_link_libraries(
+    idg-knc
+    ${LINK_LIRBRARIES}
 )
 
 set_target_properties(idg-knc PROPERTIES
