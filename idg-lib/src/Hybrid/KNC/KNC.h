@@ -11,6 +11,7 @@
 #define IDG_HYBRID_KNC_H_
 
 #include "idg-common.h"
+#include "../../common/Kernels.h"
 #include "Kernels.h"
 
 namespace idg {

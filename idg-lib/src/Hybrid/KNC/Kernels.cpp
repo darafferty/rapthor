@@ -1,4 +1,4 @@
-
+#if 0
 #include <cstdint>
 #include <cmath>
 #include "Kernels.h"
@@ -163,3 +163,4 @@ namespace idg {
         } // namespace knc
     } // namespace kernel
 }  // namespace idg
+#endif
