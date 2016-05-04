@@ -31,10 +31,13 @@ inline  __device__ void atomicAdd(float2 *a, float2 b) {
 }
 
 
-template <typename T> inline __device__ void Matrix2x2mul(T &Cxx, T &Cxy, T &Cyx, T &Cyy, T Axx, T Axy, T Ayx, T Ayy, T Bxx, T Bxy, T Byx, T Byy)
+template <typename T> inline __device__ void Matrix2x2mul(
+    T &Cxx, T &Cxy, T &Cyx, T &Cyy,
+    T  Axx, T  Axy, T  Ayx, T  Ayy,
+    T  Bxx, T  Bxy, T  Byx, T  Byy)
 {
-  Cxx = Axx * Bxx + Axy * Byx;
-  Cxy = Axx * Bxy + Axy * Byy;
-  Cyx = Axy * Bxx + Ayy * Byx;
-  Cyy = Axy * Bxy + Ayy * Byy;
+    Cxx  = Axx * Bxx + Axy * Byx;
+    Cxy  = Axx * Bxy + Axy * Byy;
+    Cyx  = Ayx * Bxx + Ayy * Byx;
+    Cyy  = Ayx * Bxy + Ayy * Byy;
 }
