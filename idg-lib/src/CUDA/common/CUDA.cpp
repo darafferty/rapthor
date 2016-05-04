@@ -282,6 +282,11 @@ namespace idg {
                 // Performance measurements
                 PowerRecord powerRecords[4];
 
+                // Perform fft shift
+                double time_shift = -omp_get_wtime();
+                kernel_fft->shift(h_grid);
+                time_shift += omp_get_wtime();
+
                 // Copy grid to device
                 cu::DeviceMemory d_grid(sizeof_grid());
                 powerRecords[0].enqueue(stream);
@@ -297,12 +302,16 @@ namespace idg {
                 stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
                 powerRecords[3].enqueue(stream);
                 stream.synchronize();
-                memcpy(grid, h_grid, sizeof_grid());
 
                 // Perform fft shift
-                double time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
+                time_shift = -omp_get_wtime();
+                kernel_fft->shift(h_grid);
                 time_shift += omp_get_wtime();
+
+                // Copy grid from h_grid to grid
+                #if !REUSE_HOST_MEMORY
+                memcpy(grid, h_grid, sizeof_grid());
+                #endif
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
@@ -327,9 +336,9 @@ namespace idg {
                                   PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
                                   0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
-                auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                    auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
                 }
                 std::cout << std::endl;
                 #endif
@@ -762,7 +771,6 @@ namespace idg {
                 clog << endl;
                 #endif
             }
-
 
             void CUDA::compile(Compiler compiler, Compilerflags flags)
             {
