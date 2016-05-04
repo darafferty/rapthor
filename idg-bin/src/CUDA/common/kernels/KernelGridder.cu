@@ -172,12 +172,12 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
             float2 tXX, tXY, tYX, tYY;
             Matrix2x2mul<float2>(
                 tXX, tXY, tYX, tYY,
-                cuConjf(aXX1), cuConjf(aXY1), cuConjf(aYX1), cuConjf(aYY1),
-                uvXX, uvXY, uvYX, uvYY);
+                uvXX, uvXY, uvYX, uvYY,
+                aXX1, aXY1, aYX1, aYY1);
             Matrix2x2mul<float2>(
                 uvXX, uvXY, uvYX, uvYY,
-                tXX, tXY, tYX, tYY,
-                aXX2, aXY2, aYX2, aYY2);
+                cuConjf(aXX2), cuConjf(aYX2), cuConjf(aXY2), cuConjf(aYY2),
+                tXX, tXY, tYX, tYY);
 
             // Load spheroidal
             float sph = spheroidal[y][x];
