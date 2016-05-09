@@ -34,7 +34,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
         subgrid[s][3][0][i] = make_float2(0, 0);
     }
 
-    syncthreads();
+    __syncthreads();
 
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
@@ -64,7 +64,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
         current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
                                nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
 
-        syncthreads();
+        __syncthreads();
 
 	    // Load UVW
 	    for (int time = tid; time < current_nr_timesteps; time += blockSize) {
@@ -83,7 +83,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
             _visibilities[0][i][1] = make_float4(c.x, c.y, d.x, d.y);
         }
 
-	    syncthreads();
+	    __syncthreads();
 
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
