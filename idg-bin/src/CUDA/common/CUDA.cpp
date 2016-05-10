@@ -282,6 +282,11 @@ namespace idg {
                 // Performance measurements
                 PowerRecord powerRecords[4];
 
+                // Perform fft shift
+                double time_shift = -omp_get_wtime();
+                kernel_fft->shift(h_grid);
+                time_shift += omp_get_wtime();
+
                 // Copy grid to device
                 cu::DeviceMemory d_grid(sizeof_grid());
                 powerRecords[0].enqueue(stream);
@@ -297,12 +302,16 @@ namespace idg {
                 stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
                 powerRecords[3].enqueue(stream);
                 stream.synchronize();
-                memcpy(grid, h_grid, sizeof_grid());
 
                 // Perform fft shift
-                double time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
+                time_shift = -omp_get_wtime();
+                kernel_fft->shift(h_grid);
                 time_shift += omp_get_wtime();
+
+                // Copy grid from h_grid to grid
+                #if !REUSE_HOST_MEMORY
+                memcpy(grid, h_grid, sizeof_grid());
+                #endif
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
@@ -327,9 +336,9 @@ namespace idg {
                                   PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
                                   0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
-                auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                    auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
                 }
                 std::cout << std::endl;
                 #endif
@@ -383,14 +392,11 @@ namespace idg {
                 #if REUSE_HOST_MEMORY
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
-                cu::HostMemory h_metadata((void *) metadata, sizeof_metadata(nr_subgrids));
                 #else
                 cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
-                cu::HostMemory h_metadata(sizeof_metadata(nr_subgrids));
                 h_visibilities.set((void *) visibilities);
                 h_uvw.set((void *) uvw);
-                h_metadata.set((void *) metadata);
                 #endif
 
                 // Device memory
@@ -492,6 +498,7 @@ namespace idg {
                             kernel_adder->launch(
                                 executestream, current_nr_subgrids,
                                 d_metadata, d_subgrids, d_grid);
+
                             powerRecords[4].enqueue(executestream);
                             executestream.record(outputReady);
                         }
@@ -575,7 +582,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-               // Constants
+                // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
@@ -587,7 +594,6 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
-                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
                 unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();
 
                 // Initialize metadata
@@ -609,7 +615,7 @@ namespace idg {
                 #else
                 cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
-                h_visibilities.set((void *) visibilities);
+                h_visibilities.zero();
                 h_uvw.set((void *) uvw);
                 #endif
 
@@ -676,7 +682,6 @@ namespace idg {
                         {
                             // Copy input data to device
                             htodstream.waitEvent(inputFree);
-                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
@@ -693,7 +698,7 @@ namespace idg {
                             powerRecords[1].enqueue(executestream);
 
                             // Launch FFT
-                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
                             powerRecords[2].enqueue(executestream);
 
                             // Launch degridder kernel
@@ -738,11 +743,16 @@ namespace idg {
                     } // end for s
                 }
 
-                // Wait for all visibilities to be copied to host
+                // Wait for all jobs to finish
                 dtohstream.synchronize();
+                PowerSensor::State stopState = powerSensor.read();
+
+                // Copy visibilities from cuda h_visibilities to visibilities
+                #if !REUSE_HOST_MEMORY
+                memcpy(visibilities, h_visibilities, sizeof_visibilities(nr_baselines));
+                #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState = powerSensor.read();
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
                 uint64_t total_flops_splitter   = kernel_splitter->flops(nr_subgrids);
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
@@ -762,7 +772,6 @@ namespace idg {
                 clog << endl;
                 #endif
             }
-
 
             void CUDA::compile(Compiler compiler, Compilerflags flags)
             {
