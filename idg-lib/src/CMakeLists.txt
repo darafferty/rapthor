@@ -2,6 +2,7 @@ project(idg)
 
 # add subfolders
 add_subdirectory(common)
+add_subdirectory(api)
 
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
@@ -239,3 +240,35 @@ install(TARGETS idg-knc idg-knc-nocommon
   PUBLIC_HEADER DESTINATION include
 )
 endif(BUILD_LIB_KNC)
+
+
+
+################################################
+# build libidg, containing all common code     #
+################################################
+
+add_library(idg
+  $<TARGET_OBJECTS:idg-api>
+)
+
+set(LINK_LIRBRARIES ${CMAKE_DL_LIBS})
+
+if (BUILD_LIB_CPU)
+  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
+endif()
+
+target_link_libraries (
+  idg
+  ${LINK_LIRBRARIES}
+)
+
+set_target_properties(idg PROPERTIES
+                      PUBLIC_HEADER idg.h)
+
+install(TARGETS idg
+  EXPORT IDGTargets
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+  PUBLIC_HEADER DESTINATION include
+)
