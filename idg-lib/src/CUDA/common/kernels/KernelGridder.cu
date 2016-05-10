@@ -34,7 +34,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
         subgrid[s][3][0][i] = make_float2(0, 0);
     }
 
-    syncthreads();
+    __syncthreads();
 
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
@@ -64,7 +64,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
         current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
                                nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
 
-        syncthreads();
+        __syncthreads();
 
 	    // Load UVW
 	    for (int time = tid; time < current_nr_timesteps; time += blockSize) {
@@ -83,7 +83,7 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
             _visibilities[0][i][1] = make_float4(c.x, c.y, d.x, d.y);
         }
 
-	    syncthreads();
+	    __syncthreads();
 
         // Compute u and v offset in wavelenghts
         float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
@@ -172,12 +172,12 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
             float2 tXX, tXY, tYX, tYY;
             Matrix2x2mul<float2>(
                 tXX, tXY, tYX, tYY,
-                cuConjf(aXX1), cuConjf(aYX1), cuConjf(aXY1), cuConjf(aYY1),
-                uvXX, uvXY, uvYX, uvYY);
+                uvXX, uvXY, uvYX, uvYY,
+                aXX1, aXY1, aYX1, aYY1);
             Matrix2x2mul<float2>(
                 uvXX, uvXY, uvYX, uvYY,
-                uvXX, tXY, tYX, tYY,
-                aXX2, aXY2, aYX2, aYY2);
+                cuConjf(aXX2), cuConjf(aYX2), cuConjf(aXY2), cuConjf(aYY2),
+                tXX, tXY, tYX, tYY);
 
             // Load spheroidal
             float sph = spheroidal[y][x];
@@ -188,9 +188,9 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
 
             // Set subgrid value
             subgrid[s][0][y_dst][x_dst] += uvXX * sph;
-            subgrid[s][1][y_dst][x_dst] += uvXX * sph;
-            subgrid[s][2][y_dst][x_dst] += uvXY * sph;
-            subgrid[s][3][y_dst][x_dst] += uvYX * sph;
+            subgrid[s][1][y_dst][x_dst] += uvXY * sph;
+            subgrid[s][2][y_dst][x_dst] += uvYX * sph;
+            subgrid[s][3][y_dst][x_dst] += uvYY * sph;
 	    }
     }
 }

@@ -152,13 +152,13 @@ def plot_visibilities(visibilities, form='abs'):
         visYX = numpy.real( visibilities[:,:,:,2].flatten() )
         visYY = numpy.real( visibilities[:,:,:,3].flatten() )
         title = 'Real'
-    if (form=='imag'):
+    elif (form=='imag'):
         visXX = numpy.imag( visibilities[:,:,:,0].flatten() )
         visXY = numpy.imag( visibilities[:,:,:,1].flatten() )
         visYX = numpy.imag( visibilities[:,:,:,2].flatten() )
         visYY = numpy.imag( visibilities[:,:,:,3].flatten() )
         title = 'Imag'
-    if (form=='angle'):
+    elif (form=='angle'):
         visXX = numpy.angle( visibilities[:,:,:,0].flatten() )
         visXY = numpy.angle( visibilities[:,:,:,1].flatten() )
         visYX = numpy.angle( visibilities[:,:,:,2].flatten() )
