@@ -18,8 +18,8 @@ __kernel void kernel_degridder_1(
 	__global const MetadataType		metadata,
 	__global const SubGridType		subgrid
 	) {
+    int tidx = get_local_id(0);
 	int s = get_group_id(0);
-    int tid = get_local_id(0);
 
     // Load metadata for first subgrid
     const Metadata m_0 = metadata[0];
@@ -42,7 +42,7 @@ __kernel void kernel_degridder_1(
     __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__local float4 _lmn_phaseoffset[NR_THREADS];
 
-    for (int time = tid; time < nr_timesteps; time += NR_THREADS) {
+    for (int time = tidx; time < nr_timesteps; time += NR_THREADS) {
         float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
         float4 _uvw;
 		float  wavenumber;
@@ -53,13 +53,11 @@ __kernel void kernel_degridder_1(
 			wavenumber = wavenumbers[channel_offset];
 		}
 
-        barrier(CLK_LOCAL_MEM_FENCE);
-
-		for (int j = tid; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
+		for (int j = tidx; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
-            barrier(CLK_LOCAL_MEM_FENCE);
+            barrier(CLK_GLOBAL_MEM_FENCE);
 
             if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
@@ -99,15 +97,15 @@ __kernel void kernel_degridder_1(
                     tXX, tXY, tYX, tYY);
 
                 // Store pixels
-                _pix[0][tid] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][tid] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                _pix[0][tidx] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
+                _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
                 float l = (x-(SUBGRIDSIZE / 2)) * IMAGESIZE/SUBGRIDSIZE;
                 float m = (y-(SUBGRIDSIZE / 2)) * IMAGESIZE/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
+                _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);
             }
 
             barrier(CLK_LOCAL_MEM_FENCE);
@@ -164,8 +162,6 @@ __kernel void kernel_degridder_1(
 				}
 			}
         }
-
-        barrier(CLK_LOCAL_MEM_FENCE);
 
         // Set visibility value
         int vis_offset = (time_offset_global + time) * nr_channels + channel_offset;
