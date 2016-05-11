@@ -21,14 +21,15 @@ __kernel void kernel_splitter(
     int grid_x = m.coordinate.x;
     int grid_y = m.coordinate.y;
 
-    // Iterate all pixels in subgrid
-    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        int x = i % SUBGRIDSIZE;
-        int y = i / SUBGRIDSIZE;
+    // Check wheter subgrid fits in grid
+    if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
+        grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
 
-        // Check wheter subgrid fits in grid
-        if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
-            grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
+        // Iterate all pixels in subgrid
+        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
+            int x = i % SUBGRIDSIZE;
+            int y = i / SUBGRIDSIZE;
+
             // Compute shifted position in subgrid
             int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
             int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;

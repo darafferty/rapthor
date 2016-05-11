@@ -365,7 +365,6 @@ executequeue.finish();
                 cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(plan.get_nr_subgrids()));
 
                 // Copy input data to host memory
-                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  sizeof_visibilities(nr_baselines), visibilities);
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  sizeof_uvw(nr_baselines), uvw);
                 htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  sizeof_metadata(nr_subgrids), metadata);
 
@@ -398,7 +397,7 @@ executequeue.finish();
                     // Private device memory
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE,  sizeof_uvw(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
@@ -406,7 +405,6 @@ executequeue.finish();
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
                     htodqueue.finish();
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                     executequeue.finish();
@@ -465,9 +463,9 @@ executequeue.finish();
                             dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
                         }
-                    }
 
-                    outputReady[0].wait();
+                        outputReady[0].wait();
+                    }
                 }
 
                 // Copy visibilities
