@@ -36,29 +36,44 @@ namespace idg {
         // Set/get all parameters
         virtual void set_frequencies(const double* frequencyList,
                                      size_t channelCount) override;
+
         virtual size_t get_frequencies_size() const;
         virtual double get_frequency(const size_t channel) const;
 
         virtual void set_stations(const size_t nrStations) override;
         virtual size_t get_stations() const;
 
+        virtual void set_image_size(const double imageSize) override;
+        virtual double get_image_size() const;
+
         virtual void set_subgrid_size(const size_t size);
         virtual size_t get_subgrid_size() const;
 
-        // Q: Not sure if we understand the same under kernel size?
-        /* virtual void set_kernel(size_t kernelSize, */
-        /*                         const double* spheroidal) = 0; */
-        // Better this?
-        /* virtual void set_spheroidal(const double* spheroidal, size_t size) override; */
+        virtual void set_w_kernel(size_t size) override;
+        virtual size_t get_w_kernel() const;
+
+        virtual void set_spheroidal(
+            const double* spheroidal,
+            const size_t size);
+
+        virtual void set_spheroidal(
+            const double* spheroidal,
+            const size_t height,
+            const size_t width) override;
+
 
         virtual void start_w_layer(double layerWInLambda) override;
+
         virtual void finish_w_layer() override;
 
-        /* virtual void start_aterm(const std::complex<double>* aterm) override; */
-        /* virtual void finish_aterm() override; */
+        virtual void set_grid(
+            std::complex<double>* grid,
+            const size_t size);
 
-        virtual void set_grid(std::complex<double>* grid,
-                              size_t height, size_t width) override;
+        virtual void set_grid(
+            std::complex<double>* grid,
+            const size_t height,
+            const size_t width) override;
 
         // Bake the plan: initialize data structures etc.
         // Must be called before the plan is used if have settings have changed
@@ -72,6 +87,19 @@ namespace idg {
             size_t antenna1,                         // 0 <= antenna1 < nrStations
             size_t antenna2,                         // antenna1 < antenna2 < nrStations
             size_t timeIndex) override;              // 0 <= timeIndex < NR_TIMESTEPS
+
+        virtual void start_aterm(
+            const std::complex<double>* aterm,
+            const size_t nrStations,
+            const size_t size);
+
+        virtual void start_aterm(
+            const std::complex<double>* aterm,
+            const size_t nrStations,
+            const size_t height,
+            const size_t width) override;
+
+        virtual void finish_aterm() override;
 
         // Must be called to flush the buffer
         virtual void execute() override;
@@ -92,10 +120,12 @@ namespace idg {
         size_t m_startTimeIndex;
         float  m_wOffsetInMeters; // Q: meters? lambda?
         size_t m_nrPolarizations;
-        size_t m_kernelSize;
+        size_t m_wKernelSize;
         size_t m_gridHeight;
         size_t m_gridWidth;
         size_t m_subgridSize;
+        float  m_imageSize;
+        int    m_aterm_offsets[2];
 
         std::vector<float> m_frequencies;                               // CH
         std::vector<float> m_wavenumbers;                               // CH
@@ -103,7 +133,7 @@ namespace idg {
         std::vector<StationPair<int>> m_bufferStationPairs;             // BL
         Grid3D<Visibility<std::complex<float>>> m_bufferVisibilities;   // BL x TI x CH
         Grid3D<Aterm<std::complex<float>>> m_aterms; // HACK: ST x SB x SB
-        Grid2D<float> m_spheroidal;                  // HACK: SB x SB
+        Grid2D<float> m_spheroidal;
         Grid3D<std::complex<float>> m_grid;          // HACK: complex<float> as needed for kernel
         std::complex<double>* m_grid_double;         // HACK: pointer to double precision grid
         proxy::Proxy* m_proxy;

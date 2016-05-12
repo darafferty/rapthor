@@ -29,29 +29,44 @@ namespace idg {
 
         virtual void set_stations(const size_t nr_stations) = 0;
 
-        /* virtual void set_kernel(size_t kernelSize, */
-        /*                         const double* spheroidal) = 0; */
-        // Better this?
-        /* virtual void set_spheroidal(const double* spheroidal, size_t size) override; */
+        virtual void set_image_size(const double imageSize) = 0;
+
+        virtual void set_w_kernel(size_t size) = 0;
+
+        virtual void set_spheroidal(
+            const double* spheroidal,
+            const size_t height,
+            const size_t width) = 0;
 
         virtual void start_w_layer(double layerWInLambda) = 0;
+
         virtual void finish_w_layer() = 0;
 
-        /* virtual void start_aterm(const std::complex<double>* aterm) = 0; */
-        /* virtual void finish_aterm() = 0; */
-
-        virtual void set_grid(std::complex<double>* grid,
-                              size_t height, size_t width) = 0;
+        virtual void set_grid(
+            std::complex<double>* grid,
+            size_t height,
+            size_t width) = 0;
 
         virtual void bake() = 0;
 
+
         // Gridding
+
         virtual void grid_visibilities(
             const std::complex<float>* visibilities, // size CH x PL
             const double* uvwInMeters,
             size_t antenna1,
             size_t antenna2,
             size_t timeIndex) = 0;
+
+        virtual void start_aterm(
+            const std::complex<double>* aterm,
+            const size_t nrStations,
+            const size_t height,
+            const size_t width) = 0;
+
+        virtual void finish_aterm() = 0;
+
 
         /* // Deridding */
         /* virtual void queue_visibility_sampling( */
