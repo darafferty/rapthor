@@ -338,3 +338,25 @@ namespace idg {
     }
 
 } // namespace idg
+
+
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+
+    idg::GridderPlan* GridderPlan_init(unsigned int bufferTimesteps)
+    {
+        return new idg::GridderPlan(idg::Type::CPU_REFERENCE, bufferTimesteps);
+    }
+
+
+
+
+    void GridderPlan_destroy(idg::GridderPlan* p) {
+       delete p;
+    }
+
+} // extern C
