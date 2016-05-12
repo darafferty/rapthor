@@ -1,5 +1,5 @@
 #include <iostream>
-#include <cstdlib>
+#include <cstdlib> // size_t
 #include <complex>
 
 #include "idg-utility.h"  // Data init routines
@@ -24,8 +24,7 @@ void run() {
     int gridsize = params.get_grid_size();
     int subgridsize = params.get_subgrid_size();
     float imagesize = params.get_imagesize();
-    int nr_polarizations = 4;
-    int nr_subgrids = nr_baselines * nr_timeslots;
+    int nr_polarizations = params.get_nr_polarizations();
 
     float w_offset = 0;
     int kernel_size = (subgridsize / 4) + 1;
@@ -69,7 +68,7 @@ void run() {
     idg::init_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
-    // Initialize interface to kernels
+    // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
     PROXYNAME proxy(params, deviceNumber);
     clog << endl;
@@ -78,13 +77,13 @@ void run() {
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    clog << ">>> Run gridder" << endl;
+    clog << ">>> Run gridding" << endl;
     proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::ImageDomainToFourierDomain, grid);
 
-    clog << ">>> Run degridder" << endl;
+    clog << ">>> Run degridding" << endl;
     proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     // Free memory for data structures
