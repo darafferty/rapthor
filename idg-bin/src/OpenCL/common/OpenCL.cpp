@@ -153,13 +153,10 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
-                auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
@@ -365,7 +362,6 @@ executequeue.finish();
                 cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(plan.get_nr_subgrids()));
 
                 // Copy input data to host memory
-                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  sizeof_visibilities(nr_baselines), visibilities);
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  sizeof_uvw(nr_baselines), uvw);
                 htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  sizeof_metadata(nr_subgrids), metadata);
 
@@ -398,7 +394,7 @@ executequeue.finish();
                     // Private device memory
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE,  sizeof_uvw(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
@@ -406,7 +402,6 @@ executequeue.finish();
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
                     htodqueue.finish();
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                     executequeue.finish();
@@ -465,15 +460,16 @@ executequeue.finish();
                             dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
                         }
-                    }
 
-                    outputReady[0].wait();
+                        outputReady[0].wait();
+                    }
                 }
 
                 // Copy visibilities
                 dtohqueue.finish();
                 PowerSensor::State stopState = powerSensor.read();
                 dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
+                dtohqueue.finish();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
@@ -510,11 +506,12 @@ executequeue.finish();
                 cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
                 // Events
-                vector<cl::Event> events(4);
+                vector<cl::Event> inputReady(1);
+                vector<cl::Event> fftFinished(1);
+                vector<cl::Event> outputReady(1);
 
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
-                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
 
                 // Performance counter
                 PerformanceCounter counter_fft;
@@ -525,24 +522,38 @@ executequeue.finish();
                 // Load kernel function
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
-                // Create FFT plan
-                kernel_fft->plan(context, queue, gridsize, 1);
-
-        		// Launch FFT
-                queue.enqueueMarkerWithWaitList(NULL, &events[1]);
-                kernel_fft->launchAsync(queue, d_grid, sign);
-                queue.enqueueMarkerWithWaitList(NULL, &events[2]);
-
-                // Copy grid to host
-                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
-
-                // Wait for fft to finish
-                queue.finish();
-
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
                 kernel_fft->shift(grid);
                 time_shift += omp_get_wtime();
+
+                // Copy grid to device
+                double time_input = -omp_get_wtime();
+                queue.enqueueWriteBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, &inputReady[0]);
+                inputReady[0].wait();
+                time_input += omp_get_wtime();
+
+                // Create FFT plan
+                kernel_fft->plan(context, queue, gridsize, 1);
+
+        		// Launch FFT
+                kernel_fft->launchAsync(queue, d_grid, sign);
+                queue.enqueueMarkerWithWaitList(NULL, &fftFinished[0]);
+                fftFinished[0].wait();
+
+                // Copy grid to host
+                double time_output = -omp_get_wtime();
+                queue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, &fftFinished, &outputReady[0]);
+                outputReady[0].wait();
+                time_output += omp_get_wtime();
+
+                // Perform fft shift
+                if (direction == FourierDomainToImageDomain) {
+                    time_shift = -omp_get_wtime();
+                    kernel_fft->shift(grid);
+                    time_shift += omp_get_wtime();
+                    time_shift /= 2;
+                }
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
@@ -553,11 +564,13 @@ executequeue.finish();
                 time_scale += omp_get_wtime();
 
                 #if defined(REPORT_TOTAL)
+                auxiliary::report("   input", time_input, 0, sizeof_grid(), 0);
                 auxiliary::report("     fft",
-                                  PerformanceCounter::get_runtime((cl_event) events[1](), (cl_event) events[2]()),
+                                  PerformanceCounter::get_runtime((cl_event) inputReady[0](), (cl_event) fftFinished[0]()),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   0);
+                auxiliary::report("  output", time_output, 0, sizeof_grid(), 0);
                 auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
                     auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);

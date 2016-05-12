@@ -12,7 +12,6 @@
 #include "OpenCL.h"
 
 #define ENABLE_WARMUP 1
-#define ENABLE_SYNC_BUG 0
 
 using namespace std;
 
@@ -70,13 +69,10 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto nr_stations = mParams.get_nr_stations();
-                auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
-                auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
@@ -98,22 +94,21 @@ namespace idg {
 
                 // Initialize
                 cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
                 const int nr_streams = 3;
                 omp_set_nested(true);
 
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
-                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
+                cl::Buffer h_uvw(context,      CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
                 cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
-                cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(nr_subgrids));
-                void *subgrids = htodqueue.enqueueMapBuffer(h_subgrids, CL_FALSE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
 
                 // Copy input data to host memory
                 htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  opencl.sizeof_uvw(nr_baselines), uvw);
                 htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  opencl.sizeof_metadata(nr_subgrids), metadata);
+                htodqueue.finish();
 
                 // Device memory
                 cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_wavenumbers());
@@ -122,15 +117,16 @@ namespace idg {
 
                 // Performance measurements
                 double total_runtime_gridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
-                double total_runtime_adder = 0;
+                double total_runtime_fft     = 0;
+                double total_runtime_scaler  = 0;
+                double total_runtime_adder   = 0;
                 PowerSensor::State startState;
 
                 // Copy static device memory
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, opencl.sizeof_wavenumbers(), wavenumbers);
                 htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, opencl.sizeof_aterm(), aterm);
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, opencl.sizeof_spheroidal(), spheroidal);
+                htodqueue.finish();
 
                 // Initialize fft
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -144,12 +140,16 @@ namespace idg {
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
+
+                    // Private host memory
+                    cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(max_nr_subgrids));
+                    void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
+
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, opencl.sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize));
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids));
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, opencl.sizeof_visibilities(jobsize));
                     htodqueue.finish();
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                     executequeue.finish();
@@ -179,34 +179,26 @@ namespace idg {
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto _subgrid_offset      = plan.get_subgrid_offset(bl);
 
                         // Offsets
                         size_t uvw_offset          = bl * opencl.sizeof_uvw(1);
                         size_t visibilities_offset = bl * opencl.sizeof_visibilities(1);
-                        size_t metadata_offset     = _subgrid_offset * opencl.sizeof_metadata(1);
-                        size_t subgrid_offset      = _subgrid_offset * opencl.sizeof_subgrids(1);
-
-                        // Number of subgrids for all baselines in job
-                        auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                        size_t metadata_offset     = plan.get_subgrid_offset(bl) * opencl.sizeof_metadata(1);
 
                         // Get pointers
                         void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                        void *subgrids_ptr = subgrids + subgrid_elements*plan.get_subgrid_offset(bl);
 
                         #pragma omp critical (GPU)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, opencl.sizeof_visibilities(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids), NULL, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(&outputReady);
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, opencl.sizeof_visibilities(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch gridder kernel
-                            #if ENABLE_SYNC_BUG
-                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            #endif
+                            executequeue.enqueueMarkerWithWaitList(&inputReady);
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_baselines, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
@@ -216,8 +208,8 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy subgrid to host
-                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_subgrids, h_subgrids, 0, subgrid_offset, opencl.sizeof_subgrids(current_nr_subgrids), NULL, &outputReady[0]);
+                            dtohqueue.enqueueBarrierWithWaitList(&computeReady);
+                            dtohqueue.enqueueReadBuffer(d_subgrids, CL_FALSE, 0, opencl.sizeof_subgrids(current_nr_subgrids), subgrids_ptr, NULL, &outputReady[0]);
                         }
 
                         outputReady[0].wait();
@@ -234,12 +226,12 @@ namespace idg {
                                                      kernel_adder->bytes(current_nr_subgrids),
                                                      LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                     }
+
+                    // Unmap subgrids
+                    dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids_ptr);
                 }
 
                 PowerSensor::State stopState  = opencl::powerSensor.read();
-
-                // Unmap subgrids
-                dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
@@ -309,12 +301,11 @@ namespace idg {
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
                 cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
                 cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
-                cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(nr_subgrids));
-                void *subgrids = htodqueue.enqueueMapBuffer(h_subgrids, CL_FALSE, CL_MAP_WRITE, 0, opencl.sizeof_subgrids(nr_subgrids));
 
                 // Copy input data to host memory
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  opencl.sizeof_uvw(nr_baselines), uvw);
                 htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  opencl.sizeof_metadata(nr_subgrids), metadata);
+                htodqueue.finish();
 
                 // Device memory
                 cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_wavenumbers());
@@ -332,6 +323,7 @@ namespace idg {
                 htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, opencl.sizeof_wavenumbers(), wavenumbers);
                 htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, opencl.sizeof_aterm(), aterm);
                 htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, opencl.sizeof_spheroidal(), spheroidal);
+                htodqueue.finish();
 
                 // Initialize fft
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -346,13 +338,14 @@ namespace idg {
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
+                    // Private host memory
+                    cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(max_nr_subgrids));
+                    void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
 
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, opencl.sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize));
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, opencl.sizeof_metadata(max_nr_subgrids));
                     htodqueue.finish();
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                     executequeue.finish();
@@ -382,37 +375,35 @@ namespace idg {
 
                         // Number of subgrids for all baselines in job
                         auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto _subgrid_offset      = plan.get_subgrid_offset(bl);
 
                         // Offsets
                         size_t uvw_offset          = bl * opencl.sizeof_uvw(1);
                         size_t visibilities_offset = bl * opencl.sizeof_visibilities(1);
-                        size_t metadata_offset     = _subgrid_offset * opencl.sizeof_metadata(1);
-                        size_t subgrid_offset      = _subgrid_offset * opencl.sizeof_subgrids(1);
+                        size_t metadata_offset     = plan.get_subgrid_offset(bl) * opencl.sizeof_metadata(1);
 
                         // Number of subgrids for all baselines in job
                         auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
 
                         // Get pointers
                         void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                        void *subgrids_ptr = subgrids + subgrid_elements*plan.get_subgrid_offset(bl);
 
                         // Run splitter
                         powerStates[0] = cpu.read_power();
                         kernel_splitter->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, (void *) grid);
+                        htodqueue.enqueueWriteBuffer(h_subgrids, CL_FALSE, 0, opencl.sizeof_subgrids(current_nr_subgrids), subgrids_ptr);
                         powerStates[1] = cpu.read_power();
 
                         #pragma omp critical (GPU)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, subgrid_offset, 0, opencl.sizeof_subgrids(current_nr_subgrids), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids), NULL, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(&outputReady);
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids));
+                            htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(current_nr_subgrids));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch fft kernel
-                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                            executequeue.enqueueMarkerWithWaitList(&inputReady);
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
 
                             // Launch degridder kernel
@@ -422,7 +413,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy visibilities to host
-                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
+                            dtohqueue.enqueueBarrierWithWaitList(&computeReady);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, opencl.sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
                         }
 
@@ -433,12 +424,15 @@ namespace idg {
                                                        kernel_splitter->bytes(current_nr_subgrids),
                                                        LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
                     }
+
+                    // Unmap subgrids
+                    dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids_ptr);
                 }
 
                 PowerSensor::State stopState  = opencl::powerSensor.read();
 
                 // Copy visibilities from host memory
-                htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
+                htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
