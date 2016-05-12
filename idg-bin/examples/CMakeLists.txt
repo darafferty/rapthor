@@ -13,6 +13,7 @@ if (BUILD_LIB_OPENCL)
 endif()
 if (BUILD_WITH_PYTHON)
     add_subdirectory(python)
+    add_subdirectory(python-api)
 endif()
 
 add_subdirectory(api)
