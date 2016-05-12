@@ -9,16 +9,12 @@ void run() {
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;
     idg::Parameters params;
-    // Read the following from ENV:
-    // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE,
-    // GRIDSIZE
-    // if non-default jobsize wanted, set also JOBSIZE, etc.
     params.set_from_env();
 
     // retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
-    int nr_time =  params.get_nr_time();
+    int nr_time = params.get_nr_time();
     int nr_timeslots = params.get_nr_timeslots();
     int nr_channels = params.get_nr_channels();
     int gridsize = params.get_grid_size();
@@ -30,8 +26,8 @@ void run() {
     int kernel_size = (subgridsize / 4) + 1;
 
     // Print configuration
-    std::clog << params;
-    std::clog << std::endl;
+    clog << params;
+    clog << endl;
 
     // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
@@ -69,21 +65,21 @@ void run() {
     std::clog << std::endl;
 
     // Initialize proxy
-    std::clog << ">>> Initialize proxy" << std::endl;
+    clog << ">>> Initialize proxy" << endl;
     PROXYNAME proxy(params);
-    std::clog << std::endl;
+    clog << endl;
 
     // Run
-    std::clog << ">>> Run fft" << std::endl;
+    clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    std::clog << ">>> Run gridding" << std::endl;
+    clog << ">>> Run gridding" << endl;
     proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
-    std::clog << ">>> Run fft" << std::endl;
-    proxy.transform(idg::FourierDomainToImageDomain, grid);
+    clog << ">>> Run fft" << endl;
+    proxy.transform(idg::ImageDomainToFourierDomain, grid);
 
-    std::clog << ">>> Run degridding" << std::endl;
+    clog << ">>> Run degridding" << endl;
     proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
 
     // Free memory for data structures
