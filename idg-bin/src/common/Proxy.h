@@ -43,6 +43,8 @@ namespace idg {
         class Proxy
         {
         public:
+            virtual ~Proxy() {};
+
             /*
                 High level routines
             */
