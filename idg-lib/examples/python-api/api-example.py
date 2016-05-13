@@ -6,6 +6,7 @@ import numpy
 import math
 import scipy.constants as sc
 import matplotlib.pyplot as plt
+import time as Timer
 import IDG
 import idg   # HACK: utility to initialize data, TODO: rename
 
@@ -13,11 +14,11 @@ import idg   # HACK: utility to initialize data, TODO: rename
 ############
 # paramaters
 ############
-_nr_stations = 12
+_nr_stations = 22
 _nr_baselines = _nr_stations*(_nr_stations-1)/2
 _nr_channels = 1
-_nr_time = 1000             # samples per baseline
-_image_size = 0.1
+_nr_time = 2*4096             # samples per baseline
+_image_size = 0.05
 _subgrid_size = 24
 _grid_size = 1024
 _integration_time = 5
@@ -109,6 +110,29 @@ def init_spheroidal(subgrid_size):
     return spheroidal
 
 
+def live_plot_grid(axarr, grid):
+    gridXX = numpy.log(numpy.abs(grid[0,:,:]) + 1)
+    gridXY = numpy.log(numpy.abs(grid[1,:,:]) + 1)
+    gridYX = numpy.log(numpy.abs(grid[2,:,:]) + 1)
+    gridYY = numpy.log(numpy.abs(grid[3,:,:]) + 1)
+
+    axarr[0, 0].imshow(gridXX)
+    axarr[0, 0].set_title('XX')
+    axarr[0, 1].imshow(gridXY)
+    axarr[0, 1].set_title('XY')
+    axarr[1, 0].imshow(gridYX)
+    axarr[1, 0].set_title('YX')
+    axarr[1, 1].imshow(gridYY)
+    axarr[1, 1].set_title('YY')
+
+    # Hide ticks for plots
+    plt.setp([a.get_xticklabels() for a in axarr[:,0]], visible=False)
+    plt.setp([a.get_yticklabels() for a in axarr[:,0]], visible=False)
+    plt.setp([a.get_xticklabels() for a in axarr[:,1]], visible=False)
+    plt.setp([a.get_yticklabels() for a in axarr[:,1]], visible=False)
+
+    plt.pause(0.05)
+
 
 ######
 # main
@@ -157,7 +181,8 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    bufferTimesteps = nr_time
+    bufferTimesteps = 512
+
     plan = IDG.GridderPlan(bufferTimesteps)
     plan.set_stations(nr_stations);
     plan.set_frequencies(frequencies);
@@ -171,36 +196,45 @@ if __name__ == "__main__":
     ##########################
     # loop to fill buffer once
     ##########################
-    for time in range(nr_time):
-        for bl in range(nr_baselines):
 
-            # Set antenna indices (Note: smaller one first by convention of AO)
-            antenna1 = baselines[bl][1]
-            antenna2 = baselines[bl][0]
+    fig, axarr = plt.subplots(2, 2)
 
-            # Set UVW coordinates in double precision
-            uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
-            uvw_coordinates[0] = uvw[bl][time]['u']
-            uvw_coordinates[1] = uvw[bl][time]['v']
-            uvw_coordinates[2] = uvw[bl][time]['w']
+    for time_major in range(nr_time / bufferTimesteps):
+        for time_minor in range(bufferTimesteps):
 
-            # Set visibilities
-            visibilities =  numpy.ones((nr_channels, nr_polarizations),
-                                       dtype=numpy.complex64)
+            time = time_major*bufferTimesteps + time_minor
 
-            # Add visibilities to the buffer
-            plan.grid_visibilities(
-                visibilities,
-                uvw_coordinates,
-                antenna1,
-                antenna2,
-                time
-            )
+            for bl in range(nr_baselines):
+
+                # Set antenna indices (Note: smaller one first by convention of AO)
+                antenna1 = baselines[bl][1]
+                antenna2 = baselines[bl][0]
+
+                # Set UVW coordinates in double precision
+                uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+                uvw_coordinates[0] = uvw[bl][time]['u']
+                uvw_coordinates[1] = uvw[bl][time]['v']
+                uvw_coordinates[2] = uvw[bl][time]['w']
+
+                # Set visibilities
+                visibilities =  numpy.ones((nr_channels, nr_polarizations),
+                                           dtype=numpy.complex64)
+
+                # Add visibilities to the buffer
+                plan.grid_visibilities(
+                    visibilities,
+                    uvw_coordinates,
+                    antenna1,
+                    antenna2,
+                    time
+                )
+
+        live_plot_grid(axarr, grid)
 
     ##############
     # flush buffer
     ##############
     plan.execute()
 
-    idg.utils.plot_grid(grid, scaling='log')
+
     plt.show()
