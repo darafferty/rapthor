@@ -18,7 +18,7 @@ namespace idg {
           m_bufferTimesteps(bufferTimesteps),
           m_nrStations(0),
           m_nrGroups(0),
-          m_startTimeIndex(0),
+          m_lastTimeIndex(-1),
           m_wOffsetInMeters(0.0f),
           m_nrPolarizations(4),
           m_wKernelSize(0),
@@ -275,23 +275,27 @@ namespace idg {
         size_t antenna2,
         size_t timeIndex)
     {
-        auto time = timeIndex - m_startTimeIndex;
-        auto bl = baseline_index(antenna1, antenna2);
+        auto local_time = timeIndex - m_lastTimeIndex - 1;
+        auto local_bl = baseline_index(antenna1, antenna2);
 
-        if (time == m_bufferTimesteps) {
+        if (local_time == m_bufferTimesteps) {
+            /* Do not insert more if buffer is already full */
+            /* Execute and empty buffer, befor inserting new element */
             execute();
-            // use updated m_startTimeIndex
-            time = timeIndex - m_startTimeIndex;
+            local_time = timeIndex - m_lastTimeIndex - 1;
+        } else {
+            // Keep track of all time indices pushed into the buffer
+            m_timeindices.insert(timeIndex);
+
+            // Copy data into buffers
+            m_bufferUVW(local_bl, local_time) = {uvwInMeters[0], uvwInMeters[1], uvwInMeters[2]};
+
+            if (antenna1 > antenna2) swap(antenna1, antenna2);
+            m_bufferStationPairs[local_bl] = {antenna1, antenna2};
+
+            copy(visibilities, visibilities + get_frequencies_size() * m_nrPolarizations,
+                 (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0));
         }
-
-        // Copy data into buffers
-        m_bufferUVW(bl, time) = {uvwInMeters[0], uvwInMeters[1], uvwInMeters[2]};
-
-        if (antenna1 > antenna2) swap(antenna1, antenna2);
-        m_bufferStationPairs[bl] = {antenna1, antenna2};
-
-        copy(visibilities, visibilities + get_frequencies_size() * m_nrPolarizations,
-             (complex<float>*) &m_bufferVisibilities(bl, time, 0));
     }
 
 
@@ -366,7 +370,10 @@ namespace idg {
         }
 
         // Cleanup
-        m_startTimeIndex = 0; // update here, not set to zero
+        auto largestTimeIndex = *max_element( m_timeindices.cbegin(), m_timeindices.cend() );
+        m_lastTimeIndex = largestTimeIndex;
+        m_timeindices.clear();
+        // init buffers to zero
     }
 
 } // namespace idg
