@@ -8,6 +8,8 @@
 
 #include <complex>
 #include <vector>
+#include <set>
+#include <algorithm>
 #include <stdexcept>
 #include <cmath>
 
@@ -127,7 +129,7 @@ namespace idg {
         size_t m_bufferTimesteps;
         size_t m_nrStations;
         size_t m_nrGroups;
-        size_t m_startTimeIndex;
+        size_t m_lastTimeIndex;
         float  m_wOffsetInMeters; // Q: meters? lambda?
         size_t m_nrPolarizations;
         size_t m_wKernelSize;
@@ -137,6 +139,7 @@ namespace idg {
         float  m_imageSize;
         int    m_aterm_offsets[2];
 
+        std::set<size_t> m_timeindices;
         std::vector<float> m_frequencies;                               // CH
         std::vector<float> m_wavenumbers;                               // CH
         Grid2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
