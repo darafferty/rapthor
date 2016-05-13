@@ -16,7 +16,7 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 
 
 class Reference(Proxy):
-    """Reference CPU implementation"""
+
     def __init__(self, nr_stations,
                        nr_channels,
                        nr_time,
@@ -24,6 +24,7 @@ class Reference(Proxy):
                        imagesize,
                        grid_size,
                        subgrid_size):
+        """Reference CPU implementation"""
         try:
             lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint, \
@@ -43,6 +44,9 @@ class Reference(Proxy):
         except AttributeError:
             print "The chosen proxy was not built into the library"
 
+    def __del__(self):
+        """Destroy"""
+        lib.CPU_Reference_destroy(self.obj)
 
     @classmethod
     def from_parameters(cls,p):
@@ -131,7 +135,7 @@ class Reference(Proxy):
 
 
 class HaswellEP(Reference):
-    """CPU implementation optimized for Intel HaswellEP"""
+
     def __init__(self, nr_stations,
                        nr_channels,
                        nr_time,
@@ -139,6 +143,7 @@ class HaswellEP(Reference):
                        imagesize,
                        grid_size,
                        subgrid_size = 32):
+        """CPU implementation optimized for Intel HaswellEP"""
         try:
             lib.CPU_HaswellEP_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint, \
@@ -157,6 +162,10 @@ class HaswellEP(Reference):
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
             print "The chosen proxy was not built into the library"
+
+    def __del__(self):
+        """CPU implementation optimized for Intel HaswellEP"""
+        lib.CPU_HaswellEP_destroy(self.obj)
 
     def _cwrap_grid_visibilities(self,
                                  visibilities,

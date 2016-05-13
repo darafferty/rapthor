@@ -6,7 +6,6 @@ import numpy
 import math
 import scipy.constants as sc
 import matplotlib.pyplot as plt
-import time as Timer
 import IDG
 import idg   # HACK: utility to initialize data, TODO: rename
 
