@@ -50,7 +50,7 @@ namespace idg {
         virtual size_t get_subgrid_size() const;
 
         virtual void set_w_kernel(size_t size) override;
-        virtual size_t get_w_kernel() const;
+        virtual size_t get_w_kernel_size() const;
 
         virtual void set_spheroidal(
             const double* spheroidal,
@@ -68,12 +68,16 @@ namespace idg {
 
         virtual void set_grid(
             std::complex<double>* grid,
-            const size_t size);
+            const size_t nr_polarizations,
+            const size_t size
+            );
 
         virtual void set_grid(
             std::complex<double>* grid,
+            const size_t nr_polarizations,
             const size_t height,
-            const size_t width) override;
+            const size_t width
+            ) override;
 
         // Bake the plan: initialize data structures etc.
         // Must be called before the plan is used if have settings have changed
@@ -104,8 +108,7 @@ namespace idg {
         // Must be called to flush the buffer
         virtual void execute() override;
 
-
-    private:
+    protected:
         /* Helper function to map (antenna1, antenna2) -> baseline index
          * The baseline index is formed such that:
          *   0 implies antenna1=0, antenna2=1 ;
@@ -113,6 +116,13 @@ namespace idg {
          * n-1 implies antenna1=1, antenna2=2 etc. */
         size_t baseline_index(size_t antenna1, size_t antenna2);
 
+        /* Helper routine to allocate buffers for the gridding stage */
+        void malloc_gridder_buffers();
+        void free_gridder_buffers();
+
+
+
+    private:
         Type   m_architecture;
         size_t m_bufferTimesteps;
         size_t m_nrStations;
