@@ -16,12 +16,12 @@ namespace idg {
                              size_t bufferTimesteps)
         : m_architecture(architecture),
           m_bufferTimesteps(bufferTimesteps),
-          m_nrStations(2),
-          m_nrGroups(1),
+          m_nrStations(0),
+          m_nrGroups(0),
           m_startTimeIndex(0),
           m_wOffsetInMeters(0.0f),
           m_nrPolarizations(4),
-          m_wKernelSize(1),
+          m_wKernelSize(0),
           m_gridHeight(0),
           m_gridWidth(0),
           m_subgridSize(32),
@@ -58,12 +58,14 @@ namespace idg {
     }
 
 
+    // deprecated: use cell size!
     void GridderPlan::set_image_size(const double imageSize)
     {
         m_imageSize = float(imageSize);
     }
 
 
+    // deprecated: use cell size!
     double GridderPlan::get_image_size() const
     {
         return m_imageSize;
@@ -88,7 +90,7 @@ namespace idg {
     }
 
 
-    size_t GridderPlan::get_w_kernel() const
+    size_t GridderPlan::get_w_kernel_size() const
     {
         return m_wKernelSize;
     }
@@ -161,21 +163,26 @@ namespace idg {
 
     void GridderPlan::set_grid(
         std::complex<double>* grid,
+        const size_t nr_polarizations,
         const size_t size)
     {
-        set_grid(grid, size, size);
+        set_grid(grid, nr_polarizations, size, size);
     }
 
 
     void GridderPlan::set_grid(
         std::complex<double>* grid,
+        const size_t nr_polarizations,
         const size_t height,
         const size_t width)
     {
         m_grid_double = grid;
 
+        // For later support of non-square grids and nr_polarizations=1
         if (height != width)
             throw invalid_argument("Only square grids supported.");
+        if (nr_polarizations != 4)
+            throw invalid_argument("The number of polarization paris must be equals 4.");
 
         m_gridHeight = height;
         m_gridWidth  = width;
@@ -201,6 +208,7 @@ namespace idg {
         params.set_grid_size(m_gridHeight);               // TODO: support non-square
         params.set_subgrid_size(m_subgridSize);
         params.set_imagesize(m_imageSize);                // TODO: remove as compile time const
+        // params.set_nr_polarizations(m_nrPolarizations);
 
         #if defined(BUILD_LIB_CPU)
         if (m_architecture == Type::CPU_REFERENCE)
@@ -212,11 +220,35 @@ namespace idg {
         #endif
 
         // (2) Setup buffers
+        malloc_gridder_buffers();
+    }
+
+
+    void GridderPlan::malloc_gridder_buffers()
+    {
         m_bufferUVW.reserve(m_nrGroups, m_bufferTimesteps);
         m_bufferVisibilities.reserve(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
         m_bufferStationPairs.reserve(m_nrGroups);
-        m_grid.reserve(get_frequencies_size(), m_gridHeight, m_gridWidth);
+        m_grid.reserve(m_nrPolarizations, m_gridHeight, m_gridWidth);
         m_aterms.reserve(m_nrStations, m_subgridSize, m_subgridSize);
+
+        // HACK:
+        for (auto s = 0; s < m_nrStations; ++s)
+            for (auto y = 0; y < m_subgridSize; ++y)
+                for (auto x = 0; x < m_subgridSize; ++x)
+                    m_aterms(s, y, x) = {complex<float>(1), complex<float>(0),
+                                         complex<float>(0), complex<float>(1)};
+    }
+
+
+    void GridderPlan::free_gridder_buffers()
+    {
+        // to be implemented
+        // m_bufferUVW.free();
+        // m_bufferVisibilities.free();
+        // m_bufferStationPairs.free();
+        // m_grid.free();
+        // m_aterms.free();
     }
 
 
@@ -270,7 +302,7 @@ namespace idg {
         const size_t width)
     {
         if (nrStations != m_nrStations)
-            throw invalid_argument("Only square grids supported.");
+            throw invalid_argument("The number of stations to not match the plan.");
 
         // to be implemented
         // TODO: remove hack to ignore aterm
@@ -324,9 +356,9 @@ namespace idg {
             (float*) m_spheroidal.data());
 
         // HACK: Add results to double precision grid
-        for (auto p=0; p<get_frequencies_size(); ++p) {
-            for (auto y=0; y<m_gridHeight; ++y) {
-                for (auto x=0; x<m_gridWidth; ++x) {
+        for (auto p = 0; p < m_nrPolarizations; ++p) {
+            for (auto y = 0; y < m_gridHeight; ++y) {
+                for (auto x = 0; x < m_gridWidth; ++x) {
                     m_grid_double[p*m_gridHeight*m_gridWidth
                                   + y*m_gridWidth + x] += m_grid(p, y, x);
                 }
@@ -353,6 +385,130 @@ extern "C" {
     }
 
 
+    int GridderPlan_get_stations(idg::GridderPlan* p)
+    {
+        return p->get_stations();
+    }
+
+
+    void GridderPlan_set_stations(idg::GridderPlan* p, int n) {
+        p->set_stations(n);
+    }
+
+
+    void GridderPlan_set_frequencies(
+        idg::GridderPlan* p,
+        double* frequencyList,
+        int size)
+    {
+        p->set_frequencies(frequencyList, size);
+    }
+
+
+    double GridderPlan_get_frequency(idg::GridderPlan* p, int channel)
+    {
+        return p->get_frequency(channel);
+    }
+
+
+    int GridderPlan_get_frequencies_size(idg::GridderPlan* p)
+    {
+        return p->get_frequencies_size();
+    }
+
+
+    void GridderPlan_set_w_kernel_size(idg::GridderPlan* p, int size)
+    {
+        p->set_w_kernel(size);
+    }
+
+
+    int GridderPlan_get_w_kernel_size(idg::GridderPlan* p)
+    {
+        return p->get_w_kernel_size();
+    }
+
+
+    void GridderPlan_set_subgrid_size(idg::GridderPlan* p, int size)
+    {
+        p->set_subgrid_size(size);
+    }
+
+
+    int GridderPlan_get_subgrid_size(idg::GridderPlan* p)
+    {
+        return p->get_subgrid_size();
+    }
+
+
+    void GridderPlan_set_grid(
+        idg::GridderPlan* p,
+        void* grid,   // ptr to complex double
+        int nr_polarizations,
+        int height,
+        int width
+        )
+    {
+        p->set_grid(
+            (std::complex<double>*) grid,
+            nr_polarizations,
+            height,
+            width);
+    }
+
+
+    void GridderPlan_set_spheroidal(
+        idg::GridderPlan* p,
+        double* spheroidal,
+        int height,
+        int width)
+    {
+        p->set_spheroidal(spheroidal, height, width);
+    }
+
+
+
+    // deprecated: use cell size!
+    void GridderPlan_set_image_size(idg::GridderPlan* p, double imageSize)
+    {
+        p->set_image_size(imageSize);
+    }
+
+
+    // deprecated: use cell size!
+    double GridderPlan_get_image_size(idg::GridderPlan* p)
+    {
+        return p->get_image_size();
+    }
+
+
+    void GridderPlan_bake(idg::GridderPlan* p)
+    {
+        p->bake();
+    }
+
+
+    void GridderPlan_grid_visibilities(
+        idg::GridderPlan* p,
+        float*  visibilities, // size CH x PL x 2
+        double* uvwInMeters,
+        int     antenna1,
+        int     antenna2,
+        int     timeIndex)
+    {
+        p->grid_visibilities(
+            (complex<float>*) visibilities, // size CH x PL
+            uvwInMeters,
+            antenna1,
+            antenna2,
+            timeIndex);
+    }
+
+
+    void GridderPlan_execute(idg::GridderPlan* p)
+    {
+        p->execute();
+    }
 
 
     void GridderPlan_destroy(idg::GridderPlan* p) {
