@@ -44,8 +44,9 @@ namespace idg {
 
         virtual void set_grid(
             std::complex<double>* grid,
-            size_t height,
-            size_t width) = 0;
+            const size_t nr_polarizations,
+            const size_t height,
+            const size_t width) = 0;
 
         virtual void bake() = 0;
 

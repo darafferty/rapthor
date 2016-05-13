@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     idg::GridderPlan plan(idg::Type::CPU_REFERENCE, bufferSize);
     plan.set_stations(nr_stations);
     plan.set_frequencies(frequencyList, nr_channels);
-    plan.set_grid(grid_double, 1024, 1024);
+    plan.set_grid(grid_double, 4, 1024, 1024);
     plan.set_subgrid_size(subgridsize);
     plan.set_spheroidal(spheroidal, subgridsize);
     plan.set_image_size(0.1);
