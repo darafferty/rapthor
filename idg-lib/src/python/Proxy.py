@@ -24,25 +24,25 @@ class Proxy(object):
                           aterms,
                           aterms_offset,
                           spheroidal):
-        """Grid visibilities onto grid.
+        """
+        Grid visibilities onto grid.
 
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
-                       nr_channels, nr_polarizations),
-                       dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_baselines, nr_time),
-                            dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        baselines - numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                             dtype = idg.gridtype)
-        aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
-                               nr_polarizations, subgrid_size, subgrid_size),
-                               dtype = idg.atermtype)
-        aterms_offset - numpy.ndarray(shape=(nr_timeslots+1),
-                                      dtype = idg.atermoffsettype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                                   dtype = idg.spheroidaltype)
+        :param visibilities: numpy.ndarray(shape=(nr_baselines, nr_time,
+                             nr_channels, nr_polarizations),
+                             dtype=idg.visibilitiestype)
+        :param uvw: numpy.ndarray(shape=(nr_baselines, nr_time),
+                    dtype = idg.uvwtype)
+        :param wavenumbers: numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
+        :param baselines: numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
+        :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+                     dtype = idg.gridtype)
+        :param aterms: numpy.ndarray(shape=(nr_stations, nr_timeslots,
+                       nr_polarizations, subgrid_size, subgrid_size),
+                       dtype = idg.atermtype)
+        :param aterms_offset: numpy.ndarray(shape=(nr_timeslots+1),
+                              dtype = idg.atermoffsettype)
+        :param spheroidal: numpy.ndarray(shape=(subgrid_size, subgrid_size),
+                           dtype = idg.spheroidaltype)
         """
         # check dimensions
         if visibilities.shape != (self.get_nr_baselines(),
@@ -90,25 +90,25 @@ class Proxy(object):
                             aterms,
                             aterms_offset,
                             spheroidal):
-        """Degrid visibilities onto grid.
+        """
+        Degrid visibilities onto grid.
 
-        Arguments:
-        visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
-                                     nr_channels, nr_polarizations),
-        dtype=idg.visibilitiestype)
-        uvw - numpy.ndarray(shape=(nr_baselines,nr_time),
-                            dtype = idg.uvwtype)
-        wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        baselines - numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-        dtype = idg.gridtype)
-        aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
-                 nr_polarizations, subgrid_size, subgrid_size),
-                 dtype = idg.atermtype)
-        aterms_offset - numpy.ndarray(shape=(nr_timeslots+1),
-                                      dtype = idg.atermoffsettype)
-        spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-        dtype = idg.spheroidaltype)
+        :param visibilities: numpy.ndarray(shape=(nr_baselines, nr_time,
+                             nr_channels, nr_polarizations),
+                             dtype=idg.visibilitiestype)
+        :param uvw: numpy.ndarray(shape=(nr_baselines,nr_time),
+                    dtype = idg.uvwtype)
+        :param wavenumbers: numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
+        :param baselines: numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
+        :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+                     dtype = idg.gridtype)
+        :param aterms: numpy.ndarray(shape=(nr_stations, nr_timeslots,
+                       nr_polarizations, subgrid_size, subgrid_size),
+                       dtype = idg.atermtype)
+        :param aterms_offset: numpy.ndarray(shape=(nr_timeslots+1),
+                              dtype = idg.atermoffsettype)
+        :param spheroidal: numpy.ndarray(shape=(subgrid_size, subgrid_size),
+                           dtype = idg.spheroidaltype)
         """
         # check dimensions
         if visibilities.shape != (self.get_nr_baselines(),
@@ -149,12 +149,12 @@ class Proxy(object):
     def transform(self,
                   direction,
                   grid):
-        """Transform Fourier Domain<->Image Domain.
+        """
+        Transform Fourier Domain<->Image Domain.
 
-        Arguments:
-        direction - idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
-        grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-        dtype = idg.gridtype)
+        :param direction: idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
+        :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+                     dtype = idg.gridtype)
         """
         # check argument dimesions
         if grid.shape != (self.get_nr_polarizations(),
