@@ -14,9 +14,9 @@
 find_package(PackageHandleStandardArgs)
 
 # Find libOpenCL.so
-find_library(OPENCL_LIBRARIES OpenCL
-    ENV OPENCL_LIB
-    ENV LD_LIBRARY_PATH
+find_library(OPENCL_LIBRARIES
+    NAMES OpenCL
+    HINTS ENV OPENCL_LIB
 )
 get_filename_component(OPENCL_LIB_DIR ${OPENCL_LIBRARIES} PATH)
 
