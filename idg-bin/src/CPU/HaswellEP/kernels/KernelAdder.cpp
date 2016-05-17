@@ -11,17 +11,17 @@
 extern "C" {
 void kernel_adder(
     const int nr_subgrids,
-    const MetadataType __restrict__ *metadata,
-    const SubGridType  __restrict__ *subgrid,
-    GridType           __restrict__ *grid
+    const idg::Metadata metadata[nr_subgrids],
+    const idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+          idg::float2   grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
     ) {
     // Iterate all colums of grid
     #pragma omp parallel for schedule(guided)
     for (int row = 0; row < GRIDSIZE; row++) {
         for (int s = 0; s < nr_subgrids; s++) {
             // Load topleft corner of subgrid
-            int subgrid_x = metadata[s]->coordinate.x;
-            int subgrid_y = metadata[s]->coordinate.y;
+            int subgrid_x = metadata[s].coordinate.x;
+            int subgrid_y = metadata[s].coordinate.y;
 
             // Compute y offset
             int offset_y = row - subgrid_y;
@@ -38,10 +38,10 @@ void kernel_adder(
                     int y_src = (offset_y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                     // Add subgrid value to grid
-                    (*grid)[0][row][subgrid_x+x] += (*subgrid)[s][0][y_src][x_src];
-                    (*grid)[1][row][subgrid_x+x] += (*subgrid)[s][1][y_src][x_src];
-                    (*grid)[2][row][subgrid_x+x] += (*subgrid)[s][2][y_src][x_src];
-                    (*grid)[3][row][subgrid_x+x] += (*subgrid)[s][3][y_src][x_src];
+                    grid[0][row][subgrid_x+x] += subgrid[s][0][y_src][x_src];
+                    grid[1][row][subgrid_x+x] += subgrid[s][1][y_src][x_src];
+                    grid[2][row][subgrid_x+x] += subgrid[s][2][y_src][x_src];
+                    grid[3][row][subgrid_x+x] += subgrid[s][3][y_src][x_src];
                 }
             }
         }

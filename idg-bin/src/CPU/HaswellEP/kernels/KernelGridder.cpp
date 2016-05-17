@@ -12,26 +12,23 @@
 #include "Types.h"
 #include "Math.h"
 
-template<int current_nr_channels> void kernel_gridder_(
+template<int current_nr_channels>
+void kernel_gridder_(
     const int nr_subgrids,
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
-    const UVWType		   __restrict__ *uvw,
-    const WavenumberType   __restrict__ *wavenumbers,
-    const VisibilitiesType __restrict__ *visibilities,
-    const SpheroidalType   __restrict__ *spheroidal,
-    const ATermType		   __restrict__ *aterm,
-    const MetadataType	   __restrict__ *metadata,
-    SubGridType			   __restrict__ *subgrid
+    const idg::UVW		uvw[],
+    const float         wavenumbers[nr_channels],
+    const idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
+    const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::Metadata metadata[nr_subgrids],
+          idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
 {
-    // Get pointer to visibilities with time and channel dimension
-    typedef FLOAT_COMPLEX VisibilityType[NR_TIME][nr_channels][NR_POLARIZATIONS];
-    VisibilityType *vis_ptr = (VisibilityType *) visibilities;
-
     // Find offset of first subgrid
-    const Metadata m            = (*metadata)[0];
+    const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
     const int time_offset_1     = m.time_offset; // should be 0
 
@@ -39,7 +36,7 @@ template<int current_nr_channels> void kernel_gridder_(
     #pragma omp parallel for shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata) // schedule(dynamic)
     for (int s = 0; s < nr_subgrids; s++) {
         // Load metadata
-        const Metadata m = (*metadata)[s];
+        const idg::Metadata m = metadata[s];
         const int offset = (m.baseline_offset - baseline_offset_1)
                          + (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
@@ -60,8 +57,8 @@ template<int current_nr_channels> void kernel_gridder_(
         for (int time = 0; time < nr_timesteps; time++) {
             for (int chan = 0; chan < current_nr_channels; chan++) {
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    vis_real[time][pol][chan] = (*vis_ptr)[offset + time][chan + channel_offset][pol].real();
-                    vis_imag[time][pol][chan] = (*vis_ptr)[offset + time][chan + channel_offset][pol].imag();
+                    vis_real[time][pol][chan] = visibilities[offset + time][chan + channel_offset][pol].real;
+                    vis_imag[time][pol][chan] = visibilities[offset + time][chan + channel_offset][pol].imag;
                 }
             }
         }
@@ -75,7 +72,7 @@ template<int current_nr_channels> void kernel_gridder_(
                     nr_timesteps, current_nr_channels,
                     x, y,
                     u_offset, v_offset, w_offset,
-                    (float (*)[3]) &uvw[offset][0],
+                    (float (*)[3]) &uvw[offset],
                     (float *) &wavenumbers[channel_offset],
                     phase);
 
@@ -89,7 +86,7 @@ template<int current_nr_channels> void kernel_gridder_(
                     (float *) phasor_real);
 
                 // Multiply visibilities with phasor and reduce for all timesteps and channels
-                FLOAT_COMPLEX pixels[NR_POLARIZATIONS];
+                idg::float2 pixels[NR_POLARIZATIONS];
                 cmul_reduce_gridder(
                     nr_timesteps, current_nr_channels,
                     vis_real, vis_imag,
@@ -97,16 +94,16 @@ template<int current_nr_channels> void kernel_gridder_(
                     pixels);
 
                 // Load a term for station1
-                FLOAT_COMPLEX aXX1 = (*aterm)[station1][aterm_index][0][y][x];
-                FLOAT_COMPLEX aXY1 = (*aterm)[station1][aterm_index][1][y][x];
-                FLOAT_COMPLEX aYX1 = (*aterm)[station1][aterm_index][2][y][x];
-                FLOAT_COMPLEX aYY1 = (*aterm)[station1][aterm_index][3][y][x];
+                idg::float2 aXX1 = aterm[station1][aterm_index][0][y][x];
+                idg::float2 aXY1 = aterm[station1][aterm_index][1][y][x];
+                idg::float2 aYX1 = aterm[station1][aterm_index][2][y][x];
+                idg::float2 aYY1 = aterm[station1][aterm_index][3][y][x];
 
                 // Load aterm for station2
-                FLOAT_COMPLEX aXX2 = conj((*aterm)[station2][aterm_index][0][y][x]);
-                FLOAT_COMPLEX aXY2 = conj((*aterm)[station2][aterm_index][1][y][x]);
-                FLOAT_COMPLEX aYX2 = conj((*aterm)[station2][aterm_index][2][y][x]);
-                FLOAT_COMPLEX aYY2 = conj((*aterm)[station2][aterm_index][3][y][x]);
+                idg::float2 aXX2 = conj(aterm[station2][aterm_index][0][y][x]);
+                idg::float2 aXY2 = conj(aterm[station2][aterm_index][1][y][x]);
+                idg::float2 aYX2 = conj(aterm[station2][aterm_index][2][y][x]);
+                idg::float2 aYY2 = conj(aterm[station2][aterm_index][3][y][x]);
 
                 // Apply aterm
                 apply_aterm(
@@ -115,7 +112,7 @@ template<int current_nr_channels> void kernel_gridder_(
                     pixels);
 
                 // Load spheroidal
-                float sph = (*spheroidal)[y][x];
+                float sph = spheroidal[y][x];
 
                 // Compute shifted position in subgrid
                 int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
@@ -123,7 +120,7 @@ template<int current_nr_channels> void kernel_gridder_(
 
                 // Set subgrid value
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    (*subgrid)[s][pol][y_dst][x_dst] = pixels[pol] * sph;
+                    subgrid[s][pol][y_dst][x_dst] = pixels[pol] * sph;
                 }
             } // end x
         } // end y
@@ -131,30 +128,32 @@ template<int current_nr_channels> void kernel_gridder_(
 } // end kernel_gridder_
 
 extern "C" {
+
 void kernel_gridder(
     const int nr_subgrids,
     const float w_offset,
     const int nr_channels,
-    const UVWType		   __restrict__ *uvw,
-    const WavenumberType   __restrict__ *wavenumbers,
-    const VisibilitiesType __restrict__ *visibilities,
-    const SpheroidalType   __restrict__ *spheroidal,
-    const ATermType		   __restrict__ *aterm,
-    const MetadataType	   __restrict__ *metadata,
-    SubGridType			   __restrict__ *subgrid
+    const idg::UVW		uvw[],
+    const float         wavenumbers[nr_channels],
+    const idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
+    const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::Metadata metadata[nr_subgrids],
+          idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
 {
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(
             nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_gridder_<1>(
             nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid);
     }
 } // end kernel_gridder
+
 } // end extern "C"

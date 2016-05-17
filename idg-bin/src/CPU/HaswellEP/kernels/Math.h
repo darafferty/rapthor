@@ -62,7 +62,7 @@ inline void cmul_reduce_gridder(
     const float a_imag[nr_timesteps][NR_POLARIZATIONS][nr_channels],
     const float b_real[nr_timesteps][nr_channels],
     const float b_imag[nr_timesteps][nr_channels],
-    FLOAT_COMPLEX *c
+    idg::float2 *c
 ) {
     // Initialize pixel for every polarization
     float c_xx_real = 0.0f;
@@ -108,10 +108,10 @@ inline void cmul_reduce_gridder(
     }
 
     // Combine real and imaginary parts
-    c[0] = FLOAT_COMPLEX(c_xx_real, c_xx_imag);
-    c[1] = FLOAT_COMPLEX(c_xy_real, c_xy_imag);
-    c[2] = FLOAT_COMPLEX(c_yx_real, c_yx_imag);
-    c[3] = FLOAT_COMPLEX(c_yy_real, c_yy_imag);
+    c[0] = {c_xx_real, c_xx_imag};
+    c[1] = {c_xy_real, c_xy_imag};
+    c[2] = {c_yx_real, c_yx_imag};
+    c[3] = {c_yy_real, c_yy_imag};
 }
 
 inline void cmul_reduce_degridder(
@@ -119,7 +119,7 @@ inline void cmul_reduce_degridder(
     const float a_imag[SUBGRIDSIZE][SUBGRIDSIZE],
     const float b_real[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const float b_imag[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
-    FLOAT_COMPLEX *c
+    idg::float2 *c
 ) {
     // Initialize pixel for every polarization
     float c_xx_real = 0.0f;
@@ -162,26 +162,26 @@ inline void cmul_reduce_degridder(
     }
 
     // Combine real and imaginary parts
-    c[0] = FLOAT_COMPLEX(c_xx_real, c_xx_imag);
-    c[1] = FLOAT_COMPLEX(c_xy_real, c_xy_imag);
-    c[2] = FLOAT_COMPLEX(c_yx_real, c_yx_imag);
-    c[3] = FLOAT_COMPLEX(c_yy_real, c_yy_imag);
+    c[0] = {c_xx_real, c_xx_imag};
+    c[1] = {c_xy_real, c_xy_imag};
+    c[2] = {c_yx_real, c_yx_imag};
+    c[3] = {c_yy_real, c_yy_imag};
 }
 
 inline void apply_aterm(
-    const FLOAT_COMPLEX aXX1, const FLOAT_COMPLEX aXY1,
-    const FLOAT_COMPLEX aYX1, const FLOAT_COMPLEX aYY1,
-    const FLOAT_COMPLEX aXX2, const FLOAT_COMPLEX aXY2,
-    const FLOAT_COMPLEX aYX2, const FLOAT_COMPLEX aYY2,
-    FLOAT_COMPLEX pixels[NR_POLARIZATIONS]
+    const idg::float2 aXX1, const idg::float2 aXY1,
+    const idg::float2 aYX1, const idg::float2 aYY1,
+    const idg::float2 aXX2, const idg::float2 aXY2,
+    const idg::float2 aYX2, const idg::float2 aYY2,
+    idg::float2 pixels[NR_POLARIZATIONS]
 ) {
     // Apply aterm to subgrid: P*A1
     // [ pixels[0], pixels[1];    [ aXX1, aXY1;
     //   pixels[2], pixels[3] ] *   aYX1, aYY1 ]
-    FLOAT_COMPLEX pixelsXX = pixels[0];
-    FLOAT_COMPLEX pixelsXY = pixels[1];
-    FLOAT_COMPLEX pixelsYX = pixels[2];
-    FLOAT_COMPLEX pixelsYY = pixels[3];
+    idg::float2 pixelsXX = pixels[0];
+    idg::float2 pixelsXY = pixels[1];
+    idg::float2 pixelsYX = pixels[2];
+    idg::float2 pixelsYY = pixels[3];
     pixels[0]  = (pixelsXX * aXX1);
     pixels[0] += (pixelsXY * aYX1);
     pixels[1]  = (pixelsXX * aXY1);
