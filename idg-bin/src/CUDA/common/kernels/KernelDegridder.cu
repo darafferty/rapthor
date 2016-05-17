@@ -208,13 +208,13 @@ __global__ void kernel_degridder(
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_<8>(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_<1>(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid);
     }
 }
 }
