@@ -101,8 +101,8 @@ namespace idg {
 
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
-                cl::Buffer h_uvw(context,      CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
-                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
+                cl::Buffer h_uvw(context,          CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
+                cl::Buffer h_metadata(context,     CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
 
                 // Copy input data to host memory
                 htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0,  opencl.sizeof_visibilities(nr_baselines), visibilities);
@@ -299,8 +299,8 @@ namespace idg {
 
                 // Host memory
                 cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_visibilities(nr_baselines));
-                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
-                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
+                cl::Buffer h_uvw(context,          CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_uvw(nr_baselines));
+                cl::Buffer h_metadata(context,     CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_metadata(nr_subgrids));
 
                 // Copy input data to host memory
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  opencl.sizeof_uvw(nr_baselines), uvw);
@@ -338,6 +338,7 @@ namespace idg {
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_uvw(jobsize));
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_subgrids(max_nr_subgrids));
                     cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, opencl.sizeof_metadata(max_nr_subgrids));
+
                     // Private host memory
                     cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(max_nr_subgrids));
                     void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
@@ -399,7 +400,7 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(&outputReady);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, opencl.sizeof_uvw(current_nr_baselines));
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, opencl.sizeof_metadata(current_nr_subgrids));
-                            htodqueue.enqueueCopyBuffer(h_subgrids, d_subgrids, 0, 0, opencl.sizeof_subgrids(current_nr_subgrids));
+                            htodqueue.enqueueWriteBuffer(d_subgrids, CL_FALSE, 0, opencl.sizeof_subgrids(current_nr_subgrids), subgrids_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch fft kernel
@@ -423,7 +424,7 @@ namespace idg {
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
                                                        LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
-                    }
+                   }
 
                     // Unmap subgrids
                     dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids_ptr);
@@ -432,6 +433,7 @@ namespace idg {
                 PowerSensor::State stopState  = opencl::powerSensor.read();
 
                 // Copy visibilities from host memory
+                dtohqueue.finish();
                 htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)

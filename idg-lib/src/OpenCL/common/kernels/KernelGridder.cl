@@ -624,7 +624,7 @@ __kernel void kernel_gridder(
 	__global const SpheroidalType	spheroidal,
 	__global const ATermType		aterm,
 	__global const MetadataType		metadata,
-	__global SubGridType			subgrid
+	__global       SubGridType		subgrid
 	) {
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {

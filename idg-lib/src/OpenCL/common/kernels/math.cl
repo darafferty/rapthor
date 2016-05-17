@@ -42,17 +42,13 @@ inline void atomicAdd(__global float2 *a, float2 b) {
     //atomic_fetch_add((atomic_int *) a_ptr + 1, b.y);
 }
 
-inline float2 clConjf(float2 a) {
-    return (float2) (a.x, -a.y);
-}
-
 inline void Matrix2x2mul(
     float2 *Cxx, float2 *Cxy, float2 *Cyx, float2 *Cyy,
     float2  Axx, float2  Axy, float2  Ayx, float2  Ayy,
     float2  Bxx, float2  Bxy, float2  Byx, float2  Byy)
 {
-    *Cxx = Axx * Bxx + Axy * Byx;
-    *Cxy = Axx * Bxy + Axy * Byy;
-    *Cyx = Ayx * Bxx + Ayy * Byx;
-    *Cyy = Ayx * Bxy + Ayy * Byy;
+    *Cxx = cadd(cmul(Axx, Bxx), cmul(Axy, Byx));
+    *Cxy = cadd(cmul(Axx, Bxy), cmul(Axy, Byy));
+    *Cyx = cadd(cmul(Ayx, Bxx), cmul(Ayy, Byx));
+    *Cyy = cadd(cmul(Ayx, Bxy), cmul(Ayy, Byy));
 }
