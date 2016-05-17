@@ -22,9 +22,12 @@ namespace idg {
                 int nr_subgrids,
                 float w_offset,
                 int nr_channels,
-                cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
-                cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
-                cl::Buffer &d_aterm, cl::Buffer &d_metadata,
+                cl::Buffer &d_uvw,
+                cl::Buffer &d_wavenumbers,
+                cl::Buffer &d_visibilities,
+                cl::Buffer &d_spheroidal,
+                cl::Buffer &d_aterm,
+                cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
                 int subgridsize = parameters.get_subgrid_size();
@@ -72,9 +75,12 @@ namespace idg {
                 int nr_subgrids,
                 float w_offset,
                 int nr_channels,
-                cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers,
-                cl::Buffer &d_visibilities, cl::Buffer &d_spheroidal,
-                cl::Buffer &d_aterm, cl::Buffer &d_metadata,
+                cl::Buffer &d_uvw,
+                cl::Buffer &d_wavenumbers,
+                cl::Buffer &d_visibilities,
+                cl::Buffer &d_spheroidal,
+                cl::Buffer &d_aterm,
+                cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
                 // IF wgSize IS MODIFIED, ALSO MODIFY NR_THREADS in KernelDegridder.cl
