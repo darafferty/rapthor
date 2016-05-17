@@ -3,6 +3,7 @@
 using namespace std;
 
 namespace idg {
+
     ostream& operator<<(ostream &out, Baseline &b) {
         out << "("
             << b.station1 << ","
@@ -36,4 +37,18 @@ namespace idg {
             << uvw.w << ")";
         return out;
     }
+
+
+    ostream& operator<<(ostream& os, const float2& x)
+    {
+        os << "(" << x.real << "," << x.imag << ")";
+        return os;
+    }
+
+    ostream& operator<<(ostream& os, const double2& x)
+    {
+        os << "(" << x.real << "," << x.imag << ")";
+        return os;
+    }
+
 }

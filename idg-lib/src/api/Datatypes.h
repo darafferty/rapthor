@@ -30,8 +30,8 @@ namespace idg {
     template<class T>
     using StationPairs = std::vector<StationPair<T>>;
 
-    using float2 = struct {float real; float imag; };
-    using double2 = struct {double real; double imag; };
+    /* using float2 = struct {float real; float imag; }; */
+    /* using double2 = struct {double real; double imag; }; */
 
     template<class T>
     struct Matrix2x2 {T xx; T xy; T yx; T yy;};
@@ -204,20 +204,20 @@ namespace idg {
     }
 
 
-    std::ostream& operator<<(std::ostream& os,
-                             const float2& x)
-    {
-        os << "(" << x.real << "," << x.imag << ")";
-        return os;
-    }
+    /* std::ostream& operator<<(std::ostream& os, */
+    /*                          const float2& x) */
+    /* { */
+    /*     os << "(" << x.real << "," << x.imag << ")"; */
+    /*     return os; */
+    /* } */
 
 
-    std::ostream& operator<<(std::ostream& os,
-                             const double2& x)
-    {
-        os << "(" << x.real << "," << x.imag << ")";
-        return os;
-    }
+    /* std::ostream& operator<<(std::ostream& os, */
+    /*                          const double2& x) */
+    /* { */
+    /*     os << "(" << x.real << "," << x.imag << ")"; */
+    /*     return os; */
+    /* } */
 
 
     template<class T>
@@ -250,31 +250,31 @@ namespace idg {
     }
 
 
-    float2 operator*(const float2& x,
-                     const float2& y)
-    {
-        return {x.real*y.real - x.imag*y.imag,
-                x.real*y.imag + x.imag*y.real};
-    }
+    /* float2 operator*(const float2& x, */
+    /*                  const float2& y) */
+    /* { */
+    /*     return {x.real*y.real - x.imag*y.imag, */
+    /*             x.real*y.imag + x.imag*y.real}; */
+    /* } */
 
-    float2 operator+(const float2& x,
-                     const float2& y)
-    {
-        return {x.real + y.real, x.imag + y.imag};
-    }
+    /* float2 operator+(const float2& x, */
+    /*                  const float2& y) */
+    /* { */
+    /*     return {x.real + y.real, x.imag + y.imag}; */
+    /* } */
 
-    double2 operator*(const double2& x,
-                      const double2& y)
-    {
-        return {x.real*y.real - x.imag*y.imag,
-                x.real*y.imag + x.imag*y.real};
-    }
+    /* double2 operator*(const double2& x, */
+    /*                   const double2& y) */
+    /* { */
+    /*     return {x.real*y.real - x.imag*y.imag, */
+    /*             x.real*y.imag + x.imag*y.real}; */
+    /* } */
 
-    double2 operator+(const double2& x,
-                      const double2& y)
-    {
-        return {x.real + y.real, x.imag + y.imag};
-    }
+    /* double2 operator+(const double2& x, */
+    /*                   const double2& y) */
+    /* { */
+    /*     return {x.real + y.real, x.imag + y.imag}; */
+    /* } */
 
 
     template<class T>

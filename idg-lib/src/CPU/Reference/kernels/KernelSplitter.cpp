@@ -10,16 +10,16 @@
 extern "C" {
 void kernel_splitter(
     const int nr_subgrids,
-    const MetadataType __restrict__ *metadata,
-    SubGridType        __restrict__ *subgrid,
-    const GridType     __restrict__ *grid
+    const idg::Metadata metadata[nr_subgrids],
+          idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2   grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
     ) {
 
     #pragma omp parallel for
     for (int s = 0; s < nr_subgrids; s++) {
         // Load position in grid
-        int grid_x = metadata[s]->coordinate.x;
-        int grid_y = metadata[s]->coordinate.y;
+        int grid_x = metadata[s].coordinate.x;
+        int grid_y = metadata[s].coordinate.y;
 
         for (int y = 0; y < SUBGRIDSIZE; y++) {
             for (int x = 0; x < SUBGRIDSIZE; x++) {
@@ -33,7 +33,7 @@ void kernel_splitter(
 
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        (*subgrid)[s][pol][y_dst][x_dst] = (*grid)[pol][grid_y+y][grid_x+x];
+                        subgrid[s][pol][y_dst][x_dst] = grid[pol][grid_y+y][grid_x+x];
                     }
                 }
             }
