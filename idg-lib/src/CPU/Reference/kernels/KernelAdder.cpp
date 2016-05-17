@@ -10,17 +10,17 @@
 extern "C" {
 void kernel_adder(
     const int nr_subgrids,
-    const MetadataType __restrict__ *metadata,
-    const SubGridType  __restrict__ *subgrid,
-    GridType           __restrict__ *grid
+    const idg::Metadata metadata[nr_subgrids],
+    const idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+          idg::float2   grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
     ) {
 
     #pragma omp parallel for
     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
         for (int s = 0; s < nr_subgrids; s++) {
             // Load position in grid
-            int grid_x = metadata[s]->coordinate.x;
-            int grid_y = metadata[s]->coordinate.y;
+            int grid_x = metadata[s].coordinate.x;
+            int grid_y = metadata[s].coordinate.y;
 
             // Check wheter subgrid fits in grid
             if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
@@ -33,7 +33,7 @@ void kernel_adder(
                         int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                         // Add subgrid value to grid
-                        (*grid)[pol][grid_y+y][grid_x+x] += (*subgrid)[s][pol][y_src][x_src];
+                        grid[pol][grid_y+y][grid_x+x] += subgrid[s][pol][y_src][x_src];
                     }
                 }
             }

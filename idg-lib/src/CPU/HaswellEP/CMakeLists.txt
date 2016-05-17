@@ -26,7 +26,7 @@ install(
     kernels/KernelFFT.cpp
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
-    kernels/Types.h
+    ${CMAKE_SOURCE_DIR}/src/common/Types.h
     kernels/Math.h
     DESTINATION
     lib/kernels/CPU/HaswellEP
