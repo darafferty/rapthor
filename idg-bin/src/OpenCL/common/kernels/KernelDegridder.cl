@@ -57,7 +57,7 @@ __kernel void kernel_degridder_1(
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
-            barrier(CLK_GLOBAL_MEM_FENCE);
+            barrier(CLK_LOCAL_MEM_FENCE);
 
             if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
@@ -131,7 +131,7 @@ __kernel void kernel_degridder_1(
 					float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
 
                     // Compute phasor
-					float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float  phase  = phase_offset - (phase_index * wavenumber);
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load pixels from local memory
@@ -188,7 +188,7 @@ __kernel void kernel_degridder_8(
 	__global const MetadataType		metadata,
 	__global const SubGridType		subgrid
 	) {
-	int s = get_group_id(0);
+    int s = get_group_id(0);
     int tidx = get_local_id(0);
 
     // Load metadata for first subgrid
@@ -304,7 +304,7 @@ __kernel void kernel_degridder_8(
 					float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
 
                     // Compute phasor
-					float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float  phase  = phase_offset - (phase_index * wavenumber);
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load pixels from local memory
@@ -364,13 +364,13 @@ __kernel void kernel_degridder(
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_8(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_1(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid);
     }
 }
 
