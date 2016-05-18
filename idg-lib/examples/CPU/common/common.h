@@ -94,4 +94,6 @@ int run()
     delete[] spheroidal;
     delete[] grid;
     delete[] baselines;
+
+    return 0;
 }
