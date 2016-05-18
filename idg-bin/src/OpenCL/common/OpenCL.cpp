@@ -14,6 +14,7 @@
 #include "OpenCL.h"
 
 #define ENABLE_WARMUP 1
+#define DUMP_CLFFT_KERNELS 0
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -53,6 +54,9 @@ namespace idg {
                 // Initialize clFFT
                 clfftSetupData setup;
                 clfftInitSetupData(&setup);
+                #if defined(DUMP_CLFFT_KERNELS)
+                setup.debugFlags = CLFFT_DUMP_PROGRAMS;
+                #endif
                 clfftSetup(&setup);
 
                 // Initialize power sensor
