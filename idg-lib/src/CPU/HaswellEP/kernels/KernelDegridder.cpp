@@ -20,7 +20,7 @@ void kernel_degridder_(
     const int channel_offset,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
-          idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
+          idg::float2   visibilities[NR_TIME][NR_CHANNELS][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::Metadata metadata[],

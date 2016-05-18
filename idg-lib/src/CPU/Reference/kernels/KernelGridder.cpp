@@ -18,12 +18,12 @@ extern "C" {
         const float w_offset,
         const int nr_channels,
         const idg::UVW		uvw[],
-        const float         wavenumbers[nr_channels],
-        const idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
+        const float         wavenumbers[],
+        const idg::float2   visibilities[NR_TIME][NR_CHANNELS][NR_POLARIZATIONS],
         const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
         const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
-        const idg::Metadata metadata[nr_subgrids],
-              idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
+        const idg::Metadata metadata[],
+              idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
         )
     {
         // Find offset of first subgrid

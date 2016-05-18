@@ -92,6 +92,7 @@ namespace idg {
       static std::string
           definitions(unsigned int nr_stations,
                       unsigned int nr_baselines,
+                      unsigned int nr_channels,
                       unsigned int nr_time,
                       unsigned int nr_timeslots,
                       float imagesize,
