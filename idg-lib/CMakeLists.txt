@@ -98,7 +98,7 @@ else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 # make sure openmp is used if available
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
 if (OPENMP_FOUND)
     # Prevent Intel 2016.2 compiler warning
     if (INTEL_CXX_COMPILER)
