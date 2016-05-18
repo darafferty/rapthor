@@ -60,6 +60,8 @@ namespace idg {
         {
             #if defined(GNU_CXX_COMPILER)
             return "g++";
+            #elif defined(CLANG_CXX_COMPILER)
+            return "clang++";
             #else
             return "icpc";
             #endif
@@ -78,7 +80,7 @@ namespace idg {
             intel_flags += " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
             #endif
 
-            #if defined(GNU_CXX_COMPILER)
+            #if (defined GNU_CXX_COMPILER) || (defined CLANG_CXX_COMPILER)
             // Settings for gcc
             if (debug == IDG_BUILD_TYPE)
                 return "-Wall -g " + gnu_flags_wo_mkl;
