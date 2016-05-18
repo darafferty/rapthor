@@ -621,6 +621,12 @@ executequeue.finish();
                 std::vector<cl::Device> devices;
                 devices.push_back(device);
 
+                // Debug
+                #if defined(DEBUG)
+                cout << "Compiling for:" << endl;
+                printDevice(device);
+                #endif
+
                 // Add all kernels to build
                 vector<string> v;
                 v.push_back("KernelGridder.cl");
@@ -652,7 +658,6 @@ executequeue.finish();
                         // Build the program
                         (*program).build(devices, parameters.c_str());
                         programs.push_back(program);
-
                     } catch (cl::Error &error) {
                         if (strcmp(error.what(), "clBuildProgram") == 0) {
                             // Print error message
