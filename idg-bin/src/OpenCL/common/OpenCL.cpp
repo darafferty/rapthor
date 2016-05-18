@@ -649,7 +649,7 @@ executequeue.finish();
                     source_file.close();
 
                     // Print information about compilation
-                    cout << "Compiling " << _source_file_name.str() << ":"
+                    cout << "Compiling: " << _source_file_name.str() << ":"
                          << endl << parameters << endl;
 
                     // Create OpenCL program
@@ -658,23 +658,20 @@ executequeue.finish();
                         // Build the program
                         (*program).build(devices, parameters.c_str());
                         programs.push_back(program);
+                        std::string msg;
+                        (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+                        cout << msg << endl;
                     } catch (cl::Error &error) {
-                        if (strcmp(error.what(), "clBuildProgram") == 0) {
-                            // Print error message
-                            std::string msg;
-                            (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
-                            std::cerr << msg << std::endl;
-                            exit(EXIT_FAILURE);
-                        }
+                        cerr << "Compilation failed: " << error.what() << endl;
                     }
                 } // for each library
 
                 // Fill which_program structure
-                which_program[name_gridder] = 0;
+                which_program[name_gridder]   = 0;
                 which_program[name_degridder] = 1;
-                which_program[name_adder] = 2;
-                which_program[name_splitter] = 3;
-                which_program[name_scaler] = 4;
+                which_program[name_adder]     = 2;
+                which_program[name_splitter]  = 3;
+                which_program[name_scaler]    = 4;
             } // compile
 
             void OpenCL::parameter_sanity_check()
