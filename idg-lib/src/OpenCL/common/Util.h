@@ -27,6 +27,7 @@ typedef struct {
 
 device_info_t getDeviceInfo(cl::Device &d);
 
+void printDevice(cl::Device &device, bool marker = false);
 void printDevices(int deviceNumber);
 
 #endif
