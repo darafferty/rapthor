@@ -14,6 +14,7 @@
 #include "OpenCL.h"
 
 #define ENABLE_WARMUP 1
+#define DUMP_CLFFT_KERNELS 0
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -53,6 +54,9 @@ namespace idg {
                 // Initialize clFFT
                 clfftSetupData setup;
                 clfftInitSetupData(&setup);
+                #if defined(DUMP_CLFFT_KERNELS)
+                setup.debugFlags = CLFFT_DUMP_PROGRAMS;
+                #endif
                 clfftSetup(&setup);
 
                 // Initialize power sensor
@@ -163,9 +167,9 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
-                unique_ptr<Adder> kernel_adder = get_kernel_adder();
-                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<Adder> kernel_adder     = get_kernel_adder();
+                unique_ptr<Scaler> kernel_scaler   = get_kernel_scaler();
+                unique_ptr<GridFFT> kernel_fft     = get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -342,8 +346,8 @@ executequeue.finish();
 
                 // Load kernels
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
-                unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();;
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<Splitter> kernel_splitter   = get_kernel_splitter();;
+                unique_ptr<GridFFT> kernel_fft         = get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -617,6 +621,12 @@ executequeue.finish();
                 std::vector<cl::Device> devices;
                 devices.push_back(device);
 
+                // Debug
+                #if defined(DEBUG)
+                cout << "Compiling for:" << endl;
+                printDevice(device);
+                #endif
+
                 // Add all kernels to build
                 vector<string> v;
                 v.push_back("KernelGridder.cl");
@@ -639,7 +649,7 @@ executequeue.finish();
                     source_file.close();
 
                     // Print information about compilation
-                    cout << "Compiling " << _source_file_name.str() << ":"
+                    cout << "Compiling: " << _source_file_name.str() << ":"
                          << endl << parameters << endl;
 
                     // Create OpenCL program
@@ -648,24 +658,20 @@ executequeue.finish();
                         // Build the program
                         (*program).build(devices, parameters.c_str());
                         programs.push_back(program);
-
+                        std::string msg;
+                        (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
+                        cout << msg << endl;
                     } catch (cl::Error &error) {
-                        if (strcmp(error.what(), "clBuildProgram") == 0) {
-                            // Print error message
-                            std::string msg;
-                            (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
-                            std::cerr << msg << std::endl;
-                            exit(EXIT_FAILURE);
-                        }
+                        cerr << "Compilation failed: " << error.what() << endl;
                     }
                 } // for each library
 
                 // Fill which_program structure
-                which_program[name_gridder] = 0;
+                which_program[name_gridder]   = 0;
                 which_program[name_degridder] = 1;
-                which_program[name_adder] = 2;
-                which_program[name_splitter] = 3;
-                which_program[name_scaler] = 4;
+                which_program[name_adder]     = 2;
+                which_program[name_splitter]  = 3;
+                which_program[name_scaler]    = 4;
             } // compile
 
             void OpenCL::parameter_sanity_check()
