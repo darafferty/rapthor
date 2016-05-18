@@ -288,10 +288,17 @@ namespace idg {
             m_timeindices.insert(timeIndex);
 
             // Copy data into buffers
-            m_bufferUVW(local_bl, local_time) = {uvwInMeters[0], uvwInMeters[1], uvwInMeters[2]};
+            m_bufferUVW(local_bl, local_time) = {
+                static_cast<float>(uvwInMeters[0]),
+                static_cast<float>(uvwInMeters[1]),
+                static_cast<float>(uvwInMeters[2])
+            };
 
             if (antenna1 > antenna2) swap(antenna1, antenna2);
-            m_bufferStationPairs[local_bl] = {antenna1, antenna2};
+            m_bufferStationPairs[local_bl] = {
+                static_cast<int>(antenna1),
+                static_cast<int>(antenna2)
+            };
 
             copy(visibilities, visibilities + get_frequencies_size() * m_nrPolarizations,
                  (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0));
