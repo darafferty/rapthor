@@ -11,8 +11,8 @@
 extern "C" {
 void kernel_adder(
     const int nr_subgrids,
-    const idg::Metadata metadata[nr_subgrids],
-    const idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::Metadata metadata[],
+    const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
           idg::float2   grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
     ) {
     // Iterate all colums of grid
