@@ -54,6 +54,8 @@ namespace idg {
             {
                 #if defined(INTEL_CXX_COMPILER)
                 return "icpc";
+                #elif defined(CLANG_CXX_COMPILER)
+                return "clang++";
                 #else
                 return "g++";
                 #endif
@@ -74,13 +76,13 @@ namespace idg {
                 else
                     return "-Wall -O3 -qopenmp -mkl -lmkl_def";
                 #else
-                // Settings (general, assuming gcc as default)
+                // Settings (gcc or clang)
                 if (debug == IDG_BUILD_TYPE)
-                    return "-Wall -g -DDEBUG -fopenmp -lfftw3f";
+                    return "-std=c++11 -Wall -g -DDEBUG -fopenmp -lfftw3f";
                 else if (relwithdebinfo == IDG_BUILD_TYPE)
-                    return "-O3 -g -fopenmp -lfftw3f";
+                    return " -std=c++11 -O3 -g -fopenmp -lfftw3f";
                 else
-                    return "-Wall -O3 -fopenmp -lfftw3f";
+                    return "-std=c++11 -Wall -O3 -fopenmp-lfftw3f";
                 #endif
             }
 

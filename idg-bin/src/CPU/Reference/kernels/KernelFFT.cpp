@@ -10,7 +10,7 @@ extern "C" {
 void kernel_fft(
 	int size,
 	int batch,
-	fftwf_complex __restrict__ *data,
+    fftwf_complex *data,
     int sign    // Note: -1=FFTW_FORWARD, 1=FFTW_BACKWARD
 	) {
 

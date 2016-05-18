@@ -10,7 +10,7 @@
 extern "C" {
 void kernel_fft_grid(
 	int size, 
-	fftwf_complex __restrict__ *_data,
+    fftwf_complex *_data,
     int sign    // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
 	) {
     #pragma omp parallel for
@@ -48,7 +48,7 @@ void kernel_fft_grid(
 void kernel_fft_subgrid(
 	int size, 
 	int batch,
-	fftwf_complex __restrict__ *_data,
+    fftwf_complex *_data,
 	int sign
 	) {
     #pragma omp parallel for
@@ -99,7 +99,7 @@ void kernel_fft_subgrid(
 void kernel_fft(
 	int size, 
 	int batch,
-	fftwf_complex __restrict__ *data,
+    fftwf_complex *data,
 	int sign
 	) {
     if (batch == 1) {

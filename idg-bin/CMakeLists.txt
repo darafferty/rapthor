@@ -77,6 +77,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CLANG_CXX_COMPILER TRUE)
+  # hack to force use of openmp although not detected
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp=libomp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(GNU_CXX_COMPILER TRUE)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")

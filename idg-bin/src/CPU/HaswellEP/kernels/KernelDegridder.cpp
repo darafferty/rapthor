@@ -19,12 +19,12 @@ void kernel_degridder_(
     const int nr_channels,
     const int channel_offset,
     const idg::UVW		uvw[],
-    const float         wavenumbers[nr_channels],
+    const float         wavenumbers[],
           idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::Metadata metadata[nr_subgrids],
-    const idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
+    const idg::Metadata metadata[],
+    const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
 {
     // Find offset of first subgrid
@@ -187,12 +187,12 @@ void kernel_degridder(
     const float w_offset,
     const int nr_channels,
     const idg::UVW		uvw[],
-    const float         wavenumbers[nr_channels],
+    const float         wavenumbers[],
           idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::Metadata metadata[nr_subgrids],
-    const idg::float2   subgrid[nr_subgrids][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
+    const idg::Metadata metadata[],
+    const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
 {
     int channel_offset = 0;
