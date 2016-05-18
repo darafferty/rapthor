@@ -167,9 +167,9 @@ namespace idg {
 
                 // Load kernels
                 unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
-                unique_ptr<Adder> kernel_adder = get_kernel_adder();
-                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<Adder> kernel_adder     = get_kernel_adder();
+                unique_ptr<Scaler> kernel_scaler   = get_kernel_scaler();
+                unique_ptr<GridFFT> kernel_fft     = get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -346,8 +346,8 @@ executequeue.finish();
 
                 // Load kernels
                 unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
-                unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();;
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<Splitter> kernel_splitter   = get_kernel_splitter();;
+                unique_ptr<GridFFT> kernel_fft         = get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
