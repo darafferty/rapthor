@@ -6,10 +6,10 @@ inline void compute_phase(
     const float u_offset,
     const float v_offset,
     const float w_offset,
-    const float uvw[nr_timesteps][3],
-    const float wavenumbers[nr_channels],
-    float phase[nr_timesteps][nr_channels]
-) {
+    const float uvw[][3],
+    const float wavenumbers[],
+    float phase[][nr_channels] // HACK
+    ) {
     // Compute l,m,n
     const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
     const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
@@ -48,20 +48,19 @@ inline void compute_sincos(
     vmsSinCos(n, x, sin, cos, VML_PRECISION);
     #else
     for (int i = 0; i < n; i++) {
-            sin[i] = sinf(phase[i]);
-            cos[i] = cosf(phase[i]);
+            sin[i] = sinf(x[i]);
+            cos[i] = cosf(x[i]);
         }
-    }
     #endif
 }
 
 inline void cmul_reduce_gridder(
     const int nr_timesteps,
     const int nr_channels,
-    const float a_real[nr_timesteps][NR_POLARIZATIONS][nr_channels],
-    const float a_imag[nr_timesteps][NR_POLARIZATIONS][nr_channels],
-    const float b_real[nr_timesteps][nr_channels],
-    const float b_imag[nr_timesteps][nr_channels],
+    const float a_real[][NR_POLARIZATIONS][nr_channels], // HACK
+    const float a_imag[][NR_POLARIZATIONS][nr_channels], // HACK
+    const float b_real[][nr_channels], // HACK
+    const float b_imag[][nr_channels], // HACK
     idg::float2 *c
 ) {
     // Initialize pixel for every polarization

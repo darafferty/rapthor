@@ -2,15 +2,19 @@
 
 #define TYPEDEF_UVW               typedef struct { float u, v, w; } UVW;
 #define TYPEDEF_UVW_TYPE          typedef UVW UVWType[nr_baselines][nr_time];
-#define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
+//#define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
+#define TYPEDEF_VISIBILITIES_TYPE typedef idg::float2 VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
-#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
+//#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
+#define TYPEDEF_ATERM_TYPE        typedef idg::float2 ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
 #define TYPEDEF_ATERM_OFFSET_TYPE typedef int ATermOffsetType[nr_timeslots + 1];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
 #define TYPEDEF_BASELINE          typedef struct { int station1, station2; } Baseline;
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
-#define TYPEDEF_SUBGRID_TYPE      typedef std::complex<float> SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
-#define TYPEDEF_GRID_TYPE         typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+//#define TYPEDEF_SUBGRID_TYPE      typedef std::complex<float> SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
+#define TYPEDEF_SUBGRID_TYPE      typedef idg::float2 SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
+//#define TYPEDEF_GRID_TYPE         typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
+#define TYPEDEF_GRID_TYPE         typedef idg::float2 GridType[nr_polarizations][gridsize][gridsize];
 #define TYPEDEF_COORDINATE        typedef struct { int x, y; } Coordinate;
 #define TYPEDEF_METADATA          typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
 #define TYPEDEF_METADATA_TYPE     typedef Metadata MetadataType[nr_subgrids];
@@ -156,7 +160,8 @@ void init_visibilities(void *ptr, int nr_baselines, int nr_time,
 	VisibilitiesType *visibilities = (VisibilitiesType *) (ptr);
 
 	// Fixed visibility
-    std::complex<float> visibility(1, 0);
+    // std::complex<float> visibility(1, 0);
+    idg::float2 visibility = {1.0f, 0.0f};
 
 	// Set all visibilities
 	for (int bl = 0; bl < nr_baselines; bl++) {
@@ -195,8 +200,9 @@ void add_pt_src(
                 float v = (*wavenumbers)[c] * (*uvw)[b][t].v / (2 * M_PI);
                 std::complex<float> value = amplitude *
                     std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
+                idg::float2 tmp = {value.real(), value.imag()};
                 for (int p = 0; p < nr_polarizations; p++) {
-                    (*visibilities)[b][t][c][p] += value;
+                    (*visibilities)[b][t][c][p] += tmp;
                 }
             }
         }
@@ -224,7 +230,8 @@ void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
 	TYPEDEF_ATERM_TYPE
     ATermType *aterm = (ATermType *) ptr;
 
-    std::complex<float> value(1, 1);
+    // std::complex<float> value(1, 1);
+    idg::float2 value = {1, 1};
 
 	for (int ant = 0; ant < nr_stations; ant++) {
         for (int t = 0; t < nr_timeslots; t++) {
