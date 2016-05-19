@@ -91,7 +91,7 @@ void kernel_gridder_(
                     // Compute phase offset
                     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
-                    for (int chan = 0; chan < nr_channels; chan++) {
+                    for (int chan = 0; chan < current_nr_channels; chan++) {
                         // Compute phase
                         float wavenumber = wavenumbers[chan];
                         phase[time][chan]  = (phase_index * wavenumber) - phase_offset;
@@ -127,9 +127,7 @@ void kernel_gridder_(
                                                   pixels_xy_real,pixels_xy_imag,  \
                                                   pixels_yx_real,pixels_yx_imag,  \
                                                   pixels_yy_real,pixels_yy_imag)
-                     for (int chan = 0; chan < nr_channels; chan++) {
-
-                          // Update pixels
+                     for (int chan = 0; chan < current_nr_channels; chan++) {
                           pixels_xx_real +=  vis_real[time][0][chan] * phasor_real[time][chan];
                           pixels_xx_imag +=  vis_real[time][0][chan] * phasor_imag[time][chan];
                           pixels_xx_real += -vis_imag[time][0][chan] * phasor_imag[time][chan];
