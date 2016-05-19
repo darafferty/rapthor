@@ -52,16 +52,16 @@ extern "C" {
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         // Load aterm for station1
-                        idg::float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-                        idg::float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-                        idg::float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-                        idg::float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+                        idg::float2 aXX1 = conj(aterm[aterm_index][station1][y][x][0]);
+                        idg::float2 aXY1 = conj(aterm[aterm_index][station1][y][x][1]);
+                        idg::float2 aYX1 = conj(aterm[aterm_index][station1][y][x][2]);
+                        idg::float2 aYY1 = conj(aterm[aterm_index][station1][y][x][3]);
 
                         // Load aterm for station2
-                        idg::float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-                        idg::float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-                        idg::float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-                        idg::float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+                        idg::float2 aXX2 = aterm[aterm_index][station2][y][x][0];
+                        idg::float2 aXY2 = aterm[aterm_index][station2][y][x][1];
+                        idg::float2 aYX2 = aterm[aterm_index][station2][y][x][2];
+                        idg::float2 aYY2 = aterm[aterm_index][station2][y][x][3];
 
                         // Load spheroidal
                         float _spheroidal = spheroidal[y][x];
@@ -76,27 +76,32 @@ extern "C" {
                         idg::float2 pixelsYX = _spheroidal * subgrid[s][2][y_src][x_src];
                         idg::float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
 
-                        // Apply aterm to subgrid
+                        // Apply aterm to subgrid: P*A1^H
+                        // [ pixels[0], pixels[1];    [ conj(aXX1), conj(aYX1);
+                        //   pixels[2], pixels[3] ] *   conj(aXY1), conj(aYY1) ]
                         pixels[y][x][0]  = pixelsXX * aXX1;
-                        pixels[y][x][0] += pixelsXY * aYX1;
-                        pixels[y][x][1]  = pixelsXX * aXY1;
+                        pixels[y][x][0] += pixelsXY * aXY1;
+                        pixels[y][x][1]  = pixelsXX * aYX1;
                         pixels[y][x][1] += pixelsXY * aYY1;
                         pixels[y][x][2]  = pixelsYX * aXX1;
-                        pixels[y][x][2] += pixelsYY * aYX1;
-                        pixels[y][x][3]  = pixelsYX * aXY1;
+                        pixels[y][x][2] += pixelsYY * aXY1;
+                        pixels[y][x][3]  = pixelsYX * aYX1;
                         pixels[y][x][3] += pixelsYY * aYY1;
 
+                        // Apply aterm to subgrid: A2*P
+                        // [ aXX2, aXY1;      [ pixels[0], pixels[1];
+                        //   aYX1, aYY2 ]  *    pixels[2], pixels[3] ]
                         pixelsXX = pixels[y][x][0];
                         pixelsXY = pixels[y][x][1];
                         pixelsYX = pixels[y][x][2];
                         pixelsYY = pixels[y][x][3];
                         pixels[y][x][0]  = pixelsXX * aXX2;
-                        pixels[y][x][0] += pixelsYX * aYX2;
+                        pixels[y][x][0] += pixelsYX * aXY2;
                         pixels[y][x][1]  = pixelsXY * aXX2;
-                        pixels[y][x][1] += pixelsYY * aYX2;
-                        pixels[y][x][2]  = pixelsXX * aXY2;
+                        pixels[y][x][1] += pixelsYY * aXY2;
+                        pixels[y][x][2]  = pixelsXX * aYX2;
                         pixels[y][x][2] += pixelsYX * aYY2;
-                        pixels[y][x][3]  = pixelsXY * aXY2;
+                        pixels[y][x][3]  = pixelsXY * aYX2;
                         pixels[y][x][3] += pixelsYY * aYY2;
                     } // end x
                 } // end y
