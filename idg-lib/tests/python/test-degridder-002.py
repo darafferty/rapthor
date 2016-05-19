@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # initialize proxy
     ##################
     p_cpu = idg.CPU.HaswellEP(nr_stations, nr_channels, nr_time, nr_timeslots, image_size, grid_size, subgrid_size)
-    p_gpu = idg.CUDA.Maxwell(nr_stations, nr_channels, nr_time, nr_timeslots, image_size, grid_size, subgrid_size)
+    #p_gpu = idg.CUDA.Maxwell(nr_stations, nr_channels, nr_time, nr_timeslots, image_size, grid_size, subgrid_size)
     #p_gpu = idg.HybridCUDA.Maxwell(nr_stations, nr_channels, nr_time, nr_timeslots, image_size, grid_size, subgrid_size)
     #p_gpu = idg.OpenCL.Reference(nr_stations, nr_channels, nr_time, nr_timeslots, image_size, grid_size, subgrid_size)
     #p_gpu = idg.HybridOpenCL.Reference(nr_stations, nr_channels, nr_time, nr_timeslots, image_size, grid_size, subgrid_size)
@@ -112,14 +112,11 @@ if __name__ == "__main__":
                        dtype = idg.gridtype)
 
     # aterms
-    aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
-                          subgrid_size, subgrid_size), \
+    aterms = numpy.zeros((nr_timeslots, nr_stations,
+                          subgrid_size, subgrid_size,
+                          nr_polarizations),
                          dtype = idg.atermtype)
-    # idg.utils.init_aterms(aterms)
-    # TODO: update C++ init_aterms
-    # Set aterm to identity instead
-    aterms[:,:,0,:,:] = 1.0
-    aterms[:,:,3,:,:] = 1.0
+    idg.utils.init_aterms(aterms)
 
     # aterm offset
     aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)
@@ -157,14 +154,12 @@ if __name__ == "__main__":
     ############
     # degridding
     ############
-    p_gpu.transform(idg.ImageDomainToFourierDomain, grid)
+    p_cpu.transform(idg.ImageDomainToFourierDomain, grid)
 
-    p_gpu.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
+    p_cpu.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    #idg.utils.plot_visibilities(visibilities, form='real')
-    #idg.utils.plot_visibilities(visibilities, form='imag')
-    idg.utils.plot_visibilities(visibilities, form='abs')
-    idg.utils.plot_visibilities(visibilities, form='angle')
+    idg.utils.plot_visibilities(visibilities, form='abs', maxtime=100)
+    idg.utils.plot_visibilities(visibilities, form='angle', maxtime=100)
 
     # reset grid
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
@@ -173,10 +168,10 @@ if __name__ == "__main__":
     ##########
     # gridding
     ##########
-    p_gpu.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
+    p_cpu.grid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                         w_offset, kernel_size, aterms, aterms_offset, spheroidal)
 
-    p_gpu.transform(idg.FourierDomainToImageDomain, grid)
+    p_cpu.transform(idg.FourierDomainToImageDomain, grid)
 
     # plot result (should look like the point spread function)
     idg.utils.plot_grid(grid)

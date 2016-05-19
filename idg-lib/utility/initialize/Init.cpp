@@ -2,18 +2,14 @@
 
 #define TYPEDEF_UVW               typedef struct { float u, v, w; } UVW;
 #define TYPEDEF_UVW_TYPE          typedef UVW UVWType[nr_baselines][nr_time];
-//#define TYPEDEF_VISIBILITIES_TYPE typedef std::complex<float> VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_VISIBILITIES_TYPE typedef idg::float2 VisibilitiesType[nr_baselines][nr_time][nr_channels][nr_polarizations];
 #define TYPEDEF_WAVENUMBER_TYPE   typedef float WavenumberType[nr_channels];
-//#define TYPEDEF_ATERM_TYPE        typedef std::complex<float> ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
-#define TYPEDEF_ATERM_TYPE        typedef idg::float2 ATermType[nr_stations][nr_timeslots][nr_polarizations][subgridsize][subgridsize];
+#define TYPEDEF_ATERM_TYPE        typedef idg::float2 ATermType[nr_timeslots][nr_stations][subgridsize][subgridsize][nr_polarizations];
 #define TYPEDEF_ATERM_OFFSET_TYPE typedef int ATermOffsetType[nr_timeslots + 1];
 #define TYPEDEF_SPHEROIDAL_TYPE   typedef float SpheroidalType[subgridsize][subgridsize];
 #define TYPEDEF_BASELINE          typedef struct { int station1, station2; } Baseline;
 #define TYPEDEF_BASELINE_TYPE     typedef Baseline BaselineType[nr_baselines];
-//#define TYPEDEF_SUBGRID_TYPE      typedef std::complex<float> SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
 #define TYPEDEF_SUBGRID_TYPE      typedef idg::float2 SubGridType[nr_baselines][nr_chunks][subgridsize][subgridsize][nr_polarizations];
-//#define TYPEDEF_GRID_TYPE         typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
 #define TYPEDEF_GRID_TYPE         typedef idg::float2 GridType[nr_polarizations][gridsize][gridsize];
 #define TYPEDEF_COORDINATE        typedef struct { int x, y; } Coordinate;
 #define TYPEDEF_METADATA          typedef struct { int time_nr; Baseline baseline; Coordinate coordinate; } Metadata;
@@ -21,10 +17,18 @@
 
 
 namespace idg {
+
     const std::string ENV_LAYOUT_FILE  = "LAYOUT_FILE";
 
-/* Methods where pointed to allocated memory is provided */
-    void init_uvw(void *ptr, int nr_stations, int nr_baselines, int nr_time, int integration_time) {
+    /* Methods where pointed to allocated memory is provided */
+
+    void init_uvw(
+        void *ptr,
+        int nr_stations,
+        int nr_baselines,
+        int nr_time,
+        int integration_time)
+    {
         TYPEDEF_UVW
         TYPEDEF_UVW_TYPE
 
@@ -153,222 +157,299 @@ namespace idg {
     }
 
 
+    void init_visibilities(
+        void *ptr,
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations)
+    {
+        TYPEDEF_VISIBILITIES_TYPE
+        VisibilitiesType *visibilities = (VisibilitiesType *) (ptr);
 
-void init_visibilities(void *ptr, int nr_baselines, int nr_time,
-                       int nr_channels, int nr_polarizations) {
-    TYPEDEF_VISIBILITIES_TYPE
-	VisibilitiesType *visibilities = (VisibilitiesType *) (ptr);
+        // Fixed visibility
+        // std::complex<float> visibility(1, 0);
+        idg::float2 visibility = {1.0f, 0.0f};
 
-	// Fixed visibility
-    // std::complex<float> visibility(1, 0);
-    idg::float2 visibility = {1.0f, 0.0f};
-
-	// Set all visibilities
-	for (int bl = 0; bl < nr_baselines; bl++) {
-		for (int time = 0; time < nr_time; time++) {
-			for (int chan = 0; chan < nr_channels; chan++) {
-				for (int pol = 0; pol < nr_polarizations; pol++) {
-					(*visibilities)[bl][time][chan][pol] = visibility;
-				}
-			}
-		}
-	}
-}
-
-void add_pt_src(
-    float x, float y, float amplitude,
-    int nr_baselines, int nr_time, int nr_channels, int nr_polarizations,
-    float imagesize, float gridsize,
-    void *uvw_, void *wavenumbers_, void *visibilities_) {
-    TYPEDEF_UVW
-    TYPEDEF_UVW_TYPE
-	TYPEDEF_WAVENUMBER_TYPE
-    TYPEDEF_VISIBILITIES_TYPE
-
-    UVWType *uvw = (UVWType *) uvw_;
-    WavenumberType *wavenumbers = (WavenumberType *) wavenumbers_;
-	VisibilitiesType *visibilities = (VisibilitiesType *) visibilities_;
-
-    float l = x*imagesize/gridsize;
-    float m = y*imagesize/gridsize;
-
-    #pragma omp parallel for
-    for (int b = 0; b < nr_baselines; b++) {
-        for (int t = 0; t < nr_time; t++) {
-            for (int c = 0; c < nr_channels; c++) {
-                float u = (*wavenumbers)[c] * (*uvw)[b][t].u / (2 * M_PI);
-                float v = (*wavenumbers)[c] * (*uvw)[b][t].v / (2 * M_PI);
-                std::complex<float> value = amplitude *
-                    std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
-                idg::float2 tmp = {value.real(), value.imag()};
-                for (int p = 0; p < nr_polarizations; p++) {
-                    (*visibilities)[b][t][c][p] += tmp;
+        // Set all visibilities
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            for (int time = 0; time < nr_time; time++) {
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    for (int pol = 0; pol < nr_polarizations; pol++) {
+                        (*visibilities)[bl][time][chan][pol] = visibility;
+                    }
                 }
             }
         }
     }
-}
 
-void init_wavenumbers(void *ptr, int nr_channels) {
-	TYPEDEF_WAVENUMBER_TYPE
-    WavenumberType *wavenumbers = (WavenumberType *) ptr;
 
-	// Initialize frequencies
-	float frequencies[nr_channels];
-	for (int chan = 0; chan < nr_channels; chan++) {
-		frequencies[chan] = START_FREQUENCY + FREQUENCY_INCREMENT * chan;
-	}
+    void add_pt_src(
+        float x,
+        float y,
+        float amplitude,
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations,
+        float imagesize,
+        float gridsize,
+        void *uvw_,
+        void *wavenumbers_,
+        void *visibilities_)
+    {
+        TYPEDEF_UVW
+        TYPEDEF_UVW_TYPE
+        TYPEDEF_WAVENUMBER_TYPE
+        TYPEDEF_VISIBILITIES_TYPE
 
-	// Initialize wavenumbers
-	for (int i = 0; i < nr_channels; i++) {
-		(*wavenumbers)[i] =  2 * M_PI * frequencies[i] / SPEED_OF_LIGHT;
-	}
-}
+        UVWType *uvw = (UVWType *) uvw_;
+        WavenumberType *wavenumbers = (WavenumberType *) wavenumbers_;
+        VisibilitiesType *visibilities = (VisibilitiesType *) visibilities_;
 
-void init_aterm(void *ptr, int nr_stations, int nr_timeslots,
-                int nr_polarizations, int subgridsize) {
-	TYPEDEF_ATERM_TYPE
-    ATermType *aterm = (ATermType *) ptr;
+        float l = x*imagesize/gridsize;
+        float m = y*imagesize/gridsize;
 
-    // std::complex<float> value(1, 1);
-    idg::float2 value = {1, 1};
-
-	for (int ant = 0; ant < nr_stations; ant++) {
-        for (int t = 0; t < nr_timeslots; t++) {
-		    for (int y = 0; y < subgridsize; y++) {
-		    	for (int x = 0; x < subgridsize; x++) {
-		    		for (int pol = 0; pol < nr_polarizations; pol++) {
-		    			(*aterm)[ant][t][pol][y][x] = value;
-		    		}
-		    	}
-		    }
+        #pragma omp parallel for
+        for (int b = 0; b < nr_baselines; b++) {
+            for (int t = 0; t < nr_time; t++) {
+                for (int c = 0; c < nr_channels; c++) {
+                    float u = (*wavenumbers)[c] * (*uvw)[b][t].u / (2 * M_PI);
+                    float v = (*wavenumbers)[c] * (*uvw)[b][t].v / (2 * M_PI);
+                    std::complex<float> value = amplitude *
+                        std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
+                    idg::float2 tmp = {value.real(), value.imag()};
+                    for (int p = 0; p < nr_polarizations; p++) {
+                        (*visibilities)[b][t][c][p] += tmp;
+                    }
+                }
+            }
         }
-	}
-}
-
-void init_aterm_offsets(void *ptr, int nr_timeslots, int nr_time) {
-    TYPEDEF_ATERM_OFFSET_TYPE
-    ATermOffsetType *aterm_offsets = (ATermOffsetType *) ptr;
-    for (int time = 0; time < nr_timeslots; time++) {
-        (*aterm_offsets)[time] = time * (nr_time / nr_timeslots);
     }
-    (*aterm_offsets)[nr_timeslots] = nr_time;
-}
-
-void init_spheroidal(void *ptr, int subgridsize) {
-    TYPEDEF_SPHEROIDAL_TYPE
-    SpheroidalType *spheroidal = (SpheroidalType *) ptr;
-
-	float value = 1.0;
-
-	for (int y = 0; y < subgridsize; y++) {
-		for (int x = 0; x < subgridsize; x++) {
-			(*spheroidal)[y][x] = value;
-		}
-	}
-}
-
-void init_baselines(void *ptr, int nr_stations, int nr_baselines) {
-    TYPEDEF_BASELINE
-    TYPEDEF_BASELINE_TYPE
-	BaselineType *baselines = (BaselineType *) ptr;
-
-	int bl = 0;
-
-	for (int station1 = 1 ; station1 < nr_stations; station1++) {
-		for (int station2 = 0; station2 < station1; station2++) {
-			if (bl >= nr_baselines) {
-				break;
-			}
-			(*baselines)[bl].station1 = station1;
-			(*baselines)[bl].station2 = station2;
-			bl++;
-		}
-	}
-}
-
-void init_subgrid(void *ptr, int nr_baselines, int subgridsize, int nr_polarizations, int nr_chunks) {
-	TYPEDEF_SUBGRID_TYPE
-    SubGridType *subgrid = (SubGridType *) ptr;
-	memset(subgrid, 0, sizeof(SubGridType));
-}
-
-void init_grid(void *ptr, int gridsize, int nr_polarizations) {
-    TYPEDEF_GRID_TYPE
-    GridType *grid = (GridType *) ptr;
-	memset(grid, 0, sizeof(GridType));
-}
 
 
-/*
-    Methods where memory is allocated
-*/
-void* init_uvw(int nr_stations, int nr_baselines, int nr_time) {
-    TYPEDEF_UVW
-    TYPEDEF_UVW_TYPE
-    void *ptr = malloc(sizeof(UVWType));
-    init_uvw(ptr, nr_stations, nr_baselines, nr_time);
-    return ptr;
-}
+    void init_wavenumbers(
+        void *ptr,
+        int nr_channels)
+    {
+        TYPEDEF_WAVENUMBER_TYPE
+        WavenumberType *wavenumbers = (WavenumberType *) ptr;
 
-void* init_visibilities(int nr_baselines, int nr_time, int nr_channels, int nr_polarizations) {
-    TYPEDEF_VISIBILITIES_TYPE
-    void *ptr = malloc(sizeof(VisibilitiesType));
-    init_visibilities(ptr, nr_baselines, nr_time, nr_channels, nr_polarizations);
-    return ptr;
-}
+        // Initialize frequencies
+        float frequencies[nr_channels];
+        for (int chan = 0; chan < nr_channels; chan++) {
+            frequencies[chan] = START_FREQUENCY + FREQUENCY_INCREMENT * chan;
+        }
 
-void* init_wavenumbers(int nr_channels) {
-    TYPEDEF_WAVENUMBER_TYPE
-    void *ptr = malloc(sizeof(WavenumberType));
-    init_wavenumbers(ptr, nr_channels);
-    return ptr;
-}
+        // Initialize wavenumbers
+        for (int i = 0; i < nr_channels; i++) {
+            (*wavenumbers)[i] =  2 * M_PI * frequencies[i] / SPEED_OF_LIGHT;
+        }
+    }
 
-void* init_aterm(int nr_stations, int nr_timeslots, int nr_polarizations,
-                 int subgridsize) {
-    TYPEDEF_ATERM_TYPE
-    void *ptr = malloc(sizeof(ATermType));
-    init_aterm(ptr, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
-    return ptr;
-}
 
-void* init_aterm_offsets(int nr_timeslots, int nr_time) {
-    TYPEDEF_ATERM_OFFSET_TYPE
-    void *ptr = malloc(sizeof(ATermOffsetType));
-    init_aterm_offsets(ptr, nr_timeslots, nr_time);
-    return ptr;
-}
+    void init_aterm(
+        void *ptr,
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_ATERM_TYPE
+        ATermType *aterm = (ATermType *) ptr;
 
-void* init_spheroidal(int subgridsize) {
-    TYPEDEF_SPHEROIDAL_TYPE
-    void *ptr = malloc(sizeof(SpheroidalType));
-    init_spheroidal(ptr, subgridsize);
-    return ptr;
-}
+        for (int t = 0; t < nr_timeslots; t++) {
+            for (int ant = 0; ant < nr_stations; ant++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
+                        (*aterm)[t][ant][y][x][0] = {1, 0};
+                        (*aterm)[t][ant][y][x][1] = {0, 0};
+                        (*aterm)[t][ant][y][x][2] = {0, 0};
+                        (*aterm)[t][ant][y][x][3] = {1, 0};
+                    }
+                }
+            }
+        }
+    }
 
-void* init_baselines(int nr_stations, int nr_baselines) {
-    TYPEDEF_BASELINE
-    TYPEDEF_BASELINE_TYPE
-    void *ptr = malloc(sizeof(BaselineType));
-    init_baselines(ptr, nr_stations, nr_baselines);
-    return ptr;
 
-}
+    void init_aterm_offsets(
+        void *ptr,
+        int nr_timeslots,
+        int nr_time)
+    {
+        TYPEDEF_ATERM_OFFSET_TYPE
+        ATermOffsetType *aterm_offsets = (ATermOffsetType *) ptr;
+        for (int time = 0; time < nr_timeslots; time++) {
+             (*aterm_offsets)[time] = time * (nr_time / nr_timeslots);
+        }
+        (*aterm_offsets)[nr_timeslots] = nr_time;
+    }
 
-void* init_subgrid(int nr_baselines, int subgridsize, int nr_polarizations, int nr_chunks) {
-    TYPEDEF_SUBGRID_TYPE
-    void *ptr = malloc(sizeof(SubGridType));
-    init_subgrid(ptr, nr_baselines, subgridsize, nr_polarizations, nr_chunks);
-    return ptr;
-}
 
-void* init_grid(int gridsize, int nr_polarizations) {
-    TYPEDEF_GRID_TYPE
-    void *ptr = malloc(sizeof(GridType));
-    init_grid(ptr, gridsize, nr_polarizations);
-    return ptr;
-}
+    void init_spheroidal(void *ptr, int subgridsize) {
+        TYPEDEF_SPHEROIDAL_TYPE
+        SpheroidalType *spheroidal = (SpheroidalType *) ptr;
+
+        float value = 1.0;
+
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                 (*spheroidal)[y][x] = value;
+            }
+        }
+    }
+
+
+    void init_baselines(
+        void *ptr,
+        int nr_stations,
+        int nr_baselines)
+    {
+        TYPEDEF_BASELINE
+        TYPEDEF_BASELINE_TYPE
+        BaselineType *baselines = (BaselineType *) ptr;
+
+        int bl = 0;
+
+        for (int station1 = 0 ; station1 < nr_stations; station1++) {
+            for (int station2 = station1 + 1; station2 < nr_stations; station2++) {
+                if (bl >= nr_baselines) {
+                    break;
+                }
+                (*baselines)[bl].station1 = station1;
+                (*baselines)[bl].station2 = station2;
+                bl++;
+            }
+        }
+    }
+
+
+    void init_subgrid(
+        void *ptr,
+        int nr_baselines,
+        int subgridsize,
+        int nr_polarizations,
+        int nr_chunks)
+    {
+        TYPEDEF_SUBGRID_TYPE
+        SubGridType *subgrid = (SubGridType *) ptr;
+        memset(subgrid, 0, sizeof(SubGridType));
+    }
+
+
+    void init_grid(
+        void *ptr,
+        int gridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_GRID_TYPE
+        GridType *grid = (GridType *) ptr;
+        memset(grid, 0, sizeof(GridType));
+    }
+
+
+    /*
+        Methods where memory is allocated
+    */
+
+    void* init_uvw(
+        int nr_stations,
+        int nr_baselines,
+        int nr_time)
+    {
+        TYPEDEF_UVW
+        TYPEDEF_UVW_TYPE
+        void *ptr = malloc(sizeof(UVWType));
+        init_uvw(ptr, nr_stations, nr_baselines, nr_time);
+        return ptr;
+    }
+
+
+    void* init_visibilities(
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations)
+    {
+        TYPEDEF_VISIBILITIES_TYPE
+        void *ptr = malloc(sizeof(VisibilitiesType));
+        init_visibilities(ptr, nr_baselines, nr_time, nr_channels, nr_polarizations);
+        return ptr;
+    }
+
+
+    void* init_wavenumbers(int nr_channels)
+    {
+        TYPEDEF_WAVENUMBER_TYPE
+        void *ptr = malloc(sizeof(WavenumberType));
+        init_wavenumbers(ptr, nr_channels);
+        return ptr;
+    }
+
+
+    void* init_aterm(
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_ATERM_TYPE
+        void *ptr = malloc(sizeof(ATermType));
+        init_aterm(ptr, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
+        return ptr;
+    }
+
+
+    void* init_aterm_offsets(int nr_timeslots, int nr_time)
+    {
+        TYPEDEF_ATERM_OFFSET_TYPE
+        void *ptr = malloc(sizeof(ATermOffsetType));
+        init_aterm_offsets(ptr, nr_timeslots, nr_time);
+        return ptr;
+    }
+
+
+    void* init_spheroidal(int subgridsize)
+    {
+        TYPEDEF_SPHEROIDAL_TYPE
+        void *ptr = malloc(sizeof(SpheroidalType));
+        init_spheroidal(ptr, subgridsize);
+        return ptr;
+    }
+
+
+    void* init_baselines(int nr_stations, int nr_baselines)
+    {
+        TYPEDEF_BASELINE
+        TYPEDEF_BASELINE_TYPE
+        void *ptr = malloc(sizeof(BaselineType));
+        init_baselines(ptr, nr_stations, nr_baselines);
+        return ptr;
+
+    }
+
+
+    void* init_subgrid(
+        int nr_baselines,
+        int subgridsize,
+        int nr_polarizations,
+        int nr_chunks)
+    {
+        TYPEDEF_SUBGRID_TYPE
+        void *ptr = malloc(sizeof(SubGridType));
+        init_subgrid(ptr, nr_baselines, subgridsize, nr_polarizations, nr_chunks);
+        return ptr;
+    }
+
+
+    void* init_grid(int gridsize, int nr_polarizations)
+    {
+        TYPEDEF_GRID_TYPE
+        void *ptr = malloc(sizeof(GridType));
+        init_grid(ptr, gridsize, nr_polarizations);
+        return ptr;
+    }
 
 } // namespace idg
 

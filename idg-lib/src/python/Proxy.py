@@ -36,8 +36,8 @@ class Proxy(object):
         :param baselines: numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
         :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                      dtype = idg.gridtype)
-        :param aterms: numpy.ndarray(shape=(nr_stations, nr_timeslots,
-                       nr_polarizations, subgrid_size, subgrid_size),
+        :param aterms: numpy.ndarray(shape=(nr_timeslots, nr_stations,
+                       subgrid_size, subgrid_size, nr_polarizations),
                        dtype = idg.atermtype)
         :param aterms_offset: numpy.ndarray(shape=(nr_timeslots+1),
                               dtype = idg.atermoffsettype)
@@ -61,11 +61,11 @@ class Proxy(object):
                           self.get_grid_size(),
                           self.get_grid_size()):
             raise ValueError('Grid dimension missmatch.')
-        if aterms.shape != (self.get_nr_stations(),
-                            self.get_nr_timeslots(),
-                            self.get_nr_polarizations(),
+        if aterms.shape != (self.get_nr_timeslots(),
+                            self.get_nr_stations(),
                             self.get_subgrid_size(),
-                            self.get_subgrid_size()):
+                            self.get_subgrid_size(),
+                            self.get_nr_polarizations()):
             raise ValueError('Aterms dimension missmatch.')
         if aterms_offset.shape != (self.get_nr_timeslots() + 1, ):
             raise ValueError('Aterms_offset dimension missmatch.')
@@ -102,8 +102,8 @@ class Proxy(object):
         :param baselines: numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
         :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                      dtype = idg.gridtype)
-        :param aterms: numpy.ndarray(shape=(nr_stations, nr_timeslots,
-                       nr_polarizations, subgrid_size, subgrid_size),
+        :param aterms: numpy.ndarray(shape=(nr_timeslots, nr_stations,
+                       subgrid_size, subgrid_size, nr_polarizations),
                        dtype = idg.atermtype)
         :param aterms_offset: numpy.ndarray(shape=(nr_timeslots+1),
                               dtype = idg.atermoffsettype)
@@ -127,11 +127,11 @@ class Proxy(object):
                           self.get_grid_size(),
                           self.get_grid_size()):
             raise ValueError('Grid dimension missmatch.')
-        if aterms.shape != (self.get_nr_stations(),
-                            self.get_nr_timeslots(),
-                            self.get_nr_polarizations(),
+        if aterms.shape != (self.get_nr_timeslots(),
+                            self.get_nr_stations(),
                             self.get_subgrid_size(),
-                            self.get_subgrid_size()):
+                            self.get_subgrid_size(),
+                            self.get_nr_polarizations()):
             raise ValueError('Aterms dimension missmatch.')
         if aterms_offset.shape != (self.get_nr_timeslots() + 1, ):
             raise ValueError('Aterms_offset dimension missmatch.')
