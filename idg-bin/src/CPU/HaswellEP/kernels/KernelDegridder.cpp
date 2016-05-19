@@ -178,6 +178,7 @@ void kernel_degridder_(
                 float sums_yx_imag = 0.0f;
                 float sums_yy_imag = 0.0f;
 
+                // Accumulate visibility value from all pixels
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                      #pragma omp simd reduction(+:sums_xx_real,sums_xx_imag,\
                                                   sums_xy_real,sums_xy_imag,\
