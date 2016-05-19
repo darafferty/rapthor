@@ -20,7 +20,7 @@ void kernel_gridder_(
     const int channel_offset,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
-    const idg::float2   visibilities[NR_TIME][NR_CHANNELS][NR_POLARIZATIONS],
+    const idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::Metadata metadata[],
@@ -56,9 +56,10 @@ void kernel_gridder_(
 
         for (int time = 0; time < nr_timesteps; time++) {
             for (int chan = 0; chan < current_nr_channels; chan++) {
+                size_t index = (offset + time)*nr_channels + (channel_offset + chan);
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    vis_real[time][pol][chan] = visibilities[offset + time][chan + channel_offset][pol].real;
-                    vis_imag[time][pol][chan] = visibilities[offset + time][chan + channel_offset][pol].imag;
+                    vis_real[time][pol][chan] = visibilities[index][pol].real;
+                    vis_imag[time][pol][chan] = visibilities[index][pol].imag;
                 }
             }
         }
@@ -66,15 +67,36 @@ void kernel_gridder_(
         // Iterate all pixels in subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
             for (int x = 0; x < SUBGRIDSIZE; x++) {
+
                 // Compute phase
                 float phase[nr_timesteps][current_nr_channels] __attribute__((aligned(32)));
-                compute_phase(
-                    nr_timesteps, current_nr_channels,
-                    x, y,
-                    u_offset, v_offset, w_offset,
-                    (float (*)[3]) &uvw[offset],
-                    (float *) &wavenumbers[channel_offset],
-                    phase);
+
+                // Compute l,m,n
+                const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
+                // accurately for small values of l and m
+                const float tmp = (l * l) + (m * m);
+                const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+
+                for (int time = 0; time < nr_timesteps; time++) {
+                    // Load UVW coordinates
+                    float u = uvw[offset + time].u;
+                    float v = uvw[offset + time].v;
+                    float w = uvw[offset + time].w;
+
+                    // Compute phase index
+                    float phase_index = u*l + v*m + w*n;
+
+                    // Compute phase offset
+                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+
+                    for (int chan = 0; chan < nr_channels; chan++) {
+                        // Compute phase
+                        float wavenumber = wavenumbers[chan];
+                        phase[time][chan]  = (phase_index * wavenumber) - phase_offset;
+                    }
+                } // end time
 
                 // Compute phasor
                 float phasor_real[nr_timesteps][current_nr_channels] __attribute__((aligned(32)));
@@ -87,11 +109,56 @@ void kernel_gridder_(
 
                 // Multiply visibilities with phasor and reduce for all timesteps and channels
                 idg::float2 pixels[NR_POLARIZATIONS];
-                cmul_reduce_gridder(
-                    nr_timesteps, current_nr_channels,
-                    vis_real, vis_imag,
-                    phasor_real, phasor_imag,
-                    pixels);
+
+                // Initialize pixel for every polarization
+                float pixels_xx_real = 0.0f;
+                float pixels_xy_real = 0.0f;
+                float pixels_yx_real = 0.0f;
+                float pixels_yy_real = 0.0f;
+                float pixels_xx_imag = 0.0f;
+                float pixels_xy_imag = 0.0f;
+                float pixels_yx_imag = 0.0f;
+                float pixels_yy_imag = 0.0f;
+
+                // Update pixel for every timestep
+                for (int time = 0; time < nr_timesteps; time++) {
+                     // Update pixel for every channel
+                     #pragma omp simd reduction(+:pixels_xx_real,pixels_xx_imag,  \
+                                                  pixels_xy_real,pixels_xy_imag,  \
+                                                  pixels_yx_real,pixels_yx_imag,  \
+                                                  pixels_yy_real,pixels_yy_imag)
+                     for (int chan = 0; chan < nr_channels; chan++) {
+
+                          // Update pixels
+                          pixels_xx_real +=  vis_real[time][0][chan] * phasor_real[time][chan];
+                          pixels_xx_imag +=  vis_real[time][0][chan] * phasor_imag[time][chan];
+                          pixels_xx_real += -vis_imag[time][0][chan] * phasor_imag[time][chan];
+                          pixels_xx_imag +=  vis_imag[time][0][chan] * phasor_real[time][chan];
+
+                          pixels_xy_real +=  vis_real[time][1][chan] * phasor_real[time][chan];
+                          pixels_xy_imag +=  vis_real[time][1][chan] * phasor_imag[time][chan];
+                          pixels_xy_real += -vis_imag[time][1][chan] * phasor_imag[time][chan];
+                          pixels_xy_imag +=  vis_imag[time][1][chan] * phasor_real[time][chan];
+
+                          // #pragma distribute_point
+
+                          pixels_yx_real +=  vis_real[time][2][chan] * phasor_real[time][chan];
+                          pixels_yx_imag +=  vis_real[time][2][chan] * phasor_imag[time][chan];
+                          pixels_yx_real += -vis_imag[time][2][chan] * phasor_imag[time][chan];
+                          pixels_yx_imag +=  vis_imag[time][2][chan] * phasor_real[time][chan];
+
+                          pixels_yy_real +=  vis_real[time][3][chan] * phasor_real[time][chan];
+                          pixels_yy_imag +=  vis_real[time][3][chan] * phasor_imag[time][chan];
+                          pixels_yy_real += -vis_imag[time][3][chan] * phasor_imag[time][chan];
+                          pixels_yy_imag +=  vis_imag[time][3][chan] * phasor_real[time][chan];
+                     }
+                 }
+
+                // Combine real and imaginary parts
+                pixels[0] = {pixels_xx_real, pixels_xx_imag};
+                pixels[1] = {pixels_xy_real, pixels_xy_imag};
+                pixels[2] = {pixels_yx_real, pixels_yx_imag};
+                pixels[3] = {pixels_yy_real, pixels_yy_imag};
 
                 // Load a term for station1
                 idg::float2 aXX1 = aterm[station1][aterm_index][0][y][x];
@@ -130,12 +197,12 @@ void kernel_gridder_(
 extern "C" {
 
 void kernel_gridder(
-    const int nr_subgrids,
-    const float w_offset,
-    const int nr_channels,
+    const int           nr_subgrids,
+    const float         w_offset,
+    const int           nr_channels,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
-    const idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
+    const idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::Metadata metadata[],

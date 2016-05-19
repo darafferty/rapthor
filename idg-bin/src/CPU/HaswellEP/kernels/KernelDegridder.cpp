@@ -20,7 +20,7 @@ void kernel_degridder_(
     const int channel_offset,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
-          idg::float2   visibilities[NR_TIME][NR_CHANNELS][NR_POLARIZATIONS],
+          idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::Metadata metadata[],
@@ -146,7 +146,9 @@ void kernel_degridder_(
                 float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
                 float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
 
+                #if defined(__INTEL_COMPILER)
                 #pragma nofusion
+                #endif
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         // Compute phase
@@ -165,17 +167,61 @@ void kernel_degridder_(
 
                 // Multiply phasor with pixels and reduce for all pixels
                 idg::float2 sums[NR_POLARIZATIONS];
-                cmul_reduce_degridder(
-                    phasor_real, phasor_imag,
-                    pixels_real, pixels_imag,
-                    sums);
+
+                // Initialize pixel for every polarization
+                float sums_xx_real = 0.0f;
+                float sums_xy_real = 0.0f;
+                float sums_yx_real = 0.0f;
+                float sums_yy_real = 0.0f;
+                float sums_xx_imag = 0.0f;
+                float sums_xy_imag = 0.0f;
+                float sums_yx_imag = 0.0f;
+                float sums_yy_imag = 0.0f;
+
+                for (int y = 0; y < SUBGRIDSIZE; y++) {
+                     #pragma omp simd reduction(+:sums_xx_real,sums_xx_imag,\
+                                                  sums_xy_real,sums_xy_imag,\
+                                                  sums_yx_real,sums_yx_imag,\
+                                                  sums_yy_real,sums_yy_imag)
+                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+
+                        sums_xx_real +=  phasor_real[y][x] * pixels_real[0][y][x];
+                        sums_xx_imag +=  phasor_real[y][x] * pixels_imag[0][y][x];
+                        sums_xx_real += -phasor_imag[y][x] * pixels_imag[0][y][x];
+                        sums_xx_imag +=  phasor_imag[y][x] * pixels_real[0][y][x];
+
+                        sums_xy_real +=  phasor_real[y][x] * pixels_real[1][y][x];
+                        sums_xy_imag +=  phasor_real[y][x] * pixels_imag[1][y][x];
+                        sums_xy_real += -phasor_imag[y][x] * pixels_imag[1][y][x];
+                        sums_xy_imag +=  phasor_imag[y][x] * pixels_real[1][y][x];
+
+                        // #pragma distribute_point
+
+                        sums_yx_real +=  phasor_real[y][x] * pixels_real[2][y][x];
+                        sums_yx_imag +=  phasor_real[y][x] * pixels_imag[2][y][x];
+                        sums_yx_real += -phasor_imag[y][x] * pixels_imag[2][y][x];
+                        sums_yx_imag +=  phasor_imag[y][x] * pixels_real[2][y][x];
+
+                        sums_yy_real +=  phasor_real[y][x] * pixels_real[3][y][x];
+                        sums_yy_imag +=  phasor_real[y][x] * pixels_imag[3][y][x];
+                        sums_yy_real += -phasor_imag[y][x] * pixels_imag[3][y][x];
+                        sums_yy_imag +=  phasor_imag[y][x] * pixels_real[3][y][x];
+                    }
+                }
+
+                // Combine real and imaginary parts
+                sums[0] = {sums_xx_real, sums_xx_imag};
+                sums[1] = {sums_xy_real, sums_xy_imag};
+                sums[2] = {sums_yx_real, sums_yx_imag};
+                sums[3] = {sums_yy_real, sums_yy_imag};
 
                 // Store visibilities
                 const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
-                visibilities[offset + time][channel_offset + chan][0] = {scale*sums[0].real, scale*sums[0].imag};
-                visibilities[offset + time][channel_offset + chan][1] = {scale*sums[1].real, scale*sums[1].imag};
-                visibilities[offset + time][channel_offset + chan][2] = {scale*sums[2].real, scale*sums[2].imag};
-                visibilities[offset + time][channel_offset + chan][3] = {scale*sums[3].real, scale*sums[3].imag};
+                size_t index = (offset + time)*nr_channels + (channel_offset + chan);
+                visibilities[index][0] = {scale*sums[0].real, scale*sums[0].imag};
+                visibilities[index][1] = {scale*sums[1].real, scale*sums[1].imag};
+                visibilities[index][2] = {scale*sums[2].real, scale*sums[2].imag};
+                visibilities[index][3] = {scale*sums[3].real, scale*sums[3].imag};
             } // end for channel
         } // end for time
     } // end #pragma parallel
@@ -188,7 +234,7 @@ void kernel_degridder(
     const int nr_channels,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
-          idg::float2   visibilities[NR_TIME][nr_channels][NR_POLARIZATIONS],
+          idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::Metadata metadata[],
