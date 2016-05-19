@@ -80,9 +80,9 @@ namespace idg {
                 if (debug == IDG_BUILD_TYPE)
                     return "-std=c++11 -Wall -g -DDEBUG -fopenmp -lfftw3f";
                 else if (relwithdebinfo == IDG_BUILD_TYPE)
-                    return " -std=c++11 -O3 -g -fopenmp -lfftw3f";
+                    return "-std=c++11 -O3 -g -fopenmp -lfftw3f";
                 else
-                    return "-std=c++11 -Wall -O3 -fopenmp-lfftw3f";
+                    return "-std=c++11 -Wall -O3 -fopenmp -lfftw3f";
                 #endif
             }
 
