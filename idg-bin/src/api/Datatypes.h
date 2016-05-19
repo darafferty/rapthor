@@ -100,16 +100,16 @@ namespace idg {
         }
 
         void init(const T& a) {
-                for (unsigned int y = 0; y < get_height(); ++y)
-                    for (unsigned int x = 0; x < get_width(); ++x)
-                        (*this)(y, x) = a;
+            for (unsigned int y = 0; y < get_height(); ++y)
+                for (unsigned int x = 0; x < get_width(); ++x)
+                    (*this)(y, x) = a;
         }
 
     private:
-        size_t m_width;
-        size_t m_height;
+        size_t     m_width;
+        size_t     m_height;
         const bool m_delete_buffer;
-        T* m_buffer;
+        T*         m_buffer;
     };
 
 
