@@ -138,7 +138,7 @@ def add_pt_src(
         vis.ctypes.data_as(ctypes.c_void_p))
 
 
-def plot_visibilities(visibilities, form='abs'):
+def plot_visibilities(visibilities, form='abs', maxtime=numpy.inf):
     """Plot Grid data
     Input:
     visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
@@ -146,29 +146,33 @@ def plot_visibilities(visibilities, form='abs'):
                                 dtype=idg.visibilitiestype)
     form - 'real', 'imag', 'abs', 'phase'
     """
+
+    if maxtime>visibilities.shape[1]:
+        maxtime=visibilities.shape[1]+1
+
     if (form=='real'):
-        visXX = numpy.real( visibilities[:,:,:,0].flatten() )
-        visXY = numpy.real( visibilities[:,:,:,1].flatten() )
-        visYX = numpy.real( visibilities[:,:,:,2].flatten() )
-        visYY = numpy.real( visibilities[:,:,:,3].flatten() )
+        visXX = numpy.real( visibilities[:,:maxtime,:,0].flatten() )
+        visXY = numpy.real( visibilities[:,:maxtime,:,1].flatten() )
+        visYX = numpy.real( visibilities[:,:maxtime,:,2].flatten() )
+        visYY = numpy.real( visibilities[:,:maxtime,:,3].flatten() )
         title = 'Real'
     elif (form=='imag'):
-        visXX = numpy.imag( visibilities[:,:,:,0].flatten() )
-        visXY = numpy.imag( visibilities[:,:,:,1].flatten() )
-        visYX = numpy.imag( visibilities[:,:,:,2].flatten() )
-        visYY = numpy.imag( visibilities[:,:,:,3].flatten() )
+        visXX = numpy.imag( visibilities[:,:maxtime,:,0].flatten() )
+        visXY = numpy.imag( visibilities[:,:maxtime,:,1].flatten() )
+        visYX = numpy.imag( visibilities[:,:maxtime,:,2].flatten() )
+        visYY = numpy.imag( visibilities[:,:maxtime,:,3].flatten() )
         title = 'Imag'
     elif (form=='angle'):
-        visXX = numpy.angle( visibilities[:,:,:,0].flatten() )
-        visXY = numpy.angle( visibilities[:,:,:,1].flatten() )
-        visYX = numpy.angle( visibilities[:,:,:,2].flatten() )
-        visYY = numpy.angle( visibilities[:,:,:,3].flatten() )
+        visXX = numpy.angle( visibilities[:,:maxtime,:,0].flatten() )
+        visXY = numpy.angle( visibilities[:,:maxtime,:,1].flatten() )
+        visYX = numpy.angle( visibilities[:,:maxtime,:,2].flatten() )
+        visYY = numpy.angle( visibilities[:,:maxtime,:,3].flatten() )
         title = 'Angle'
     else:
-        visXX = numpy.abs( visibilities[:,:,:,0].flatten() )
-        visXY = numpy.abs( visibilities[:,:,:,1].flatten() )
-        visYX = numpy.abs( visibilities[:,:,:,2].flatten() )
-        visYY = numpy.abs( visibilities[:,:,:,3].flatten() )
+        visXX = numpy.abs( visibilities[:,:maxtime,:,0].flatten() )
+        visXY = numpy.abs( visibilities[:,:maxtime,:,1].flatten() )
+        visYX = numpy.abs( visibilities[:,:maxtime,:,2].flatten() )
+        visYY = numpy.abs( visibilities[:,:maxtime,:,3].flatten() )
         title = 'Abs'
 
     fig, axarr = plt.subplots(2, 2, num=get_figure_name("visibilities"))
@@ -215,20 +219,20 @@ def plot_visibilities(visibilities, form='abs'):
 
 def init_aterms(aterms):
     """Initialize aterms for test case defined in utility/initialize"""
-    nr_stations = aterms.shape[0]
-    nr_timeslots = aterms.shape[1]
-    nr_polarizations = aterms.shape[2]
-    subgrid_size = aterms.shape[3]
+    nr_timeslots = aterms.shape[0]
+    nr_stations = aterms.shape[1]
+    subgrid_size = aterms.shape[2]
+    nr_polarizations = aterms.shape[4]
     lib.utils_init_aterms.argtypes = [ctypes.c_void_p,
                                       ctypes.c_int,
                                       ctypes.c_int,
                                       ctypes.c_int,
                                       ctypes.c_int]
     lib.utils_init_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
-                          ctypes.c_int(nr_stations),
                           ctypes.c_int(nr_timeslots),
-                          ctypes.c_int(nr_polarizations),
-                          ctypes.c_int(subgrid_size) )
+                          ctypes.c_int(nr_stations),
+                          ctypes.c_int(subgrid_size),
+                          ctypes.c_int(nr_polarizations))
 
 def plot_aterms(aterms):
     """Plot A-terms
@@ -247,7 +251,7 @@ def init_aterms_offset(aterms_offset, nr_time):
                                              ctypes.c_int]
     lib.utils_init_aterms_offset(aterms_offset.ctypes.data_as(ctypes.c_void_p),
                                  ctypes.c_int(nr_timeslots),
-                                 ctypes.c_int(nr_time) )
+                                 ctypes.c_int(nr_time))
 
 def func_spheroidal(nu):
     """Function to compute spheroidal

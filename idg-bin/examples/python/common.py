@@ -25,6 +25,7 @@ def get_nr_stations():
 
 def get_nr_baselines():
     return _nr_baselines
+
 def get_nr_channels():
     return _nr_channels
 
@@ -104,7 +105,6 @@ def init_wavenumbers(nr_channels):
     #idg.utils.plot_wavenumbers(wavenumbers)
     return wavenumbers
 
-
 def init_baselines(nr_baselines):
     baselines = numpy.zeros(
         nr_baselines,
@@ -120,14 +120,9 @@ def init_grid(grid_size):
 
 def init_aterms(nr_stations, nr_timeslots, subgrid_size):
     aterms = numpy.zeros(
-        (nr_stations, nr_timeslots, _nr_polarizations, subgrid_size, subgrid_size),
+        (nr_timeslots, nr_stations, subgrid_size, subgrid_size,  _nr_polarizations),
         dtype = idg.atermtype)
-    # idg.utils.init_aterms(aterms)
-
-    # TODO: update C++ init_aterms
-    # Set aterm to identity instead
-    aterms[:,:,0,:,:] = 1.0
-    aterms[:,:,3,:,:] = 1.0
+    idg.utils.init_aterms(aterms)
 
     return aterms
 
