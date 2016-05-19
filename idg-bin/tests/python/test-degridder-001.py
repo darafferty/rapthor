@@ -109,14 +109,11 @@ if __name__ == "__main__":
                        dtype = idg.gridtype)
 
     # aterms
-    aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
-                          subgrid_size, subgrid_size), \
+    aterms = numpy.zeros((nr_timeslots, nr_stations,
+                          subgrid_size, subgrid_size,
+                          nr_polarizations),
                          dtype = idg.atermtype)
-    # idg.utils.init_aterms(aterms)
-    # TODO: update C++ init_aterms
-    # Set aterm to identity instead
-    aterms[:,:,0,:,:] = 1.0
-    aterms[:,:,3,:,:] = 1.0
+    idg.utils.init_aterms(aterms)
 
     # aterm offset
     aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)
@@ -139,8 +136,8 @@ if __name__ == "__main__":
 
     visibilies_pt_src_w0(offset_x, offset_y, amplitude,
                          image_size, grid_size, uvw, wavenumbers, vis_true)
-    idg.utils.plot_visibilities(vis_true, form='abs')
-    idg.utils.plot_visibilities(vis_true, form='angle')
+    idg.utils.plot_visibilities(vis_true, form='abs', maxtime=100)
+    idg.utils.plot_visibilities(vis_true, form='angle', maxtime=100)
 
 
     ############
@@ -150,8 +147,8 @@ if __name__ == "__main__":
 
     p.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid,
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    idg.utils.plot_visibilities(visibilities, form='abs')
-    idg.utils.plot_visibilities(visibilities, form='angle')
+    idg.utils.plot_visibilities(visibilities, form='abs', maxtime=100)
+    idg.utils.plot_visibilities(visibilities, form='angle', maxtime=100)
 
     # reset grid
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
