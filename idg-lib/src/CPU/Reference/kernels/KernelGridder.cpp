@@ -19,7 +19,7 @@ extern "C" {
         const int nr_channels,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
-        const idg::float2   visibilities[NR_TIME][NR_CHANNELS][NR_POLARIZATIONS],
+        const idg::float2   visibilities[][NR_POLARIZATIONS],
         const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
         const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
         const idg::Metadata metadata[],
@@ -93,8 +93,9 @@ extern "C" {
                                 idg::float2 phasor = {phasor_real, phasor_imag};
 
                                 // Update pixel for every polarization
+                                size_t index = (offset + time)*nr_channels + chan*NR_POLARIZATIONS;
                                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                    idg::float2 visibility = visibilities[offset + time][chan][pol];
+                                    idg::float2 visibility = visibilities[index][pol];
                                     pixels[pol] += visibility * phasor;
                                 }
                             }

@@ -16,7 +16,7 @@ extern "C" {
         const int nr_channels,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
-              idg::float2   visibilities[NR_TIME][NR_CHANNELS][NR_POLARIZATIONS],
+              idg::float2   visibilities[][NR_POLARIZATIONS],
         const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
         const idg::float2   aterm[NR_STATIONS][NR_TIMESLOTS][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
         const idg::Metadata metadata[],
@@ -156,8 +156,9 @@ extern "C" {
                         }
 
                         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
+                        size_t index = (local_offset + time)*nr_channels + chan*NR_POLARIZATIONS;
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            visibilities[local_offset + time][chan][pol] = sum[pol] * scale;
+                            visibilities[index][pol] = sum[pol] * scale;
                         }
 
                     } // end for channel
