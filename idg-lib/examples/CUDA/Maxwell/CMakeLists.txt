@@ -16,10 +16,6 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 set(LINK_LIRBRARIES idg-utility idg-cuda)
 
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-endif()
-
 target_link_libraries (
   ${PROJECT_NAME}
   ${LINK_LIRBRARIES}

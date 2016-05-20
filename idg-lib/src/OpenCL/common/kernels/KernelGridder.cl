@@ -150,44 +150,22 @@ __kernel void kernel_gridder_1(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-            float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-            float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-            float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = conj(aterm[station2][aterm_index][0][y][x]);
-            float2 aXY2 = conj(aterm[station2][aterm_index][1][y][x]);
-            float2 aYX2 = conj(aterm[station2][aterm_index][2][y][x]);
-            float2 aYY2 = conj(aterm[station2][aterm_index][3][y][x]);
+            float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
+            float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
+            float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
+            float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
 
-            // Apply aterm to pixel: P*A1
-            float2 pixelsXX = uvXX;
-            float2 pixelsXY = uvXY;
-            float2 pixelsYX = uvYX;
-            float2 pixelsYY = uvYY;
-            uvXX  = cmul(pixelsXX, aXX1);
-            uvXX += cmul(pixelsXY, aYX1);
-            uvXY  = cmul(pixelsXX, aXY1);
-            uvXY += cmul(pixelsXY, aYY1);
-            uvYX  = cmul(pixelsYX, aXX1);
-            uvYX += cmul(pixelsYY, aYX1);
-            uvYY  = cmul(pixelsYX, aXY1);
-            uvYY += cmul(pixelsYY, aYY1);
-
-            // Apply aterm to subgrid: A2^H*P
-            pixelsXX = uvXX;
-            pixelsXY = uvXY;
-            pixelsYX = uvYX;
-            pixelsYY = uvYY;
-            uvXX  = cmul(pixelsXX, aXX2);
-            uvXX += cmul(pixelsYX, aYX2);
-            uvXY  = cmul(pixelsXY, aXX2);
-            uvXY += cmul(pixelsYY, aYX2);
-            uvYX  = cmul(pixelsXX, aXY2);
-            uvYX += cmul(pixelsYX, aYY2);
-            uvYY  = cmul(pixelsXY, aXY2);
-            uvYY += cmul(pixelsYY, aYY2);
+            // Apply aterm
+            apply_aterm(
+                aXX1,   aXY1,  aYX1,  aYY1,
+                aXX2,   aXY2,  aYX2,  aYY2,
+                &uvXX, &uvXY, &uvYX, &uvYY);
 
             // Load spheroidal
             float sph = spheroidal[y][x];
@@ -355,46 +333,24 @@ __kernel void kernel_gridder_4(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-            float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-            float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-            float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = conj(aterm[station2][aterm_index][0][y][x]);
-            float2 aXY2 = conj(aterm[station2][aterm_index][1][y][x]);
-            float2 aYX2 = conj(aterm[station2][aterm_index][2][y][x]);
-            float2 aYY2 = conj(aterm[station2][aterm_index][3][y][x]);
+            float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
+            float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
+            float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
+            float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
 
-            // Apply aterm to pixel: P*A1
-            float2 pixelsXX = uvXX;
-            float2 pixelsXY = uvXY;
-            float2 pixelsYX = uvYX;
-            float2 pixelsYY = uvYY;
-            uvXX  = cmul(pixelsXX, aXX1);
-            uvXX += cmul(pixelsXY, aYX1);
-            uvXY  = cmul(pixelsXX, aXY1);
-            uvXY += cmul(pixelsXY, aYY1);
-            uvYX  = cmul(pixelsYX, aXX1);
-            uvYX += cmul(pixelsYY, aYX1);
-            uvYY  = cmul(pixelsYX, aXY1);
-            uvYY += cmul(pixelsYY, aYY1);
+            // Apply aterm
+            apply_aterm(
+                aXX1,   aXY1,  aYX1,  aYY1,
+                aXX2,   aXY2,  aYX2,  aYY2,
+               &uvXX,  &uvXY, &uvYX, &uvYY);
 
-            // Apply aterm to subgrid: A2^H*P
-            pixelsXX = uvXX;
-            pixelsXY = uvXY;
-            pixelsYX = uvYX;
-            pixelsYY = uvYY;
-            uvXX  = cmul(pixelsXX, aXX2);
-            uvXX += cmul(pixelsYX, aYX2);
-            uvXY  = cmul(pixelsXY, aXX2);
-            uvXY += cmul(pixelsYY, aYX2);
-            uvYX  = cmul(pixelsXX, aXY2);
-            uvYX += cmul(pixelsYX, aYY2);
-            uvYY  = cmul(pixelsXY, aXY2);
-            uvYY += cmul(pixelsYY, aYY2);
-
-            // Load spheroidal
+             // Load spheroidal
             float sph = spheroidal[y][x];
 
             // Compute shifted position in subgrid
@@ -560,44 +516,22 @@ __kernel void kernel_gridder_8(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-            float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-            float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-            float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = conj(aterm[station2][aterm_index][0][y][x]);
-            float2 aXY2 = conj(aterm[station2][aterm_index][1][y][x]);
-            float2 aYX2 = conj(aterm[station2][aterm_index][2][y][x]);
-            float2 aYY2 = conj(aterm[station2][aterm_index][3][y][x]);
+            float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
+            float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
+            float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
+            float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
 
-            // Apply aterm to pixel: P*A1
-            float2 pixelsXX = uvXX;
-            float2 pixelsXY = uvXY;
-            float2 pixelsYX = uvYX;
-            float2 pixelsYY = uvYY;
-            uvXX  = cmul(pixelsXX, aXX1);
-            uvXX += cmul(pixelsXY, aYX1);
-            uvXY  = cmul(pixelsXX, aXY1);
-            uvXY += cmul(pixelsXY, aYY1);
-            uvYX  = cmul(pixelsYX, aXX1);
-            uvYX += cmul(pixelsYY, aYX1);
-            uvYY  = cmul(pixelsYX, aXY1);
-            uvYY += cmul(pixelsYY, aYY1);
-
-            // Apply aterm to subgrid: A2^H*P
-            pixelsXX = uvXX;
-            pixelsXY = uvXY;
-            pixelsYX = uvYX;
-            pixelsYY = uvYY;
-            uvXX  = cmul(pixelsXX, aXX2);
-            uvXX += cmul(pixelsYX, aYX2);
-            uvXY  = cmul(pixelsXY, aXX2);
-            uvXY += cmul(pixelsYY, aYX2);
-            uvYX  = cmul(pixelsXX, aXY2);
-            uvYX += cmul(pixelsYX, aYY2);
-            uvYY  = cmul(pixelsXY, aXY2);
-            uvYY += cmul(pixelsYY, aYY2);
+            // Apply aterm
+            apply_aterm(
+                aXX1,   aXY1,  aYX1,  aYY1,
+                aXX2,   aXY2,  aYX2,  aYY2,
+                &uvXX, &uvXY, &uvYX, &uvYY);
 
             // Load spheroidal
             float sph = spheroidal[y][x];
@@ -627,6 +561,7 @@ __kernel void kernel_gridder(
 	__global       SubGridType		subgrid
 	) {
     int channel_offset = 0;
+
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_8(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
