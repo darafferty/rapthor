@@ -157,27 +157,22 @@ template<int current_nr_channels> __device__ void kernel_gridder_(
             }
 
             // Get aterm for station1
-            float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-            float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-            float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-            float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = aterm[station2][aterm_index][0][y][x];
-            float2 aXY2 = aterm[station2][aterm_index][1][y][x];
-            float2 aYX2 = aterm[station2][aterm_index][2][y][x];
-            float2 aYY2 = aterm[station2][aterm_index][3][y][x];
+            float2 aXX2 = cuConjf(aterm[aterm_index][station2][y][x][0]);
+            float2 aXY2 = cuConjf(aterm[aterm_index][station2][y][x][1]);
+            float2 aYX2 = cuConjf(aterm[aterm_index][station2][y][x][2]);
+            float2 aYY2 = cuConjf(aterm[aterm_index][station2][y][x][3]);
 
             // Apply aterm
-            float2 tXX, tXY, tYX, tYY;
-            Matrix2x2mul<float2>(
-                tXX, tXY, tYX, tYY,
-                uvXX, uvXY, uvYX, uvYY,
-                aXX1, aXY1, aYX1, aYY1);
-            Matrix2x2mul<float2>(
-                uvXX, uvXY, uvYX, uvYY,
-                cuConjf(aXX2), cuConjf(aYX2), cuConjf(aXY2), cuConjf(aYY2),
-                tXX, tXY, tYX, tYY);
+            apply_aterm(
+                aXX1, aXY1, aYX1, aYY1,
+                aXX2, aXY2, aYX2, aYY2,
+                uvXX, uvXY, uvYX, uvYY);
 
             // Load spheroidal
             float sph = spheroidal[y][x];

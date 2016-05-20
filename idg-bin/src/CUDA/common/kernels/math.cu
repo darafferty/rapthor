@@ -30,14 +30,40 @@ inline  __device__ void atomicAdd(float2 *a, float2 b) {
     atomicAdd(&a->y, b.y);
 }
 
+template <typename T> inline __device__ void apply_aterm(
+    const T aXX1, const T aXY1, const T aYX1, const T aYY1,
+    const T aXX2, const T aXY2, const T aYX2, const T aYY2,
+          T &uvXX,      T &uvXY,      T &uvYX,      T &uvYY
+) {
+    // Apply aterm to subgrid: P*A1
+    // [ uvXX, uvXY;    [ aXX1, aXY1;
+    //   uvYX, uvYY ] *   aYX1, aYY1 ]
+    T pixelsXX = uvXX;
+    T pixelsXY = uvXY;
+    T pixelsYX = uvYX;
+    T pixelsYY = uvYY;
+    uvXX  = (pixelsXX * aXX1);
+    uvXX += (pixelsXY * aYX1);
+    uvXY  = (pixelsXX * aXY1);
+    uvXY += (pixelsXY * aYY1);
+    uvYX  = (pixelsYX * aXX1);
+    uvYX += (pixelsYY * aYX1);
+    uvYY  = (pixelsYX * aXY1);
+    uvYY += (pixelsYY * aYY1);
 
-template <typename T> inline __device__ void Matrix2x2mul(
-    T &Cxx, T &Cxy, T &Cyx, T &Cyy,
-    T  Axx, T  Axy, T  Ayx, T  Ayy,
-    T  Bxx, T  Bxy, T  Byx, T  Byy)
-{
-    Cxx  = Axx * Bxx + Axy * Byx;
-    Cxy  = Axx * Bxy + Axy * Byy;
-    Cyx  = Ayx * Bxx + Ayy * Byx;
-    Cyy  = Ayx * Bxy + Ayy * Byy;
+    // Apply aterm to subgrid: A2^H*P
+    // [ aXX2, aYX1;      [ uvXX, uvXY;
+    //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+    pixelsXX = uvXX;
+    pixelsXY = uvXY;
+    pixelsYX = uvYX;
+    pixelsYY = uvYY;
+    uvXX  = (pixelsXX * aXX2);
+    uvXX += (pixelsYX * aYX2);
+    uvXY  = (pixelsXY * aXX2);
+    uvXY += (pixelsYY * aYX2);
+    uvYX  = (pixelsXX * aXY2);
+    uvYX += (pixelsYX * aYY2);
+    uvYY  = (pixelsXY * aXY2);
+    uvYY += (pixelsYY * aYY2);
 }

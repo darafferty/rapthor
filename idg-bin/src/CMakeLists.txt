@@ -34,6 +34,11 @@ add_library(idg-common
   $<TARGET_OBJECTS:common>
 )
 
+if (BUILD_WITH_LIKWID_POWER_SENSOR)
+    set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
+    target_link_libraries(idg-common ${LINK_LIRBRARIES})
+endif()
+
 set_target_properties(idg-common PROPERTIES
                       PUBLIC_HEADER idg-common.h)
 
@@ -51,15 +56,16 @@ install(TARGETS idg-common
 ########################################################
 if (BUILD_LIB_CPU)
 add_library(idg-cpu
-  $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
 )
 
+
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS})
 target_link_libraries (
   idg-cpu
-  ${CMAKE_DL_LIBS}
+  ${LINK_LIRBRARIES}
 )
 
 set_target_properties(idg-cpu PROPERTIES
@@ -82,14 +88,13 @@ endif()
 ##########################################################
 if (BUILD_LIB_CUDA)
 add_library(idg-cuda
-  $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cuda-common>
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
   $<TARGET_OBJECTS:cuda-jetson>
 )
 
-set(LINK_LIRBRARIES ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
 target_link_libraries (
   idg-cuda
   ${LINK_LIRBRARIES}
@@ -114,7 +119,6 @@ endif(BUILD_LIB_CUDA)
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 add_library(idg-hybrid-cuda
-  $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
@@ -124,7 +128,7 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:hybrid-maxwell>
 )
 
-set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
 
 target_link_libraries (
   idg-hybrid-cuda
@@ -150,15 +154,15 @@ endif()
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
 add_library(idg-hybrid-opencl
-  $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:cpu-common>
+  $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
   $<TARGET_OBJECTS:opencl-common>
   $<TARGET_OBJECTS:opencl-reference>
   $<TARGET_OBJECTS:hybrid-opencl-reference>
 )
 
-set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
 target_link_libraries (
   idg-hybrid-opencl
@@ -184,12 +188,11 @@ endif()
 ###################################################
 if (BUILD_LIB_OPENCL)
 add_library(idg-opencl
-  $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:opencl-common>
   $<TARGET_OBJECTS:opencl-reference>
 )
 
-set(LINK_LIRBRARIES ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
 target_link_libraries(
   idg-opencl
@@ -215,11 +218,10 @@ endif(BUILD_LIB_OPENCL)
 ################################################
 if (BUILD_LIB_KNC)
 add_library(idg-knc
-  $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:hybrid-knc>
 )
 
-set(LINK_LIRBRARIES mkl_avx2 mkl_def)
+set(LINK_LIRBRARIES idg-common mkl_avx2 mkl_def)
 
 target_link_libraries(
     idg-knc

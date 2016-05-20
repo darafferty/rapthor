@@ -604,7 +604,6 @@ executequeue.finish();
                     mParams.get_nr_stations(),
                     mParams.get_nr_baselines(),
                     mParams.get_nr_time(),
-                    mParams.get_nr_timeslots(),
                     mParams.get_imagesize(),
                     mParams.get_nr_polarizations(),
                     mParams.get_grid_size(),
@@ -658,11 +657,12 @@ executequeue.finish();
                         // Build the program
                         (*program).build(devices, parameters.c_str());
                         programs.push_back(program);
+                    } catch (cl::Error &error) {
+                        cerr << "Compilation failed: " << error.what() << endl;
                         std::string msg;
                         (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
                         cout << msg << endl;
-                    } catch (cl::Error &error) {
-                        cerr << "Compilation failed: " << error.what() << endl;
+                        exit(EXIT_FAILURE);
                     }
                 } // for each library
 

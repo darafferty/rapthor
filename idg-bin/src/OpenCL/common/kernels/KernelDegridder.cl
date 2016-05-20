@@ -61,16 +61,16 @@ __kernel void kernel_degridder_1(
 
             if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
-                float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-                float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-                float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-                float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+                float2 aXX1 = aterm[aterm_index][station1][y][x][0];
+                float2 aXY1 = aterm[aterm_index][station1][y][x][1];
+                float2 aYX1 = aterm[aterm_index][station1][y][x][2];
+                float2 aYY1 = aterm[aterm_index][station1][y][x][3];
 
                 // Load aterm for station2
-                float2 aXX2 = aterm[station2][aterm_index][0][y][x];
-                float2 aXY2 = aterm[station2][aterm_index][1][y][x];
-                float2 aYX2 = aterm[station2][aterm_index][2][y][x];
-                float2 aYY2 = aterm[station2][aterm_index][3][y][x];
+                float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
+                float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
+                float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
+                float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
 
                 // Load spheroidal
                 float _spheroidal = spheroidal[y][x];
@@ -86,15 +86,10 @@ __kernel void kernel_degridder_1(
                 float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
 
                 // Apply aterm
-                float2 tXX, tXY, tYX, tYY;
-                Matrix2x2mul(
-                    &tXX, &tXY, &tYX, &tYY,
-                    pixelsXX, pixelsXY, pixelsYX, pixelsYY,
-                    aXX1, aXY1, aYX1, aYY1);
-                Matrix2x2mul(
-                    &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY,
-                    conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
-                    tXX, tXY, tYX, tYY);
+                apply_aterm(
+                    aXX1, aXY1, aYX1, aYY1,
+                    aXX2, aXY2, aYX2, aYY2,
+                    &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
 
                 // Store pixels
                 _pix[0][tidx] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
@@ -234,16 +229,16 @@ __kernel void kernel_degridder_8(
 
             if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
-                float2 aXX1 = aterm[station1][aterm_index][0][y][x];
-                float2 aXY1 = aterm[station1][aterm_index][1][y][x];
-                float2 aYX1 = aterm[station1][aterm_index][2][y][x];
-                float2 aYY1 = aterm[station1][aterm_index][3][y][x];
+                float2 aXX1 = aterm[aterm_index][station1][y][x][0];
+                float2 aXY1 = aterm[aterm_index][station1][y][x][1];
+                float2 aYX1 = aterm[aterm_index][station1][y][x][2];
+                float2 aYY1 = aterm[aterm_index][station1][y][x][3];
 
                 // Load aterm for station2
-                float2 aXX2 = aterm[station2][aterm_index][0][y][x];
-                float2 aXY2 = aterm[station2][aterm_index][1][y][x];
-                float2 aYX2 = aterm[station2][aterm_index][2][y][x];
-                float2 aYY2 = aterm[station2][aterm_index][3][y][x];
+                float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
+                float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
+                float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
+                float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
 
                 // Load spheroidal
                 float _spheroidal = spheroidal[y][x];
@@ -259,15 +254,10 @@ __kernel void kernel_degridder_8(
                 float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
 
                 // Apply aterm
-                float2 tXX, tXY, tYX, tYY;
-                Matrix2x2mul(
-                    &tXX, &tXY, &tYX, &tYY,
-                    pixelsXX, pixelsXY, pixelsYX, pixelsYY,
-                    aXX1, aXY1, aYX1, aYY1);
-                Matrix2x2mul(
-                    &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY,
-                    conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
-                    tXX, tXY, tYX, tYY);
+                apply_aterm(
+                    aXX1, aXY1, aYX1, aYY1,
+                    aXX2, aXY2, aYX2, aYY2,
+                    &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
 
                 // Store pixels
                 _pix[0][tidx] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
