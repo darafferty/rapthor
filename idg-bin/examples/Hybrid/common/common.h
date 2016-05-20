@@ -4,10 +4,12 @@
 
 #include "idg-utility.h"  // Data init routines
 
+using namespace std;
+
 template <typename PROXYNAME>
 void run() {
     // Set constants explicitly in the parameters parameter
-    std::clog << ">>> Configuration"  << std::endl;
+    clog << ">>> Configuration"  << endl;
     idg::Parameters params;
     params.set_from_env();
 
@@ -30,7 +32,7 @@ void run() {
     clog << endl;
 
     // Allocate and initialize data structures
-    std::clog << ">>> Initialize data structures" << std::endl;
+    clog << ">>> Initialize data structures" << endl;
 
     auto size_visibilities = 1ULL * nr_baselines*nr_time*
         nr_channels*nr_polarizations;
@@ -42,13 +44,13 @@ void run() {
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
     auto size_baselines = 1ULL * nr_baselines*2;
 
-    auto visibilities = new std::complex<float>[size_visibilities];
+    auto visibilities = new complex<float>[size_visibilities];
     auto uvw = new float[size_uvw];
     auto wavenumbers = new float[size_wavenumbers];
-    auto aterm = new std::complex<float>[size_aterm];
+    auto aterm = new complex<float>[size_aterm];
     auto aterm_offsets = new int[nr_timeslots+1];
     auto spheroidal = new float[size_spheroidal];
-    auto grid = new std::complex<float>[size_grid];
+    auto grid = new complex<float>[size_grid];
     auto baselines = new int[size_baselines];
 
     idg::init_visibilities(visibilities, nr_baselines,
@@ -62,7 +64,7 @@ void run() {
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_grid(grid, gridsize, nr_polarizations);
     idg::init_baselines(baselines, nr_stations, nr_baselines);
-    std::clog << std::endl;
+    clog << endl;
 
     // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
