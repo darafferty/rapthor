@@ -93,7 +93,6 @@ namespace idg {
           definitions(unsigned int nr_stations,
                       unsigned int nr_baselines,
                       unsigned int nr_time,
-                      unsigned int nr_timeslots,
                       float imagesize,
                       unsigned int nr_polarizations,
                       unsigned int grid_size,

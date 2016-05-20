@@ -604,7 +604,6 @@ executequeue.finish();
                     mParams.get_nr_stations(),
                     mParams.get_nr_baselines(),
                     mParams.get_nr_time(),
-                    mParams.get_nr_timeslots(),
                     mParams.get_imagesize(),
                     mParams.get_nr_polarizations(),
                     mParams.get_grid_size(),
