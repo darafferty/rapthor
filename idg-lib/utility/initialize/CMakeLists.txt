@@ -7,7 +7,6 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers 
-  Arguments.h
   Init.h
 )
 
