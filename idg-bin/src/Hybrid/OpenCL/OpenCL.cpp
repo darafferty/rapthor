@@ -143,8 +143,8 @@ namespace idg {
 
                     // Private host memory
                     cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(max_nr_subgrids));
-                    void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
-
+                    void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, opencl.sizeof_subgrids(max_nr_subgrids));
+//
                     // Warmup
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, opencl.sizeof_uvw(jobsize));
@@ -231,6 +231,7 @@ namespace idg {
                     dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids_ptr);
                 }
 
+                dtohqueue.finish();
                 PowerSensor::State stopState  = opencl::powerSensor.read();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -341,7 +342,7 @@ namespace idg {
 
                     // Private host memory
                     cl::Buffer h_subgrids(context, CL_MEM_ALLOC_HOST_PTR, opencl.sizeof_subgrids(max_nr_subgrids));
-                    void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ, 0, opencl.sizeof_subgrids(nr_subgrids));
+                    void *subgrids_ptr = htodqueue.enqueueMapBuffer(h_subgrids, CL_TRUE, CL_MAP_READ, 0, opencl.sizeof_subgrids(max_nr_subgrids));
 
                     // Warmup
                     #if ENABLE_WARMUP
@@ -430,10 +431,9 @@ namespace idg {
                     dtohqueue.enqueueUnmapMemObject(h_subgrids, subgrids_ptr);
                 }
 
-                PowerSensor::State stopState  = opencl::powerSensor.read();
-
                 // Copy visibilities from host memory
                 dtohqueue.finish();
+                PowerSensor::State stopState  = opencl::powerSensor.read();
                 htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
