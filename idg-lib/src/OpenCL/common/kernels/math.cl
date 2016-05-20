@@ -42,13 +42,40 @@ inline void atomicAdd(__global float2 *a, float2 b) {
     //atomic_fetch_add((atomic_int *) a_ptr + 1, b.y);
 }
 
-inline void Matrix2x2mul(
-    float2 *Cxx, float2 *Cxy, float2 *Cyx, float2 *Cyy,
-    float2  Axx, float2  Axy, float2  Ayx, float2  Ayy,
-    float2  Bxx, float2  Bxy, float2  Byx, float2  Byy)
-{
-    *Cxx = cadd(cmul(Axx, Bxx), cmul(Axy, Byx));
-    *Cxy = cadd(cmul(Axx, Bxy), cmul(Axy, Byy));
-    *Cyx = cadd(cmul(Ayx, Bxx), cmul(Ayy, Byx));
-    *Cyy = cadd(cmul(Ayx, Bxy), cmul(Ayy, Byy));
+inline void apply_aterm(
+    const float2 aXX1, const float2 aXY1, const float2 aYX1, const float2 aYY1,
+    const float2 aXX2, const float2 aXY2, const float2 aYX2, const float2 aYY2,
+          float2 *uvXX,      float2 *uvXY,      float2 *uvYX,      float2 *uvYY
+) {
+    // Apply aterm to subgrid: P*A1
+    // [ uvXX, uvXY;    [ aXX1, aXY1;
+    //   uvYX, uvYY ] *   aYX1, aYY1 ]
+    float2 pixelsXX = *uvXX;
+    float2 pixelsXY = *uvXY;
+    float2 pixelsYX = *uvYX;
+    float2 pixelsYY = *uvYY;
+    *uvXX  = cmul(pixelsXX, aXX1);
+    *uvXX += cmul(pixelsXY, aYX1);
+    *uvXY  = cmul(pixelsXX, aXY1);
+    *uvXY += cmul(pixelsXY, aYY1);
+    *uvYX  = cmul(pixelsYX, aXX1);
+    *uvYX += cmul(pixelsYY, aYX1);
+    *uvYY  = cmul(pixelsYX, aXY1);
+    *uvYY += cmul(pixelsYY, aYY1);
+
+    // Apply aterm to subgrid: A2^H*P
+    // [ aXX2, aYX1;      [ uvXX, uvXY;
+    //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+    pixelsXX = *uvXX;
+    pixelsXY = *uvXY;
+    pixelsYX = *uvYX;
+    pixelsYY = *uvYY;
+    *uvXX  = cmul(pixelsXX, aXX2);
+    *uvXX += cmul(pixelsYX, aYX2);
+    *uvXY  = cmul(pixelsXY, aXX2);
+    *uvXY += cmul(pixelsYY, aYX2);
+    *uvYX  = cmul(pixelsXX, aXY2);
+    *uvYX += cmul(pixelsYX, aYY2);
+    *uvYY  = cmul(pixelsXY, aXY2);
+    *uvYY += cmul(pixelsYY, aYY2);
 }
