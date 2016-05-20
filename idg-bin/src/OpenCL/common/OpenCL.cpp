@@ -658,11 +658,12 @@ executequeue.finish();
                         // Build the program
                         (*program).build(devices, parameters.c_str());
                         programs.push_back(program);
+                    } catch (cl::Error &error) {
+                        cerr << "Compilation failed: " << error.what() << endl;
                         std::string msg;
                         (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
                         cout << msg << endl;
-                    } catch (cl::Error &error) {
-                        cerr << "Compilation failed: " << error.what() << endl;
+                        exit(EXIT_FAILURE);
                     }
                 } // for each library
 
