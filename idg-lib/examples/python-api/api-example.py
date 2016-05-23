@@ -87,23 +87,20 @@ def init_grid(grid_size):
         dtype = numpy.complex128)
     return grid
 
-# def init_aterms(nr_stations, nr_timeslots, subgrid_size):
-#     aterms = numpy.zeros(
-#         (nr_stations, nr_timeslots, _nr_polarizations, subgrid_size, subgrid_size),
-#         dtype = idg.atermtype)
-#     # idg.utils.init_aterms(aterms)
-
-#     # TODO: update C++ init_aterms
-#     # Set aterm to identity instead
-#     aterms[:,:,0,:,:] = 1.0
-#     aterms[:,:,3,:,:] = 1.0
-
-#     return aterms
+def init_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations):
+    aterms = numpy.zeros((nr_timeslots, nr_stations, subgrid_size,
+                          subgrid_size, nr_polarizations),
+                         dtype = numpy.complex128)
+    aterms[:,:,:,:,0] = 1
+    aterms[:,:,:,:,1] = 0
+    aterms[:,:,:,:,2] = 0
+    aterms[:,:,:,:,3] = 1
+    return aterms
 
 def init_spheroidal(subgrid_size):
     spheroidal = numpy.ones(
         (subgrid_size, subgrid_size),
-        dtype = idg.spheroidaltype)
+        dtype = numpy.float64)
     idg.utils.init_spheroidal(spheroidal)
     #idg.utils.plot_spheroidal(spheroidal)
     return spheroidal
@@ -170,17 +167,19 @@ if __name__ == "__main__":
     wavenumbers = init_wavenumbers(nr_channels)
     baselines = init_baselines(nr_baselines)
     grid = init_grid(grid_size)
-    # aterms = init_aterms(nr_stations, nr_timeslots, subgrid_size)
     spheroidal = init_spheroidal(subgrid_size)
 
     frequencies = numpy.ndarray(nr_channels, dtype=numpy.float64)
     for i in range(nr_channels):
         frequencies[i] = sc.speed_of_light * wavenumbers[i] / (2*math.pi)
 
+    bufferTimesteps = 512
+    nr_timeslots = nr_time / bufferTimesteps
+    aterms = init_aterms(nr_timeslots, nr_stations, subgrid_size, 4)
+
     ##################
     # initialize proxy
     ##################
-    bufferTimesteps = 512
 
     plan = IDG.GridderPlan(bufferTimesteps)
     plan.set_stations(nr_stations);
@@ -199,6 +198,9 @@ if __name__ == "__main__":
     fig, axarr = plt.subplots(2, 2)
 
     for time_major in range(nr_time / bufferTimesteps):
+
+        plan.start_aterm((time_major+1)*aterms[time_major,:,:,:])
+
         for time_minor in range(bufferTimesteps):
 
             time = time_major*bufferTimesteps + time_minor
@@ -228,12 +230,14 @@ if __name__ == "__main__":
                     time
                 )
 
+        plan.finish_aterm()
+
         live_plot_grid(axarr, grid)
 
     ##############
     # flush buffer
     ##############
-    plan.execute()
+    plan.flush()
 
 
     plt.show()

@@ -97,18 +97,20 @@ namespace idg {
         virtual void start_aterm(
             const std::complex<double>* aterm,
             const size_t nrStations,
-            const size_t size);
+            const size_t size,
+            const size_t nrPolarizations);
 
         virtual void start_aterm(
             const std::complex<double>* aterm,
             const size_t nrStations,
             const size_t height,
-            const size_t width) override;
+            const size_t width,
+            const size_t nrPolarizations) override;
 
         virtual void finish_aterm() override;
 
         // Must be called to flush the buffer
-        virtual void execute() override;
+        virtual void flush() override;
 
     protected:
         /* Helper function to map (antenna1, antenna2) -> baseline index

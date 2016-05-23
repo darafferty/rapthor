@@ -117,6 +117,27 @@ class GridderPlan():
         """Bake the plan after all parameters are set"""
         lib.GridderPlan_bake(self.obj)
 
+    def start_aterm(self, aterms):
+        """Start a new A-term
+        :param aterms: numpy.ndarray(nr_stations, subgrid_size,
+                                     subgrid_size, nr_polarizations),
+                                     dtype=numpy.complex128)
+        """
+        nr_stations = aterms.shape[0]
+        height = aterms.shape[1]
+        width = aterms.shape[2]
+        nr_polarizations = aterms.shape[3]
+        lib.GridderPlan_start_aterm(self.obj,
+                                    aterms.ctypes.data_as(ctypes.c_void_p),
+                                    ctypes.c_int(nr_stations),
+                                    ctypes.c_int(height),
+                                    ctypes.c_int(width),
+                                    ctypes.c_int(nr_polarizations))
+
+
+    def finish_aterm(self):
+        lib.GridderPlan_finish_aterm(self.obj)
+
 
     def grid_visibilities(
             self,
@@ -140,6 +161,6 @@ class GridderPlan():
             ctypes.c_int(timeIndex)
         )
 
-    def execute(self):
+    def flush(self):
         """Flush buffer"""
-        lib.GridderPlan_execute(self.obj)
+        lib.GridderPlan_flush(self.obj)
