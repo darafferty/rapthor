@@ -185,10 +185,10 @@ if __name__ == "__main__":
     plan.set_stations(nr_stations);
     plan.set_frequencies(frequencies);
     plan.set_grid(grid);
-    plan.set_subgrid_size(subgrid_size);
     plan.set_spheroidal(spheroidal);
     plan.set_image_size(0.1);
     plan.set_w_kernel_size(subgrid_size/2);
+    plan.internal_set_subgrid_size(subgrid_size);
     plan.bake();
 
     ##########################

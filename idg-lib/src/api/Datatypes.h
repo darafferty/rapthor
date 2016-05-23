@@ -25,6 +25,9 @@ namespace idg {
     using Frequencies = std::vector<T>;
 
     template<class T>
+    using Wavenumbers = std::vector<T>;
+
+    template<class T>
     struct StationPair {T first; T second;};
 
     template<class T>
@@ -226,6 +229,23 @@ namespace idg {
     {
         os << "[" << A.xx << "," << A.xy << ";" << std::endl
             << " " << A.yx << "," << A.yy << "]";
+        return os;
+    }
+
+
+    template<class T>
+    std::ostream& operator<<(std::ostream& os,
+                             const Grid2D<T>& grid)
+    {
+        for (unsigned int y = 0; y < grid.get_height(); ++y) {
+            for (unsigned int x = 0; x < grid.get_width(); ++x) {
+                os << grid(y,x);
+                if (x != grid.get_width()-1) {
+                    os << ",";
+                }
+            }
+            os << std::endl;
+        }
         return os;
     }
 
