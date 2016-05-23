@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
     auto wavenumbers = new float[size_wavenumbers];
     auto aterm = new std::complex<float>[size_aterm];
     auto aterm_offsets = new int[nr_timeslots+1];
-    auto spheroidal = new double[size_spheroidal];
+    auto spheroidal = new float[size_spheroidal];
+    auto spheroidal_double = new double[size_spheroidal];
     auto grid_double = new std::complex<double>[size_grid];
     auto baselines = new int[size_baselines];
 
@@ -78,23 +79,69 @@ int main(int argc, char *argv[])
         uvw_double[k] = uvw[k];
     }
 
-    std::clog << std::endl;
+    for (auto k = 0; k < size_spheroidal; ++k) {
+        spheroidal_double[k] = spheroidal[k];
+    }
 
-    /////////////////////////////////////////////////////////////////////
+    std::clog << std::endl;
 
     auto bufferSize = nr_time;
 
-    idg::GridderPlan plan(idg::Type::CPU_REFERENCE, bufferSize);
+    /////////////////////////////////////////////////////////////////////
+
+    // idg::GridderPlan plan(idg::Type::CPU_REFERENCE, bufferSize);
+    // plan.set_stations(nr_stations);
+    // plan.set_frequencies(frequencyList, nr_channels);
+    // plan.set_grid(grid_double, 4, gridsize, gridsize);
+    // plan.set_spheroidal(spheroidal_double, subgridsize);
+    // plan.set_image_size(0.1);
+    // plan.set_w_kernel(subgridsize/2);
+    // plan.internal_set_subgrid_size(subgridsize);
+    // plan.bake();
+
+
+    // for (auto time = 0; time < nr_time; ++time) {
+    //     for (auto bl = 0; bl < nr_baselines; ++bl) {
+
+    //         auto antenna1 = baselines[bl*2];
+    //         auto antenna2 = baselines[bl*2 + 1];
+
+    //         // #if defined(DEBUG)
+    //         // cout << "Adding: time " << time << ", "
+    //         //      << "stations = (" << antenna1 << ", " << antenna2 << "), "
+    //         //      << "uvw = ("
+    //         //      << uvw_double[bl*nr_time*3 + time*3] << ", "
+    //         //      << uvw_double[bl*nr_time*3 + time*3 + 1] << ", "
+    //         //      << uvw_double[bl*nr_time*3 + time*3 + 2] << ")" << endl;
+    //         // #endif
+
+    //         plan.grid_visibilities(
+    //             &visibilities[bl*nr_time*nr_channels*nr_polarizations +
+    //                           time*nr_channels*nr_polarizations],
+    //             &uvw_double[bl*nr_time*3 + time*3],
+    //             antenna1,
+    //             antenna2,
+    //             time);
+    //     }
+    // }
+
+    // plan.flush();
+
+    /////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////
+
+    idg::DegridderPlan plan(idg::Type::CPU_REFERENCE, bufferSize);
     plan.set_stations(nr_stations);
     plan.set_frequencies(frequencyList, nr_channels);
-    plan.set_grid(grid_double, 4, 1024, 1024);
-    plan.set_subgrid_size(subgridsize);
-    plan.set_spheroidal(spheroidal, subgridsize);
+    plan.set_grid(grid_double, 4, gridsize, gridsize);
+    plan.set_spheroidal(spheroidal_double, subgridsize);
     plan.set_image_size(0.1);
     plan.set_w_kernel(subgridsize/2);
+    plan.internal_set_subgrid_size(subgridsize);
     plan.bake();
 
-
+    int rowId = 0;
+    std::vector<int> listOfRowIds;
     for (auto time = 0; time < nr_time; ++time) {
         for (auto bl = 0; bl < nr_baselines; ++bl) {
 
@@ -110,19 +157,22 @@ int main(int argc, char *argv[])
             //      << uvw_double[bl*nr_time*3 + time*3 + 2] << ")" << endl;
             // #endif
 
-            plan.grid_visibilities(
-                &visibilities[bl*nr_time*nr_channels*nr_polarizations +
-                              time*nr_channels*nr_polarizations],
+            plan.request_visibilities(
+                rowId,
                 &uvw_double[bl*nr_time*3 + time*3],
                 antenna1,
                 antenna2,
                 time);
+
+            listOfRowIds.push_back(rowId);
+            rowId++;
         }
     }
 
     plan.flush();
 
     /////////////////////////////////////////////////////////////////////
+
 
 
     return 0;
