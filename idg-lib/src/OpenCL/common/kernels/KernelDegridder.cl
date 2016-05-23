@@ -7,16 +7,18 @@
 	Kernel
 */
 __kernel void kernel_degridder_1(
-	const float w_offset,
+    const float w_offset,
     const int nr_channels,
     const int channel_offset,
-	__global const UVWType			uvw,
-	__global const WavenumberType	wavenumbers,
-	__global       VisibilitiesType	visibilities,
-	__global const SpheroidalType	spheroidal,
-	__global const ATermType		aterm,
-	__global const MetadataType		metadata,
-	__global const SubGridType		subgrid
+    __global const UVWType			uvw,
+    __global const WavenumberType	wavenumbers,
+    __global       VisibilitiesType	visibilities,
+    __global const SpheroidalType	spheroidal,
+    __global const ATermType		aterm,
+    __global const MetadataType		metadata,
+    __global const SubGridType		subgrid,
+    __local        float4           _pix[NR_POLARIZATIONS / 2][NR_THREADS],
+    __local        float4           _lmn_phaseoffset[NR_THREADS]
 	) {
     int tidx = get_local_id(0);
 	int s = get_group_id(0);
@@ -38,10 +40,7 @@ __kernel void kernel_degridder_1(
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
     float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
-    // Shared data
-    __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
-	__local float4 _lmn_phaseoffset[NR_THREADS];
-
+    // Iterate all timesteps
     for (int time = tidx; time < nr_timesteps; time += NR_THREADS) {
         float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
         float4 _uvw;
@@ -172,16 +171,18 @@ __kernel void kernel_degridder_1(
 }
 
 __kernel void kernel_degridder_8(
-	const float w_offset,
+    const float w_offset,
     const int nr_channels,
     const int channel_offset,
-	__global const UVWType			uvw,
-	__global const WavenumberType	wavenumbers,
-	__global       VisibilitiesType	visibilities,
-	__global const SpheroidalType	spheroidal,
-	__global const ATermType		aterm,
-	__global const MetadataType		metadata,
-	__global const SubGridType		subgrid
+    __global const UVWType			uvw,
+    __global const WavenumberType	wavenumbers,
+    __global       VisibilitiesType	visibilities,
+    __global const SpheroidalType	spheroidal,
+    __global const ATermType		aterm,
+    __global const MetadataType		metadata,
+    __global const SubGridType		subgrid,
+    __local        float4           _pix[NR_POLARIZATIONS/2][NR_THREADS],
+    __local        float4           _lmn_phaseoffset[NR_THREADS]
 	) {
     int s = get_group_id(0);
     int tidx = get_local_id(0);
@@ -203,10 +204,7 @@ __kernel void kernel_degridder_8(
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
     float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
-    // Shared data
-    __local float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
-	__local float4 _lmn_phaseoffset[NR_THREADS];
-
+    // Iterate timesteps and channels
     for (int i = tidx; i < nr_timesteps * nr_channels; i += NR_THREADS) {
 		int time = i / nr_channels;
 		int chan = i % nr_channels;
@@ -340,27 +338,34 @@ __kernel void kernel_degridder_8(
 }
 
 __kernel void kernel_degridder(
-	const float w_offset,
+    const float w_offset,
     const int nr_channels,
-	__global const UVWType			uvw,
-	__global const WavenumberType	wavenumbers,
-	__global       VisibilitiesType	visibilities,
-	__global const SpheroidalType	spheroidal,
-	__global const ATermType		aterm,
-	__global const MetadataType		metadata,
-	__global const SubGridType		subgrid
+    __global const UVWType			uvw,
+    __global const WavenumberType	wavenumbers,
+    __global       VisibilitiesType	visibilities,
+    __global const SpheroidalType	spheroidal,
+    __global const ATermType		aterm,
+    __global const MetadataType		metadata,
+    __global const SubGridType		subgrid
 	) {
+    __local float4 _pix[NR_POLARIZATIONS/2][NR_THREADS];
+    __local float4 _lmn_phaseoffset[NR_THREADS];
+
     int channel_offset = 0;
+
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_8(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid,
+            _pix, _lmn_phaseoffset);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
+
         kernel_degridder_1(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            visibilities, spheroidal, aterm, metadata, subgrid,
+            _pix, _lmn_phaseoffset);
     }
 }
 
