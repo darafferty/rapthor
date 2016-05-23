@@ -10,16 +10,18 @@
 	Kernel
 */
 __kernel void kernel_gridder_1(
-	const float w_offset,
+    const float w_offset,
     const int nr_channels,
     const int channel_offset,
-	__global const UVWType			uvw,
-	__global const WavenumberType	wavenumbers,
-	__global const VisibilitiesType	visibilities,
-	__global const SpheroidalType	spheroidal,
-	__global const ATermType		aterm,
-	__global const MetadataType		metadata,
-	__global SubGridType			subgrid
+    __global const UVWType			uvw,
+    __global const WavenumberType	wavenumbers,
+    __global const VisibilitiesType	visibilities,
+    __global const SpheroidalType	spheroidal,
+    __global const ATermType		aterm,
+    __global const MetadataType		metadata,
+    __global       SubGridType      subgrid,
+    __local        float4           _visibilities[MAX_NR_TIMESTEPS][NR_POLARIZATIONS/2],
+    __local        float4           _uvw[MAX_NR_TIMESTEPS]
 	) {
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
@@ -49,10 +51,6 @@ __kernel void kernel_gridder_1(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-
-    // Shared data
-	__local float4 _visibilities[MAX_NR_TIMESTEPS][NR_POLARIZATIONS/2];
-	__local float4 _uvw[MAX_NR_TIMESTEPS];
 
     // Iterate all timesteps
     int current_nr_timesteps = MAX_NR_TIMESTEPS;
@@ -184,16 +182,19 @@ __kernel void kernel_gridder_1(
 }
 
 __kernel void kernel_gridder_4(
-	const float w_offset,
+    const float w_offset,
     const int nr_channels,
     const int channel_offset,
-	__global const UVWType			uvw,
-	__global const WavenumberType	wavenumbers,
-	__global const VisibilitiesType	visibilities,
-	__global const SpheroidalType	spheroidal,
-	__global const ATermType		aterm,
-	__global const MetadataType		metadata,
-	__global SubGridType			subgrid
+    __global const UVWType			uvw,
+    __global const WavenumberType	wavenumbers,
+    __global const VisibilitiesType	visibilities,
+    __global const SpheroidalType	spheroidal,
+    __global const ATermType		aterm,
+    __global const MetadataType		metadata,
+    __global       SubGridType      subgrid,
+    __local        float4           _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS_4][NR_POLARIZATIONS/2],
+    __local        float4           _uvw[MAX_NR_TIMESTEPS],
+    __local        float            _wavenumbers[NR_CHANNELS_4]
 	) {
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
@@ -223,11 +224,6 @@ __kernel void kernel_gridder_4(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-
-    // Shared data
-	__local float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS_4][NR_POLARIZATIONS/2];
-	__local float4 _uvw[MAX_NR_TIMESTEPS];
-    __local float _wavenumbers[NR_CHANNELS_4];
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS_4; i += blocksize) {
@@ -367,16 +363,19 @@ __kernel void kernel_gridder_4(
 }
 
 __kernel void kernel_gridder_8(
-	const float w_offset,
+    const float w_offset,
     const int nr_channels,
     const int channel_offset,
-	__global const UVWType			uvw,
-	__global const WavenumberType	wavenumbers,
-	__global const VisibilitiesType	visibilities,
-	__global const SpheroidalType	spheroidal,
-	__global const ATermType		aterm,
-	__global const MetadataType		metadata,
-	__global SubGridType			subgrid
+    __global const UVWType			uvw,
+    __global const WavenumberType	wavenumbers,
+    __global const VisibilitiesType	visibilities,
+    __global const SpheroidalType	spheroidal,
+    __global const ATermType		aterm,
+    __global const MetadataType		metadata,
+    __global       SubGridType      subgrid,
+    __local        float4           _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS_8][NR_POLARIZATIONS/2],
+    __local        float4           _uvw[MAX_NR_TIMESTEPS],
+    __local        float            _wavenumbers[NR_CHANNELS_8]
 	) {
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
@@ -406,11 +405,6 @@ __kernel void kernel_gridder_8(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-
-    // Shared data
-	__local float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS_8][NR_POLARIZATIONS/2];
-	__local float4 _uvw[MAX_NR_TIMESTEPS];
-    __local float _wavenumbers[NR_CHANNELS_8];
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS_8; i += blocksize) {
@@ -563,22 +557,36 @@ __kernel void kernel_gridder(
     int channel_offset = 0;
 
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
+        __local float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS_8][NR_POLARIZATIONS/2];
+        __local float4 _uvw[MAX_NR_TIMESTEPS];
+        __local float  _wavenumbers[NR_CHANNELS_8];
+
         kernel_gridder_8(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities,spheroidal, aterm, metadata, subgrid,
+            _visibilities, _uvw, _wavenumbers);
     }
 
     for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
+        __local float4 _visibilities[MAX_NR_TIMESTEPS][NR_CHANNELS_4][NR_POLARIZATIONS/2];
+        __local float4 _uvw[MAX_NR_TIMESTEPS];
+        __local float  _wavenumbers[NR_CHANNELS_4];
+
         kernel_gridder_4(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities,spheroidal, aterm, metadata, subgrid,
+            _visibilities, _uvw, _wavenumbers);
     }
 
 
     for (; channel_offset < nr_channels; channel_offset++) {
+	    __local float4 _visibilities[MAX_NR_TIMESTEPS][NR_POLARIZATIONS/2];
+	    __local float4 _uvw[MAX_NR_TIMESTEPS];
+
         kernel_gridder_1(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid);
+            visibilities,spheroidal, aterm, metadata, subgrid,
+            _visibilities, _uvw);
     }
 }
 
