@@ -64,7 +64,8 @@ namespace idg {
             const std::complex<double>* aterm,
             const size_t nrStations,
             const size_t height,
-            const size_t width) = 0;
+            const size_t width,
+            const size_t nrPolarizations) = 0;
 
         virtual void finish_aterm() = 0;
 
@@ -79,7 +80,7 @@ namespace idg {
         /*     size_t rowId, */
         /*     bool& isBufferFull) = 0; */
 
-        virtual void execute() = 0;
+        virtual void flush() = 0;
 
         /* virtual void finish_sampled_visibilities() = 0; */
 

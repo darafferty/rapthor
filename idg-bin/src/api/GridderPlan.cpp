@@ -157,7 +157,7 @@ namespace idg {
 
     void GridderPlan::finish_w_layer()
     {
-        execute();
+        flush();
     }
 
 
@@ -281,7 +281,7 @@ namespace idg {
         if (local_time == m_bufferTimesteps) {
             /* Do not insert more if buffer is already full */
             /* Execute and empty buffer, befor inserting new element */
-            execute();
+            flush();
             local_time = timeIndex - m_lastTimeIndex - 1;
         } else {
             // Keep track of all time indices pushed into the buffer
@@ -310,10 +310,13 @@ namespace idg {
         const std::complex<double>* aterm,
         const size_t nrStations,
         const size_t height,
-        const size_t width)
+        const size_t width,
+        const size_t nrPolarizations)
     {
         if (nrStations != m_nrStations)
             throw invalid_argument("The number of stations to not match the plan.");
+        if (nrPolarizations != nrPolarizations)
+            throw invalid_argument("The number of polarization to not match the plan.");
 
         // to be implemented
         // TODO: remove hack to ignore aterm
@@ -321,31 +324,38 @@ namespace idg {
         // TODO: Resize to SUBGRIDSIZE x SUBGRIDSIZE on the fly
         for (auto s = 0; s < m_nrStations; ++s)
             for (auto y = 0; y < m_subgridSize; ++y)
-                for (auto x = 0; x < m_subgridSize; ++x)
-                    m_aterms(s, y, x) = {complex<float>(1), complex<float>(0),
-                                         complex<float>(0), complex<float>(1)};
+                for (auto x = 0; x < m_subgridSize; ++x) {
+                    size_t ind = s*height*width*nrPolarizations +
+                                 y*width*nrPolarizations
+                        + x*nrPolarizations;
+                    m_aterms(s, y, x) = {complex<float>(aterm[ind + 0]),
+                                         complex<float>(aterm[ind + 1]),
+                                         complex<float>(aterm[ind + 2]),
+                                         complex<float>(aterm[ind + 3])};
+                }
     }
 
 
     void GridderPlan::start_aterm(
         const std::complex<double>* aterm,
         const size_t nrStations,
-        const size_t size)
+        const size_t size,
+        const size_t nrPolarizations)
     {
-        start_aterm(aterm, nrStations, size, size);
+        start_aterm(aterm, nrStations, size, size, nrPolarizations);
     }
 
 
     void GridderPlan::finish_aterm()
     {
         // to be implemented
-        execute();
+        flush();
     }
 
 
 
     // Must be called whenever the buffer is full or no more data added
-    void GridderPlan::execute()
+    void GridderPlan::flush()
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -502,6 +512,29 @@ extern "C" {
     }
 
 
+    void GridderPlan_start_aterm(
+        idg::GridderPlan* p,
+        void* aterm,  // ptr to complex double
+        int nrStations,
+        int height,
+        int width,
+        int nrPolarizations)
+    {
+        p->start_aterm(
+            (std::complex<double>*) aterm,
+            nrStations,
+            height,
+            width,
+            nrPolarizations);
+    }
+
+
+    void GridderPlan_finish_aterm(idg::GridderPlan* p)
+    {
+        p->finish_aterm();
+    }
+
+
     void GridderPlan_grid_visibilities(
         idg::GridderPlan* p,
         float*  visibilities, // size CH x PL x 2
@@ -519,9 +552,9 @@ extern "C" {
     }
 
 
-    void GridderPlan_execute(idg::GridderPlan* p)
+    void GridderPlan_flush(idg::GridderPlan* p)
     {
-        p->execute();
+        p->flush();
     }
 
 
