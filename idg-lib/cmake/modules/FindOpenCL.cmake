@@ -17,6 +17,7 @@ find_package(PackageHandleStandardArgs)
 find_library(OPENCL_LIBRARIES
     NAMES OpenCL
     HINTS ENV OPENCL_LIB
+    HINTS ENV LD_LIBRARY_PATH
 )
 get_filename_component(OPENCL_LIB_DIR ${OPENCL_LIBRARIES} PATH)
 
