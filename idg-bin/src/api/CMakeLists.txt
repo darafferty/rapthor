@@ -3,11 +3,15 @@ project(idg-api)
 # sources and header files
 set (${PROJECT_NAME}_headers
     API.h
+    Scheme.h
     GridderPlan.h
+    DegridderPlan.h
 )
 
 set (${PROJECT_NAME}_sources
+    Scheme.cpp
     GridderPlan.cpp
+    DegridderPlan.cpp
 )
 
 add_library(
