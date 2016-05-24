@@ -20,15 +20,12 @@ namespace idg {
 
             public:
                 /// Constructors
-                Reference(Parameters params,
-                          unsigned deviceNumber = 0,
-                          Compilerflags flags = default_compiler_flags());
+                Reference(
+                    Parameters params,
+                    unsigned deviceNumber = 0);
 
                 /// Destructor
                 ~Reference() = default;
-
-                // Get default values for ProxyInfo
-                static std::string default_compiler_flags();
 
             public:
                 virtual std::unique_ptr<idg::kernel::opencl::Gridder> get_kernel_gridder() const override;

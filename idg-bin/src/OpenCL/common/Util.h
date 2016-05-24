@@ -10,23 +10,7 @@
 
 using namespace std;
 
-typedef struct {
-    std::string deviceName;
-    std::string driverVersion;
-
-    unsigned numCUs;
-    unsigned maxWGSize;
-    unsigned maxAllocSize;
-    unsigned maxGlobalSize;
-    unsigned maxClockFreq;
-
-    bool doubleSupported;
-    cl_device_type  deviceType;
-
-} device_info_t;
-
-device_info_t getDeviceInfo(cl::Device &d);
-
+float get_opencl_version(cl::Device &device);
 void printDevice(cl::Device &device, bool marker = false);
 void printDevices(int deviceNumber);
 
