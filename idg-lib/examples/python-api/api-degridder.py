@@ -142,14 +142,19 @@ if __name__ == "__main__":
     uvw = init_uvw(nr_baselines, nr_time, integration_time)
     wavenumbers = init_wavenumbers(nr_channels)
     baselines = init_baselines(nr_baselines)
-    grid = init_grid(grid_size)
     spheroidal = init_spheroidal(subgrid_size)
+
+    grid_image = init_grid(grid_size)
+    grid_image[:,grid_size/2,grid_size/2] = 1
+    # idg.utils.plot_grid(grid_image)
+
+    grid_gridded = init_grid(grid_size)
 
     frequencies = numpy.ndarray(nr_channels, dtype=numpy.float64)
     for i in range(nr_channels):
         frequencies[i] = sc.speed_of_light * wavenumbers[i] / (2*math.pi)
 
-    bufferTimesteps = 512
+    bufferTimesteps = nr_time
     nr_timeslots = nr_time / bufferTimesteps
     aterms = init_aterms(nr_timeslots, nr_stations, subgrid_size, 4)
 
@@ -157,34 +162,77 @@ if __name__ == "__main__":
     # initialize proxy
     ##################
 
-    plan = IDG.DegridderPlan(bufferTimesteps)
-    plan.set_stations(nr_stations);
-    plan.set_frequencies(frequencies);
-    plan.set_grid(grid);
-    plan.set_spheroidal(spheroidal);
-    plan.set_image_size(0.1);
-    plan.set_w_kernel_size(subgrid_size/2);
-    plan.internal_set_subgrid_size(subgrid_size);
-    plan.bake();
+    degridder_plan = IDG.DegridderPlan(bufferTimesteps)
+    degridder_plan.set_stations(nr_stations);
+    degridder_plan.set_frequencies(frequencies);
+    degridder_plan.set_spheroidal(spheroidal);
+    degridder_plan.set_grid(grid_image);  # actually, give fft2(grid_image)
+    degridder_plan.set_image_size(image_size);
+    degridder_plan.set_w_kernel_size(subgrid_size/2);
+    degridder_plan.internal_set_subgrid_size(subgrid_size);
+    degridder_plan.bake();
 
-    ##########################
-    # loop to fill buffer once
-    ##########################
+    gridder_plan = IDG.GridderPlan(bufferTimesteps)
+    gridder_plan.set_stations(nr_stations);
+    gridder_plan.set_frequencies(frequencies);
+    gridder_plan.set_spheroidal(spheroidal);
+    gridder_plan.set_grid(grid_gridded);
+    gridder_plan.set_image_size(image_size);
+    gridder_plan.set_w_kernel_size(subgrid_size/2);
+    gridder_plan.internal_set_subgrid_size(subgrid_size);
+    gridder_plan.bake();
+
+    # HACK: Should not be part of the plan
+    # HACK: IDG.transform_grid(IDG.Direction.ImageToFourier, grid);
+    # to be called before baking the plan
+    degridder_plan.transform_grid(IDG.Direction.ImageToFourier, grid_image);
+
+    ###########
+    # Degridder
+    ###########
     rowId = 0
 
     for time_major in range(nr_time / bufferTimesteps):
 
-        batch_rowId_start = rowId
+        # #### For each time chunk: set a-term, request visibilities
+        # degridder_plan.start_aterm(aterms[time_major,:,:,:])
 
-        plan.start_aterm(aterms[time_major,:,:,:])
+        # for time_minor in range(bufferTimesteps):
+        #     time = time_major*bufferTimesteps + time_minor
+        #     for bl in range(nr_baselines):
+
+        #         # Set antenna indices (Note: smaller one first by convention)
+        #         antenna1 = baselines[bl][1]
+        #         antenna2 = baselines[bl][0]
+
+        #         # Set UVW coordinates in double precision
+        #         uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+        #         uvw_coordinates[0] = uvw[bl][time]['u']
+        #         uvw_coordinates[1] = uvw[bl][time]['v']
+        #         uvw_coordinates[2] = uvw[bl][time]['w']
+
+        #         # Add visibilities to the buffer
+        #         degridder_plan.request_visibilities(
+        #             rowId,
+        #             uvw_coordinates,
+        #             antenna1,
+        #             antenna2,
+        #             time
+        #         )
+        #         rowId = rowId + 1
+
+        # degridder_plan.finish_aterm()  # has implicit flush
+        # degridder_plan.flush()
+
+        #### For each time chunk: set a-term, read the visibilities and grid them
+
+        #gridder_plan.start_aterm(aterms[time_major,:,:,:])
 
         for time_minor in range(bufferTimesteps):
-
             time = time_major*bufferTimesteps + time_minor
-
             for bl in range(nr_baselines):
 
-                # Set antenna indices (Note: smaller one first by convention of AO)
+                # Set antenna indices (Note: smaller one first by convention)
                 antenna1 = baselines[bl][1]
                 antenna2 = baselines[bl][0]
 
@@ -194,21 +242,34 @@ if __name__ == "__main__":
                 uvw_coordinates[1] = uvw[bl][time]['v']
                 uvw_coordinates[2] = uvw[bl][time]['w']
 
+                #visibilities = degridder_plan.read_visibilities(
+                #    antenna1,
+                #    antenna2,
+                #    time)
+                visibilities =  numpy.ones((nr_channels, nr_polarizations),
+                                           dtype=numpy.complex64)
+
                 # Add visibilities to the buffer
-                plan.request_visibilities(
-                    rowId,
+                gridder_plan.grid_visibilities(
+                    visibilities,
                     uvw_coordinates,
                     antenna1,
                     antenna2,
                     time
                 )
 
-                rowId = rowId + 1
+        #gridder_plan.finish_aterm() # has implicit flush
+        gridder_plan.flush()
 
-        batch_rowId_end = rowId
-        print batch_rowId_start, batch_rowId_end
-        plan.finish_aterm()  # flush
+        idg.utils.plot_grid(grid_gridded, scaling='log')
 
-        for index in range(batch_rowId_start, batch_rowId_end):
-            visibilities = plan.load_visibilities(index)
-            # print numpy.abs(visibilities)
+        grid_test = numpy.fft.fftshift(grid_gridded, axes=[1, 2])
+        grid_test = numpy.fft.fft2(grid_test, axes=[1, 2])
+        grid_test = numpy.fft.fftshift(grid_test, axes=[1, 2])
+
+        gridder_plan.transform_grid(IDG.Direction.FourierToImage, grid_gridded);
+        idg.utils.plot_grid(grid_gridded, scaling='log')
+        idg.utils.plot_grid(grid_test, scaling='log')
+        idg.utils.plot_grid(grid_test)
+
+        plt.show()

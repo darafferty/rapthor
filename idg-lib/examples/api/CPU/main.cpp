@@ -65,8 +65,7 @@ int main(int argc, char *argv[])
                            nr_channels, nr_polarizations);
     idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
     idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_stations, nr_timeslots, nr_polarizations,
-                    subgridsize);
+    idg::init_aterm(aterm, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
     idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
     idg::init_spheroidal(spheroidal, subgridsize);
     idg::init_baselines(baselines, nr_stations, nr_baselines);

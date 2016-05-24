@@ -39,8 +39,15 @@ namespace idg {
             size_t antenna2,
             size_t timeIndex);
 
-        virtual void load_visibilities(size_t rowId,
-                                       std::complex<float>* visibilities) const;
+        virtual void read_visibilities(
+            size_t rowId,
+            std::complex<float>* visibilities) const;
+
+        virtual void read_visibilities(
+            size_t antenna1,
+            size_t antenna2,
+            size_t timeIndex,
+            std::complex<float>* visibilities) const;
 
         // Must be called to flush the buffer
         virtual void flush() override;
