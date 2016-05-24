@@ -25,8 +25,7 @@ namespace idg {
             /// Constructors
             OpenCL::OpenCL(
                 Parameters params,
-                unsigned deviceNumber,
-                Compilerflags flags)
+                unsigned deviceNumber)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -44,6 +43,9 @@ namespace idg {
                 device = devices[deviceNumber];
                 printDevices(deviceNumber);
 
+                // Get compiler flags
+                Compilerflags flags = default_compiler_flags();
+
                 // Set/check parameters
                 mParams = params;
                 parameter_sanity_check(); // throws exception if bad parameters
@@ -54,7 +56,7 @@ namespace idg {
                 // Initialize clFFT
                 clfftSetupData setup;
                 clfftInitSetupData(&setup);
-                #if defined(DUMP_CLFFT_KERNELS)
+                #if DUMP_CLFFT_KERNELS
                 setup.debugFlags = CLFFT_DUMP_PROGRAMS;
                 #endif
                 clfftSetup(&setup);
@@ -87,7 +89,16 @@ namespace idg {
             }
 
             string OpenCL::default_compiler_flags() {
-                return "-cl-fast-relaxed-math -cl-std=CL2.0";
+                std::stringstream compiler_flags;
+                compiler_flags << "-cl-fast-relaxed-math";
+
+                float opencl_version = get_opencl_version(device);
+                if (opencl_version >= 2.0) {
+                    compiler_flags << " -cl-std=CL2.0";
+                    compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
+                }
+
+                return compiler_flags.str();
             }
 
 
