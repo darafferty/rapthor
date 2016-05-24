@@ -32,14 +32,14 @@ namespace idg {
             class OpenCL : public Proxy {
                 public:
                     /// Constructors
-                    OpenCL(Parameters params,
-                        unsigned deviceNumber = 0,
-                        Compilerflags flags = default_compiler_flags());
+                    OpenCL(
+                        Parameters params,
+                        unsigned deviceNumber = 0);
 
                     ~OpenCL();
 
                     // Get default values
-                    static std::string default_compiler_flags();
+                    std::string default_compiler_flags();
 
                     // Get parameters of proxy
                     const Parameters& get_parameters() const { return mParams; }
