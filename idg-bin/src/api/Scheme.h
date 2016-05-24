@@ -29,7 +29,12 @@ namespace idg {
         CUDA_MAXWELL
     };
 
-    class Scheme
+    enum class Direction {
+        FourierToImage,
+        ImageToFourier
+    };
+
+    class Scheme   // rename to Plan
     {
     public:
         // Constructors and destructor
@@ -101,6 +106,12 @@ namespace idg {
 
         void finish_aterm();
 
+        void transform_grid(Direction direction,
+                            std::complex<double>* grid,
+                            size_t nr_polarizations,
+                            size_t height,
+                            size_t width);
+
         // Internal function, not needed for most users
         void internal_set_subgrid_size(const size_t size);
         size_t internal_get_subgrid_size() const;
@@ -111,7 +122,7 @@ namespace idg {
          *   0 implies antenna1=0, antenna2=1 ;
          *   1 implies antenna1=0, antenna2=2 ;
          * n-1 implies antenna1=1, antenna2=2 etc. */
-        size_t baseline_index(size_t antenna1, size_t antenna2);
+        size_t baseline_index(size_t antenna1, size_t antenna2) const;
 
         /* Other helper routines */
         void malloc_buffers();

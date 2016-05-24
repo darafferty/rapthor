@@ -134,7 +134,7 @@ namespace idg {
                 int nr_timesteps = 0;
                 int u_pixels_previous;
                 int v_pixels_previous;
-                int aterm_index_subgrid = find_aterm_index(time, aterm_offsets);;
+                int aterm_index_subgrid = find_aterm_index(time, aterm_offsets);
                 for (int t = time; t < nr_time; t++) {
                     int baseline_offset = bl * nr_time;
                     auto aterm_index = find_aterm_index(t, aterm_offsets);

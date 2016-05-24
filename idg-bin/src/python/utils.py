@@ -237,8 +237,8 @@ def init_aterms(aterms):
 def plot_aterms(aterms):
     """Plot A-terms
     Input:
-    aterms - numpy.ndarray(shape=(nr_stations, nr_timeslots,
-                           nr_polarizations, subgrid_size, subgrid_size),
+    aterms - numpy.ndarray(shape=(nr_timeslots, nr_stations,
+                           subgrid_size, subgrid_size, nr_polarizations),
                            dtype = idg.atermtype)
     """
     print "TO BE IMPLEMENTED"
