@@ -56,7 +56,7 @@ namespace idg {
                 // Initialize clFFT
                 clfftSetupData setup;
                 clfftInitSetupData(&setup);
-                #if defined(DUMP_CLFFT_KERNELS)
+                #if DUMP_CLFFT_KERNELS
                 setup.debugFlags = CLFFT_DUMP_PROGRAMS;
                 #endif
                 clfftSetup(&setup);
