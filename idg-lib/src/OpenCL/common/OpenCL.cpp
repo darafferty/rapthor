@@ -25,8 +25,7 @@ namespace idg {
             /// Constructors
             OpenCL::OpenCL(
                 Parameters params,
-                unsigned deviceNumber,
-                Compilerflags flags)
+                unsigned deviceNumber)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -43,6 +42,9 @@ namespace idg {
             	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
                 device = devices[deviceNumber];
                 printDevices(deviceNumber);
+
+                // Get compiler flags
+                Compilerflags flags = default_compiler_flags();
 
                 // Set/check parameters
                 mParams = params;
@@ -87,7 +89,15 @@ namespace idg {
             }
 
             string OpenCL::default_compiler_flags() {
-                return "-cl-fast-relaxed-math -cl-std=CL2.0";
+                std::stringstream compiler_flags;
+                compiler_flags << "-cl-fast-relaxed-math";
+
+                float opencl_version = get_opencl_version(device);
+                if (opencl_version >= 2.0) {
+                    compiler_flags << " -cl-std=CL2.0";
+                }
+
+                return compiler_flags.str();
             }
 
 
