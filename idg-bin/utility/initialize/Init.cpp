@@ -396,7 +396,7 @@ namespace idg {
     {
         TYPEDEF_ATERM_TYPE
         void *ptr = malloc(sizeof(ATermType));
-        init_aterm(ptr, nr_stations, nr_timeslots, nr_polarizations, subgridsize);
+        init_aterm(ptr, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
         return ptr;
     }
 
@@ -506,13 +506,13 @@ extern "C" {
 
     void utils_init_aterms(
         void *ptr,
-        int nr_stations,
         int nr_timeslots,
-        int nr_polarizations,
-        int subgridsize)
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
     {
-        idg::init_aterm(ptr, nr_stations, nr_timeslots,
-                        nr_polarizations, subgridsize);
+        idg::init_aterm(ptr, nr_timeslots, nr_stations,
+                        subgridsize, nr_polarizations);
     }
 
 

@@ -125,118 +125,8 @@ extern "C" {
     }
 
 
-    int GridderPlan_get_stations(idg::GridderPlan* p)
-    {
-        return p->get_stations();
-    }
-
-
-    void GridderPlan_set_stations(idg::GridderPlan* p, int n) {
-        p->set_stations(n);
-    }
-
-
-    void GridderPlan_set_frequencies(
-        idg::GridderPlan* p,
-        double* frequencyList,
-        int size)
-    {
-        p->set_frequencies(frequencyList, size);
-    }
-
-
-    double GridderPlan_get_frequency(idg::GridderPlan* p, int channel)
-    {
-        return p->get_frequency(channel);
-    }
-
-
-    int GridderPlan_get_frequencies_size(idg::GridderPlan* p)
-    {
-        return p->get_frequencies_size();
-    }
-
-
-    void GridderPlan_set_w_kernel_size(idg::GridderPlan* p, int size)
-    {
-        p->set_w_kernel(size);
-    }
-
-
-    int GridderPlan_get_w_kernel_size(idg::GridderPlan* p)
-    {
-        return p->get_w_kernel_size();
-    }
-
-
-
-    void GridderPlan_set_grid(
-        idg::GridderPlan* p,
-        void* grid,   // ptr to complex double
-        int nr_polarizations,
-        int height,
-        int width
-        )
-    {
-        p->set_grid(
-            (std::complex<double>*) grid,
-            nr_polarizations,
-            height,
-            width);
-    }
-
-
-    void GridderPlan_set_spheroidal(
-        idg::GridderPlan* p,
-        double* spheroidal,
-        int height,
-        int width)
-    {
-        p->set_spheroidal(spheroidal, height, width);
-    }
-
-
-
-    // deprecated: use cell size!
-    void GridderPlan_set_image_size(idg::GridderPlan* p, double imageSize)
-    {
-        p->set_image_size(imageSize);
-    }
-
-
-    // deprecated: use cell size!
-    double GridderPlan_get_image_size(idg::GridderPlan* p)
-    {
-        return p->get_image_size();
-    }
-
-
-    void GridderPlan_bake(idg::GridderPlan* p)
-    {
-        p->bake();
-    }
-
-
-    void GridderPlan_start_aterm(
-        idg::GridderPlan* p,
-        void* aterm,  // ptr to complex double
-        int nrStations,
-        int height,
-        int width,
-        int nrPolarizations)
-    {
-        p->start_aterm(
-            (std::complex<double>*) aterm,
-            nrStations,
-            height,
-            width,
-            nrPolarizations);
-    }
-
-
-    void GridderPlan_finish_aterm(idg::GridderPlan* p)
-    {
-        p->finish_aterm();
+    void GridderPlan_destroy(idg::GridderPlan* p) {
+       delete p;
     }
 
 
@@ -254,29 +144,6 @@ extern "C" {
             antenna1,
             antenna2,
             timeIndex);
-    }
-
-
-    void GridderPlan_flush(idg::GridderPlan* p)
-    {
-        p->flush();
-    }
-
-
-    void GridderPlan_internal_set_subgrid_size(idg::GridderPlan* p, int size)
-    {
-        p->internal_set_subgrid_size(size);
-    }
-
-
-    int GridderPlan_internal_get_subgrid_size(idg::GridderPlan* p)
-    {
-        return p->internal_get_subgrid_size();
-    }
-
-
-    void GridderPlan_destroy(idg::GridderPlan* p) {
-       delete p;
     }
 
 } // extern C

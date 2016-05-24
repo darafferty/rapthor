@@ -207,6 +207,18 @@ namespace idg {
     }
 
 
+    template<class T>
+    std::ostream& operator<<(std::ostream& os,
+                             const std::vector<T>& v)
+    {
+        os << "[" << endl;
+        for (auto& x : v)
+            os << x << endl;
+        os << "]" << endl;
+        return os;
+    }
+
+
     /* std::ostream& operator<<(std::ostream& os, */
     /*                          const float2& x) */
     /* { */

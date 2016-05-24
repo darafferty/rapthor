@@ -262,7 +262,7 @@ namespace idg {
      *   0 implies antenna1=0, antenna2=1 ;
      *   1 implies antenna1=0, antenna2=2 ;
      * n-1 implies antenna1=1, antenna2=2 etc. */
-    size_t Scheme::baseline_index(size_t antenna1, size_t antenna2)
+    size_t Scheme::baseline_index(size_t antenna1, size_t antenna2) const
     {
         if (antenna1 > antenna2) {
             swap(antenna1, antenna2);
@@ -281,7 +281,7 @@ namespace idg {
     {
         if (nrStations != m_nrStations)
             throw invalid_argument("The number of stations to not match the plan.");
-        if (nrPolarizations != nrPolarizations)
+        if (nrPolarizations != m_nrPolarizations)
             throw invalid_argument("The number of polarization to not match the plan.");
 
         // to be implemented
@@ -315,6 +315,218 @@ namespace idg {
     {
         // to be implemented
         flush();
+        // set default a-term again?
+    }
+
+
+    void Scheme::transform_grid(Direction direction,
+                                std::complex<double>* grid,
+                                size_t nrPolarizations,
+                                size_t height,
+                                size_t width)
+    {
+        if (height != width)
+            throw invalid_argument("Only square grids supported.");
+        if (height != m_gridHeight)
+            throw invalid_argument("Grid dimensions must match the plan.");
+        if (nrPolarizations != m_nrPolarizations)
+            throw invalid_argument("Number of polarization must match the plan.");
+
+        // HACK:: copy array
+        Grid3D<complex<float>> tmp_grid(nrPolarizations, height, width);
+        for (auto p = 0; p < m_nrPolarizations; ++p) {
+            for (auto y = 0; y < m_gridHeight; ++y) {
+                for (auto x = 0; x < m_gridWidth; ++x) {
+                    tmp_grid(p, y, x) = complex<float>(
+                        grid[p*m_gridHeight*m_gridWidth
+                             + y*m_gridWidth + x]);
+                }
+            }
+        }
+
+        // should be not much more than a wrapper around proxy function
+        if (direction == Direction::FourierToImage) {
+            m_proxy->transform(idg::FourierDomainToImageDomain, tmp_grid.data());
+        } else if (direction == Direction::ImageToFourier) {
+            // m_proxy->transform(idg::ImageDomainToFourierDomain, tmp_grid.data());
+        } else {
+            throw invalid_argument("Unknown direction parameter.");
+        }
+
+        // HACK:: copy array
+        for (auto p = 0; p < m_nrPolarizations; ++p) {
+            for (auto y = 0; y < m_gridHeight; ++y) {
+                for (auto x = 0; x < m_gridWidth; ++x) {
+                    grid[p*m_gridHeight*m_gridWidth
+                         + y*m_gridWidth + x] = complex<double>(
+                             tmp_grid(p, y, x).real(), tmp_grid(p, y, x).imag());
+                }
+            }
+        }
     }
 
 } // namespace idg
+
+
+
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+
+    int Scheme_get_stations(idg::Scheme* p)
+    {
+        return p->get_stations();
+    }
+
+
+    void Scheme_set_stations(idg::Scheme* p, int n) {
+        p->set_stations(n);
+    }
+
+
+    void Scheme_set_frequencies(
+        idg::Scheme* p,
+        double* frequencyList,
+        int size)
+    {
+        p->set_frequencies(frequencyList, size);
+    }
+
+
+    double Scheme_get_frequency(idg::Scheme* p, int channel)
+    {
+        return p->get_frequency(channel);
+    }
+
+
+    int Scheme_get_frequencies_size(idg::Scheme* p)
+    {
+        return p->get_frequencies_size();
+    }
+
+
+    void Scheme_set_w_kernel_size(idg::Scheme* p, int size)
+    {
+        p->set_w_kernel(size);
+    }
+
+
+    int Scheme_get_w_kernel_size(idg::Scheme* p)
+    {
+        return p->get_w_kernel_size();
+    }
+
+
+    void Scheme_set_grid(
+        idg::Scheme* p,
+        void* grid,   // ptr to complex double
+        int nr_polarizations,
+        int height,
+        int width
+        )
+    {
+        p->set_grid(
+            (std::complex<double>*) grid,
+            nr_polarizations,
+            height,
+            width);
+    }
+
+
+    void Scheme_set_spheroidal(
+        idg::Scheme* p,
+        double* spheroidal,
+        int height,
+        int width)
+    {
+        p->set_spheroidal(spheroidal, height, width);
+    }
+
+
+    // deprecated: use cell size!
+    void Scheme_set_image_size(idg::Scheme* p, double imageSize)
+    {
+        p->set_image_size(imageSize);
+    }
+
+
+    // deprecated: use cell size!
+    double Scheme_get_image_size(idg::Scheme* p)
+    {
+        return p->get_image_size();
+    }
+
+
+    void Scheme_bake(idg::Scheme* p)
+    {
+        p->bake();
+    }
+
+
+    void Scheme_start_aterm(
+        idg::Scheme* p,
+        void* aterm,  // ptr to complex double
+        int nrStations,
+        int height,
+        int width,
+        int nrPolarizations)
+    {
+        p->start_aterm(
+            (std::complex<double>*) aterm,
+            nrStations,
+            height,
+            width,
+            nrPolarizations);
+    }
+
+
+    void Scheme_finish_aterm(idg::Scheme* p)
+    {
+        p->finish_aterm();
+    }
+
+
+    void Scheme_flush(idg::Scheme* p)
+    {
+        p->flush();
+    }
+
+
+    void Scheme_internal_set_subgrid_size(idg::Scheme* p, int size)
+    {
+        p->internal_set_subgrid_size(size);
+    }
+
+
+    int Scheme_internal_get_subgrid_size(idg::Scheme* p)
+    {
+        return p->internal_get_subgrid_size();
+    }
+
+
+    void Scheme_transform_grid(
+        idg::Scheme* p,
+        int direction,
+        void* grid,  // complex<double>*
+        int nr_polarizations,
+        int height,
+        int width)
+    {
+        if (direction == 0) {
+            p->transform_grid(idg::Direction::FourierToImage,
+                              (std::complex<double>*) grid,
+                              nr_polarizations,
+                              height, width);
+        } else {
+            p->transform_grid(idg::Direction::ImageToFourier,
+                              (std::complex<double>*) grid,
+                              nr_polarizations,
+                              height, width);
+        }
+    }
+
+
+} // extern C
