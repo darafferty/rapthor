@@ -36,7 +36,7 @@ inline void atomic_add_float(volatile __global float *a, const float b) {
 
 inline void atomicAdd(__global float2 *a, float2 b) {
     __global float *a_ptr = (__global float *) a;
-    #if defined(CL_VERSION_2_0)
+    #if defined(USE_ATOMIC_FETCH_ADD)
     atomic_fetch_add((atomic_int *) a_ptr + 0, b.x);
     atomic_fetch_add((atomic_int *) a_ptr + 1, b.y);
     #else

@@ -95,6 +95,7 @@ namespace idg {
                 float opencl_version = get_opencl_version(device);
                 if (opencl_version >= 2.0) {
                     compiler_flags << " -cl-std=CL2.0";
+                    compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
                 }
 
                 return compiler_flags.str();
