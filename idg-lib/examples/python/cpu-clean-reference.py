@@ -169,14 +169,10 @@ if __name__ == "__main__":
     idg.utils.init_baselines(baselines)
 
     # aterms
-    aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
-                          subgrid_size, subgrid_size), \
+    aterms = numpy.zeros((nr_timeslots, nr_stations,
+                          subgrid_size, subgrid_size, nr_polarizations),
                          dtype = idg.atermtype)
-    # idg.utils.init_aterms(aterms)
-    # TODO: update C++ init_aterms
-    # Set aterm to identity instead
-    aterms[:,:,0,:,:] = 1.0
-    aterms[:,:,3,:,:] = 1.0
+    idg.utils.init_aterms(aterms)
 
     # aterm offset
     aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)

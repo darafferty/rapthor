@@ -78,8 +78,8 @@ if __name__ == "__main__":
                        dtype = idg.gridtype)
 
     # aterms
-    aterms = numpy.zeros((nr_stations, nr_timeslots, nr_polarizations,
-                          subgrid_size, subgrid_size), \
+    aterms = numpy.zeros((nr_timeslots, nr_stations,
+                          subgrid_size, subgrid_size, nr_polarizations),
                          dtype = idg.atermtype)
     # idg.utils.init_aterms(aterms)
     # TODO: update C++ init_aterms

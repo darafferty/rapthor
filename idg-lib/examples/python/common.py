@@ -118,7 +118,7 @@ def init_grid(grid_size):
         dtype = idg.gridtype)
     return grid
 
-def init_aterms(nr_stations, nr_timeslots, subgrid_size):
+def init_aterms(nr_timeslots, nr_stations, subgrid_size):
     aterms = numpy.zeros(
         (nr_timeslots, nr_stations, subgrid_size, subgrid_size,  _nr_polarizations),
         dtype = idg.atermtype)
@@ -206,7 +206,7 @@ def main(proxyname):
     ##################
     p = proxyname(
         nr_stations, nr_channels,
-        nr_time, nr_timeslots,
+        nr_time, nr_timeslots,   # TODO: remove nr_timeslots
         image_size, grid_size, subgrid_size)
 
     ##################
@@ -233,7 +233,7 @@ def main(proxyname):
     wavenumbers = init_wavenumbers(nr_channels)
     baselines = init_baselines(nr_baselines)
     grid = init_grid(grid_size)
-    aterms = init_aterms(nr_stations, nr_timeslots, subgrid_size)
+    aterms = init_aterms(nr_timeslots, nr_stations, subgrid_size)
     aterms_offset = init_aterms_offset(nr_timeslots, nr_time)
     spheroidal = init_spheroidal(subgrid_size)
     visibilities = init_visibilities_real(
@@ -244,9 +244,9 @@ def main(proxyname):
     ###########
     # debugging
     ###########
-    #plot_metadata(
-    #    p, uvw, wavenumbers, baselines, aterms_offset,
-    #    kernel_size, grid_size, subgrid_size, image_size)
+    plot_metadata(
+        p, uvw, wavenumbers, baselines, aterms_offset,
+        kernel_size, grid_size, subgrid_size, image_size)
 
     ##########
     # routines

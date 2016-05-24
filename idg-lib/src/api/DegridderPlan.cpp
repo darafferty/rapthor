@@ -69,7 +69,22 @@ namespace idg {
     }
 
 
-    void DegridderPlan::load_visibilities(size_t rowId,
+    void DegridderPlan::read_visibilities(size_t antenna1,
+                                          size_t antenna2,
+                                          size_t timeIndex,
+                                          std::complex<float>* visibilities) const
+    {
+        size_t local_time = timeIndex - m_lastTimeIndex - 1;
+        size_t local_bl = baseline_index(antenna1, antenna2);
+        complex<float>* start_ptr = (complex<float>*)
+            &m_bufferVisibilities(local_bl, local_time, 0);
+        copy(start_ptr, start_ptr + get_frequencies_size() * m_nrPolarizations,
+             visibilities);
+        // m_rowid_to_bufferindex.remove(rowId);
+    }
+
+
+    void DegridderPlan::read_visibilities(size_t rowId,
                                           std::complex<float>* visibilities) const
     {
         pair<size_t,size_t> indices = m_rowid_to_bufferindex.at(rowId);
@@ -119,8 +134,8 @@ namespace idg {
             (float*) m_spheroidal.data());
 
         // Cleanup
-        auto largestTimeIndex = *max_element( m_timeindices.cbegin(), m_timeindices.cend() );
-        m_lastTimeIndex = largestTimeIndex;
+        // auto largestTimeIndex = *max_element( m_timeindices.cbegin(), m_timeindices.cend() );
+        // m_lastTimeIndex = largestTimeIndex;
         m_timeindices.clear();
         // NOT HERE: m_rowid_to_bufferindex.clear();
         // init buffers to zero
@@ -139,139 +154,6 @@ extern "C" {
     idg::DegridderPlan* DegridderPlan_init(unsigned int bufferTimesteps)
     {
         return new idg::DegridderPlan(idg::Type::CPU_REFERENCE, bufferTimesteps);
-    }
-
-
-    int DegridderPlan_get_stations(idg::DegridderPlan* p)
-    {
-        return p->get_stations();
-    }
-
-
-    void DegridderPlan_set_stations(idg::DegridderPlan* p, int n) {
-        p->set_stations(n);
-    }
-
-
-    void DegridderPlan_set_frequencies(
-        idg::DegridderPlan* p,
-        double* frequencyList,
-        int size)
-    {
-        p->set_frequencies(frequencyList, size);
-    }
-
-
-    double DegridderPlan_get_frequency(idg::DegridderPlan* p, int channel)
-    {
-        return p->get_frequency(channel);
-    }
-
-
-    int DegridderPlan_get_frequencies_size(idg::DegridderPlan* p)
-    {
-        return p->get_frequencies_size();
-    }
-
-
-    void DegridderPlan_set_w_kernel_size(idg::DegridderPlan* p, int size)
-    {
-        p->set_w_kernel(size);
-    }
-
-
-    int DegridderPlan_get_w_kernel_size(idg::DegridderPlan* p)
-    {
-        return p->get_w_kernel_size();
-    }
-
-
-
-    void DegridderPlan_set_grid(
-        idg::DegridderPlan* p,
-        void* grid,   // ptr to complex double
-        int nr_polarizations,
-        int height,
-        int width
-        )
-    {
-        p->set_grid(
-            (std::complex<double>*) grid,
-            nr_polarizations,
-            height,
-            width);
-    }
-
-
-    void DegridderPlan_set_spheroidal(
-        idg::DegridderPlan* p,
-        double* spheroidal,
-        int height,
-        int width)
-    {
-        p->set_spheroidal(spheroidal, height, width);
-    }
-
-
-
-    // deprecated: use cell size!
-    void DegridderPlan_set_image_size(idg::DegridderPlan* p, double imageSize)
-    {
-        p->set_image_size(imageSize);
-    }
-
-
-    // deprecated: use cell size!
-    double DegridderPlan_get_image_size(idg::DegridderPlan* p)
-    {
-        return p->get_image_size();
-    }
-
-
-    void DegridderPlan_bake(idg::DegridderPlan* p)
-    {
-        p->bake();
-    }
-
-
-    void DegridderPlan_start_aterm(
-        idg::DegridderPlan* p,
-        void* aterm,  // ptr to complex double
-        int nrStations,
-        int height,
-        int width,
-        int nrPolarizations)
-    {
-        p->start_aterm(
-            (std::complex<double>*) aterm,
-            nrStations,
-            height,
-            width,
-            nrPolarizations);
-    }
-
-
-    void DegridderPlan_finish_aterm(idg::DegridderPlan* p)
-    {
-        p->finish_aterm();
-    }
-
-
-    void DegridderPlan_flush(idg::DegridderPlan* p)
-    {
-        p->flush();
-    }
-
-
-    void DegridderPlan_internal_set_subgrid_size(idg::DegridderPlan* p, int size)
-    {
-        p->internal_set_subgrid_size(size);
-    }
-
-
-    int DegridderPlan_internal_get_subgrid_size(idg::DegridderPlan* p)
-    {
-        return p->internal_get_subgrid_size();
     }
 
 
@@ -297,11 +179,27 @@ extern "C" {
     }
 
 
-    void DegridderPlan_load_visibilities(idg::DegridderPlan* p,
-                                         int rowId,
-                                         void* visibilities) // ptr to complex<float>
+    void DegridderPlan_read_visibilities_by_row_id(
+        idg::DegridderPlan* p,
+        int rowId,
+        void* visibilities) // ptr to complex<float>
     {
-        p->load_visibilities(rowId, (std::complex<float>*) visibilities);
+        p->read_visibilities(rowId, (std::complex<float>*) visibilities);
+    }
+
+
+    void DegridderPlan_read_visibilities(
+        idg::DegridderPlan* p,
+        int antenna1,
+        int antenna2,
+        int timeIndex,
+        void* visibilities) // ptr to complex<float>
+    {
+        p->read_visibilities(
+            antenna1,
+            antenna2,
+            timeIndex,
+            (std::complex<float>*) visibilities);
     }
 
 
