@@ -16,19 +16,14 @@ namespace idg {
             /// Constructors
             Reference::Reference(
                 Parameters params,
-                unsigned deviceNumber,
-                Compilerflags flags)
-                : OpenCL(params, deviceNumber, flags)
+                unsigned deviceNumber)
+                : OpenCL(params, deviceNumber)
             {
                 #if defined(DEBUG)
                 cout << "Reference::" << __func__ << endl;
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-            }
-
-            string Reference::default_compiler_flags() {
-                return OpenCL::default_compiler_flags();
             }
 
             unique_ptr<Gridder> Reference::get_kernel_gridder() const {
