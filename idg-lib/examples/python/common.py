@@ -228,7 +228,7 @@ def main(proxyname):
     #################
     # initialize data
     #################
-    visibilities = init_visibilities_dummy(nr_baselines, nr_time, nr_channels)
+    # visibilities = init_visibilities_dummy(nr_baselines, nr_time, nr_channels)
     uvw = init_uvw(nr_baselines, nr_time, integration_time)
     wavenumbers = init_wavenumbers(nr_channels)
     baselines = init_baselines(nr_baselines)
@@ -237,16 +237,16 @@ def main(proxyname):
     aterms_offset = init_aterms_offset(nr_timeslots, nr_time)
     spheroidal = init_spheroidal(subgrid_size)
     visibilities = init_visibilities_real(
-        4, 500, 2,
+        4, grid_size/2, 2,
         nr_baselines, nr_time, nr_channels, nr_polarizations,
         image_size, grid_size, uvw, wavenumbers)
 
     ###########
     # debugging
     ###########
-    plot_metadata(
-        p, uvw, wavenumbers, baselines, aterms_offset,
-        kernel_size, grid_size, subgrid_size, image_size)
+    # plot_metadata(
+    #    p, uvw, wavenumbers, baselines, aterms_offset,
+    #    kernel_size, grid_size, subgrid_size, image_size)
 
     ##########
     # routines

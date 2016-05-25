@@ -94,7 +94,7 @@ void kernel_gridder_(
                     for (int chan = 0; chan < current_nr_channels; chan++) {
                         // Compute phase
                         float wavenumber = wavenumbers[chan];
-                        phase[time][chan]  = (phase_index * wavenumber) - phase_offset;
+                        phase[time][chan]  = phase_offset - (phase_index * wavenumber);
                     }
                 } // end time
 

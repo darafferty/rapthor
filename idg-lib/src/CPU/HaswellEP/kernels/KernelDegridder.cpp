@@ -153,7 +153,7 @@ void kernel_degridder_(
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         // Compute phase
                         float wavenumber = wavenumbers[chan];
-                        phase[y][x] = phase_offset[y][x] - (phase_index[y][x] * wavenumber);
+                        phase[y][x] = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
                     }
                 }
 

@@ -1,7 +1,7 @@
 import os
 import ctypes
 import numpy
-from enum import Enum
+# from enum import Enum
 from ctypes.util import find_library
 
 # A bit ugly, but ctypes.util's find_library does not look in
@@ -14,7 +14,8 @@ libpath = os.path.join(path, 'libidg.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
 
-class Direction(Enum):
+# class Direction(Enum):
+class Direction():
     FourierToImage = 0
     ImageToFourier = 1
 

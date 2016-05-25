@@ -188,12 +188,12 @@ namespace idg {
         float x,
         float y,
         float amplitude,
-        int nr_baselines,
-        int nr_time,
-        int nr_channels,
-        int nr_polarizations,
+        int   nr_baselines,
+        int   nr_time,
+        int   nr_channels,
+        int   nr_polarizations,
         float imagesize,
-        float gridsize,
+        int   gridsize,
         void *uvw_,
         void *wavenumbers_,
         void *visibilities_)
@@ -207,8 +207,8 @@ namespace idg {
         WavenumberType *wavenumbers = (WavenumberType *) wavenumbers_;
         VisibilitiesType *visibilities = (VisibilitiesType *) visibilities_;
 
-        float l = x*imagesize/gridsize;
-        float m = y*imagesize/gridsize;
+        float l = x * imagesize/gridsize;
+        float m = y * imagesize/gridsize;
 
         #pragma omp parallel for
         for (int b = 0; b < nr_baselines; b++) {
@@ -491,15 +491,22 @@ extern "C" {
 
 
     void utils_add_pt_src(
-        float x, float y, float amplitude,
-        int nr_baselines, int nr_time, int nr_channels, int nr_polarizations,
-        float imagesize, float gridsize,
-        void *uvw, void *wavenumbers, void *visibilities)
+        float x,
+        float y,
+        float amplitude,
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations,
+        float imagesize,
+        int gridsize,
+        void *uvw,
+        void *wavenumbers,
+        void *visibilities)
     {
         idg::add_pt_src(
-            x, y, amplitude,
-            nr_baselines, nr_time, nr_channels, nr_polarizations,
-            imagesize, gridsize,
+            x, y, amplitude, nr_baselines, nr_time, nr_channels,
+            nr_polarizations, imagesize, gridsize,
             uvw, wavenumbers, visibilities);
     }
 
