@@ -13,16 +13,17 @@ import idg   # HACK: utility to initialize data, TODO: rename
 ############
 # paramaters
 ############
-_nr_stations = 22
+_nr_stations = 2
 _nr_baselines = _nr_stations*(_nr_stations-1)/2
 _nr_channels = 1
-_nr_time = 512             # samples per baseline
-_image_size = 0.05
-_subgrid_size = 24
-_grid_size = 1024
-_integration_time = 5
+_nr_time = 256             # samples per baseline
+_image_size = 0.20
+_subgrid_size = 32
+_grid_size = 256
+_integration_time = 10
 _kernel_size = (_subgrid_size / 2) + 1
 _nr_polarizations = 4
+
 
 def get_nr_stations():
     return _nr_stations
@@ -63,7 +64,8 @@ def init_uvw(nr_baselines, nr_time, integration_time):
     uvw = numpy.zeros((nr_baselines, nr_time),
                       dtype = idg.uvwtype)
     idg.utils.init_uvw(uvw, integration_time)
-    # idg.utils.plot_uvw(uvw)
+    # uvw['w'] = 0
+    idg.utils.plot_uvw(uvw)
     return uvw
 
 def init_wavenumbers(nr_channels):
@@ -91,18 +93,14 @@ def init_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations):
     aterms = numpy.zeros((nr_timeslots, nr_stations, subgrid_size,
                           subgrid_size, nr_polarizations),
                          dtype = numpy.complex128)
-    aterms[:,:,:,:,0] = 1
-    aterms[:,:,:,:,1] = 0
-    aterms[:,:,:,:,2] = 0
-    aterms[:,:,:,:,3] = 1
+    idg.utils.init_aterms(aterms)
     return aterms
 
 def init_spheroidal(subgrid_size):
     spheroidal = numpy.ones(
         (subgrid_size, subgrid_size),
         dtype = numpy.float64)
-    idg.utils.init_spheroidal(spheroidal)
-    #idg.utils.plot_spheroidal(spheroidal)
+    # idg.utils.plot_spheroidal(spheroidal)
     return spheroidal
 
 
@@ -185,7 +183,7 @@ if __name__ == "__main__":
     # HACK: Should not be part of the plan
     # HACK: IDG.transform_grid(IDG.Direction.ImageToFourier, grid);
     # to be called before baking the plan
-    degridder_plan.transform_grid(IDG.Direction.ImageToFourier, grid_image);
+    # degridder_plan.transform_grid(IDG.Direction.ImageToFourier, grid_image);
 
     ###########
     # Degridder
@@ -261,15 +259,20 @@ if __name__ == "__main__":
         #gridder_plan.finish_aterm() # has implicit flush
         gridder_plan.flush()
 
+        # grid_gridded[0,:,:] = grid_gridded[0,:,:] + numpy.flipud(grid_gridded[0,:,:])
+
         idg.utils.plot_grid(grid_gridded, scaling='log')
+        idg.utils.plot_grid(grid_gridded)
 
         grid_test = numpy.fft.fftshift(grid_gridded, axes=[1, 2])
-        grid_test = numpy.fft.fft2(grid_test, axes=[1, 2])
+        grid_test = numpy.fft.ifft2(grid_test, axes=[1, 2])
         grid_test = numpy.fft.fftshift(grid_test, axes=[1, 2])
+        grid_test = numpy.real(grid_test)
 
-        gridder_plan.transform_grid(IDG.Direction.FourierToImage, grid_gridded);
-        idg.utils.plot_grid(grid_gridded, scaling='log')
-        idg.utils.plot_grid(grid_test, scaling='log')
         idg.utils.plot_grid(grid_test)
+
+        # gridder_plan.transform_grid(IDG.Direction.FourierToImage, grid_gridded);
+        # idg.utils.plot_grid(grid_gridded)
+
 
         plt.show()

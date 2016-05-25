@@ -176,16 +176,15 @@ namespace idg {
         const size_t height,
         const size_t width)
     {
-        m_grid_double = grid;
-
         // For later support of non-square grids and nr_polarizations=1
         if (height != width)
             throw invalid_argument("Only square grids supported.");
         if (nr_polarizations != 4)
             throw invalid_argument("The number of polarization paris must be equals 4.");
 
-        m_gridHeight = height;
-        m_gridWidth  = width;
+        m_grid_double = grid;
+        m_gridHeight  = height;
+        m_gridWidth   = width;
     }
 
 
@@ -358,8 +357,7 @@ namespace idg {
             for (auto y = 0; y < m_gridHeight; ++y) {
                 for (auto x = 0; x < m_gridWidth; ++x) {
                     grid[p*m_gridHeight*m_gridWidth
-                         + y*m_gridWidth + x] = complex<double>(
-                             tmp_grid(p, y, x).real(), tmp_grid(p, y, x).imag());
+                         + y*m_gridWidth + x] = complex<double>(tmp_grid(p, y, x));
                 }
             }
         }
