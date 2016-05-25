@@ -56,6 +56,7 @@ namespace idg {
                 static_cast<float>(uvwInMeters[2])
             };
 
+
             if (antenna1 > antenna2) swap(antenna1, antenna2);
             m_bufferStationPairs[local_bl] = {
                 static_cast<int>(antenna1),
@@ -85,12 +86,12 @@ namespace idg {
             (float*) m_bufferUVW.data(),
             (float*) m_wavenumbers.data(),
             (int*) m_bufferStationPairs.data(),
-            (complex<float>*) m_grid.data(),
+            m_grid.data(),
             m_wOffsetInMeters,
             kernelsize,
             (complex<float>*) m_aterms.data(),
             m_aterm_offsets,
-            (float*) m_spheroidal.data());
+            m_spheroidal.data());
 
         // HACK: Add results to double precision grid
         for (auto p = 0; p < m_nrPolarizations; ++p) {

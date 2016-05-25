@@ -93,7 +93,7 @@ extern "C" {
                                 idg::float2 phasor = {phasor_real, phasor_imag};
 
                                 // Update pixel for every polarization
-                                size_t index = (offset + time)*nr_channels + chan*NR_POLARIZATIONS;
+                                size_t index = (offset + time)*nr_channels + chan*NR_POLARIZATIONS;  // TODO: double check
                                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                     idg::float2 visibility = visibilities[index][pol];
                                     pixels[pol] += visibility * phasor;
