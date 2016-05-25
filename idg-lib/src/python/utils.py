@@ -118,7 +118,7 @@ def add_pt_src(
         ctypes.c_int,
         ctypes.c_int,
         ctypes.c_float,
-        ctypes.c_float,
+        ctypes.c_int,
         ctypes.c_void_p,
         ctypes.c_void_p,
         ctypes.c_void_p]
@@ -132,7 +132,7 @@ def add_pt_src(
         ctypes.c_int(nr_channels),
         ctypes.c_int(nr_polarizations),
         ctypes.c_float(image_size),
-        ctypes.c_float(grid_size),
+        ctypes.c_int(grid_size),
         uvw.ctypes.data_as(ctypes.c_void_p),
         wavenumbers.ctypes.data_as(ctypes.c_void_p),
         vis.ctypes.data_as(ctypes.c_void_p))
@@ -144,7 +144,7 @@ def plot_visibilities(visibilities, form='abs', maxtime=numpy.inf):
     visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
                                 nr_channels, nr_polarizations),
                                 dtype=idg.visibilitiestype)
-    form - 'real', 'imag', 'abs', 'phase'
+    form - 'real', 'imag', 'abs', 'angle'
     """
 
     if maxtime>visibilities.shape[1]:

@@ -85,11 +85,11 @@ extern "C" {
                             for (int chan = 0; chan < nr_channels; chan++) {
                                 // Compute phase
                                 float wavenumber = wavenumbers[chan];
-                                float phase  = (phase_index * wavenumber) - phase_offset;
+                                float phase      = phase_offset - (phase_index * wavenumber);
 
                                 // Compute phasor
-                                float phasor_real = cosf(phase);
-                                float phasor_imag = sinf(phase);
+                                float phasor_real  = cosf(phase);
+                                float phasor_imag  = sinf(phase);
                                 idg::float2 phasor = {phasor_real, phasor_imag};
 
                                 // Update pixel for every polarization
