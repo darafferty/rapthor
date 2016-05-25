@@ -59,14 +59,14 @@ namespace idg {
              * GS = GRIDSIZE
              * SB = SUBGRIDSIZE
              * \param visibilities [in] complex<float>[BL][TI][CH][PL]
-             * \param uvw [in] float[3*BL][TI]
+             * \param uvw [in] float[BL][TI][3]
              * \param wavenumbers [in] float[CH]
              * \param baselines [in] int[BL][2]
              * \param grid [out] complex<float>[PL][GS][GS]
              * \param w_offset [in] float
              * \param kernel_size [in] int
              * \param aterm_offsets [in] int[TS]
-             * \param aterm [in] complex<float>[ST][TI][PL][SB][SB]
+             * \param aterm [in] complex<float>[TI][ST][SB][SB][PL]
              * \param spheroidal [in] float[SB][SB]
              */
             virtual void grid_visibilities(
@@ -93,13 +93,13 @@ namespace idg {
              * GS = GRIDSIZE
              * SB = SUBGRIDSIZE
              * \param visibilities [out] complex<float>[BL][TI][CH][PL]
-             * \param uvw [in] float[3*BL][TI]
+             * \param uvw [in] float[BL][TI][3]
              * \param wavenumbers [in] float[CH]
              * \param baselines [in] int[BL][2]
              * \param grid [in] complex<float>[PL][GS][GS]
              * \param w_offset [in] float
              * \param kernel_size [in] int
-             * \param aterm [in] complex<float>[ST][TI][PL][SB][SB]
+             * \param aterm [in] complex<float>[TI][ST][SB][SB][PL]
              * \param aterm_offsets [in] int[TS]
              * \param spheroidal [in] float[SB][SB]
              */
