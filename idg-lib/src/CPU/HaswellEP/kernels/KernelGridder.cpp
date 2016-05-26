@@ -3,7 +3,7 @@
 #include <cstring>
 #include <omp.h>
 
-#if defined(__INTEL_COMPILER)
+#if defined(__INTEL_COMPILER) || defined(HAVE_MKL)
 #define USE_VML
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
