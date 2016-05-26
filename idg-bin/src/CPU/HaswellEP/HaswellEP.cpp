@@ -74,13 +74,14 @@ namespace idg {
             string relwithdebinfo = "RelWithDebInfo";
             string intel_flags = "-qopenmp -axcore-avx2 -mkl=parallel";
             string gnu_flags_wo_mkl = "-std=c++11 -fopenmp -march=core-avx2 -ffast-math -lfftw3f";
+            string clang_flags_wo_mkl = "-std=c++11 -fopenmp -lfftw3f";
 
             #if defined(BUILD_WITH_PYTHON)
             // hack to make code be corretly loaded with ctypes
             intel_flags += " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
             #endif
 
-            #if (defined GNU_CXX_COMPILER) || (defined CLANG_CXX_COMPILER)
+            #if (defined GNU_CXX_COMPILER)
             // Settings for gcc
             if (debug == IDG_BUILD_TYPE)
                 return "-Wall -g " + gnu_flags_wo_mkl;
@@ -88,6 +89,14 @@ namespace idg {
                 return "-O3 -g " + gnu_flags_wo_mkl;
             else
                 return "-Wall -O3 " + gnu_flags_wo_mkl;
+            #elif (defined CLANG_CXX_COMPILER)
+            // Settings for clang
+            if (debug == IDG_BUILD_TYPE)
+                return "-Wall -g " + clang_flags_wo_mkl;
+            else if (relwithdebinfo == IDG_BUILD_TYPE)
+                return "-O3 -g " + clang_flags_wo_mkl;
+            else
+                return "-Wall -O3 " + clang_flags_wo_mkl;
             #else
             // Settings (general, assuming intel as default)
             if (debug == IDG_BUILD_TYPE)
