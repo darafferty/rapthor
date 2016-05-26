@@ -211,10 +211,10 @@ namespace idg {
     std::ostream& operator<<(std::ostream& os,
                              const std::vector<T>& v)
     {
-        os << "[" << endl;
+        os << "[" << std::endl;
         for (auto& x : v)
-            os << x << endl;
-        os << "]" << endl;
+            os << x << std::endl;
+        os << "]" << std::endl;
         return os;
     }
 
