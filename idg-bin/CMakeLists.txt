@@ -97,18 +97,25 @@ elseif(COMPILER_SUPPORTS_CXX0X)
 else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
+
 # make sure openmp is used if available
-find_package(OpenMP REQUIRED)
-if (OPENMP_FOUND)
-    # Prevent Intel 2016.2 compiler warning
-    if (INTEL_CXX_COMPILER)
-    set (OpenMP_CXX_FLAGS "-qopenmp")
-    endif()
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "3.8.0")
+    set (OpenMP_CXX_FLAGS "-fopenmp")
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 else()
-    message(STATUS "OpenMP support not detected")
+    find_package(OpenMP REQUIRED)
+    if (OPENMP_FOUND)
+        # Prevent Intel 2016.2 compiler warning
+        if (INTEL_CXX_COMPILER)
+        set (OpenMP_CXX_FLAGS "-qopenmp")
+        endif()
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+    else()
+        message(STATUS "OpenMP support not detected")
+    endif()
 endif()
 
 
