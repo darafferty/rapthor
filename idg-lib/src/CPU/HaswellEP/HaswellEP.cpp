@@ -70,71 +70,65 @@ namespace idg {
 
         string HaswellEP::default_compiler_flags()
         {
+            stringstream flags;
+
+            // Add build type flags
             string debug = "Debug";
             string relwithdebinfo = "RelWithDebInfo";
+            if (debug == IDG_BUILD_TYPE) {
+                flags << "-Wall -g";
+            } else if (relwithdebinfo == IDG_BUILD_TYPE) {
+                flags << "-O3 -g";
+            } else {
+                flags << "-Wall -O3";
+            }
 
             // Intel compiler
-            stringstream intel_flags_;
-            intel_flags_ << "-qopenmp -axcore-avx2 -mkl=parallel";
+            stringstream intel_flags;
+            intel_flags << " -qopenmp -axcore-avx2 -mkl=parallel";
             #if defined(BUILD_WITH_PYTHON)
             // HACK: to make code be corretly loaded with ctypes
-            intel_flags_ << " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
+            intel_flags << " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
             #endif
 
             // GNU compiler
-            stringstream gnu_flags_;
-            gnu_flags_ << "-std=c++11 -fopenmp -march=core-avx2 -ffast-math";
+            stringstream gnu_flags;
+            gnu_flags << " -std=c++11 -fopenmp -march=core-avx2 -ffast-math";
 
             // Clang compiler
-            stringstream clang_flags_;
-            clang_flags_ << "-std=c++11 -fopenmp";
+            stringstream clang_flags;
+            clang_flags << " -std=c++11 -fopenmp";
 
             // MKL
+            stringstream mkl_flags;
             #if defined(HAVE_MKL)
-            stringstream mkl_flags_;
-            mkl_flags_ << " -L" << MKL_LIB_DIR;
-            mkl_flags_ << " -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core";
-            mkl_flags_ << " -lmkl_avx2 -lmkl_vml_avx2";
-            mkl_flags_ << " -lmkl_avx -lmkl_vml_avx";
-            string mkl_flags = mkl_flags_.str();
-            gnu_flags_ << mkl_flags;
-            clang_flags_ << mkl_flags;
+            mkl_flags << " -L" << MKL_LIB_DIR;
+            mkl_flags << " -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core";
+            mkl_flags << " -lmkl_avx2 -lmkl_vml_avx2";
+            mkl_flags << " -lmkl_avx -lmkl_vml_avx";
+            #endif
+
+            // Add compiler specific flags
+            stringstream compiler_flags;
+            #if defined(GNU_CXX_COMPILER)
+                flags << gnu_flags.str();
+                #if defined(HAVE_MKL)
+                flags << mkl_flags.str();
+                #else
+                flags << " -lfftw3f";
+                #endif
+            #elif defined(CLANG_CXX_COMPILER)
+                flags << clang_flags.str();
+                #if defined(HAVE_MKL)
+                flags << mkl_flags.str();
+                #else
+                flags << " -lfftw3f";
+                #endif
             #else
-            gnu_flags_ << " -lfftw3f";
-            clang_flags_ << " -lfftw3f";
+                flags << intel_flags.str();
             #endif
 
-            // GNU compiler
-            #if (defined GNU_CXX_COMPILER)
-            string gnu_flags = gnu_flags_.str();
-            // Settings for gcc
-            if (debug == IDG_BUILD_TYPE)
-                return "-Wall -g " + gnu_flags;
-            else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g " + gnu_flags;
-            else
-                return "-Wall -O3 " + gnu_flags;
-            #endif
-
-            // Clang compiler
-            #if (defined CLANG_CXX_COMPILER)
-            string clang_flags = clang_flags_.str();
-            if (debug == IDG_BUILD_TYPE)
-                return "-Wall -g " + clang_flags;
-            else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g " + clang_flags;
-            else
-                return "-Wall -O3 " + clang_flags;
-            #endif
-
-            // Intel compiler
-            string intel_flags = intel_flags_.str();
-            if (debug == IDG_BUILD_TYPE)
-                return "-Wall -g " + intel_flags;
-            else if (relwithdebinfo == IDG_BUILD_TYPE)
-                return "-O3 -g " + intel_flags;
-            else
-                return "-Wall -O3 " + intel_flags;
+            return flags.str();
         }
 
         } // namespace cpu
