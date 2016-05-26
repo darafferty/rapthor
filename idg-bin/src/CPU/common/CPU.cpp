@@ -825,7 +825,14 @@ namespace idg {
                   mParams.get_grid_size(),
                   mParams.get_subgrid_size());
 
-                string parameters = " " + flags + " " + mparameters;
+                stringstream parameters_;
+                parameters_ << " " << flags;
+                parameters_ << " " << mparameters;
+                #if defined(HAVE_MKL)
+                parameters_ << " -DHAVE_MKL";
+                parameters_ << " -I" << MKL_INCLUDE_DIRS;
+                #endif
+                string parameters = parameters_.str();
 
                 vector<string> v = mInfo.get_lib_names();
 
