@@ -21,7 +21,6 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << "Reference::" << __func__ << endl;
-                cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
             }
