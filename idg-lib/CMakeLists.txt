@@ -119,12 +119,17 @@ else()
 endif()
 
 
-# TODO: make proper use of FindFFTW3
-# Now, when using MKL the include directory '$MKLROOT/include/fftw' is unknown
-# and needs to be put into the CPATH to make it work
-# if (BUILD_LIB_CPU)
-#    find_package(FFTW3)
-# endif (BUILD_LIB_CPU)
+# find MKL
+find_package(MKL QUIET)
+if (${MKL_FOUND})
+    get_filename_component(MKL_LIB_DIR ${MKL_LIBRARIES} PATH)
+    set (HAVE_MKL TRUE)
+else()
+    unset (MKL_INCLUDE_DIRS CACHE)
+    unset (MKL_LIBRARIES CACHE)
+endif()
+
+# TODO: make proper use of FindFFTW3 when MKL is not used
 
 # find CUDA environment
 if (BUILD_LIB_CUDA)
