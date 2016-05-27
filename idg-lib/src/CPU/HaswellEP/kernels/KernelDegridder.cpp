@@ -28,7 +28,7 @@ void kernel_degridder_(
     )
 {
     // Find offset of first subgrid
-    const idg::Metadata m = metadata[0];
+    const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
     const int time_offset_1     = m.time_offset; // should be 0
 
@@ -37,13 +37,13 @@ void kernel_degridder_(
     for (int s = 0; s < nr_subgrids; s++) {
 
         // Load metadata
-        const idg::Metadata m = metadata[s];
-        const int offset = (m.baseline_offset - baseline_offset_1)
-              + (m.time_offset - time_offset_1);
+        const idg::Metadata m  = metadata[s];
+        const int offset       = (m.baseline_offset - baseline_offset_1)
+                                 + (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
-        const int aterm_index = m.aterm_index;
-        const int station1 = m.baseline.station1;
-        const int station2 = m.baseline.station2;
+        const int aterm_index  = m.aterm_index;
+        const int station1     = m.baseline.station1;
+        const int station2     = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;
         const int y_coordinate = m.coordinate.y;
 
@@ -152,7 +152,7 @@ void kernel_degridder_(
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         // Compute phase
-                        float wavenumber = wavenumbers[chan];
+                        float wavenumber = wavenumbers[channel_offset + chan];
                         phase[y][x] = (phase_index[y][x] * wavenumber) - phase_offset[y][x];
                     }
                 }
@@ -186,27 +186,27 @@ void kernel_degridder_(
                                                   sums_yy_real,sums_yy_imag)
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
 
-                        sums_xx_real +=  phasor_real[y][x] * pixels_real[0][y][x];
-                        sums_xx_imag +=  phasor_real[y][x] * pixels_imag[0][y][x];
-                        sums_xx_real += -phasor_imag[y][x] * pixels_imag[0][y][x];
-                        sums_xx_imag +=  phasor_imag[y][x] * pixels_real[0][y][x];
+                        sums_xx_real += phasor_real[y][x] * pixels_real[0][y][x];
+                        sums_xx_imag += phasor_real[y][x] * pixels_imag[0][y][x];
+                        sums_xx_real -= phasor_imag[y][x] * pixels_imag[0][y][x];
+                        sums_xx_imag += phasor_imag[y][x] * pixels_real[0][y][x];
 
-                        sums_xy_real +=  phasor_real[y][x] * pixels_real[1][y][x];
-                        sums_xy_imag +=  phasor_real[y][x] * pixels_imag[1][y][x];
-                        sums_xy_real += -phasor_imag[y][x] * pixels_imag[1][y][x];
-                        sums_xy_imag +=  phasor_imag[y][x] * pixels_real[1][y][x];
+                        sums_xy_real += phasor_real[y][x] * pixels_real[1][y][x];
+                        sums_xy_imag += phasor_real[y][x] * pixels_imag[1][y][x];
+                        sums_xy_real -= phasor_imag[y][x] * pixels_imag[1][y][x];
+                        sums_xy_imag += phasor_imag[y][x] * pixels_real[1][y][x];
 
                         // #pragma distribute_point
 
-                        sums_yx_real +=  phasor_real[y][x] * pixels_real[2][y][x];
-                        sums_yx_imag +=  phasor_real[y][x] * pixels_imag[2][y][x];
-                        sums_yx_real += -phasor_imag[y][x] * pixels_imag[2][y][x];
-                        sums_yx_imag +=  phasor_imag[y][x] * pixels_real[2][y][x];
+                        sums_yx_real += phasor_real[y][x] * pixels_real[2][y][x];
+                        sums_yx_imag += phasor_real[y][x] * pixels_imag[2][y][x];
+                        sums_yx_real -= phasor_imag[y][x] * pixels_imag[2][y][x];
+                        sums_yx_imag += phasor_imag[y][x] * pixels_real[2][y][x];
 
-                        sums_yy_real +=  phasor_real[y][x] * pixels_real[3][y][x];
-                        sums_yy_imag +=  phasor_real[y][x] * pixels_imag[3][y][x];
-                        sums_yy_real += -phasor_imag[y][x] * pixels_imag[3][y][x];
-                        sums_yy_imag +=  phasor_imag[y][x] * pixels_real[3][y][x];
+                        sums_yy_real += phasor_real[y][x] * pixels_real[3][y][x];
+                        sums_yy_imag += phasor_real[y][x] * pixels_imag[3][y][x];
+                        sums_yy_real -= phasor_imag[y][x] * pixels_imag[3][y][x];
+                        sums_yy_imag += phasor_imag[y][x] * pixels_real[3][y][x];
                     }
                 }
 

@@ -32,3 +32,7 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
+
+# test
+add_test(NAME ${PROJECT_NAME}
+         COMMAND ${CMAKE_BINARY_DIR}/bin/tests/${PROJECT_NAME})
