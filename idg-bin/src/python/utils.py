@@ -6,6 +6,8 @@ import numpy.ctypeslib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import random
+import scipy.constants as sc
+
 from idgtypes import *
 
 # A bit ugly, but ctypes.util's find_library does not look in
@@ -746,5 +748,20 @@ def get_example_visibilities(nr_baselines, nr_time, nr_channels,
     return visibilities.astype(dtype=dtype)
 
 
+def get_example_frequencies(nr_channels,
+                            dtype=numpy.float32,
+                            info=False):
+    """Initialize and returns example frquencies array"""
+    wavenumbers = get_example_wavenumbers(nr_channels,
+                                          dtype=dtype)
+
+    frequencies = numpy.ndarray(nr_channels, dtype=dtype)
+    for i in range(nr_channels):
+        frequencies[i] = sc.speed_of_light * wavenumbers[i] / (2*math.pi)
+
+    if info==True:
+        print "frequencies: numpy.ndarray(shape = (nr_channels), " + \
+              "dtype = " + str(dtype) + ")"
+    return frequencies
 
 ##### END: INITIALZE EXAMPLE DATA #####
