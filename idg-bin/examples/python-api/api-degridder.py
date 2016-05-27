@@ -3,105 +3,9 @@
 # after INSTALLING the library, and sourcing init-enviroment.sh
 # (or setting the PYTHONPATH manually), you can import the idg module
 import numpy
-import math
-import scipy.constants as sc
 import matplotlib.pyplot as plt
 import IDG
 import idg   # HACK: utility to initialize data, TODO: rename
-
-
-############
-# paramaters
-############
-_nr_stations = 2
-_nr_baselines = _nr_stations*(_nr_stations-1)/2
-_nr_channels = 1
-_nr_time = 256             # samples per baseline
-_image_size = 0.20
-_subgrid_size = 32
-_grid_size = 256
-_integration_time = 10
-_kernel_size = (_subgrid_size / 2) + 1
-_nr_polarizations = 4
-
-
-def get_nr_stations():
-    return _nr_stations
-
-def get_nr_baselines():
-    return _nr_baselines
-
-def get_nr_channels():
-    return _nr_channels
-
-def get_nr_time():
-    return _nr_time
-
-def get_image_size():
-    return _image_size
-
-def get_subgrid_size():
-    return _subgrid_size
-
-def get_grid_size():
-    return _grid_size
-
-def get_integration_time():
-    return _integration_time
-
-def get_kernel_size():
-    return _kernel_size
-
-def get_nr_polarizations():
-    return _nr_polarizations
-
-
-#################
-# initialize data
-#################
-
-def init_uvw(nr_baselines, nr_time, integration_time):
-    uvw = numpy.zeros((nr_baselines, nr_time),
-                      dtype = idg.uvwtype)
-    idg.utils.init_uvw(uvw, integration_time)
-    # uvw['w'] = 0
-    idg.utils.plot_uvw(uvw)
-    return uvw
-
-def init_wavenumbers(nr_channels):
-    wavenumbers = numpy.ones(
-        nr_channels,
-        dtype = idg.wavenumberstype)
-    idg.utils.init_wavenumbers(wavenumbers)
-    #idg.utils.plot_wavenumbers(wavenumbers)
-    return wavenumbers
-
-def init_baselines(nr_baselines):
-    baselines = numpy.zeros(
-        nr_baselines,
-        dtype = idg.baselinetype)
-    idg.utils.init_baselines(baselines)
-    return baselines
-
-def init_grid(grid_size):
-    grid = numpy.zeros(
-        (_nr_polarizations, grid_size, grid_size),
-        dtype = numpy.complex128)
-    return grid
-
-def init_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations):
-    aterms = numpy.zeros((nr_timeslots, nr_stations, subgrid_size,
-                          subgrid_size, nr_polarizations),
-                         dtype = numpy.complex128)
-    idg.utils.init_aterms(aterms)
-    return aterms
-
-def init_spheroidal(subgrid_size):
-    spheroidal = numpy.ones(
-        (subgrid_size, subgrid_size),
-        dtype = numpy.float64)
-    # idg.utils.plot_spheroidal(spheroidal)
-    return spheroidal
 
 
 ######
@@ -109,56 +13,79 @@ def init_spheroidal(subgrid_size):
 ######
 if __name__ == "__main__":
 
+    ######################################################################
     # Set parameters
-    nr_stations = get_nr_stations()
-    nr_baselines = get_nr_baselines()
-    nr_channels = get_nr_channels()
-    nr_time = get_nr_time()
-    image_size = get_image_size()
-    subgrid_size = get_subgrid_size()
-    grid_size = get_grid_size()
-    integration_time = get_integration_time()
-    kernel_size = get_kernel_size()
-    nr_polarizations = get_nr_polarizations()
+    ######################################################################
+    nr_stations = 22
+    nr_baselines = nr_stations*(nr_stations-1)/2
+    nr_channels = 1
+    nr_time = 2048             # samples per baseline
+    image_size = 0.20
+    subgrid_size = 32
+    grid_size = 512
+    integration_time = 10
+    kernel_size = (subgrid_size / 2) + 1
+    nr_polarizations = 4
 
-    ##################
-    # print parameters
-    ##################
-    print "nr_stations = ", nr_stations
-    print "nr_baselines = ", nr_baselines
-    print "nr_channels = ", nr_channels
-    print "nr_timesteps = ", nr_time
+
+    ######################################################################
+    # Print parameters
+    ######################################################################
+    print "nr_stations      = ", nr_stations
+    print "nr_baselines     = ", nr_baselines
+    print "nr_channels      = ", nr_channels
+    print "nr_timesteps     = ", nr_time
     print "nr_polarizations = ", nr_polarizations
-    print "subgrid_size = ", subgrid_size
-    print "grid_size = ", grid_size
-    print "image_size = ", image_size
-    print "kernel_size = ", kernel_size
+    print "subgrid_size     = ", subgrid_size
+    print "grid_size        = ", grid_size
+    print "image_size       = ", image_size
+    print "kernel_size      = ", kernel_size
 
-    #################
-    # initialize data
-    #################
-    uvw = init_uvw(nr_baselines, nr_time, integration_time)
-    wavenumbers = init_wavenumbers(nr_channels)
-    baselines = init_baselines(nr_baselines)
-    spheroidal = init_spheroidal(subgrid_size)
 
-    grid_image = init_grid(grid_size)
-    grid_image[:,grid_size/2,grid_size/2] = 1
-    # idg.utils.plot_grid(grid_image)
+    ######################################################################
+    # Initialize data
+    ######################################################################
+    uvw           = idg.utils.get_example_uvw(nr_baselines, nr_time,
+                                              integration_time)
+    wavenumbers   = idg.utils.get_example_frequencies(nr_channels)
+    baselines     = idg.utils.get_example_baselines(nr_baselines)
 
-    grid_gridded = init_grid(grid_size)
+    frequencies   = idg.utils.get_example_frequencies(nr_channels,
+                                                      dtype=numpy.float64)
+    aterms        = idg.utils.get_example_aterms(1, nr_stations,
+                                                 subgrid_size,
+                                                 nr_polarizations,
+                                                 dtype = numpy.complex128)
+    spheroidal    = idg.utils.get_example_spheroidal(subgrid_size,
+                                                     dtype = numpy.float64)
+    visibilities  = idg.utils.get_example_visibilities(nr_baselines,
+                                                       nr_time,
+                                                       nr_channels,
+                                                       nr_polarizations,
+                                                       image_size,
+                                                       grid_size,
+                                                       uvw,
+                                                       wavenumbers)
 
-    frequencies = numpy.ndarray(nr_channels, dtype=numpy.float64)
-    for i in range(nr_channels):
-        frequencies[i] = sc.speed_of_light * wavenumbers[i] / (2*math.pi)
+    grid_image    = idg.utils.get_example_grid(nr_polarizations,
+                                               grid_size,
+                                               dtype = numpy.complex128)
+    # add point sources
+    offset_x = 0
+    offset_y = 0
+    grid_image[:,(grid_size/2)+offset_y,(grid_size/2)+offset_x] = 1
+    idg.utils.plot_grid(grid_image)
 
+    grid_gridded  = idg.utils.get_example_grid(nr_polarizations,
+                                               grid_size,
+                                               dtype = numpy.complex128)
+
+
+    ######################################################################
+    # Create plan
+    ######################################################################
     bufferTimesteps = nr_time
     nr_timeslots = nr_time / bufferTimesteps
-    aterms = init_aterms(nr_timeslots, nr_stations, subgrid_size, 4)
-
-    ##################
-    # initialize proxy
-    ##################
 
     degridder_plan = IDG.DegridderPlan(bufferTimesteps)
     degridder_plan.set_stations(nr_stations);
@@ -183,51 +110,20 @@ if __name__ == "__main__":
     # HACK: Should not be part of the plan
     # HACK: IDG.transform_grid(IDG.Direction.ImageToFourier, grid);
     # to be called before baking the plan
-    # degridder_plan.transform_grid(IDG.Direction.ImageToFourier, grid_image);
+    degridder_plan.transform_grid(IDG.Direction.ImageToFourier, grid_image);
 
     ###########
     # Degridder
     ###########
     rowId = 0
 
-    for time_major in range(nr_time / bufferTimesteps):
+    for time_batch in range(nr_time / bufferTimesteps):
 
-        # #### For each time chunk: set a-term, request visibilities
-        # degridder_plan.start_aterm(aterms[time_major,:,:,:])
-
-        # for time_minor in range(bufferTimesteps):
-        #     time = time_major*bufferTimesteps + time_minor
-        #     for bl in range(nr_baselines):
-
-        #         # Set antenna indices (Note: smaller one first by convention)
-        #         antenna1 = baselines[bl][1]
-        #         antenna2 = baselines[bl][0]
-
-        #         # Set UVW coordinates in double precision
-        #         uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
-        #         uvw_coordinates[0] = uvw[bl][time]['u']
-        #         uvw_coordinates[1] = uvw[bl][time]['v']
-        #         uvw_coordinates[2] = uvw[bl][time]['w']
-
-        #         # Add visibilities to the buffer
-        #         degridder_plan.request_visibilities(
-        #             rowId,
-        #             uvw_coordinates,
-        #             antenna1,
-        #             antenna2,
-        #             time
-        #         )
-        #         rowId = rowId + 1
-
-        # degridder_plan.finish_aterm()  # has implicit flush
-        # degridder_plan.flush()
-
-        #### For each time chunk: set a-term, read the visibilities and grid them
-
-        #gridder_plan.start_aterm(aterms[time_major,:,:,:])
+        #### For each time chunk: set a-term, request visibilities
+        degridder_plan.start_aterm(aterms[time_batch,:,:,:])
 
         for time_minor in range(bufferTimesteps):
-            time = time_major*bufferTimesteps + time_minor
+            time = time_batch*bufferTimesteps + time_minor
             for bl in range(nr_baselines):
 
                 # Set antenna indices (Note: smaller one first by convention)
@@ -240,12 +136,44 @@ if __name__ == "__main__":
                 uvw_coordinates[1] = uvw[bl][time]['v']
                 uvw_coordinates[2] = uvw[bl][time]['w']
 
-                #visibilities = degridder_plan.read_visibilities(
-                #    antenna1,
-                #    antenna2,
-                #    time)
-                visibilities =  numpy.ones((nr_channels, nr_polarizations),
-                                           dtype=numpy.complex64)
+                # Add visibilities to the buffer
+                degridder_plan.request_visibilities(
+                    rowId,
+                    uvw_coordinates,
+                    antenna1,
+                    antenna2,
+                    time
+                )
+                rowId = rowId + 1
+
+        degridder_plan.finish_aterm()  # has implicit flush
+        degridder_plan.flush()
+
+        #### For each time batch: set a-term, read the visibilities and grid them
+
+        #gridder_plan.start_aterm(aterms[time_batch,:,:,:])
+
+        for time_minor in range(bufferTimesteps):
+
+            time = time_batch*bufferTimesteps + time_minor
+            for bl in range(nr_baselines):
+
+                # Set antenna indices (Note: smaller one first by convention)
+                antenna1 = baselines[bl][1]
+                antenna2 = baselines[bl][0]
+
+                # Set UVW coordinates in double precision
+                uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+                uvw_coordinates[0] = uvw[bl][time]['u']
+                uvw_coordinates[1] = uvw[bl][time]['v']
+                uvw_coordinates[2] = uvw[bl][time]['w']
+
+                visibilities = degridder_plan.read_visibilities(
+                   antenna1,
+                   antenna2,
+                   time)
+                # visibilities =  numpy.ones((nr_channels, nr_polarizations),
+                #                            dtype=numpy.complex64)
 
                 # Add visibilities to the buffer
                 gridder_plan.grid_visibilities(
@@ -259,20 +187,9 @@ if __name__ == "__main__":
         #gridder_plan.finish_aterm() # has implicit flush
         gridder_plan.flush()
 
-        # grid_gridded[0,:,:] = grid_gridded[0,:,:] + numpy.flipud(grid_gridded[0,:,:])
-
         idg.utils.plot_grid(grid_gridded, scaling='log')
+
+        gridder_plan.transform_grid(IDG.Direction.FourierToImage, grid_gridded);
         idg.utils.plot_grid(grid_gridded)
-
-        grid_test = numpy.fft.fftshift(grid_gridded, axes=[1, 2])
-        grid_test = numpy.fft.ifft2(grid_test, axes=[1, 2])
-        grid_test = numpy.fft.fftshift(grid_test, axes=[1, 2])
-        grid_test = numpy.real(grid_test)
-
-        idg.utils.plot_grid(grid_test)
-
-        # gridder_plan.transform_grid(IDG.Direction.FourierToImage, grid_gridded);
-        # idg.utils.plot_grid(grid_gridded)
-
 
         plt.show()
