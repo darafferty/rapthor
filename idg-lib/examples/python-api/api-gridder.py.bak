@@ -71,8 +71,9 @@ if __name__ == "__main__":
 
 
     ######################################################################
-    # Initialize data
+    # initialize data
     ######################################################################
+
     bufferTimesteps = 512
     nr_timeslots = nr_time / bufferTimesteps
 
@@ -92,6 +93,7 @@ if __name__ == "__main__":
     grid          = idg.utils.get_example_grid(nr_polarizations,
                                                grid_size,
                                                dtype = numpy.complex128)
+
     visibilities  = idg.utils.get_example_visibilities(nr_baselines,
                                                        nr_time,
                                                        nr_channels,
@@ -101,9 +103,10 @@ if __name__ == "__main__":
                                                        uvw,
                                                        wavenumbers)
 
-    ######################################################################
-    # Create plan
-    ######################################################################
+    ##################
+    # initialize proxy
+    ##################
+
     plan = IDG.GridderPlan(bufferTimesteps)
     plan.set_stations(nr_stations);
     plan.set_frequencies(frequencies);
@@ -114,19 +117,19 @@ if __name__ == "__main__":
     plan.internal_set_subgrid_size(subgrid_size);
     plan.bake();
 
+    ##########################
+    # loop to fill buffer once
+    ##########################
 
-    ######################################################################
-    # Grid visibilities
-    ######################################################################
     fig, axarr = plt.subplots(2, 2)
 
-    for time_batch in range(nr_time / bufferTimesteps):
+    for time_major in range(nr_time / bufferTimesteps):
 
-        plan.start_aterm((time_batch+1)*aterms[time_batch,:,:,:])
+        plan.start_aterm((time_major+1)*aterms[time_major,:,:,:])
 
         for time_minor in range(bufferTimesteps):
 
-            time = time_batch*bufferTimesteps + time_minor
+            time = time_major*bufferTimesteps + time_minor
 
             for bl in range(nr_baselines):
 
@@ -157,7 +160,10 @@ if __name__ == "__main__":
 
         live_plot_grid(axarr, grid)
 
-    # Make sure buffer is flushed at the end
+    ##############
+    # flush buffer
+    ##############
     plan.flush()
+
 
     plt.show()
