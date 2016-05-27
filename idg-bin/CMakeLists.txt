@@ -120,6 +120,7 @@ endif()
 
 
 # find MKL
+if (NOT INTEL_CXX_COMPILER)
 find_package(MKL QUIET)
 if (${MKL_FOUND})
     get_filename_component(MKL_LIB_DIR ${MKL_LIBRARIES} PATH)
@@ -127,6 +128,7 @@ if (${MKL_FOUND})
 else()
     unset (MKL_INCLUDE_DIRS CACHE)
     unset (MKL_LIBRARIES CACHE)
+endif()
 endif()
 
 # TODO: make proper use of FindFFTW3 when MKL is not used

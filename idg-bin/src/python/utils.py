@@ -5,7 +5,8 @@ import ctypes
 import numpy.ctypeslib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+import random
+from idgtypes import *
 
 # A bit ugly, but ctypes.util's find_library does not look in
 # the LD_LIBRARY_PATH, but only PATH. Howver, we can also provide
@@ -350,6 +351,7 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     plt.imshow(spheroidal, interpolation=interpolation_method)
     plt.colorbar()
 
+
 def init_baselines(baselines):
     """Initialize baselines
     Input:
@@ -363,6 +365,7 @@ def init_baselines(baselines):
     lib.utils_init_baselines(baselines.ctypes.data_as(ctypes.c_void_p),
                              ctypes.c_int(nr_stations),
                              ctypes.c_int(nr_baselines))
+
 
 def plot_grid_all(grid, form='abs', scaling='none', interpolation_method='none'):
     """Plot Grid data
@@ -471,6 +474,7 @@ def plot_grid_all(grid, form='abs', scaling='none', interpolation_method='none')
         labelbottom='off',
         labelleft='off')
 
+
 def plot_grid(grid, form='abs', scaling='none', interpolation_method='none', pol='all'):
     """Plot Grid data
     Input:
@@ -521,6 +525,7 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none', pol
         left='off',
         labelbottom='off',
         labelleft='off')
+
 
 def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size):
     # Show subgrids (from metadata)
@@ -613,3 +618,133 @@ def init_grid_of_point_sources(N, image_size, visibilities, uvw,
                                 value *= 2
                         for p in range(nr_polarizations):
                             visibilities[b][t][c][p] += value
+
+
+
+
+##### BEGIN: INITIALZE EXAMPLE DATA #####
+
+def get_example_uvw(nr_baselines, nr_time, integration_time,
+                    dtype=uvwtype, info=False):
+    """Initialize and return example UVW array"""
+    uvw = numpy.zeros((nr_baselines, nr_time),
+                      dtype=uvwtype)
+    init_uvw(uvw, integration_time)
+    if info==True:
+        print "uvw: numpy.ndarray(shape = (nr_baselines, nr_time), " + \
+                                 "dtype = " + str(dtype) + ")"
+    return uvw.astype(dtype=dtype)
+
+
+def get_example_wavenumbers(nr_channels,
+                            dtype=wavenumberstype, info=False):
+    """Initialize and returns example wavenumbers array"""
+    wavenumbers = numpy.ones(nr_channels,
+                             dtype=wavenumberstype)
+    init_wavenumbers(wavenumbers)
+    if info==True:
+        print "wavenumbers: numpy.ndarray(shape = (nr_channels), " + \
+                                          "dtype = " + str(dtype) + ")"
+    return wavenumbers.astype(dtype=dtype)
+
+
+def get_example_baselines(nr_baselines,
+                          dtype=baselinetype, info=False):
+    """Initialize and return example baselines array"""
+    baselines = numpy.zeros(nr_baselines,
+                            dtype = baselinetype)
+    init_baselines(baselines)
+    if info==True:
+        print "baselines: numpy.ndarray(shape = (nr_channels), " + \
+                                        "dtype = " + str(dtype) + ")"
+    return baselines.astype(dtype=dtype)
+
+
+def get_example_grid(nr_polarizations, grid_size,
+                     dtype=gridtype, info=False):
+    grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
+                       dtype=dtype)
+    if info==True:
+        print "grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
+                                   "dtype = " + str(dtype) + ")"
+    return grid
+
+
+def get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations,
+                       dtype=atermtype, info=False):
+    aterms = numpy.zeros(
+        (nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_polarizations),
+        dtype = atermtype)
+    init_aterms(aterms)
+    if info==True:
+        print "aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
+              "subgrid_size, subgrid_size, nr_polarizations), " + \
+              "dtype = " + str(dtype) + ")"
+    return aterms.astype(dtype=dtype)
+
+
+def get_example_aterms_offset(nr_timeslots, nr_time,
+                              dtype=atermoffsettype, info=False):
+    aterms_offset = numpy.zeros(
+        (nr_timeslots + 1),
+        dtype = atermoffsettype)
+    init_aterms_offset(aterms_offset, nr_time)
+    if info==True:
+        print "aterms_offset: numpy.ndarray(shape = (nr_timeslots + 1), " + \
+              "dtype = " + str(dtype) + ")"
+    return aterms_offset.astype(dtype=dtype)
+
+
+def get_example_spheroidal(subgrid_size,
+                           dtype=spheroidaltype, info=False):
+    spheroidal = numpy.ones((subgrid_size, subgrid_size),
+                            dtype=spheroidaltype)
+    init_spheroidal(spheroidal)
+    if info==True:
+        print "spheroidal: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
+              "dtype = " + str(dtype) + ")"
+    return spheroidal.astype(dtype=dtype)
+
+
+def get_example_visibilities(nr_baselines, nr_time, nr_channels,
+                             nr_polarizations, image_size, grid_size,
+                             uvw, wavenumbers,
+                             nr_point_sources=4,
+                             max_pixel_offset=-1,
+                             random_seed=2,
+                             dtype=visibilitiestype,
+                             info=False):
+
+    if max_pixel_offset==-1:
+        max_pixel_offset = grid_size/2
+
+    # Initialize visibilities to zero
+    visibilities =  numpy.zeros(
+        (nr_baselines, nr_time, nr_channels, nr_polarizations),
+        dtype=visibilitiestype)
+
+    # Create offsets for fake point sources
+    offsets = list()
+    random.seed(random_seed)
+    for _ in range(nr_point_sources):
+        x = (random.random() * (max_pixel_offset)) - (max_pixel_offset/2)
+        y = (random.random() * (max_pixel_offset)) - (max_pixel_offset/2)
+        offsets.append((x, y))
+
+    # Update visibilities
+    for offset in offsets:
+        amplitude = 1
+        add_pt_src(offset[0], offset[1], amplitude,
+                   nr_baselines, nr_time, nr_channels, nr_polarizations,
+                   image_size, grid_size, uvw, wavenumbers, visibilities)
+
+    if info==True:
+        print "spheroidal: numpy.ndarray(shape = (nr_baselines, nr_time, " + \
+              "nr_channels, nr_polarizations), " + \
+              "dtype = " + str(dtype) + ")"
+
+    return visibilities.astype(dtype=dtype)
+
+
+
+##### END: INITIALZE EXAMPLE DATA #####
