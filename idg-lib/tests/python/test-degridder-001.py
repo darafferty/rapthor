@@ -40,7 +40,7 @@ if __name__ == "__main__":
     ############
     nr_stations = 8
     nr_baselines = nr_stations*(nr_stations-1)/2
-    nr_channels = 1
+    nr_channels = 8
     nr_time = 4800            # samples per baseline
     nr_timeslots = 10         # A-term time slots
     image_size = 0.08
@@ -53,9 +53,13 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    p = idg.CPU.Reference(nr_stations, nr_channels,
-                          nr_time, nr_timeslots,
-                          image_size, grid_size, subgrid_size)
+    p = idg.CPU.Reference(nr_stations,
+                          nr_channels,
+                          nr_time,
+                          nr_timeslots,
+                          image_size,
+                          grid_size,
+                          subgrid_size)
 
     ##################
     # print parameters
