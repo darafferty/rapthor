@@ -24,9 +24,9 @@ extern "C" {
         )
     {
         // Find offset of first subgrid
-        const idg::Metadata m = metadata[0];
+        const idg::Metadata m       = metadata[0];
         const int baseline_offset_1 = m.baseline_offset;
-        const int time_offset_1 = m.time_offset;
+        const int time_offset_1     = m.time_offset;
 
         #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
         {
@@ -35,13 +35,13 @@ extern "C" {
             for (int s = 0; s < nr_subgrids; s++) {
 
                 // Load metadata
-                const idg::Metadata m = metadata[s];
+                const idg::Metadata m  = metadata[s];
                 const int local_offset = (m.baseline_offset - baseline_offset_1) +
-                    (m.time_offset - time_offset_1);
+                                         (m.time_offset - time_offset_1);
                 const int nr_timesteps = m.nr_timesteps;
-                const int aterm_index = m.aterm_index;
-                const int station1 = m.baseline.station1;
-                const int station2 = m.baseline.station2;
+                const int aterm_index  = m.aterm_index;
+                const int station1     = m.baseline.station1;
+                const int station2     = m.baseline.station2;
                 const int x_coordinate = m.coordinate.x;
                 const int y_coordinate = m.coordinate.y;
 
@@ -145,14 +145,10 @@ extern "C" {
                                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                                 // Compute phase
-                                float wavenumber = wavenumbers[chan];
-                                float phase  = (phase_index * wavenumber) - phase_offset;
+                                float phase = (phase_index * wavenumbers[chan]) - phase_offset;
 
                                 // Compute phasor
-                                float phasor_real = cosf(phase);
-                                float phasor_imag = sinf(phase);
-
-                                idg::float2 phasor = {phasor_real, phasor_imag};
+                                idg::float2 phasor = {cosf(phase), sinf(phase)};
 
                                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                     sum[pol] += pixels[y][x][pol] * phasor;
@@ -161,7 +157,7 @@ extern "C" {
                         }
 
                         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
-                        size_t index = (local_offset + time)*nr_channels + chan*NR_POLARIZATIONS;
+                        size_t index = (local_offset + time)*nr_channels + chan;
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             visibilities[index][pol] = sum[pol] * scale;
                         }
