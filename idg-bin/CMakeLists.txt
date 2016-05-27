@@ -60,6 +60,10 @@ else()
 set (BUILD_SHARED_LIBS TRUE)
 endif()
 
+# test
+if (BUILD_WITH_TESTS)
+enable_testing()
+endif()
 
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -226,4 +230,5 @@ install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake"
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
+
 
