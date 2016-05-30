@@ -16,9 +16,10 @@ namespace idg {
                              size_t bufferTimesteps)
         : m_architecture(architecture),
           m_bufferTimesteps(bufferTimesteps),
+          m_timeStartThisBatch(0),
+          m_timeStartNextBatch(bufferTimesteps),
           m_nrStations(0),
           m_nrGroups(0),
-          m_lastTimeIndex(-1),
           m_wOffsetInMeters(0.0f),
           m_nrPolarizations(4),
           m_wKernelSize(0),
@@ -324,6 +325,11 @@ namespace idg {
                                 size_t height,
                                 size_t width)
     {
+        #if defined(DEBUG)
+        cout << __func__ << endl;
+        #endif
+
+
         if (height != width)
             throw invalid_argument("Only square grids supported.");
         if (height != m_gridHeight)
@@ -347,7 +353,7 @@ namespace idg {
         if (direction == Direction::FourierToImage) {
             m_proxy->transform(idg::FourierDomainToImageDomain, tmp_grid.data());
         } else if (direction == Direction::ImageToFourier) {
-            // m_proxy->transform(idg::ImageDomainToFourierDomain, tmp_grid.data());
+            m_proxy->transform(idg::ImageDomainToFourierDomain, tmp_grid.data());
         } else {
             throw invalid_argument("Unknown direction parameter.");
         }

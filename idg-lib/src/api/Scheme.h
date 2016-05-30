@@ -124,16 +124,21 @@ namespace idg {
          * n-1 implies antenna1=1, antenna2=2 etc. */
         size_t baseline_index(size_t antenna1, size_t antenna2) const;
 
-        /* Other helper routines */
+        // Other helper routines
         void malloc_buffers();
         void reset_buffers();
         void init_default_aterm();
 
+        // Bookkeeping
         Type   m_architecture;
         size_t m_bufferTimesteps;
+        size_t m_timeStartThisBatch;
+        size_t m_timeStartNextBatch;
+        std::set<size_t> m_timeindices;
+
+        // Parameters for proxy
         size_t m_nrStations;
         size_t m_nrGroups;
-        size_t m_lastTimeIndex;
         float  m_wOffsetInMeters; // Q: meters? lambda?
         size_t m_nrPolarizations;
         size_t m_wKernelSize;
@@ -142,10 +147,9 @@ namespace idg {
         size_t m_subgridSize;
         float  m_imageSize;
         int    m_aterm_offsets[2];
-
         proxy::Proxy* m_proxy;
 
-        std::set<size_t> m_timeindices;
+        // Buffers
         Frequencies<float> m_frequencies;                               // CH
         Wavenumbers<float> m_wavenumbers;                               // CH
         Grid2D<float> m_spheroidal;                                     // SB x SB
