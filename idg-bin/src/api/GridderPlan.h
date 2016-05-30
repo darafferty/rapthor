@@ -30,15 +30,15 @@ namespace idg {
 
         virtual ~GridderPlan();
 
-        // Adds the visibilities to the buffer and then eventually to the grid
-        virtual void grid_visibilities(
+        // Adds the visibilities to the buffer and eventually to the grid
+        void grid_visibilities(
             const std::complex<float>* visibilities, // size CH x PL
             const double* uvwInMeters,               // (u, v, w)
             size_t antenna1,                         // 0 <= antenna1 < nrStations
             size_t antenna2,                         // antenna1 < antenna2 < nrStations
             size_t timeIndex);                       // 0 <= timeIndex < NR_TIMESTEPS
 
-        // Must be called to flush the buffer
+        // To flush the buffer explicitly
         virtual void flush() override;
     };
 

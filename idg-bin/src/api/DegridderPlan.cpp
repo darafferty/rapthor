@@ -1,6 +1,6 @@
 /*
  * DegridderPlan.h
- * Access to IDG's high level gridder routines
+ * Access to IDG's high level degridder routines
  */
 
 
@@ -11,7 +11,6 @@ using namespace std;
 
 namespace idg {
 
-    // Constructors and destructor
     DegridderPlan::DegridderPlan(Type architecture,
                                  size_t bufferTimesteps)
         : Scheme(architecture, bufferTimesteps)
@@ -29,84 +28,81 @@ namespace idg {
         #endif
     }
 
-    // Degridding routines
 
     void DegridderPlan::request_visibilities(
-        size_t rowId,
         const double* uvwInMeters,
         size_t antenna1,
         size_t antenna2,
         size_t timeIndex)
     {
-        size_t local_time = timeIndex - m_lastTimeIndex - 1;
-        size_t local_bl = baseline_index(antenna1, antenna2);
+        int    local_time = timeIndex - m_timeStartThisBatch;
+        size_t local_bl   = baseline_index(antenna1, antenna2);
+
+        // In this API it is the responsibility of the user to read the buffer
+        // before requesting visibilities outside of the current time window.
+        // If time index outside of the window is requested we reset the buffers
+        // and assume a new time window is processed from now on.
+        if (local_time < 0) {
+            m_timeStartThisBatch = 0;
+            m_timeStartNextBatch = m_bufferTimesteps;
+            local_time = timeIndex;
+        }
 
         if (local_time >= m_bufferTimesteps) {
-            /* Do not insert more if buffer is already full */
-            /* Empty buffer, before inserting new element   */
-            flush();
-            local_time = 0;
-        } else {
-            // Keep track of all time indices pushed into the buffer
-            m_timeindices.insert(timeIndex);
-
-            // Copy data into buffers
-            m_bufferUVW(local_bl, local_time) = {
-                static_cast<float>(uvwInMeters[0]),
-                static_cast<float>(uvwInMeters[1]),
-                static_cast<float>(uvwInMeters[2])
-            };
-
-            if (antenna1 > antenna2) swap(antenna1, antenna2);
-            m_bufferStationPairs[local_bl] = {
-                int(antenna1),
-                int(antenna2)
-            };
-
-            m_rowid_to_bufferindex.emplace(
-                make_pair(rowId, make_pair(local_bl, local_time)));
+            while (local_time >= m_bufferTimesteps) {
+                m_timeStartThisBatch += m_bufferTimesteps;
+                local_time = timeIndex - m_timeStartThisBatch;
+            }
+            m_timeStartNextBatch = m_timeStartThisBatch + m_bufferTimesteps;
         }
+
+        // Keep track of all time indices pushed into the buffer
+        m_timeindices.insert(timeIndex);
+
+        // Copy data into buffers
+        m_bufferUVW(local_bl, local_time) = {
+            static_cast<float>(uvwInMeters[0]),
+            static_cast<float>(uvwInMeters[1]),
+            static_cast<float>(uvwInMeters[2])
+        };
+
+        if (antenna1 > antenna2) swap(antenna1, antenna2);
+        m_bufferStationPairs[local_bl] = {
+            int(antenna1),
+            int(antenna2)
+        };
     }
 
 
     void DegridderPlan::read_visibilities(size_t antenna1,
                                           size_t antenna2,
                                           size_t timeIndex,
-                                          std::complex<float>* visibilities) const
+                                          complex<float>* visibilities)
     {
-        size_t local_time = timeIndex - m_lastTimeIndex - 1;
-        size_t local_bl = baseline_index(antenna1, antenna2);
+        // Make sure visibilities are computed before read
+        flush();
+
+        // Read from buffer: note m_timeStartThisBatch is fro the next batch at this point
+        int    local_time = timeIndex - (m_timeStartThisBatch - m_bufferTimesteps);
+        size_t local_bl   = baseline_index(antenna1, antenna2);
+
+        if (local_time < 0 || local_time >= m_bufferTimesteps)
+            throw invalid_argument("Attempt to read visibilites not in local buffer.");
+
         complex<float>* start_ptr = (complex<float>*)
             &m_bufferVisibilities(local_bl, local_time, 0);
         copy(start_ptr, start_ptr + get_frequencies_size() * m_nrPolarizations,
              visibilities);
-        // m_rowid_to_bufferindex.remove(rowId);
-    }
-
-
-    void DegridderPlan::read_visibilities(size_t rowId,
-                                          std::complex<float>* visibilities) const
-    {
-        pair<size_t,size_t> indices = m_rowid_to_bufferindex.at(rowId);
-        size_t local_bl   = indices.first;
-        size_t local_time = indices.second;
-        complex<float>* start_ptr = (complex<float>*)
-            &m_bufferVisibilities(local_bl, local_time, 0);
-        copy(start_ptr, start_ptr + get_frequencies_size() * m_nrPolarizations,
-             visibilities);
-        // m_rowid_to_bufferindex.remove(rowId);
     }
 
 
     // Must be called whenever the buffer is full or no more data added
     void DegridderPlan::flush()
     {
-        #if defined(DEBUG)
-        cout << __func__ << endl;
-        #endif
-
+        // Return if no input in buffer
         if (m_timeindices.size() == 0) return;
 
+        // TODO: remove below //////////////////////////
         // HACK: copy double precison grid to single precison
         for (auto p = 0; p < m_nrPolarizations; ++p) {
             for (auto y = 0; y < m_gridHeight; ++y) {
@@ -117,10 +113,11 @@ namespace idg {
                 }
             }
         }
+        // TODO: remove above //////////////////////////
 
-        int kernelsize = m_wKernelSize;
+        // int kernSize = max(m_wKernelSize, m_aKernelSize, m_spheroidalKernelSize);
+        int kernelSize = m_wKernelSize;
 
-        // TODO: this routine should be not much more than this call
         m_proxy->degrid_visibilities(
             (complex<float>*) m_bufferVisibilities.data(),
             (float*) m_bufferUVW.data(),
@@ -128,17 +125,15 @@ namespace idg {
             (int*) m_bufferStationPairs.data(),
             (complex<float>*) m_grid.data(),
             m_wOffsetInMeters,
-            kernelsize,
+            kernelSize,
             (complex<float>*) m_aterms.data(),
             m_aterm_offsets,
             (float*) m_spheroidal.data());
 
-        // Cleanup
-        // auto largestTimeIndex = *max_element( m_timeindices.cbegin(), m_timeindices.cend() );
-        // m_lastTimeIndex = largestTimeIndex;
+        // Prepare next batch
+        m_timeStartThisBatch += m_bufferTimesteps;
+        m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
-        // NOT HERE: m_rowid_to_bufferindex.clear();
-        // init buffers to zero
     }
 
 } // namespace idg
@@ -156,37 +151,23 @@ extern "C" {
         return new idg::DegridderPlan(idg::Type::CPU_REFERENCE, bufferTimesteps);
     }
 
-
     void DegridderPlan_destroy(idg::DegridderPlan* p) {
        delete p;
     }
 
-
     void DegridderPlan_request_visibilities(
         idg::DegridderPlan* p,
-        int rowId,
         double* uvwInMeters,
         int antenna1,
         int antenna2,
         int timeIndex)
     {
         p->request_visibilities(
-            rowId,
             uvwInMeters,
             antenna1,
             antenna2,
             timeIndex);
     }
-
-
-    void DegridderPlan_read_visibilities_by_row_id(
-        idg::DegridderPlan* p,
-        int rowId,
-        void* visibilities) // ptr to complex<float>
-    {
-        p->read_visibilities(rowId, (std::complex<float>*) visibilities);
-    }
-
 
     void DegridderPlan_read_visibilities(
         idg::DegridderPlan* p,
@@ -199,8 +180,7 @@ extern "C" {
             antenna1,
             antenna2,
             timeIndex,
-            (std::complex<float>*) visibilities);
+            (complex<float>*) visibilities);
     }
-
 
 } // extern C

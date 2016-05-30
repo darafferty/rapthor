@@ -139,7 +139,6 @@ int main(int argc, char *argv[])
     plan.internal_set_subgrid_size(subgridsize);
     plan.bake();
 
-    int rowId = 0;
     std::vector<int> listOfRowIds;
     for (auto time = 0; time < nr_time; ++time) {
         for (auto bl = 0; bl < nr_baselines; ++bl) {
@@ -157,14 +156,10 @@ int main(int argc, char *argv[])
             // #endif
 
             plan.request_visibilities(
-                rowId,
                 &uvw_double[bl*nr_time*3 + time*3],
                 antenna1,
                 antenna2,
                 time);
-
-            listOfRowIds.push_back(rowId);
-            rowId++;
         }
     }
 
