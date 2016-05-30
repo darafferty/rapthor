@@ -32,28 +32,20 @@ namespace idg {
 
         virtual ~DegridderPlan();
 
-        virtual void request_visibilities(
-            size_t rowId,
-            const double* uvwInMeters,
-            size_t antenna1,
-            size_t antenna2,
-            size_t timeIndex);
+        void request_visibilities(
+            const double* uvwInMeters,          // (u, v, w)
+            size_t antenna1,                    // 0 <= antenna1 < nrStations
+            size_t antenna2,                    // antenna1 < antenna2 < nrStations
+            size_t timeIndex);                  // 0 <= timeIndex < NR_TIMESTEPS
 
-        virtual void read_visibilities(
-            size_t rowId,
-            std::complex<float>* visibilities) const;
+        void read_visibilities(
+            size_t antenna1,                    // 0 <= antenna1 < nrStations
+            size_t antenna2,                    // antenna1 < antenna2 < nrStations
+            size_t timeIndex,                   // 0 <= timeIndex < NR_TIMESTEPS
+            std::complex<float>* visibilities); // size CH x PL
 
-        virtual void read_visibilities(
-            size_t antenna1,
-            size_t antenna2,
-            size_t timeIndex,
-            std::complex<float>* visibilities) const;
-
-        // Must be called to flush the buffer
+        // To flush the buffer explicitly
         virtual void flush() override;
-
-    private:
-        std::map<size_t,std::pair<size_t,size_t>> m_rowid_to_bufferindex;
     };
 
 } // namespace idg

@@ -123,9 +123,9 @@ class Scheme():
                                      subgrid_size, nr_polarizations),
                                      dtype=numpy.complex128)
         """
-        nr_stations = aterms.shape[0]
-        height = aterms.shape[1]
-        width = aterms.shape[2]
+        nr_stations      = aterms.shape[0]
+        height           = aterms.shape[1]
+        width            = aterms.shape[2]
         nr_polarizations = aterms.shape[3]
         lib.Scheme_start_aterm(self.obj,
                                     aterms.ctypes.data_as(ctypes.c_void_p),
@@ -140,8 +140,8 @@ class Scheme():
 
     def transform_grid(self, direction, grid):
         nr_polarizations = grid.shape[0]
-        height = grid.shape[1]
-        width = grid.shape[2]
+        height           = grid.shape[1]
+        width            = grid.shape[2]
 
         if direction == Direction.FourierToImage:
             direction_int = 0
@@ -179,9 +179,6 @@ class GridderPlan(Scheme):
             timeIndex):
         """
         Place visibilities into the buffer
-        :param spheroidal: numpy.ndarray(nr_channels, nr_polarizations),
-                           dtype=numpy.float32)
-        :type spheroidal: numpy.ndarray
         """
         lib.GridderPlan_grid_visibilities(
             self.obj,
@@ -208,30 +205,20 @@ class DegridderPlan(Scheme):
         lib.DegridderPlan_destroy(self.obj)
 
     def request_visibilities(self,
-                             rowId,
                              uvw,
                              antenna1,
                              antenna2,
                              timeIndex):
+        """Request visibilities to be put into the buffer"""
         lib.DegridderPlan_request_visibilities(
             self.obj,
-            ctypes.c_int(rowId),
             uvw.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(antenna1),
             ctypes.c_int(antenna2),
             ctypes.c_int(timeIndex))
 
-    def read_visibilities_by_row_id(self, rowId):
-        nr_channels = self.get_frequencies_size()
-        nr_polarizations = 4 # HACK # self.get_nr_polarizations()
-        visibilities =  numpy.zeros((nr_channels, nr_polarizations),
-                                    dtype=numpy.complex64)
-        lib.DegridderPlan_read_visibilities_by_row_id(
-            self.obj, ctypes.c_int(rowId),
-            visibilities.ctypes.data_as(ctypes.c_void_p))
-        return visibilities
-
     def read_visibilities(self, antenna1, antenna2, timeIndex):
+        """Read visibilities from the buffer"""
         nr_channels = self.get_frequencies_size()
         nr_polarizations = 4 # HACK # self.get_nr_polarizations()
         visibilities =  numpy.zeros((nr_channels, nr_polarizations),
