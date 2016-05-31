@@ -53,20 +53,22 @@ int run_test()
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;
     idg::Parameters params;
-    // Read the following from ENV: 
-    // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE, 
-    // GRIDSIZE; if non-default jobsize wanted, set jobsizes!
-    params.set_from_env();
+    params.set_nr_stations(12);
+    params.set_nr_channels(9);
+    params.set_nr_time(4096);
+    params.set_nr_timeslots(7);
+    params.set_imagesize(0.08);
+    params.set_grid_size(1024);
 
     // retrieve constants for memory allocation
-    int nr_stations = params.get_nr_stations();
-    int nr_baselines = params.get_nr_baselines();
-    int nr_time = params.get_nr_time();
-    int nr_timeslots = params.get_nr_timeslots();
-    int nr_channels = params.get_nr_channels();
-    int gridsize = params.get_grid_size();
-    int subgridsize = params.get_subgrid_size();
-    float imagesize = params.get_imagesize();
+    int nr_stations      = params.get_nr_stations();
+    int nr_baselines     = params.get_nr_baselines();
+    int nr_time          = params.get_nr_time();
+    int nr_timeslots     = params.get_nr_timeslots();
+    int nr_channels      = params.get_nr_channels();
+    int gridsize         = params.get_grid_size();
+    int subgridsize      = params.get_subgrid_size();
+    float imagesize      = params.get_imagesize();
     int nr_polarizations = params.get_nr_polarizations();
 
     float w_offset = 0;
@@ -82,7 +84,7 @@ int run_test()
     auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations;
     auto size_uvw = 1ULL * nr_baselines*nr_time*3;
     auto size_wavenumbers = 1ULL * nr_channels;
-    auto size_aterm = 1ULL * nr_stations*nr_timeslots*nr_polarizations*subgridsize*subgridsize;
+    auto size_aterm = 1ULL * nr_timeslots*nr_stations*subgridsize*subgridsize*nr_polarizations;
     auto size_spheroidal = 1ULL * subgridsize*subgridsize;
     auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
     auto size_baselines = 1ULL * nr_baselines*2;

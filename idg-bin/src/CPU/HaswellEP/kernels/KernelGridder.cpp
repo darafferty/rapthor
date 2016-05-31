@@ -3,6 +3,8 @@
 #include <cstring>
 #include <omp.h>
 
+#include <stdio.h>
+
 #if defined(__INTEL_COMPILER) || defined(HAVE_MKL)
 #define USE_VML
 #define VML_PRECISION VML_LA
@@ -14,18 +16,17 @@
 
 template<int current_nr_channels>
 void kernel_gridder_(
-    const int nr_subgrids,
-    const float w_offset,
-    const int nr_channels,
-    const int channel_offset,
+    const int           nr_subgrids,
+    const float         w_offset,
+    const int           nr_channels,
+    const int           channel_offset,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
     const idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   aterm[][NR_STATIONS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
     const idg::Metadata metadata[],
-          idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
-    )
+          idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
 {
     // Find offset of first subgrid
     const idg::Metadata m       = metadata[0];
@@ -33,16 +34,16 @@ void kernel_gridder_(
     const int time_offset_1     = m.time_offset; // should be 0
 
     // Iterate all subgrids
-    #pragma omp parallel for shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata) // schedule(dynamic)
+    #pragma omp parallel for shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
     for (int s = 0; s < nr_subgrids; s++) {
         // Load metadata
-        const idg::Metadata m = metadata[s];
-        const int offset = (m.baseline_offset - baseline_offset_1)
-                         + (m.time_offset - time_offset_1);
+        const idg::Metadata m  = metadata[s];
+        const int offset       = (m.baseline_offset - baseline_offset_1) +
+                                 (m.time_offset - time_offset_1);
         const int nr_timesteps = m.nr_timesteps;
-        const int aterm_index = m.aterm_index;
-        const int station1 = m.baseline.station1;
-        const int station2 = m.baseline.station2;
+        const int aterm_index  = m.aterm_index;
+        const int station1     = m.baseline.station1;
+        const int station2     = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;
         const int y_coordinate = m.coordinate.y;
 
@@ -93,8 +94,8 @@ void kernel_gridder_(
 
                     for (int chan = 0; chan < current_nr_channels; chan++) {
                         // Compute phase
-                        float wavenumber = wavenumbers[chan];
-                        phase[time][chan]  = phase_offset - (phase_index * wavenumber);
+                        float wavenumber = wavenumbers[channel_offset + chan];
+                        phase[time][chan] = phase_offset - (phase_index * wavenumber);
                     }
                 } // end time
 
@@ -128,27 +129,27 @@ void kernel_gridder_(
                                                   pixels_yx_real,pixels_yx_imag,  \
                                                   pixels_yy_real,pixels_yy_imag)
                      for (int chan = 0; chan < current_nr_channels; chan++) {
-                          pixels_xx_real +=  vis_real[time][0][chan] * phasor_real[time][chan];
-                          pixels_xx_imag +=  vis_real[time][0][chan] * phasor_imag[time][chan];
-                          pixels_xx_real += -vis_imag[time][0][chan] * phasor_imag[time][chan];
-                          pixels_xx_imag +=  vis_imag[time][0][chan] * phasor_real[time][chan];
+                          pixels_xx_real += vis_real[time][0][chan] * phasor_real[time][chan];
+                          pixels_xx_imag += vis_real[time][0][chan] * phasor_imag[time][chan];
+                          pixels_xx_real -= vis_imag[time][0][chan] * phasor_imag[time][chan];
+                          pixels_xx_imag += vis_imag[time][0][chan] * phasor_real[time][chan];
 
-                          pixels_xy_real +=  vis_real[time][1][chan] * phasor_real[time][chan];
-                          pixels_xy_imag +=  vis_real[time][1][chan] * phasor_imag[time][chan];
-                          pixels_xy_real += -vis_imag[time][1][chan] * phasor_imag[time][chan];
-                          pixels_xy_imag +=  vis_imag[time][1][chan] * phasor_real[time][chan];
+                          pixels_xy_real += vis_real[time][1][chan] * phasor_real[time][chan];
+                          pixels_xy_imag += vis_real[time][1][chan] * phasor_imag[time][chan];
+                          pixels_xy_real -= vis_imag[time][1][chan] * phasor_imag[time][chan];
+                          pixels_xy_imag += vis_imag[time][1][chan] * phasor_real[time][chan];
 
                           // #pragma distribute_point
 
-                          pixels_yx_real +=  vis_real[time][2][chan] * phasor_real[time][chan];
-                          pixels_yx_imag +=  vis_real[time][2][chan] * phasor_imag[time][chan];
-                          pixels_yx_real += -vis_imag[time][2][chan] * phasor_imag[time][chan];
-                          pixels_yx_imag +=  vis_imag[time][2][chan] * phasor_real[time][chan];
+                          pixels_yx_real += vis_real[time][2][chan] * phasor_real[time][chan];
+                          pixels_yx_imag += vis_real[time][2][chan] * phasor_imag[time][chan];
+                          pixels_yx_real -= vis_imag[time][2][chan] * phasor_imag[time][chan];
+                          pixels_yx_imag += vis_imag[time][2][chan] * phasor_real[time][chan];
 
-                          pixels_yy_real +=  vis_real[time][3][chan] * phasor_real[time][chan];
-                          pixels_yy_imag +=  vis_real[time][3][chan] * phasor_imag[time][chan];
-                          pixels_yy_real += -vis_imag[time][3][chan] * phasor_imag[time][chan];
-                          pixels_yy_imag +=  vis_imag[time][3][chan] * phasor_real[time][chan];
+                          pixels_yy_real += vis_real[time][3][chan] * phasor_real[time][chan];
+                          pixels_yy_imag += vis_real[time][3][chan] * phasor_imag[time][chan];
+                          pixels_yy_real -= vis_imag[time][3][chan] * phasor_imag[time][chan];
+                          pixels_yy_imag += vis_imag[time][3][chan] * phasor_real[time][chan];
                      }
                  }
 
@@ -184,8 +185,14 @@ void kernel_gridder_(
                 int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                 // Set subgrid value
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    subgrid[s][pol][y_dst][x_dst] = pixels[pol] * sph;
+                if (channel_offset==0) {
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        subgrid[s][pol][y_dst][x_dst] = pixels[pol] * sph;
+                    }
+                } else {
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        subgrid[s][pol][y_dst][x_dst] += pixels[pol] * sph;
+                    }
                 }
             } // end x
         } // end y
