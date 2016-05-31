@@ -45,10 +45,9 @@ float get_accucary(
 // run gridding and degridding for ProxyType and reference CPU
 // proxy and compare the outcome; usage run_test<proxy::cpu::HaswellEP>();
 template <typename ProxyType>
-int run_test()
+int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 {
     int info = 0;
-    float tol = 10000*std::numeric_limits<float>::epsilon();
 
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;
@@ -70,6 +69,7 @@ int run_test()
     int subgridsize      = params.get_subgrid_size();
     float imagesize      = params.get_imagesize();
     int nr_polarizations = params.get_nr_polarizations();
+    tol = gridsize * std::numeric_limits<float>::epsilon();
 
     float w_offset = 0;
     int kernel_size = (subgridsize / 4) + 1;
@@ -82,36 +82,38 @@ int run_test()
     std::clog << ">>> Initialize data structures" << std::endl;
 
     auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations;
-    auto size_uvw = 1ULL * nr_baselines*nr_time*3;
-    auto size_wavenumbers = 1ULL * nr_channels;
-    auto size_aterm = 1ULL * nr_timeslots*nr_stations*subgridsize*subgridsize*nr_polarizations;
-    auto size_spheroidal = 1ULL * subgridsize*subgridsize;
-    auto size_grid = 1ULL * nr_polarizations*gridsize*gridsize;
-    auto size_baselines = 1ULL * nr_baselines*2;
+    auto size_uvw          = 1ULL * nr_baselines*nr_time*3;
+    auto size_wavenumbers  = 1ULL * nr_channels;
+    auto size_aterm        = 1ULL * nr_timeslots*nr_stations*subgridsize*subgridsize*
+                                    nr_polarizations;
+    auto size_spheroidal   = 1ULL * subgridsize*subgridsize;
+    auto size_grid         = 1ULL * nr_polarizations*gridsize*gridsize;
+    auto size_baselines    = 1ULL * nr_baselines*2;
 
-    auto visibilities = new std::complex<float>[size_visibilities];
+    auto visibilities     = new std::complex<float>[size_visibilities];
     auto visibilities_ref = new std::complex<float>[size_visibilities];
-    auto uvw = new float[size_uvw];
-    auto wavenumbers = new float[size_wavenumbers];
-    auto aterm = new std::complex<float>[size_aterm];
-    auto aterm_offsets = new int[nr_timeslots+1];
-    auto spheroidal = new float[size_spheroidal];
-    auto grid = new std::complex<float>[size_grid];
-    auto grid_ref = new std::complex<float>[size_grid];
-    auto baselines = new int[size_baselines];
+    auto uvw              = new float[size_uvw];
+    auto wavenumbers      = new float[size_wavenumbers];
+    auto aterm            = new std::complex<float>[size_aterm];
+    auto aterm_offsets    = new int[nr_timeslots+1];
+    auto spheroidal       = new float[size_spheroidal];
+    auto grid             = new std::complex<float>[size_grid];
+    auto grid_ref         = new std::complex<float>[size_grid];
+    auto baselines        = new int[size_baselines];
 
-    idg::init_visibilities(visibilities, nr_baselines, nr_time,
-                           nr_channels, nr_polarizations);
-    idg::init_visibilities(visibilities_ref, nr_baselines, nr_time,
-                           nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
-    idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
-    idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
-    idg::init_spheroidal(spheroidal, subgridsize);
-    idg::init_grid(grid, gridsize, nr_polarizations);
-    idg::init_grid(grid_ref, gridsize, nr_polarizations);
-    idg::init_baselines(baselines, nr_stations, nr_baselines);
+    idg::init_example_visibilities(visibilities, nr_baselines, nr_time,
+                                   nr_channels, nr_polarizations);
+    idg::init_example_visibilities(visibilities_ref, nr_baselines, nr_time,
+                                   nr_channels, nr_polarizations);
+    idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time);
+    idg::init_example_wavenumbers(wavenumbers, nr_channels);
+    idg::init_example_aterm(aterm, nr_timeslots, nr_stations,
+                            subgridsize, nr_polarizations);
+    idg::init_example_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
+    idg::init_example_spheroidal(spheroidal, subgridsize);
+    idg::init_example_grid(grid, gridsize, nr_polarizations);
+    idg::init_example_grid(grid_ref, gridsize, nr_polarizations);
+    idg::init_example_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
     // Initialize interface to kernels

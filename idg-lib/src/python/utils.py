@@ -19,9 +19,6 @@ path, junk = os.path.split(path)
 libpath = os.path.join(path, 'libidg-utility.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
-def get_figure_name(name):
-    return "Figure %d: %s" % (len(plt.get_fignums()) + 1, name)
-
 def nr_baselines_to_nr_stations(nr_baselines):
     """Convert NUMBER OF BASELINES to NUMBER OF STATIONS"""
     lower = int(math.floor(math.sqrt(2*nr_baselines)))
@@ -33,78 +30,6 @@ def nr_baselines_to_nr_stations(nr_baselines):
             return nr_stations
     return nr_stations
 
-
-def init_uvw(uvw, integration_time = 10):
-    """Initialize uvw for test case defined in utility/initialize"""
-    nr_baselines = uvw.shape[0]
-    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
-    nr_time = uvw.shape[1]
-    lib.utils_init_uvw.argtypes = [ctypes.c_void_p,
-                                   ctypes.c_int,
-                                   ctypes.c_int,
-                                   ctypes.c_int,
-                                   ctypes.c_int]
-    lib.utils_init_uvw( uvw.ctypes.data_as(ctypes.c_void_p),
-                        ctypes.c_int(nr_stations),
-                        ctypes.c_int(nr_baselines),
-                        ctypes.c_int(nr_time),
-                        ctypes.c_int(integration_time))
-
-
-def plot_uvw(uvw):
-    """Plot UVW data as (u,v)-plot
-    Input:
-    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
-                        dtype = idg.uvwtype)
-    """
-    u = uvw['u'].flatten()
-    v = uvw['v'].flatten()
-    uvlim = 1.2*max(max(abs(u)), max(abs(v)))
-    fig = plt.figure(get_figure_name("uvw"))
-    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
-    plt.xlim([-uvlim, uvlim])
-    plt.ylim([-uvlim, uvlim])
-    plt.grid(True)
-    plt.axes().set_aspect('equal')
-
-
-def init_wavenumbers(wavenumbers):
-    """Initialize wavenumbers for test case defined in utility/initialize"""
-    nr_channels = wavenumbers.shape[0]
-    lib.utils_init_wavenumbers.argtypes = [ctypes.c_void_p,
-                                           ctypes.c_int]
-    lib.utils_init_wavenumbers(wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                               ctypes.c_int(nr_channels) )
-
-
-def plot_wavenumbers(wavenumbers):
-    """Plot wavenumbers
-    Input:
-    wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-    """
-    fig = plt.figure(get_figure_name("wavenumbers"))
-    plt.plot(wavenumbers,'.')
-    plt.grid(True)
-    plt.xlabel("Channel")
-    plt.ylabel("rad/m")
-
-
-def init_visibilities(visibilities):
-    """Initialize visibilities for test case defined in utility/initialize"""
-    nr_baselines = visibilities.shape[0]
-    nr_time = visibilities.shape[1]
-    nr_channels = visibilities.shape[2]
-    nr_polarizations = visibilities.shape[3]
-    lib.utils_init_visibilities.argtypes = [ctypes.c_void_p,
-                                            ctypes.c_int,
-                                            ctypes.c_int,
-                                            ctypes.c_int,
-                                            ctypes.c_int]
-    lib.utils_init_visibilities(visibilities.ctypes.data_as(ctypes.c_void_p),
-                                ctypes.c_int(nr_baselines),
-                                ctypes.c_int(nr_time),
-                                ctypes.c_int(nr_channels),
-                                ctypes.c_int(nr_polarizations) )
 
 def add_pt_src(
     x, y, amplitude,
@@ -139,6 +64,167 @@ def add_pt_src(
         uvw.ctypes.data_as(ctypes.c_void_p),
         wavenumbers.ctypes.data_as(ctypes.c_void_p),
         vis.ctypes.data_as(ctypes.c_void_p))
+
+
+def func_spheroidal(nu):
+    """Function to compute spheroidal
+        Based on reference code by Bas"""
+    P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
+                [ 4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
+    Q = numpy.array([[1.0000000e0, 8.212018e-1, 2.078043e-1],
+                [1.0000000e0, 9.599102e-1, 2.918724e-1]])
+
+    part = 0;
+    end = 0.0;
+
+    if (nu >= 0.0 and nu < 0.75):
+        part = 0
+        end = 0.75
+    elif (nu >= 0.75 and nu <= 1.00):
+        part = 1
+        end = 1.00
+    else:
+        return 0.0
+
+    nusq = nu * nu
+    delnusq = nusq - end * end
+    delnusqPow = delnusq
+    top = P[part][0]
+    for k in range(1,5):
+        top += P[part][k] * delnusqPow
+        delnusqPow *= delnusq
+
+    bot = Q[part][0]
+    delnusqPow = delnusq
+    for k in range(1,3):
+        bot += Q[part][k] * delnusqPow
+        delnusqPow *= delnusq
+
+    if bot == 0:
+        result = 0
+    else:
+        result = (1.0 - nusq) * (top / bot)
+    return result
+
+
+def make_gaussian(size, fwhm = 3, center=None):
+    x = numpy.arange(0, size, 1, float)
+    y = x[:,numpy.newaxis]
+
+    if center is None:
+        x0 = y0 = size // 2
+    else:
+        x0 = center[0]
+        y0 = center[1]
+
+    return numpy.exp(-4*numpy.log(2) * ((x-x0)**2 + (y-y0)**2) / fwhm**2)
+
+
+def init_example_spheroidal_subgrid(subgrid_size):
+    """Construct spheroidal for subgrid"""
+    # Spheroidal from Bas
+    x = numpy.array(numpy.abs(numpy.linspace(-1, 1, num=subgrid_size, endpoint=False)), dtype=numpy.float32)
+    x = numpy.array(map(lambda e: func_spheroidal(e), x), dtype=numpy.float32)
+    spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
+    return spheroidal
+    # Ones
+    #return numpy.ones((subgrid_size, subgrid_size), dtype = numpy.float32)
+    # Gaussian
+    #return make_gaussian(subgrid_size, int(subgrid_size * 0.3))
+
+
+def init_example_spheroidal_grid(subgrid_size, grid_size):
+    """Construct spheroidal for grid"""
+    spheroidal = init_example_spheroidal_subgrid(subgrid_size)
+    s = numpy.fft.fft2(spheroidal)
+    s = numpy.fft.fftshift(s)
+    s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex64)
+    support_size1 = int((grid_size - subgrid_size)/2)
+    support_size2 = int((grid_size + subgrid_size)/2)
+    s1[support_size1:support_size2, support_size1:support_size2] = s
+    s1 = numpy.fft.ifftshift(s1)
+    return numpy.real(numpy.fft.ifft2(s1))
+
+
+def init_grid_of_point_sources(N, image_size, visibilities, uvw,
+                               wavenumbers, asymmetric=False):
+    """Initialize visibilities (and set w=0) to
+    get a grid of N by N point sources
+
+    Arguments:
+    N - odd integer for N by N point sources
+    image_size - ...
+    visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
+                                 nr_channels, nr_polarizations),
+                                 dtype=idg.visibilitiestype)
+    uvw - numpy.ndarray(shape=(nr_baselines,nr_time),
+                        dtype = idg.uvwtype)
+    wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
+    asymmetric - bool to make positive (l,m) twice in magnitude
+    """
+
+    # make sure N is odd, w=0, visibilities are zero initially
+    if math.fmod(N,2)==0:
+        N += 1
+    uvw['w'] = 0
+    visibilities.fill(0)
+
+    # create visibilities
+    nr_baselines     = visibilities.shape[0]
+    nr_time          = visibilities.shape[1]
+    nr_channels      = visibilities.shape[2]
+    nr_polarizations = visibilities.shape[3]
+
+    for b in range(nr_baselines):
+        for t in range(nr_time):
+            for c in range(nr_channels):
+                u = wavenumbers[c]*uvw[b][t]['u']/(2*numpy.pi)
+                v = wavenumbers[c]*uvw[b][t]['v']/(2*numpy.pi)
+                for i in range(-N/2+1,N/2+1):     # -N/2,-N/2+1,..,-1,0,1,...,N/2
+                    for j in range(-N/2+1,N/2+1): # -N/2,-N/2+1,..,-1,0,1,...,N/2
+                        l = i*image_size/(N+1)
+                        m = j*image_size/(N+1)
+                        value = numpy.exp(numpy.complex(0,-2*numpy.pi*(u*l + v*m)))
+                        if asymmetric==True:
+                            if l>0 and m>0:
+                                value *= 2
+                        for p in range(nr_polarizations):
+                            visibilities[b][t][c][p] += value
+
+
+##### BEGIN: PLOTTING UTILITY       #####
+
+def get_figure_name(name):
+    return "Figure %d: %s" % (len(plt.get_fignums()) + 1, name)
+
+
+def plot_uvw(uvw):
+    """Plot UVW data as (u,v)-plot
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
+    """
+    u = uvw['u'].flatten()
+    v = uvw['v'].flatten()
+    uvlim = 1.2*max(max(abs(u)), max(abs(v)))
+    fig = plt.figure(get_figure_name("uvw"))
+    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
+    plt.xlim([-uvlim, uvlim])
+    plt.ylim([-uvlim, uvlim])
+    plt.grid(True)
+    plt.axes().set_aspect('equal')
+
+
+def plot_wavenumbers(wavenumbers):
+    """Plot wavenumbers
+    Input:
+    wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
+    """
+    fig = plt.figure(get_figure_name("wavenumbers"))
+    plt.plot(wavenumbers,'.')
+    plt.grid(True)
+    plt.xlabel("Channel")
+    plt.ylabel("rad/m")
 
 
 def plot_visibilities(visibilities, form='abs', maxtime=numpy.inf):
@@ -220,23 +306,6 @@ def plot_visibilities(visibilities, form='abs', maxtime=numpy.inf):
         labelbottom='off')
 
 
-def init_aterms(aterms):
-    """Initialize aterms for test case defined in utility/initialize"""
-    nr_timeslots = aterms.shape[0]
-    nr_stations = aterms.shape[1]
-    subgrid_size = aterms.shape[2]
-    nr_polarizations = aterms.shape[4]
-    lib.utils_init_aterms.argtypes = [ctypes.c_void_p,
-                                      ctypes.c_int,
-                                      ctypes.c_int,
-                                      ctypes.c_int,
-                                      ctypes.c_int]
-    lib.utils_init_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
-                          ctypes.c_int(nr_timeslots),
-                          ctypes.c_int(nr_stations),
-                          ctypes.c_int(subgrid_size),
-                          ctypes.c_int(nr_polarizations))
-
 def plot_aterms(aterms):
     """Plot A-terms
     Input:
@@ -245,100 +314,6 @@ def plot_aterms(aterms):
                            dtype = idg.atermtype)
     """
     print "TO BE IMPLEMENTED"
-
-def init_aterms_offset(aterms_offset, nr_time):
-    """Initialize aterms offset"""
-    nr_timeslots = aterms_offset.shape[0] - 1
-    lib.utils_init_aterms_offset.argtypes = [ctypes.c_void_p,
-                                             ctypes.c_int,
-                                             ctypes.c_int]
-    lib.utils_init_aterms_offset(aterms_offset.ctypes.data_as(ctypes.c_void_p),
-                                 ctypes.c_int(nr_timeslots),
-                                 ctypes.c_int(nr_time))
-
-def func_spheroidal(nu):
-    """Function to compute spheroidal
-        Based on reference code by Bas"""
-    P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
-                [ 4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
-    Q = numpy.array([[1.0000000e0, 8.212018e-1, 2.078043e-1],
-                [1.0000000e0, 9.599102e-1, 2.918724e-1]])
-
-    part = 0;
-    end = 0.0;
-
-    if (nu >= 0.0 and nu < 0.75):
-        part = 0
-        end = 0.75
-    elif (nu >= 0.75 and nu <= 1.00):
-        part = 1
-        end = 1.00
-    else:
-        return 0.0
-
-    nusq = nu * nu
-    delnusq = nusq - end * end
-    delnusqPow = delnusq
-    top = P[part][0]
-    for k in range(1,5):
-        top += P[part][k] * delnusqPow
-        delnusqPow *= delnusq
-
-    bot = Q[part][0]
-    delnusqPow = delnusq
-    for k in range(1,3):
-        bot += Q[part][k] * delnusqPow
-        delnusqPow *= delnusq
-
-    if bot == 0:
-        result = 0
-    else:
-        result = (1.0 - nusq) * (top / bot)
-    return result
-
-def make_gaussian(size, fwhm = 3, center=None):
-    x = numpy.arange(0, size, 1, float)
-    y = x[:,numpy.newaxis]
-
-    if center is None:
-        x0 = y0 = size // 2
-    else:
-        x0 = center[0]
-        y0 = center[1]
-
-    return numpy.exp(-4*numpy.log(2) * ((x-x0)**2 + (y-y0)**2) / fwhm**2)
-
-def init_spheroidal_subgrid(subgrid_size):
-    """Construct spheroidal for subgrid"""
-    # Spheroidal from Bas
-    x = numpy.array(numpy.abs(numpy.linspace(-1, 1, num=subgrid_size, endpoint=False)), dtype=numpy.float32)
-    x = numpy.array(map(lambda e: func_spheroidal(e), x), dtype=numpy.float32)
-    spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
-    return spheroidal
-    # Ones
-    #return numpy.ones((subgrid_size, subgrid_size), dtype = numpy.float32)
-    # Gaussian
-    #return make_gaussian(subgrid_size, int(subgrid_size * 0.3))
-
-def init_spheroidal_grid(subgrid_size, grid_size):
-    """Construct spheroidal for grid"""
-    spheroidal = init_spheroidal_subgrid(subgrid_size)
-    s = numpy.fft.fft2(spheroidal)
-    s = numpy.fft.fftshift(s)
-    s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex64)
-    support_size1 = int((grid_size - subgrid_size)/2)
-    support_size2 = int((grid_size + subgrid_size)/2)
-    s1[support_size1:support_size2, support_size1:support_size2] = s
-    s1 = numpy.fft.ifftshift(s1)
-    return numpy.real(numpy.fft.ifft2(s1))
-
-def init_spheroidal(spheroidal):
-    """Initialize spheroidal for test case defined in utility/initialize"""
-    subgrid_size = spheroidal.shape[0]
-    lib.utils_init_spheroidal.argtypes = [ctypes.c_void_p,
-                                          ctypes.c_int]
-    lib.utils_init_spheroidal(spheroidal.ctypes.data_as(ctypes.c_void_p),
-                              ctypes.c_int(subgrid_size) )
 
 
 def plot_spheroidal(spheroidal, interpolation_method='none'):
@@ -352,21 +327,6 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     plt.figure(get_figure_name("spheroidal"))
     plt.imshow(spheroidal, interpolation=interpolation_method)
     plt.colorbar()
-
-
-def init_baselines(baselines):
-    """Initialize baselines
-    Input:
-    baselines - numpy.ndarray(shape=(nr_baselines), dtype = idg.baselinetype)
-    """
-    nr_baselines = baselines.shape[0]
-    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
-    lib.utils_init_baselines.argtypes = [ctypes.c_void_p,
-                                         ctypes.c_int,
-                                         ctypes.c_int]
-    lib.utils_init_baselines(baselines.ctypes.data_as(ctypes.c_void_p),
-                             ctypes.c_int(nr_stations),
-                             ctypes.c_int(nr_baselines))
 
 
 def plot_grid_all(grid, form='abs', scaling='none', interpolation_method='none'):
@@ -576,62 +536,157 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
     plt.ylim([grid_size, 0])
 
 
-def init_grid_of_point_sources(N, image_size, visibilities, uvw,
-                               wavenumbers, asymmetric=False):
-    """Initialize visibilities (and set w=0) to
-    get a grid of N by N point sources
+##### END:   PLOTTING UTILITY       #####
 
-    Arguments:
-    N - odd integer for N by N point sources
-    image_size - ...
-    visibilities - numpy.ndarray(shape=(nr_baselines, nr_time,
-                                 nr_channels, nr_polarizations),
-                                 dtype=idg.visibilitiestype)
-    uvw - numpy.ndarray(shape=(nr_baselines,nr_time),
-                        dtype = idg.uvwtype)
-    wavenumbers - numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-    asymmetric - bool to make positive (l,m) twice in magnitude
-    """
+##### BEGIN: INITIALZE DATA         #####
 
-    # make sure N is odd, w=0, visibilities are zero initially
-    if math.fmod(N,2)==0:
-        N += 1
-    uvw['w'] = 0
-    visibilities.fill(0)
-
-    # create visibilities
-    nr_baselines = visibilities.shape[0]
-    nr_time = visibilities.shape[1]
-    nr_channels = visibilities.shape[2]
-    nr_polarizations = visibilities.shape[3]
-
-    for b in range(nr_baselines):
-        for t in range(nr_time):
-            for c in range(nr_channels):
-                u = wavenumbers[c]*uvw[b][t]['u']/(2*numpy.pi)
-                v = wavenumbers[c]*uvw[b][t]['v']/(2*numpy.pi)
-                for i in range(-N/2+1,N/2+1):     # -N/2,-N/2+1,..,-1,0,1,...,N/2
-                    for j in range(-N/2+1,N/2+1): # -N/2,-N/2+1,..,-1,0,1,...,N/2
-                        l = i*image_size/(N+1)
-                        m = j*image_size/(N+1)
-                        value = numpy.exp(numpy.complex(0,-2*numpy.pi*(u*l + v*m)))
-                        if asymmetric==True:
-                            if l>0 and m>0:
-                                value *= 2
-                        for p in range(nr_polarizations):
-                            visibilities[b][t][c][p] += value
+def init_identity_aterms(aterms):
+    """Initialize aterms for test case defined in utility/initialize"""
+    nr_timeslots     = aterms.shape[0]
+    nr_stations      = aterms.shape[1]
+    subgrid_size     = aterms.shape[2]
+    nr_polarizations = aterms.shape[4]
+    lib.utils_init_identity_aterms.argtypes = [ctypes.c_void_p,
+                                               ctypes.c_int,
+                                               ctypes.c_int,
+                                               ctypes.c_int,
+                                               ctypes.c_int]
+    lib.utils_init_identity_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+                                   ctypes.c_int(nr_timeslots),
+                                   ctypes.c_int(nr_stations),
+                                   ctypes.c_int(subgrid_size),
+                                   ctypes.c_int(nr_polarizations))
 
 
+def get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations,
+                        dtype=atermtype, info=False):
+    aterms = numpy.zeros(
+        (nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_polarizations),
+        dtype = atermtype)
+    init_identity_aterms(aterms)
+    if info==True:
+        print "aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
+              "subgrid_size, subgrid_size, nr_polarizations), " + \
+              "dtype = " + str(dtype) + ")"
+    return aterms.astype(dtype=dtype)
 
+
+def get_zero_grid(nr_polarizations, grid_size,
+                  dtype=gridtype, info=False):
+    grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
+                       dtype=dtype)
+    if info==True:
+        print "grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
+                                   "dtype = " + str(dtype) + ")"
+    return grid
+
+##### END:   INITIALZE DATA         #####
 
 ##### BEGIN: INITIALZE EXAMPLE DATA #####
+
+def init_example_uvw(uvw, integration_time = 10):
+    """Initialize uvw for test case defined in utility/initialize"""
+    nr_baselines = uvw.shape[0]
+    nr_stations  = nr_baselines_to_nr_stations(nr_baselines)
+    nr_time      = uvw.shape[1]
+    lib.utils_init_example_uvw.argtypes = [ctypes.c_void_p,
+                                           ctypes.c_int,
+                                           ctypes.c_int,
+                                           ctypes.c_int,
+                                           ctypes.c_int]
+    lib.utils_init_example_uvw( uvw.ctypes.data_as(ctypes.c_void_p),
+                                ctypes.c_int(nr_stations),
+                                ctypes.c_int(nr_baselines),
+                                ctypes.c_int(nr_time),
+                                ctypes.c_int(integration_time))
+
+
+def init_example_wavenumbers(wavenumbers):
+    """Initialize wavenumbers for test case defined in utility/initialize"""
+    nr_channels = wavenumbers.shape[0]
+    lib.utils_init_example_wavenumbers.argtypes = [ctypes.c_void_p,
+                                                   ctypes.c_int]
+    lib.utils_init_example_wavenumbers(wavenumbers.ctypes.data_as(ctypes.c_void_p),
+                                       ctypes.c_int(nr_channels) )
+
+
+def init_example_visibilities(visibilities):
+    """Initialize visibilities for test case defined in utility/initialize"""
+    nr_baselines     = visibilities.shape[0]
+    nr_time          = visibilities.shape[1]
+    nr_channels      = visibilities.shape[2]
+    nr_polarizations = visibilities.shape[3]
+    lib.utils_init_example_visibilities.argtypes = [ctypes.c_void_p,
+                                                    ctypes.c_int,
+                                                    ctypes.c_int,
+                                                    ctypes.c_int,
+                                                    ctypes.c_int]
+    lib.utils_init_example_visibilities(visibilities.ctypes.data_as(ctypes.c_void_p),
+                                        ctypes.c_int(nr_baselines),
+                                        ctypes.c_int(nr_time),
+                                        ctypes.c_int(nr_channels),
+                                        ctypes.c_int(nr_polarizations) )
+
+
+def init_example_aterms(aterms):
+    """Initialize aterms for test case defined in utility/initialize"""
+    nr_timeslots     = aterms.shape[0]
+    nr_stations      = aterms.shape[1]
+    subgrid_size     = aterms.shape[2]
+    nr_polarizations = aterms.shape[4]
+    lib.utils_init_example_aterms.argtypes = [ctypes.c_void_p,
+                                              ctypes.c_int,
+                                              ctypes.c_int,
+                                              ctypes.c_int,
+                                              ctypes.c_int]
+    lib.utils_init_example_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+                                  ctypes.c_int(nr_timeslots),
+                                  ctypes.c_int(nr_stations),
+                                  ctypes.c_int(subgrid_size),
+                                  ctypes.c_int(nr_polarizations))
+
+
+def init_example_spheroidal(spheroidal):
+    """Initialize spheroidal for test case defined in utility/initialize"""
+    subgrid_size = spheroidal.shape[0]
+    lib.utils_init_example_spheroidal.argtypes = [ctypes.c_void_p,
+                                                  ctypes.c_int]
+    lib.utils_init_example_spheroidal(spheroidal.ctypes.data_as(ctypes.c_void_p),
+                                      ctypes.c_int(subgrid_size) )
+
+
+def init_example_aterms_offset(aterms_offset, nr_time):
+    """Initialize aterms offset"""
+    nr_timeslots = aterms_offset.shape[0] - 1
+    lib.utils_init_example_aterms_offset.argtypes = [ctypes.c_void_p,
+                                                     ctypes.c_int,
+                                                     ctypes.c_int]
+    lib.utils_init_example_aterms_offset(aterms_offset.ctypes.data_as(ctypes.c_void_p),
+                                         ctypes.c_int(nr_timeslots),
+                                         ctypes.c_int(nr_time))
+
+
+def init_example_baselines(baselines):
+    """Initialize baselines
+    Input:
+    baselines - numpy.ndarray(shape=(nr_baselines), dtype = idg.baselinetype)
+    """
+    nr_baselines = baselines.shape[0]
+    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
+    lib.utils_init_example_baselines.argtypes = [ctypes.c_void_p,
+                                                 ctypes.c_int,
+                                                 ctypes.c_int]
+    lib.utils_init_example_baselines(baselines.ctypes.data_as(ctypes.c_void_p),
+                                     ctypes.c_int(nr_stations),
+                                     ctypes.c_int(nr_baselines))
+
 
 def get_example_uvw(nr_baselines, nr_time, integration_time,
                     dtype=uvwtype, info=False):
     """Initialize and return example UVW array"""
     uvw = numpy.zeros((nr_baselines, nr_time),
                       dtype=uvwtype)
-    init_uvw(uvw, integration_time)
+    init_example_uvw(uvw, integration_time)
     if info==True:
         print "uvw: numpy.ndarray(shape = (nr_baselines, nr_time), " + \
                                  "dtype = " + str(dtype) + ")"
@@ -643,7 +698,7 @@ def get_example_wavenumbers(nr_channels,
     """Initialize and returns example wavenumbers array"""
     wavenumbers = numpy.ones(nr_channels,
                              dtype=wavenumberstype)
-    init_wavenumbers(wavenumbers)
+    init_example_wavenumbers(wavenumbers)
     if info==True:
         print "wavenumbers: numpy.ndarray(shape = (nr_channels), " + \
                                           "dtype = " + str(dtype) + ")"
@@ -655,7 +710,7 @@ def get_example_baselines(nr_baselines,
     """Initialize and return example baselines array"""
     baselines = numpy.zeros(nr_baselines,
                             dtype = baselinetype)
-    init_baselines(baselines)
+    init_example_baselines(baselines)
     if info==True:
         print "baselines: numpy.ndarray(shape = (nr_channels), " + \
                                         "dtype = " + str(dtype) + ")"
@@ -677,7 +732,7 @@ def get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations
     aterms = numpy.zeros(
         (nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_polarizations),
         dtype = atermtype)
-    init_aterms(aterms)
+    init_example_aterms(aterms)
     if info==True:
         print "aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
               "subgrid_size, subgrid_size, nr_polarizations), " + \
@@ -690,7 +745,7 @@ def get_example_aterms_offset(nr_timeslots, nr_time,
     aterms_offset = numpy.zeros(
         (nr_timeslots + 1),
         dtype = atermoffsettype)
-    init_aterms_offset(aterms_offset, nr_time)
+    init_example_aterms_offset(aterms_offset, nr_time)
     if info==True:
         print "aterms_offset: numpy.ndarray(shape = (nr_timeslots + 1), " + \
               "dtype = " + str(dtype) + ")"
@@ -701,7 +756,7 @@ def get_example_spheroidal(subgrid_size,
                            dtype=spheroidaltype, info=False):
     spheroidal = numpy.ones((subgrid_size, subgrid_size),
                             dtype=spheroidaltype)
-    init_spheroidal(spheroidal)
+    init_example_spheroidal(spheroidal)
     if info==True:
         print "spheroidal: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
               "dtype = " + str(dtype) + ")"

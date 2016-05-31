@@ -22,12 +22,12 @@ namespace idg {
 
     /* Methods where pointed to allocated memory is provided */
 
-    void init_uvw(
+    void init_example_uvw(
         void *ptr,
         int nr_stations,
         int nr_baselines,
         int nr_time,
-        int integration_time)
+        float integration_time)
     {
         TYPEDEF_UVW
         TYPEDEF_UVW_TYPE
@@ -157,7 +157,7 @@ namespace idg {
     }
 
 
-    void init_visibilities(
+    void init_example_visibilities(
         void *ptr,
         int nr_baselines,
         int nr_time,
@@ -228,7 +228,7 @@ namespace idg {
     }
 
 
-    void init_wavenumbers(
+    void init_example_wavenumbers(
         void *ptr,
         int nr_channels)
     {
@@ -248,7 +248,7 @@ namespace idg {
     }
 
 
-    void init_aterm(
+    void init_example_aterm(
         void *ptr,
         int nr_timeslots,
         int nr_stations,
@@ -273,7 +273,7 @@ namespace idg {
     }
 
 
-    void init_aterm_offsets(
+    void init_example_aterm_offsets(
         void *ptr,
         int nr_timeslots,
         int nr_time)
@@ -287,7 +287,7 @@ namespace idg {
     }
 
 
-    void init_spheroidal(void *ptr, int subgridsize) {
+    void init_example_spheroidal(void *ptr, int subgridsize) {
         TYPEDEF_SPHEROIDAL_TYPE
         SpheroidalType *spheroidal = (SpheroidalType *) ptr;
 
@@ -301,7 +301,7 @@ namespace idg {
     }
 
 
-    void init_baselines(
+    void init_example_baselines(
         void *ptr,
         int nr_stations,
         int nr_baselines)
@@ -325,7 +325,7 @@ namespace idg {
     }
 
 
-    void init_subgrid(
+    void init_example_subgrid(
         void *ptr,
         int nr_baselines,
         int subgridsize,
@@ -338,7 +338,7 @@ namespace idg {
     }
 
 
-    void init_grid(
+    void init_example_grid(
         void *ptr,
         int gridsize,
         int nr_polarizations)
@@ -349,24 +349,61 @@ namespace idg {
     }
 
 
+    void init_zero_grid(
+        void *ptr,
+        int gridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_GRID_TYPE
+        GridType *grid = (GridType *) ptr;
+        memset(grid, 0, sizeof(GridType));
+    }
+
+
+    void init_identity_aterm(
+        void *ptr,
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_ATERM_TYPE
+        ATermType *aterm = (ATermType *) ptr;
+
+        for (int t = 0; t < nr_timeslots; t++) {
+            for (int ant = 0; ant < nr_stations; ant++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
+                        (*aterm)[t][ant][y][x][0] = {1, 0};
+                        (*aterm)[t][ant][y][x][1] = {0, 0};
+                        (*aterm)[t][ant][y][x][2] = {0, 0};
+                        (*aterm)[t][ant][y][x][3] = {1, 0};
+                    }
+                }
+            }
+        }
+    }
+
+
     /*
         Methods where memory is allocated
     */
 
-    void* init_uvw(
+    void* init_example_uvw(
         int nr_stations,
         int nr_baselines,
-        int nr_time)
+        int nr_time,
+        float integration_time)
     {
         TYPEDEF_UVW
         TYPEDEF_UVW_TYPE
         void *ptr = malloc(sizeof(UVWType));
-        init_uvw(ptr, nr_stations, nr_baselines, nr_time);
+        init_example_uvw(ptr, nr_stations, nr_baselines, nr_time, integration_time);
         return ptr;
     }
 
 
-    void* init_visibilities(
+    void* init_example_visibilities(
         int nr_baselines,
         int nr_time,
         int nr_channels,
@@ -374,21 +411,21 @@ namespace idg {
     {
         TYPEDEF_VISIBILITIES_TYPE
         void *ptr = malloc(sizeof(VisibilitiesType));
-        init_visibilities(ptr, nr_baselines, nr_time, nr_channels, nr_polarizations);
+        init_example_visibilities(ptr, nr_baselines, nr_time, nr_channels, nr_polarizations);
         return ptr;
     }
 
 
-    void* init_wavenumbers(int nr_channels)
+    void* init_example_wavenumbers(int nr_channels)
     {
         TYPEDEF_WAVENUMBER_TYPE
         void *ptr = malloc(sizeof(WavenumberType));
-        init_wavenumbers(ptr, nr_channels);
+        init_example_wavenumbers(ptr, nr_channels);
         return ptr;
     }
 
 
-    void* init_aterm(
+    void* init_example_aterm(
         int nr_timeslots,
         int nr_stations,
         int subgridsize,
@@ -396,41 +433,41 @@ namespace idg {
     {
         TYPEDEF_ATERM_TYPE
         void *ptr = malloc(sizeof(ATermType));
-        init_aterm(ptr, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
+        init_example_aterm(ptr, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
         return ptr;
     }
 
 
-    void* init_aterm_offsets(int nr_timeslots, int nr_time)
+    void* init_example_aterm_offsets(int nr_timeslots, int nr_time)
     {
         TYPEDEF_ATERM_OFFSET_TYPE
         void *ptr = malloc(sizeof(ATermOffsetType));
-        init_aterm_offsets(ptr, nr_timeslots, nr_time);
+        init_example_aterm_offsets(ptr, nr_timeslots, nr_time);
         return ptr;
     }
 
 
-    void* init_spheroidal(int subgridsize)
+    void* init_example_spheroidal(int subgridsize)
     {
         TYPEDEF_SPHEROIDAL_TYPE
         void *ptr = malloc(sizeof(SpheroidalType));
-        init_spheroidal(ptr, subgridsize);
+        init_example_spheroidal(ptr, subgridsize);
         return ptr;
     }
 
 
-    void* init_baselines(int nr_stations, int nr_baselines)
+    void* init_example_baselines(int nr_stations, int nr_baselines)
     {
         TYPEDEF_BASELINE
         TYPEDEF_BASELINE_TYPE
         void *ptr = malloc(sizeof(BaselineType));
-        init_baselines(ptr, nr_stations, nr_baselines);
+        init_example_baselines(ptr, nr_stations, nr_baselines);
         return ptr;
 
     }
 
 
-    void* init_subgrid(
+    void* init_example_subgrid(
         int nr_baselines,
         int subgridsize,
         int nr_polarizations,
@@ -438,18 +475,41 @@ namespace idg {
     {
         TYPEDEF_SUBGRID_TYPE
         void *ptr = malloc(sizeof(SubGridType));
-        init_subgrid(ptr, nr_baselines, subgridsize, nr_polarizations, nr_chunks);
+        init_example_subgrid(ptr, nr_baselines, subgridsize, nr_polarizations, nr_chunks);
         return ptr;
     }
 
 
-    void* init_grid(int gridsize, int nr_polarizations)
+    void* init_example_grid(int gridsize, int nr_polarizations)
     {
         TYPEDEF_GRID_TYPE
         void *ptr = malloc(sizeof(GridType));
-        init_grid(ptr, gridsize, nr_polarizations);
+        init_example_grid(ptr, gridsize, nr_polarizations);
         return ptr;
     }
+
+
+    void* init_zero_grid(int gridsize, int nr_polarizations)
+    {
+        TYPEDEF_GRID_TYPE
+        void *ptr = malloc(sizeof(GridType));
+        init_zero_grid(ptr, gridsize, nr_polarizations);
+        return ptr;
+    }
+
+
+    void* init_identity_aterm(
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_ATERM_TYPE
+        void *ptr = malloc(sizeof(ATermType));
+        init_identity_aterm(ptr, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
+        return ptr;
+    }
+
 
 } // namespace idg
 
@@ -463,32 +523,31 @@ namespace idg {
 // Python, Julia, Matlab, ...
 extern "C" {
 
-    void utils_init_uvw(
+    void utils_init_example_uvw(
          void *ptr,
          int nr_stations,
          int nr_baselines,
          int nr_time,
          int integration_time)
     {
-        idg::init_uvw(ptr, nr_stations, nr_baselines, nr_time, integration_time);
+        idg::init_example_uvw(ptr, nr_stations, nr_baselines, nr_time, integration_time);
     }
 
-    void utils_init_wavenumbers(void *ptr, int nr_channels)
+    void utils_init_example_wavenumbers(void *ptr, int nr_channels)
     {
-         idg::init_wavenumbers(ptr, nr_channels);
+         idg::init_example_wavenumbers(ptr, nr_channels);
     }
 
-    void utils_init_visibilities(
+    void utils_init_example_visibilities(
         void *ptr,
         int nr_baselines,
         int nr_time,
         int nr_channels,
         int nr_polarizations)
     {
-        idg::init_visibilities(ptr, nr_baselines, nr_time,
+        idg::init_example_visibilities(ptr, nr_baselines, nr_time,
                                nr_channels, nr_polarizations);
     }
-
 
     void utils_add_pt_src(
         float x,
@@ -510,40 +569,50 @@ extern "C" {
             uvw, wavenumbers, visibilities);
     }
 
-
-    void utils_init_aterms(
+    void utils_init_example_aterms(
         void *ptr,
         int nr_timeslots,
         int nr_stations,
         int subgridsize,
         int nr_polarizations)
     {
-        idg::init_aterm(ptr, nr_timeslots, nr_stations,
+        idg::init_example_aterm(ptr, nr_timeslots, nr_stations,
                         subgridsize, nr_polarizations);
     }
 
-
-    void utils_init_aterms_offset(
+    void utils_init_example_aterms_offset(
         void *ptr,
         int nr_timeslots,
         int nr_time)
     {
-        idg::init_aterm_offsets(ptr, nr_timeslots, nr_time);
+        idg::init_example_aterm_offsets(ptr, nr_timeslots, nr_time);
     }
 
-
-    void utils_init_spheroidal(
+    void utils_init_example_spheroidal(
         void *ptr,
         int subgridsize)
     {
-        idg::init_spheroidal(ptr, subgridsize);
+        idg::init_example_spheroidal(ptr, subgridsize);
     }
 
-    void utils_init_baselines(
+    void utils_init_example_baselines(
         void *ptr,
         int nr_stations,
         int nr_baselines)
     {
-        idg::init_baselines(ptr, nr_stations, nr_baselines);
+        idg::init_example_baselines(ptr, nr_stations, nr_baselines);
     }
+
+    void utils_init_identity_aterms(
+        void *ptr,
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        idg::init_identity_aterm(ptr, nr_timeslots, nr_stations,
+                                 subgridsize, nr_polarizations);
+    }
+
+
 }  // end extern "C"
