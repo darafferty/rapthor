@@ -35,42 +35,127 @@ static const std::string ENV_LAYOUT_FILE;
 #define HOUR                01
 #define MINUTE              57
 #define SECONDS             1.3
-#define INTEGRATION_TIME    1
+#define INTEGRATION_TIME    1.0f
 
 namespace idg {
 
 /* Methods */
-void init_uvw(void *ptr, int nr_stations, int nr_baselines,
-              int nr_time, int integration_time = INTEGRATION_TIME);
-void init_visibilities(void *ptr, int nr_baselines, int nr_time,
-                       int nr_channels, int nr_polarizations);
-void add_pt_src(
-    float x, float y, float amplitude,
-    int nr_baselines, int nr_time, int nr_channels, int nr_polarizations,
-    float imagesize, float gridsize,
-    void *uvw, void *wavenumbers, void *visibilities);
-void init_wavenumbers(void *ptr, int nr_channels);
-void init_aterm(void *ptr, int nr_timeslots, int nr_stations,
-                int subgridsize, int nr_polarizations);
-void init_aterm_offsets(void *ptr, int nr_timeslots, int nr_time);
-void init_spheroidal(void *ptr, int subgridsize);
-void init_baselines(void *ptr, int nr_stations, int nr_baselines);
-void init_subgrid(void *ptr, int nr_baselines, int subgridsize,
-                  int nr_polarizations, int nr_chunks);
-void init_grid(void *ptr, int gridsize, int nr_polarizations);
+void init_example_uvw(
+    void *ptr,
+    int nr_stations,
+    int nr_baselines,
+    int nr_time,
+    float integration_time = INTEGRATION_TIME);
 
-void* init_uvw(int nr_stations, int nr_baselines, int nr_time);
-void* init_visibilities(int nr_baselines, int nr_time, int nr_channels,
-                        int nr_polarizations);
-void* init_wavenumbers(int nr_channels);
-void* init_aterm(int nr_timeslots, int nr_stations,
-                 int subgridsize, int nr_polarizations);
-void* init_aterm_offsets(int nr_timeslots, int nr_time);
-void* init_spheroidal(int subgridsize);
-void* init_baselines(int nr_stations, int nr_baselines);
-void* init_subgrid(int nr_baselines, int subgridsize, int nr_polarizations,
-                   int nr_chunks);
-void* init_grid(int gridsize, int nr_polarizations);
+void init_example_visibilities(
+    void *ptr,
+    int nr_baselines,
+    int nr_time,
+    int nr_channels,
+    int nr_polarizations);
+
+void add_pt_src(
+    float x,
+    float y,
+    float amplitude,
+    int nr_baselines,
+    int nr_time,
+    int nr_channels,
+    int nr_polarizations,
+    float imagesize,
+    float gridsize,
+    void *uvw,
+    void *wavenumbers,
+    void *visibilities);
+
+void init_example_wavenumbers(
+    void *ptr,
+    int nr_channels);
+
+void init_example_aterm(
+    void *ptr,
+    int nr_timeslots,
+    int nr_stations,
+    int subgridsize,
+    int nr_polarizations);
+
+void init_example_aterm_offsets(
+    void *ptr,
+    int nr_timeslots,
+    int nr_time);
+
+void init_example_spheroidal(
+    void *ptr,
+    int subgridsize);
+
+void init_example_baselines(
+    void *ptr,
+    int nr_stations,
+    int nr_baselines);
+
+void init_example_grid(
+    void *ptr,
+    int gridsize,
+    int nr_polarizations);
+
+void init_zero_grid(
+    void *ptr,
+    int gridsize,
+    int nr_polarizations);
+
+void init_identity_aterm(
+    void *ptr,
+    int nr_timeslots,
+    int nr_stations,
+    int subgridsize,
+    int nr_polarizations);
+
+//////////////
+
+
+void* init_example_uvw(
+    int nr_stations,
+    int nr_baselines,
+    int nr_time,
+    float integration_time = INTEGRATION_TIME);
+
+void* init_example_visibilities(
+    int nr_baselines,
+    int nr_time,
+    int nr_channels,
+    int nr_polarizations);
+
+void* init_example_wavenumbers(int nr_channels);
+
+void* init_example_aterm(
+    int nr_timeslots,
+    int nr_stations,
+    int subgridsize,
+    int nr_polarizations);
+
+void* init_example_aterm_offsets(
+    int nr_timeslots,
+    int nr_time);
+
+void* init_example_spheroidal(int subgridsize);
+
+void* init_example_baselines(
+    int nr_stations,
+    int nr_baselines);
+
+void* init_example_grid(
+    int gridsize,
+    int nr_polarizations);
+
+void* init_zero_grid(
+    int gridsize,
+    int nr_polarizations);
+
+void* init_identity_aterm(
+    int nr_timeslots,
+    int nr_stations,
+    int subgridsize,
+    int nr_polarizations);
 
 } // namespace idg
 
