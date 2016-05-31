@@ -1,3 +1,4 @@
+#include <iostream>
 #include <complex>
 
 #include <math.h>
@@ -102,8 +103,8 @@ void kernel_fft(
     fftwf_complex *data,
 	int sign
 	) {
-    if (batch == 1) {
-		kernel_fft_grid(size, data, sign);
+    if (size == GRIDSIZE) {  // a bit of a hack; TODO: make separate functions for two cases
+        kernel_fft_grid(size, data, sign);
 	} else {
 		kernel_fft_subgrid(size, batch, data, sign);
 	}
