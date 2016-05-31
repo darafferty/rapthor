@@ -35,20 +35,21 @@ def visibilies_pt_src_w0(x, y, ampl, image_size, grid_size,
 
 
 if __name__ == "__main__":
+
     ############
     # paramaters
     ############
-    nr_stations = 8
-    nr_baselines = nr_stations*(nr_stations-1)/2
-    nr_channels = 8
-    nr_time = 4800            # samples per baseline
-    nr_timeslots = 10         # A-term time slots
-    image_size = 0.08
-    subgrid_size = 24
-    grid_size = 512
+    nr_stations      = 8
+    nr_baselines     = nr_stations*(nr_stations-1)/2
+    nr_channels      = 8
+    nr_time          = 4800       # samples per baseline
+    nr_timeslots     = 1          # A-term time slots
+    image_size       = 0.08
+    subgrid_size     = 24
+    grid_size        = 512
     integration_time = 10
-    kernel_size = (subgrid_size / 2) + 1
-    w_offset = 0
+    kernel_size      = (subgrid_size / 2) + 1
+    w_offset         = 0
 
     ##################
     # initialize proxy
@@ -64,17 +65,17 @@ if __name__ == "__main__":
     ##################
     # print parameters
     ##################
-    print "nr_stations = ", p.get_nr_stations()
-    print "nr_baselines = ", p.get_nr_baselines()
-    print "nr_channels = ", p.get_nr_channels()
-    print "nr_timeslots = ", p.get_nr_timeslots()
-    print "nr_polarizations = ", p.get_nr_polarizations()
-    print "subgrid_size = ", p.get_subgrid_size()
-    print "grid_size = ", p.get_grid_size()
-    print "image_size = ", p.get_image_size()
-    print "kernel_size = ", kernel_size
-    print "job size for gridding = ", p.get_job_size_gridding()
-    print "job size for degridding = ", p.get_job_size_degridding()
+    print "nr_stations           = ", p.get_nr_stations()
+    print "nr_baselines          = ", p.get_nr_baselines()
+    print "nr_channels           = ", p.get_nr_channels()
+    print "nr_timeslots          = ", p.get_nr_timeslots()
+    print "nr_polarizations      = ", p.get_nr_polarizations()
+    print "subgrid_size          = ", p.get_subgrid_size()
+    print "grid_size             = ", p.get_grid_size()
+    print "image_size            = ", p.get_image_size()
+    print "kernel_size           = ", kernel_size
+    print "job size (gridding)   = ", p.get_job_size_gridding()
+    print "job size (degridding) = ", p.get_job_size_degridding()
 
     #################
     # initialize data
@@ -92,47 +93,21 @@ if __name__ == "__main__":
         dtype = idg.visibilitiestype)
 
     # uvw
-    uvw = numpy.zeros((nr_baselines, nr_time),
-                      dtype = idg.uvwtype)
-    idg.utils.init_uvw(uvw, integration_time)
-    #idg.utils.plot_uvw(uvw)
-
-    # wavenumbers
-    wavenumbers = numpy.ones(nr_channels,
-                             dtype = idg.wavenumberstype)
-    idg.utils.init_wavenumbers(wavenumbers)
-    #idg.utils.plot_wavenumbers(wavenumbers)
-
-    # baselines
-    baselines = numpy.zeros(nr_baselines, dtype = idg.baselinetype)
-    idg.utils.init_baselines(baselines)
+    uvw           = idg.utils.get_example_uvw(nr_baselines, nr_time,
+                                              integration_time)
+    wavenumbers   = idg.utils.get_example_wavenumbers(nr_channels)
+    baselines     = idg.utils.get_example_baselines(nr_baselines)
+    grid          = idg.utils.get_zero_grid(nr_polarizations,
+                                            grid_size)
+    aterms        = idg.utils.get_identity_aterms(nr_timeslots, nr_stations,
+                                                  subgrid_size,
+                                                  nr_polarizations)
+    aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots,
+                                                        nr_time)
+    spheroidal    = idg.utils.get_example_spheroidal(subgrid_size)
 
 
-    # grid
-    grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
-                       dtype = idg.gridtype)
-
-    # aterms
-    aterms = numpy.zeros((nr_timeslots, nr_stations,
-                          subgrid_size, subgrid_size,
-                          nr_polarizations),
-                         dtype = idg.atermtype)
-    idg.utils.init_aterms(aterms)
-
-    # aterm offset
-    aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)
-    idg.utils.init_aterms_offset(aterms_offset, nr_time)
-
-    # spheroidal
-    spheroidal = numpy.ones((subgrid_size, subgrid_size),
-                             dtype = idg.spheroidaltype)
-    idg.utils.init_spheroidal(spheroidal)
-    #idg.utils.plot_spheroidal(spheroidal)
-
-
-    #
-    # Add point source in the middle of the grid
-    #
+    # Add point source to the grid
     offset_x = 80
     offset_y = 50
     amplitude = 1
@@ -153,6 +128,9 @@ if __name__ == "__main__":
                           w_offset, kernel_size, aterms, aterms_offset, spheroidal)
     idg.utils.plot_visibilities(visibilities, form='abs', maxtime=100)
     idg.utils.plot_visibilities(visibilities, form='angle', maxtime=100)
+
+    # Print error:
+    # print numpy.linalg.norm(visibilities - vis_true)/numpy.linalg.norm(vis_true)
 
     # reset grid
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
