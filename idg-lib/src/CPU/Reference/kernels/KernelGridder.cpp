@@ -14,22 +14,21 @@
 
 extern "C" {
     void kernel_gridder(
-        const int nr_subgrids,
-        const float w_offset,
-        const int nr_channels,
+        const int           nr_subgrids,
+        const float         w_offset,
+        const int           nr_channels,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
         const idg::float2   visibilities[][NR_POLARIZATIONS],
         const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
         const idg::float2   aterm[][NR_STATIONS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
         const idg::Metadata metadata[],
-              idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
-        )
+              idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
     {
         // Find offset of first subgrid
-        const idg::Metadata m = metadata[0];
+        const idg::Metadata m       = metadata[0];
         const int baseline_offset_1 = m.baseline_offset;
-        const int time_offset_1 = m.time_offset; // should be 0
+        const int time_offset_1     = m.time_offset; // should be 0
 
         #pragma omp parallel shared(uvw, wavenumbers, visibilities, spheroidal, aterm, metadata)
         {
@@ -37,13 +36,13 @@ extern "C" {
             #pragma omp for
             for (int s = 0; s < nr_subgrids; s++) {
                 // Load metadata
-                const idg::Metadata m = metadata[s];
-                const int offset = (m.baseline_offset - baseline_offset_1)
-                    + (m.time_offset - time_offset_1);
+                const idg::Metadata m  = metadata[s];
+                const int offset       = (m.baseline_offset - baseline_offset_1) +
+                                         (m.time_offset - time_offset_1);
                 const int nr_timesteps = m.nr_timesteps;
-                const int aterm_index = m.aterm_index;
-                const int station1 = m.baseline.station1;
-                const int station2 = m.baseline.station2;
+                const int aterm_index  = m.aterm_index;
+                const int station1     = m.baseline.station1;
+                const int station2     = m.baseline.station2;
                 const int x_coordinate = m.coordinate.x;
                 const int y_coordinate = m.coordinate.y;
 
@@ -84,16 +83,13 @@ extern "C" {
                             // Update pixel for every channel
                             for (int chan = 0; chan < nr_channels; chan++) {
                                 // Compute phase
-                                float wavenumber = wavenumbers[chan];
-                                float phase      = phase_offset - (phase_index * wavenumber);
+                                float phase = phase_offset - (phase_index * wavenumbers[chan]);
 
                                 // Compute phasor
-                                float phasor_real  = cosf(phase);
-                                float phasor_imag  = sinf(phase);
-                                idg::float2 phasor = {phasor_real, phasor_imag};
+                                idg::float2 phasor = {cosf(phase), sinf(phase)};
 
                                 // Update pixel for every polarization
-                                size_t index = (offset + time)*nr_channels + chan*NR_POLARIZATIONS;  // TODO: double check
+                                size_t index = (offset + time)*nr_channels + chan;
                                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                     idg::float2 visibility = visibilities[index][pol];
                                     pixels[pol] += visibility * phasor;
