@@ -1,7 +1,7 @@
 import os
 import ctypes
 import numpy
-# from enum import Enum
+# from enum import Enum  # not supprted on all systems
 from ctypes.util import find_library
 
 # A bit ugly, but ctypes.util's find_library does not look in
@@ -18,6 +18,12 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 class Direction():
     FourierToImage = 0
     ImageToFourier = 1
+
+class Type():
+    CPU_REFERENCE = 0
+    CPU_OPTIMIZED = 1
+    CUDA_KEPLER   = 2
+    CUDA_MAXWELL  = 3
 
 
 class Scheme():
@@ -159,10 +165,11 @@ class Scheme():
 
 class GridderPlan(Scheme):
 
-    def __init__(self, bufferTimesteps):
+    def __init__(self, proxytype, bufferTimesteps):
         """Create a Gridder plan"""
-        lib.GridderPlan_init.argtypes = [ctypes.c_uint]
+        lib.GridderPlan_init.argtypes = [ctypes.c_uint, ctypes.c_uint]
         self.obj = lib.GridderPlan_init(
+            ctypes.c_uint(proxytype),
             ctypes.c_uint(bufferTimesteps)
         )
 
@@ -193,10 +200,11 @@ class GridderPlan(Scheme):
 
 class DegridderPlan(Scheme):
 
-    def __init__(self, bufferTimesteps):
+    def __init__(self, proxytype, bufferTimesteps):
         """Create a Gridder plan"""
-        lib.DegridderPlan_init.argtypes = [ctypes.c_uint]
+        lib.DegridderPlan_init.argtypes = [ctypes.c_uint, ctypes.c_uint]
         self.obj = lib.DegridderPlan_init(
+            ctypes.c_uint(proxytype),
             ctypes.c_uint(bufferTimesteps)
         )
 

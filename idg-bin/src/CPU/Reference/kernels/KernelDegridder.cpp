@@ -11,9 +11,9 @@
 
 extern "C" {
     void kernel_degridder(
-        const int nr_subgrids,
-        const float w_offset,
-        const int nr_channels,
+        const int           nr_subgrids,
+        const float         w_offset_in_lambda,
+        const int           nr_channels,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
               idg::float2   visibilities[][NR_POLARIZATIONS],
@@ -111,6 +111,7 @@ extern "C" {
                                        * (2*M_PI / IMAGESIZE);
                 const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
                                        * (2*M_PI / IMAGESIZE);
+                const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
 
                 // Iterate all timesteps
                 for (int time = 0; time < nr_timesteps; time++) {
