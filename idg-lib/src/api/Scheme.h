@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
+#include <limits>
 
 #include "idg-common.h"
 #if defined(BUILD_LIB_CPU)
@@ -53,9 +54,8 @@ namespace idg {
         void set_stations(size_t nrStations);
         size_t get_stations() const;
 
-        // Deprecated: use cell size
-        void set_image_size(double imageSize);
-        double get_image_size() const;
+        void set_cell_size(double cellSize);
+        double get_cell_size() const;
 
         void set_w_kernel(size_t size);
         size_t get_w_kernel_size() const;
@@ -69,7 +69,7 @@ namespace idg {
             size_t height,
             size_t width);
 
-        void start_w_layer(double layerWInLambda);
+        void start_w_layer(double wOffsetInLambda);
         void finish_w_layer();
 
         void set_grid(
@@ -116,6 +116,10 @@ namespace idg {
         void internal_set_subgrid_size(const size_t size);
         size_t internal_get_subgrid_size() const;
 
+        // Deprecated: use cell size
+        void set_image_size(double imageSize);
+        double get_image_size() const;
+
     protected:
         /* Helper function to map (antenna1, antenna2) -> baseline index
          * The baseline index is formed such that:
@@ -127,6 +131,7 @@ namespace idg {
         // Other helper routines
         void malloc_buffers();
         void reset_buffers();
+        void set_uvw_to_infinity();
         void init_default_aterm();
 
         // Bookkeeping
@@ -139,13 +144,14 @@ namespace idg {
         // Parameters for proxy
         size_t m_nrStations;
         size_t m_nrGroups;
-        float  m_wOffsetInMeters; // Q: meters? lambda?
+        float  m_wOffsetInLambda;
         size_t m_nrPolarizations;
         size_t m_wKernelSize;
         size_t m_gridHeight;
         size_t m_gridWidth;
         size_t m_subgridSize;
-        float  m_imageSize;
+        float  m_imageSize; // TODO: deprecated, remove member
+        float  m_cellSize;
         int    m_aterm_offsets[2];
         proxy::Proxy* m_proxy;
 

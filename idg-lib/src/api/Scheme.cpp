@@ -20,7 +20,7 @@ namespace idg {
           m_timeStartNextBatch(bufferTimesteps),
           m_nrStations(0),
           m_nrGroups(0),
-          m_wOffsetInMeters(0.0f),
+          m_wOffsetInLambda(0.0f),
           m_nrPolarizations(4),
           m_wKernelSize(0),
           m_gridHeight(0),
@@ -70,6 +70,18 @@ namespace idg {
     double Scheme::get_image_size() const
     {
         return m_imageSize;
+    }
+
+
+    void Scheme::set_cell_size(const double cellSize)
+    {
+        m_cellSize = float(cellSize);
+    }
+
+
+    double Scheme::get_cell_size() const
+    {
+        return m_cellSize;
     }
 
 
@@ -149,10 +161,9 @@ namespace idg {
     }
 
 
-    void Scheme::start_w_layer(double layerWInLambda)
+    void Scheme::start_w_layer(double wOffsetInLambda)
     {
-        // TODO: !!!
-        m_wOffsetInMeters = float(layerWInLambda); // Q: in lambda or in meters?
+        m_wOffsetInLambda = float(wOffsetInLambda);
     }
 
 
@@ -197,6 +208,11 @@ namespace idg {
         cout << __func__ << endl;
         #endif
 
+        // HACK: assume that, if image size not set, cell size is
+        // NOTE: assume m_gridWidth == m_gridHeight
+        // TODO: remove image size from this api entirely
+        if (m_imageSize==0) m_imageSize = m_cellSize * m_gridWidth;
+
         // (1) Create new proxy
         delete m_proxy;
 
@@ -204,10 +220,10 @@ namespace idg {
         params.set_nr_stations(m_nrStations);
         params.set_nr_time(m_bufferTimesteps);
         params.set_nr_timeslots(1);
-        params.set_nr_channels( get_frequencies_size() ); // TODO: remove as compile time const
-        params.set_grid_size(m_gridHeight);               // TODO: support non-square
+        params.set_nr_channels(get_frequencies_size()); // TODO: remove as compile time const
+        params.set_grid_size(m_gridHeight);             // TODO: support non-square
         params.set_subgrid_size(m_subgridSize);
-        params.set_imagesize(m_imageSize);                // TODO: remove as compile time const
+        params.set_imagesize(m_imageSize); // TODO: remove as compile time const
         // params.set_nr_polarizations(m_nrPolarizations);
 
         #if defined(BUILD_LIB_CPU)
@@ -223,6 +239,7 @@ namespace idg {
 
         // (2) Setup buffers
         malloc_buffers();
+        reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
     }
 
 
@@ -234,18 +251,24 @@ namespace idg {
         m_grid.reserve(m_nrPolarizations, m_gridHeight, m_gridWidth);
         m_spheroidal.reserve(m_subgridSize, m_subgridSize);
         m_aterms.reserve(m_nrStations, m_subgridSize, m_subgridSize);
-        init_default_aterm();
     }
 
 
     void Scheme::reset_buffers()
     {
-        // to be implemented
-        // m_bufferUVW.free();
-        // m_bufferVisibilities.free();
-        // m_bufferStationPairs.free();
-        // m_grid.free();
-        // m_aterms.free();
+        m_bufferUVW.init({numeric_limits<float>::infinity(),
+                          numeric_limits<float>::infinity(),
+                          numeric_limits<float>::infinity()});
+        m_bufferVisibilities.init({0,0,0,0});
+        init_default_aterm();
+    }
+
+
+    void Scheme::set_uvw_to_infinity()
+    {
+        m_bufferUVW.init({numeric_limits<float>::infinity(),
+                          numeric_limits<float>::infinity(),
+                          numeric_limits<float>::infinity()});
     }
 
 
@@ -313,9 +336,7 @@ namespace idg {
 
     void Scheme::finish_aterm()
     {
-        // to be implemented
         flush();
-        // set default a-term again?
     }
 
 

@@ -94,7 +94,7 @@ namespace idg {
             (float*) m_wavenumbers.data(),
             (int*) m_bufferStationPairs.data(),
             m_grid.data(),
-            m_wOffsetInMeters,
+            m_wOffsetInLambda,
             kernelSize,
             (complex<float>*) m_aterms.data(),
             m_aterm_offsets,
@@ -116,7 +116,7 @@ namespace idg {
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
-        // init buffers to zero
+        reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
     }
 
 } // namespace idg
@@ -129,9 +129,17 @@ namespace idg {
 // Python, Julia, Matlab, ...
 extern "C" {
 
-    idg::GridderPlan* GridderPlan_init(unsigned int bufferTimesteps)
+    idg::GridderPlan* GridderPlan_init(
+        unsigned int type,
+        unsigned int bufferTimesteps)
     {
-        return new idg::GridderPlan(idg::Type::CPU_REFERENCE, bufferTimesteps);
+        auto proxytype = idg::Type::CPU_REFERENCE;
+        if (type == 0) {
+            proxytype = idg::Type::CPU_REFERENCE;
+        } else if (type == 1) {
+            proxytype = idg::Type::CPU_OPTIMIZED;
+        }
+        return new idg::GridderPlan(proxytype, bufferTimesteps);
     }
 
     void GridderPlan_destroy(idg::GridderPlan* p) {
