@@ -7,4 +7,5 @@ endif()
 add_subdirectory(Hybrid)
 if (BUILD_WITH_PYTHON)
     add_subdirectory(python)
+    add_subdirectory(python-api)  # TODO: merge into python
 endif()

@@ -17,7 +17,7 @@
 template<int current_nr_channels>
 void kernel_gridder_(
     const int           nr_subgrids,
-    const float         w_offset,
+    const float         w_offset_in_lambda,
     const int           nr_channels,
     const int           channel_offset,
     const idg::UVW		uvw[],
@@ -50,6 +50,7 @@ void kernel_gridder_(
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) * (2*M_PI / IMAGESIZE);
         const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) * (2*M_PI / IMAGESIZE);
+        const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
 
         // Preload visibilities
         float vis_real[nr_timesteps][NR_POLARIZATIONS][current_nr_channels] __attribute__((aligned(32)));

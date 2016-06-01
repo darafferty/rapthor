@@ -15,7 +15,7 @@
 extern "C" {
     void kernel_gridder(
         const int           nr_subgrids,
-        const float         w_offset,
+        const float         w_offset_in_lambda,
         const int           nr_channels,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
@@ -51,6 +51,7 @@ extern "C" {
                                        * (2*M_PI / IMAGESIZE);
                 const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
                                        * (2*M_PI / IMAGESIZE);
+                const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
 
                 // Iterate all pixels in subgrid
                 for (int y = 0; y < SUBGRIDSIZE; y++) {

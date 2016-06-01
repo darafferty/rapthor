@@ -54,7 +54,7 @@ if __name__ == "__main__":
     nr_baselines = nr_stations*(nr_stations-1)/2
     nr_channels = 8
     nr_time = 2048             # samples per baseline
-    image_size = 0.15
+    image_size = 0.18
     subgrid_size = 32
     grid_size = 512
     integration_time = 10
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     ######################################################################
     # Create plan
     ######################################################################
-    degridder = IDG.DegridderPlan(bufferTimesteps)
+    degridder = IDG.DegridderPlan(IDG.Type.CPU_OPTIMIZED, bufferTimesteps)
     degridder.set_stations(nr_stations);
     degridder.set_frequencies(frequencies);
     degridder.set_spheroidal(spheroidal);
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     degridder.internal_set_subgrid_size(subgrid_size);
     degridder.bake();
 
-    gridder = IDG.GridderPlan(bufferTimesteps)
+    gridder = IDG.GridderPlan(IDG.Type.CPU_OPTIMIZED, bufferTimesteps)
     gridder.set_stations(nr_stations);
     gridder.set_frequencies(frequencies);
     gridder.set_spheroidal(spheroidal);
