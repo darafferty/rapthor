@@ -121,34 +121,34 @@ if __name__ == "__main__":
     ######################################################################
     # Create plan
     ######################################################################
+
     degridder = IDG.DegridderPlan(IDG.Type.CPU_OPTIMIZED, bufferTimesteps)
-    degridder.set_stations(nr_stations);
-    degridder.set_frequencies(frequencies);
-    degridder.set_spheroidal(spheroidal);
-    degridder.set_grid(grid_image);  # actually, give fft2(grid_image)
-    degridder.set_image_size(image_size);
-    degridder.set_w_kernel_size(subgrid_size/2);
-    degridder.internal_set_subgrid_size(subgrid_size);
-    degridder.bake();
+    degridder.set_stations(nr_stations)
+    degridder.set_frequencies(frequencies)
+    degridder.set_spheroidal(spheroidal)
+    degridder.set_grid(grid_image)
+    degridder.set_image_size(image_size)
+    degridder.set_w_kernel_size(subgrid_size/2)
+    degridder.internal_set_subgrid_size(subgrid_size)
+    degridder.bake()
 
     gridder = IDG.GridderPlan(IDG.Type.CPU_OPTIMIZED, bufferTimesteps)
-    gridder.set_stations(nr_stations);
-    gridder.set_frequencies(frequencies);
-    gridder.set_spheroidal(spheroidal);
-    gridder.set_grid(grid_gridded);
-    gridder.set_image_size(image_size);
-    gridder.set_w_kernel_size(subgrid_size/2);
-    gridder.internal_set_subgrid_size(subgrid_size);
-    gridder.bake();
+    gridder.set_stations(nr_stations)
+    gridder.set_frequencies(frequencies)
+    gridder.set_spheroidal(spheroidal)
+    gridder.set_grid(grid_gridded)
+    gridder.set_image_size(image_size)
+    gridder.set_w_kernel_size(subgrid_size/2)
+    gridder.internal_set_subgrid_size(subgrid_size)
+    gridder.bake()
 
-    # HACK: Should not be part of the plan
-    # HACK: IDG.transform_grid(IDG.Direction.ImageToFourier, grid);
-    # to be called before baking the plan
-    degridder.transform_grid(IDG.Direction.ImageToFourier, grid_image);
+    # Transform
+    degridder.transform_grid()
+    # idg.utils.plot_grid(degridder.get_copy_grid())
 
-    ###########
-    # Degridder
-    ###########
+    # ###########
+    # # Degridder
+    # ###########
     fig, axarr = plt.subplots(2, 2)
 
     for time_batch in range(nr_time / bufferTimesteps):
@@ -209,16 +209,20 @@ if __name__ == "__main__":
                     uvw_coordinates,
                     antenna1,
                     antenna2,
-                    time
-                )
+                    time)
 
         gridder.finish_aterm()
 
-        live_plot_grid(axarr, grid_gridded, scaling='log')
+        ## VISUALIZE
+        # To display the gridded visibilities
+        live_plot_grid(axarr, gridder.get_copy_grid(), scaling='log')
 
-        grid_copy = numpy.copy(grid_gridded);
-        gridder.transform_grid(IDG.Direction.FourierToImage, grid_copy)
-
+        # # To display the image instead
+        # grid_copy = gridder.get_copy_grid()
+        # gridder.transform_grid(grid_copy)
         # live_plot_grid(axarr, grid_copy)
+
+    gridder.transform_grid()
+    # idg.utils.plot_grid(gridder.get_copy_grid())
 
     plt.show()

@@ -13,7 +13,7 @@ namespace idg {
 
     // Constructors and destructor
     Scheme::Scheme(Type architecture,
-                             size_t bufferTimesteps)
+                   size_t bufferTimesteps)
         : m_architecture(architecture),
           m_bufferTimesteps(bufferTimesteps),
           m_timeStartThisBatch(0),
@@ -192,11 +192,29 @@ namespace idg {
         if (height != width)
             throw invalid_argument("Only square grids supported.");
         if (nr_polarizations != 4)
-            throw invalid_argument("The number of polarization paris must be equals 4.");
+            throw invalid_argument("The number of polarization pairs must be equals 4.");
 
-        m_grid_double = grid;
-        m_gridHeight  = height;
-        m_gridWidth   = width;
+        m_grid_double     = grid;
+        m_nrPolarizations = nr_polarizations;
+        m_gridHeight      = height;
+        m_gridWidth       = width;
+    }
+
+
+    size_t Scheme::get_grid_height() const
+    {
+        return m_gridHeight;
+    }
+
+    size_t Scheme::get_grid_width() const
+    {
+        return m_gridWidth;
+    }
+
+
+    size_t Scheme::get_nr_polarizations() const
+    {
+        return m_nrPolarizations;
     }
 
 
@@ -256,10 +274,8 @@ namespace idg {
 
     void Scheme::reset_buffers()
     {
-        m_bufferUVW.init({numeric_limits<float>::infinity(),
-                          numeric_limits<float>::infinity(),
-                          numeric_limits<float>::infinity()});
         m_bufferVisibilities.init({0,0,0,0});
+        set_uvw_to_infinity();
         init_default_aterm();
     }
 
@@ -340,54 +356,173 @@ namespace idg {
     }
 
 
-    void Scheme::transform_grid(Direction direction,
-                                std::complex<double>* grid,
-                                size_t nrPolarizations,
-                                size_t height,
-                                size_t width)
+    void Scheme::fft(Direction direction, complex<double> *grid)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
         #endif
 
-
-        if (height != width)
-            throw invalid_argument("Only square grids supported.");
-        if (height != m_gridHeight)
-            throw invalid_argument("Grid dimensions must match the plan.");
-        if (nrPolarizations != m_nrPolarizations)
-            throw invalid_argument("Number of polarization must match the plan.");
+        if (grid == nullptr) grid = m_grid_double;
 
         // HACK:: copy array
-        Grid3D<complex<float>> tmp_grid(nrPolarizations, height, width);
+        Grid3D<complex<float>> tmp_grid(m_nrPolarizations, m_gridHeight, m_gridWidth);
         for (auto p = 0; p < m_nrPolarizations; ++p) {
             for (auto y = 0; y < m_gridHeight; ++y) {
                 for (auto x = 0; x < m_gridWidth; ++x) {
                     tmp_grid(p, y, x) = complex<float>(
-                        grid[p*m_gridHeight*m_gridWidth
-                             + y*m_gridWidth + x]);
+                        grid[p*m_gridHeight*m_gridWidth +
+                             y*m_gridWidth + x]);
                 }
             }
         }
 
-        // should be not much more than a wrapper around proxy function
-        if (direction == Direction::FourierToImage) {
-            m_proxy->transform(idg::FourierDomainToImageDomain, tmp_grid.data());
-        } else if (direction == Direction::ImageToFourier) {
-            m_proxy->transform(idg::ImageDomainToFourierDomain, tmp_grid.data());
-        } else {
-            throw invalid_argument("Unknown direction parameter.");
+        if (direction == Direction::FourierToImage)
+            ifftshift(m_nrPolarizations, tmp_grid.data()); // TODO: integrate into adder?
+        else
+            ifftshift(m_nrPolarizations, tmp_grid.data()); // TODO: remove
+
+        auto sign = (direction == Direction::ImageToFourier) ? FFTW_FORWARD : FFTW_BACKWARD;
+
+        #pragma omp parallel for
+        for (int pol = 0; pol < m_nrPolarizations; pol++) {
+            // fftwf_complex *data = (fftwf_complex *) tmp_grid.data(pol);
+            fftwf_complex *data = (fftwf_complex *) tmp_grid.data() +
+                                  pol * (m_gridHeight * m_gridWidth);
+
+            // Create plan
+            fftwf_plan plan;
+            #pragma omp critical
+            plan = fftwf_plan_dft_2d(m_gridHeight, m_gridWidth, // TODO: order
+                                     data, data,
+                                     sign, FFTW_ESTIMATE);
+
+            // Execute FFTs
+            fftwf_execute_dft(plan, data, data);
+
+            // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
+            if (sign == FFTW_BACKWARD) {
+                float scale = 1.0f / (float(m_gridHeight)*float(m_gridWidth));
+                #pragma omp parallel for
+                for (int i = 0; i < m_gridHeight*m_gridWidth; i++) {
+                    data[i][0] *= scale;
+                    data[i][1] *= scale;
+                }
+            }
+
+            // Destroy plan
+            fftwf_destroy_plan(plan);
         }
+
+        if (direction == Direction::FourierToImage)
+            fftshift(m_nrPolarizations, tmp_grid.data()); // TODO: remove
+        else
+            fftshift(m_nrPolarizations, tmp_grid.data()); // TODO: integrate into splitter?
 
         // HACK:: copy array
         for (auto p = 0; p < m_nrPolarizations; ++p) {
             for (auto y = 0; y < m_gridHeight; ++y) {
                 for (auto x = 0; x < m_gridWidth; ++x) {
-                    grid[p*m_gridHeight*m_gridWidth
-                         + y*m_gridWidth + x] = complex<double>(tmp_grid(p, y, x));
+                    grid[p*m_gridHeight*m_gridWidth +
+                         y*m_gridWidth + x] =
+                        complex<double>(tmp_grid(p, y, x));
                 }
             }
         }
+    }
+
+
+    void Scheme::fft_grid(complex<double> *grid)
+    {
+        fft(Direction::ImageToFourier, grid);
+    }
+
+
+    void Scheme::ifft_grid(complex<double> *grid)
+    {
+        fft(Direction::FourierToImage, grid);
+    }
+
+
+    void Scheme::copy_grid(
+        complex<double>* grid,
+        size_t nr_polarizations,
+        size_t height,
+        size_t width)
+    {
+        if (nr_polarizations != m_nrPolarizations)
+            throw invalid_argument("Number of polarizations does not match.");
+        if (height != m_gridHeight)
+            throw invalid_argument("Grid height does not match.");
+        if (width != m_gridWidth)
+            throw invalid_argument("Grid width does not match.");
+
+        for (auto p = 0; p < m_nrPolarizations; ++p) {
+            for (auto y = 0; y < m_gridHeight; ++y) {
+                for (auto x = 0; x < m_gridWidth; ++x) {
+                    grid[p*m_gridHeight*m_gridWidth +
+                         y*m_gridWidth + x] =
+                    m_grid_double[p*m_gridHeight*m_gridWidth +
+                                  y*m_gridWidth + x];
+
+                }
+            }
+        }
+    }
+
+
+    void Scheme::ifftshift(int nr_polarizations, complex<float> *grid)
+    {
+        // TODO: implement for odd size gridsize
+        // For even gridsize, same as fftshift
+        fftshift(nr_polarizations, grid);
+    }
+
+
+    void Scheme::fftshift(int nr_polarizations, complex<float> *grid)
+    {
+        // Note: grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
+        auto gridsize = get_grid_height();
+
+        #pragma omp parallel for
+        for (int p = 0; p < get_nr_polarizations(); p++) {
+            // Pass &grid[p][GRIDSIZE][GRIDSIZE]
+            // and do shift for each polarization
+            fftshift(grid + p*gridsize*gridsize);
+        }
+    }
+
+
+    void Scheme::ifftshift(complex<float> *array)
+    {
+        // TODO: implement
+    }
+
+
+    void Scheme::fftshift(complex<float> *array)
+    {
+        auto gridsize = get_grid_height();
+        auto buffer   = new complex<float>[gridsize];
+
+        if (gridsize % 2 != 0)
+            throw invalid_argument("gridsize is assumed to be even");
+
+        for (int i = 0; i < gridsize/2; i++) {
+            // save i-th row into buffer
+            memcpy(buffer, &array[i*gridsize],
+                   gridsize*sizeof(complex<float>));
+
+            auto j = i + gridsize/2;
+            memcpy(&array[i*gridsize + gridsize/2], &array[j*gridsize],
+                   (gridsize/2)*sizeof(complex<float>));
+            memcpy(&array[i*gridsize], &array[j*gridsize + gridsize/2],
+                   (gridsize/2)*sizeof(complex<float>));
+            memcpy(&array[j*gridsize], &buffer[gridsize/2],
+                   (gridsize/2)*sizeof(complex<float>));
+            memcpy(&array[j*gridsize + gridsize/2], &buffer[0],
+                   (gridsize/2)*sizeof(complex<float>));
+        }
+
+        delete [] buffer;
     }
 
 } // namespace idg
@@ -458,6 +593,24 @@ extern "C" {
             nr_polarizations,
             height,
             width);
+    }
+
+
+    int Scheme_get_nr_polarizations(idg::Scheme* p)
+    {
+        return p->get_nr_polarizations();
+    }
+
+
+    int Scheme_get_grid_height(idg::Scheme* p)
+    {
+        return p->get_grid_height();
+    }
+
+
+    int Scheme_get_grid_width(idg::Scheme* p)
+    {
+        return p->get_grid_width();
     }
 
 
@@ -532,26 +685,48 @@ extern "C" {
     }
 
 
-    void Scheme_transform_grid(
-        idg::Scheme* p,
-        int direction,
-        void* grid,  // complex<double>*
-        int nr_polarizations,
-        int height,
-        int width)
+    void Scheme_ifft_grid(idg::Scheme* p)
     {
-        if (direction == 0) {
-            p->transform_grid(idg::Direction::FourierToImage,
-                              (std::complex<double>*) grid,
-                              nr_polarizations,
-                              height, width);
-        } else {
-            p->transform_grid(idg::Direction::ImageToFourier,
-                              (std::complex<double>*) grid,
-                              nr_polarizations,
-                              height, width);
-        }
+        p->ifft_grid();
     }
+
+
+    void Scheme_fft_grid(idg::Scheme* p)
+    {
+        p->fft_grid();
+    }
+
+
+    void Scheme_copy_grid(
+        idg::Scheme* p,
+        void* grid,   // pointer complex<double>
+        int   nr_polarizations,
+        int   height,
+        int   width)
+    {
+        p->copy_grid(
+            (complex<double>*) grid,
+            nr_polarizations,
+            height,
+            width);
+    }
+
+    // void Scheme_transform_grid(
+    //     idg::Scheme* p,
+    //     int direction)
+    // {
+    //     if (direction == 0) {
+    //         p->transform_grid(idg::Direction::FourierToImage,
+    //                           (std::complex<double>*) grid,
+    //                           nr_polarizations,
+    //                           height, width);
+    //     } else {
+    //         p->transform_grid(idg::Direction::ImageToFourier,
+    //                           (std::complex<double>*) grid,
+    //                           nr_polarizations,
+    //                           height, width);
+    //     }
+    // }
 
 
 } // extern C

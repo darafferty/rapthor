@@ -40,6 +40,9 @@ namespace idg {
 
         // To flush the buffer explicitly
         virtual void flush() override;
+
+        // To transform the provided image before prediction
+        virtual void transform_grid(std::complex<double> *grid = nullptr) override;
     };
 
 } // namespace idg
