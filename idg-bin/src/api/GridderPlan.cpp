@@ -119,6 +119,15 @@ namespace idg {
         reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
     }
 
+
+    void GridderPlan::transform_grid(complex<double> *grid)
+    {
+        ifft_grid(grid);
+        // apply spheroidal, scale real part by 2 + set imaginary part to zero
+        // scale real part by 1/(height*width), which has to be removed in ifft_grid()
+    }
+
+
 } // namespace idg
 
 
@@ -160,6 +169,13 @@ extern "C" {
             antenna1,
             antenna2,
             timeIndex);
+    }
+
+    void GridderPlan_transform_grid(
+        idg::GridderPlan* p,
+        void* grid)
+    {
+        p->transform_grid((complex<double> *) grid);
     }
 
 } // extern C

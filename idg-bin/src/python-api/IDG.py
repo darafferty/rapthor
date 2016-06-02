@@ -75,6 +75,15 @@ class Scheme():
             ctypes.c_int(grid.shape[2])   # witdh
         )
 
+    def get_nr_polarizations(self):
+        return lib.Scheme_get_nr_polarizations(self.obj)
+
+    def get_grid_height(self):
+        return lib.Scheme_get_grid_height(self.obj)
+
+    def get_grid_width(self):
+        return lib.Scheme_get_grid_width(self.obj)
+
     def internal_get_subgrid_size(self):
         """Get the subgrid size"""
         return lib.Scheme_internal_get_subgrid_size(self.obj)
@@ -144,22 +153,33 @@ class Scheme():
     def finish_aterm(self):
         lib.Scheme_finish_aterm(self.obj)
 
-    def transform_grid(self, direction, grid):
-        nr_polarizations = grid.shape[0]
-        height           = grid.shape[1]
-        width            = grid.shape[2]
 
-        if direction == Direction.FourierToImage:
-            direction_int = 0
-        else:
-            direction_int = 1
+    def ifft_grid(self):
+        """Do an inverse FFT on the grid"""
+        lib.Scheme_ifft_grid(self.obj)
 
-        lib.Scheme_transform_grid(self.obj,
-                                  ctypes.c_int(direction_int),
-                                  grid.ctypes.data_as(ctypes.c_void_p),
-                                  ctypes.c_int(nr_polarizations),
-                                  ctypes.c_int(height),
-                                  ctypes.c_int(width))
+
+    def fft_grid(self):
+        """Do an FFT on the grid"""
+        lib.Scheme_fft_grid(self.obj)
+
+
+    def get_copy_grid(self):
+        """Get a copy of the grid"""
+        nr_polarizations = self.get_nr_polarizations()
+        height           = self.get_grid_height()
+        width            = self.get_grid_width()
+
+        grid = numpy.zeros(shape=(nr_polarizations, height, width),
+                           dtype=numpy.complex128)
+        lib.Scheme_copy_grid(
+            self.obj,
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(nr_polarizations),
+            ctypes.c_int(height),
+            ctypes.c_int(width))
+
+        return grid
 
 
 
@@ -197,6 +217,17 @@ class GridderPlan(Scheme):
         )
 
 
+    def transform_grid(self, grid=None):
+        """Do an iFFT on the grid, apply the spheroidal, scale, set imag part to zero"""
+        if (grid == None):
+            null_ptr = ctypes.POINTER(ctypes.c_int)()
+            lib.DegridderPlan_transform_grid(self.obj, null_ptr)
+        else:
+            lib.GridderPlan_transform_grid(
+                self.obj,
+                grid.ctypes.data_as(ctypes.c_void_p))
+
+
 
 class DegridderPlan(Scheme):
 
@@ -225,6 +256,7 @@ class DegridderPlan(Scheme):
             ctypes.c_int(antenna2),
             ctypes.c_int(timeIndex))
 
+
     def read_visibilities(self, antenna1, antenna2, timeIndex):
         """Read visibilities from the buffer"""
         nr_channels = self.get_frequencies_size()
@@ -237,3 +269,14 @@ class DegridderPlan(Scheme):
                                             ctypes.c_int(timeIndex),
                                             visibilities.ctypes.data_as(ctypes.c_void_p))
         return visibilities
+
+
+    def transform_grid(self, grid=None):
+        """Do an FFT on the grid and apply the spheroidal"""
+        if (grid == None):
+            null_ptr = ctypes.POINTER(ctypes.c_int)()
+            lib.DegridderPlan_transform_grid(self.obj, null_ptr)
+        else:
+            lib.DegridderPlan_transform_grid(
+                self.obj,
+                grid.ctypes.data_as(ctypes.c_void_p))
