@@ -1,15 +1,12 @@
-#include "idg-hybrid-cuda.h" // needs to be before common
+#include "idg-hybrid-cuda.h"
 #include "../../CPU/common/common.h"
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    // Reads the following from ENV:
-    // NR_STATIONS, NR_CHANNELS, NR_TIMESTEPS, NR_TIMESLOTS, IMAGESIZE,
-    // GRIDSIZE; if non-default jobsize wanted, set jobsizes parameters.
-
-    int info = run_test<idg::proxy::hybrid::Maxwell>();
+    // Compares to reference implementation
+    int info = compare_to_reference<idg::proxy::hybrid::Maxwell>();
 
     return info;
 }
