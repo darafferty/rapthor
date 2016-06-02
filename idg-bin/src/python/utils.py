@@ -493,7 +493,7 @@ def plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_siz
     # Show subgrids (from metadata)
     x = metadata['coordinate']['x'].flatten()
     y = metadata['coordinate']['y'].flatten()
-    fig = plt.figure(get_figure_name("metadata"))
+    fig = plt.figure(get_figure_name("metadata: {} subgrids".format(len(x))))
     grid = numpy.zeros((grid_size, grid_size))
     for coordinate in zip(x, y):
         _x = coordinate[0]
