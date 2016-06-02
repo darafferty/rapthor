@@ -94,6 +94,20 @@ namespace idg {
                  << " Mvisibilities/s" << endl;
         }
 
+
+        void report_visibilities(
+            const char *name,
+            double runtime,
+            uint64_t total_nr_time,
+            uint64_t nr_channels)
+        {
+            uint64_t nr_visibilities = total_nr_time * nr_channels;
+            clog << setw(FW1) << left << string(name) + ": "
+                 << 1e-6 * nr_visibilities / runtime
+                 << " Mvisibilities/s" << endl;
+        }
+
+
         void report_subgrids(
             double runtime,
             uint64_t nr_subgrids)
