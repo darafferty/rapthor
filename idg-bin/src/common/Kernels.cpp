@@ -6,21 +6,20 @@ namespace kernel {
     /*
         Flop and byte count
     */
-    uint64_t flops_gridder(Parameters &parameters, int nr_baselines, int nr_subgrids) {
+    uint64_t flops_gridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
         int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_time();
         int nr_channels = parameters.get_nr_channels();
         int nr_polarizations = parameters.get_nr_polarizations();
 
-        // Number of flops per baseline
-        uint64_t flops_per_baseline = 0;
-        flops_per_baseline += nr_time * 5; // phase index
-        flops_per_baseline += nr_time * 5; // phase offset
-        flops_per_baseline += nr_time * nr_channels * 2; // phase
+        // Number of flops per visibility
+        uint64_t flops_per_visibility = 0;
+        flops_per_visibility += 5; // phase index
+        flops_per_visibility += 5; // phase offset
+        flops_per_visibility += nr_channels * 2; // phase
         #if defined(COUNT_SINCOS_AS_FLOPS)
-        flops_per_baseline += nr_time * nr_channels * FLOPS_PER_SINCOS; // phasor
+        flops_per_visibility += nr_channels * FLOPS_PER_SINCOS; // phasor
         #endif
-        flops_per_baseline += nr_time * nr_channels * nr_polarizations * 8; // update
+        flops_per_visibility += nr_channels * nr_polarizations * 8; // update
 
         // Number of flops per subgrid
         uint64_t flops_per_subgrid = 0;
@@ -30,14 +29,13 @@ namespace kernel {
 
         // Total number of flops
         uint64_t flops_total = 0;
-        flops_total += nr_baselines * subgridsize * subgridsize * flops_per_baseline;
+        flops_total += nr_timesteps * subgridsize * subgridsize * flops_per_visibility;
         flops_total += nr_subgrids  * subgridsize * subgridsize * flops_per_subgrid;
         return flops_total;
     }
 
-    uint64_t bytes_gridder(Parameters &parameters, int nr_baselines, int nr_subgrids) {
+    uint64_t bytes_gridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
         int subgridsize = parameters.get_subgrid_size();
-        int nr_time = parameters.get_nr_time();
         int nr_channels = parameters.get_nr_channels();
         int nr_polarizations = parameters.get_nr_polarizations();
 
@@ -55,18 +53,18 @@ namespace kernel {
 
         // Total number of bytes
         uint64_t bytes_total = 0;
-        bytes_total += 1ULL * nr_baselines * nr_time * bytes_per_uvw;
-        bytes_total += 1ULL * nr_baselines * nr_time * bytes_per_vis;
+        bytes_total += 1ULL * nr_timesteps * bytes_per_uvw;
+        bytes_total += 1ULL * nr_timesteps * bytes_per_vis;
         bytes_total += 1ULL * nr_subgrids * subgridsize * subgridsize * bytes_per_pix;
         return bytes_total;
     }
 
-    uint64_t flops_degridder(Parameters &parameters, int nr_baselines, int nr_subgrids) {
-        return flops_gridder(parameters, nr_baselines, nr_subgrids);
+    uint64_t flops_degridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
+        return flops_gridder(parameters, nr_timesteps, nr_subgrids);
     }
 
-    uint64_t bytes_degridder(Parameters &parameters, int nr_baselines, int nr_subgrids) {
-        return bytes_gridder(parameters, nr_baselines, nr_subgrids);
+    uint64_t bytes_degridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
+        return bytes_gridder(parameters, nr_timesteps, nr_subgrids);
     }
 
     uint64_t flops_fft(Parameters &parameters, int size, int batch) {
