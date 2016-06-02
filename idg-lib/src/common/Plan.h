@@ -5,6 +5,8 @@
 #include <limits>
 #include <stdexcept> // runtime_error
 #include <cmath>
+#include <numeric>
+#include <iterator>
 
 #include "Types.h"
 #include "Parameters.h"
@@ -49,6 +51,15 @@ namespace idg {
 
             void print_subgrid_offset() const;
 
+            // total number of timesteps
+            int get_nr_timesteps() const;
+
+            // number of timesteps one baseline
+            int get_nr_timesteps(int baseline) const;
+
+            // number of timesteps for baselines b1 to b1+n-1
+            int get_nr_timesteps(int baseline, int n) const;
+
             const Metadata* get_metadata_ptr(int baseline = 0) const;
             std::vector<Metadata> copy_metadata() const;
 
@@ -56,6 +67,7 @@ namespace idg {
             const Parameters mParams;
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;
+            std::vector<int> timesteps_per_baseline;
 
         }; // class Plan
 
