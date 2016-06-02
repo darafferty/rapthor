@@ -58,6 +58,23 @@ namespace idg {
     }
 
 
+    int Plan::get_nr_timesteps() const {
+        return accumulate(timesteps_per_baseline.begin(), timesteps_per_baseline.end(), 0);
+    }
+
+
+    int Plan::get_nr_timesteps(int baseline) const {
+        return timesteps_per_baseline[baseline];
+    }
+
+
+    int Plan::get_nr_timesteps(int baseline, int n) const {
+        auto begin = next(timesteps_per_baseline.begin(), baseline);
+        auto end   = next(begin, n);
+        return accumulate(begin, end, 0);
+    }
+
+
     const Metadata* Plan::get_metadata_ptr(int bl) const {
         auto offset = get_subgrid_offset(bl);
         return &(metadata[offset]);
@@ -121,6 +138,7 @@ namespace idg {
         for (int bl = 0; bl < nr_baselines; bl++) {
             Baseline baseline = baselines[bl];
             subgrid_offset.push_back(metadata.size());
+            int timesteps_current_baseline = 0;
 
             // Iterate all timesteps
             int time = 0;
@@ -217,6 +235,7 @@ namespace idg {
                             // Split into subgrids with at most max_nr_timesteps
                             for (int i = 0; i < nr_timesteps; i += max_nr_timesteps) {
                                 int current_nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
+                                timesteps_current_baseline += current_nr_timesteps;
 
                                 // Set metadata
                                 Metadata m = { baseline_offset,
@@ -245,6 +264,7 @@ namespace idg {
                     v_pixels_previous = v_pixels;
                 }
             } // end while
+            timesteps_per_baseline.push_back(timesteps_current_baseline);
         } // end for bl
 
         // Set sentinel
