@@ -137,6 +137,13 @@ namespace idg {
         set_uvw_to_infinity();
     }
 
+
+    void DegridderPlan::transform_grid(complex<double> *grid)
+    {
+        fft_grid(grid);
+        // apply spheroidal
+    }
+
 } // namespace idg
 
 
@@ -189,6 +196,14 @@ extern "C" {
             antenna2,
             timeIndex,
             (complex<float>*) visibilities);
+    }
+
+
+    void DegridderPlan_transform_grid(
+        idg::DegridderPlan* p,
+        void *grid)
+    {
+        p->transform_grid((complex<double> *) grid);
     }
 
 } // extern C

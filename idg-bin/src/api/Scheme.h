@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <limits>
+#include <fftw3.h>
 
 #include "idg-common.h"
 #if defined(BUILD_LIB_CPU)
@@ -30,14 +31,17 @@ namespace idg {
         CUDA_MAXWELL
     };
 
+
     enum class Direction {
-        FourierToImage,
-        ImageToFourier
+        FourierToImage = -1,
+        ImageToFourier = 1
     };
 
-    class Scheme   // rename to Plan
+
+    class Scheme   // TODO: rename to Plan or so
     {
     public:
+
         // Constructors and destructor
         Scheme(Type architecture = Type::CPU_REFERENCE,
                size_t bufferTimesteps = 4096);
@@ -69,9 +73,6 @@ namespace idg {
             size_t height,
             size_t width);
 
-        void start_w_layer(double wOffsetInLambda);
-        void finish_w_layer();
-
         void set_grid(
             std::complex<double>* grid,
             size_t nr_polarizations,
@@ -84,12 +85,25 @@ namespace idg {
             size_t height,
             size_t width);
 
-        // Bake the plan: initialize data structures etc.
-        // Must be called before the plan is used if have settings have changed
-        // after construction
+        size_t get_grid_height() const;
+        size_t get_grid_width() const;
+        size_t get_nr_polarizations() const;
+
+        // Bake the plan after parameters are set
+        // Must be called before the plan is used
+        // if have settings have changed after construction
         void bake();
 
+        // Flush the buffer explicitly
         virtual void flush() = 0;
+
+
+        // While filling buffer, start and end regions having
+        // the same A-terms and same w-offset
+        // Calling "start/finish" will flush the non-empty buffer implicitly
+        void start_w_layer(double wOffsetInLambda);
+
+        void finish_w_layer();
 
         void start_aterm(
             const std::complex<double>* aterm,
@@ -106,11 +120,20 @@ namespace idg {
 
         void finish_aterm();
 
-        void transform_grid(Direction direction,
-                            std::complex<double>* grid,
-                            size_t nr_polarizations,
-                            size_t height,
-                            size_t width);
+        // Methods the transform the grid. i.e., perform FFT, scaling,
+        // and apply the sheroidal
+        virtual void transform_grid(std::complex<double> *grid = nullptr) = 0;
+
+        void fft_grid(std::complex<double> *grid = nullptr);
+        void ifft_grid(std::complex<double> *grid = nullptr);
+
+        void copy_grid(
+            std::complex<double>* grid,
+            size_t nr_polarizations,
+            size_t height,
+            size_t width);
+
+        // Internal or deprecated methods
 
         // Internal function, not needed for most users
         void internal_set_subgrid_size(const size_t size);
@@ -134,6 +157,12 @@ namespace idg {
         void set_uvw_to_infinity();
         void init_default_aterm();
 
+        void fft(Direction direction, std::complex<double> *grid = nullptr);
+        void ifftshift(int nr_polarizations, std::complex<float> *grid);
+        void fftshift(int nr_polarizations, std::complex<float> *grid);
+        void ifftshift(std::complex<float> *array);
+        void fftshift(std::complex<float> *array);
+
         // Bookkeeping
         Type   m_architecture;
         size_t m_bufferTimesteps;
@@ -144,14 +173,14 @@ namespace idg {
         // Parameters for proxy
         size_t m_nrStations;
         size_t m_nrGroups;
-        float  m_wOffsetInLambda;
         size_t m_nrPolarizations;
-        size_t m_wKernelSize;
         size_t m_gridHeight;
         size_t m_gridWidth;
         size_t m_subgridSize;
-        float  m_imageSize; // TODO: deprecated, remove member
         float  m_cellSize;
+        float  m_wOffsetInLambda;
+        size_t m_wKernelSize;
+        float  m_imageSize; // TODO: deprecated, remove member
         int    m_aterm_offsets[2];
         proxy::Proxy* m_proxy;
 
