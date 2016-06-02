@@ -42,6 +42,7 @@ def live_plot_grid(axarr, grid, scaling='abs'):
     plt.pause(0.05)
 
 
+
 ######
 # main
 ######
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     ######################################################################
     # Initialize data
     ######################################################################
-    bufferTimesteps = nr_time / 16
+    bufferTimesteps = nr_time / 1
     nr_timeslots    = nr_time / bufferTimesteps
 
     uvw           = idg.utils.get_example_uvw(nr_baselines, nr_time,
@@ -121,107 +122,113 @@ if __name__ == "__main__":
     ######################################################################
     # Create plan
     ######################################################################
-    degridder = IDG.DegridderPlan(bufferTimesteps)
-    degridder.set_stations(nr_stations);
-    degridder.set_frequencies(frequencies);
-    degridder.set_spheroidal(spheroidal);
-    degridder.set_grid(grid_image);  # actually, give fft2(grid_image)
-    degridder.set_image_size(image_size);
-    degridder.set_w_kernel_size(subgrid_size/2);
-    degridder.internal_set_subgrid_size(subgrid_size);
-    degridder.bake();
 
-    gridder = IDG.GridderPlan(bufferTimesteps)
-    gridder.set_stations(nr_stations);
-    gridder.set_frequencies(frequencies);
-    gridder.set_spheroidal(spheroidal);
-    gridder.set_grid(grid_gridded);
-    gridder.set_image_size(image_size);
-    gridder.set_w_kernel_size(subgrid_size/2);
-    gridder.internal_set_subgrid_size(subgrid_size);
-    gridder.bake();
+    degridder = IDG.DegridderPlan(IDG.Type.CPU_OPTIMIZED, bufferTimesteps)
+    degridder.set_stations(nr_stations)
+    degridder.set_frequencies(frequencies)
+    degridder.set_spheroidal(spheroidal)
+    degridder.set_grid(grid_image)
+    degridder.set_image_size(image_size)
+    degridder.set_w_kernel_size(subgrid_size/2)
+    degridder.internal_set_subgrid_size(subgrid_size)
+    degridder.bake()
 
-    # HACK: Should not be part of the plan
-    # HACK: IDG.transform_grid(IDG.Direction.ImageToFourier, grid);
-    # to be called before baking the plan
-    degridder.transform_grid(IDG.Direction.ImageToFourier, grid_image);
+    gridder = IDG.GridderPlan(IDG.Type.CPU_OPTIMIZED, bufferTimesteps)
+    gridder.set_stations(nr_stations)
+    gridder.set_frequencies(frequencies)
+    gridder.set_spheroidal(spheroidal)
+    gridder.set_grid(grid_gridded)
+    gridder.set_image_size(image_size)
+    gridder.set_w_kernel_size(subgrid_size/2)
+    gridder.internal_set_subgrid_size(subgrid_size)
+    gridder.bake()
 
-    ###########
-    # Degridder
-    ###########
+    # Transform
+    degridder.transform_grid()
+    # idg.utils.plot_grid(degridder.get_copy_grid())
+
+    # ###########
+    # # Degridder
+    # ###########
     fig, axarr = plt.subplots(2, 2)
 
-    # for time_batch in range(nr_time / bufferTimesteps):
-    for time_batch in range(nr_time):
+    for time_batch in range(nr_time / bufferTimesteps):
 
         # For each time chunk: set a-term, request visibilities
-        # degridder.start_aterm(aterms[time_batch,:,:,:])
+        degridder.start_aterm(aterms[time_batch,:,:,:])
 
-        # for time_minor in range(bufferTimesteps):
-        for time_minor in [0]:
+        for time_minor in range(bufferTimesteps):
             time = time_batch*bufferTimesteps + time_minor
             for bl in range(nr_baselines):
 
-                # Set antenna indices (Note: smaller one first by convention)
-                antenna1 = baselines[bl][1]
-                antenna2 = baselines[bl][0]
+                # only request every second baselines
+                if (bl % 2 == 0 and (time < 1024 or time > 1500)):
+                    # Set antenna indices (Note: smaller one first by convention)
+                    antenna1 = baselines[bl][1]
+                    antenna2 = baselines[bl][0]
 
-                # Set UVW coordinates in double precision
-                uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
-                uvw_coordinates[0] = uvw[bl][time]['u']
-                uvw_coordinates[1] = uvw[bl][time]['v']
-                uvw_coordinates[2] = uvw[bl][time]['w']
+                    # Set UVW coordinates in double precision
+                    uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+                    uvw_coordinates[0] = uvw[bl][time]['u']
+                    uvw_coordinates[1] = uvw[bl][time]['v']
+                    uvw_coordinates[2] = uvw[bl][time]['w']
 
-                # Add visibilities to the buffer
-                degridder.request_visibilities(
-                    uvw_coordinates,
-                    antenna1,
-                    antenna2,
-                    time
-                )
+                    # Add visibilities to the buffer
+                    degridder.request_visibilities(
+                        uvw_coordinates,
+                        antenna1,
+                        antenna2,
+                        time
+                    )
 
-        # degridder.finish_aterm()
+        degridder.finish_aterm()
 
         # For each time batch: set a-term, read the visibilities and grid them
-        # gridder.start_aterm(aterms[time_batch,:,:,:])
+        gridder.start_aterm(aterms[time_batch,:,:,:])
 
-        # for time_minor in range(bufferTimesteps):
-        for time_minor in [0]:
+        for time_minor in range(bufferTimesteps):
 
             time = time_batch*bufferTimesteps + time_minor
             for bl in range(nr_baselines):
 
-                # Set antenna indices (Note: smaller one first by convention)
-                antenna1 = baselines[bl][1]
-                antenna2 = baselines[bl][0]
+                # only process every second baselines
+                if (bl % 2 == 0 and (time < 1024 or time > 1500)):
 
-                # Set UVW coordinates in double precision
-                uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
-                uvw_coordinates[0] = uvw[bl][time]['u']
-                uvw_coordinates[1] = uvw[bl][time]['v']
-                uvw_coordinates[2] = uvw[bl][time]['w']
+                    # Set antenna indices (Note: smaller one first by convention)
+                    antenna1 = baselines[bl][1]
+                    antenna2 = baselines[bl][0]
 
-                visibilities = degridder.read_visibilities(
-                   antenna1,
-                   antenna2,
-                   time)
+                    # Set UVW coordinates in double precision
+                    uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+                    uvw_coordinates[0] = uvw[bl][time]['u']
+                    uvw_coordinates[1] = uvw[bl][time]['v']
+                    uvw_coordinates[2] = uvw[bl][time]['w']
 
-                # Add visibilities to the buffer
-                gridder.grid_visibilities(
-                    visibilities,
-                    uvw_coordinates,
-                    antenna1,
-                    antenna2,
-                    time
-                )
+                    visibilities = degridder.read_visibilities(
+                        antenna1,
+                        antenna2,
+                        time)
 
-        # gridder.finish_aterm()
+                    # Add visibilities to the buffer
+                    gridder.grid_visibilities(
+                        visibilities,
+                        uvw_coordinates,
+                        antenna1,
+                        antenna2,
+                        time)
 
-        live_plot_grid(axarr, grid_gridded, scaling='log')
+        gridder.finish_aterm()
 
-        grid_copy = numpy.copy(grid_gridded);
-        gridder.transform_grid(IDG.Direction.FourierToImage, grid_copy)
+        ## VISUALIZE
+        # To display the gridded visibilities
+        live_plot_grid(axarr, gridder.get_copy_grid(), scaling='log')
 
+        # # To display the image instead
+        # grid_copy = gridder.get_copy_grid()
+        # gridder.transform_grid(grid_copy)
         # live_plot_grid(axarr, grid_copy)
+
+    gridder.transform_grid()
+    # idg.utils.plot_grid(gridder.get_copy_grid())
 
     plt.show()
