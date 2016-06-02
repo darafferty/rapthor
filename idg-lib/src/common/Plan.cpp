@@ -57,6 +57,7 @@ namespace idg {
         return max_nr_subgrids;
     }
 
+
     const Metadata* Plan::get_metadata_ptr(int bl) const {
         auto offset = get_subgrid_offset(bl);
         return &(metadata[offset]);
@@ -144,6 +145,11 @@ namespace idg {
                     float u_meters = current.u;
                     float v_meters = current.v;
 
+                    float uv_max_meters  = fmax(fabs(u_meters), fabs(v_meters));
+                    float uv_max_pixels  = uv_max_meters * imagesize * wavenumbers[0] /
+                                           (2 * M_PI);
+                    bool uv_in_range     = uv_max_pixels < grid_size/2;
+
                     // Iterate all channels
                     // TODO: split channels if they do not fit on a subgrid
                     for (int chan = 0; chan < nr_channels; chan += nr_channels) {
@@ -180,7 +186,7 @@ namespace idg {
                     // Stop conditions
                     bool same_aterm = (aterm_index == aterm_index_subgrid);
                     bool last_iteration = (t == nr_time - 1);
-                    bool timestep_fits = (uv_width + kernel_size) < subgrid_size;
+                    bool timestep_fits = uv_in_range && (uv_width + kernel_size) < subgrid_size;
 
                     // Check whether current set of measurements fit in subgrid
                     if (timestep_fits && same_aterm && !last_iteration) {
@@ -190,44 +196,51 @@ namespace idg {
                         // Measurement no longer fits, create new subgrid
 
                         // Use current u,v pixels for last measurement
-                        if (t == nr_time - 1) {
+                        if (timestep_fits && t == nr_time - 1) {
                             u_pixels_previous = u_pixels;
                             v_pixels_previous = v_pixels;
                             nr_timesteps++;
                         }
 
-                        // TODO: split also on channels dynamically
-                        if (nr_timesteps == 0) {
-                            printf("max_nr_timesteps=%d\n", max_nr_timesteps);
-                            throw runtime_error("Could not fit any timestep on subgrid, nr_channels is probably too high");
-                        }
+                        // // TODO: split also on channels dynamically
+                        // if (nr_timesteps == 0) {
+                        //     printf("max_nr_timesteps=%d\n", max_nr_timesteps);
+                        //     throw runtime_error("Could not fit any timestep on subgrid,
+                        //                         nr_channels is probably too high");
+                        // }
 
                         // Construct coordinate
                         Coordinate coordinate = { u_pixels_previous,
                                                   v_pixels_previous };
 
-                        // Split into subgrids with at most max_nr_timesteps
-                        for (int i = 0; i < nr_timesteps; i += max_nr_timesteps) {
-                            int current_nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
-                            // Set metadata
-                            Metadata m = { baseline_offset,
-                                           time + i,
-                                           current_nr_timesteps,
-                                           aterm_index_subgrid,
-                                           baseline,
-                                           coordinate };
-                            metadata.push_back(m);
-                        }
+                        if (nr_timesteps > 0) {
+                            // Split into subgrids with at most max_nr_timesteps
+                            for (int i = 0; i < nr_timesteps; i += max_nr_timesteps) {
+                                int current_nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
 
-                        // cout << "New subgrid: " << endl
-                        //      << m << endl;
+                                // Set metadata
+                                Metadata m = { baseline_offset,
+                                               time + i,
+                                               current_nr_timesteps,
+                                               aterm_index_subgrid,
+                                               baseline,
+                                               coordinate };
+                                metadata.push_back(m);
+
+                                // cout << "New subgrid: " << endl
+                                //      << m << endl;
+                            }
+                        } else {
+                            // Skip timestep
+                            nr_timesteps++;
+                        }
 
                         // Go to next subgrid
                         time += nr_timesteps;
                         break;
                     }
 
-                    // Store curren u,v pixels
+                    // Store current u,v pixels
                     u_pixels_previous = u_pixels;
                     v_pixels_previous = v_pixels;
                 }
