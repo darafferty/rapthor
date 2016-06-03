@@ -132,10 +132,9 @@ if (${MKL_FOUND})
 else()
     unset (MKL_INCLUDE_DIRS CACHE)
     unset (MKL_LIBRARIES CACHE)
+    find_package(FFTW3 COMPONENTS single)
 endif()
 endif()
-
-# TODO: make proper use of FindFFTW3 when MKL is not used
 
 # find CUDA environment
 if (BUILD_LIB_CUDA)

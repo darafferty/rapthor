@@ -257,7 +257,7 @@ add_library(idg
 set(LINK_LIRBRARIES ${CMAKE_DL_LIBS})
 
 if (BUILD_LIB_CPU)
-  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
+  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu ${FFTW3_LIBRARY})
 endif()
 
 target_link_libraries (
