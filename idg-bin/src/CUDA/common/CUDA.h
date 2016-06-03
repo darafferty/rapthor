@@ -56,8 +56,6 @@ namespace idg {
                 CUDA(
                     Parameters params,
                     unsigned deviceNumber = 0,
-                    Compiler compiler = default_compiler(),
-                    Compilerflags flags = default_compiler_flags(),
                     ProxyInfo info = default_info()
                 );
 
@@ -120,12 +118,21 @@ namespace idg {
                uint64_t sizeof_spheroidal();
 
             public:
-                virtual std::unique_ptr<kernel::cuda::Gridder> get_kernel_gridder() const = 0;
-                virtual std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const = 0;
-                virtual std::unique_ptr<kernel::cuda::GridFFT> get_kernel_fft() const = 0;
-                virtual std::unique_ptr<kernel::cuda::Scaler> get_kernel_scaler() const = 0;
-                virtual std::unique_ptr<kernel::cuda::Adder> get_kernel_adder() const = 0;
-                virtual std::unique_ptr<kernel::cuda::Splitter> get_kernel_splitter() const = 0;
+                std::unique_ptr<kernel::cuda::Gridder> get_kernel_gridder() const;
+                std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const;
+                std::unique_ptr<kernel::cuda::GridFFT> get_kernel_fft() const;
+                std::unique_ptr<kernel::cuda::Adder> get_kernel_adder() const;
+                std::unique_ptr<kernel::cuda::Splitter> get_kernel_splitter() const;
+                std::unique_ptr<kernel::cuda::Scaler> get_kernel_scaler() const;
+
+            protected:
+                virtual dim3 get_block_gridder() const = 0;
+                virtual dim3 get_block_degridder() const = 0;
+                virtual dim3 get_block_adder() const = 0;
+                virtual dim3 get_block_splitter() const = 0;
+                virtual dim3 get_block_scaler() const = 0;
+                virtual int get_gridder_batch_size() const = 0;
+                virtual int get_degridder_batch_size() const = 0;
 
             protected:
                 static std::string make_tempdir();
@@ -135,6 +142,11 @@ namespace idg {
                 void parameter_sanity_check();
                 void load_shared_objects();
                 void find_kernel_functions();
+                virtual std::string append(Compilerflags flags) const = 0;
+
+                void init_cuda(unsigned deviceNumber = 0);
+                void compile_kernels(Compiler compiler, Compilerflags flags);
+                void init_powersensor();
 
                 // data
                 cu::Device *device;

@@ -4,6 +4,7 @@
 #define CU_WRAPPER_H
 
 #include <cuda.h>
+#include <vector_types.h>
 #include <exception>
 #include <string>
 #include <iostream>
@@ -454,6 +455,10 @@ namespace cu {
 
 			void launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters) {
 				checkCudaCall(cuLaunchKernel(function, gridX, gridY, gridZ, blockX, blockY, blockZ, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
+			}
+
+			void launchKernel(Function &function, dim3 grid, dim3 block, unsigned sharedMemBytes, const void **parameters) {
+				checkCudaCall(cuLaunchKernel(function, grid.x, grid.y, grid.z, block.x, block.y, block.z, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
 			}
 
 			void query() {

@@ -3,7 +3,7 @@
 #include "Types.h"
 #include "math.cu"
 
-#define NR_THREADS NR_THREADS_DEGRIDDER
+#define NR_THREADS DEGRIDDER_BATCH_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 /*
