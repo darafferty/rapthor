@@ -65,7 +65,6 @@ namespace idg {
                 private:
                     idg::proxy::cpu::HaswellEP cpu;
                     idg::proxy::cuda::Maxwell cuda;
-
             }; // class Maxwell
         } // namespace hybrid
     } // namespace proxy

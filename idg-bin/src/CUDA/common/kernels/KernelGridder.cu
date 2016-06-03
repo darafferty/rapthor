@@ -3,7 +3,7 @@
 #include "Types.h"
 #include "math.cu"
 
-#define MAX_NR_TIMESTEPS MAX_NR_TIMESTEPS_GRIDDER
+#define MAX_NR_TIMESTEPS GRIDDER_BATCH_SIZE
 
 /*
 	Kernel

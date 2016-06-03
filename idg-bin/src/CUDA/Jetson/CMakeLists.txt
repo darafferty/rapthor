@@ -8,7 +8,6 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers
     Jetson.h
-    KernelsJetson.h
 )
 
 set (${PROJECT_NAME}_sources
