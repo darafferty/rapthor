@@ -33,53 +33,17 @@ namespace idg {
             CUDA::CUDA(
                 Parameters params,
                 unsigned deviceNumber,
-                Compiler compiler,
-                Compilerflags flags,
                 ProxyInfo info)
               : mInfo(info)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
-                cout << "Compiler: " << compiler << endl;
-                cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-
-                // Initialize CUDA
-                cu::init();
-
-                // Initialize device
-                const char *str_device_number = getenv("CUDA_DEVICE");
-                if (str_device_number) deviceNumber = atoi(str_device_number);
-                printDevices(deviceNumber);
-                device = new cu::Device(deviceNumber);
-
-                // Initialize context
-                context = new cu::Context(*device);
-                context->setCurrent();
-
 
                 // Set/check parameters
                 mParams = params;
                 parameter_sanity_check(); // throws exception if bad parameters
-
-                // Compile kernels
-                compile(compiler, flags);
-                load_shared_objects();
-                find_kernel_functions();
-
-                // Initialize power sensor
-                #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                cout << "Opening power sensor: " << str_power_sensor << endl;
-                cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor.init(str_power_sensor, str_power_file);
-                #else
-                powerSensor.init();
-                #endif
             }
 
             CUDA::~CUDA()
@@ -103,6 +67,41 @@ namespace idg {
                 }
             }
 
+            void CUDA::init_cuda(unsigned deviceNumber) {
+                // Initialize CUDA
+                cu::init();
+
+                // Initialize device
+                const char *str_device_number = getenv("CUDA_DEVICE");
+                if (str_device_number) deviceNumber = atoi(str_device_number);
+                printDevices(deviceNumber);
+                device = new cu::Device(deviceNumber);
+
+                // Initialize context
+                context = new cu::Context(*device);
+                context->setCurrent();
+            }
+
+            void CUDA::compile_kernels(Compiler compiler, Compilerflags flags) {
+                compile(compiler, flags);
+                load_shared_objects();
+                find_kernel_functions();
+            }
+
+            void CUDA::init_powersensor() {
+                #if defined(MEASURE_POWER_ARDUINO)
+                const char *str_power_sensor = getenv("POWER_SENSOR");
+                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
+                const char *str_power_file = getenv("POWER_FILE");
+                if (!str_power_file) str_power_file = POWER_FILE;
+                cout << "Opening power sensor: " << str_power_sensor << endl;
+                cout << "Writing power consumption to file: " << str_power_file << endl;
+                powerSensor.init(str_power_sensor, str_power_file);
+                #else
+                powerSensor.init();
+                #endif
+            }
+
             string CUDA::make_tempdir() {
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
                 char *tmpdir = mkdtemp(_tmpdir);
@@ -117,7 +116,12 @@ namespace idg {
             }
 
             string CUDA::default_compiler_flags() {
-                return "-use_fast_math -lineinfo -src-in-ptx";
+                stringstream flags;
+                flags << "-use_fast_math ";
+                flags << "-lineinfo ";
+                flags << "-src-in-ptx";
+
+                return flags.str();
             }
 
             ProxyInfo CUDA::default_info() {
@@ -378,7 +382,8 @@ namespace idg {
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
-                auto nr_subgrids = plan.get_nr_subgrids();
+                auto total_nr_subgrids   = plan.get_nr_subgrids();
+                auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
@@ -452,7 +457,8 @@ namespace idg {
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
 
                         // Number of subgrids for all baselines in job
-                        auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
@@ -511,8 +517,8 @@ namespace idg {
                         double runtime_adder   = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
-                                                     kernel_gridder->flops(current_nr_baselines, current_nr_subgrids),
-                                                     kernel_gridder->bytes(current_nr_baselines, current_nr_subgrids),
+                                                     kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
+                                                     kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                                      PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
@@ -543,14 +549,14 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-                uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_scaler   = kernel_scaler->flops(nr_subgrids);
-                uint64_t total_bytes_scaler   = kernel_scaler->bytes(nr_subgrids);
-                uint64_t total_flops_adder    = kernel_adder->flops(nr_subgrids);
-                uint64_t total_bytes_adder    = kernel_adder->bytes(nr_subgrids);
+                uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
+                uint64_t total_flops_scaler   = kernel_scaler->flops(total_nr_subgrids);
+                uint64_t total_bytes_scaler   = kernel_scaler->bytes(total_nr_subgrids);
+                uint64_t total_flops_adder    = kernel_adder->flops(total_nr_subgrids);
+                uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
@@ -598,7 +604,8 @@ namespace idg {
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
-                auto nr_subgrids = plan.get_nr_subgrids();
+                auto total_nr_subgrids   = plan.get_nr_subgrids();
+                auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
@@ -671,7 +678,8 @@ namespace idg {
                         int visibilities_elements = nr_time * nr_channels * nr_polarizations;
 
                         // Number of subgrids for all baselines in job
-                        auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current job
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
@@ -731,8 +739,8 @@ namespace idg {
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                        PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report("degridder", runtime_degridder,
-                                                       kernel_degridder->flops(current_nr_baselines, current_nr_subgrids),
-                                                       kernel_degridder->bytes(current_nr_baselines, current_nr_subgrids),
+                                                       kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
+                                                       kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                                        PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -754,12 +762,12 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-                uint64_t total_flops_splitter   = kernel_splitter->flops(nr_subgrids);
-                uint64_t total_bytes_splitter   = kernel_splitter->bytes(nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, nr_subgrids);
-                uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
+                uint64_t total_flops_splitter   = kernel_splitter->flops(total_nr_subgrids);
+                uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, total_nr_subgrids);
+                uint64_t total_flops_degridder  = kernel_degridder->flops(total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
@@ -879,7 +887,35 @@ namespace idg {
                 } // end for
             } // end find_kernel_functions
 
+            unique_ptr<Gridder> CUDA::get_kernel_gridder() const {
+                return unique_ptr<Gridder>(new Gridder(
+                    *(modules[which_module.at(name_gridder)]), mParams, get_block_gridder()));
+            }
 
+            unique_ptr<Degridder> CUDA::get_kernel_degridder() const {
+                return unique_ptr<Degridder>(new Degridder(
+                    *(modules[which_module.at(name_degridder)]), mParams, get_block_degridder()));
+            }
+
+            unique_ptr<GridFFT> CUDA::get_kernel_fft() const {
+                return unique_ptr<GridFFT>(new GridFFT(
+                    *(modules[which_module.at(name_fft)]), mParams));
+            }
+
+            unique_ptr<Adder> CUDA::get_kernel_adder() const {
+                return unique_ptr<Adder>(new Adder(
+                    *(modules[which_module.at(name_adder)]), mParams, get_block_adder()));
+            }
+
+            unique_ptr<Splitter> CUDA::get_kernel_splitter() const {
+                return unique_ptr<Splitter>(new Splitter(
+                    *(modules[which_module.at(name_splitter)]), mParams, get_block_splitter()));
+            }
+
+            unique_ptr<Scaler> CUDA::get_kernel_scaler() const {
+                return unique_ptr<Scaler>(new Scaler(
+                    *(modules[which_module.at(name_scaler)]), mParams, get_block_scaler()));
+            }
          } // namespace cuda
     } // namespace proxy
 } // namespace idg
