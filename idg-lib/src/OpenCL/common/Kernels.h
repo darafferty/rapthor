@@ -43,8 +43,8 @@ namespace idg {
                         cl::Buffer &d_metadata,
                         cl::Buffer &d_subgrid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_baselines, int nr_subgrids);
-                    uint64_t bytes(int nr_baselines, int nr_subgrids);
+                    uint64_t flops(int nr_timesteps, int nr_subgrids);
+                    uint64_t bytes(int nr_timesteps, int nr_subgrids);
 
                 private:
                     cl::Event event;
@@ -70,8 +70,8 @@ namespace idg {
                         cl::Buffer &d_metadata,
                         cl::Buffer &d_subgrid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_baselines, int nr_subgrids);
-                    uint64_t bytes(int nr_baselines, int nr_subgrids);
+                    uint64_t flops(int nr_timesteps, int nr_subgrids);
+                    uint64_t bytes(int nr_timesteps, int nr_subgrids);
 
                 private:
                     cl::Event event;
