@@ -13,8 +13,8 @@ namespace idg {
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info)
-                : CUDA(params, deviceNumber, compiler, append(flags), info)
+                ProxyInfo info) :
+                CUDA(params, deviceNumber, info)
             {
                 #if defined(DEBUG)
                 cout << "Jetson::" << __func__ << endl;
@@ -22,14 +22,46 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
+
+                init_cuda(deviceNumber);
+                compile_kernels(compiler, append(flags));
+                init_powersensor();
             }
 
-            Compilerflags Jetson::append(Compilerflags flags) {
+            dim3 Jetson::get_block_gridder() const {
+                return dim3(32, 4);
+            }
+
+            dim3 Jetson::get_block_degridder() const {
+                return dim3(128);
+            }
+
+            dim3 Jetson::get_block_adder() const {
+                return dim3(128);
+            }
+
+            dim3 Jetson::get_block_splitter() const {
+                return dim3(128);
+            }
+
+            dim3 Jetson::get_block_scaler() const {
+                return dim3(128);
+            }
+
+            int Jetson::get_gridder_batch_size() const {
+                return 32;
+            }
+
+            int Jetson::get_degridder_batch_size() const {
+                dim3 block_degridder = get_block_degridder();
+                return block_degridder.x * block_degridder.y * block_degridder.z;
+            }
+
+            Compilerflags Jetson::append(Compilerflags flags) const {
                 stringstream new_flags;
                 new_flags << flags;
-                new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << GridderMaxwell::max_nr_timesteps;
-                new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << DegridderMaxwell::max_nr_timesteps;
-                new_flags << " -DNR_THREADS_DEGRIDDER=" << DegridderMaxwell::nr_threads;
+                new_flags << " -DGRIDDER_BATCH_SIZE=" << get_gridder_batch_size();
+                new_flags << " -DDEGRIDDER_BATCH_SIZE=" << get_degridder_batch_size();
                 return new_flags.str();
             }
 
@@ -77,7 +109,7 @@ namespace idg {
                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                 std::cout << std::endl;
                 #endif
-}
+            }
 
             void Jetson::grid_visibilities(
                 const std::complex<float> *visibilities,
@@ -401,29 +433,6 @@ namespace idg {
                 #endif
             }
 
-            unique_ptr<Gridder> Jetson::get_kernel_gridder() const {
-                return unique_ptr<Gridder>(new GridderJetson(*(modules[which_module.at(name_gridder)]), mParams));
-            }
-
-            unique_ptr<Degridder> Jetson::get_kernel_degridder() const {
-                return unique_ptr<Degridder>(new DegridderJetson(*(modules[which_module.at(name_degridder)]), mParams));
-            }
-
-            unique_ptr<GridFFT> Jetson::get_kernel_fft() const {
-                return unique_ptr<GridFFT>(new GridFFTJetson(*(modules[which_module.at(name_fft)]), mParams));
-            }
-
-            unique_ptr<Scaler> Jetson::get_kernel_scaler() const {
-                return unique_ptr<Scaler>(new ScalerJetson(*(modules[which_module.at(name_scaler)]), mParams));
-            }
-
-            unique_ptr<Adder> Jetson::get_kernel_adder() const {
-                return unique_ptr<Adder>(new AdderJetson(*(modules[which_module.at(name_adder)]), mParams));
-            }
-
-            unique_ptr<Splitter> Jetson::get_kernel_splitter() const {
-                return unique_ptr<Splitter>(new SplitterJetson(*(modules[which_module.at(name_splitter)]), mParams));
-            }
         } // namespace cuda
     } // namespace proxy
 } // namespace idg

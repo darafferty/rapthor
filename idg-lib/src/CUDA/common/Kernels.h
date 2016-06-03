@@ -25,26 +25,12 @@ namespace idg {
 
             class Gridder {
             public:
+                Gridder(
+                    cu::Module &module,
+                    const Parameters &params,
+                    const dim3 block);
 
-                Gridder(cu::Module &module, const Parameters &params);
-
-                virtual void launch(
-                    cu::Stream &stream,
-                    int nr_subgrids,
-                    float w_offset,
-                    int nr_channels,
-                    cu::DeviceMemory &d_uvw,
-                    cu::DeviceMemory &d_wavenumbers,
-                    cu::DeviceMemory &d_visibilities,
-                    cu::DeviceMemory &d_spheroidal,
-                    cu::DeviceMemory &d_aterm,
-                    cu::DeviceMemory &d_metadata,
-                    cu::DeviceMemory &d_subgrid) = 0;
-
-                virtual int get_max_nr_timesteps() = 0;
-
-                template <int blockX, int blockY, int blockZ>
-                void launchAsync(
+                void launch(
                     cu::Stream &stream,
                     int nr_subgrids,
                     float w_offset,
@@ -61,8 +47,8 @@ namespace idg {
                         &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
                         d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
-                    stream.launchKernel(function, nr_subgrids, 1, 1,
-                                        blockX, blockY, blockZ, 0, parameters);
+                    dim3 grid(nr_subgrids);
+                    stream.launchKernel(function, grid, block, 0, parameters);
                 }
 
                 uint64_t flops(int nr_baselines, int nr_subgrids) {
@@ -76,30 +62,18 @@ namespace idg {
         	private:
                 cu::Function function;
                 Parameters parameters;
+                dim3 block;
             };
 
 
             class Degridder {
             public:
-                Degridder(cu::Module &module, const Parameters &params);
+                Degridder(
+                    cu::Module &module,
+                    const Parameters &params,
+                    const dim3 block);
 
-                virtual void launch(
-                    cu::Stream &stream,
-                    int nr_subgrids,
-                    float w_offset,
-                    int nr_channels,
-                    cu::DeviceMemory &d_uvw,
-                    cu::DeviceMemory &d_wavenumbers,
-                    cu::DeviceMemory &d_visibilities,
-                    cu::DeviceMemory &d_spheroidal,
-                    cu::DeviceMemory &d_aterm,
-                    cu::DeviceMemory &d_metadata,
-                    cu::DeviceMemory &d_subgrid) = 0;
-
-                virtual int get_max_nr_timesteps() = 0;
-
-                template <int blockX, int blockY, int blockZ>
-                void launchAsync(
+                void launch(
                     cu::Stream &stream,
                     int nr_subgrids,
                     float w_offset,
@@ -116,8 +90,8 @@ namespace idg {
                         &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
                         d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
-                    stream.launchKernel(function, nr_subgrids, 1, 1,
-                                        blockX, blockY, blockZ, 0, parameters);
+                    dim3 grid(nr_subgrids);
+                    stream.launchKernel( function, grid, block, 0, parameters);
                 }
 
                 uint64_t flops(int nr_baselines, int nr_subgrids) {
@@ -131,22 +105,19 @@ namespace idg {
         	private:
         	    cu::Function function;
                 Parameters parameters;
+                dim3 block;
             };
 
 
             class GridFFT {
         	public:
-                GridFFT(cu::Module &module, const Parameters &params);
+                GridFFT(
+                    cu::Module &module,
+                    const Parameters &params);
 
                 void plan(int size, int batch);
 
-                virtual void launch(
-                    cu::Stream &stream,
-                    cu::DeviceMemory &data,
-                    int direction) = 0;
-
-                template <int blockX, int blockY, int blockZ>
-                void launchAsync(
+                void launch(
                     cu::Stream &stream,
                     cu::DeviceMemory &data,
                     int direction)
@@ -206,23 +177,19 @@ namespace idg {
 
             class Adder {
             public:
-                Adder(cu::Module &module, const Parameters &params);
+                Adder(
+                    cu::Module &module,
+                    const Parameters &params,
+                    const dim3 block);
 
-                virtual void launch(
-                    cu::Stream &stream, int nr_subgrids,
-                    cu::DeviceMemory &d_metadata,
-                    cu::DeviceMemory &d_subgrid,
-                    cu::DeviceMemory &d_grid) = 0;
-
-                template <int blockX, int blockY, int blockZ>
-                void launchAsync(
+                void launch(
                     cu::Stream &stream, int nr_subgrids,
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid) {
                     const void *parameters[] = { d_metadata, d_subgrid, d_grid };
-                    stream.launchKernel(function, nr_subgrids, 1, 1,
-                                        blockX, blockY, blockZ, 0, parameters);
+                    dim3 grid(nr_subgrids);
+                    stream.launchKernel(function, grid, block, 0, parameters);
                 }
 
                 uint64_t flops(int nr_subgrids) {
@@ -236,31 +203,28 @@ namespace idg {
             private:
                 cu::Function function;
                 Parameters parameters;
+                dim3 block;
             };
 
 
             /*
-              Splitter
+                Splitter
             */
             class Splitter {
             public:
-                Splitter(cu::Module &module, const Parameters &params);
+                Splitter(
+                    cu::Module &module,
+                    const Parameters &params,
+                    const dim3 block);
 
-                virtual void launch(
-                    cu::Stream &stream, int nr_subgrids,
-                    cu::DeviceMemory &d_metadata,
-                    cu::DeviceMemory &d_subgrid,
-                    cu::DeviceMemory &d_grid) = 0;
-
-                template <int blockX, int blockY, int blockZ>
-                void launchAsync(
+                void launch(
                     cu::Stream &stream, int nr_subgrids,
                     cu::DeviceMemory &d_metadata,
                     cu::DeviceMemory &d_subgrid,
                     cu::DeviceMemory &d_grid) {
                     const void *parameters[] = { d_metadata, d_subgrid, d_grid };
-                    stream.launchKernel(function, nr_subgrids, 1, 1,
-                                        blockX, blockY, blockZ, 0, parameters);
+                    dim3 grid(nr_subgrids);
+                    stream.launchKernel(function, grid, block, 0, parameters);
                 }
 
                 uint64_t flops(int nr_subgrids) {
@@ -274,26 +238,27 @@ namespace idg {
             private:
                 cu::Function function;
                 Parameters parameters;
+                dim3 block;
             };
 
+
+            /*
+                Scaler
+            */
             class Scaler {
             public:
-                Scaler(cu::Module &module, const Parameters &params);
+                Scaler(
+                    cu::Module &module,
+                    const Parameters &params,
+                    const dim3 block);
 
-                virtual void launch(
-                    cu::Stream &stream, int nr_subgrids,
-                    cu::DeviceMemory &d_subgrid) = 0;
-
-                template <int blockX, int blockY, int blockZ>
-                void launchAsync(
+                void launch(
                     cu::Stream &stream,
                     int nr_subgrids,
                     cu::DeviceMemory &d_subgrid) {
-
                     const void *parameters[] = { d_subgrid };
-
-                    stream.launchKernel(function, nr_subgrids, 1, 1,
-                                        blockX, blockY, blockZ, 0, parameters);
+                    dim3 grid(nr_subgrids);
+                    stream.launchKernel(function, grid, block, 0, parameters);
                 }
 
                 uint64_t flops(int nr_subgrids) {
@@ -315,6 +280,7 @@ namespace idg {
             private:
                 cu::Function function;
                 Parameters parameters;
+                dim3 block;
             };
         } // namespace cuda
     } // namespace kernel

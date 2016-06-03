@@ -8,7 +8,6 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers
     Maxwell.h
-    KernelsMaxwell.h
 )
 
 set (${PROJECT_NAME}_sources

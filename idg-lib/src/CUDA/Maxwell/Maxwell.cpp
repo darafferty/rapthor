@@ -6,14 +6,13 @@ using namespace idg::kernel::cuda;
 namespace idg {
     namespace proxy {
         namespace cuda {
-            /// Constructors
             Maxwell::Maxwell(
                 Parameters params,
                 unsigned deviceNumber,
                 Compiler compiler,
                 Compilerflags flags,
-                ProxyInfo info)
-                : CUDA( params, deviceNumber, compiler, append(flags), info)
+                ProxyInfo info) :
+                CUDA(params, deviceNumber, info)
             {
                 #if defined(DEBUG)
                 cout << "Maxwell::" << __func__ << endl;
@@ -21,39 +20,47 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
+
+                init_cuda(deviceNumber);
+                compile_kernels(compiler, append(flags));
+                init_powersensor();
             }
 
-            Compilerflags Maxwell::append(Compilerflags flags) {
+            dim3 Maxwell::get_block_gridder() const {
+                return dim3(32, 4);
+            }
+
+            dim3 Maxwell::get_block_degridder() const {
+                return dim3(128);
+            }
+
+            dim3 Maxwell::get_block_adder() const {
+                return dim3(128);
+            }
+
+            dim3 Maxwell::get_block_splitter() const {
+                return dim3(128);
+            }
+
+            dim3 Maxwell::get_block_scaler() const {
+                return dim3(128);
+            }
+
+            int Maxwell::get_gridder_batch_size() const {
+                return 64;
+            }
+
+            int Maxwell::get_degridder_batch_size() const {
+                dim3 block_degridder = get_block_degridder();
+                return block_degridder.x * block_degridder.y * block_degridder.z;
+            }
+
+            Compilerflags Maxwell::append(Compilerflags flags) const {
                 stringstream new_flags;
                 new_flags << flags;
-                new_flags << " -DMAX_NR_TIMESTEPS_GRIDDER=" << GridderMaxwell::max_nr_timesteps;
-                new_flags << " -DMAX_NR_TIMESTEPS_DEGRIDDER=" << DegridderMaxwell::max_nr_timesteps;
-                new_flags << " -DNR_THREADS_DEGRIDDER=" << DegridderMaxwell::nr_threads;
+                new_flags << " -DGRIDDER_BATCH_SIZE=" << get_gridder_batch_size();
+                new_flags << " -DDEGRIDDER_BATCH_SIZE=" << get_degridder_batch_size();
                 return new_flags.str();
-            }
-
-            unique_ptr<Gridder> Maxwell::get_kernel_gridder() const {
-                return unique_ptr<Gridder>(new GridderMaxwell(*(modules[which_module.at(name_gridder)]), mParams));
-            }
-
-            unique_ptr<Degridder> Maxwell::get_kernel_degridder() const {
-                return unique_ptr<Degridder>(new DegridderMaxwell(*(modules[which_module.at(name_degridder)]), mParams));
-            }
-
-            unique_ptr<GridFFT> Maxwell::get_kernel_fft() const {
-                return unique_ptr<GridFFT>(new GridFFTMaxwell(*(modules[which_module.at(name_fft)]), mParams));
-            }
-
-            unique_ptr<Scaler> Maxwell::get_kernel_scaler() const {
-                return unique_ptr<Scaler>(new ScalerMaxwell(*(modules[which_module.at(name_scaler)]), mParams));
-            }
-
-            unique_ptr<Adder> Maxwell::get_kernel_adder() const {
-                return unique_ptr<Adder>(new AdderMaxwell(*(modules[which_module.at(name_adder)]), mParams));
-            }
-
-            unique_ptr<Splitter> Maxwell::get_kernel_splitter() const {
-                return unique_ptr<Splitter>(new SplitterMaxwell(*(modules[which_module.at(name_splitter)]), mParams));
             }
         } // namespace cuda
     } // namespace proxy

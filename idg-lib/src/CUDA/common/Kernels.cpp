@@ -8,16 +8,24 @@ namespace idg {
         namespace cuda {
 
         // Gridder class
-        Gridder::Gridder(cu::Module &module, const Parameters &params) :
-            function(module, name_gridder.c_str()), parameters(params) { }
+        Gridder::Gridder(
+            cu::Module &module,
+            const Parameters &params,
+            const dim3 block) :
+            function(module, name_gridder.c_str()), parameters(params), block(block) { }
 
         // Degridder class
-        Degridder::Degridder(cu::Module &module, const Parameters &params) :
-            function(module, name_degridder.c_str()), parameters(params) { }
+        Degridder::Degridder(
+            cu::Module &module,
+            const Parameters &params,
+            const dim3 block) :
+            function(module, name_degridder.c_str()), parameters(params), block(block) { }
 
 
         // GridFFT class
-        GridFFT::GridFFT(cu::Module &module, const Parameters &params) :
+        GridFFT::GridFFT(
+            cu::Module &module,
+            const Parameters &params) :
             function(module, name_fft.c_str()), parameters(params)
         {
             fft_bulk = NULL;
@@ -101,16 +109,25 @@ namespace idg {
         }
 
         // Adder class
-        Adder::Adder(cu::Module &module, const Parameters &params) :
-            function(module, name_adder.c_str()), parameters(params) { }
+        Adder::Adder(
+            cu::Module &module,
+            const Parameters &params,
+            const dim3 block) :
+            function(module, name_adder.c_str()), parameters(params), block(block) {}
 
         // Splitter class
-        Splitter::Splitter(cu::Module &module, const Parameters &params) :
-            function(module, name_splitter.c_str()), parameters(params) { }
+        Splitter::Splitter(
+            cu::Module &module,
+            const Parameters &params,
+            const dim3 block) :
+            function(module, name_splitter.c_str()), parameters(params), block(block) {}
 
         // Scaler class
-        Scaler::Scaler(cu::Module &module, const Parameters &params) :
-            function(module, name_scaler.c_str()), parameters(params) { }
+        Scaler::Scaler(
+            cu::Module &module,
+            const Parameters &params,
+            const dim3 block) :
+            function(module, name_scaler.c_str()), parameters(params), block(block) {}
 
         } // namespace cuda
     } // namespace kernel
