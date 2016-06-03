@@ -57,16 +57,16 @@ void run() {
     auto grid = new complex<float>[size_grid];
     auto baselines = new int[size_baselines];
 
-    idg::init_visibilities(visibilities, nr_baselines,
+    idg::init_example_visibilities(visibilities, nr_baselines,
                            nr_time,
                            nr_channels, nr_polarizations);
-    idg::init_uvw(uvw, nr_stations, nr_baselines, nr_time);
-    idg::init_wavenumbers(wavenumbers, nr_channels);
-    idg::init_aterm(aterm, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
-    idg::init_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
-    idg::init_spheroidal(spheroidal, subgridsize);
-    idg::init_grid(grid, gridsize, nr_polarizations);
-    idg::init_baselines(baselines, nr_stations, nr_baselines);
+    idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time);
+    idg::init_example_wavenumbers(wavenumbers, nr_channels);
+    idg::init_example_aterm(aterm, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
+    idg::init_example_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
+    idg::init_example_spheroidal(spheroidal, subgridsize);
+    idg::init_example_grid(grid, gridsize, nr_polarizations);
+    idg::init_example_baselines(baselines, nr_stations, nr_baselines);
     clog << endl;
 
     // Initialize proxy
