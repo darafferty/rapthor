@@ -43,12 +43,12 @@ namespace idg {
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid);
 
-                   uint64_t flops(int nr_baselines, int nr_subgrids) {
-                        return idg::kernel::flops_gridder(parameters, nr_baselines, nr_subgrids);
+                   uint64_t flops(int nr_timesteps, int nr_subgrids) {
+                        return idg::kernel::flops_gridder(parameters, nr_timesteps, nr_subgrids);
                     }
 
-                    uint64_t bytes(int nr_baselines, int nr_subgrids) {
-                        return idg::kernel::bytes_gridder(parameters, nr_baselines, nr_subgrids);
+                    uint64_t bytes(int nr_timesteps, int nr_subgrids) {
+                        return idg::kernel::bytes_gridder(parameters, nr_timesteps, nr_subgrids);
                     }
 
                 private:
@@ -78,12 +78,12 @@ namespace idg {
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid);
 
-                    uint64_t flops(int nr_baselines, int nr_subgrids) {
-                        return idg::kernel::flops_degridder(parameters, nr_baselines, nr_subgrids);
+                    uint64_t flops(int nr_timesteps, int nr_subgrids) {
+                        return idg::kernel::flops_degridder(parameters, nr_timesteps, nr_subgrids);
                     }
 
-                    uint64_t bytes(int nr_baselines, int nr_subgrids) {
-                        return idg::kernel::bytes_degridder(parameters, nr_baselines, nr_subgrids);
+                    uint64_t bytes(int nr_timesteps, int nr_subgrids) {
+                        return idg::kernel::bytes_degridder(parameters, nr_timesteps, nr_subgrids);
                     }
 
                 private:
