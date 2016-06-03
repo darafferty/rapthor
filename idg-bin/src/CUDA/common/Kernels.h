@@ -41,17 +41,9 @@ namespace idg {
                         cu::DeviceMemory &d_spheroidal,
                         cu::DeviceMemory &d_aterm,
                         cu::DeviceMemory &d_metadata,
-                        cu::DeviceMemory &d_subgrid) {
+                        cu::DeviceMemory &d_subgrid);
 
-                        const void *parameters[] = {
-                            &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
-                            d_spheroidal, d_aterm, d_metadata, d_subgrid };
-
-                        dim3 grid(nr_subgrids);
-                        stream.launchKernel(function, grid, block, 0, parameters);
-                    }
-
-                    uint64_t flops(int nr_baselines, int nr_subgrids) {
+                   uint64_t flops(int nr_baselines, int nr_subgrids) {
                         return idg::kernel::flops_gridder(parameters, nr_baselines, nr_subgrids);
                     }
 
@@ -84,15 +76,7 @@ namespace idg {
                         cu::DeviceMemory &d_spheroidal,
                         cu::DeviceMemory &d_aterm,
                         cu::DeviceMemory &d_metadata,
-                        cu::DeviceMemory &d_subgrid) {
-
-                        const void *parameters[] = {
-                            &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
-                            d_spheroidal, d_aterm, d_metadata, d_subgrid };
-
-                        dim3 grid(nr_subgrids);
-                        stream.launchKernel( function, grid, block, 0, parameters);
-                    }
+                        cu::DeviceMemory &d_subgrid);
 
                     uint64_t flops(int nr_baselines, int nr_subgrids) {
                         return idg::kernel::flops_degridder(parameters, nr_baselines, nr_subgrids);
@@ -117,40 +101,7 @@ namespace idg {
 
                     void plan(int size, int batch);
 
-                    void launch(
-                        cu::Stream &stream,
-                        cu::DeviceMemory &data,
-                        int direction)
-                    {
-                        // Initialize
-                        cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-                        int s = 0;
-                        int nr_polarizations = parameters.get_nr_polarizations();
-
-                        // Execute bulk ffts (if any)
-                        if (planned_batch >= bulk_size) {
-                            (*fft_bulk).setStream(stream);
-                            for (; s < planned_batch; s += bulk_size) {
-                                if (planned_batch - s >= bulk_size) {
-                                    (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                                    data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
-                                }
-                            }
-                        }
-
-                        // Execute remainder ffts
-                        if (s < planned_batch) {
-                            (*fft_remainder).setStream(stream);
-                            (*fft_remainder).execute(data_ptr, data_ptr, direction);
-                        }
-
-                        // Custom FFT kernel is disabled
-                        //cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
-                        //int nr_polarizations = parameters.get_nr_polarizations();
-                        //const void *parameters[] = { &data_ptr, &data_ptr, &direction};
-                        //stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1,
-                        //                    blockX, blockY, blockZ, 0, parameters);
-                    }
+                    void launch( cu::Stream &stream, cu::DeviceMemory &data, int direction);
 
                     void shift(std::complex<float> *data);
 
@@ -186,11 +137,7 @@ namespace idg {
                         cu::Stream &stream, int nr_subgrids,
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid,
-                        cu::DeviceMemory &d_grid) {
-                        const void *parameters[] = { d_metadata, d_subgrid, d_grid };
-                        dim3 grid(nr_subgrids);
-                        stream.launchKernel(function, grid, block, 0, parameters);
-                    }
+                        cu::DeviceMemory &d_grid);
 
                     uint64_t flops(int nr_subgrids) {
                         return idg::kernel::flops_adder(parameters, nr_subgrids);
@@ -221,11 +168,7 @@ namespace idg {
                         cu::Stream &stream, int nr_subgrids,
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid,
-                        cu::DeviceMemory &d_grid) {
-                        const void *parameters[] = { d_metadata, d_subgrid, d_grid };
-                        dim3 grid(nr_subgrids);
-                        stream.launchKernel(function, grid, block, 0, parameters);
-                    }
+                        cu::DeviceMemory &d_grid);
 
                     uint64_t flops(int nr_subgrids) {
                         return idg::kernel::flops_splitter(parameters, nr_subgrids);
@@ -255,11 +198,7 @@ namespace idg {
                     void launch(
                         cu::Stream &stream,
                         int nr_subgrids,
-                        cu::DeviceMemory &d_subgrid) {
-                        const void *parameters[] = { d_subgrid };
-                        dim3 grid(nr_subgrids);
-                        stream.launchKernel(function, grid, block, 0, parameters);
-                    }
+                        cu::DeviceMemory &d_subgrid);
 
                     uint64_t flops(int nr_subgrids) {
                         int subgridsize = parameters.get_subgrid_size();
