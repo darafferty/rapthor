@@ -18,7 +18,7 @@ namespace idg {
 
             void Gridder::launchAsync(
                 cl::CommandQueue &queue,
-                int nr_baselines,
+                int nr_timesteps,
                 int nr_subgrids,
                 float w_offset,
                 int nr_channels,
@@ -47,7 +47,7 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "gridder", flops(nr_baselines, nr_subgrids), bytes(nr_baselines, nr_subgrids));
+                    counter.doOperation(event, "gridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
@@ -55,12 +55,12 @@ namespace idg {
                 }
             }
 
-            uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
-                return idg::kernel::flops_gridder(parameters, nr_baselines, nr_subgrids);
+            uint64_t Gridder::flops(int nr_timesteps, int nr_subgrids) {
+                return idg::kernel::flops_gridder(parameters, nr_timesteps, nr_subgrids);
             }
 
-            uint64_t Gridder::bytes(int nr_baselines, int nr_subgrids) {
-                return idg::kernel::bytes_gridder(parameters, nr_baselines, nr_subgrids);
+            uint64_t Gridder::bytes(int nr_timesteps, int nr_subgrids) {
+                return idg::kernel::bytes_gridder(parameters, nr_timesteps, nr_subgrids);
             }
 
 
@@ -71,7 +71,7 @@ namespace idg {
 
             void Degridder::launchAsync(
                 cl::CommandQueue &queue,
-                int nr_baselines,
+                int nr_timesteps,
                 int nr_subgrids,
                 float w_offset,
                 int nr_channels,
@@ -100,7 +100,7 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "degridder", flops(nr_baselines, nr_subgrids), bytes(nr_baselines, nr_subgrids));
+                    counter.doOperation(event, "degridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
@@ -108,12 +108,12 @@ namespace idg {
                 }
             }
 
-            uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {
-                return idg::kernel::flops_degridder(parameters, nr_baselines, nr_subgrids);
+            uint64_t Degridder::flops(int nr_timesteps, int nr_subgrids) {
+                return idg::kernel::flops_degridder(parameters, nr_timesteps, nr_subgrids);
             }
 
-            uint64_t Degridder::bytes(int nr_baselines, int nr_subgrids) {
-                return idg::kernel::bytes_degridder(parameters, nr_baselines, nr_subgrids);
+            uint64_t Degridder::bytes(int nr_timesteps, int nr_subgrids) {
+                return idg::kernel::bytes_degridder(parameters, nr_timesteps, nr_subgrids);
             }
 
 
