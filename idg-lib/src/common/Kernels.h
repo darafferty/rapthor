@@ -17,16 +17,16 @@ namespace kernel {
     /*
         Flop and byte count
     */
-    uint64_t flops_gridder(Parameters &parameters, int nr_timesteps, int nr_subgrids);
-    uint64_t bytes_gridder(Parameters &parameters, int nr_timesteps, int nr_subgrids);
-    uint64_t flops_degridder(Parameters &parameters, int nr_timesteps, int nr_subgrids);
-    uint64_t bytes_degridder(Parameters &parameters, int nr_timesteps, int nr_subgrids);
-    uint64_t flops_fft(Parameters &parameters, int size, int batch);
-    uint64_t bytes_fft(Parameters &parameters, int size, int batch);
-    uint64_t flops_adder(Parameters &parameters, int nr_subgrids);
-    uint64_t bytes_adder(Parameters &parameters, int nr_subgrids);
-    uint64_t flops_splitter(Parameters &parameters, int nr_subgrids);
-    uint64_t bytes_splitter(Parameters &parameters, int nr_subgrids);
+    uint64_t flops_gridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
+    uint64_t bytes_gridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
+    uint64_t flops_degridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
+    uint64_t bytes_degridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
+    uint64_t flops_fft(Parameters &parameters, uint64_t size, uint64_t batch);
+    uint64_t bytes_fft(Parameters &parameters, uint64_t size, uint64_t batch);
+    uint64_t flops_adder(Parameters &parameters, uint64_t nr_subgrids);
+    uint64_t bytes_adder(Parameters &parameters, uint64_t nr_subgrids);
+    uint64_t flops_splitter(Parameters &parameters, uint64_t nr_subgrids);
+    uint64_t bytes_splitter(Parameters &parameters, uint64_t nr_subgrids);
 
 } // namespace kernel
 } // namespace idg
