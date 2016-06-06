@@ -6,10 +6,10 @@ namespace kernel {
     /*
         Flop and byte count
     */
-    uint64_t flops_gridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_channels = parameters.get_nr_channels();
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t flops_gridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids) {
+        uint64_t subgridsize = parameters.get_subgrid_size();
+        uint64_t nr_channels = parameters.get_nr_channels();
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
 
         // Number of flops per visibility
         uint64_t flops_per_visibility = 0;
@@ -34,10 +34,10 @@ namespace kernel {
         return flops_total;
     }
 
-    uint64_t bytes_gridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_channels = parameters.get_nr_channels();
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t bytes_gridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids) {
+        uint64_t subgridsize = parameters.get_subgrid_size();
+        uint64_t nr_channels = parameters.get_nr_channels();
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
 
         // Number of bytes per uvw coordinate
         uint64_t bytes_per_uvw = 0;
@@ -59,36 +59,36 @@ namespace kernel {
         return bytes_total;
     }
 
-    uint64_t flops_degridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
+    uint64_t flops_degridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids) {
         return flops_gridder(parameters, nr_timesteps, nr_subgrids);
     }
 
-    uint64_t bytes_degridder(Parameters &parameters, int nr_timesteps, int nr_subgrids) {
+    uint64_t bytes_degridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids) {
         return bytes_gridder(parameters, nr_timesteps, nr_subgrids);
     }
 
-    uint64_t flops_fft(Parameters &parameters, int size, int batch) {
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t flops_fft(Parameters &parameters, uint64_t size, uint64_t batch) {
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
         return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
     }
 
-    uint64_t bytes_fft(Parameters &parameters, int size, int batch) {
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t bytes_fft(Parameters &parameters, uint64_t size, uint64_t batch) {
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
         return 1ULL * 2 * batch * nr_polarizations * size * size * 2 * sizeof(float);
     }
 
-    uint64_t flops_adder(Parameters &parameters, int nr_subgrids) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t flops_adder(Parameters &parameters, uint64_t nr_subgrids) {
+        uint64_t subgridsize = parameters.get_subgrid_size();
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
         uint64_t flops = 0;
         flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
         flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // add
         return flops;
     }
 
-    uint64_t bytes_adder(Parameters &parameters, int nr_subgrids) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t bytes_adder(Parameters &parameters, uint64_t nr_subgrids) {
+        uint64_t subgridsize = parameters.get_subgrid_size();
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
         uint64_t bytes = 0;
         bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
         bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
@@ -97,16 +97,16 @@ namespace kernel {
         return bytes;
     }
 
-    uint64_t flops_splitter(Parameters &parameters, int nr_subgrids) {
-        int subgridsize = parameters.get_subgrid_size();
+    uint64_t flops_splitter(Parameters &parameters, uint64_t nr_subgrids) {
+        uint64_t subgridsize = parameters.get_subgrid_size();
         uint64_t flops = 0;
         flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
         return flops;
     }
 
-    uint64_t bytes_splitter(Parameters &parameters, int nr_subgrids) {
-        int subgridsize = parameters.get_subgrid_size();
-        int nr_polarizations = parameters.get_nr_polarizations();
+    uint64_t bytes_splitter(Parameters &parameters, uint64_t nr_subgrids) {
+        uint64_t subgridsize = parameters.get_subgrid_size();
+        uint64_t nr_polarizations = parameters.get_nr_polarizations();
         uint64_t bytes = 0;
         bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
         bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
