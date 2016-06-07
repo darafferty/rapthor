@@ -163,7 +163,7 @@ def main(proxyname):
                                                  nr_polarizations)
     aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots,
                                                         nr_time)
-    spheroidal    = idg.utils.get_example_spheroidal(subgrid_size)
+    spheroidal    = idg.utils.get_identity_spheroidal(subgrid_size)
     visibilities  = idg.utils.get_example_visibilities(nr_baselines,
                                                        nr_time,
                                                        nr_channels,

@@ -101,6 +101,7 @@ add_library(idg-utility
 
 target_link_libraries(
   idg-utility
+  idg-fft
   )
 
 set_target_properties(idg-utility PROPERTIES
