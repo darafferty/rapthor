@@ -4,6 +4,10 @@ project(idg)
 add_subdirectory(common)
 add_subdirectory(api)
 
+if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
+add_subdirectory(utility)
+endif ()
+
 if (BUILD_LIB_CPU OR BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
     add_subdirectory(fft)
 endif()
@@ -75,10 +79,34 @@ target_link_libraries(
   ${LINK_LIRBRARIES}
   )
 
-set_target_properties(idg-common PROPERTIES
+set_target_properties(idg-fft PROPERTIES
                       PUBLIC_HEADER idg-fft.h)
 
 install(TARGETS idg-fft
+  EXPORT IDGTargets
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+  PUBLIC_HEADER DESTINATION include
+)
+
+
+#########################################################
+# build libidg-utility: init example data, ...
+#########################################################
+add_library(idg-utility
+  $<TARGET_OBJECTS:utility-initialize>
+  $<TARGET_OBJECTS:utility-external>
+)
+
+target_link_libraries(
+  idg-utility
+  )
+
+set_target_properties(idg-utility PROPERTIES
+                      PUBLIC_HEADER idg-utility.h)
+
+install(TARGETS idg-utility
   EXPORT IDGTargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
