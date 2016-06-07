@@ -4,6 +4,10 @@ project(idg)
 add_subdirectory(common)
 add_subdirectory(api)
 
+if (BUILD_LIB_CPU OR BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
+    add_subdirectory(fft)
+endif()
+
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
@@ -43,6 +47,38 @@ set_target_properties(idg-common PROPERTIES
                       PUBLIC_HEADER idg-common.h)
 
 install(TARGETS idg-common
+  EXPORT IDGTargets
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+  PUBLIC_HEADER DESTINATION include
+)
+
+
+#########################################################
+# build libidg-fft, that wraps calls to FFTW or MKL;    #
+# used in the CPU code, the example init code, API code #
+#########################################################
+add_library(idg-fft
+  $<TARGET_OBJECTS:fft>
+)
+
+# TODO: set FFTW3F_LIBRARY correctly for MKL with or withou intel compiler
+set (LINK_LIRBRARIES ${FFTW3F_LIBRARY})
+
+if (BUILD_WITH_LIKWID_POWER_SENSOR)
+    set (LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
+endif()
+
+target_link_libraries(
+  idg-fft
+  ${LINK_LIRBRARIES}
+  )
+
+set_target_properties(idg-common PROPERTIES
+                      PUBLIC_HEADER idg-fft.h)
+
+install(TARGETS idg-fft
   EXPORT IDGTargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
