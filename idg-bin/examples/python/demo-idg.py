@@ -21,6 +21,14 @@ def signal_handler(signal, frame):
     exit()
 signal.signal(signal.SIGINT, signal_handler)
 
+# Types
+uvwtype = numpy.dtype([('u', numpy.float32),
+                       ('v', numpy.float32),
+                       ('w', numpy.float32)])
+
+baselinetype = numpy.dtype([('station1', numpy.intc),
+                            ('station2', numpy.intc)])
+
 # Function to compute spheroidal
 def func_spheroidal(nu):
   P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
@@ -59,110 +67,110 @@ def func_spheroidal(nu):
   return result
 
 # Class to store baseline data
-class BaselineBuffer :
-  def __init__(self, antenna1, antenna2, proxy) :
-    self.antenna1 = antenna1
-    self.antenna2 = antenna2
-    self.count = 0
-    self.uvw = numpy.zeros((proxy.get_nr_time(), 3), dtype = numpy.float32)
-    self.visibilities =  numpy.zeros((proxy.get_nr_time(), proxy.get_nr_channels(), proxy.get_nr_polarizations()), dtype = numpy.complex64)
-    self.N_timesteps = nr_timesteps
-
-  def append(self, row):
-    self.uvw[self.count, :] = row['UVW']
-    self.visibilities[self.count, :, :] = row['DATA']
-    self.count += 1
-    if self.count == self.N_timesteps:
-      return True
-
-  def clear(self):
-    self.count = 0
+#class BaselineBuffer :
+#  def __init__(self, antenna1, antenna2, proxy) :
+#    self.antenna1 = antenna1
+#    self.antenna2 = antenna2
+#    self.count = 0
+#    self.uvw = numpy.zeros((proxy.get_nr_time(), 3), dtype = numpy.float32)
+#    self.visibilities =  numpy.zeros((proxy.get_nr_time(), proxy.get_nr_channels(), proxy.get_nr_polarizations()), dtype = numpy.complex64)
+#    self.N_timesteps = nr_timesteps
+#
+#  def append(self, row):
+#    self.uvw[self.count, :] = row['UVW']
+#    self.visibilities[self.count, :, :] = row['DATA']
+#    self.count += 1
+#    if self.count == self.N_timesteps:
+#      return True
+#
+#  def clear(self):
+#    self.count = 0
 
 # Class to store misc data
-class DataBuffer :
-  def __init__(self, freqs, proxy) :
-    self.data = []
-    self.proxy = proxy
-    self.count = 0
-    N_ant = proxy.get_nr_stations()
-    N_timesteps = proxy.get_nr_time()
-
-    # Initialize uvw to zero
-    self.uvw = numpy.zeros((proxy.get_nr_time(), 3), dtype = numpy.float32)
-
-    # Inialize wavenumbers
-    speed_of_light = 299792458.0
-    self.wavelengths = numpy.array(speed_of_light / freqs, dtype=numpy.float32)
-    self.wavenumbers = numpy.array(2*numpy.pi / self.wavelengths, dtype=numpy.float32)
-
-    # Initialize visibilities to zero
-    self.visibilities =  numpy.zeros((proxy.get_nr_time(), proxy.get_nr_channels(), proxy.get_nr_polarizations()), dtype = numpy.complex64)
-
-    # Initialize aterm to zero
-    self.aterm = numpy.zeros((proxy.get_nr_stations(), proxy.get_nr_timeslots(), proxy.get_nr_polarizations(), proxy.get_subgrid_size(), proxy.get_subgrid_size()), dtype = numpy.complex64)
-
-    # Set aterm to one (so that it has no effect during imaging)
-    self.aterm[:,:,0,:,:] = 1.0
-    self.aterm[:,:,3,:,:] = 1.0
-
-    # Initialize spheroidal
-    x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(proxy.get_subgrid_size(), dtype=numpy.float32) / (proxy.get_subgrid_size()-1) - 1.0], dtype = numpy.float32)
-    self.spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
-    s = numpy.fft.fft2(self.spheroidal)
-    s = numpy.fft.fftshift(s)
-    s1 = numpy.zeros((proxy.get_grid_size(), proxy.get_grid_size()), dtype = numpy.complex64)
-    s1[(proxy.get_grid_size()-proxy.get_subgrid_size())/2:(proxy.get_grid_size()+proxy.get_subgrid_size())/2, (proxy.get_grid_size()-proxy.get_subgrid_size())/2:(proxy.get_grid_size()+proxy.get_subgrid_size())/2] = s
-    s1 = numpy.fft.ifftshift(s1)
-    self.spheroidal1 = numpy.real(numpy.fft.ifft2(s1))
-
-    # Initialize grid to zero
-    self.grid = numpy.zeros((proxy.get_nr_polarizations(), proxy.get_grid_size(), proxy.get_grid_size()), dtype = numpy.complex64)
-
-    # Initialize baselines
-    baselinetype = numpy.dtype([('station1', numpy.int32), ('station2', numpy.int32)])
-
-    # Initialize baseline buffers
-    self.baselinebuffers = numpy.zeros((N_ant, N_ant), dtype = object)
-    for i in range(N_ant):
-      for j in range(N_ant):
-        self.baselinebuffers[i,j] = BaselineBuffer(i,j,proxy)
-
-
-  def clear(self):
-    self.grid[:] = 0
-    for i in range(self.parameters.nr_stations):
-      for j in range(self.parameters.nr_stations):
-        self.baselinebuffers[i,j].clear()
-    self.data = []
-
-  def append(self, row):
-    self.time = row['TIME']
-
-    if row['ANTENNA1'] == row['ANTENNA2']:
-      return
-    baselinebuffer = self.baselinebuffers[row['ANTENNA1'], row['ANTENNA2']]
-    if baselinebuffer.append(row):
-      self.append_subgrid(baselinebuffer)
-      baselinebuffer.clear()
-
-  def append_subgrid(self, baselinebuffer):
-      # Store data
-      print "uvw shape: ", self.uvw.shape
-      print "baselinebuffer uvw shape: ", baselinebuffer.uvw.shape
-      self.uvw[self.count, :, :] = baselinebuffer.uvw
-      self.visibilities[self.count, :, :, :] = baselinebuffer.visibilities
-
-      # Stop condition
-      self.count += 1
-      if self.count == self.nr_subgrids:
-        self.flush()
-        return True
-
-  def flush(self):
-    jobsize = 0
-    w_offset = 0
-    self.data.append((self.time, self.count, self.uvw.copy(), self.visibilities.copy()))
-    self.count = 0
+#class DataBuffer :
+#  def __init__(self, freqs, proxy) :
+#    self.data = []
+#    self.proxy = proxy
+#    self.count = 0
+#    N_ant = proxy.get_nr_stations()
+#    N_timesteps = proxy.get_nr_time()
+#
+#    # Initialize uvw to zero
+#    self.uvw = numpy.zeros((proxy.get_nr_time(), 3), dtype = numpy.float32)
+#
+#    # Inialize wavenumbers
+#    speed_of_light = 299792458.0
+#    self.wavelengths = numpy.array(speed_of_light / freqs, dtype=numpy.float32)
+#    self.wavenumbers = numpy.array(2*numpy.pi / self.wavelengths, dtype=numpy.float32)
+#
+#    # Initialize visibilities to zero
+#    self.visibilities =  numpy.zeros((proxy.get_nr_time(), proxy.get_nr_channels(), proxy.get_nr_polarizations()), dtype = numpy.complex64)
+#
+#    # Initialize aterm to zero
+#    self.aterm = numpy.zeros((proxy.get_nr_stations(), proxy.get_nr_timeslots(), proxy.get_nr_polarizations(), proxy.get_subgrid_size(), proxy.get_subgrid_size()), dtype = numpy.complex64)
+#
+#    # Set aterm to one (so that it has no effect during imaging)
+#    self.aterm[:,:,0,:,:] = 1.0
+#    self.aterm[:,:,3,:,:] = 1.0
+#
+#    # Initialize spheroidal
+#    x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(proxy.get_subgrid_size(), dtype=numpy.float32) / (proxy.get_subgrid_size()-1) - 1.0], dtype = numpy.float32)
+#    self.spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
+#    s = numpy.fft.fft2(self.spheroidal)
+#    s = numpy.fft.fftshift(s)
+#    s1 = numpy.zeros((proxy.get_grid_size(), proxy.get_grid_size()), dtype = numpy.complex64)
+#    s1[(proxy.get_grid_size()-proxy.get_subgrid_size())/2:(proxy.get_grid_size()+proxy.get_subgrid_size())/2, (proxy.get_grid_size()-proxy.get_subgrid_size())/2:(proxy.get_grid_size()+proxy.get_subgrid_size())/2] = s
+#    s1 = numpy.fft.ifftshift(s1)
+#    self.spheroidal1 = numpy.real(numpy.fft.ifft2(s1))
+#
+#    # Initialize grid to zero
+#    self.grid = numpy.zeros((proxy.get_nr_polarizations(), proxy.get_grid_size(), proxy.get_grid_size()), dtype = numpy.complex64)
+#
+#    # Initialize baselines
+#    baselinetype = numpy.dtype([('station1', numpy.int32), ('station2', numpy.int32)])
+#
+#    # Initialize baseline buffers
+#    self.baselinebuffers = numpy.zeros((N_ant, N_ant), dtype = object)
+#    for i in range(N_ant):
+#      for j in range(N_ant):
+#        self.baselinebuffers[i,j] = BaselineBuffer(i,j,proxy)
+#
+#
+#  def clear(self):
+#    self.grid[:] = 0
+#    for i in range(self.parameters.nr_stations):
+#      for j in range(self.parameters.nr_stations):
+#        self.baselinebuffers[i,j].clear()
+#    self.data = []
+#
+#  def append(self, row):
+#    self.time = row['TIME']
+#
+#    if row['ANTENNA1'] == row['ANTENNA2']:
+#      return
+#    baselinebuffer = self.baselinebuffers[row['ANTENNA1'], row['ANTENNA2']]
+#    if baselinebuffer.append(row):
+#      self.append_subgrid(baselinebuffer)
+#      baselinebuffer.clear()
+#
+#  def append_subgrid(self, baselinebuffer):
+#      # Store data
+#      print "uvw shape: ", self.uvw.shape
+#      print "baselinebuffer uvw shape: ", baselinebuffer.uvw.shape
+#      self.uvw[self.count, :, :] = baselinebuffer.uvw
+#      self.visibilities[self.count, :, :, :] = baselinebuffer.visibilities
+#
+#      # Stop condition
+#      self.count += 1
+#      if self.count == self.nr_subgrids:
+#        self.flush()
+#        return True
+#
+#  def flush(self):
+#    jobsize = 0
+#    w_offset = 0
+#    self.data.append((self.time, self.count, self.uvw.copy(), self.visibilities.copy()))
+#    self.count = 0
 
 # Open measurementset
 t = pyrap.tables.table(msin)
@@ -172,15 +180,11 @@ t_ant = pyrap.tables.table(t.getkeyword("ANTENNA"))
 t_spw = pyrap.tables.table(t.getkeyword("SPECTRAL_WINDOW"))
 freqs = t_spw[0]['CHAN_FREQ']
 
-# Set parameters
-w_offset = 0.0
-jobsize = 100
-w_offset = 0
-
 # Initialize parameters
 nr_stations = len(t_ant)
+nr_baselines = (nr_stations * (nr_stations - 1)) / 2
 nr_channels = t[0]["CORRECTED_DATA"].shape[0]
-nr_timesteps = 16
+nr_time = 128
 nr_timeslots = 1
 nr_polarizations = 4
 image_size = 0.12
@@ -188,16 +192,35 @@ grid_size = 1000
 subgrid_size = 32
 
 # Initialize proxy
-proxy = idg.CPU.Reference(
+proxy = idg.CPU.HaswellEP(
     nr_stations, nr_channels,
-    nr_timesteps, nr_timeslots,
+    nr_time, nr_timeslots,
     image_size, grid_size, subgrid_size)
 
 # Initialize databuffer
-databuffer = DataBuffer(freqs, proxy)
+#databuffer = DataBuffer(freqs, proxy)
 
-# Number of samples to read in a single block
-N = 40000
+
+######################################################################
+# initialize data
+######################################################################
+grid = idg.utils.get_example_grid(nr_polarizations, grid_size)
+aterms = idg.utils.get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations)
+aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
+# Initialize spheroidal
+x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(subgrid_size, dtype=numpy.float32) / (subgrid_size-1) - 1.0], dtype = numpy.float32)
+spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
+s = numpy.fft.fft2(spheroidal)
+s = numpy.fft.fftshift(s)
+s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex64)
+s1[(grid_size-subgrid_size)/2:(grid_size+subgrid_size)/2, (grid_size-subgrid_size)/2:(grid_size+subgrid_size)/2] = s
+s1 = numpy.fft.ifftshift(s1)
+spheroidal1 = numpy.real(numpy.fft.ifft2(s1))
+
+# Inialize wavenumbers
+speed_of_light = 299792458.0
+wavelengths = numpy.array(speed_of_light / freqs, dtype=numpy.float32)
+wavenumbers = numpy.array(2*numpy.pi / wavelengths, dtype=numpy.float32)
 
 # Data row description
 rowtype = numpy.dtype([
@@ -208,99 +231,114 @@ rowtype = numpy.dtype([
   ('DATA', complex, (proxy.get_nr_channels(), proxy.get_nr_polarizations()))
 ])
 
-# Read measurementset one block at a time
-block = numpy.zeros(N, dtype = rowtype)
-nr_rows = int(t.nrows() * (percentage/100.))
-for i in range(0, nr_rows, N):
-    print("Reading data: %.1f %%" % (float(i) / nr_rows * 100))
-    block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
-    block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
-    block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
-    block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
-    print ""
-    block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
-    # block[:]['DATA'] = t.getcol('DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
-    for j in range(N):
-        databuffer.append(block[j])
-databuffer.flush()
-
-# Enable interactive plotting
-plt.ion()
-
 # Repeat forever
 while True:
-  frame_number = 0
-  for time1, count, uvw, visibilities, metadata in databuffer.data:
+    frame_number = 0
+
     # Print progress
-    print "Imaging: %.1f%%"  %(float(frame_number) / len(databuffer.data) * 100)
+    #print "Imaging: %.1f%%"  %(float(frame_number) / len(databuffer.data) * 100)
 
-    # Grid visibilities
-    w_offset = 0
-    kernel_size = (proxy.get_subgrid_size() / 2) + 1
-    proxy.grid_visibilities(
-        visibilities,
-        uvw,
-        databuffer.wavenumbers,
-        baselines,
-        databuffer.grid,
-        w_offset,
-        kernel_size,
-        databuffer.aterm,
-        databuffer.aterm_offset,
-        databuffer.spheroidal)
+    # Number of samples to read in a single block
+    N = nr_baselines * nr_time
 
-    # Compute fft over grid
-    # Using numpy
-    #img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(databuffer.grid[0,:,:]))))
+    # Read measurementset one block at a time
+    block = numpy.zeros(N, dtype = rowtype)
+    nr_rows = int(t.nrows() * (percentage/100.))
+    for i in range(0, nr_rows, N):
+        # Enable interactive plotting
+        plt.ion()
 
-    # Using fft from library
-    #img = numpy.conj(databuffer.grid[:,:,:])
-    #img = numpy.fft.fftshift(img)
-    proxy.transform(idg.FourierDomainToImageDomain, img)
-    #img = numpy.fft.fftshift(img)
-    img = numpy.real(img[0,:,:])
+        print("Reading data: %.1f %%" % (float(i) / nr_rows * 100))
+        block[:]['TIME'] = t.getcol('TIME', startrow = i, nrow = N)
+        block[:]['ANTENNA1'] = t.getcol('ANTENNA1', startrow = i, nrow = N)
+        block[:]['ANTENNA2'] = t.getcol('ANTENNA2', startrow = i, nrow = N)
+        block[:]['UVW'] = t.getcol('UVW', startrow = i, nrow = N)
+        print ""
+        block[:]['DATA'] = t.getcol('CORRECTED_DATA', startrow = i, nrow = N) * -t.getcol('FLAG', startrow = i, nrow = N)
 
-    # Remove spheroidal from grid
-    img = img/databuffer.spheroidal1
+        # Create baselines datastructure TODO: check if the correct antennas are selected
+        baselines = zip(block[:]['ANTENNA1'][:nr_baselines], block[:]['ANTENNA2'][:nr_baselines])
+        baselines = numpy.asarray(baselines, dtype=baselinetype)
 
-    # Crop image
-    img = img[int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1,int(databuffer.parameters.grid_size*0.9):int(databuffer.parameters.grid_size*0.1):-1]
+        # Create UVW data structure
+        uvw = numpy.asarray(block[:]['UVW']).flatten()
+        uvw = list(zip(*(iter(uvw),) * 3))
+        uvw = numpy.asarray(uvw, dtype=uvwtype)
+        uvw = numpy.reshape(uvw, newshape=(nr_baselines, nr_time))
 
-    # Set plot properties
-    colormap=plt.get_cmap("YlGnBu_r")
-    font_size = 22
+        # Create visibilities data structure
+        visibilities = numpy.asarray(block[:]['DATA'])
+        visibilities = numpy.reshape(visibilities, newshape=(nr_baselines, nr_time, nr_channels, nr_polarizations))
 
-    # Make first plot (raw grid)
-    plt.figure(1, figsize=(30,15))
-    plt.figure(1)
-    plt.subplot(1,2,1)
-    plt.cla()
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_axis_bgcolor(colormap(0))
-    plt.imshow(numpy.log(numpy.abs(databuffer.grid[0,:,:])), interpolation='nearest')
-    plt.title("UV Data: %2.2i:%2.2i\n" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60) ))
-    ax.title.set_fontsize(font_size)
+        # Grid visibilities
+        w_offset = 0
+        kernel_size = (proxy.get_subgrid_size() / 2) + 1
+        proxy.grid_visibilities(
+            visibilities,
+            uvw,
+            wavenumbers,
+            baselines,
+            grid,
+            w_offset,
+            kernel_size,
+            aterms,
+            aterms_offset,
+            spheroidal)
 
-    # Make second plot (processed grid)
-    plt.subplot(1,2,2)
-    plt.cla()
-    m = numpy.amax(img)
-    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
-    plt.title("Sky image\n")
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.title.set_fontsize(font_size)
+        # Compute fft over grid
+        # Using numpy
+        img = numpy.real(numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(grid[0,:,:]))))
 
-    # Draw figure
-    plt.show()
-    plt.draw()
-    frame_number += 1
+        # Using fft from library
+        #img = numpy.conj(databuffer.grid[:,:,:])
+        #img = numpy.fft.fftshift(img)
+        #img = numpy.zeros(shape=grid.shape)
+        #proxy.transform(idg.FourierDomainToImageDomain, img)
+        #img = numpy.fft.fftshift(img)
+        #img = numpy.real(img[0,:,:])
 
-  # Wait for some time
-  time.sleep(30)
+        # Remove spheroidal from grid
+        img = img/spheroidal1
 
-  # Reset grid
-  databuffer.grid[:] = 0
+        # Crop image
+        img = img[int(grid_size*0.9):int(grid_size*0.1):-1,int(grid_size*0.9):int(grid_size*0.1):-1]
+
+        # Set plot properties
+        colormap=plt.get_cmap("YlGnBu_r")
+        font_size = 22
+
+        # Make first plot (raw grid)
+        plt.figure(1, figsize=(20,10))
+        plt.figure(1)
+        plt.subplot(1,2,1)
+        plt.cla()
+        ax = plt.gca()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_axis_bgcolor(colormap(0))
+        plt.imshow(numpy.log(numpy.abs(grid[0,:,:])), interpolation='nearest')
+        time1 = block[:]['TIME'][0]
+        plt.title("UV Data: %2.2i:%2.2i\n" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60) ))
+        ax.title.set_fontsize(font_size)
+
+        # Make second plot (processed grid)
+        plt.subplot(1,2,2)
+        plt.cla()
+        m = numpy.amax(img)
+        plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+        plt.title("Sky image\n")
+        ax = plt.gca()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.title.set_fontsize(font_size)
+
+        # Draw figure
+        plt.show()
+        plt.draw()
+        frame_number += 1
+
+    # Wait for some time
+    time.sleep(30)
+
+    # Reset grid
+    grid[:] = 0
