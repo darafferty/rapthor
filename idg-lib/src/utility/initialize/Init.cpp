@@ -22,6 +22,56 @@ namespace idg {
 
     /* Methods where pointed to allocated memory is provided */
 
+    void init_identity_spheroidal(void *ptr, int subgridsize) {
+        TYPEDEF_SPHEROIDAL_TYPE
+        SpheroidalType *spheroidal = (SpheroidalType *) ptr;
+
+        float value = 1.0;
+
+        for (int y = 0; y < subgridsize; y++) {
+            for (int x = 0; x < subgridsize; x++) {
+                 (*spheroidal)[y][x] = value;
+            }
+        }
+    }
+
+
+    void init_zero_grid(
+        void *ptr,
+        int gridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_GRID_TYPE
+        GridType *grid = (GridType *) ptr;
+        memset(grid, 0, sizeof(GridType));
+    }
+
+
+    void init_identity_aterm(
+        void *ptr,
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        TYPEDEF_ATERM_TYPE
+        ATermType *aterm = (ATermType *) ptr;
+
+        for (int t = 0; t < nr_timeslots; t++) {
+            for (int ant = 0; ant < nr_stations; ant++) {
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
+                        (*aterm)[t][ant][y][x][0] = {1, 0};
+                        (*aterm)[t][ant][y][x][1] = {0, 0};
+                        (*aterm)[t][ant][y][x][2] = {0, 0};
+                        (*aterm)[t][ant][y][x][3] = {1, 0};
+                    }
+                }
+            }
+        }
+    }
+
+
     void init_example_uvw(
         void *ptr,
         int nr_stations,
@@ -287,15 +337,65 @@ namespace idg {
     }
 
 
+    // Function to compute spheroidal. Based on reference code by BvdT.
+    float evaluate_spheroidal(float nu)
+    {
+        float P[2][5] = {
+            {8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1, 2.312756e-1},
+            {4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2}};
+        float Q[2][3] = {
+            {1.0000000e0, 8.212018e-1, 2.078043e-1},
+            {1.0000000e0, 9.599102e-1, 2.918724e-1}};
+
+        int part;
+        float end;
+        if (nu >= 0.0 && nu < 0.75) {
+            part = 0;
+            end  = 0.75f;
+        } else if (nu >= 0.75 && nu <= 1.00) {
+            part = 1;
+            end  = 1.0f;
+        } else {
+            return 0.0f;
+        }
+
+        float nusq = nu * nu;
+        float delnusq = nusq - end * end;
+        float delnusqPow = delnusq;
+        float top = P[part][0];
+        for (auto k = 1; k < 5; k++) {
+            top += P[part][k] * delnusqPow;
+            delnusqPow *= delnusq;
+        }
+
+        float bot = Q[part][0];
+        delnusqPow = delnusq;
+        for (auto k = 1; k < 3; k++) {
+            bot += Q[part][k] * delnusqPow;
+            delnusqPow *= delnusq;
+        }
+
+        if (bot == 0.0f) {
+            return 0.0f;
+        } else {
+            return (1.0 - nusq) * (top / bot);
+        }
+    }
+
+
     void init_example_spheroidal(void *ptr, int subgridsize) {
         TYPEDEF_SPHEROIDAL_TYPE
         SpheroidalType *spheroidal = (SpheroidalType *) ptr;
 
-        float value = 1.0;
+        float x[subgridsize];
+        for (int i = 0; i < subgridsize; i++) {
+            float tmp = fabs(-1 + i*2.0f/float(subgridsize));
+            x[i] = evaluate_spheroidal(tmp);
+        }
 
-        for (int y = 0; y < subgridsize; y++) {
-            for (int x = 0; x < subgridsize; x++) {
-                 (*spheroidal)[y][x] = value;
+        for (int i = 0; i < subgridsize; i++) {
+            for (int j = 0; j < subgridsize; j++) {
+                 (*spheroidal)[i][j] = x[i]*x[j];
             }
         }
     }
@@ -349,45 +449,40 @@ namespace idg {
     }
 
 
-    void init_zero_grid(
-        void *ptr,
-        int gridsize,
-        int nr_polarizations)
+    /*
+        Methods where memory is allocated
+    */
+
+    void* init_identity_spheroidal(int subgridsize)
     {
-        TYPEDEF_GRID_TYPE
-        GridType *grid = (GridType *) ptr;
-        memset(grid, 0, sizeof(GridType));
+        TYPEDEF_SPHEROIDAL_TYPE
+        void *ptr = malloc(sizeof(SpheroidalType));
+        init_identity_spheroidal(ptr, subgridsize);
+        return ptr;
     }
 
 
-    void init_identity_aterm(
-        void *ptr,
+    void* init_zero_grid(int gridsize, int nr_polarizations)
+    {
+        TYPEDEF_GRID_TYPE
+        void *ptr = malloc(sizeof(GridType));
+        init_zero_grid(ptr, gridsize, nr_polarizations);
+        return ptr;
+    }
+
+
+    void* init_identity_aterm(
         int nr_timeslots,
         int nr_stations,
         int subgridsize,
         int nr_polarizations)
     {
         TYPEDEF_ATERM_TYPE
-        ATermType *aterm = (ATermType *) ptr;
-
-        for (int t = 0; t < nr_timeslots; t++) {
-            for (int ant = 0; ant < nr_stations; ant++) {
-                for (int y = 0; y < subgridsize; y++) {
-                    for (int x = 0; x < subgridsize; x++) {
-                        (*aterm)[t][ant][y][x][0] = {1, 0};
-                        (*aterm)[t][ant][y][x][1] = {0, 0};
-                        (*aterm)[t][ant][y][x][2] = {0, 0};
-                        (*aterm)[t][ant][y][x][3] = {1, 0};
-                    }
-                }
-            }
-        }
+        void *ptr = malloc(sizeof(ATermType));
+        init_identity_aterm(ptr, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
+        return ptr;
     }
 
-
-    /*
-        Methods where memory is allocated
-    */
 
     void* init_example_uvw(
         int nr_stations,
@@ -489,27 +584,43 @@ namespace idg {
     }
 
 
-    void* init_zero_grid(int gridsize, int nr_polarizations)
+    // TODO: make generic, not spheroidal specific
+    // TODO: use real-to-complex and complex-to-real FFT
+    void resize_spheroidal(
+        float *__restrict__ spheroidal_in,
+        int   size_in,
+        float *__restrict__ spheroidal_out,
+        int   size_out)
     {
-        TYPEDEF_GRID_TYPE
-        void *ptr = malloc(sizeof(GridType));
-        init_zero_grid(ptr, gridsize, nr_polarizations);
-        return ptr;
+        auto in_ft  = new std::complex<float>[size_in*size_in];
+        auto out_ft = new std::complex<float>[size_out*size_out];
+
+        for (int i = 0; i < size_in; i++) {
+            for (int j = 0; j < size_in; j++) {
+                in_ft[i*size_in + j] = spheroidal_in[i*size_in + j];
+            }
+        }
+        fft2f(size_in, in_ft);
+
+        int offset = int((size_out - size_in)/2);
+
+        for (int i = 0; i < size_in; i++) {
+            for (int j = 0; j < size_in; j++) {
+                out_ft[(i+offset)*size_out + (j+offset)] = in_ft[i*size_in + j];
+            }
+        }
+        ifft2f(size_out, out_ft);
+
+        float s = 1.0f / (size_in * size_in);
+        for (int i = 0; i < size_out; i++) {
+            for (int j = 0; j < size_out; j++) {
+                spheroidal_out[i*size_out + j] = out_ft[i*size_out + j].real() * s;
+            }
+        }
+
+        delete [] in_ft;
+        delete [] out_ft;
     }
-
-
-    void* init_identity_aterm(
-        int nr_timeslots,
-        int nr_stations,
-        int subgridsize,
-        int nr_polarizations)
-    {
-        TYPEDEF_ATERM_TYPE
-        void *ptr = malloc(sizeof(ATermType));
-        init_identity_aterm(ptr, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
-        return ptr;
-    }
-
 
 } // namespace idg
 
@@ -522,6 +633,24 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
+
+    void utils_init_identity_aterms(
+        void *ptr,
+        int nr_timeslots,
+        int nr_stations,
+        int subgridsize,
+        int nr_polarizations)
+    {
+        idg::init_identity_aterm(ptr, nr_timeslots, nr_stations,
+                                 subgridsize, nr_polarizations);
+    }
+
+
+    void* utils_init_identity_spheroidal(void *ptr, int subgridsize)
+    {
+        idg::init_identity_spheroidal(ptr, subgridsize);
+    }
+
 
     void utils_init_example_uvw(
          void *ptr,
@@ -603,16 +732,17 @@ extern "C" {
         idg::init_example_baselines(ptr, nr_stations, nr_baselines);
     }
 
-    void utils_init_identity_aterms(
-        void *ptr,
-        int nr_timeslots,
-        int nr_stations,
-        int subgridsize,
-        int nr_polarizations)
+    void utils_resize_spheroidal(
+        float *spheroidal,
+        int   subgrid_size,
+        float *spheroidal_resized,
+        int   size)
     {
-        idg::init_identity_aterm(ptr, nr_timeslots, nr_stations,
-                                 subgridsize, nr_polarizations);
+        idg::resize_spheroidal(
+            spheroidal,
+            subgrid_size,
+            spheroidal_resized,
+            size);
     }
-
 
 }  // end extern "C"

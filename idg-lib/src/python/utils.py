@@ -19,6 +19,20 @@ path, junk = os.path.split(path)
 libpath = os.path.join(path, 'libidg-utility.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
+
+def resize_spheroidal(spheroidal, size, dtype=numpy.float32):
+    subgrid_size = spheroidal.shape[0]  # assumes squares spheroidal
+    tmp = spheroidal.astype(numpy.float32)
+    result = numpy.zeros(shape=(size, size),
+                         dtype=numpy.float32)
+    lib.utils_resize_spheroidal( tmp.ctypes.data_as(ctypes.c_void_p),
+                                 ctypes.c_int(subgrid_size),
+                                 result.ctypes.data_as(ctypes.c_void_p),
+                                 ctypes.c_int(size) )
+    return result.astype(dtype)
+
+
+
 def nr_baselines_to_nr_stations(nr_baselines):
     """Convert NUMBER OF BASELINES to NUMBER OF STATIONS"""
     lower = int(math.floor(math.sqrt(2*nr_baselines)))
@@ -558,6 +572,14 @@ def init_identity_aterms(aterms):
                                    ctypes.c_int(nr_polarizations))
 
 
+def init_identity_spheroidal(spheroidal):
+    subgrid_size = spheroidal.shape[0]
+    lib.utils_init_identity_spheroidal.argtypes = [ctypes.c_void_p,
+                                                   ctypes.c_int]
+    lib.utils_init_identity_spheroidal(spheroidal.ctypes.data_as(ctypes.c_void_p),
+                                       ctypes.c_int(subgrid_size))
+
+
 def get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations,
                         dtype=atermtype, info=False):
     aterms = numpy.zeros(
@@ -579,6 +601,17 @@ def get_zero_grid(nr_polarizations, grid_size,
         print "grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
                                    "dtype = " + str(dtype) + ")"
     return grid
+
+
+def get_identity_spheroidal(subgrid_size, dtype=spheroidaltype, info=False):
+    spheroidal = numpy.zeros(shape=(subgrid_size, subgrid_size),
+                             dtype=spheroidaltype)
+    init_identity_spheroidal(spheroidal)
+    if info==True:
+        print "grid: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
+                                   "dtype = " + str(dtype) + ")"
+    return spheroidal.astype(dtype=dtype)
+
 
 ##### END:   INITIALZE DATA         #####
 

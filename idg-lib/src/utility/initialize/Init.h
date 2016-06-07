@@ -12,6 +12,7 @@
 #include "idg-config.h"
 #include "idg-utility.h"
 #include "idg-common.h" // idg data types
+#include "idg-fft.h"
 
 /* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -40,6 +41,23 @@ static const std::string ENV_LAYOUT_FILE;
 namespace idg {
 
 /* Methods */
+
+void init_zero_grid(
+    void *ptr,
+    int gridsize,
+    int nr_polarizations);
+
+void init_identity_aterm(
+    void *ptr,
+    int nr_timeslots,
+    int nr_stations,
+    int subgridsize,
+    int nr_polarizations);
+
+void init_identity_spheroidal(
+    void *ptr,
+    int subgridsize);
+
 void init_example_uvw(
     void *ptr,
     int nr_stations,
@@ -96,18 +114,6 @@ void init_example_baselines(
 void init_example_grid(
     void *ptr,
     int gridsize,
-    int nr_polarizations);
-
-void init_zero_grid(
-    void *ptr,
-    int gridsize,
-    int nr_polarizations);
-
-void init_identity_aterm(
-    void *ptr,
-    int nr_timeslots,
-    int nr_stations,
-    int subgridsize,
     int nr_polarizations);
 
 //////////////

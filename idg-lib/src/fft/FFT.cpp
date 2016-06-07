@@ -52,7 +52,6 @@ namespace idg {
                                      data_in, tmp,
                                      FFTW_ESTIMATE);
         fftwf_execute(plan);
-        fftshift(m, n, data_out);
         fftwf_destroy_plan(plan);
     }
 
@@ -70,7 +69,6 @@ namespace idg {
         plan = fftwf_plan_dft_c2r_2d(m, n,
                                      tmp, data_out,
                                      FFTW_ESTIMATE);
-        ifftshift(m, n, data_in);
         fftwf_execute(plan);
         fftwf_destroy_plan(plan);
     }
