@@ -250,6 +250,12 @@ void kernel_degridder(
             visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
+    for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
+        kernel_degridder_<4>(
+            nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
+            visibilities, spheroidal, aterm, metadata, subgrid);
+    }
+
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_<1>(
             nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
