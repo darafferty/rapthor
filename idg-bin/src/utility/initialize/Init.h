@@ -23,7 +23,7 @@
 
 /* Observation parameters */
 static const std::string ENV_LAYOUT_FILE;
-#define LAYOUT_DIR          "utility/data"
+#define LAYOUT_DIR          "src/utility/data"
 #define LAYOUT_FILE         "SKA1_low_ecef"
 #define START_FREQUENCY     150e6
 #define FREQUENCY_INCREMENT 0.7e6

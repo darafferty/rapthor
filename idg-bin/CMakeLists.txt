@@ -176,10 +176,6 @@ configure_file (
 # add subfolders, after specifying the targets to build
 add_subdirectory(src)
 
-if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
-add_subdirectory(utility)
-endif ()
-
 if (BUILD_WITH_EXAMPLES)
 add_subdirectory(examples)
 endif (BUILD_WITH_EXAMPLES)
