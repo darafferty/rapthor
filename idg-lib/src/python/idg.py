@@ -46,3 +46,7 @@ try:
 except OSError:
     handle_error("utils", e)
 
+try:
+    import fft
+except OSError:
+    handle_error("utils", e)
