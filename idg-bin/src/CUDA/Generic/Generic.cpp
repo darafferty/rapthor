@@ -1,4 +1,4 @@
-#include "CUDA.h"
+#include "Generic.h"
 
 using namespace std;
 using namespace idg::kernel::cuda;
@@ -6,127 +6,90 @@ using namespace idg::kernel::cuda;
 namespace idg {
     namespace proxy {
         namespace cuda {
-
-            void PowerRecord::enqueue(cu::Stream &stream) {
-                stream.record(event);
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-            }
-
-            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-                *static_cast<PowerSensor::State *>(userData) = powerSensor.read();
-            }
-
-            void printDevices(int deviceNumber) {
-                std::clog << "Devices";
-                for (int device = 0; device < cu::Device::getCount(); device++) {
-                std::clog << "\t" << device << ": ";
-                std::clog << cu::Device(device).getName();
-                    if (device == deviceNumber) {
-                        std::clog << "\t" << "<---";
-                    }
-                    std::clog << std::endl;
-                }
-                std::clog << "\n";
-            }
-
-            /// Constructors
-            CUDA::CUDA(
+            Generic::Generic(
                 Parameters params,
-                unsigned deviceNumber,
                 ProxyInfo info)
-              : mInfo(info)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                cout << "Generic::" << __func__ << endl;
                 cout << params;
                 #endif
 
-                // Set/check parameters
-                mParams = params;
-                parameter_sanity_check(); // throws exception if bad parameters
-            }
-
-            CUDA::~CUDA()
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // unload shared objects by ~Module
-                for (unsigned int i = 0; i < modules.size(); i++) {
-                    delete modules[i];
-                }
-
-                // Delete .ptx files
-                if (mInfo.delete_shared_objects()) {
-                    for (auto libname : mInfo.get_lib_names()) {
-                        string lib = mInfo.get_path_to_lib() + "/" + libname;
-                        remove(lib.c_str());
-                    }
-                    rmdir(mInfo.get_path_to_lib().c_str());
-                }
-            }
-
-            void CUDA::init_cuda(unsigned deviceNumber) {
-                // Initialize CUDA
                 cu::init();
-
-                // Initialize device
-                const char *str_device_number = getenv("CUDA_DEVICE");
-                if (str_device_number) deviceNumber = atoi(str_device_number);
-                printDevices(deviceNumber);
-                device = new cu::Device(deviceNumber);
-
-                // Initialize context
-                context = new cu::Context(*device);
-                context->setCurrent();
+                init_devices();
+                
+                //init_cuda(device_number);
+                //compile_kernels(compiler, append(flags));
+                //init_powersensor();
             }
 
-            void CUDA::compile_kernels(Compiler compiler, Compilerflags flags) {
-                compile(compiler, flags);
-                load_shared_objects();
-                find_kernel_functions();
+            void Generic::init_devices() {
+                char *char_cuda_device = getenv("CUDA_DEVICE");
+                vector<int> device_numbers;
+
+                if (!char_cuda_device) {
+                    // Use device 0 if no CUDA devices were specified
+                    device_numbers.push_back(0);
+                } else if (strlen(char_cuda_device) == 1) {
+                    // Just one device number was specified
+                    device_numbers.push_back(atoi(char_cuda_device));
+                } else {
+                    // Split device numbers on comma
+                    const char *delimiter = (char *) ",";
+                    char *token = strtok(char_cuda_device, delimiter);
+                    if (token) device_numbers.push_back(atoi(token));
+                    while (token) {
+                        token = strtok(NULL, delimiter);
+                        if (token) device_numbers.push_back(atoi(token));
+                    }
+                }
+                for (int device_number : device_numbers) {
+                    printf("device: %d\n", device_number);
+                    DeviceInstance *deviceInstance = new DeviceInstance(device_number);
+                    //devices.push_back(device);
+                }
             }
 
-            void CUDA::init_powersensor() {
-                #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                cout << "Opening power sensor: " << str_power_sensor << endl;
-                cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor.init(str_power_sensor, str_power_file);
-                #else
-                powerSensor.init();
-                #endif
-            }
+            //dim3 Generic::get_block_gridder() const {
+            //    return dim3(32, 4);
+            //}
 
-            string CUDA::make_tempdir() {
-                char _tmpdir[] = "/tmp/idg-XXXXXX";
-                char *tmpdir = mkdtemp(_tmpdir);
+            //dim3 Generic::get_block_degridder() const {
+            //    return dim3(128);
+            //}
+
+            //dim3 Generic::get_block_adder() const {
+            //    return dim3(128);
+            //}
+
+            //dim3 Generic::get_block_splitter() const {
+            //    return dim3(128);
+            //}
+
+            //dim3 Generic::get_block_scaler() const {
+            //    return dim3(128);
+            //}
+
+            //int Generic::get_gridder_batch_size() const {
+            //    return 64;
+            //}
+
+            //int Generic::get_degridder_batch_size() const {
+            //    dim3 block_degridder = get_block_degridder();
+            //    return block_degridder.x * block_degridder.y * block_degridder.z;
+            //}
+
+            //Compilerflags Generic::append(Compilerflags flags) const {
+            //    stringstream new_flags;
+            //    new_flags << flags;
+            //    new_flags << " -DGRIDDER_BATCH_SIZE=" << get_gridder_batch_size();
+            //    new_flags << " -DDEGRIDDER_BATCH_SIZE=" << get_degridder_batch_size();
+            //    return new_flags.str();
+            //}
+
+             ProxyInfo Generic::default_info() {
                 #if defined(DEBUG)
-                cout << "Temporary files will be stored in: " << tmpdir << endl;
-                #endif
-                return tmpdir;
-            }
-
-            string CUDA::default_compiler() {
-                return "nvcc";
-            }
-
-            string CUDA::default_compiler_flags() {
-                stringstream flags;
-                flags << "-use_fast_math ";
-                flags << "-lineinfo ";
-                flags << "-src-in-ptx";
-
-                return flags.str();
-            }
-
-            ProxyInfo CUDA::default_info() {
-                #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
+                cout << "Generic::" << __func__ << endl;
                 #endif
 
                 string srcdir = string(IDG_INSTALL_DIR)
@@ -137,15 +100,13 @@ namespace idg {
                 #endif
 
                 // Create temp directory
-                string tmpdir = make_tempdir();
+                char _tmpdir[] = "/tmp/idg-XXXXXX";
+                char *tmpdir = mkdtemp(_tmpdir);
+                #if defined(DEBUG)
+                cout << "Temporary files will be stored in: " << tmpdir << endl;
+                #endif
 
                 // Create proxy info
-                ProxyInfo p = default_proxyinfo(srcdir, tmpdir);
-
-                return p;
-            }
-
-            ProxyInfo CUDA::default_proxyinfo(string srcdir, string tmpdir) {
                 ProxyInfo p;
                 p.set_path_to_src(srcdir);
                 p.set_path_to_lib(tmpdir);
@@ -177,40 +138,40 @@ namespace idg {
             }
 
             /* Sizeof routines */
-            uint64_t CUDA::sizeof_subgrids(int nr_subgrids) {
+            uint64_t Generic::sizeof_subgrids(int nr_subgrids) {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
                 return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
             }
 
-            uint64_t CUDA::sizeof_uvw(int nr_baselines) {
+            uint64_t Generic::sizeof_uvw(int nr_baselines) {
                 auto nr_time = mParams.get_nr_time();
                 return 1ULL * nr_baselines * nr_time * sizeof(UVW);
             }
 
-            uint64_t CUDA::sizeof_visibilities(int nr_baselines) {
+            uint64_t Generic::sizeof_visibilities(int nr_baselines) {
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>);
             }
 
-            uint64_t CUDA::sizeof_metadata(int nr_subgrids) {
+            uint64_t Generic::sizeof_metadata(int nr_subgrids) {
                 return 1ULL * nr_subgrids * sizeof(Metadata);
             }
 
-            uint64_t CUDA::sizeof_grid() {
+            uint64_t Generic::sizeof_grid() {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
                 return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>);
             }
 
-            uint64_t CUDA::sizeof_wavenumbers() {
+            uint64_t Generic::sizeof_wavenumbers() {
                 auto nr_channels = mParams.get_nr_channels();
                 return 1ULL * nr_channels * sizeof(float);
             }
 
-            uint64_t CUDA::sizeof_aterm() {
+            uint64_t Generic::sizeof_aterm() {
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_polarizations = mParams.get_nr_polarizations();
@@ -218,40 +179,13 @@ namespace idg {
                 return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
             }
 
-            uint64_t CUDA::sizeof_spheroidal() {
+            uint64_t Generic::sizeof_spheroidal() {
                 auto subgridsize = mParams.get_subgrid_size();
                 return 1ULL * subgridsize * subgridsize * sizeof(float);
             }
 
-
-#if 0
-            /* Misc routines */
-            int CUDA::get_max_nr_timesteps_gridder() {
-                // Get size of shared memory
-                cu::Device &device = get_device();
-                int smem_bytes = device.getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>();
-
-                // Parameters
-                auto nr_concurrent_threadblocks = 2;
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-
-                // Compute max_nr_timesteps
-                int max_nr_timesteps = ((smem_bytes / (nr_concurrent_threadblocks * sizeof(float))) - nr_channels ) /
-                                       (nr_channels * nr_polarizations * 2 + 3);
-
-                // Align max_nr_timesteps to the number of threads in a warp
-                int nr_threads = 32;
-                int nr_warps = max_nr_timesteps / nr_threads;
-                max_nr_timesteps = nr_threads * nr_warps;
-
-                return max_nr_timesteps;
-            }
-#endif
-
-
             /* High level routines */
-            void CUDA::transform(
+            void Generic::transform(
                 DomainAtoDomainB direction,
                 complex<float>* grid)
             {
@@ -259,7 +193,7 @@ namespace idg {
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
-
+#if 0
                 // Constants
                 auto gridsize = mParams.get_grid_size();
                 auto nr_polarizations = mParams.get_nr_polarizations();
@@ -267,6 +201,14 @@ namespace idg {
 
                 // Initialize
                 cu::Context &context = get_context();
+
+                // Host memory
+                #if REUSE_HOST_MEMORY
+                cu::HostMemory h_grid(grid, sizeof_grid());
+                #else
+                cu::HostMemory h_grid(sizeof_grid());
+                h_grid.set(grid);
+                #endif
 
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
@@ -280,22 +222,13 @@ namespace idg {
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
+                kernel_fft->shift(h_grid);
                 time_shift += omp_get_wtime();
 
-                // Allocate memory
-                #if REUSE_HOST_MEMORY
-                cu::HostMemory h_grid(grid, sizeof_grid(), CU_MEMHOSTALLOC_DEVICEMAP);
-                cu::DeviceMemory d_grid(h_grid);
-                #else
-                cu::HostMemory h_grid(sizeof_grid());
-                h_grid.set(grid);
-                cu::DeviceMemory d_grid(sizeof_grid());
-
                 // Copy grid to device
+                cu::DeviceMemory d_grid(sizeof_grid());
                 powerRecords[0].enqueue(stream);
                 stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
-                #endif
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
@@ -320,39 +253,37 @@ namespace idg {
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
+                complex<float> scale = complex<float>(2.0/(gridsize*gridsize), 0);
                 if (direction == FourierDomainToImageDomain) {
-                    complex<float> scale = complex<float>(2.0/(gridsize*gridsize), 0);
                     kernel_fft->scale(grid, scale);
                 }
                 time_scale += omp_get_wtime();
 
+
                 #if defined(REPORT_TOTAL)
-                #if !REUSE_HOST_MEMORY
                 auxiliary::report(" input",
-                    PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
-                    0, sizeof_grid(),
-                    PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
-                #endif
+                                  PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                                  0, sizeof_grid(),
+                                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                 auxiliary::report("   fft",
-                    PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
-                    kernel_fft->flops(gridsize, 1),
-                    kernel_fft->bytes(gridsize, 1),
-                    PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
-                #if !REUSE_HOST_MEMORY
+                                  PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
+                                  kernel_fft->flops(gridsize, 1),
+                                  kernel_fft->bytes(gridsize, 1),
+                                  PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
                 auxiliary::report("output",
-                    PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
-                    0, sizeof_grid(),
-                    PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
-                #endif
+                                  PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
+                                  0, sizeof_grid(),
+                                  PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                 auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                    auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
                 }
                 std::cout << std::endl;
                 #endif
+#endif
             }
 
-            void CUDA::grid_visibilities(
+            void Generic::grid_visibilities(
                 const complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -368,6 +299,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+#if 0
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -413,6 +345,7 @@ namespace idg {
                 cu::DeviceMemory d_spheroidal(sizeof_spheroidal());
                 cu::DeviceMemory d_aterm(sizeof_aterm());
                 cu::DeviceMemory d_grid(sizeof_grid());
+                d_grid.zero();
 
                 // Performance measurements
                 double total_runtime_gridder = 0;
@@ -425,7 +358,6 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
                 htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
                 htodstream.memcpyHtoDAsync(d_aterm, aterm);
-                htodstream.memcpyHtoDAsync(d_grid, grid);
                 htodstream.synchronize();
 
                 // Start gridder
@@ -573,10 +505,11 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
 
-            void CUDA::degrid_visibilities(
+            void Generic::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -588,6 +521,7 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -783,142 +717,10 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-            }
-
-            void CUDA::compile(Compiler compiler, Compilerflags flags)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-                string mparameters =  Parameters::definitions(
-                  mParams.get_nr_stations(),
-                  mParams.get_nr_baselines(),
-                  mParams.get_nr_time(),
-                  mParams.get_imagesize(),
-                  mParams.get_nr_polarizations(),
-                  mParams.get_grid_size(),
-                  mParams.get_subgrid_size());
-
-                // Add device capability
-                int capability = 10 * device->getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-                                      device->getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
-                string compiler_parameters = " -arch=sm_" + to_string(capability);
-
-                string parameters = " " + compiler_parameters +
-                                    " " + flags +
-                                    " " + mparameters;
-
-                vector<string> v = mInfo.get_lib_names();
-                #pragma omp parallel for
-                for (int i = 0; i < v.size(); i++) {
-                    string libname = v[i];
-                    // create shared object "libname"
-                    string lib = mInfo.get_path_to_lib() + "/" + libname;
-
-                    vector<string> source_files = mInfo.get_source_files(libname);
-
-                    string source;
-                    for (auto src : source_files) {
-                        source += mInfo.get_path_to_src() + src + " ";
-                    } // source = a.cpp b.cpp c.cpp ...
-
-                    #if defined(DEBUG)
-                    cout << lib << " " << source << " " << endl;
-                    #endif
-
-                    cu::Source(source.c_str()).compile(lib.c_str(), parameters.c_str());
-                } // for each library
-            } // compile
-
-            void CUDA::parameter_sanity_check() {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
+#endif
             }
 
 
-            void CUDA::load_shared_objects() {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                for (auto libname : mInfo.get_lib_names()) {
-                    string lib = mInfo.get_path_to_lib() + "/" + libname;
-
-                    #if defined(DEBUG)
-                    cout << "Loading: " << libname << endl;
-                    #endif
-
-                    modules.push_back(new cu::Module(lib.c_str()));
-                }
-            }
-
-
-            void CUDA::find_kernel_functions() {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                CUfunction function;
-                for (unsigned int i=0; i<modules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
-                        // found gridder kernel in module i
-                        which_module[name_gridder] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
-                        // found degridder kernel in module i
-                        which_module[name_degridder] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
-                        // found fft kernel in module i
-                        which_module[name_fft] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
-                        // found scaler kernel in module i
-                        which_module[name_scaler] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_adder.c_str()) == CUDA_SUCCESS) {
-                        // found adder kernel in module i
-                        which_module[name_adder] = i;
-                    }
-                    if (cuModuleGetFunction(&function, *modules[i], name_splitter.c_str()) == CUDA_SUCCESS) {
-                        // found adder kernel in module i
-                        which_module[name_splitter] = i;
-                    }
-                } // end for
-            } // end find_kernel_functions
-
-            unique_ptr<Gridder> CUDA::get_kernel_gridder() const {
-                return unique_ptr<Gridder>(new Gridder(
-                    *(modules[which_module.at(name_gridder)]), mParams, get_block_gridder()));
-            }
-
-            unique_ptr<Degridder> CUDA::get_kernel_degridder() const {
-                return unique_ptr<Degridder>(new Degridder(
-                    *(modules[which_module.at(name_degridder)]), mParams, get_block_degridder()));
-            }
-
-            unique_ptr<GridFFT> CUDA::get_kernel_fft() const {
-                return unique_ptr<GridFFT>(new GridFFT(
-                    *(modules[which_module.at(name_fft)]), mParams));
-            }
-
-            unique_ptr<Adder> CUDA::get_kernel_adder() const {
-                return unique_ptr<Adder>(new Adder(
-                    *(modules[which_module.at(name_adder)]), mParams, get_block_adder()));
-            }
-
-            unique_ptr<Splitter> CUDA::get_kernel_splitter() const {
-                return unique_ptr<Splitter>(new Splitter(
-                    *(modules[which_module.at(name_splitter)]), mParams, get_block_splitter()));
-            }
-
-            unique_ptr<Scaler> CUDA::get_kernel_scaler() const {
-                return unique_ptr<Scaler>(new Scaler(
-                    *(modules[which_module.at(name_scaler)]), mParams, get_block_scaler()));
-            }
-         } // namespace cuda
+        } // namespace cuda
     } // namespace proxy
 } // namespace idg
