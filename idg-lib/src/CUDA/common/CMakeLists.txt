@@ -10,6 +10,7 @@ set (${PROJECT_NAME}_headers
     CU.h
     CUFFT.h
     CUDA.h
+    DeviceInstance.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -17,6 +18,7 @@ set (${PROJECT_NAME}_sources
     CUFFT.cpp
     CUDA.cpp
     Kernels.cpp
+    DeviceInstance.cpp
 )
 
 # create library
