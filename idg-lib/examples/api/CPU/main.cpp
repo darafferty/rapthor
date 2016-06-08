@@ -139,15 +139,9 @@ int main(int argc, char *argv[])
         degridder.flush();
 
         for (auto time_minor = 0; time_minor < bufferSize; ++time_minor) {
-<<<<<<< HEAD
 
             auto time = time_batch*bufferSize + time_minor;
 
-=======
-
-            auto time = time_batch*bufferSize + time_minor;
-
->>>>>>> api
             for (auto bl = 0; bl < nr_baselines; ++bl) {
 
                 auto antenna1 = baselines[bl*2];
