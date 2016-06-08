@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <cmath>
 
@@ -40,8 +39,7 @@ int main(int argc, char *argv[])
     // Allocate and initialize data structures
     std::clog << ">>> Initialize data structures" << std::endl;
 
-    auto size_visibilities = 1ULL * nr_baselines*nr_time*
-                             nr_channels*nr_polarizations;
+    auto size_visibilities = 1ULL * nr_channels*nr_polarizations;
     auto size_uvw          = 1ULL * nr_baselines*nr_time*3;
     auto size_wavenumbers  = 1ULL * nr_channels;
     auto size_aterm        = 1ULL * nr_timeslots*nr_stations*
@@ -54,21 +52,19 @@ int main(int argc, char *argv[])
     auto uvw               = new float[size_uvw];
     auto uvw_double        = new double[size_uvw];
     auto wavenumbers       = new float[size_wavenumbers];
-    auto aterm             = new std::complex<float>[size_aterm];
-    auto aterm_offsets     = new int[nr_timeslots+1];
+    // auto aterm             = new std::complex<float>[size_aterm];
+    // auto aterm_offsets     = new int[nr_timeslots+1];
     auto spheroidal        = new float[size_spheroidal];
     auto spheroidal_double = new double[size_spheroidal];
     auto grid_double       = new std::complex<double>[size_grid];
     auto baselines         = new int[size_baselines];
 
-    idg::init_example_visibilities(visibilities, nr_baselines,
-                                   nr_time, nr_channels, nr_polarizations);
     idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time);
     idg::init_example_wavenumbers(wavenumbers, nr_channels);
-    idg::init_example_aterm(aterm, nr_timeslots, nr_stations,
-                            subgridsize, nr_polarizations);
-    idg::init_example_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
-    idg::init_example_spheroidal(spheroidal, subgridsize);
+    // idg::init_identity_aterm(aterm, nr_timeslots, nr_stations,
+    //                          subgridsize, nr_polarizations);
+    // idg::init_example_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
+    idg::init_identity_spheroidal(spheroidal, subgridsize);
     idg::init_example_baselines(baselines, nr_stations, nr_baselines);
 
     double frequencyList[size_wavenumbers];
@@ -83,92 +79,113 @@ int main(int argc, char *argv[])
         spheroidal_double[k] = spheroidal[k];
     }
 
+    grid_double[0*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    grid_double[1*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    grid_double[2*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    grid_double[3*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+
     std::clog << std::endl;
 
     auto bufferSize = nr_time;
 
     /////////////////////////////////////////////////////////////////////
 
-    // idg::GridderPlan plan(idg::Type::CPU_REFERENCE, bufferSize);
-    // plan.set_stations(nr_stations);
-    // plan.set_frequencies(frequencyList, nr_channels);
-    // plan.set_grid(grid_double, 4, gridsize, gridsize);
-    // plan.set_spheroidal(spheroidal_double, subgridsize);
-    // plan.set_image_size(0.1);
-    // plan.set_w_kernel(subgridsize/2);
-    // plan.internal_set_subgrid_size(subgridsize);
-    // plan.bake();
+    idg::DegridderPlan degridder(idg::Type::CPU_OPTIMIZED, bufferSize);
+    degridder.set_stations(nr_stations);
+    degridder.set_frequencies(frequencyList, nr_channels);
+    degridder.set_grid(grid_double, 4, gridsize, gridsize);
+    // degridder.set_spheroidal(spheroidal_double, subgridsize);
+    degridder.set_image_size(imagesize);
+    degridder.set_w_kernel(subgridsize/2);
+    degridder.internal_set_subgrid_size(subgridsize);
+    degridder.bake();
 
-
-    // for (auto time = 0; time < nr_time; ++time) {
-    //     for (auto bl = 0; bl < nr_baselines; ++bl) {
-
-    //         auto antenna1 = baselines[bl*2];
-    //         auto antenna2 = baselines[bl*2 + 1];
-
-    //         // #if defined(DEBUG)
-    //         // cout << "Adding: time " << time << ", "
-    //         //      << "stations = (" << antenna1 << ", " << antenna2 << "), "
-    //         //      << "uvw = ("
-    //         //      << uvw_double[bl*nr_time*3 + time*3] << ", "
-    //         //      << uvw_double[bl*nr_time*3 + time*3 + 1] << ", "
-    //         //      << uvw_double[bl*nr_time*3 + time*3 + 2] << ")" << endl;
-    //         // #endif
-
-    //         plan.grid_visibilities(
-    //             &visibilities[bl*nr_time*nr_channels*nr_polarizations +
-    //                           time*nr_channels*nr_polarizations],
-    //             &uvw_double[bl*nr_time*3 + time*3],
-    //             antenna1,
-    //             antenna2,
-    //             time);
-    //     }
-    // }
-
-    // plan.flush();
+    idg::GridderPlan gridder(idg::Type::CPU_OPTIMIZED, bufferSize);
+    gridder.set_stations(nr_stations);
+    gridder.set_frequencies(frequencyList, nr_channels);
+    gridder.set_grid(grid_double, 4, gridsize, gridsize);
+    // gridder.set_spheroidal(spheroidal_double, subgridsize);
+    gridder.set_image_size(imagesize);
+    gridder.set_w_kernel(subgridsize/2);
+    gridder.internal_set_subgrid_size(subgridsize);
+    gridder.bake();
 
     /////////////////////////////////////////////////////////////////////
+
+    degridder.transform_grid();
+
     /////////////////////////////////////////////////////////////////////
 
-    idg::DegridderPlan plan(idg::Type::CPU_REFERENCE, bufferSize);
-    plan.set_stations(nr_stations);
-    plan.set_frequencies(frequencyList, nr_channels);
-    plan.set_grid(grid_double, 4, gridsize, gridsize);
-    plan.set_spheroidal(spheroidal_double, subgridsize);
-    plan.set_image_size(0.1);
-    plan.set_w_kernel(subgridsize/2);
-    plan.internal_set_subgrid_size(subgridsize);
-    plan.bake();
+    for (auto time_batch = 0; time_batch < nr_time/bufferSize; ++time_batch) {
 
-    std::vector<int> listOfRowIds;
-    for (auto time = 0; time < nr_time; ++time) {
-        for (auto bl = 0; bl < nr_baselines; ++bl) {
+        for (auto time_minor = 0; time_minor < bufferSize; ++time_minor) {
 
-            auto antenna1 = baselines[bl*2];
-            auto antenna2 = baselines[bl*2 + 1];
+            auto time = time_batch*bufferSize + time_minor;
 
-            // #if defined(DEBUG)
-            // cout << "Adding: time " << time << ", "
-            //      << "stations = (" << antenna1 << ", " << antenna2 << "), "
-            //      << "uvw = ("
-            //      << uvw_double[bl*nr_time*3 + time*3] << ", "
-            //      << uvw_double[bl*nr_time*3 + time*3 + 1] << ", "
-            //      << uvw_double[bl*nr_time*3 + time*3 + 2] << ")" << endl;
-            // #endif
+            for (auto bl = 0; bl < nr_baselines; ++bl) {
 
-            plan.request_visibilities(
-                &uvw_double[bl*nr_time*3 + time*3],
-                antenna1,
-                antenna2,
-                time);
+                auto antenna1 = baselines[bl*2];
+                auto antenna2 = baselines[bl*2 + 1];
+
+                degridder.request_visibilities(
+                    &uvw_double[bl*nr_time*3 + time*3],
+                    antenna1,
+                    antenna2,
+                    time);
+            }
+
         }
+
+        degridder.flush();
+
+        for (auto time_minor = 0; time_minor < bufferSize; ++time_minor) {
+<<<<<<< HEAD
+
+            auto time = time_batch*bufferSize + time_minor;
+
+=======
+
+            auto time = time_batch*bufferSize + time_minor;
+
+>>>>>>> api
+            for (auto bl = 0; bl < nr_baselines; ++bl) {
+
+                auto antenna1 = baselines[bl*2];
+                auto antenna2 = baselines[bl*2 + 1];
+
+                degridder.read_visibilities(
+                   antenna1,
+                   antenna2,
+                   time,
+                   visibilities);
+
+                gridder.grid_visibilities(
+                    visibilities,
+                    &uvw_double[bl*nr_time*3 + time*3],
+                    antenna1,
+                    antenna2,
+                    time);
+
+            }
+
+        }
+
+        gridder.flush();
+
     }
 
-    plan.flush();
-
     /////////////////////////////////////////////////////////////////////
 
-
+    delete [] visibilities;
+    delete [] uvw;
+    delete [] uvw_double;
+    delete [] wavenumbers;
+    // delete [] aterm;
+    // delete [] aterm_offsets;
+    delete [] spheroidal;
+    delete [] spheroidal_double;
+    delete [] grid_double;
+    delete [] baselines;
 
     return 0;
 }
