@@ -119,6 +119,182 @@ namespace idg {
         ifft2(n, n, data);
     }
 
+
+
+    void resize2f(
+        int   m_in,
+        int   n_in,
+        complex<float> *data_in,
+        int   m_out,
+        int   n_out,
+        complex<float> *data_out)
+    {
+        // scale before FFT
+        float s = 1.0f / (m_in * n_in);
+        for (int i = 0; i < m_in; i++) {
+            for (int j = 0; j < n_in; j++) {
+                data_in[i*n_in + j] *= s;
+            }
+        }
+
+        // in-place FFT
+        fft2f(m_in, n_in, data_in);
+
+        // put FFTed data in center
+        int m_offset = int((m_out - m_in)/2);
+        int n_offset = int((n_out - n_in)/2);
+        if (m_offset >= 0 && n_offset >= 0) {
+            for (int i = 0; i < m_in; i++) {
+                for (int j = 0; j < n_in; j++) {
+                    data_out[(i+m_offset)*n_out + (j+n_offset)] = data_in[i*n_in + j];
+                }
+            }
+        } else if (m_offset < 0 && n_offset < 0) {
+            m_offset = int((m_in - m_out)/2);
+            n_offset = int((n_in - n_out)/2);
+            for (int i = 0; i < m_out; i++) {
+                for (int j = 0; j < n_out; j++) {
+                    data_out[i*n_out + j] = data_in[(i+m_offset)*n_in + (j+n_offset)];
+                }
+            }
+        } else if (m_offset >= 0 && n_offset < 0) {
+            n_offset = int((n_in - n_out)/2);
+            for (int i = 0; i < m_in; i++) {
+                for (int j = 0; j < n_out; j++) {
+                    data_out[(i+m_offset)*n_out + j] = data_in[i*n_in + (j+n_offset)];
+                }
+            }
+        } else if (m_offset < 0 && n_offset >= 0) {
+            m_offset = int((m_in - m_out)/2);
+            for (int i = 0; i < m_out; i++) {
+                for (int j = 0; j < n_in; j++) {
+                    data_out[i*n_out + (j+n_offset)] = data_in[(i+m_offset)*n_in + j];
+                }
+            }
+        }
+
+        // in-place inverse FFT
+        ifft2f(m_out, n_out, data_out);
+    }
+
+
+    void resize2f(
+        int   m_in,
+        int   n_in,
+        float *data_in,
+        int   m_out,
+        int   n_out,
+        float *data_out)
+    {
+        auto copy_in  = new std::complex<float>[m_in *n_in ];
+        auto copy_out = new std::complex<float>[m_out*n_out];
+
+        for (int i = 0; i < m_in; i++) {
+            for (int j = 0; j < n_in; j++) {
+                copy_in[i*n_in + j] = data_in[i*n_in + j];
+            }
+        }
+
+        resize2f(m_in, n_in, copy_in, m_out, n_out, copy_out);
+
+        for (int i = 0; i < m_out; i++) {
+            for (int j = 0; j < n_out; j++) {
+                data_out[i*n_out + j] = copy_out[i*n_out + j].real();
+            }
+        }
+
+        delete [] copy_in;
+        delete [] copy_out;
+    }
+
+
+
+    void resize2(
+        int   m_in,
+        int   n_in,
+        complex<double> *data_in,
+        int   m_out,
+        int   n_out,
+        complex<double> *data_out)
+    {
+        // scale before FFT
+        double s = 1.0 / (m_in * n_in);
+        for (int i = 0; i < m_in; i++) {
+            for (int j = 0; j < n_in; j++) {
+                data_in[i*n_in + j] *= s;
+            }
+        }
+
+        // in-place FFT
+        fft2(m_in, n_in, data_in);
+
+        // put FFTed data in center
+        int m_offset = int((m_out - m_in)/2);
+        int n_offset = int((n_out - n_in)/2);
+        if (m_offset >= 0 && n_offset >= 0) {
+            for (int i = 0; i < m_in; i++) {
+                for (int j = 0; j < n_in; j++) {
+                    data_out[(i+m_offset)*n_out + (j+n_offset)] = data_in[i*n_in + j];
+                }
+            }
+        } else if (m_offset < 0 && n_offset < 0) {
+            m_offset = int((m_in - m_out)/2);
+            n_offset = int((n_in - n_out)/2);
+            for (int i = 0; i < m_out; i++) {
+                for (int j = 0; j < n_out; j++) {
+                    data_out[i*n_out + j] = data_in[(i+m_offset)*n_in + (j+n_offset)];
+                }
+            }
+        } else if (m_offset >= 0 && n_offset < 0) {
+            n_offset = int((n_in - n_out)/2);
+            for (int i = 0; i < m_in; i++) {
+                for (int j = 0; j < n_out; j++) {
+                    data_out[(i+m_offset)*n_out + j] = data_in[i*n_in + (j+n_offset)];
+                }
+            }
+        } else if (m_offset < 0 && n_offset >= 0) {
+            m_offset = int((m_in - m_out)/2);
+            for (int i = 0; i < m_out; i++) {
+                for (int j = 0; j < n_in; j++) {
+                    data_out[i*n_out + (j+n_offset)] = data_in[(i+m_offset)*n_in + j];
+                }
+            }
+        }
+
+        // in-place inverse FFT
+        ifft2(m_out, n_out, data_out);
+    }
+
+
+    void resize2(
+        int   m_in,
+        int   n_in,
+        double *data_in,
+        int   m_out,
+        int   n_out,
+        double *data_out)
+    {
+        auto copy_in  = new std::complex<double>[m_in *n_in ];
+        auto copy_out = new std::complex<double>[m_out*n_out];
+
+        for (int i = 0; i < m_in; i++) {
+            for (int j = 0; j < n_in; j++) {
+                copy_in[i*n_in + j] = data_in[i*n_in + j];
+            }
+        }
+
+        resize2(m_in, n_in, copy_in, m_out, n_out, copy_out);
+
+        for (int i = 0; i < m_out; i++) {
+            for (int j = 0; j < n_out; j++) {
+                data_out[i*n_out + j] = copy_out[i*n_out + j].real();
+            }
+        }
+
+        delete [] copy_in;
+        delete [] copy_out;
+    }
+
 }
 
 
@@ -160,6 +336,34 @@ extern "C" {
 
     void ifft2(int m, int n, void* data) {
         idg::ifft2(m, n, (complex<double>*) data);
+    }
+
+    void resize2f_r2r(int m_in,  int n_in,  void *data_in,
+                      int m_out, int n_out, void *data_out)
+    {
+        idg::resize2f(m_in, n_in, (float*) data_in,
+                      m_out, n_out, (float*) data_out);
+    }
+
+    void resize2f_c2c(int m_in,  int n_in,  void *data_in,
+                      int m_out, int n_out, void *data_out)
+    {
+        idg::resize2f(m_in, n_in, (complex<float>*) data_in,
+                      m_out, n_out, (complex<float>*) data_out);
+    }
+
+    void resize2_r2r(int m_in,  int n_in,  void *data_in,
+                     int m_out, int n_out, void *data_out)
+    {
+        idg::resize2(m_in, n_in, (double*) data_in,
+                     m_out, n_out, (double*) data_out);
+    }
+
+    void resize2_c2c(int m_in,  int n_in,  void *data_in,
+                     int m_out, int n_out, void *data_out)
+    {
+        idg::resize2(m_in, n_in, (complex<double>*) data_in,
+                     m_out, n_out, (complex<double>*) data_out);
     }
 
 }

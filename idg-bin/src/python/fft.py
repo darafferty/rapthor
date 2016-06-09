@@ -111,3 +111,99 @@ def ifftshift2f(matrix):
     lib.ifftshift2f(ctypes.c_int(m),
                     ctypes.c_int(n),
                     matrix.ctypes.data_as(ctypes.c_void_p))
+
+
+def resize2f_r2r(image, out_height, out_width):
+    """
+    Resize two dimesional "image"
+    :param image: numpy.ndarray(shape=(m,n), dtype=numpy.float32)
+    """
+    m = image.shape[0]
+    n = image.shape[1]
+    result = numpy.zeros(shape=(out_height,out_width),
+                         dtype=numpy.float32)
+    lib.resize2f_r2r.argtypes = [ctypes.c_int,
+                                 ctypes.c_int,
+                                 ctypes.c_void_p,
+                                 ctypes.c_int,
+                                 ctypes.c_int,
+                                 ctypes.c_void_p]
+    lib.resize2f_r2r(ctypes.c_int(m),
+                     ctypes.c_int(n),
+                     image.ctypes.data_as(ctypes.c_void_p),
+                     ctypes.c_int(out_height),
+                     ctypes.c_int(out_width),
+                     result.ctypes.data_as(ctypes.c_void_p))
+    return result
+
+
+def resize2f_c2c(image, out_height, out_width):
+    """
+    Resize two dimesional "image"
+    :param image: numpy.ndarray(shape=(m,n), dtype=numpy.complex64)
+    """
+    m = image.shape[0]
+    n = image.shape[1]
+    result = numpy.zeros(shape=(out_height,out_width),
+                         dtype=numpy.complex64)
+    lib.resize2f_c2c.argtypes = [ctypes.c_int,
+                                 ctypes.c_int,
+                                 ctypes.c_void_p,
+                                 ctypes.c_int,
+                                 ctypes.c_int,
+                                 ctypes.c_void_p]
+    lib.resize2f_c2c(ctypes.c_int(m),
+                     ctypes.c_int(n),
+                     image.ctypes.data_as(ctypes.c_void_p),
+                     ctypes.c_int(out_height),
+                     ctypes.c_int(out_width),
+                     result.ctypes.data_as(ctypes.c_void_p))
+    return result
+
+
+def resize2_r2r(image, out_height, out_width):
+    """
+    Resize two dimesional "image"
+    :param image: numpy.ndarray(shape=(m,n), dtype=numpy.float64)
+    """
+    m = image.shape[0]
+    n = image.shape[1]
+    result = numpy.zeros(shape=(out_height,out_width),
+                         dtype=numpy.float64)
+    lib.resize2_r2r.argtypes = [ctypes.c_int,
+                                ctypes.c_int,
+                                ctypes.c_void_p,
+                                ctypes.c_int,
+                                ctypes.c_int,
+                                ctypes.c_void_p]
+    lib.resize2_r2r(ctypes.c_int(m),
+                    ctypes.c_int(n),
+                    image.ctypes.data_as(ctypes.c_void_p),
+                    ctypes.c_int(out_height),
+                    ctypes.c_int(out_width),
+                    result.ctypes.data_as(ctypes.c_void_p))
+    return result
+
+
+def resize2_c2c(image, out_height, out_width):
+    """
+    Resize two dimesional "image"
+    :param image: numpy.ndarray(shape=(m,n), dtype=numpy.complex128)
+    """
+    m = image.shape[0]
+    n = image.shape[1]
+    result = numpy.zeros(shape=(out_height,out_width),
+                         dtype=numpy.complex128)
+    lib.resize2_c2c.argtypes = [ctypes.c_int,
+                                ctypes.c_int,
+                                ctypes.c_void_p,
+                                ctypes.c_int,
+                                ctypes.c_int,
+                                ctypes.c_void_p]
+    lib.resize2_c2c(ctypes.c_int(m),
+                    ctypes.c_int(n),
+                    image.ctypes.data_as(ctypes.c_void_p),
+                    ctypes.c_int(out_height),
+                    ctypes.c_int(out_width),
+                    result.ctypes.data_as(ctypes.c_void_p))
+    return result
