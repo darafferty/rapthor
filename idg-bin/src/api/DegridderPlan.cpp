@@ -35,6 +35,9 @@ namespace idg {
         size_t antenna2,
         size_t timeIndex)
     {
+        // exclude auto-correlations
+        if (antenna1 == antenna2) return;
+
         int    local_time = timeIndex - m_timeStartThisBatch;
         size_t local_bl   = baseline_index(antenna1, antenna2);
 
@@ -79,6 +82,10 @@ namespace idg {
                                           size_t timeIndex,
                                           complex<float>* visibilities)
     {
+        // exclude auto-correlations
+        if (antenna1 == antenna2)
+            throw invalid_argument("Cannot read if Antenna 1 == Antenna 2");
+
         // Make sure visibilities are computed before read
         flush();
 
