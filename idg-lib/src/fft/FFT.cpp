@@ -79,6 +79,46 @@ namespace idg {
         ifft2f_c2r(n, n, data_in, data_out);
     }
 
+
+    void fft2(int m, int n, complex<double> *data)
+    {
+        fftw_complex *tmp = (fftw_complex *) data;
+        fftw_plan plan;
+        plan = fftw_plan_dft_2d(m, n,
+                                tmp, tmp,
+                                FFTW_FORWARD,
+                                FFTW_ESTIMATE);
+        fftw_execute(plan);
+        fftshift(m, n, data);
+        fftw_destroy_plan(plan);
+    }
+
+
+    void fft2(int n, complex<double> *data)
+    {
+        fft2(n, n, data);
+    }
+
+
+    void ifft2(int m, int n, complex<double> *data)
+    {
+        fftw_complex *tmp = (fftw_complex *) data;
+        fftw_plan plan;
+        plan = fftw_plan_dft_2d(m, n,
+                                tmp, tmp,
+                                FFTW_BACKWARD,
+                                FFTW_ESTIMATE);
+        ifftshift(m, n, data);
+        fftw_execute(plan);
+        fftw_destroy_plan(plan);
+    }
+
+
+    void ifft2(int n, complex<double> *data)
+    {
+        ifft2(n, n, data);
+    }
+
 }
 
 
@@ -112,6 +152,14 @@ extern "C" {
 
     void ifftshift2f(int m, int n, void* array) {
         idg::ifftshift(m, n, (complex<float>*) array);
+    }
+
+    void fft2(int m, int n, void* data) {
+        idg::fft2(m, n, (complex<double>*) data);
+    }
+
+    void ifft2(int m, int n, void* data) {
+        idg::ifft2(m, n, (complex<double>*) data);
     }
 
 }
