@@ -109,6 +109,17 @@ namespace idg {
         ifftshift(n, n, array);
     }
 
+
+    // resize 2-dimensional array to (larger) size
+    void resize2f(int m_in,  int n_in,  std::complex<float> *data_in,
+                  int m_out, int n_out, std::complex<float> *data_out);
+    void resize2f(int m_in, int  n_in,  float *data_in,
+                  int m_out, int n_out, float *data_out);
+    void resize2(int m_in,  int n_in,  std::complex<double> *data_in,
+                 int m_out, int n_out, std::complex<double> *data_out);
+    void resize2(int m_in, int  n_in,  double *data_in,
+                 int m_out, int n_out, double *data_out);
+
 } // namespace idg
 
 #endif
