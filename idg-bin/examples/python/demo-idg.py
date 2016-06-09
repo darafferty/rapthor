@@ -152,6 +152,7 @@ proxy = idg.CPU.HaswellEP(
 nr_rows = table.nrows()
 nr_rows_read = 0
 nr_rows_per_batch = (nr_baselines + nr_stations) * nr_time
+iteration = 0
 while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     time_total = -time.time()
 
@@ -163,6 +164,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     visibilities = numpy.zeros(shape=(nr_baselines, nr_time, nr_channels, nr_polarizations), dtype=idg.visibilitiestype)
     baselines    = numpy.zeros(shape=(nr_baselines), dtype=idg.baselinetype)
 
+    time_read = -time.time()
     # Read nr_time samples for all baselines including auto correlations
     timestamp_block = table.getcol('TIME',           startrow = nr_rows_read, nrow = nr_rows_per_batch)
     antenna1_block  = table.getcol('ANTENNA1',       startrow = nr_rows_read, nrow = nr_rows_per_batch)
@@ -172,7 +174,9 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     flags_block     = table.getcol('FLAG',           startrow = nr_rows_read, nrow = nr_rows_per_batch)
     vis_block       = vis_block * -flags_block
     nr_rows_read += nr_rows_per_batch
+    time_read += time.time()
 
+    time_transpose = -time.time()
     # Change precision
     uvw_block = uvw_block.astype(numpy.float32)
     vis_block = vis_block.astype(numpy.complex64)
@@ -204,6 +208,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
 
             # Set visibilities
             visibilities[bl][t] = vis_block[t][bl]
+    time_transpose += time.time()
                     
     # Grid visibilities
     w_offset = 0
@@ -223,21 +228,24 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     time_gridding += time.time()
 
     # Compute fft over grid
+    time_fft = -time.time()
     # Using numpy
     #img = numpy.real(numpy.fft.fftshift(numpy.fft.ifft2(numpy.fft.fftshift(grid[0,:,:]))))
 
     # Using fft from library
-    time_fft = -time.time()
     img = grid.copy()
     proxy.transform(idg.FourierDomainToImageDomain, img)
     img = numpy.real(img[0,:,:])
     time_fft += time.time()
+
+    time_plot = -time.time()
 
     # Remove spheroidal from grid
     img = img/spheroidal_grid
 
     # Crop image
     img = img[int(grid_size*0.9):int(grid_size*0.1):-1,int(grid_size*0.9):int(grid_size*0.1):-1]
+
 
     # Set plot properties
     colormap=plt.get_cmap("hot")
@@ -267,6 +275,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     ax.set_xticks([])
     ax.set_yticks([])
     ax.title.set_fontsize(font_size)
+    time_plot += time.time()
 
     # Draw figure
     plt.show()
@@ -274,4 +283,12 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
 
     # Print timings
     time_total += time.time()
-    print "Runtime total: %d ms, gridding: %d ms, fft: %d ms" % (time_total*1000, time_gridding*1000, time_fft*1000)
+    print ">>> Iteration %d" % iteration
+    print "Runtime total:     %5d ms"            % (time_total*1000)
+    print "Runtime reading:   %5d ms (%5.2f %%)" % (time_read*1000,      100.0 * time_read/time_total)
+    print "Runtime transpose: %5d ms (%5.2f %%)" % (time_transpose*1000, 100.0 * time_transpose/time_total)
+    print "Runtime gridding:  %5d ms (%5.2f %%)" % (time_gridding*1000,  100.0 * time_gridding/time_total)
+    print "Runtime fft:       %5d ms (%5.2f %%)" % (time_fft*1000,       100.0 * time_fft/time_total)
+    print "Runtime plot:      %5d ms (%5.2f %%)" % (time_plot*1000,      100.0 * time_plot/time_total)
+    print ""
+    iteration += 1
