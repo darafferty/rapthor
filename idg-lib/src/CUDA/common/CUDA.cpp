@@ -409,7 +409,6 @@ namespace idg {
                 cu::DeviceMemory d_spheroidal(sizeof_spheroidal());
                 cu::DeviceMemory d_aterm(sizeof_aterm());
                 cu::DeviceMemory d_grid(sizeof_grid());
-                d_grid.zero();
 
                 // Performance measurements
                 double total_runtime_gridder = 0;
@@ -422,6 +421,7 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
                 htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
                 htodstream.memcpyHtoDAsync(d_aterm, aterm);
+                htodstream.memcpyHtoDAsync(d_grid, grid);
                 htodstream.synchronize();
 
                 // Start gridder
