@@ -36,6 +36,9 @@ namespace idg {
         size_t antenna2,
         size_t timeIndex)
     {
+        // exclude auto-correlations
+        if (antenna1 == antenna2) return;
+
         int    local_time = timeIndex - m_timeStartThisBatch;
         size_t local_bl   = baseline_index(antenna1, antenna2);
 
