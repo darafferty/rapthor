@@ -190,7 +190,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
 
     # Reshape data
     antenna1_block = numpy.reshape(antenna1_block, newshape=(nr_time, nr_baselines))
-    antenna2_block = numpy.reshape(antenna1_block, newshape=(nr_time, nr_baselines))
+    antenna2_block = numpy.reshape(antenna2_block, newshape=(nr_time, nr_baselines))
     uvw_block = numpy.reshape(uvw_block, newshape=(nr_time, nr_baselines, 3))
     vis_block = numpy.reshape(vis_block, newshape=(nr_time, nr_baselines, nr_channels, nr_polarizations))
 
