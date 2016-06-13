@@ -9,7 +9,8 @@
 /*
 	Kernel
 */
-template<int current_nr_channels> __device__ void kernel_degridder_(
+template<int current_nr_channels>
+__device__ void kernel_degridder_(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
@@ -69,7 +70,7 @@ template<int current_nr_channels> __device__ void kernel_degridder_(
 
         __syncthreads();
 
-        for (int j = tidx; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
+        for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, NR_THREADS); j += NR_THREADS) {
             int y = j / SUBGRIDSIZE;
             int x = j % SUBGRIDSIZE;
 
@@ -140,7 +141,7 @@ template<int current_nr_channels> __device__ void kernel_degridder_(
                     float phase_index = u * l + v * m + w * n;
 
                     // Compute phasor
-                    float  phase  = phase_offset - (phase_index * wavenumber);
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                     // Load pixels from shared memory
@@ -176,13 +177,13 @@ template<int current_nr_channels> __device__ void kernel_degridder_(
         __syncthreads();
 
         // Set visibility value
-        int vis_offset = (time_offset_global + time) * nr_channels + (channel_offset + chan);
         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
+        int index = (time_offset_global + time) * nr_channels + (channel_offset + chan);
         if (time < nr_timesteps) {
-            visibilities[vis_offset][0] = visXX * scale;
-            visibilities[vis_offset][1] = visXY * scale;
-            visibilities[vis_offset][2] = visYX * scale;
-            visibilities[vis_offset][3] = visYY * scale;
+            visibilities[index][0] = visXX * scale;
+            visibilities[index][1] = visXY * scale;
+            visibilities[index][2] = visYX * scale;
+            visibilities[index][3] = visYY * scale;
         }
     }
 }
