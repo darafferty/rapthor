@@ -7,6 +7,7 @@ import signal
 import argparse
 import time
 import idg
+import IDG
 
 ######################################################################
 # Command line argument parsing
@@ -112,17 +113,17 @@ kernel_size      = 16
 ######################################################################
 # Initialize data
 ######################################################################
-grid          = idg.utils.get_zero_grid(nr_polarizations, grid_size, dtype=numpy.complex64)
-aterms        = idg.utils.get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations)
-aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
+grid          = idg.utils.get_zero_grid(nr_polarizations, grid_size, dtype=numpy.complex128)
+#aterms        = idg.utils.get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations, dtype=numpy.complex128)
+#aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
 
 # Initialize spheroidal
 # Real spheroidal
-x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(subgrid_size, dtype=numpy.float32) / (subgrid_size-1) - 1.0], dtype = numpy.float32)
+x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(subgrid_size, dtype=numpy.float32) / (subgrid_size-1) - 1.0], dtype = numpy.float64)
 spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
 s = numpy.fft.fft2(spheroidal)
 s = numpy.fft.fftshift(s)
-s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex64)
+s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex128)
 s1[(grid_size-subgrid_size)/2:(grid_size+subgrid_size)/2, (grid_size-subgrid_size)/2:(grid_size+subgrid_size)/2] = s
 s1 = numpy.fft.ifftshift(s1)
 spheroidal_grid = numpy.real(numpy.fft.ifft2(s1))
@@ -131,19 +132,19 @@ spheroidal_grid = numpy.real(numpy.fft.ifft2(s1))
 #spheroidal = numpy.ones(shape=spheroidal.shape, dtype=numpy.float32)
 #spheroidal_grid = numpy.ones(shape=spheroidal_grid.shape, dtype=numpy.float32)
 
-# Inialize wavenumbers
-speed_of_light = 299792458.0
-wavelengths = numpy.array(speed_of_light / frequencies, dtype=numpy.float32)
-wavenumbers = numpy.array(2*numpy.pi / wavelengths, dtype=numpy.float32)
-
 
 ######################################################################
 # Initialize proxy
 ######################################################################
-proxy = idg.CPU.HaswellEP(
-    nr_stations, nr_channels,
-    nr_time, nr_timeslots,
-    image_size, grid_size, subgrid_size)
+plan = IDG.GridderPlan(IDG.Type.CPU_OPTIMIZED, nr_time)
+plan.set_stations(nr_stations);
+plan.set_frequencies(frequencies);
+plan.set_grid(grid);
+plan.set_spheroidal(spheroidal);
+plan.set_image_size(image_size);
+plan.set_w_kernel_size(kernel_size);
+plan.internal_set_subgrid_size(subgrid_size);
+plan.bake();
 
 
 ######################################################################
@@ -176,9 +177,9 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     nr_rows_read += nr_rows_per_batch
     time_read += time.time()
 
-    time_transpose = -time.time()
+    time_buffer = -time.time()
     # Change precision
-    uvw_block = uvw_block.astype(numpy.float32)
+    uvw_block = uvw_block.astype(numpy.float64)
     vis_block = vis_block.astype(numpy.complex64)
 
     # Remove autocorrelations
@@ -194,48 +195,44 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     uvw_block = numpy.reshape(uvw_block, newshape=(nr_time, nr_baselines, 3))
     vis_block = numpy.reshape(vis_block, newshape=(nr_time, nr_baselines, nr_channels, nr_polarizations))
 
-    # Transpose data
+    # Fill buffer
     for t in range(nr_time):
         for bl in range(nr_baselines):
-            # Set baselines
+            # Set antenna indices
             antenna1 = antenna1_block[t][bl]
             antenna2 = antenna2_block[t][bl]
-            baselines[bl] = (antenna1, antenna2)
 
             # Set uvw
-            uvw_ = uvw_block[t][bl]
-            uvw[bl][t] = uvw_
+            uvw_coordinate = uvw_block[t][bl]
 
             # Set visibilities
-            visibilities[bl][t] = vis_block[t][bl]
-    time_transpose += time.time()
+            visibilities = vis_block[t][bl]
+
+            # Add visibilities to the buffer
+            plan.grid_visibilities(
+                visibilities,
+                uvw_coordinate,
+                antenna1,
+                antenna2,
+                t
+            )
+
+    time_buffer += time.time()
                     
     # Grid visibilities
-    w_offset = 0
-    kernel_size = (proxy.get_subgrid_size() / 2) + 1
     time_gridding = -time.time()
-    proxy.grid_visibilities(
-        visibilities,
-        uvw,
-        wavenumbers,
-        baselines,
-        grid,
-        w_offset,
-        kernel_size,
-        aterms,
-        aterms_offset,
-        spheroidal)
+    plan.flush()
     time_gridding += time.time()
 
     # Compute fft over grid
     time_fft = -time.time()
     # Using numpy
-    #img = numpy.real(numpy.fft.fftshift(numpy.fft.ifft2(numpy.fft.fftshift(grid[0,:,:]))))
+    img = numpy.real(numpy.fft.fftshift(numpy.fft.ifft2(numpy.fft.fftshift(grid[0,:,:]))))
 
     # Using fft from library
-    img = grid.copy()
-    proxy.transform(idg.FourierDomainToImageDomain, img)
-    img = numpy.real(img[0,:,:])
+    #img = grid.copy()
+    #proxy.transform(idg.FourierDomainToImageDomain, img)
+    #img = numpy.real(img[0,:,:])
     time_fft += time.time()
 
     time_plot = -time.time()
@@ -286,7 +283,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     print ">>> Iteration %d" % iteration
     print "Runtime total:     %5d ms"            % (time_total*1000)
     print "Runtime reading:   %5d ms (%5.2f %%)" % (time_read*1000,      100.0 * time_read/time_total)
-    print "Runtime transpose: %5d ms (%5.2f %%)" % (time_transpose*1000, 100.0 * time_transpose/time_total)
+    print "Runtime buffer:    %5d ms (%5.2f %%)" % (time_buffer*1000, 100.0 * time_buffer/time_total)
     print "Runtime gridding:  %5d ms (%5.2f %%)" % (time_gridding*1000,  100.0 * time_gridding/time_total)
     print "Runtime fft:       %5d ms (%5.2f %%)" % (time_fft*1000,       100.0 * time_fft/time_total)
     print "Runtime plot:      %5d ms (%5.2f %%)" % (time_plot*1000,      100.0 * time_plot/time_total)
