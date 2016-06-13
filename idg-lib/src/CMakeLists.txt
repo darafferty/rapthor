@@ -319,10 +319,10 @@ add_library(idg
   $<TARGET_OBJECTS:idg-api>
 )
 
-set(LINK_LIRBRARIES ${CMAKE_DL_LIBS})
+set(LINK_LIRBRARIES idg-fft ${CMAKE_DL_LIBS})
 
 if (BUILD_LIB_CPU)
-  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu ${FFTW3F_LIBRARY})
+  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
 endif()
 
 target_link_libraries (

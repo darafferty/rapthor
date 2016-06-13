@@ -13,9 +13,9 @@
 #include <stdexcept>
 #include <cmath>
 #include <limits>
-#include <fftw3.h>
-
+#include <fftw3.h>    // TODO: remove
 #include "idg-common.h"
+#include "idg-fft.h"
 #if defined(BUILD_LIB_CPU)
 #include "idg-cpu.h"
 #endif
@@ -122,7 +122,12 @@ namespace idg {
 
         // Methods the transform the grid. i.e., perform FFT, scaling,
         // and apply the sheroidal
-        virtual void transform_grid(std::complex<double> *grid = nullptr) = 0;
+        virtual void transform_grid(
+            double crop_tol            = 5e-3,
+            size_t nr_polarizations    = 0,
+            size_t height              = 0,
+            size_t width               = 0,
+            std::complex<double> *grid = nullptr) = 0;
 
         void fft_grid(std::complex<double> *grid = nullptr);
         void ifft_grid(std::complex<double> *grid = nullptr);

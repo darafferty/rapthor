@@ -145,10 +145,48 @@ namespace idg {
     }
 
 
-    void DegridderPlan::transform_grid(complex<double> *grid)
+    void DegridderPlan::transform_grid(
+        double crop_tolerance,
+        size_t nr_polarizations,
+        size_t height,
+        size_t width,
+        complex<double> *grid)
     {
+        // Normal case: no arguments -> transform member grid
+        // Note: the other case is to perform the transform on a copy
+        // so that the process can be monitored
+        if (grid == nullptr) {
+            nr_polarizations = m_nrPolarizations;
+            height           = m_gridHeight;
+            width            = m_gridWidth;
+            grid             = m_grid_double;
+        }
+
+        // FFT complex-to-complex
         fft_grid(grid);
-        // apply spheroidal
+
+        // // TODO: Apply spheroidal here as well?
+        // Grid2D<float> spheroidal_grid(height, width);
+        // resize2f(static_cast<int>(m_subgridSize),
+        //          static_cast<int>(m_subgridSize),
+        //          m_spheroidal.data(),
+        //          static_cast<int>(height),
+        //          static_cast<int>(width),
+        //          spheroidal_grid.data());
+
+        // for (auto pol = 0; pol < nr_polarizations; ++pol) {
+        //     for (auto y = 0; y < height; ++y) {
+        //         for (auto x = 0; x < width; ++x) {
+        //             complex<double> scale;
+        //             if (spheroidal_grid(y,x) >= crop_tolerance) {
+        //                 scale = complex<double>(1.0/spheroidal_grid(y,x));
+        //             } else {
+        //                 scale = 0.0;
+        //             }
+        //             grid[pol*height*width + y*width + x] *= scale;
+        //         }
+        //     }
+        // }
     }
 
 } // namespace idg
@@ -208,9 +246,18 @@ extern "C" {
 
     void DegridderPlan_transform_grid(
         idg::DegridderPlan* p,
+        double crop_tolarance,
+        int nr_polarizations,
+        int height,
+        int width,
         void *grid)
     {
-        p->transform_grid((complex<double> *) grid);
+        p->transform_grid(
+            crop_tolarance,
+            nr_polarizations,
+            height,
+            width,
+            (complex<double> *) grid);
     }
 
 } // extern C
