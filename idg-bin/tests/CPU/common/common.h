@@ -103,8 +103,6 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     idg::init_example_visibilities(visibilities, nr_baselines, nr_time,
                                    nr_channels, nr_polarizations);
-    idg::init_example_visibilities(visibilities_ref, nr_baselines, nr_time,
-                                   nr_channels, nr_polarizations);
     idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time);
     idg::init_example_wavenumbers(wavenumbers, nr_channels);
     idg::init_example_aterm(aterm, nr_timeslots, nr_stations,
