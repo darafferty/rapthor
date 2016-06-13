@@ -217,14 +217,24 @@ class GridderPlan(Scheme):
         )
 
 
-    def transform_grid(self, grid=None):
+    def transform_grid(self, grid=None, crop_tolarance=0.005):
         """Do an iFFT on the grid, apply the spheroidal, scale, set imag part to zero"""
         if (grid == None):
             null_ptr = ctypes.POINTER(ctypes.c_int)()
-            lib.DegridderPlan_transform_grid(self.obj, null_ptr)
+            lib.DegridderPlan_transform_grid(
+                self.obj,
+                ctypes.c_double(crop_tolarance),
+                ctypes.c_int(0),
+                ctypes.c_int(0),
+                ctypes.c_int(0),
+                null_ptr)
         else:
             lib.GridderPlan_transform_grid(
                 self.obj,
+                ctypes.c_double(crop_tolarance),
+                ctypes.c_int(grid.shape[0]),
+                ctypes.c_int(grid.shape[1]),
+                ctypes.c_int(grid.shape[2]),
                 grid.ctypes.data_as(ctypes.c_void_p))
 
 
@@ -271,12 +281,22 @@ class DegridderPlan(Scheme):
         return visibilities
 
 
-    def transform_grid(self, grid=None):
+    def transform_grid(self, grid=None, crop_tolarance=0.005):
         """Do an FFT on the grid and apply the spheroidal"""
         if (grid == None):
             null_ptr = ctypes.POINTER(ctypes.c_int)()
-            lib.DegridderPlan_transform_grid(self.obj, null_ptr)
+            lib.DegridderPlan_transform_grid(
+                self.obj,
+                ctypes.c_double(crop_tolarance),
+                ctypes.c_int(0),
+                ctypes.c_int(0),
+                ctypes.c_int(0),
+                null_ptr)
         else:
             lib.DegridderPlan_transform_grid(
                 self.obj,
+                ctypes.c_double(crop_tolarance),
+                ctypes.c_int(grid.shape[0]),
+                ctypes.c_int(grid.shape[1]),
+                ctypes.c_int(grid.shape[2]),
                 grid.ctypes.data_as(ctypes.c_void_p))

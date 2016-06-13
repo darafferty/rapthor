@@ -42,7 +42,12 @@ namespace idg {
         virtual void flush() override;
 
         // To transform the provided image before prediction
-        virtual void transform_grid(std::complex<double> *grid = nullptr) override;
+        virtual void transform_grid(
+            double crop_tolerance      = 5e-3,
+            size_t nr_polarizations    = 0,
+            size_t height              = 0,
+            size_t width               = 0,
+            std::complex<double> *grid = nullptr) override;
     };
 
 } // namespace idg

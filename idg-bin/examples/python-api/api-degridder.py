@@ -108,14 +108,20 @@ if __name__ == "__main__":
                                                grid_size,
                                                dtype = numpy.complex128)
     # add point sources
-    offset_x = 0
-    offset_y = 0
+    offset_x = 50
+    offset_y = 50
     grid_image[:,(grid_size/2)+offset_y,(grid_size/2)+offset_x] = 1
     # idg.utils.plot_grid(grid_image)
 
     grid_gridded  = idg.utils.get_example_grid(nr_polarizations,
                                                grid_size,
                                                dtype = numpy.complex128)
+
+    ######################################################################
+    # Plot data
+    ######################################################################
+
+    # idg.utils.plot_spheroidal(spheroidal)
 
 
     ######################################################################
@@ -213,14 +219,14 @@ if __name__ == "__main__":
 
         gridder.finish_aterm()
 
-        ## VISUALIZE
-        # To display the gridded visibilities
-        live_plot_grid(axarr, gridder.get_copy_grid(), scaling='log')
+        # ## VISUALIZE
+        # # To display the gridded visibilities
+        # live_plot_grid(axarr, gridder.get_copy_grid(), scaling='log')
 
         # # To display the image instead
-        # grid_copy = gridder.get_copy_grid()
-        # gridder.transform_grid(grid_copy)
-        # live_plot_grid(axarr, grid_copy)
+        grid_copy = gridder.get_copy_grid()
+        gridder.transform_grid(grid_copy)
+        live_plot_grid(axarr, grid_copy)
 
     gridder.transform_grid()
     # idg.utils.plot_grid(gridder.get_copy_grid())
