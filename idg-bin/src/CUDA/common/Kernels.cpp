@@ -114,7 +114,7 @@ namespace idg {
                 // Execute bulk ffts (if any)
                 if (planned_batch >= bulk_size) {
                     (*fft_bulk).setStream(stream);
-                    for (; s < planned_batch; s += bulk_size) {
+                    for (; s < (planned_batch - bulk_size); s += bulk_size) {
                         if (planned_batch - s >= bulk_size) {
                             (*fft_bulk).execute(data_ptr, data_ptr, direction);
                             data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
