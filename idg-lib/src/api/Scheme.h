@@ -58,8 +58,9 @@ namespace idg {
         void set_stations(size_t nrStations);
         size_t get_stations() const;
 
-        void set_cell_size(double cellSize);
-        double get_cell_size() const;
+        void set_cell_size(double height, double width);
+        double get_cell_height() const;
+        double get_cell_width() const;
 
         void set_w_kernel(size_t size);
         size_t get_w_kernel_size() const;
@@ -190,7 +191,8 @@ namespace idg {
         size_t m_gridHeight;
         size_t m_gridWidth;
         size_t m_subgridSize;
-        float  m_cellSize;
+        float  m_cellHeight;
+        float  m_cellWidth;
         float  m_wOffsetInLambda;
         size_t m_wKernelSize;
         float  m_imageSize; // TODO: deprecated, remove member
