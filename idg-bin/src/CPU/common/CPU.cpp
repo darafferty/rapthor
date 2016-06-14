@@ -474,7 +474,7 @@ namespace idg {
                     double power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
                     auxiliary::report("gridder", runtime_gridder,
                                       kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
-                                      kernel_gridder->bytes(current_nr_baselines, current_nr_subgrids),
+                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                       power_gridder);
                     auxiliary::report("fft", runtime_fft,
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
