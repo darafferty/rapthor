@@ -44,9 +44,8 @@ class Scheme():
         """
         lib.Scheme_set_frequencies(
             self.obj,
-            frequencies.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(frequencies.shape[0])
-        )
+            ctypes.c_int(frequencies.shape[0]),
+            frequencies.ctypes.data_as(ctypes.c_void_p))
 
     def get_frequency(self, channel):
         """
@@ -69,11 +68,10 @@ class Scheme():
         """
         lib.Scheme_set_grid(
             self.obj,
-            grid.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(grid.shape[0]),  # nr polarizations
             ctypes.c_int(grid.shape[1]),  # height
-            ctypes.c_int(grid.shape[2])   # witdh
-        )
+            ctypes.c_int(grid.shape[2]),  # witdh
+            grid.ctypes.data_as(ctypes.c_void_p))
 
     def get_nr_polarizations(self):
         return lib.Scheme_get_nr_polarizations(self.obj)
@@ -108,10 +106,9 @@ class Scheme():
         """
         lib.Scheme_set_spheroidal(
             self.obj,
-            spheroidal.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(spheroidal.shape[0]),  # height
-            ctypes.c_int(spheroidal.shape[1])   # witdh
-        )
+            ctypes.c_int(spheroidal.shape[1]),  # witdh
+            spheroidal.ctypes.data_as(ctypes.c_void_p))
 
     # deprecated: use cell size!
     def get_image_size(self):
@@ -143,11 +140,11 @@ class Scheme():
         width            = aterms.shape[2]
         nr_polarizations = aterms.shape[3]
         lib.Scheme_start_aterm(self.obj,
-                                    aterms.ctypes.data_as(ctypes.c_void_p),
-                                    ctypes.c_int(nr_stations),
-                                    ctypes.c_int(height),
-                                    ctypes.c_int(width),
-                                    ctypes.c_int(nr_polarizations))
+                               ctypes.c_int(nr_stations),
+                               ctypes.c_int(height),
+                               ctypes.c_int(width),
+                               ctypes.c_int(nr_polarizations),
+                               aterms.ctypes.data_as(ctypes.c_void_p))
 
 
     def finish_aterm(self):
@@ -174,10 +171,10 @@ class Scheme():
                            dtype=numpy.complex128)
         lib.Scheme_copy_grid(
             self.obj,
-            grid.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(nr_polarizations),
             ctypes.c_int(height),
-            ctypes.c_int(width))
+            ctypes.c_int(width),
+            grid.ctypes.data_as(ctypes.c_void_p))
 
         return grid
 
