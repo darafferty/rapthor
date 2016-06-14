@@ -92,9 +92,9 @@ int main(int argc, char *argv[])
 
     idg::DegridderPlan degridder(idg::Type::CPU_OPTIMIZED, bufferSize);
     degridder.set_stations(nr_stations);
-    degridder.set_frequencies(frequencyList, nr_channels);
-    degridder.set_grid(grid_double, 4, gridsize, gridsize);
-    // degridder.set_spheroidal(spheroidal_double, subgridsize);
+    degridder.set_frequencies(nr_channels, frequencyList);
+    degridder.set_grid(4, gridsize, gridsize, grid_double);
+    // degridder.set_spheroidal(subgridsize, spheroidal_double);
     degridder.set_image_size(imagesize);
     degridder.set_w_kernel(subgridsize/2);
     degridder.internal_set_subgrid_size(subgridsize);
@@ -102,9 +102,9 @@ int main(int argc, char *argv[])
 
     idg::GridderPlan gridder(idg::Type::CPU_OPTIMIZED, bufferSize);
     gridder.set_stations(nr_stations);
-    gridder.set_frequencies(frequencyList, nr_channels);
-    gridder.set_grid(grid_double, 4, gridsize, gridsize);
-    // gridder.set_spheroidal(spheroidal_double, subgridsize);
+    gridder.set_frequencies(nr_channels, frequencyList);
+    gridder.set_grid(4, gridsize, gridsize, grid_double);
+    // gridder.set_spheroidal(subgridsize, spheroidal_double);
     gridder.set_image_size(imagesize);
     gridder.set_w_kernel(subgridsize/2);
     gridder.internal_set_subgrid_size(subgridsize);

@@ -162,8 +162,8 @@ namespace idg {
             grid             = m_grid_double;
         }
 
-        // FFT complex-to-complex
-        fft_grid(grid);
+        // FFT complex-to-complex for each polarization
+        fft_grid(nr_polarizations, height, width, grid);
 
         // // TODO: Apply spheroidal here as well?
         // Grid2D<float> spheroidal_grid(height, width);
