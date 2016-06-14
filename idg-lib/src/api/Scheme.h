@@ -49,8 +49,8 @@ namespace idg {
         virtual ~Scheme();
 
         // Set/get all parameters
-        void set_frequencies(const double* frequencyList,
-                             size_t channelCount);
+        void set_frequencies(size_t channelCount,
+                             const double* frequencyList);
 
         size_t get_frequencies_size() const;
         double get_frequency(size_t channel) const;
@@ -65,25 +65,24 @@ namespace idg {
         size_t get_w_kernel_size() const;
 
         void set_spheroidal(
-            const double* spheroidal,
-            size_t size);
+            size_t size,
+            const double* spheroidal);
 
         void set_spheroidal(
-            const double* spheroidal,
             size_t height,
-            size_t width);
+            size_t width,
+            const double* spheroidal);
 
         void set_grid(
-            std::complex<double>* grid,
             size_t nr_polarizations,
-            size_t size
-            );
+            size_t size,
+            std::complex<double>* grid);
 
         void set_grid(
-            std::complex<double>* grid,
             size_t nr_polarizations,
             size_t height,
-            size_t width);
+            size_t width,
+            std::complex<double>* grid);
 
         size_t get_grid_height() const;
         size_t get_grid_width() const;
@@ -106,17 +105,17 @@ namespace idg {
         void finish_w_layer();
 
         void start_aterm(
-            const std::complex<double>* aterm,
             size_t nrStations,
             size_t size,
-            size_t nrPolarizations);
+            size_t nrPolarizations,
+            const std::complex<double>* aterm);
 
         void start_aterm(
-            const std::complex<double>* aterm,
             size_t nrStations,
             size_t height,
             size_t width,
-            size_t nrPolarizations);
+            size_t nrPolarizations,
+            const std::complex<double>* aterm);
 
         void finish_aterm();
 
@@ -129,14 +128,23 @@ namespace idg {
             size_t width               = 0,
             std::complex<double> *grid = nullptr) = 0;
 
-        void fft_grid(std::complex<double> *grid = nullptr);
-        void ifft_grid(std::complex<double> *grid = nullptr);
+        void fft_grid(
+            size_t nr_polarizations    = 0,
+            size_t height              = 0,
+            size_t width               = 0,
+            std::complex<double> *grid = nullptr);
+
+        void ifft_grid(
+            size_t nr_polarizations    = 0,
+            size_t height              = 0,
+            size_t width               = 0,
+            std::complex<double> *grid = nullptr);
 
         void copy_grid(
-            std::complex<double>* grid,
             size_t nr_polarizations,
             size_t height,
-            size_t width);
+            size_t width,
+            std::complex<double>* grid);
 
         // Internal or deprecated methods
 
@@ -162,11 +170,11 @@ namespace idg {
         void set_uvw_to_infinity();
         void init_default_aterm();
 
-        void fft(Direction direction, std::complex<double> *grid = nullptr);
-        void ifftshift(int nr_polarizations, std::complex<float> *grid);
-        void fftshift(int nr_polarizations, std::complex<float> *grid);
-        void ifftshift(std::complex<float> *array);
-        void fftshift(std::complex<float> *array);
+        void fft_kernel(Direction direction,
+                        size_t nr_polarizations = 0,
+                        size_t height = 0,
+                        size_t width = 0,
+                        std::complex<double> *grid = nullptr);
 
         // Bookkeeping
         Type   m_architecture;

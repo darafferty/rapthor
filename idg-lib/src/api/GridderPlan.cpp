@@ -140,8 +140,8 @@ namespace idg {
             grid             = m_grid_double;
         }
 
-        // Inverse FFT complex-to-complex
-        ifft_grid(grid);
+        // Inverse FFT complex-to-complex for each polarization
+        ifft_grid(nr_polarizations, height, width, grid);
 
         // Apply the spheroidal and scale
         // assuming only half the visibilities are gridded:
