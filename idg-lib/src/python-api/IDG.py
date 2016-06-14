@@ -110,15 +110,31 @@ class Scheme():
             ctypes.c_int(spheroidal.shape[1]),  # witdh
             spheroidal.ctypes.data_as(ctypes.c_void_p))
 
+    def set_cell_size(self, height, width):
+        """Set the cell size"""
+        lib.Scheme_set_cell_size(self.obj,
+                                 ctypes.c_double(height),
+                                 ctypes.c_double(width))
+
+    def get_cell_height(self):
+        """Set the cell size"""
+        lib.Scheme_get_cell_height.restype = ctypes.c_double
+        lib.Scheme_get_cell_height(self.obj)
+
+    def get_cell_width(self):
+        """Set the cell size"""
+        lib.Scheme_get_cell_width.restype = ctypes.c_double
+        lib.Scheme_get_cell_width(self.obj)
+
     # deprecated: use cell size!
     def get_image_size(self):
-        """Get the w-kernel size"""
+        """Get the image size"""
         lib.Scheme_get_image_size.restype = ctypes.c_double
         return lib.Scheme_get_image_size(self.obj)
 
     # deprecated: use cell size!
     def set_image_size(self, size):
-        """Set the w-kernel size"""
+        """Get the image size"""
         lib.Scheme_set_image_size(self.obj, ctypes.c_double(size))
 
     def bake(self):

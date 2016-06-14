@@ -19,12 +19,15 @@ namespace idg {
           m_timeStartNextBatch(bufferTimesteps),
           m_nrStations(0),
           m_nrGroups(0),
-          m_wOffsetInLambda(0.0f),
           m_nrPolarizations(4),
-          m_wKernelSize(0),
           m_gridHeight(0),
           m_gridWidth(0),
           m_subgridSize(32),
+          m_imageSize(0.0f),
+          m_wOffsetInLambda(0.0f),
+          m_cellHeight(0.0f),
+          m_cellWidth(0.0f),
+          m_wKernelSize(0),
           m_proxy(nullptr)
     {
         #if defined(DEBUG)
@@ -72,15 +75,25 @@ namespace idg {
     }
 
 
-    void Scheme::set_cell_size(const double cellSize)
+    void Scheme::set_cell_size(double height, double width)
     {
-        m_cellSize = float(cellSize);
+        if (height != width)
+            throw invalid_argument("Only square cells supported.");
+
+        m_cellHeight = float(height);
+        m_cellWidth  = float(width);
     }
 
 
-    double Scheme::get_cell_size() const
+    double Scheme::get_cell_height() const
     {
-        return m_cellSize;
+        return m_cellHeight;
+    }
+
+
+    double Scheme::get_cell_width() const
+    {
+        return m_cellWidth;
     }
 
 
@@ -230,7 +243,7 @@ namespace idg {
         // HACK: assume that, if image size not set, cell size is
         // NOTE: assume m_gridWidth == m_gridHeight
         // TODO: remove image size from this api entirely
-        if (m_imageSize==0) m_imageSize = m_cellSize * m_gridWidth;
+        if (m_imageSize==0) m_imageSize = m_cellWidth * m_gridWidth;
 
         // (1) Create new proxy
         delete m_proxy;
@@ -540,6 +553,24 @@ extern "C" {
         double* spheroidal)
     {
         p->set_spheroidal(height, width, spheroidal);
+    }
+
+
+    void Scheme_set_cell_size(idg::Scheme* p, double height, double width)
+    {
+        p->set_cell_size(height, width);
+    }
+
+
+    double Scheme_get_cell_height(idg::Scheme* p)
+    {
+        return p->get_cell_height();
+    }
+
+
+    double Scheme_get_cell_width(idg::Scheme* p)
+    {
+        return p->get_cell_width();
     }
 
 
