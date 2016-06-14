@@ -22,7 +22,7 @@ void run()
     // retrieve constants for memory allocation
     int nr_stations      = params.get_nr_stations();
     int nr_baselines     = params.get_nr_baselines();
-    int nr_time          =  params.get_nr_time();
+    int nr_time          = params.get_nr_time();
     int nr_timeslots     = params.get_nr_timeslots();
     int nr_channels      = params.get_nr_channels();
     int gridsize         = params.get_grid_size();
