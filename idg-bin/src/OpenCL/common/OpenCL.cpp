@@ -93,8 +93,8 @@ namespace idg {
 
                 float opencl_version = get_opencl_version(device);
                 if (opencl_version >= 2.0) {
-                    compiler_flags << " -cl-std=CL2.0";
-                    compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
+                    //compiler_flags << " -cl-std=CL2.0";
+                    //compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
                 }
 
                 return compiler_flags.str();
@@ -291,7 +291,6 @@ namespace idg {
 
         					// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-executequeue.finish();
 
                             // Launch adder kernel
                             kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
