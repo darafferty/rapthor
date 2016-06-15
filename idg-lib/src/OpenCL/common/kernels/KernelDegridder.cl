@@ -2,6 +2,9 @@
 #include "Types.cl"
 
 #define NR_THREADS ((SUBGRIDSIZE % 16 == 0) ? 256 : 64)
+#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
+
+#define NR_CHANNELS_8 8
 
 /*
 	Kernel
@@ -17,7 +20,7 @@ __kernel void kernel_degridder_1(
     __global const ATermType		aterm,
     __global const MetadataType		metadata,
     __global const SubGridType		subgrid,
-    __local        float4           _pix[NR_POLARIZATIONS / 2][NR_THREADS],
+    __local        float4           _pix[NR_POLARIZATIONS/2][NR_THREADS],
     __local        float4           _lmn_phaseoffset[NR_THREADS]
 	) {
     int tidx = get_local_id(0);
@@ -41,7 +44,7 @@ __kernel void kernel_degridder_1(
     float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
     // Iterate all timesteps
-    for (int time = tidx; time < nr_timesteps; time += NR_THREADS) {
+    for (int time = tidx; time < ALIGN(nr_timesteps, NR_THREADS); time += NR_THREADS) {
         float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
         float4 _uvw;
 		float  wavenumber;
@@ -52,7 +55,7 @@ __kernel void kernel_degridder_1(
 			wavenumber = wavenumbers[channel_offset];
 		}
 
-		for (int j = tidx; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
+		for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, NR_THREADS); j += NR_THREADS) {
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
@@ -125,7 +128,7 @@ __kernel void kernel_degridder_1(
 					float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
 
                     // Compute phasor
-                    float  phase  = phase_offset - (phase_index * wavenumber);
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load pixels from local memory
@@ -159,13 +162,13 @@ __kernel void kernel_degridder_1(
         }
 
         // Set visibility value
-        int vis_offset = (time_offset_global + time) * nr_channels + channel_offset;
         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
+        int index = (time_offset_global + time) * nr_channels + channel_offset;
         if (time < nr_timesteps) {
-            visibilities[vis_offset + channel_offset][0] = (float2) (vis.s0, vis.s1) * scale;
-            visibilities[vis_offset + channel_offset][1] = (float2) (vis.s2, vis.s3) * scale;
-            visibilities[vis_offset + channel_offset][2] = (float2) (vis.s4, vis.s5) * scale;
-            visibilities[vis_offset + channel_offset][3] = (float2) (vis.s6, vis.s7) * scale;
+            visibilities[index][0] = (float2) (vis.s0, vis.s1) * scale;
+            visibilities[index][1] = (float2) (vis.s2, vis.s3) * scale;
+            visibilities[index][2] = (float2) (vis.s4, vis.s5) * scale;
+            visibilities[index][3] = (float2) (vis.s6, vis.s7) * scale;
 		}
 	}
 }
@@ -205,9 +208,9 @@ __kernel void kernel_degridder_8(
     float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
 
     // Iterate timesteps and channels
-    for (int i = tidx; i < nr_timesteps * nr_channels; i += NR_THREADS) {
-		int time = i / nr_channels;
-		int chan = i % nr_channels;
+    for (int i = tidx; i < ALIGN(nr_timesteps * NR_CHANNELS_8, NR_THREADS); i += NR_THREADS) {
+		int time = i / NR_CHANNELS_8;
+		int chan = i % NR_CHANNELS_8;
 
         float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
         float4 _uvw;
@@ -216,10 +219,10 @@ __kernel void kernel_degridder_8(
 		if (time < nr_timesteps) {
             UVW a = uvw[time_offset_global + time];
             _uvw = (float4) (a.u, a.v, a.w, 0);
-			wavenumber = wavenumbers[channel_offset];
+			wavenumber = wavenumbers[chan + channel_offset];
 		}
 
-		for (int j = tidx; j < SUBGRIDSIZE * SUBGRIDSIZE; j += NR_THREADS) {
+		for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, NR_THREADS); j += NR_THREADS) {
 			int y = j / SUBGRIDSIZE;
 			int x = j % SUBGRIDSIZE;
 
@@ -292,7 +295,7 @@ __kernel void kernel_degridder_8(
 					float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
 
                     // Compute phasor
-                    float  phase  = phase_offset - (phase_index * wavenumber);
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load pixels from local memory
@@ -326,13 +329,13 @@ __kernel void kernel_degridder_8(
         }
 
         // Set visibility value
-        int vis_offset = (time_offset_global + time) * nr_channels + (channel_offset + chan);
         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
+        int index = (time_offset_global + time) * nr_channels + (channel_offset + chan);
         if (time < nr_timesteps) {
-            visibilities[vis_offset][0] = (float2) (vis.s0, vis.s1) * scale;
-            visibilities[vis_offset][1] = (float2) (vis.s2, vis.s3) * scale;
-            visibilities[vis_offset][2] = (float2) (vis.s4, vis.s5) * scale;
-            visibilities[vis_offset][3] = (float2) (vis.s6, vis.s7) * scale;
+            visibilities[index][0] = (float2) (vis.s0, vis.s1) * scale;
+            visibilities[index][1] = (float2) (vis.s2, vis.s3) * scale;
+            visibilities[index][2] = (float2) (vis.s4, vis.s5) * scale;
+            visibilities[index][3] = (float2) (vis.s6, vis.s7) * scale;
 		}
 	}
 }
@@ -361,7 +364,6 @@ __kernel void kernel_degridder(
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
-
         kernel_degridder_1(
             w_offset, nr_channels, channel_offset, uvw, wavenumbers,
             visibilities, spheroidal, aterm, metadata, subgrid,

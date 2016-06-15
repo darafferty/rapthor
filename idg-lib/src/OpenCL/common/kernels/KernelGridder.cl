@@ -30,11 +30,13 @@ __kernel void kernel_gridder_1(
     int s = get_group_id(0);
 
     // Set subgrid to zero
-    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        subgrid[s][0][0][i] = (float2) (0, 0);
-        subgrid[s][1][0][i] = (float2) (0, 0);
-        subgrid[s][2][0][i] = (float2) (0, 0);
-        subgrid[s][3][0][i] = (float2) (0, 0);
+    if (channel_offset == 0) {
+        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
+            subgrid[s][0][0][i] = (float2) (0, 0);
+            subgrid[s][1][0][i] = (float2) (0, 0);
+            subgrid[s][2][0][i] = (float2) (0, 0);
+            subgrid[s][3][0][i] = (float2) (0, 0);
+        }
     }
 
     barrier(CLK_GLOBAL_MEM_FENCE);
@@ -67,12 +69,13 @@ __kernel void kernel_gridder_1(
         }
 
         // Load visibilities
-        int vis_offset = ((time_offset_global + time_offset_local) * nr_channels) + channel_offset;
-        for (int i = tid; i < current_nr_timesteps; i += blocksize) {
-            float2 a = visibilities[vis_offset + i][0];
-            float2 b = visibilities[vis_offset + i][1];
-            float2 c = visibilities[vis_offset + i][2];
-            float2 d = visibilities[vis_offset + i][3];
+	    for (int i = tid; i < current_nr_timesteps; i += blocksize) {
+            int time = i;
+            int index = (time_offset_global + time_offset_local + time) * nr_channels + channel_offset;
+            float2 a = visibilities[index][0];
+            float2 b = visibilities[index][1];
+            float2 c = visibilities[index][2];
+            float2 d = visibilities[index][3];
             _visibilities[i][0] = (float4) (a.x, a.y, b.x, b.y);
             _visibilities[i][1] = (float4) (c.x, c.y, d.x, d.y);
         }
@@ -114,7 +117,7 @@ __kernel void kernel_gridder_1(
 
                 // Compute phasor
                 float wavenumber = wavenumbers[channel_offset];
-                float phase = (phase_index * wavenumber) - phase_offset;
+                float phase = phase_offset - (phase_index * wavenumber);
                 float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                 // Load visibilities from shared memory
@@ -203,11 +206,13 @@ __kernel void kernel_gridder_4(
     int s = get_group_id(0);
 
     // Set subgrid to zero
-    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        subgrid[s][0][0][i] = (float2) (0, 0);
-        subgrid[s][1][0][i] = (float2) (0, 0);
-        subgrid[s][2][0][i] = (float2) (0, 0);
-        subgrid[s][3][0][i] = (float2) (0, 0);
+    if (channel_offset == 0) {
+        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
+            subgrid[s][0][0][i] = (float2) (0, 0);
+            subgrid[s][1][0][i] = (float2) (0, 0);
+            subgrid[s][2][0][i] = (float2) (0, 0);
+            subgrid[s][3][0][i] = (float2) (0, 0);
+        }
     }
 
     barrier(CLK_GLOBAL_MEM_FENCE);
@@ -245,12 +250,14 @@ __kernel void kernel_gridder_4(
         }
 
         // Load visibilities
-        int vis_offset = ((time_offset_global + time_offset_local) * nr_channels) + channel_offset;
-        for (int i = tid; i < current_nr_timesteps * NR_CHANNELS_4; i += blocksize) {
-            float2 a = visibilities[vis_offset + i][0];
-            float2 b = visibilities[vis_offset + i][1];
-            float2 c = visibilities[vis_offset + i][2];
-            float2 d = visibilities[vis_offset + i][3];
+	    for (int i = tid; i < current_nr_timesteps * NR_CHANNELS_4; i += blocksize) {
+            int time = i / NR_CHANNELS_4;
+            int chan = i % NR_CHANNELS_4;
+            int index = (time_offset_global + time_offset_local + time) * nr_channels + (channel_offset + chan);
+            float2 a = visibilities[index][0];
+            float2 b = visibilities[index][1];
+            float2 c = visibilities[index][2];
+            float2 d = visibilities[index][3];
             _visibilities[0][i][0] = (float4) (a.x, a.y, b.x, b.y);
             _visibilities[0][i][1] = (float4) (c.x, c.y, d.x, d.y);
         }
@@ -294,7 +301,7 @@ __kernel void kernel_gridder_4(
                 #pragma unroll
                 for (int chan = 0; chan < NR_CHANNELS_4; chan++) {
                     float wavenumber = _wavenumbers[chan];
-                    float phase = (phase_index * wavenumber) - phase_offset;
+                    float phase = phase_offset - (phase_index * wavenumber);
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load visibilities from shared memory
@@ -344,9 +351,9 @@ __kernel void kernel_gridder_4(
             apply_aterm(
                 aXX1,   aXY1,  aYX1,  aYY1,
                 aXX2,   aXY2,  aYX2,  aYY2,
-               &uvXX,  &uvXY, &uvYX, &uvYY);
+                &uvXX, &uvXY, &uvYX, &uvYY);
 
-             // Load spheroidal
+            // Load spheroidal
             float sph = spheroidal[y][x];
 
             // Compute shifted position in subgrid
@@ -384,11 +391,13 @@ __kernel void kernel_gridder_8(
     int s = get_group_id(0);
 
     // Set subgrid to zero
-    for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-        subgrid[s][0][0][i] = (float2) (0, 0);
-        subgrid[s][1][0][i] = (float2) (0, 0);
-        subgrid[s][2][0][i] = (float2) (0, 0);
-        subgrid[s][3][0][i] = (float2) (0, 0);
+    if (channel_offset == 0) {
+        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
+            subgrid[s][0][0][i] = (float2) (0, 0);
+            subgrid[s][1][0][i] = (float2) (0, 0);
+            subgrid[s][2][0][i] = (float2) (0, 0);
+            subgrid[s][3][0][i] = (float2) (0, 0);
+        }
     }
 
     barrier(CLK_GLOBAL_MEM_FENCE);
@@ -426,12 +435,14 @@ __kernel void kernel_gridder_8(
         }
 
         // Load visibilities
-        int vis_offset = ((time_offset_global + time_offset_local) * nr_channels) + channel_offset;
-        for (int i = tid; i < current_nr_timesteps * NR_CHANNELS_8; i += blocksize) {
-            float2 a = visibilities[vis_offset + i][0];
-            float2 b = visibilities[vis_offset + i][1];
-            float2 c = visibilities[vis_offset + i][2];
-            float2 d = visibilities[vis_offset + i][3];
+	    for (int i = tid; i < current_nr_timesteps * NR_CHANNELS_8; i += blocksize) {
+            int time = i / NR_CHANNELS_8;
+            int chan = i % NR_CHANNELS_8;
+            int index = (time_offset_global + time_offset_local + time) * nr_channels + (channel_offset + chan);
+            float2 a = visibilities[index][0];
+            float2 b = visibilities[index][1];
+            float2 c = visibilities[index][2];
+            float2 d = visibilities[index][3];
             _visibilities[0][i][0] = (float4) (a.x, a.y, b.x, b.y);
             _visibilities[0][i][1] = (float4) (c.x, c.y, d.x, d.y);
         }
@@ -475,7 +486,7 @@ __kernel void kernel_gridder_8(
                 #pragma unroll
                 for (int chan = 0; chan < NR_CHANNELS_8; chan++) {
                     float wavenumber = _wavenumbers[chan];
-                    float phase = (phase_index * wavenumber) - phase_offset;
+                    float phase = phase_offset - (phase_index * wavenumber);
                     float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                     // Load visibilities from shared memory
