@@ -128,10 +128,10 @@ int main(int argc, char *argv[])
                 auto antenna2 = baselines[bl*2 + 1];
 
                 degridder.request_visibilities(
-                    &uvw_double[bl*nr_time*3 + time*3],
+                    time,
                     antenna1,
                     antenna2,
-                    time);
+                    &uvw_double[bl*nr_time*3 + time*3]);
             }
 
         }
@@ -148,18 +148,17 @@ int main(int argc, char *argv[])
                 auto antenna2 = baselines[bl*2 + 1];
 
                 degridder.read_visibilities(
+                   time,
                    antenna1,
                    antenna2,
-                   time,
                    visibilities);
 
                 gridder.grid_visibilities(
-                    visibilities,
-                    &uvw_double[bl*nr_time*3 + time*3],
+                    time,
                     antenna1,
                     antenna2,
-                    time);
-
+                    &uvw_double[bl*nr_time*3 + time*3],
+                    visibilities);
             }
 
         }

@@ -146,11 +146,11 @@ if __name__ == "__main__":
 
                 # Add visibilities to the buffer
                 plan.grid_visibilities(
-                    visibilities,
-                    uvw_coordinates,
+                    time,
                     antenna1,
                     antenna2,
-                    time
+                    uvw_coordinates,
+                    visibilities
                 )
 
         plan.finish_aterm()

@@ -210,11 +210,11 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
 
             # Add visibilities to the buffer
             plan.grid_visibilities(
-                visibilities,
-                uvw_coordinate,
+                t,
                 antenna1,
                 antenna2,
-                t
+                uvw_coordinate,
+                visibilities,
             )
 
     time_buffer += time.time()

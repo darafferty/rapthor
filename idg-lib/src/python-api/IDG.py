@@ -74,28 +74,31 @@ class Scheme():
             grid.ctypes.data_as(ctypes.c_void_p))
 
     def get_nr_polarizations(self):
+        """Get the number of polarization pairs, i.e. 1 or 4"""
         return lib.Scheme_get_nr_polarizations(self.obj)
 
     def get_grid_height(self):
+        """Get the grid height in pixel"""
         return lib.Scheme_get_grid_height(self.obj)
 
     def get_grid_width(self):
+        """Get the grid width in pixel"""
         return lib.Scheme_get_grid_width(self.obj)
 
     def internal_get_subgrid_size(self):
-        """Get the subgrid size"""
+        """Get the subgrid size in pixel"""
         return lib.Scheme_internal_get_subgrid_size(self.obj)
 
     def internal_set_subgrid_size(self, size):
-        """Set the subgrid size"""
+        """Set the subgrid size in pixel"""
         lib.Scheme_internal_set_subgrid_size(self.obj, ctypes.c_int(size))
 
     def get_w_kernel_size(self):
-        """Get the w-kernel size"""
+        """Get the w-kernel size in pixel"""
         return lib.Scheme_get_w_kernel_size(self.obj)
 
     def set_w_kernel_size(self, size):
-        """Set the w-kernel size"""
+        """Set the w-kernel size in pixel"""
         lib.Scheme_set_w_kernel_size(self.obj, ctypes.c_int(size))
 
     def set_spheroidal(self, spheroidal):
@@ -117,12 +120,12 @@ class Scheme():
                                  ctypes.c_double(width))
 
     def get_cell_height(self):
-        """Set the cell size"""
+        """Get the cell height in [unit]"""
         lib.Scheme_get_cell_height.restype = ctypes.c_double
         lib.Scheme_get_cell_height(self.obj)
 
     def get_cell_width(self):
-        """Set the cell size"""
+        """Set the cell width in [unit]"""
         lib.Scheme_get_cell_width.restype = ctypes.c_double
         lib.Scheme_get_cell_width(self.obj)
 
@@ -134,7 +137,7 @@ class Scheme():
 
     # deprecated: use cell size!
     def set_image_size(self, size):
-        """Get the image size"""
+        """Get the image size in [unit]"""
         lib.Scheme_set_image_size(self.obj, ctypes.c_double(size))
 
     def bake(self):
@@ -142,7 +145,7 @@ class Scheme():
         lib.Scheme_bake(self.obj)
 
     def flush(self):
-        """Flush buffer"""
+        """Flush buffer explicitly"""
         lib.Scheme_flush(self.obj)
 
     def start_aterm(self, aterms):
@@ -168,12 +171,12 @@ class Scheme():
 
 
     def ifft_grid(self):
-        """Do an inverse FFT on the grid"""
+        """Inverse FFT on the grid"""
         lib.Scheme_ifft_grid(self.obj)
 
 
     def fft_grid(self):
-        """Do an FFT on the grid"""
+        """FFT on the grid"""
         lib.Scheme_fft_grid(self.obj)
 
 
@@ -206,32 +209,37 @@ class GridderPlan(Scheme):
             ctypes.c_uint(bufferTimesteps)
         )
 
+
     def __del__(self):
         """Destroy a Gridder plan"""
         lib.GridderPlan_destroy(self.obj)
 
+
     def grid_visibilities(
             self,
-            visibilities,
-            uvw_coordinates,
+            timeIndex,
             antenna1,
             antenna2,
-            timeIndex):
+            uvw_coordinates,
+            visibilities):
         """
         Place visibilities into the buffer
         """
         lib.GridderPlan_grid_visibilities(
             self.obj,
-            visibilities.ctypes.data_as(ctypes.c_void_p),
-            uvw_coordinates.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(timeIndex),
             ctypes.c_int(antenna1),
             ctypes.c_int(antenna2),
-            ctypes.c_int(timeIndex)
+            uvw_coordinates.ctypes.data_as(ctypes.c_void_p),
+            visibilities.ctypes.data_as(ctypes.c_void_p)
         )
 
 
     def transform_grid(self, grid=None, crop_tolarance=0.005):
-        """Do an iFFT on the grid, apply the spheroidal, scale, set imag part to zero"""
+        """
+        Inverse FFT on the grid + apply the spheroidal + scaling,
+        including setting the imaginary part to zero
+        """
         if (grid == None):
             null_ptr = ctypes.POINTER(ctypes.c_int)()
             lib.DegridderPlan_transform_grid(
@@ -267,29 +275,29 @@ class DegridderPlan(Scheme):
         lib.DegridderPlan_destroy(self.obj)
 
     def request_visibilities(self,
-                             uvw,
+                             timeIndex,
                              antenna1,
                              antenna2,
-                             timeIndex):
+                             uvw):
         """Request visibilities to be put into the buffer"""
         lib.DegridderPlan_request_visibilities(
             self.obj,
-            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(timeIndex),
             ctypes.c_int(antenna1),
             ctypes.c_int(antenna2),
-            ctypes.c_int(timeIndex))
+            uvw.ctypes.data_as(ctypes.c_void_p))
 
 
-    def read_visibilities(self, antenna1, antenna2, timeIndex):
+    def read_visibilities(self, timeIndex, antenna1, antenna2):
         """Read visibilities from the buffer"""
         nr_channels = self.get_frequencies_size()
-        nr_polarizations = 4 # HACK # self.get_nr_polarizations()
+        nr_polarizations = self.get_nr_polarizations()
         visibilities =  numpy.zeros((nr_channels, nr_polarizations),
                                     dtype=numpy.complex64)
         lib.DegridderPlan_read_visibilities(self.obj,
+                                            ctypes.c_int(timeIndex),
                                             ctypes.c_int(antenna1),
                                             ctypes.c_int(antenna2),
-                                            ctypes.c_int(timeIndex),
                                             visibilities.ctypes.data_as(ctypes.c_void_p))
         return visibilities
 
