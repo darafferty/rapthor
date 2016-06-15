@@ -30,10 +30,10 @@ namespace idg {
 
 
     void DegridderPlan::request_visibilities(
-        const double* uvwInMeters,
+        size_t timeIndex,
         size_t antenna1,
         size_t antenna2,
-        size_t timeIndex)
+        const double* uvwInMeters)
     {
         // exclude auto-correlations
         if (antenna1 == antenna2) return;
@@ -77,10 +77,11 @@ namespace idg {
     }
 
 
-    void DegridderPlan::read_visibilities(size_t antenna1,
-                                          size_t antenna2,
-                                          size_t timeIndex,
-                                          complex<float>* visibilities)
+    void DegridderPlan::read_visibilities(
+        size_t timeIndex,
+        size_t antenna1,
+        size_t antenna2,
+        complex<float>* visibilities)
     {
         // exclude auto-correlations
         if (antenna1 == antenna2)
@@ -217,29 +218,29 @@ extern "C" {
 
     void DegridderPlan_request_visibilities(
         idg::DegridderPlan* p,
-        double* uvwInMeters,
+        int timeIndex,
         int antenna1,
         int antenna2,
-        int timeIndex)
+        double* uvwInMeters)
     {
         p->request_visibilities(
-            uvwInMeters,
+            timeIndex,
             antenna1,
             antenna2,
-            timeIndex);
+            uvwInMeters);
     }
 
     void DegridderPlan_read_visibilities(
         idg::DegridderPlan* p,
+        int timeIndex,
         int antenna1,
         int antenna2,
-        int timeIndex,
         void* visibilities) // ptr to complex<float>
     {
         p->read_visibilities(
+            timeIndex,
             antenna1,
             antenna2,
-            timeIndex,
             (complex<float>*) visibilities);
     }
 
