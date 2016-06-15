@@ -32,16 +32,17 @@ namespace idg {
 
         // Adds the visibilities to the buffer and eventually to the grid
         void grid_visibilities(
-            const std::complex<float>* visibilities, // size CH x PL
-            const double* uvwInMeters,               // (u, v, w)
-            size_t antenna1,                         // 0 <= antenna1 < nrStations
-            size_t antenna2,                         // antenna1 < antenna2 < nrStations
-            size_t timeIndex);                       // 0 <= timeIndex < NR_TIMESTEPS
+            size_t timeIndex,                         // 0 <= timeIndex < NR_TIMESTEPS
+            size_t antenna1,                          // 0 <= antenna1 < nrStations
+            size_t antenna2,                          // antenna1 < antenna2 < nrStations
+            const double* uvwInMeters,                // (u, v, w)
+            const std::complex<float>* visibilities); // size CH x PL
 
         // To flush the buffer explicitly
         virtual void flush() override;
 
         // To transform the provided image before prediction
+        // No arguments => perform on grid set by set_grid()
         virtual void transform_grid(
             double crop_tolerance      = 5e-3,
             size_t nr_polarizations    = 0,

@@ -33,15 +33,15 @@ namespace idg {
         virtual ~DegridderPlan();
 
         void request_visibilities(
-            const double* uvwInMeters,          // (u, v, w)
-            size_t antenna1,                    // 0 <= antenna1 < nrStations
-            size_t antenna2,                    // antenna1 < antenna2 < nrStations
-            size_t timeIndex);                  // 0 <= timeIndex < NR_TIMESTEPS
+            size_t timeIndex,                  // 0 <= timeIndex < NR_TIMESTEPS
+            size_t antenna1,                   // 0 <= antenna1 < nrStations
+            size_t antenna2,                   // antenna1 < antenna2 < nrStations
+            const double* uvwInMeters);        // (u, v, w)
 
         void read_visibilities(
+            size_t timeIndex,                   // 0 <= timeIndex < NR_TIMESTEPS
             size_t antenna1,                    // 0 <= antenna1 < nrStations
             size_t antenna2,                    // antenna1 < antenna2 < nrStations
-            size_t timeIndex,                   // 0 <= timeIndex < NR_TIMESTEPS
             std::complex<float>* visibilities); // size CH x PL
 
         // To flush the buffer explicitly

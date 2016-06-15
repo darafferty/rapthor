@@ -370,28 +370,6 @@ namespace idg {
     }
 
 
-    void Scheme::fft_kernel(
-        Direction direction,
-        size_t    nr_polarizations,
-        size_t    height,
-        size_t    width,
-        complex<double> *grid)
-    {
-        #if defined(DEBUG)
-        cout << __func__ << endl;
-        #endif
-
-        #pragma omp parallel for
-        for (int pol = 0; pol < m_nrPolarizations; pol++) {
-            if (direction == Direction::FourierToImage) {
-                fft2(height, width, &grid[pol*height*width]);
-            } else {
-                ifft2(height, width, &grid[pol*height*width]);
-            }
-        }
-    }
-
-
     void Scheme::fft_grid(
         size_t nr_polarizations,
         size_t height,
@@ -408,7 +386,11 @@ namespace idg {
             grid             = m_grid_double;
         }
 
-        fft_kernel(Direction::ImageToFourier, nr_polarizations, height, width, grid);
+        #pragma omp parallel for
+        for (int pol = 0; pol < m_nrPolarizations; pol++) {
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+            fft2(height, width, &grid[pol*height*width]);
+        }
     }
 
 
@@ -428,7 +410,11 @@ namespace idg {
             grid             = m_grid_double;
         }
 
-        fft_kernel(Direction::FourierToImage, nr_polarizations, height, width, grid);
+        #pragma omp parallel for
+        for (int pol = 0; pol < m_nrPolarizations; pol++) {
+            ifft2(height, width, &grid[pol*height*width]);
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+        }
     }
 
 

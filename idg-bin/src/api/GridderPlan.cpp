@@ -30,11 +30,11 @@ namespace idg {
 
 
     void GridderPlan::grid_visibilities(
-        const complex<float>* visibilities,
-        const double* uvwInMeters,
+        size_t timeIndex,
         size_t antenna1,
         size_t antenna2,
-        size_t timeIndex)
+        const double* uvwInMeters,
+        const complex<float>* visibilities)
     {
         // exclude auto-correlations
         if (antenna1 == antenna2) return;
@@ -203,27 +203,27 @@ extern "C" {
 
     void GridderPlan_grid_visibilities(
         idg::GridderPlan* p,
-        float*  visibilities, // size CH x PL x 2
-        double* uvwInMeters,
+        int     timeIndex,
         int     antenna1,
         int     antenna2,
-        int     timeIndex)
+        double* uvwInMeters,
+        float*  visibilities) // size CH x PL x 2
     {
         p->grid_visibilities(
-            (complex<float>*) visibilities, // size CH x PL
-            uvwInMeters,
+            timeIndex,
             antenna1,
             antenna2,
-            timeIndex);
+            uvwInMeters,
+            (complex<float>*) visibilities); // size CH x PL
     }
 
     void GridderPlan_transform_grid(
         idg::GridderPlan* p,
         double crop_tol,
-        int nr_polarizations,
-        int height,
-        int width,
-        void* grid)
+        int    nr_polarizations,
+        int    height,
+        int    width,
+        void*  grid)
     {
         p->transform_grid(
             crop_tol,
