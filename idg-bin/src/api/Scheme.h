@@ -171,12 +171,6 @@ namespace idg {
         void set_uvw_to_infinity();
         void init_default_aterm();
 
-        void fft_kernel(Direction direction,
-                        size_t nr_polarizations = 0,
-                        size_t height = 0,
-                        size_t width = 0,
-                        std::complex<double> *grid = nullptr);
-
         // Bookkeeping
         Type   m_architecture;
         size_t m_bufferTimesteps;
