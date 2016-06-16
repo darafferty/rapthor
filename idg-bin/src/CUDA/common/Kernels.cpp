@@ -152,7 +152,7 @@ namespace idg {
                 GridType *x = (GridType *) data;
 
                 // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
-                #pragma omp parallel for
+                #pragma omp parallel for private(tmp13, tmp24)
                 for (int pol = 0; pol < nr_polarizations; pol++) {
                     for (int i = 0; i < n2; i++) {
                         for (int k = 0; k < n2; k++) {
