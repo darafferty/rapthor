@@ -126,7 +126,11 @@ namespace idg {
                 clfftDestroyPlan(&fft);
             }
 
-            void GridFFT::plan(cl::Context &context, cl::CommandQueue &queue, int size, int batch) {
+            void GridFFT::plan(
+                cl::Context &context,
+                cl::CommandQueue &queue,
+                int size, int batch)
+            {
                 // Check wheter a new plan has to be created
                 if (uninitialized ||
                     size  != planned_size ||
@@ -164,7 +168,10 @@ namespace idg {
             }
 
             void GridFFT::launchAsync(
-                cl::CommandQueue &queue, cl::Buffer &d_data, clfftDirection direction) {
+                cl::CommandQueue &queue,
+                cl::Buffer &d_data,
+                clfftDirection direction)
+            {
                 clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
@@ -187,7 +194,7 @@ namespace idg {
                 GridType *x = (GridType *) data;
 
                 // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
-                #pragma omp parallel for
+                #pragma omp parallel for private(tmp13, tmp24)
                 for (int pol = 0; pol < nr_polarizations; pol++) {
                     for (int i = 0; i < n2; i++) {
                         for (int k = 0; k < n2; k++) {
