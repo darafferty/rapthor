@@ -268,14 +268,6 @@ namespace idg {
                 // Initialize
                 cu::Context &context = get_context();
 
-                // Host memory
-                #if REUSE_HOST_MEMORY
-                cu::HostMemory h_grid(grid, sizeof_grid());
-                #else
-                cu::HostMemory h_grid(sizeof_grid());
-                h_grid.set(grid);
-                #endif
-
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
 
@@ -288,13 +280,22 @@ namespace idg {
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-                kernel_fft->shift(h_grid);
+                kernel_fft->shift(grid);
                 time_shift += omp_get_wtime();
 
-                // Copy grid to device
+                // Allocate memory
+                #if REUSE_HOST_MEMORY
+                cu::HostMemory h_grid(grid, sizeof_grid(), CU_MEMHOSTALLOC_DEVICEMAP);
+                cu::DeviceMemory d_grid(h_grid);
+                #else
+                cu::HostMemory h_grid(sizeof_grid());
+                h_grid.set(grid);
                 cu::DeviceMemory d_grid(sizeof_grid());
+
+                // Copy grid to device
                 powerRecords[0].enqueue(stream);
                 stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
+                #endif
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
@@ -319,30 +320,33 @@ namespace idg {
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
-                complex<float> scale = complex<float>(2.0/(gridsize*gridsize), 0);
                 if (direction == FourierDomainToImageDomain) {
+                    complex<float> scale = complex<float>(2.0/(gridsize*gridsize), 0);
                     kernel_fft->scale(grid, scale);
                 }
                 time_scale += omp_get_wtime();
 
-
                 #if defined(REPORT_TOTAL)
+                #if !REUSE_HOST_MEMORY
                 auxiliary::report(" input",
-                                  PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
-                                  0, sizeof_grid(),
-                                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                    PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                    0, sizeof_grid(),
+                    PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                #endif
                 auxiliary::report("   fft",
-                                  PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1),
-                                  PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                    PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
+                    kernel_fft->flops(gridsize, 1),
+                    kernel_fft->bytes(gridsize, 1),
+                    PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                #if !REUSE_HOST_MEMORY
                 auxiliary::report("output",
-                                  PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
-                                  0, sizeof_grid(),
-                                  PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                    PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
+                    0, sizeof_grid(),
+                    PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                #endif
                 auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
+                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
                 }
                 std::cout << std::endl;
                 #endif
