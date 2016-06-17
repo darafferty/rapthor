@@ -3,8 +3,6 @@
 
 #include "idg-common.h"
 #include "CUDA/common/CUDA.h"
-#include "CUDA/Maxwell/Maxwell.h"
-#include "CUDA/Kepler/Kepler.h"
 #include "CUDA/Jetson/Jetson.h"
 #include "CUDA/Generic/Generic.h"
 

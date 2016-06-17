@@ -1,4 +1,4 @@
-project(test-hybrid-maxwell.x)
+project(test-hybrid-cuda.x)
 
 # Set external header files
 include_directories(
@@ -30,3 +30,7 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
+
+# test
+add_test(NAME ${PROJECT_NAME}
+         COMMAND ${CMAKE_BINARY_DIR}/bin/tests/${PROJECT_NAME})

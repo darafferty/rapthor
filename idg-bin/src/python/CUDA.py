@@ -15,8 +15,8 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 
 
 
-class Maxwell(Proxy):
-    """CUDA Maxwell implementation"""
+class Generic(Proxy):
+    """CUDA Generic implementation"""
     def __init__(self, nr_stations,
                        nr_channels,
                        nr_time,
@@ -25,14 +25,14 @@ class Maxwell(Proxy):
                        grid_size,
                        subgrid_size):
         try:
-            lib.CUDA_Maxwell_init.argtypes = [ctypes.c_uint, \
+            lib.CUDA_Generic_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_float, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = lib.CUDA_Maxwell_init(
+            self.obj = lib.CUDA_Generic_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
                 ctypes.c_uint(nr_time),
@@ -87,7 +87,7 @@ class Maxwell(Proxy):
                                  aterms,
                                  aterms_offset,
                                  spheroidal):
-        lib.CUDA_Maxwell_grid(self.obj,
+        lib.CUDA_Generic_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
                                wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -111,7 +111,7 @@ class Maxwell(Proxy):
                                    aterms,
                                    aterms_offset,
                                    spheroidal):
-        lib.CUDA_Maxwell_degrid(self.obj,
+        lib.CUDA_Generic_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
                                  uvw.ctypes.data_as(ctypes.c_void_p),
                                  wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -125,6 +125,6 @@ class Maxwell(Proxy):
 
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_transform(self, direction, grid):
-        lib.CUDA_Maxwell_transform(self.obj,
+        lib.CUDA_Generic_transform(self.obj,
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))

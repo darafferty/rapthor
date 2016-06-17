@@ -2,7 +2,5 @@ project(cuda)
 
 # add subfolders
 add_subdirectory(common)
-add_subdirectory(Maxwell)
-add_subdirectory(Kepler)
 add_subdirectory(Jetson)
 add_subdirectory(Generic)

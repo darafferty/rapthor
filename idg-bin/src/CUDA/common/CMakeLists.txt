@@ -11,6 +11,7 @@ set (${PROJECT_NAME}_headers
     CUFFT.h
     CUDA.h
     DeviceInstance.h
+    PowerRecord.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -19,6 +20,7 @@ set (${PROJECT_NAME}_sources
     CUDA.cpp
     Kernels.cpp
     DeviceInstance.cpp
+    PowerRecord.cpp
 )
 
 # create library
