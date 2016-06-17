@@ -3,5 +3,5 @@
 
 #include "idg-cpu.h"
 #include "idg-cuda.h"
-#include "Hybrid/CUDA/Maxwell/Maxwell.h"
+#include "Hybrid/CUDA/HybridCUDA.h"
 #endif

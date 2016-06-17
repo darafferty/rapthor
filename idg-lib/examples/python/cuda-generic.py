@@ -3,4 +3,4 @@
 from common import *
 
 if __name__ == "__main__":
-    main(idg.CUDA.Maxwell)
+    main(idg.CUDA.Generic)

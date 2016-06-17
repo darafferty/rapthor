@@ -15,8 +15,8 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 
 
 
-class Maxwell(Proxy):
-    """Hybrid Maxwell implementation"""
+class Generic(Proxy):
+    """Hybrid CUDA implementation"""
     def __init__(self, nr_stations,
                        nr_channels,
                        nr_time,
@@ -25,14 +25,14 @@ class Maxwell(Proxy):
                        grid_size,
                        subgrid_size):
         try:
-            lib.Hybrid_Maxwell_init.argtypes = [ctypes.c_uint, \
+            lib.Hybrid_CUDA_init.argtypes = [ctypes.c_uint, \
                                                          ctypes.c_uint, \
                                                          ctypes.c_uint, \
                                                          ctypes.c_uint, \
                                                          ctypes.c_float, \
                                                          ctypes.c_uint, \
                                                          ctypes.c_uint]
-            self.obj = lib.Hybrid_Maxwell_init(
+            self.obj = lib.Hybrid_CUDA_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
                 ctypes.c_uint(nr_time),
@@ -86,7 +86,7 @@ class Maxwell(Proxy):
                                  aterms,
                                  aterms_offset,
                                  spheroidal):
-        lib.Hybrid_Maxwell_grid(self.obj,
+        lib.Hybrid_CUDA_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
                                wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -109,7 +109,7 @@ class Maxwell(Proxy):
                                    aterms,
                                    aterms_offset,
                                    spheroidal):
-        lib.Hybrid_Maxwell_degrid(self.obj,
+        lib.Hybrid_CUDA_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
                                  uvw.ctypes.data_as(ctypes.c_void_p),
                                  wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -122,7 +122,7 @@ class Maxwell(Proxy):
                                  spheroidal.ctypes.data_as(ctypes.c_void_p))
 
     def _cwrap_transform(self, direction, grid):
-        lib.Hybrid_Maxwell_transform(self.obj,
+        lib.Hybrid_CUDA_transform(self.obj,
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))
 

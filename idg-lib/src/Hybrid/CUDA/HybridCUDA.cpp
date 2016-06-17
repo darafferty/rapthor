@@ -9,7 +9,7 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "Maxwell.h"
+#include "HybridCUDA.h"
 
 using namespace std;
 
@@ -18,7 +18,7 @@ namespace idg {
         namespace hybrid {
 
             /// Constructors
-            Maxwell::Maxwell(
+            HybridCUDA::HybridCUDA(
                 Parameters params) :
                 cpu(params), cuda(params)
             {
@@ -32,7 +32,7 @@ namespace idg {
             }
 
             /// Destructor
-            Maxwell::~Maxwell() {
+            HybridCUDA::~HybridCUDA() {
                 cuProfilerStop();
             }
 
@@ -40,7 +40,7 @@ namespace idg {
                 High level routines
                 These routines operate on grids
             */
-            void Maxwell::grid_visibilities(
+            void HybridCUDA::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -51,9 +51,14 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Get CUDA device
+                vector<DeviceInstance*> devices = cuda.get_devices();
+                DeviceInstance *device = devices[0];
 
                 // Constants
                 auto nr_time = mParams.get_nr_time();
@@ -64,8 +69,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = cuda.get_kernel_gridder();
-                unique_ptr<idg::kernel::cuda::Scaler> kernel_scaler = cuda.get_kernel_scaler();
+                unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = device->get_kernel_gridder();
+                unique_ptr<idg::kernel::cuda::Scaler> kernel_scaler = device->get_kernel_scaler();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
 
                 // Initialize metadata
@@ -75,7 +80,7 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
 				// Load context
-				cu::Context &context = cuda.get_context();
+				cu::Context &context = device->get_context();
 
                 // Initialize
                 cu::Stream executestream;
@@ -119,7 +124,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
+                    unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
 
                     // Private host memory
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -237,7 +242,7 @@ namespace idg {
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 total_runtime_gridding += omp_get_wtime();
-                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
+                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
@@ -258,7 +263,7 @@ namespace idg {
                 #endif
             }
 
-            void Maxwell::degrid_visibilities(
+            void HybridCUDA::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -269,9 +274,14 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Get CUDA device
+                vector<DeviceInstance*> devices = cuda.get_devices();
+                DeviceInstance *device = devices[0];
 
                 // Constants
                 auto nr_time = mParams.get_nr_time();
@@ -282,7 +292,7 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_degridder();
 
                 // Load kernels
-                unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = cuda.get_kernel_degridder();
+                unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = device->get_kernel_degridder();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
 
                 // Initialize metadata
@@ -292,7 +302,7 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Load context
-				cu::Context &context = cuda.get_context();
+				cu::Context &context = device->get_context();
 
                 // Initialize
                 cu::Stream executestream;
@@ -335,7 +345,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
+                    unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
 
                     // Private host memory
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -446,7 +456,7 @@ namespace idg {
                 memcpy(visibilities, h_visibilities, cuda.sizeof_visibilities(nr_baselines));
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = cuda.get_kernel_fft();
+                unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
@@ -464,7 +474,7 @@ namespace idg {
                 #endif
             }
 
-            void Maxwell::transform(DomainAtoDomainB direction,
+            void HybridCUDA::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -477,14 +487,15 @@ namespace idg {
     } // namespace proxy
 } // namespace idg
 
+
 // C interface:
 // Rationale: calling the code from C code and Fortran easier,
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::hybrid::Maxwell Hybrid_Maxwell;
+    typedef idg::proxy::hybrid::HybridCUDA Hybrid_CUDA;
 
-    Hybrid_Maxwell* Hybrid_Maxwell_init(
+    Hybrid_CUDA* Hybrid_CUDA_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
                 unsigned int nr_time,
@@ -502,10 +513,10 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
-        return new Hybrid_Maxwell(P);
+        return new Hybrid_CUDA(P);
     }
 
-    void Hybrid_Maxwell_grid(Hybrid_Maxwell* p,
+    void Hybrid_CUDA_grid(Hybrid_CUDA* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -530,7 +541,7 @@ extern "C" {
                 (const float*) spheroidal);
     }
 
-    void Hybrid_Maxwell_degrid(Hybrid_Maxwell* p,
+    void Hybrid_CUDA_degrid(Hybrid_CUDA* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -555,7 +566,7 @@ extern "C" {
                     (const float*) spheroidal);
      }
 
-    void Hybrid_Maxwell_transform(Hybrid_Maxwell* p,
+    void Hybrid_CUDA_transform(Hybrid_CUDA* p,
                     int direction,
                     void *grid)
     {
@@ -567,8 +578,8 @@ extern "C" {
                     (std::complex<float>*) grid);
     }
 
-    void Hybrid_Maxwell_destroy(Hybrid_Maxwell* p) {
+    void Hybrid_CUDA_destroy(Hybrid_CUDA* p) {
        delete p;
     }
 
-}  // end extern "C"
+} // end extern "C"

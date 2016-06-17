@@ -3,13 +3,13 @@ install(FILES
   common.py
   cpu-reference.py
   cpu-haswellep.py
-  hybrid-maxwell.py
+  hybrid-cuda.py
   hybrid-knc.py
   hybrid-opencl.py
   demo-idg.py
   cpu-clean-reference.py
   cpu-image-haswellep.py
   opencl-reference.py
-  cuda-maxwell.py
+  cuda-generic.py
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION bin/examples)
