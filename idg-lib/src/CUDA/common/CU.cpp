@@ -106,8 +106,6 @@ Source::Source(const char *input_file_name):
 
 
 void Source::compile(const char *output_file_name, const char *compiler_options) {
-    std::clog << "Compiling " << output_file_name << std::endl;
-    
 	std::stringstream command_line;
 	command_line << "nvcc -ptx ";
 	command_line << compiler_options;
@@ -116,6 +114,8 @@ void Source::compile(const char *output_file_name, const char *compiler_options)
 	command_line << ' ' << input_file_name;
 
     #if defined(DEBUG)
+    #pragma omp critical(cout)
+    std::clog << "Compiling " << output_file_name << std::endl;
     std::clog << command_line.str() << std::endl;
     #endif
     int retval = system(command_line.str().c_str());
