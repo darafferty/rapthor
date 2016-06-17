@@ -713,3 +713,11 @@ namespace idg {
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
+
+// Python wrapper
+extern "C" {
+#define NAMESPACE cuda
+#define PROXY Generic
+#define WRAPPER CUDA_Generic
+#include "common/python.cpp"
+}
