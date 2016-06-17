@@ -25,9 +25,10 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    p = idg.Hybrid.MaxwellHaswellEP(nr_stations, nr_channels,
-                                    nr_time, nr_timeslots,
-                                    image_size, grid_size, subgrid_size)
+    p = idg.HybridCUDA.Generic(
+        nr_stations, nr_channels,
+        nr_time, nr_timeslots,
+        image_size, grid_size, subgrid_size)
 
     ##################
     # print parameters
