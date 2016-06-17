@@ -32,6 +32,7 @@
 #include "idg-common.h"
 #include "Kernels.h"
 #include "DeviceInstance.h"
+#include "PowerRecord.h"
 
 #define REUSE_HOST_MEMORY 0
 

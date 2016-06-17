@@ -22,7 +22,7 @@ namespace idg {
                 print_devices();
                 print_compiler_flags();
 
-                //init_powersensor();
+                init_powersensor();
             }
 
             void Generic::init_devices() {

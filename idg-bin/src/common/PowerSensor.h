@@ -1,3 +1,6 @@
+#ifndef IDG_POWER_SENSOR_H_
+#define IDG_POWER_SENSOR_H_
+
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -55,3 +58,5 @@ class PowerSensor
     void	  *IOthread();
     void	  doMeasurement();
 };
+
+#endif
