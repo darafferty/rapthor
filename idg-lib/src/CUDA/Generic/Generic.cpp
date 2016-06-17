@@ -20,6 +20,7 @@ namespace idg {
                 cu::init();
                 init_devices();
                 print_devices();
+                print_compiler_flags();
 
                 //init_powersensor();
             }
@@ -56,9 +57,19 @@ namespace idg {
             }
 
             void Generic::print_devices() {
+                std::cout << "Devices: " << std::endl;
                 for (DeviceInstance *device : devices) {
-                    std::clog << *device;
+                    std::cout << *device;
                 }
+                std::cout << std::endl;
+            }
+
+            void Generic::print_compiler_flags() {
+                std::cout << "Compiler flags: " << std::endl;
+                for (DeviceInstance *device : devices) {
+                    std::cout << device->get_compiler_flags() << std::endl;
+                }
+                std::cout << std::endl;
             }
 
             ProxyInfo Generic::default_info() {
@@ -276,7 +287,9 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-#if 0
+                // Load device
+                DeviceInstance *device = devices[0];
+
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -289,9 +302,9 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
-                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
-                unique_ptr<Adder> kernel_adder = get_kernel_adder();
+                unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
+                unique_ptr<Scaler> kernel_scaler   = device->get_kernel_scaler();
+                unique_ptr<Adder> kernel_adder     = device->get_kernel_adder();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -300,7 +313,7 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cu::Context &context = get_context();
+                cu::Context &context = device->get_context();
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
@@ -346,7 +359,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                    unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
 
                     // Private device memory
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -461,7 +474,7 @@ namespace idg {
                 dtohstream.synchronize();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
@@ -482,7 +495,6 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-#endif
             }
 
 
@@ -498,10 +510,12 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
             {
-#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Load device
+                DeviceInstance *device = devices[0];
 
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
@@ -514,8 +528,8 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
-                unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();
+                unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
+                unique_ptr<Splitter> kernel_splitter   = device->get_kernel_splitter();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -524,7 +538,7 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cu::Context &context = get_context();
+                cu::Context &context = device->get_context();
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
@@ -569,7 +583,7 @@ namespace idg {
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                    unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
 
                     // Private device memory
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -676,7 +690,7 @@ namespace idg {
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_splitter   = kernel_splitter->flops(total_nr_subgrids);
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
@@ -694,9 +708,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-#endif
             }
-
 
         } // namespace cuda
     } // namespace proxy
