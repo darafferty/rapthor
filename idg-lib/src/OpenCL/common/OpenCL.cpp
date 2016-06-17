@@ -93,8 +93,8 @@ namespace idg {
 
                 float opencl_version = get_opencl_version(device);
                 if (opencl_version >= 2.0) {
-                    compiler_flags << " -cl-std=CL2.0";
-                    compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
+                    //compiler_flags << " -cl-std=CL2.0";
+                    //compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
                 }
 
                 return compiler_flags.str();
@@ -291,7 +291,6 @@ namespace idg {
 
         					// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-executequeue.finish();
 
                             // Launch adder kernel
                             kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
@@ -379,8 +378,8 @@ executequeue.finish();
                 cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(total_nr_subgrids));
 
                 // Copy input data to host memory
-                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0,  sizeof_uvw(nr_baselines), uvw);
-                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0,  sizeof_metadata(total_nr_subgrids), metadata);
+                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(total_nr_subgrids), metadata);
 
                 // Device memory
                 cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
@@ -547,7 +546,7 @@ executequeue.finish();
 
                 // Copy grid to device
                 double time_input = -omp_get_wtime();
-                queue.enqueueWriteBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, &inputReady[0]);
+                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid, NULL, &inputReady[0]);
                 inputReady[0].wait();
                 time_input += omp_get_wtime();
 
@@ -561,17 +560,14 @@ executequeue.finish();
 
                 // Copy grid to host
                 double time_output = -omp_get_wtime();
-                queue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, &fftFinished, &outputReady[0]);
+                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid, &fftFinished, &outputReady[0]);
                 outputReady[0].wait();
                 time_output += omp_get_wtime();
 
                 // Perform fft shift
-                if (direction == FourierDomainToImageDomain) {
-                    time_shift = -omp_get_wtime();
-                    kernel_fft->shift(grid);
-                    time_shift += omp_get_wtime();
-                    time_shift /= 2;
-                }
+                time_shift = -omp_get_wtime();
+                kernel_fft->shift(grid);
+                time_shift += omp_get_wtime();
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
@@ -589,7 +585,7 @@ executequeue.finish();
                                   kernel_fft->bytes(gridsize, 1),
                                   0);
                 auxiliary::report("  output", time_output, 0, sizeof_grid(), 0);
-                auxiliary::report("fftshift", time_shift, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
                     auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
                 }
