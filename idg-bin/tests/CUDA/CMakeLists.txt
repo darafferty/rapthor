@@ -1,4 +1,4 @@
 project(tests-cuda)
 
 # add subfolders
-add_subdirectory(Maxwell)
+add_subdirectory(Generic)
