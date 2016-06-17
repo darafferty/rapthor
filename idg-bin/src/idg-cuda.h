@@ -6,5 +6,6 @@
 #include "CUDA/Maxwell/Maxwell.h"
 #include "CUDA/Kepler/Kepler.h"
 #include "CUDA/Jetson/Jetson.h"
+#include "CUDA/Generic/Generic.h"
 
 #endif

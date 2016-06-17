@@ -157,6 +157,7 @@ add_library(idg-cuda
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
   $<TARGET_OBJECTS:cuda-jetson>
+  $<TARGET_OBJECTS:cuda-generic>
 )
 
 set(LINK_LIRBRARIES idg-common ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
@@ -191,6 +192,7 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
   $<TARGET_OBJECTS:hybrid-maxwell>
+  $<TARGET_OBJECTS:cuda-generic>
 )
 
 set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
