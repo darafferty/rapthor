@@ -6,21 +6,18 @@ namespace idg {
             DeviceInstance::DeviceInstance(
                 int device_number)
             {
+                device = new cu::Device(device_number);
+                context = new cu::Context(*device);
+            }
 
-                // Initialize CUDA
-                //cu::init();
-
-                // Initialize device
-                //int deviceNumber = 0;
-                //const char *str_device_number = getenv("CUDA_DEVICE");
-                //if (str_device_number) deviceNumber = atoi(str_device_number);
-                //printDevices(deviceNumber);
-                //device = new cu::Device(deviceNumber);
-                //device = new cu::Device(deviceNumber);
-
-                // Initialize context
-                //context = new cu::Context(device);
-                //context->setCurrent();
+            std::ostream& operator<<(std::ostream& os, DeviceInstance &d) {
+                os << "Device:           " << d.get_device().getName() << std::endl;
+                os << "Device memory   : " << d.get_device().getTotalMem() / (float) (1000*1000*1000) << " Gb" << std::endl;
+                os << "Shared memory   : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>() / 1024 << " Kb"<< std::endl;
+                os << "Clock frequency : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000 << std::endl;
+                os << "Capability      : " << d.get_device().getComputeCapability() << std::endl;
+                os << std::endl;
+                return os;
             }
         }
     }

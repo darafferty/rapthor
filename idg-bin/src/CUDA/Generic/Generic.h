@@ -60,6 +60,7 @@ namespace idg {
 
                 protected:
                     void init_devices();
+                    void print_devices();
                     static ProxyInfo default_info();
                     std::vector<DeviceInstance*> devices;
 

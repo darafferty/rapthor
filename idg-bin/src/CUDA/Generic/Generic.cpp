@@ -17,6 +17,8 @@ namespace idg {
 
                 cu::init();
                 init_devices();
+                print_devices();
+                //compile_kernels();
                 
                 //init_cuda(device_number);
                 //compile_kernels(compiler, append(flags));
@@ -24,7 +26,10 @@ namespace idg {
             }
 
             void Generic::init_devices() {
+                // The list of CUDA devices to use are read from the environment
                 char *char_cuda_device = getenv("CUDA_DEVICE");
+
+                // Get list of all device numbers
                 vector<int> device_numbers;
 
                 if (!char_cuda_device) {
@@ -43,10 +48,17 @@ namespace idg {
                         if (token) device_numbers.push_back(atoi(token));
                     }
                 }
+
+                // Create a device instance for every device
                 for (int device_number : device_numbers) {
-                    printf("device: %d\n", device_number);
-                    DeviceInstance *deviceInstance = new DeviceInstance(device_number);
-                    //devices.push_back(device);
+                    DeviceInstance *device = new DeviceInstance(device_number);
+                    devices.push_back(device);
+                }
+            }
+
+            void Generic::print_devices() {
+                for (DeviceInstance *device : devices) {
+                    std::clog << *device;
                 }
             }
 
