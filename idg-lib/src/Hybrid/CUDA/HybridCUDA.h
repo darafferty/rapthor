@@ -1,5 +1,5 @@
 /**
- *  \class Maxwell
+ *  \class HybridCUDA
  *
  *  \brief Class for ...
  *
@@ -7,8 +7,8 @@
  *  This will be included by a user, so detail usage...
  */
 
-#ifndef IDG_HYBRID_CUDA_MAXWELLHASWELLEP_H_
-#define IDG_HYBRID_CUDA_MAXWELLHASWELLEP_H_
+#ifndef IDG_HYBRID_CUDA_H_
+#define IDG_HYBRID_CUDA_H_
 
 #include <dlfcn.h>
 #include <cuda.h>
@@ -19,17 +19,17 @@
 namespace idg {
     namespace proxy {
         namespace hybrid {
-            class Maxwell : public Proxy {
+            class HybridCUDA : public Proxy {
 
                 public:
                     /// Constructors
-                    Maxwell(Parameters params);
+                    HybridCUDA(Parameters params);
 
                     /// Destructor
-                    ~Maxwell();
+                    ~HybridCUDA();
 
                     /// Assignment
-                    Maxwell& operator=(const Maxwell& rhs) = delete;
+                    HybridCUDA& operator=(const HybridCUDA& rhs) = delete;
 
                 /*
                     High level routines
@@ -64,8 +64,8 @@ namespace idg {
 
                 private:
                     idg::proxy::cpu::HaswellEP cpu;
-                    idg::proxy::cuda::Maxwell cuda;
-            }; // class Maxwell
+                    idg::proxy::cuda::Generic cuda;
+            }; // class HybridCUDA
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg

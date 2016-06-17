@@ -1,4 +1,4 @@
-project(test-hybrid-maxwell.x)
+project(test-hybrid-cuda.x)
 
 # Set external header files
 include_directories(

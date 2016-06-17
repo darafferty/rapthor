@@ -61,6 +61,7 @@ namespace idg {
                 public:
                     void print_compiler_flags();
                     void print_devices();
+                    std::vector<DeviceInstance*> get_devices();
 
                 protected:
                     void init_devices();

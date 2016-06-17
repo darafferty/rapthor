@@ -3,7 +3,7 @@ install(FILES
   common.py
   cpu-reference.py
   cpu-haswellep.py
-  hybrid-maxwell.py
+  hybrid-cuda.py
   hybrid-knc.py
   hybrid-opencl.py
   demo-idg.py
