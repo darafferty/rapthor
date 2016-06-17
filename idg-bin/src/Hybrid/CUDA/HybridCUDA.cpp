@@ -9,7 +9,7 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "Maxwell.h"
+#include "HybridCUDA.h"
 
 using namespace std;
 
@@ -18,7 +18,7 @@ namespace idg {
         namespace hybrid {
 
             /// Constructors
-            Maxwell::Maxwell(
+            HybridCUDA::HybridCUDA(
                 Parameters params) :
                 cpu(params), cuda(params)
             {
@@ -32,7 +32,7 @@ namespace idg {
             }
 
             /// Destructor
-            Maxwell::~Maxwell() {
+            HybridCUDA::~HybridCUDA() {
                 cuProfilerStop();
             }
 
@@ -40,7 +40,7 @@ namespace idg {
                 High level routines
                 These routines operate on grids
             */
-            void Maxwell::grid_visibilities(
+            void HybridCUDA::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -51,6 +51,7 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -256,9 +257,10 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
-            void Maxwell::degrid_visibilities(
+            void HybridCUDA::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -269,6 +271,7 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -462,9 +465,10 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
-            void Maxwell::transform(DomainAtoDomainB direction,
+            void HybridCUDA::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -477,14 +481,15 @@ namespace idg {
     } // namespace proxy
 } // namespace idg
 
+
 // C interface:
 // Rationale: calling the code from C code and Fortran easier,
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::hybrid::Maxwell Hybrid_Maxwell;
+    typedef idg::proxy::hybrid::HybridCUDA Hybrid_CUDA;
 
-    Hybrid_Maxwell* Hybrid_Maxwell_init(
+    Hybrid_CUDA* Hybrid_CUDA_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
                 unsigned int nr_time,
@@ -502,10 +507,10 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
-        return new Hybrid_Maxwell(P);
+        return new Hybrid_CUDA(P);
     }
 
-    void Hybrid_Maxwell_grid(Hybrid_Maxwell* p,
+    void Hybrid_CUDA_grid(Hybrid_CUDA* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -530,7 +535,7 @@ extern "C" {
                 (const float*) spheroidal);
     }
 
-    void Hybrid_Maxwell_degrid(Hybrid_Maxwell* p,
+    void Hybrid_CUDA_degrid(Hybrid_CUDA* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -555,7 +560,7 @@ extern "C" {
                     (const float*) spheroidal);
      }
 
-    void Hybrid_Maxwell_transform(Hybrid_Maxwell* p,
+    void Hybrid_CUDA_transform(Hybrid_CUDA* p,
                     int direction,
                     void *grid)
     {
@@ -567,8 +572,8 @@ extern "C" {
                     (std::complex<float>*) grid);
     }
 
-    void Hybrid_Maxwell_destroy(Hybrid_Maxwell* p) {
+    void Hybrid_CUDA_destroy(Hybrid_CUDA* p) {
        delete p;
     }
 
-}  // end extern "C"
+} // end extern "C"
