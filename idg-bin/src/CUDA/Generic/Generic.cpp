@@ -7,16 +7,16 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             Generic::Generic(
-                Parameters parameters,
+                Parameters params,
                 ProxyInfo info) :
-                parameters(parameters),
                 info(info)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
-                cout << parameters;
+                cout << params;
                 #endif
 
+                mParams = params;
                 cu::init();
                 init_devices();
                 print_devices();
@@ -50,7 +50,7 @@ namespace idg {
 
                 // Create a device instance for every device
                 for (int device_number : device_numbers) {
-                    DeviceInstance *device = new DeviceInstance(parameters, info, device_number);
+                    DeviceInstance *device = new DeviceInstance(mParams, info, device_number);
                     devices.push_back(device);
                 }
             }
@@ -87,18 +87,21 @@ namespace idg {
 
                 string libgridder = "Gridder.ptx";
                 string libdegridder = "Degridder.ptx";
+                string libfft = "FFT.ptx";
                 string libscaler = "Scaler.ptx";
                 string libadder = "Adder.ptx";
                 string libsplitter = "Splitter.ptx";
 
                 p.add_lib(libgridder);
                 p.add_lib(libdegridder);
+                p.add_lib(libfft);
                 p.add_lib(libscaler);
                 p.add_lib(libadder);
                 p.add_lib(libsplitter);
 
                 p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
+                p.add_src_file_to_lib(libfft, "KernelFFT.cu");
                 p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
                 p.add_src_file_to_lib(libadder, "KernelAdder.cu");
                 p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
@@ -164,14 +167,18 @@ namespace idg {
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
-#if 0
+
+                // Load device
+                DeviceInstance *device = devices[0];
+
                 // Constants
                 auto gridsize = mParams.get_grid_size();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
                 // Initialize
-                cu::Context &context = get_context();
+                cu::Context &context = device->get_context();
+                context.setCurrent();
 
                 // Host memory
                 #if REUSE_HOST_MEMORY
@@ -182,7 +189,7 @@ namespace idg {
                 #endif
 
                 // Load kernels
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
 
                 // Initialize
                 cu::Stream stream;
@@ -251,7 +258,6 @@ namespace idg {
                 }
                 std::cout << std::endl;
                 #endif
-#endif
             }
 
             void Generic::grid_visibilities(

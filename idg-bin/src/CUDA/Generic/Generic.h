@@ -64,7 +64,6 @@ namespace idg {
                     static ProxyInfo default_info();
 
                 protected:
-                    Parameters &parameters;
                     ProxyInfo &info;
                     std::vector<DeviceInstance*> devices;
 
