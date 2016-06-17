@@ -31,8 +31,11 @@ namespace idg {
                     std::unique_ptr<kernel::cuda::Splitter>  get_kernel_splitter() const;
                     std::unique_ptr<kernel::cuda::Scaler>    get_kernel_scaler() const;
 
+                    std::string get_compiler_flags();
+
                 protected:
                     void compile_kernels();
+                    void load_modules();
                     void set_parameters();
                     void set_parameters_kepler();
                     void set_parameters_maxwell();

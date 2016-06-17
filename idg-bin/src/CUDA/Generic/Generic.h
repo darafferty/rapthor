@@ -58,9 +58,12 @@ namespace idg {
                     virtual void transform(DomainAtoDomainB direction,
                                            std::complex<float>* grid) override;
 
+                public:
+                    void print_compiler_flags();
+                    void print_devices();
+
                 protected:
                     void init_devices();
-                    void print_devices();
                     static ProxyInfo default_info();
 
                 protected:

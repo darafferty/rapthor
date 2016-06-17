@@ -25,13 +25,12 @@ namespace idg {
 
                 // Compile kernels
                 compile_kernels();
+
+                // Load modules
+                load_modules();
             }
 
-            void DeviceInstance::compile_kernels() {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
+            std::string DeviceInstance::get_compiler_flags() {
                 // Parameter flags
                 std::string flags_parameters = Parameters::definitions(
                     parameters.get_nr_stations(),
@@ -59,6 +58,16 @@ namespace idg {
                 std::string flags = " " + flags_cuda.str() +
                                     " " + flags_device.str() +
                                     " " + flags_parameters;
+                return flags;
+            }
+
+            void DeviceInstance::compile_kernels() {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
+                #endif
+
+                // Get compiler flags
+                std::string flags = get_compiler_flags();
 
                 // Compile all libraries (ptx files)
                 std::vector<std::string> v = info.get_lib_names();
@@ -91,7 +100,9 @@ namespace idg {
                     // Set module
                     modules.push_back(new cu::Module(lib.c_str()));
                 }
+            }
 
+            void DeviceInstance::load_modules() {
                 CUfunction function;
                 int found = 0;
                 for (int i = 0; i < modules.size(); i++) {
@@ -166,7 +177,7 @@ namespace idg {
             }
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d) {
-                os << "Device:           " << d.get_device().getName() << std::endl;
+                os << "\t"                 << d.get_device().getName() << std::endl;
                 os << "Device memory   : " << d.get_device().getTotalMem() / (float) (1000*1000*1000) << " Gb" << std::endl;
                 os << "Shared memory   : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>() / 1024 << " Kb"<< std::endl;
                 os << "Clock frequency : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000 << std::endl;
