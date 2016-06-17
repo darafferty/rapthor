@@ -154,8 +154,6 @@ endif()
 if (BUILD_LIB_CUDA)
 add_library(idg-cuda
   $<TARGET_OBJECTS:cuda-common>
-  $<TARGET_OBJECTS:cuda-kepler>
-  $<TARGET_OBJECTS:cuda-maxwell>
   $<TARGET_OBJECTS:cuda-jetson>
   $<TARGET_OBJECTS:cuda-generic>
 )
@@ -189,8 +187,6 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
   $<TARGET_OBJECTS:cuda-common>
-  $<TARGET_OBJECTS:cuda-kepler>
-  $<TARGET_OBJECTS:cuda-maxwell>
   $<TARGET_OBJECTS:hybrid-cuda>
   $<TARGET_OBJECTS:cuda-generic>
 )
