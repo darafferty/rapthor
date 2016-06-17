@@ -70,9 +70,21 @@ namespace cu {
 
 			std::string getName() const {
 				char name[64];
-				checkCudaCall(cuDeviceGetName(name, sizeof name, _device));
+				checkCudaCall(cuDeviceGetName(name, sizeof(name), _device));
 				return std::string(name);
 			}
+
+            size_t getTotalMem() const {
+                size_t bytes = 0;
+                checkCudaCall(cuDeviceTotalMem(&bytes, _device));
+                return bytes;
+            }
+
+            int getComputeCapability() const {
+                int capability = 10 * getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
+                                      getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
+                return capability;
+            }
 
 			template <CUdevice_attribute attribute> int getAttribute() const {
 				int value;
@@ -114,7 +126,7 @@ namespace cu {
 			}
 
 			~Context() {
-    				checkCudaCall(cuCtxDestroy(_context));
+                checkCudaCall(cuCtxDestroy(_context));
 			}
 
 			void setCurrent() const {
