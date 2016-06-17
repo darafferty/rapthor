@@ -175,10 +175,10 @@ if __name__ == "__main__":
 
                     # Add visibilities to the buffer
                     degridder.request_visibilities(
-                        uvw_coordinates,
+                        time,
                         antenna1,
                         antenna2,
-                        time
+                        uvw_coordinates
                     )
 
         degridder.finish_aterm()
@@ -205,17 +205,18 @@ if __name__ == "__main__":
                     uvw_coordinates[2] = uvw[bl][time]['w']
 
                     visibilities = degridder.read_visibilities(
+                        time,
                         antenna1,
-                        antenna2,
-                        time)
+                        antenna2
+                        )
 
                     # Add visibilities to the buffer
                     gridder.grid_visibilities(
-                        visibilities,
-                        uvw_coordinates,
+                        time,
                         antenna1,
                         antenna2,
-                        time)
+                        uvw_coordinates,
+                        visibilities)
 
         gridder.finish_aterm()
 
