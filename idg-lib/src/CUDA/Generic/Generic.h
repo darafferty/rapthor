@@ -71,7 +71,7 @@ namespace idg {
                     ProxyInfo &info;
                     std::vector<DeviceInstance*> devices;
 
-                protected:
+                public:
                     uint64_t sizeof_subgrids(int nr_subgrids);
                     uint64_t sizeof_uvw(int nr_baselines);
                     uint64_t sizeof_visibilities(int nr_baselines);
