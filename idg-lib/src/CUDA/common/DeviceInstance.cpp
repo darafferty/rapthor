@@ -1,5 +1,7 @@
 #include "DeviceInstance.h"
 
+using namespace idg::kernel::cuda;
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -93,20 +95,23 @@ namespace idg {
                 CUfunction function;
                 int found = 0;
                 for (int i = 0; i < modules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::cuda::name_gridder.c_str()) == CUDA_SUCCESS) {
-                        which_module[kernel::cuda::name_gridder] = i; found++;
+                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
+                        which_module[name_gridder] = i; found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::cuda::name_degridder.c_str()) == CUDA_SUCCESS) {
-                        which_module[kernel::cuda::name_degridder] = i; found++;
+                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
+                        which_module[name_degridder] = i; found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::cuda::name_scaler.c_str()) == CUDA_SUCCESS) {
-                        which_module[kernel::cuda::name_scaler] = i; found++;
+                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
+                        which_module[name_fft] = i; found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::cuda::name_adder.c_str()) == CUDA_SUCCESS) {
-                        which_module[kernel::cuda::name_adder] = i; found++;
+                    if (cuModuleGetFunction(&function, *modules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
+                        which_module[name_scaler] = i; found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], kernel::cuda::name_splitter.c_str()) == CUDA_SUCCESS) {
-                        which_module[kernel::cuda::name_splitter] = i; found++;
+                    if (cuModuleGetFunction(&function, *modules[i], name_adder.c_str()) == CUDA_SUCCESS) {
+                        which_module[name_adder] = i; found++;
+                    }
+                    if (cuModuleGetFunction(&function, *modules[i], name_splitter.c_str()) == CUDA_SUCCESS) {
+                        which_module[name_splitter] = i; found++;
                     }
                 }
 
@@ -169,6 +174,37 @@ namespace idg {
                 os << std::endl;
                 return os;
             }
-        }
-    }
-}
+
+            std::unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
+                return std::unique_ptr<Gridder>(new Gridder(
+                    *(modules[which_module.at(name_gridder)]), parameters, block_gridder));
+            }
+
+            std::unique_ptr<Degridder> DeviceInstance::get_kernel_degridder() const {
+                return std::unique_ptr<Degridder>(new Degridder(
+                    *(modules[which_module.at(name_degridder)]), parameters, block_degridder));
+            }
+
+            std::unique_ptr<GridFFT> DeviceInstance::get_kernel_fft() const {
+                return std::unique_ptr<GridFFT>(new GridFFT(
+                    *(modules[which_module.at(name_fft)]), parameters));
+            }
+
+            std::unique_ptr<Adder> DeviceInstance::get_kernel_adder() const {
+                return std::unique_ptr<Adder>(new Adder(
+                    *(modules[which_module.at(name_adder)]), parameters, block_adder));
+            }
+
+            std::unique_ptr<Splitter> DeviceInstance::get_kernel_splitter() const {
+                return std::unique_ptr<Splitter>(new Splitter(
+                    *(modules[which_module.at(name_splitter)]), parameters, block_splitter));
+            }
+
+            std::unique_ptr<Scaler> DeviceInstance::get_kernel_scaler() const {
+                return std::unique_ptr<Scaler>(new Scaler(
+                    *(modules[which_module.at(name_scaler)]), parameters, block_scaler));
+            }
+
+        } // end namespace cuda
+    } // end namespace proxy
+} // end namespace idg

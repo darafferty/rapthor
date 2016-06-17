@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <sstream>
+#include <memory>
 
 #include "CU.h"
 #include "Kernels.h"
@@ -23,6 +24,13 @@ namespace idg {
                     cu::Context& get_context() const { return *context; }
                     cu::Device&  get_device()  const { return *device; }
 
+                    std::unique_ptr<kernel::cuda::Gridder>   get_kernel_gridder() const;
+                    std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const;
+                    std::unique_ptr<kernel::cuda::GridFFT>   get_kernel_fft() const;
+                    std::unique_ptr<kernel::cuda::Adder>     get_kernel_adder() const;
+                    std::unique_ptr<kernel::cuda::Splitter>  get_kernel_splitter() const;
+                    std::unique_ptr<kernel::cuda::Scaler>    get_kernel_scaler() const;
+
                 protected:
                     void compile_kernels();
                     void set_parameters();
@@ -32,8 +40,8 @@ namespace idg {
 
                 protected:
                     // Arguments shared by all DeviceInstance instances
-                    const Parameters  &parameters;
-                    const ProxyInfo   &info;
+                    Parameters  &parameters;
+                    ProxyInfo   &info;
 
                 private:
                     // CUDA objects private to this DeviceInstance
