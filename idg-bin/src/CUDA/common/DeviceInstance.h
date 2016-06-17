@@ -1,21 +1,57 @@
 #ifndef IDG_CUDA_DEVICEINSTANCE_H_
 #define IDG_CUDA_DEVICEINSTANCE_H_
 
+#include <cstring>
+#include <sstream>
+
 #include "CU.h"
+#include "Kernels.h"
+
+#include "common/Parameters.h"
+#include "common/ProxyInfo.h"
 
 namespace idg {
     namespace proxy {
         namespace cuda {
             class DeviceInstance {
                 public:
-                    DeviceInstance(int device_number);
+                    DeviceInstance(
+                        Parameters &params,
+                        ProxyInfo &info,
+                        int device_number);
 
                     cu::Context& get_context() const { return *context; }
                     cu::Device&  get_device()  const { return *device; }
 
                 protected:
+                    void compile_kernels();
+                    void set_parameters();
+                    void set_parameters_kepler();
+                    void set_parameters_maxwell();
+                    void set_parameters_pascal();
+
+                protected:
+                    // Arguments shared by all DeviceInstance instances
+                    const Parameters  &parameters;
+                    const ProxyInfo   &info;
+
+                private:
+                    // CUDA objects private to this DeviceInstance
                     cu::Context *context;
                     cu::Device  *device;
+
+                    // All CUDA modules private to this DeviceInstance
+                    std::vector<cu::Module*> modules;
+                    std::map<std::string,int> which_module;
+
+                protected:
+                    dim3 block_gridder;
+                    dim3 block_degridder;
+                    dim3 block_adder;
+                    dim3 block_splitter;
+                    dim3 block_scaler;
+                    int batch_gridder;
+                    int batch_degridder;
             };
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d);

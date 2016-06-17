@@ -7,21 +7,20 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             Generic::Generic(
-                Parameters params,
-                ProxyInfo info)
+                Parameters parameters,
+                ProxyInfo info) :
+                parameters(parameters),
+                info(info)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
-                cout << params;
+                cout << parameters;
                 #endif
 
                 cu::init();
                 init_devices();
                 print_devices();
-                //compile_kernels();
-                
-                //init_cuda(device_number);
-                //compile_kernels(compiler, append(flags));
+
                 //init_powersensor();
             }
 
@@ -51,7 +50,7 @@ namespace idg {
 
                 // Create a device instance for every device
                 for (int device_number : device_numbers) {
-                    DeviceInstance *device = new DeviceInstance(device_number);
+                    DeviceInstance *device = new DeviceInstance(parameters, info, device_number);
                     devices.push_back(device);
                 }
             }
@@ -62,44 +61,7 @@ namespace idg {
                 }
             }
 
-            //dim3 Generic::get_block_gridder() const {
-            //    return dim3(32, 4);
-            //}
-
-            //dim3 Generic::get_block_degridder() const {
-            //    return dim3(128);
-            //}
-
-            //dim3 Generic::get_block_adder() const {
-            //    return dim3(128);
-            //}
-
-            //dim3 Generic::get_block_splitter() const {
-            //    return dim3(128);
-            //}
-
-            //dim3 Generic::get_block_scaler() const {
-            //    return dim3(128);
-            //}
-
-            //int Generic::get_gridder_batch_size() const {
-            //    return 64;
-            //}
-
-            //int Generic::get_degridder_batch_size() const {
-            //    dim3 block_degridder = get_block_degridder();
-            //    return block_degridder.x * block_degridder.y * block_degridder.z;
-            //}
-
-            //Compilerflags Generic::append(Compilerflags flags) const {
-            //    stringstream new_flags;
-            //    new_flags << flags;
-            //    new_flags << " -DGRIDDER_BATCH_SIZE=" << get_gridder_batch_size();
-            //    new_flags << " -DDEGRIDDER_BATCH_SIZE=" << get_degridder_batch_size();
-            //    return new_flags.str();
-            //}
-
-             ProxyInfo Generic::default_info() {
+            ProxyInfo Generic::default_info() {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
                 #endif
@@ -125,21 +87,18 @@ namespace idg {
 
                 string libgridder = "Gridder.ptx";
                 string libdegridder = "Degridder.ptx";
-                string libfft = "FFT.ptx";
                 string libscaler = "Scaler.ptx";
                 string libadder = "Adder.ptx";
                 string libsplitter = "Splitter.ptx";
 
                 p.add_lib(libgridder);
                 p.add_lib(libdegridder);
-                p.add_lib(libfft);
                 p.add_lib(libscaler);
                 p.add_lib(libadder);
                 p.add_lib(libsplitter);
 
                 p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
-                p.add_src_file_to_lib(libfft, "KernelFFT.cu");
                 p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
                 p.add_src_file_to_lib(libadder, "KernelAdder.cu");
                 p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");

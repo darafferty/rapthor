@@ -62,6 +62,10 @@ namespace idg {
                     void init_devices();
                     void print_devices();
                     static ProxyInfo default_info();
+
+                protected:
+                    Parameters &parameters;
+                    ProxyInfo &info;
                     std::vector<DeviceInstance*> devices;
 
                 protected:
@@ -74,16 +78,6 @@ namespace idg {
                     uint64_t sizeof_aterm();
                     uint64_t sizeof_spheroidal();
 
-
-                //protected:
-                //    dim3 get_block_gridder() const;
-                //    dim3 get_block_degridder() const;
-                //    dim3 get_block_adder() const;
-                //    dim3 get_block_splitter() const;
-                //    dim3 get_block_scaler() const;
-                //    int get_gridder_batch_size() const;
-                //    int get_degridder_batch_size() const;
-                //    std::string append(Compilerflags flags) const;
             }; // class Generic
 
         } // namespace cuda
