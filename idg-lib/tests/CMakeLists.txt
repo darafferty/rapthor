@@ -3,6 +3,7 @@ project(tests)
 # add subfolders
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
+    add_subdirectory(api)        # TODO: merge with other code
 endif()
 add_subdirectory(Hybrid)
 if (BUILD_LIB_CUDA)
