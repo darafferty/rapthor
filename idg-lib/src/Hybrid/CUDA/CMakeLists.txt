@@ -1,4 +1,4 @@
-project(hybrid-maxwell)
+project(hybrid-cuda)
 
 # external header files needed
 include_directories (

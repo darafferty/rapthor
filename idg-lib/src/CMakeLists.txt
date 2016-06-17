@@ -191,7 +191,7 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cuda-common>
   $<TARGET_OBJECTS:cuda-kepler>
   $<TARGET_OBJECTS:cuda-maxwell>
-  $<TARGET_OBJECTS:hybrid-maxwell>
+  $<TARGET_OBJECTS:hybrid-cuda>
   $<TARGET_OBJECTS:cuda-generic>
 )
 
