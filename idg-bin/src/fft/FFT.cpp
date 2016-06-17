@@ -8,6 +8,8 @@ namespace idg {
     {
         fftwf_complex *tmp = (fftwf_complex *) data;
         fftwf_plan plan;
+
+        #pragma omp critical
         plan = fftwf_plan_dft_2d(m, n,
                                  tmp, tmp,
                                  FFTW_FORWARD,
@@ -28,6 +30,8 @@ namespace idg {
     {
         fftwf_complex *tmp = (fftwf_complex *) data;
         fftwf_plan plan;
+
+        #pragma omp critical
         plan = fftwf_plan_dft_2d(m, n,
                                  tmp, tmp,
                                  FFTW_BACKWARD,
@@ -48,6 +52,8 @@ namespace idg {
     {
         fftwf_complex *tmp = (fftwf_complex *) data_out;
         fftwf_plan plan;
+
+        #pragma omp critical
         plan = fftwf_plan_dft_r2c_2d(m, n,
                                      data_in, tmp,
                                      FFTW_ESTIMATE);
@@ -66,6 +72,8 @@ namespace idg {
     {
         fftwf_complex *tmp = (fftwf_complex *) data_in;
         fftwf_plan plan;
+
+        #pragma omp critical
         plan = fftwf_plan_dft_c2r_2d(m, n,
                                      tmp, data_out,
                                      FFTW_ESTIMATE);
@@ -84,6 +92,8 @@ namespace idg {
     {
         fftw_complex *tmp = (fftw_complex *) data;
         fftw_plan plan;
+
+        #pragma omp critical
         plan = fftw_plan_dft_2d(m, n,
                                 tmp, tmp,
                                 FFTW_FORWARD,
@@ -104,6 +114,8 @@ namespace idg {
     {
         fftw_complex *tmp = (fftw_complex *) data;
         fftw_plan plan;
+
+        #pragma omp critical
         plan = fftw_plan_dft_2d(m, n,
                                 tmp, tmp,
                                 FFTW_BACKWARD,

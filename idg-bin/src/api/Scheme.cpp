@@ -281,7 +281,7 @@ namespace idg {
         m_bufferVisibilities.reserve(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
         m_bufferStationPairs.resize(m_nrGroups);
         m_grid.reserve(m_nrPolarizations, m_gridHeight, m_gridWidth);
-        m_spheroidal.reserve(m_subgridSize, m_subgridSize);
+        // already done: m_spheroidal.reserve(m_subgridSize, m_subgridSize);
         m_aterms.reserve(m_nrStations, m_subgridSize, m_subgridSize);
     }
 

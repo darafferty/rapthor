@@ -119,7 +119,9 @@ namespace idg {
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
-        reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
+        reset_buffers(); // optimization: only call "set_uvw_to_infinity()"
+        // HACK: zero grid, as it is used as a tmp grid later added to output grid
+        m_grid.init(0);
     }
 
 
@@ -157,17 +159,15 @@ namespace idg {
                  spheroidal_grid.data());
 
         const double c_real = 2.0 / (height * width);
-        const double c_imag = 0.0;
         for (auto pol = 0; pol < nr_polarizations; ++pol) {
             for (auto y = 0; y < height; ++y) {
                 for (auto x = 0; x < width; ++x) {
-                    complex<double> scale;
-                    if (spheroidal_grid(y,x) >= crop_tolerance) {
-                        scale = complex<double>(c_real/spheroidal_grid(y,x), c_imag);
-                    } else {
+                    double scale = c_real/spheroidal_grid(y,x);
+                    if (spheroidal_grid(y,x) < crop_tolerance) {
                         scale = 0.0;
                     }
-                    grid[pol*height*width + y*width + x] *= scale;
+                    grid[pol*height*width + y*width + x] =
+                        grid[pol*height*width + y*width + x].real() * scale;
                 }
             }
         }
