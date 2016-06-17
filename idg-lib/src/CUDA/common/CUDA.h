@@ -31,6 +31,7 @@
 
 #include "idg-common.h"
 #include "Kernels.h"
+#include "DeviceInstance.h"
 
 #define REUSE_HOST_MEMORY 0
 
