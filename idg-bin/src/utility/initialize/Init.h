@@ -58,6 +58,13 @@ void init_identity_spheroidal(
     void *ptr,
     int subgridsize);
 
+void init_zero_visibilities(
+    void *ptr,
+    int nr_baselines,
+    int nr_time,
+    int nr_channels,
+    int nr_polarizations);
+
 void init_example_uvw(
     void *ptr,
     int nr_stations,
@@ -119,6 +126,22 @@ void init_example_grid(
 //////////////
 
 
+void* init_zero_grid(
+    int gridsize,
+    int nr_polarizations);
+
+void* init_identity_aterm(
+    int nr_timeslots,
+    int nr_stations,
+    int subgridsize,
+    int nr_polarizations);
+
+void* init_zero_visibilities(
+    int nr_baselines,
+    int nr_time,
+    int nr_channels,
+    int nr_polarizations);
+
 void* init_example_uvw(
     int nr_stations,
     int nr_baselines,
@@ -151,16 +174,6 @@ void* init_example_baselines(
 
 void* init_example_grid(
     int gridsize,
-    int nr_polarizations);
-
-void* init_zero_grid(
-    int gridsize,
-    int nr_polarizations);
-
-void* init_identity_aterm(
-    int nr_timeslots,
-    int nr_stations,
-    int subgridsize,
     int nr_polarizations);
 
 } // namespace idg
