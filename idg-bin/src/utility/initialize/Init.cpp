@@ -72,6 +72,32 @@ namespace idg {
     }
 
 
+    void init_zero_visibilities(
+        void *ptr,
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations)
+    {
+        TYPEDEF_VISIBILITIES_TYPE
+        VisibilitiesType *visibilities = (VisibilitiesType *) (ptr);
+
+        // Fixed visibility
+        idg::float2 visibility = {0.0f, 0.0f};
+
+        // Set all visibilities
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            for (int time = 0; time < nr_time; time++) {
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    for (int pol = 0; pol < nr_polarizations; pol++) {
+                        (*visibilities)[bl][time][chan][pol] = visibility;
+                    }
+                }
+            }
+        }
+    }
+
+
     void init_example_uvw(
         void *ptr,
         int nr_stations,
@@ -467,6 +493,19 @@ namespace idg {
         TYPEDEF_GRID_TYPE
         void *ptr = malloc(sizeof(GridType));
         init_zero_grid(ptr, gridsize, nr_polarizations);
+        return ptr;
+    }
+
+
+    void* init_zero_visibilities(
+        int nr_baselines,
+        int nr_time,
+        int nr_channels,
+        int nr_polarizations)
+    {
+        TYPEDEF_VISIBILITIES_TYPE
+        void *ptr = malloc(sizeof(VisibilitiesType));
+        init_zero_visibilities(ptr, nr_baselines, nr_time, nr_channels, nr_polarizations);
         return ptr;
     }
 
