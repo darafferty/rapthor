@@ -613,6 +613,27 @@ def get_identity_spheroidal(subgrid_size, dtype=spheroidaltype, info=False):
     return spheroidal.astype(dtype=dtype)
 
 
+def get_zero_visibilities(nr_baselines, nr_time, nr_channels, nr_polarizations,
+                          dtype=visibilitiestype, info=False):
+    visibilities = numpy.zeros(shape=(nr_baselines, nr_time, nr_channels, nr_polarizations),
+                               dtype=visibilitiestype)
+    """Initialize visibilities to zero"""
+    lib.utils_init_zero_visibilities.argtypes = [ctypes.c_void_p,
+                                                 ctypes.c_int,
+                                                 ctypes.c_int,
+                                                 ctypes.c_int,
+                                                 ctypes.c_int]
+    lib.utils_init_zero_visibilities(visibilities.ctypes.data_as(ctypes.c_void_p),
+                                     ctypes.c_int(nr_baselines),
+                                     ctypes.c_int(nr_time),
+                                     ctypes.c_int(nr_channels),
+                                     ctypes.c_int(nr_polarizations) )
+    if info==True:
+        print "visibilities: numpy.ndarray(shape = (nr_baselines, nr_time, nr_channels, nr_polarizations), " + \
+                                           "dtype = " + str(dtype) + ")"
+    return visibilities.astype(dtype=dtype)
+
+
 ##### END:   INITIALZE DATA         #####
 
 ##### BEGIN: INITIALZE EXAMPLE DATA #####
