@@ -80,22 +80,24 @@ if __name__ == "__main__":
     ######################################################################
     # Initialize data
     ######################################################################
-    bufferTimesteps = nr_time / 1
+    bufferTimesteps = nr_time / 4
     nr_timeslots    = nr_time / bufferTimesteps
 
     uvw           = idg.utils.get_example_uvw(nr_baselines, nr_time,
                                               integration_time)
-    wavenumbers   = idg.utils.get_example_frequencies(nr_channels)
+    wavenumbers   = idg.utils.get_example_wavenumbers(nr_channels)
     baselines     = idg.utils.get_example_baselines(nr_baselines)
 
     frequencies   = idg.utils.get_example_frequencies(nr_channels,
                                                       dtype=numpy.float64)
-    aterms        = idg.utils.get_example_aterms(nr_timeslots, nr_stations,
+    aterms        = idg.utils.get_identity_aterms(nr_timeslots, nr_stations,
                                                  subgrid_size,
                                                  nr_polarizations,
                                                  dtype = numpy.complex128)
-    spheroidal    = idg.utils.get_example_spheroidal(subgrid_size,
-                                                     dtype = numpy.float64)
+    aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots,
+                                                        nr_time)
+    spheroidal    = idg.utils.get_identity_spheroidal(subgrid_size,
+                                                      dtype = numpy.float64)
     visibilities  = idg.utils.get_example_visibilities(nr_baselines,
                                                        nr_time,
                                                        nr_channels,
@@ -104,20 +106,26 @@ if __name__ == "__main__":
                                                        grid_size,
                                                        uvw,
                                                        wavenumbers)
+    visibilities[:,:,:,:] = 0 + 0j
 
-    grid_image    = idg.utils.get_example_grid(nr_polarizations,
-                                               grid_size,
-                                               dtype = numpy.complex128)
+    grid_image    = idg.utils.get_zero_grid(nr_polarizations,
+                                            grid_size,
+                                            dtype = numpy.complex128)
     # add point sources
     offset_x = 50
     offset_y = 80
     grid_image[:,(grid_size/2)+offset_y,(grid_size/2)+offset_x] = 1
     # idg.utils.plot_grid(grid_image)
 
-    grid_gridded  = idg.utils.get_example_grid(nr_polarizations,
-                                               grid_size,
-                                               dtype = numpy.complex128)
+    grid_gridded  = idg.utils.get_zero_grid(nr_polarizations,
+                                            grid_size,
+                                            dtype = numpy.complex128)
 
+    grid_image_reference = grid_image.astype(numpy.complex64)
+    grid_gridded_reference = grid_gridded.astype(numpy.complex64)
+    aterms_reference = aterms.astype(numpy.complex64)
+    spheroidal_reference = spheroidal.astype(numpy.float32)
+    w_offset = 0
 
     ######################################################################
     # Create plan
@@ -129,7 +137,7 @@ if __name__ == "__main__":
     degridder.set_spheroidal(spheroidal)
     degridder.set_grid(grid_image)
     degridder.set_image_size(image_size)
-    degridder.set_w_kernel_size(subgrid_size/2)
+    degridder.set_w_kernel_size(kernel_size)
     degridder.internal_set_subgrid_size(subgrid_size)
     degridder.bake()
 
@@ -139,7 +147,7 @@ if __name__ == "__main__":
     gridder.set_spheroidal(spheroidal)
     gridder.set_grid(grid_gridded)
     gridder.set_image_size(image_size)
-    gridder.set_w_kernel_size(subgrid_size/2)
+    gridder.set_w_kernel_size(kernel_size)
     gridder.internal_set_subgrid_size(subgrid_size)
     gridder.bake()
 
@@ -161,25 +169,25 @@ if __name__ == "__main__":
             time = time_batch*bufferTimesteps + time_minor
             for bl in range(nr_baselines):
 
-                # only request every second baselines
-                if (bl % 2 == 0 and (time < 1024 or time > 1500)):
-                    # Set antenna indices (Note: smaller one first by convention)
-                    antenna1 = baselines[bl][1]
-                    antenna2 = baselines[bl][0]
+                # # only request every second baselines
+                # if (bl % 2 == 0 and (time < 1024 or time > 1500)):
+                # Set antenna indices (Note: smaller one first by convention)
+                antenna1 = baselines[bl][1]
+                antenna2 = baselines[bl][0]
 
-                    # Set UVW coordinates in double precision
-                    uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
-                    uvw_coordinates[0] = uvw[bl][time]['u']
-                    uvw_coordinates[1] = uvw[bl][time]['v']
-                    uvw_coordinates[2] = uvw[bl][time]['w']
+                # Set UVW coordinates in double precision
+                uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+                uvw_coordinates[0] = uvw[bl][time]['u']
+                uvw_coordinates[1] = uvw[bl][time]['v']
+                uvw_coordinates[2] = uvw[bl][time]['w']
 
-                    # Add visibilities to the buffer
-                    degridder.request_visibilities(
-                        time,
-                        antenna1,
-                        antenna2,
-                        uvw_coordinates
-                    )
+                # Add visibilities to the buffer
+                degridder.request_visibilities(
+                    time,
+                    antenna1,
+                    antenna2,
+                    uvw_coordinates
+                )
 
         degridder.finish_aterm()
 
@@ -191,32 +199,32 @@ if __name__ == "__main__":
             time = time_batch*bufferTimesteps + time_minor
             for bl in range(nr_baselines):
 
-                # only process every second baselines
-                if (bl % 2 == 0 and (time < 1024 or time > 1500)):
+                # # only process every second baselines
+                # if (bl % 2 == 0 and (time < 1024 or time > 1500)):
 
-                    # Set antenna indices (Note: smaller one first by convention)
-                    antenna1 = baselines[bl][1]
-                    antenna2 = baselines[bl][0]
+                # Set antenna indices (Note: smaller one first by convention)
+                antenna1 = baselines[bl][1]
+                antenna2 = baselines[bl][0]
 
-                    # Set UVW coordinates in double precision
-                    uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
-                    uvw_coordinates[0] = uvw[bl][time]['u']
-                    uvw_coordinates[1] = uvw[bl][time]['v']
-                    uvw_coordinates[2] = uvw[bl][time]['w']
+                # Set UVW coordinates in double precision
+                uvw_coordinates = numpy.zeros(3, dtype=numpy.float64)
+                uvw_coordinates[0] = uvw[bl][time]['u']
+                uvw_coordinates[1] = uvw[bl][time]['v']
+                uvw_coordinates[2] = uvw[bl][time]['w']
 
-                    visibilities = degridder.read_visibilities(
-                        time,
-                        antenna1,
-                        antenna2
-                        )
+                vis = degridder.read_visibilities(
+                    time,
+                    antenna1,
+                    antenna2
+                )
 
-                    # Add visibilities to the buffer
-                    gridder.grid_visibilities(
-                        time,
-                        antenna1,
-                        antenna2,
-                        uvw_coordinates,
-                        visibilities)
+                # Add visibilities to the buffer
+                gridder.grid_visibilities(
+                    time,
+                    antenna1,
+                    antenna2,
+                    uvw_coordinates,
+                    vis)
 
         gridder.finish_aterm()
 
@@ -231,5 +239,50 @@ if __name__ == "__main__":
 
     gridder.transform_grid()
     # idg.utils.plot_grid(gridder.get_copy_grid())
+
+
+
+    ##################
+    # initialize proxy
+    ##################
+    p_cpu = idg.CPU.HaswellEP(nr_stations,
+                              nr_channels,
+                              nr_time,
+                              nr_timeslots,
+                              image_size,
+                              grid_size,
+                              subgrid_size)
+
+    p_cpu.transform(idg.ImageDomainToFourierDomain, grid_image_reference)
+
+    p_cpu.degrid_visibilities(visibilities,
+                              uvw,
+                              wavenumbers,
+                              baselines,
+                              grid_image_reference,
+                              w_offset,
+                              kernel_size,
+                              aterms_reference,
+                              aterms_offset,
+                              spheroidal_reference)
+
+    p_cpu.grid_visibilities(visibilities,
+                            uvw,
+                            wavenumbers,
+                            baselines,
+                            grid_gridded_reference,
+                            w_offset,
+                            kernel_size,
+                            aterms_reference,
+                            aterms_offset,
+                            spheroidal_reference)
+
+    idg.utils.plot_grid(grid_gridded_reference, scaling='log')
+    p_cpu.transform(idg.FourierDomainToImageDomain, grid_gridded_reference)
+    idg.utils.plot_grid(grid_gridded_reference)
+
+
+    idg.utils.plot_grid(grid_gridded_reference - gridder.get_copy_grid(), scaling='log')
+
 
     plt.show()
