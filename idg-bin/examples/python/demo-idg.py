@@ -13,10 +13,17 @@ import idg
 ######################################################################
 parser = argparse.ArgumentParser(description='Run image domain gridding on a measurement set')
 parser.add_argument(dest='msin', nargs=1, type=str, help='path to measurement set')
-parser.add_argument(dest='percentage', nargs='?', type=int, help='percentage of data to process', default=100)
+parser.add_argument(dest='percentage',
+                    nargs='?', type=int,
+                    help='percentage of data to process',
+                    default=100)
+parser.add_argument('-c', '--column',
+                    help='Data column used, such as DATA or CORRECTED_DATA (default: CORRECTED_DATA)',
+                    required=False, default="CORRECTED_DATA")
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
+datacolumn = args.column
 
 # Set signal handler to exit when ctrl-c is pressed
 def signal_handler(signal, frame):
@@ -99,7 +106,7 @@ frequencies = t_spw[0]['CHAN_FREQ']
 ######################################################################
 nr_stations      = len(t_ant)
 nr_baselines     = (nr_stations * (nr_stations - 1)) / 2
-nr_channels      = table[0]["CORRECTED_DATA"].shape[0]
+nr_channels      = table[0][datacolumn].shape[0]
 nr_time          = 128
 nr_timeslots     = 1
 nr_polarizations = 4
@@ -170,7 +177,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     antenna1_block  = table.getcol('ANTENNA1',       startrow = nr_rows_read, nrow = nr_rows_per_batch)
     antenna2_block  = table.getcol('ANTENNA2',       startrow = nr_rows_read, nrow = nr_rows_per_batch)
     uvw_block       = table.getcol('UVW',            startrow = nr_rows_read, nrow = nr_rows_per_batch)
-    vis_block       = table.getcol('CORRECTED_DATA', startrow = nr_rows_read, nrow = nr_rows_per_batch)
+    vis_block       = table.getcol(datacolumn,       startrow = nr_rows_read, nrow = nr_rows_per_batch)
     flags_block     = table.getcol('FLAG',           startrow = nr_rows_read, nrow = nr_rows_per_batch)
     vis_block       = vis_block * -flags_block
     nr_rows_read += nr_rows_per_batch
