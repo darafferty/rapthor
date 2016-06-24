@@ -18,7 +18,8 @@ make install
 * BUILD_LIB_KNC: build library 'libidg-knc' for usage of Intel Xeon Phi KNC      
 * BUILD_WITH_PYTHON: build Python module 'idg' to use IDG from Python       
 * BUILD_WITH_BOOST_PYTHON: ...       
-* BUILD_WITH_EXAMPLES: small executables to demonstrate the use of 'libidg-*'        
+* BUILD_WITH_EXAMPLES: small executables to demonstrate the use of 'libidg*'        
+* BUILD_WITH_DEMO: demo reading a measurement set and creating a sky image         
 
 All other build options are for development purposes only, and should be
 left at the default values by a regular user.      

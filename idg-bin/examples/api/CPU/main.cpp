@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
     // auto aterm_offsets     = new int[nr_timeslots+1];
     auto spheroidal        = new float[size_spheroidal];
     auto spheroidal_double = new double[size_spheroidal];
+    auto image_double      = new std::complex<double>[size_grid];
     auto grid_double       = new std::complex<double>[size_grid];
     auto baselines         = new int[size_baselines];
 
@@ -79,10 +80,10 @@ int main(int argc, char *argv[])
         spheroidal_double[k] = spheroidal[k];
     }
 
-    grid_double[0*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
-    grid_double[1*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
-    grid_double[2*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
-    grid_double[3*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    image_double[0*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    image_double[1*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    image_double[2*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
+    image_double[3*gridsize*gridsize + (gridsize/2)*gridsize + gridsize/2] = 1;
 
     std::clog << std::endl;
 
@@ -93,20 +94,20 @@ int main(int argc, char *argv[])
     idg::DegridderPlan degridder(idg::Type::CPU_OPTIMIZED, bufferSize);
     degridder.set_stations(nr_stations);
     degridder.set_frequencies(nr_channels, frequencyList);
-    degridder.set_grid(4, gridsize, gridsize, grid_double);
-    // degridder.set_spheroidal(subgridsize, spheroidal_double);
+    degridder.set_grid(nr_polarizations, gridsize, gridsize, grid_double);
+    degridder.set_spheroidal(subgridsize, spheroidal_double);
     degridder.set_image_size(imagesize);
-    degridder.set_w_kernel(subgridsize/2);
+    degridder.set_w_kernel(kernel_size);
     degridder.internal_set_subgrid_size(subgridsize);
     degridder.bake();
 
     idg::GridderPlan gridder(idg::Type::CPU_OPTIMIZED, bufferSize);
     gridder.set_stations(nr_stations);
     gridder.set_frequencies(nr_channels, frequencyList);
-    gridder.set_grid(4, gridsize, gridsize, grid_double);
-    // gridder.set_spheroidal(subgridsize, spheroidal_double);
+    gridder.set_grid(nr_polarizations, gridsize, gridsize, grid_double);
+    gridder.set_spheroidal(subgridsize, spheroidal_double);
     gridder.set_image_size(imagesize);
-    gridder.set_w_kernel(subgridsize/2);
+    gridder.set_w_kernel(kernel_size);
     gridder.internal_set_subgrid_size(subgridsize);
     gridder.bake();
 
@@ -167,6 +168,8 @@ int main(int argc, char *argv[])
 
     }
 
+    gridder.transform_grid();
+
     /////////////////////////////////////////////////////////////////////
 
     delete [] visibilities;
@@ -177,6 +180,7 @@ int main(int argc, char *argv[])
     // delete [] aterm_offsets;
     delete [] spheroidal;
     delete [] spheroidal_double;
+    delete [] image_double;
     delete [] grid_double;
     delete [] baselines;
 

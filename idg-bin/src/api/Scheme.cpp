@@ -36,6 +36,14 @@ namespace idg {
 
         m_aterm_offsets[0] = 0;
         m_aterm_offsets[1] = bufferTimesteps;
+
+        // TODO: different place
+        m_spheroidal.reserve(m_subgridSize, m_subgridSize);
+        for (auto y = 0; y < m_subgridSize; ++y) {
+           for (auto x = 0; x < m_subgridSize; x++) {
+               m_spheroidal(y, x) = 1.0f;
+           }
+        }
     }
 
     Scheme::~Scheme()
