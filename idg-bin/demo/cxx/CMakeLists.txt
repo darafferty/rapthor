@@ -17,8 +17,7 @@ set(LINK_LIRBRARIES
   idg
   idg-utility    # TODO: remove
   ${CASACORE_LIBRARIES}
-  ${OpenCV_HIGHGUI_LIBRARY}
-  ${OpenCV_CORE_LIBRARY})
+  ${OpenCV_LIBS})
 
 target_link_libraries (
   ${PROJECT_NAME}
