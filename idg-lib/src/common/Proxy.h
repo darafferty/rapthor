@@ -48,15 +48,15 @@ namespace idg {
             /*
                 High level routines
             */
-            /** \brief Grid the visibilities onto a uniform grid
-             * Using:
-             * ST = NR_STATIONS
-             * BL = NR_BASELINES
-             * CH = NR_CHANNELS
-             * TS = NR_TIMESLOTS
-             * TI = NR_TIMESTEPS*NR_TIMESLOTS
-             * PL = NR_POLARIZATIONS
-             * GS = GRIDSIZE
+            //! Grid the visibilities onto a uniform grid
+            /** Using in the following:
+             * ST = NR_STATIONS,
+             * BL = NR_BASELINES,
+             * CH = NR_CHANNELS,
+             * TS = NR_TIMESLOTS,
+             * TI = NR_TIMESTEPS*NR_TIMESLOTS,
+             * PL = NR_POLARIZATIONS,
+             * GS = GRIDSIZE,
              * SB = SUBGRIDSIZE
              * \param visibilities [in] complex<float>[BL][TI][CH][PL]
              * \param uvw [in] float[BL][TI][3]
@@ -81,16 +81,15 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal) = 0;
 
-            /** \brief Degrid the visibilities from a uniform grid
-             *  (grid -> visibilities)
-             * Using:
-             * ST = NR_STATIONS
-             * BL = NR_BASELINES
-             * CH = NR_CHANNELS
-             * TS = NR_TIMESLOTS
-             * TI = NR_TIMESTEPS*NR_TIMESLOTS
-             * PL = NR_POLARIZATIONS
-             * GS = GRIDSIZE
+            //! Degrid the visibilities onto a uniform grid
+            /** Using in the following:
+             * ST = NR_STATIONS,
+             * BL = NR_BASELINES,
+             * CH = NR_CHANNELS,
+             * TS = NR_TIMESLOTS,
+             * TI = NR_TIMESTEPS*NR_TIMESLOTS,
+             * PL = NR_POLARIZATIONS,
+             * GS = GRIDSIZE,
              * SB = SUBGRIDSIZE
              * \param visibilities [out] complex<float>[BL][TI][CH][PL]
              * \param uvw [in] float[BL][TI][3]
