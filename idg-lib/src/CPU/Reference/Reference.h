@@ -1,7 +1,7 @@
 /**
  *  \class Reference
  *
- *  \brief Class for ...
+ *  \brief Class to use the reference implementation
  *
  *  Have a more detailed description here
  *  This will be included by a user, so detail usage...
@@ -19,7 +19,13 @@ namespace idg {
             class Reference : public CPU {
 
                 public:
-                    /// Constructors
+                    /** Construct a reference implementation object
+                        to use the Proxy class.
+                       \param params parameter set using Parameters
+                       \param compiler specify compiler to use (e.g. "gcc")
+                       \param flags specicfy compiler flags to use (e.g. "-Wall -g")
+                       \param info specicfy runtime compile settings (advanced setting)
+                    */
                     Reference(Parameters params,
                               Compiler compiler = default_compiler(),
                               Compilerflags flags = default_compiler_flags(),
@@ -29,7 +35,7 @@ namespace idg {
                     Reference& operator=(const Reference& rhs) = delete;
                     Reference(const Reference& v) = delete;
 
-                    /// Destructor
+                    // Destructor
                     virtual ~Reference() = default;
 
                     // Get default values for ProxyInfo
