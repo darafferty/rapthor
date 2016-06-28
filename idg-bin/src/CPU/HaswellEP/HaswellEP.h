@@ -19,7 +19,13 @@ namespace idg {
         class HaswellEP : public CPU {
 
             public:
-                /// Constructors
+                /** Construct a optimized (AVX2) implementation object
+                    to use the Proxy class.
+                    \param params parameter set using Parameters
+                    \param compiler specify compiler to use (e.g. "gcc")
+                    \param flags specicfy compiler flags to use (e.g. "-Wall -g")
+                    \param info specicfy runtime compile settings (advanced setting)
+                */
                 HaswellEP(Parameters params,
                           Compiler compiler = default_compiler(),
                           Compilerflags flags = default_compiler_flags(),
@@ -29,7 +35,7 @@ namespace idg {
                 HaswellEP& operator=(const HaswellEP& rhs) = delete;
                 HaswellEP(const HaswellEP& v) = delete;
 
-                /// Destructor
+                // Destructor
                 virtual ~HaswellEP() = default;
 
                 // Get default values for ProxyInfo
