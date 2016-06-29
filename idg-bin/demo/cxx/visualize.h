@@ -5,6 +5,7 @@
 #include <limits>
 #include <cmath>
 
+#include <opencv2/contrib/contrib.hpp>
 #include <opencv2/core/core.hpp>           // cv::Mat
 #include <opencv2/highgui/highgui.hpp>     // cv::imread()
 
@@ -15,7 +16,8 @@ namespace idg {
         size_t height,
         size_t width,
         T* data,
-        std::string form = "abs")
+        std::string form = "abs",
+        std::string colormap = "hot")
     {
         #if defined(DEBUG)
         std::cout << __func__ << "("
@@ -25,6 +27,7 @@ namespace idg {
                   << data << ")" << std::endl;
         #endif
 
+        // Create float image with values in range [0.0f,1.0f]
         cv::Mat img(height, width, CV_32F);
 
         if (form == "abs") {
@@ -59,9 +62,42 @@ namespace idg {
             }
         }
 
+        // Apply colormap
+        auto cmap = cv::COLORMAP_HOT;
+        if (colormap == "autumn") {
+            cmap = cv::COLORMAP_AUTUMN;
+        } else if (colormap == "bone") {
+            cmap = cv::COLORMAP_BONE;
+        } else if (colormap == "cool") {
+            cmap = cv::COLORMAP_COOL;
+        } else if (colormap == "hsv") {
+            cmap = cv::COLORMAP_HSV;
+        } else if (colormap == "jet") {
+            cmap = cv::COLORMAP_JET;
+        } else if (colormap == "ocean") {
+            cmap = cv::COLORMAP_OCEAN;
+        } else if (colormap == "pink") {
+            cmap = cv::COLORMAP_PINK;
+        } else if (colormap == "rainbow") {
+            cmap = cv::COLORMAP_RAINBOW;
+        } else if (colormap == "spring") {
+            cmap = cv::COLORMAP_SPRING;
+        } else if (colormap == "summer") {
+            cmap = cv::COLORMAP_SUMMER;
+        } else if (colormap == "winter") {
+            cmap = cv::COLORMAP_WINTER;
+        }
+
+        // Note: applyColorMap needs a input of type CV_8U, otherwise it simply does not
+        // do anything (bug?)
+        cv::Mat tmp_img;
+        img.convertTo(tmp_img, CV_8U, 255.0, 0.0);
+        cv::Mat color_img;
+        cv::applyColorMap(tmp_img, color_img, cmap);
+
         string frameName = form;
         cv::namedWindow(frameName, CV_WINDOW_AUTOSIZE);
-        cv::imshow(frameName, img);
+        cv::imshow(frameName, color_img);
         cv::waitKey(100000);
 
         cv::destroyWindow(frameName);
