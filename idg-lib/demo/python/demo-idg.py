@@ -31,9 +31,13 @@ parser.add_argument(dest='percentage',
 parser.add_argument('-c', '--column',
                     help='Data column used, such as DATA or CORRECTED_DATA (default: CORRECTED_DATA)',
                     required=False, default="CORRECTED_DATA")
+parser.add_argument('--imagesize',
+                    help='Image size (cell size / grid size)',
+                    required=False, type=float, default=0.1)
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
+image_size = args.imagesize
 datacolumn = args.column
 
 
@@ -57,7 +61,6 @@ nr_channels      = table[0][datacolumn].shape[0]
 nr_time          = 128
 nr_timeslots     = 1
 nr_polarizations = 4
-image_size       = 0.05
 grid_size        = 1024
 subgrid_size     = 32
 kernel_size      = 16
@@ -218,7 +221,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
 
     # Set plot properties
     colormap=plt.get_cmap("hot")
-    font_size = 22
+    font_size = 16
 
     # Make first plot (raw grid)
     plt.figure(1, figsize=(20,10))
