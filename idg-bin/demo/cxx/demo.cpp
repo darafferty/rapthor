@@ -44,6 +44,7 @@ int run_demo(string ms_name,
     int nr_data_rows = table.nrow();
 
     #if defined(DEBUG)
+    cout << "NR_DATA_ROWS = " << nr_data_rows << endl;
     cout << "NR_ANTENNAS  = " << nr_antennas  << endl;
     cout << "NR_CHANNELS  = " << nr_channels  << endl;
     #endif
