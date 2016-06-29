@@ -30,9 +30,13 @@ parser.add_argument(dest='percentage',
 parser.add_argument('-c', '--column',
                     help='Data column used, such as DATA or CORRECTED_DATA (default: CORRECTED_DATA)',
                     required=False, default="CORRECTED_DATA")
+parser.add_argument('--imagesize',
+                    help='Image size (cell size / grid size)',
+                    required=False, type=float, default=0.1)
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
+image_size = args.imagesize
 datacolumn = args.column
 
 
@@ -56,7 +60,6 @@ nr_channels      = table[0][datacolumn].shape[0]
 nr_time          = 256
 nr_timeslots     = 1
 nr_polarizations = 4
-image_size       = 0.05
 grid_size        = 1024
 subgrid_size     = 32
 kernel_size      = 16
@@ -97,10 +100,12 @@ plan.bake();
 nr_rows = table.nrows()
 nr_rows_read = 0
 nr_rows_per_batch = (nr_baselines + nr_stations) * nr_time
+nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
+
 iteration = 0
 timeIndex = -1
 t_previous = -1
-while (nr_rows_read + nr_rows_per_batch) < nr_rows:
+while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     time_total = -time.time()
 
     time_read = -time.time()
@@ -228,3 +233,5 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     print "Runtime plot:      %5d ms (%5.2f %%)" % (time_plot*1000,      100.0 * time_plot/time_total)
     print ""
     iteration += 1
+
+# TODO: need to process the remaining visibilities
