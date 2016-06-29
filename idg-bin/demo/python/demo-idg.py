@@ -9,8 +9,9 @@ import argparse
 import time
 import idg
 
-# Enable interactive plotting
+# Enable interactive plotting and create figure to plot into
 plt.ion()
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
 
 # Set signal handler to exit when ctrl-c is pressed
 def signal_handler(signal, frame):
@@ -58,7 +59,7 @@ frequencies = t_spw[0]['CHAN_FREQ']
 nr_stations      = len(t_ant)
 nr_baselines     = (nr_stations * (nr_stations - 1)) / 2
 nr_channels      = table[0][datacolumn].shape[0]
-nr_time          = 128
+nr_time          = 256
 nr_timeslots     = 1
 nr_polarizations = 4
 grid_size        = 1024
@@ -103,8 +104,10 @@ proxy = idg.CPU.HaswellEP(
 nr_rows = table.nrows()
 nr_rows_read = 0
 nr_rows_per_batch = (nr_baselines + nr_stations) * nr_time
+nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
+
 iteration = 0
-while (nr_rows_read + nr_rows_per_batch) < nr_rows:
+while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     time_total = -time.time()
 
     # Initialize empty buffers
@@ -224,33 +227,24 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     font_size = 16
 
     # Make first plot (raw grid)
-    plt.figure(1, figsize=(20,10))
-    plt.subplot(1,2,1)
-    plt.cla()
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_axis_bgcolor(colormap(0))
-    plt.imshow(np.log(np.abs(grid[0,:,:]) + 1), interpolation='nearest')
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    ax1.set_axis_bgcolor(colormap(0))
+    ax1.imshow(np.log(np.abs(grid[0,:,:]) + 1), interpolation='nearest')
     time1 = timestamp_block[0]
-    plt.title("UV Data: %2.2i:%2.2i\n" % (np.mod(int(time1/3600 ),24), np.mod(int(time1/60),60)))
-    ax.title.set_fontsize(font_size)
+    ax1.set_title("UV Data: %2.2i:%2.2i\n" % (np.mod(int(time1/3600 ),24), np.mod(int(time1/60),60)), fontsize=font_size)
 
     # Make second plot (processed grid)
-    plt.subplot(1,2,2)
-    plt.cla()
     m = np.amax(img)
-    plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
-    plt.title("Sky image\n")
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.title.set_fontsize(font_size)
-    time_plot += time.time()
+    ax2.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+    ax2.set_title("Sky image\n", fontsize=font_size)
+    ax2.set_xticks([])
+    ax2.set_yticks([])
 
     # Draw figure
-    plt.show()
-    plt.draw()
+    plt.pause(0.05)
+
+    time_plot += time.time()
 
     # Print timings
     time_total += time.time()
@@ -263,3 +257,8 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     print "Runtime plot:      %5d ms (%5.2f %%)" % (time_plot*1000,      100.0 * time_plot/time_total)
     print ""
     iteration += 1
+
+# TODO: need to process the remaining visibilities
+
+# Do not close window at the end?
+# plt.show()
