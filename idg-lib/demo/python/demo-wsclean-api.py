@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
 import pyrap.tables
 import signal
@@ -8,6 +8,15 @@ import argparse
 import time
 import idg
 import IDG
+
+# Enable interactive plotting
+plt.ion()
+
+# Set signal handler to exit when ctrl-c is pressed
+def signal_handler(signal, frame):
+    exit()
+signal.signal(signal.SIGINT, signal_handler)
+
 
 ######################################################################
 # Command line argument parsing
@@ -25,70 +34,6 @@ args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
 datacolumn = args.column
-
-# Set signal handler to exit when ctrl-c is pressed
-def signal_handler(signal, frame):
-    exit()
-signal.signal(signal.SIGINT, signal_handler)
-
-
-######################################################################
-# Utility functions
-######################################################################
-def plot_uvw(uvw):
-    """Plot UVW data as (u,v)-plot
-    Input:
-    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
-                        dtype = idg.uvwtype)
-    """
-    u = uvw.flatten()['u']
-    v = uvw.flatten()['v']
-    uvlim = 1.2*max(max(abs(u)), max(abs(v)))
-    fig = plt.figure(get_figure_name("uvw"))
-    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
-    plt.xlim([-uvlim, uvlim])
-    plt.ylim([-uvlim, uvlim])
-    plt.grid(True)
-    plt.axes().set_aspect('equal')
-
-
-
-# Function to compute spheroidal
-def func_spheroidal(nu):
-  P = numpy.array([[ 8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1,  2.312756e-1],
-              [ 4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
-  Q = numpy.array([[1.0000000e0, 8.212018e-1, 2.078043e-1],
-              [1.0000000e0, 9.599102e-1, 2.918724e-1]])
-  part = 0;
-  end = 0.0;
-  if (nu >= 0.0 and nu < 0.75):
-    part = 0
-    end = 0.75
-  elif (nu >= 0.75 and nu <= 1.00):
-    part = 1
-    end = 1.00
-  else:
-    return 0.0
-
-  nusq = nu * nu
-  delnusq = nusq - end * end
-  delnusqPow = delnusq
-  top = P[part][0]
-  for k in range(1,5):
-    top += P[part][k] * delnusqPow
-    delnusqPow *= delnusq
-
-  bot = Q[part][0]
-  delnusqPow = delnusq
-  for k in range(1,3):
-    bot += Q[part][k] * delnusqPow
-    delnusqPow *= delnusq
-
-  if bot == 0:
-    result = 0
-  else:
-    result = (1.0 - nusq) * (top / bot)
-  return result
 
 
 ######################################################################
@@ -108,7 +53,7 @@ frequencies = t_spw[0]['CHAN_FREQ']
 nr_stations      = len(t_ant)
 nr_baselines     = (nr_stations * (nr_stations - 1)) / 2
 nr_channels      = table[0][datacolumn].shape[0]
-nr_time          = 128
+nr_time          = 256
 nr_timeslots     = 1
 nr_polarizations = 4
 image_size       = 0.05
@@ -120,24 +65,16 @@ kernel_size      = 16
 ######################################################################
 # Initialize data
 ######################################################################
-grid          = idg.utils.get_zero_grid(nr_polarizations, grid_size, dtype=numpy.complex128)
-#aterms        = idg.utils.get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations, dtype=numpy.complex128)
-#aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
+grid = idg.utils.get_zero_grid(nr_polarizations, grid_size, dtype=np.complex128)
+# aterms = idg.utils.get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations, dtype=np.complex128)
+# aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
 
 # Initialize spheroidal
-# Real spheroidal
-x = numpy.array([func_spheroidal(abs(a)) for a in 2*numpy.arange(subgrid_size, dtype=numpy.float32) / (subgrid_size-1) - 1.0], dtype = numpy.float64)
-spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
-s = numpy.fft.fft2(spheroidal)
-s = numpy.fft.fftshift(s)
-s1 = numpy.zeros((grid_size, grid_size), dtype = numpy.complex128)
-s1[(grid_size-subgrid_size)/2:(grid_size+subgrid_size)/2, (grid_size-subgrid_size)/2:(grid_size+subgrid_size)/2] = s
-s1 = numpy.fft.ifftshift(s1)
-spheroidal_grid = numpy.real(numpy.fft.ifft2(s1))
-
-# Dummy spheroidal
-#spheroidal = numpy.ones(shape=spheroidal.shape, dtype=numpy.float32)
-#spheroidal_grid = numpy.ones(shape=spheroidal_grid.shape, dtype=numpy.float32)
+# Option 1: example spherodail
+# spheroidal = idg.utils.get_example_spheroidal(subgrid_size, dtype=np.float64)
+# Option 2: identity
+spheroidal = np.ones(shape=(subgrid_size, subgrid_size), dtype=np.float64)
+spheroidal_grid = np.ones(shape=(grid_size, grid_size), dtype=np.float64)
 
 
 ######################################################################
@@ -161,68 +98,70 @@ nr_rows = table.nrows()
 nr_rows_read = 0
 nr_rows_per_batch = (nr_baselines + nr_stations) * nr_time
 iteration = 0
+timeIndex = -1
+t_previous = -1
 while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     time_total = -time.time()
 
-    # Enable interactive plotting
-    plt.ion()
-
-    # Initialize empty buffers
-    uvw          = numpy.zeros(shape=(nr_baselines, nr_time), dtype=idg.uvwtype)
-    visibilities = numpy.zeros(shape=(nr_baselines, nr_time, nr_channels, nr_polarizations), dtype=idg.visibilitiestype)
-    baselines    = numpy.zeros(shape=(nr_baselines), dtype=idg.baselinetype)
-
     time_read = -time.time()
     # Read nr_time samples for all baselines including auto correlations
-    timestamp_block = table.getcol('TIME',           startrow = nr_rows_read, nrow = nr_rows_per_batch)
-    antenna1_block  = table.getcol('ANTENNA1',       startrow = nr_rows_read, nrow = nr_rows_per_batch)
-    antenna2_block  = table.getcol('ANTENNA2',       startrow = nr_rows_read, nrow = nr_rows_per_batch)
-    uvw_block       = table.getcol('UVW',            startrow = nr_rows_read, nrow = nr_rows_per_batch)
-    vis_block       = table.getcol(datacolumn,       startrow = nr_rows_read, nrow = nr_rows_per_batch)
-    flags_block     = table.getcol('FLAG',           startrow = nr_rows_read, nrow = nr_rows_per_batch)
+    timestamp_block = table.getcol('TIME',
+                                   startrow = nr_rows_read,
+                                   nrow = nr_rows_per_batch)
+    antenna1_block  = table.getcol('ANTENNA1',
+                                   startrow = nr_rows_read,
+                                   nrow = nr_rows_per_batch)
+    antenna2_block  = table.getcol('ANTENNA2',
+                                   startrow = nr_rows_read,
+                                   nrow = nr_rows_per_batch)
+    uvw_block       = table.getcol('UVW',
+                                   startrow = nr_rows_read,
+                                   nrow = nr_rows_per_batch)
+    vis_block       = table.getcol(datacolumn,
+                                   startrow = nr_rows_read,
+                                   nrow = nr_rows_per_batch)
+    flags_block     = table.getcol('FLAG',
+                                   startrow = nr_rows_read,
+                                   nrow = nr_rows_per_batch)
+
     vis_block       = vis_block * -flags_block
+    vis_block[np.isnan(vis_block)] = 0
     nr_rows_read += nr_rows_per_batch
     time_read += time.time()
 
     time_buffer = -time.time()
-    # Change precision
-    uvw_block = uvw_block.astype(numpy.float64)
-    vis_block = vis_block.astype(numpy.complex64)
 
-    # Remove autocorrelations
-    flags = antenna1_block != antenna2_block
-    antenna1_block = antenna1_block[flags]
-    antenna2_block = antenna2_block[flags]
-    uvw_block      = uvw_block[flags]
-    vis_block      = vis_block[flags]
-
-    # Reshape data
-    antenna1_block = numpy.reshape(antenna1_block, newshape=(nr_time, nr_baselines))
-    antenna2_block = numpy.reshape(antenna2_block, newshape=(nr_time, nr_baselines))
-    uvw_block = numpy.reshape(uvw_block, newshape=(nr_time, nr_baselines, 3))
-    vis_block = numpy.reshape(vis_block, newshape=(nr_time, nr_baselines, nr_channels, nr_polarizations))
+    # Change precision (necessary?)
+    uvw_block = uvw_block.astype(np.float64)
+    vis_block = vis_block.astype(np.complex64)
 
     # Fill buffer
-    for t in range(nr_time):
-        for bl in range(nr_baselines):
-            # Set antenna indices
-            antenna1 = antenna1_block[t][bl]
-            antenna2 = antenna2_block[t][bl]
+    for row in range(nr_rows_per_batch):
 
-            # Set uvw
-            uvw_coordinate = uvw_block[t][bl]
+        # Set time index
+        if (timestamp_block[row] != t_previous):
+            timeIndex += 1
 
-            # Set visibilities
-            visibilities = vis_block[t][bl]
+        # Set antenna indices
+        antenna1 = antenna1_block[row]
+        antenna2 = antenna2_block[row]
 
-            # Add visibilities to the buffer
-            plan.grid_visibilities(
-                t,
-                antenna1,
-                antenna2,
-                uvw_coordinate,
-                visibilities,
-            )
+        # Set uvw
+        uvw_coordinate = uvw_block[row]
+
+        # Set visibilities
+        visibilities = vis_block[row]
+
+        # Add visibilities to the buffer
+        plan.grid_visibilities(
+            timeIndex,
+            antenna1,
+            antenna2,
+            uvw_coordinate,
+            visibilities
+        )
+
+        t_previous = timestamp_block[row]
 
     time_buffer += time.time()
                     
@@ -233,46 +172,38 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
 
     # Compute fft over grid
     time_fft = -time.time()
-    # Using numpy
-    img = numpy.real(numpy.fft.fftshift(numpy.fft.ifft2(numpy.fft.fftshift(grid[0,:,:]))))
 
-    # Using fft from library
-    #img = grid.copy()
-    #proxy.transform(idg.FourierDomainToImageDomain, img)
-    #img = numpy.real(img[0,:,:])
+    # Using numpy
+    grid_copy = plan.get_copy_grid()
+    plan.transform_grid(grid_copy)
+    img = np.real(grid_copy[0,:,:])
+
     time_fft += time.time()
 
     time_plot = -time.time()
 
-    # Remove spheroidal from grid
-    img = img/spheroidal_grid
-
-    # Crop image
-    img = img[int(grid_size*0.9):int(grid_size*0.1):-1,int(grid_size*0.9):int(grid_size*0.1):-1]
-
-
     # Set plot properties
     colormap=plt.get_cmap("hot")
-    font_size = 22
+    font_size = 16
 
     # Make first plot (raw grid)
-    plt.figure(1, figsize=(20,10))
-    plt.figure(1)
+    # TODO: need to make not figure and so every iteration?
+    fig = plt.figure(1, figsize=(20,10))
     plt.subplot(1,2,1)
     plt.cla()
     ax = plt.gca()
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_axis_bgcolor(colormap(0))
-    plt.imshow(numpy.log(numpy.abs(grid[0,:,:]) + 1), interpolation='nearest')
+    plt.imshow(np.log(np.abs(grid[0,:,:]) + 1), interpolation='nearest')
     time1 = timestamp_block[0]
-    plt.title("UV Data: %2.2i:%2.2i\n" % (numpy.mod(int(time1/3600 ),24), numpy.mod(int(time1/60),60)))
+    plt.title("UV Data: %2.2i:%2.2i\n" % (np.mod(int(time1/3600 ),24), np.mod(int(time1/60),60)))
     ax.title.set_fontsize(font_size)
 
     # Make second plot (processed grid)
     plt.subplot(1,2,2)
     plt.cla()
-    m = numpy.amax(img)
+    m = np.amax(img)
     plt.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
     plt.title("Sky image\n")
     ax = plt.gca()
@@ -282,8 +213,9 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows:
     time_plot += time.time()
 
     # Draw figure
-    plt.show()
     plt.draw()
+    # fig.canvas.blit() # or draw()
+    fig.canvas.start_event_loop(0.001)
 
     # Print timings
     time_total += time.time()
