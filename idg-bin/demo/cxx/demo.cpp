@@ -18,6 +18,9 @@ int run_demo(string ms_name,
     cout << __func__ << "(" << ms_name << ", " << percentage << ")" << endl;
     #endif
 
+    // Plotting
+    idg::NamedWindow fig("Gridded visibilities");
+
     // Open measurement set
     casacore::MeasurementSet ms(ms_name);
     casacore::ROMSColumns msCols(ms);
@@ -57,6 +60,7 @@ int run_demo(string ms_name,
     float cell_size      = 0.05/grid_size;
     int subgrid_size     = 32;
     int kernel_size      = subgrid_size/2;
+    int nr_baselines     = ( (nr_antennas - 1) * nr_antennas ) / 2;
 
     auto size_grid  = 1ULL * nr_polarizations * grid_size * grid_size;
     unique_ptr<complex<double>> grid(new complex<double>[size_grid]);
@@ -130,17 +134,23 @@ int run_demo(string ms_name,
             visibilities_copy);
 
         time_previous = time;
+
+        // Display grid (note: equals one as buffer flushed iteration AFTER being full)
+        if (row % (buffer_timesteps * (nr_baselines + nr_antennas)) == 1) {
+            fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
+        }
     }
 
     gridder.flush(); // makes sure buffer is empty at the end
     delete [] visibilities_copy;
     delete [] flags_copy;
 
-    idg::display_complex_matrix(grid_size, grid_size, grid.get(), "log", "jet");
+    fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
 
     gridder.transform_grid();
 
-    idg::display_complex_matrix(grid_size, grid_size, grid.get(), "abs", "hot");
+    idg::NamedWindow fig2("Sky image");
+    fig2.display_matrix(grid_size, grid_size, grid.get(), "abs", "hot", 1000000);
 
     return 0;
 }
