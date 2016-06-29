@@ -136,11 +136,11 @@ int run_demo(string ms_name,
     delete [] visibilities_copy;
     delete [] flags_copy;
 
-    idg::display_complex_matrix(grid_size, grid_size, grid.get(), "log");
+    idg::display_complex_matrix(grid_size, grid_size, grid.get(), "log", "jet");
 
     gridder.transform_grid();
 
-    idg::display_complex_matrix(grid_size, grid_size, grid.get(), "abs");
+    idg::display_complex_matrix(grid_size, grid_size, grid.get(), "abs", "hot");
 
     return 0;
 }
