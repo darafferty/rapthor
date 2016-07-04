@@ -22,28 +22,13 @@ namespace idg {
                     /// Constructor
                     Jetson(
                         Parameters params,
-                        unsigned deviceNumber = 0,
-                        Compiler compiler = default_compiler(),
-                        Compilerflags flags = default_compiler_flags(),
                         ProxyInfo info = default_info());
 
                     /// Destructor
                     ~Jetson() = default;
 
-                protected:
-                    virtual dim3 get_block_gridder() const override;
-                    virtual dim3 get_block_degridder() const override;
-                    virtual dim3 get_block_adder() const override;
-                    virtual dim3 get_block_splitter() const override;
-                    virtual dim3 get_block_scaler() const override;
-                    virtual int get_gridder_batch_size() const override;
-                    virtual int get_degridder_batch_size() const override;
-                    virtual std::string append(Compilerflags flags) const override;
-
-                public:
-                    /*
-                        High level routines
-                    */
+               public:
+                    // High level interface, inherited from Proxy
                     virtual void grid_visibilities(
                         const std::complex<float> *visibilities,
                         const float *uvw,
