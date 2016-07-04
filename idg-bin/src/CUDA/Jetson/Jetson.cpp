@@ -22,11 +22,13 @@ namespace idg {
             void Jetson::transform(DomainAtoDomainB direction,
                                 complex<float>* grid)
             {
-#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
+
+                // Load device
+                DeviceInstance *device = devices[0];
 
                 // Constants
                 auto gridsize = mParams.get_grid_size();
@@ -34,10 +36,11 @@ namespace idg {
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
                 // Initialize
-                cu::Context &context = get_context();
+                cu::Context &context = device->get_context();
+                context.setCurrent();
 
                 // Load kernels
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
 
                 // Initialize
                 cu::Stream stream;
@@ -51,9 +54,9 @@ namespace idg {
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
-                powerRecords[0].enqueue(stream);
+                device->measure(powerRecords[0], stream);
                 kernel_fft->launch(stream, d_grid, sign);
-                powerRecords[1].enqueue(stream);
+                device->measure(powerRecords[1], stream);
                 stream.synchronize();
 
                 #if defined(REPORT_TOTAL)
@@ -64,7 +67,6 @@ namespace idg {
                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                 std::cout << std::endl;
                 #endif
-#endif
             }
 
             void Jetson::grid_visibilities(
@@ -79,10 +81,12 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
             {
-#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Load device
+                DeviceInstance *device = devices[0];
 
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
@@ -96,10 +100,10 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
-                unique_ptr<Scaler> kernel_scaler = get_kernel_scaler();
-                unique_ptr<Adder> kernel_adder = get_kernel_adder();
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
+                unique_ptr<Scaler> kernel_scaler   = device->get_kernel_scaler();
+                unique_ptr<Adder> kernel_adder     = device->get_kernel_adder();
+                unique_ptr<GridFFT> kernel_fft     = device->get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -107,7 +111,7 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cu::Context &context = get_context();
+                cu::Context &context = device->get_context();
                 cu::Stream stream;
 
                 // Get device memory pointers
@@ -134,7 +138,7 @@ namespace idg {
                 double total_runtime_fft = 0;
                 double total_runtime_scaler = 0;
                 double total_runtime_adder = 0;
-                PowerSensor::State startState = powerSensor.read();
+                PowerSensor::State startState = device->measure();
 
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Compute the number of baselines to process in current iteration
@@ -159,26 +163,26 @@ namespace idg {
                     kernel_fft->plan(subgridsize, current_nr_subgrids);
 
                     // Launch gridder kernel
-                    powerRecords[0].enqueue(stream);
+                    device->measure(powerRecords[0], stream);
                     kernel_gridder->launch(
                         stream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                    powerRecords[1].enqueue(stream);
+                    device->measure(powerRecords[1], stream);
 
                     // Launch FFT
                     kernel_fft->launch(stream, d_subgrids, CUFFT_INVERSE);
-                    powerRecords[2].enqueue(stream);
+                    device->measure(powerRecords[2], stream);
 
                     // Launch scaler kernel
                     kernel_scaler->launch(
                         stream, current_nr_subgrids, d_subgrids);
-                    powerRecords[3].enqueue(stream);
+                    device->measure(powerRecords[3], stream);
 
                     // Launch adder kernel
                     kernel_adder->launch(
                         stream, current_nr_subgrids,
                         d_metadata, d_subgrids, d_grid);
-                    powerRecords[4].enqueue(stream);
+                    device->measure(powerRecords[4], stream);
                     stream.record(executeFinished);
 
                     executeFinished.synchronize();
@@ -215,7 +219,7 @@ namespace idg {
                 stream.synchronize();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState = powerSensor.read();
+                PowerSensor::State stopState = device->measure();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -236,7 +240,6 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-#endif
             }
 
             void Jetson::degrid_visibilities(
@@ -251,10 +254,12 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
              {
-#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Load device
+                DeviceInstance *device = devices[0];
 
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
@@ -268,9 +273,9 @@ namespace idg {
                 auto jobsize = mParams.get_job_size_gridder();
 
                 // Load kernels
-                unique_ptr<Splitter> kernel_splitter = get_kernel_splitter();
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-                unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
+                unique_ptr<Splitter> kernel_splitter   = device->get_kernel_splitter();
+                unique_ptr<GridFFT> kernel_fft         = device->get_kernel_fft();
+                unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -278,8 +283,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cu::Context &context = get_context();
+                cu::Context &context = device->get_context();
                 cu::Stream stream;
+                cu::Event executeFinished;
 
                 // Get device memory pointers
                 cu::DeviceMemory d_visibilities((void *) visibilities);
@@ -291,10 +297,6 @@ namespace idg {
                 cu::DeviceMemory d_metadata(sizeof_metadata(nr_subgrids));
                 d_metadata.set((void *) metadata);
 
-                // Initialize
-                context.setCurrent();
-                cu::Event executeFinished;
-
                 // Device memory
                 int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                 cu::DeviceMemory d_subgrids(sizeof_subgrids(max_nr_subgrids));
@@ -303,7 +305,7 @@ namespace idg {
                 double total_runtime_splitter = 0;
                 double total_runtime_fft = 0;
                 double total_runtime_degridder = 0;
-                PowerSensor::State startState = powerSensor.read();
+                PowerSensor::State startState = device->measure();
 
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Compute the number of baselines to process in current iteration
@@ -328,21 +330,21 @@ namespace idg {
                     kernel_fft->plan(subgridsize, current_nr_subgrids);
 
                     // Launch splitter kernel
-                    powerRecords[0].enqueue(stream);
+                    device->measure(powerRecords[0], stream);
                     kernel_splitter->launch(
                         stream, current_nr_subgrids,
                         d_metadata, d_subgrids, d_grid);
-                    powerRecords[1].enqueue(stream);
+                    device->measure(powerRecords[1], stream);
 
                     // Launch FFT
                     kernel_fft->launch(stream, d_subgrids, CUFFT_FORWARD);
-                    powerRecords[2].enqueue(stream);
+                    device->measure(powerRecords[2], stream);
 
                     // Launch degridder kernel
                     kernel_degridder->launch(
                         stream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                         d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                    powerRecords[3].enqueue(stream);
+                    device->measure(powerRecords[3], stream);
                     stream.record(executeFinished);
 
                     executeFinished.synchronize();
@@ -354,7 +356,7 @@ namespace idg {
                     auxiliary::report(" splitter", runtime_splitter,
                                                    kernel_splitter->flops(current_nr_subgrids),
                                                    kernel_splitter->bytes(current_nr_subgrids),
-                                                   PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
+                                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                     auxiliary::report("      fft", runtime_fft,
                                                    kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                    kernel_fft->bytes(subgridsize, current_nr_subgrids),
@@ -362,7 +364,7 @@ namespace idg {
                     auxiliary::report("degridder", runtime_degridder,
                                                    kernel_degridder->flops(current_nr_baselines, current_nr_subgrids),
                                                    kernel_degridder->bytes(current_nr_baselines, current_nr_subgrids),
-                                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                                                   PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_splitter  += runtime_splitter;
@@ -372,7 +374,7 @@ namespace idg {
                 } // end for s
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                PowerSensor::State stopState = powerSensor.read();
+                PowerSensor::State stopState = device->measure();
                 uint64_t total_flops_degridder  = kernel_degridder->flops(nr_baselines, nr_subgrids);
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(nr_baselines, nr_subgrids);
                 uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, nr_subgrids);
@@ -390,7 +392,6 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-#endif
             }
 
         } // namespace cuda
