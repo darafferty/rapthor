@@ -7,16 +7,7 @@ namespace idg {
     namespace proxy {
         namespace cuda {
 
-            void PowerRecord::enqueue(cu::Stream &stream) {
-                stream.record(event);
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
-            }
-
-            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-                *static_cast<PowerSensor::State *>(userData) = powerSensor.read();
-            }
-
-            void printDevices(int deviceNumber) {
+           void printDevices(int deviceNumber) {
                 std::clog << "Devices";
                 for (int device = 0; device < cu::Device::getCount(); device++) {
                 std::clog << "\t" << device << ": ";
@@ -86,20 +77,6 @@ namespace idg {
                 compile(compiler, flags);
                 load_shared_objects();
                 find_kernel_functions();
-            }
-
-            void CUDA::init_powersensor() {
-                #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                cout << "Opening power sensor: " << str_power_sensor << endl;
-                cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor.init(str_power_sensor, str_power_file);
-                #else
-                powerSensor.init();
-                #endif
             }
 
             string CUDA::make_tempdir() {
@@ -255,6 +232,7 @@ namespace idg {
                 DomainAtoDomainB direction,
                 complex<float>* grid)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
@@ -350,6 +328,7 @@ namespace idg {
                 }
                 std::cout << std::endl;
                 #endif
+#endif
             }
 
             void CUDA::grid_visibilities(
@@ -364,6 +343,7 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -573,6 +553,7 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
 
@@ -588,6 +569,7 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -783,6 +765,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
             void CUDA::compile(Compiler compiler, Compilerflags flags)
