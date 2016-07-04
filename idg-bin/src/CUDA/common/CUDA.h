@@ -39,20 +39,7 @@
 namespace idg {
     namespace proxy {
         namespace cuda {
-            /*
-                Power measurement
-            */
-            static PowerSensor powerSensor;
-
-            class PowerRecord {
-                public:
-                void enqueue(cu::Stream &stream);
-                static void getPower(CUstream, CUresult, void *userData);
-                PowerSensor::State state;
-                cu::Event event;
-            };
-
-            class CUDA : public Proxy {
+           class CUDA : public Proxy {
                 public:
                     /// Constructors
                     CUDA(
@@ -148,7 +135,6 @@ namespace idg {
 
                     void init_cuda(unsigned deviceNumber = 0);
                     void compile_kernels(Compiler compiler, Compilerflags flags);
-                    void init_powersensor();
 
                     // data
                     cu::Device *device;

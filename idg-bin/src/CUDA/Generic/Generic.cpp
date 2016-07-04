@@ -21,8 +21,6 @@ namespace idg {
                 init_devices();
                 print_devices();
                 print_compiler_flags();
-
-                init_powersensor();
             }
 
             void Generic::init_devices() {
@@ -220,18 +218,19 @@ namespace idg {
 
                 // Copy grid to device
                 cu::DeviceMemory d_grid(sizeof_grid());
-                powerRecords[0].enqueue(stream);
+                //powerRecords[0].enqueue(stream);
+                device->measure(powerRecords[0], stream);
                 stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
-                powerRecords[1].enqueue(stream);
+                device->measure(powerRecords[1], stream);
                 kernel_fft->launch(stream, d_grid, sign);
-                powerRecords[2].enqueue(stream);
+                device->measure(powerRecords[2], stream);
 
                 // Copy grid to host
                 stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
-                powerRecords[3].enqueue(stream);
+                device->measure(powerRecords[3], stream);
                 stream.synchronize();
 
                 // Perform fft shift
@@ -375,7 +374,7 @@ namespace idg {
                     // Power measurement
                     PowerRecord powerRecords[5];
                     #pragma omp single
-                    startState = powerSensor.read();
+                    startState = device->measure();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -413,20 +412,20 @@ namespace idg {
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
                             executestream.waitEvent(outputFree);
-                            powerRecords[0].enqueue(executestream);
+                            device->measure(powerRecords[0], executestream);
                             kernel_gridder->launch(
                                 executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            powerRecords[1].enqueue(executestream);
+                            device->measure(powerRecords[1], executestream);
 
                             // Launch FFT
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
-                            powerRecords[2].enqueue(executestream);
+                            device->measure(powerRecords[2], executestream);
 
                             // Launch scaler kernel
                             kernel_scaler->launch(
                                 executestream, current_nr_subgrids, d_subgrids);
-                            powerRecords[3].enqueue(executestream);
+                            device->measure(powerRecords[3], executestream);
                             executestream.record(outputReady);
                             executestream.record(inputFree);
 
@@ -435,7 +434,7 @@ namespace idg {
                                 executestream, current_nr_subgrids,
                                 d_metadata, d_subgrids, d_grid);
 
-                            powerRecords[4].enqueue(executestream);
+                            device->measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
                         }
 
@@ -472,9 +471,12 @@ namespace idg {
                     } // end for s
                 }
 
+                // Wait for all jobs to finish
+                executestream.synchronize();
+                PowerSensor::State stopState = device->measure();
+
                 // Copy grid to host
                 dtohstream.memcpyDtoHAsync(grid, d_grid, sizeof_grid());
-                PowerSensor::State stopState = powerSensor.read();
                 dtohstream.synchronize();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -599,7 +601,7 @@ namespace idg {
                     // Power measurement
                     PowerRecord powerRecords[5];
                     #pragma omp single
-                    startState = powerSensor.read();
+                    startState = device->measure();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -632,23 +634,23 @@ namespace idg {
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
-                            powerRecords[0].enqueue(executestream);
+                            device->measure(powerRecords[0], executestream);
                             kernel_splitter->launch(
                                 executestream, current_nr_subgrids,
                                 d_metadata, d_subgrids, d_grid);
-                            powerRecords[1].enqueue(executestream);
+                            device->measure(powerRecords[1], executestream);
 
                             // Launch FFT
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
-                            powerRecords[2].enqueue(executestream);
+                            device->measure(powerRecords[2], executestream);
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
-                            powerRecords[3].enqueue(executestream);
+                            device->measure(powerRecords[3], executestream);
                             kernel_degridder->launch(
                                 executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            powerRecords[4].enqueue(executestream);
+                            device->measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
 
         					// Copy visibilities to host
@@ -686,7 +688,7 @@ namespace idg {
 
                 // Wait for all jobs to finish
                 dtohstream.synchronize();
-                PowerSensor::State stopState = powerSensor.read();
+                PowerSensor::State stopState = device->measure();
 
                 // Copy visibilities from cuda h_visibilities to visibilities
                 #if !REUSE_HOST_MEMORY

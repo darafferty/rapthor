@@ -28,6 +28,9 @@ namespace idg {
 
                 // Load modules
                 load_modules();
+
+                // Initialize power sensor
+                init_powersensor();
             }
 
             std::string DeviceInstance::get_compiler_flags() {
@@ -214,6 +217,35 @@ namespace idg {
             std::unique_ptr<Scaler> DeviceInstance::get_kernel_scaler() const {
                 return std::unique_ptr<Scaler>(new Scaler(
                     *(modules[which_module.at(name_scaler)]), parameters, block_scaler));
+            }
+
+            void DeviceInstance::init_powersensor() {
+                // TODO: support multiple power sensors
+                #if defined(MEASURE_POWER_ARDUINO)
+                const char *str_power_sensor = getenv("POWER_SENSOR");
+                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
+                const char *str_power_file = getenv("POWER_FILE");
+                if (!str_power_file) str_power_file = POWER_FILE;
+                std::cout << "Opening power sensor: " << str_power_sensor << std::endl;
+                std::cout << "Writing power consumption to file: " << str_power_file << std::endl;
+                powerSensor.init(str_power_sensor, str_power_file);
+                #else
+                powerSensor.init();
+                #endif
+            }
+
+            PowerSensor::State DeviceInstance::measure() {
+                return powerSensor.read();
+            }
+            void DeviceInstance::measure(PowerRecord &record, cu::Stream &stream) {
+                stream.record(record.event);
+                record.sensor = &powerSensor;
+                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
+            }
+
+            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
+                PowerRecord *record = static_cast<PowerRecord*>(userData);
+                record->state = record->sensor->read();
             }
 
         } // end namespace cuda

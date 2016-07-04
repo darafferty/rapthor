@@ -176,20 +176,20 @@ namespace idg {
                 			// Launch gridder kernel
                 			executestream.waitEvent(inputReady);
                 			executestream.waitEvent(outputFree);
-                            powerRecords[0].enqueue(executestream);
+                            device->measure(powerRecords[0], executestream);
                             kernel_gridder->launch(
                                 executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                 				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            powerRecords[1].enqueue(executestream);
+                            device->measure(powerRecords[1], executestream);
 
                 			// Launch FFT
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
-                            powerRecords[2].enqueue(executestream);
+                            device->measure(powerRecords[2], executestream);
 
                             // Launch scaler kernel
                             kernel_scaler->launch(
                                 executestream, current_nr_subgrids, d_subgrids);
-                            powerRecords[3].enqueue(executestream);
+                            device->measure(powerRecords[3], executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
 
@@ -402,17 +402,17 @@ namespace idg {
 
                 			// Launch FFT
                 			executestream.waitEvent(inputReady);
-                            powerRecords[0].enqueue(executestream);
+                            device->measure(powerRecords[0], executestream);
                             kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
-                            powerRecords[1].enqueue(executestream);
+                            device->measure(powerRecords[1], executestream);
 
                 			// Launch degridder kernel
                 			executestream.waitEvent(outputFree);
-                            powerRecords[2].enqueue(executestream);
+                            device->measure(powerRecords[2], executestream);
                             kernel_degridder->launch(
                                 executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
-                            powerRecords[3].enqueue(executestream);
+                            device->measure(powerRecords[3], executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);
 

@@ -68,6 +68,7 @@ namespace idg {
             void Jetson::transform(DomainAtoDomainB direction,
                                 complex<float>* grid)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
@@ -109,6 +110,7 @@ namespace idg {
                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
                 std::cout << std::endl;
                 #endif
+#endif
             }
 
             void Jetson::grid_visibilities(
@@ -123,6 +125,7 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -279,6 +282,7 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
             void Jetson::degrid_visibilities(
@@ -293,6 +297,7 @@ namespace idg {
                 const int *aterm_offsets,
                 const float *spheroidal)
              {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -431,6 +436,7 @@ namespace idg {
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
+#endif
             }
 
         } // namespace cuda
