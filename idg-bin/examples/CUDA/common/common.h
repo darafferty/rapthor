@@ -11,7 +11,6 @@ using namespace std;
 
 void run(
     idg::Parameters params,
-    unsigned deviceNumber,
     cu::Context &context,
     int nr_subgrids,
     cu::HostMemory &h_uvw,
@@ -30,10 +29,6 @@ void run() {
     clog << ">>> Configuration"  << endl;
     idg::Parameters params;
     params.set_from_env();
-
-    // Get device number
-    char *cstr_deviceNumber = getenv("CUDA_DEVICE");
-    unsigned deviceNumber = cstr_deviceNumber ? atoi (cstr_deviceNumber) : 0;
 
     // Retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
@@ -91,7 +86,7 @@ void run() {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    PROXYNAME proxy(params, deviceNumber);
+    PROXYNAME proxy(params);
     clog << endl;
 
     // Start profiling
