@@ -9,166 +9,11 @@ namespace idg {
             Generic::Generic(
                 Parameters params,
                 ProxyInfo info) :
-                info(info)
+                CUDA(params, info)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
-                cout << params;
                 #endif
-
-                mParams = params;
-                cu::init();
-                init_devices();
-                print_devices();
-                print_compiler_flags();
-            }
-
-            void Generic::init_devices() {
-                // The list of CUDA devices to use are read from the environment
-                char *char_cuda_device = getenv("CUDA_DEVICE");
-
-                // Get list of all device numbers
-                vector<int> device_numbers;
-
-                if (!char_cuda_device) {
-                    // Use device 0 if no CUDA devices were specified
-                    device_numbers.push_back(0);
-                } else if (strlen(char_cuda_device) == 1) {
-                    // Just one device number was specified
-                    device_numbers.push_back(atoi(char_cuda_device));
-                } else {
-                    // Split device numbers on comma
-                    const char *delimiter = (char *) ",";
-                    char *token = strtok(char_cuda_device, delimiter);
-                    if (token) device_numbers.push_back(atoi(token));
-                    while (token) {
-                        token = strtok(NULL, delimiter);
-                        if (token) device_numbers.push_back(atoi(token));
-                    }
-                }
-
-                // Create a device instance for every device
-                for (int device_number : device_numbers) {
-                    DeviceInstance *device = new DeviceInstance(mParams, info, device_number);
-                    devices.push_back(device);
-                }
-            }
-
-            void Generic::print_devices() {
-                std::cout << "Devices: " << std::endl;
-                for (DeviceInstance *device : devices) {
-                    std::cout << *device;
-                }
-                std::cout << std::endl;
-            }
-
-            void Generic::print_compiler_flags() {
-                std::cout << "Compiler flags: " << std::endl;
-                for (DeviceInstance *device : devices) {
-                    std::cout << device->get_compiler_flags() << std::endl;
-                }
-                std::cout << std::endl;
-            }
-
-            std::vector<DeviceInstance*> Generic::get_devices() {
-                return devices;
-            }
-
-            ProxyInfo Generic::default_info() {
-                #if defined(DEBUG)
-                cout << "Generic::" << __func__ << endl;
-                #endif
-
-                string srcdir = string(IDG_INSTALL_DIR)
-                    + "/lib/kernels/CUDA/";
-
-                #if defined(DEBUG)
-                cout << "Searching for source files in: " << srcdir << endl;
-                #endif
-
-                // Create temp directory
-                char _tmpdir[] = "/tmp/idg-XXXXXX";
-                char *tmpdir = mkdtemp(_tmpdir);
-                #if defined(DEBUG)
-                cout << "Temporary files will be stored in: " << tmpdir << endl;
-                #endif
-
-                // Create proxy info
-                ProxyInfo p;
-                p.set_path_to_src(srcdir);
-                p.set_path_to_lib(tmpdir);
-
-                string libgridder = "Gridder.ptx";
-                string libdegridder = "Degridder.ptx";
-                string libfft = "FFT.ptx";
-                string libscaler = "Scaler.ptx";
-                string libadder = "Adder.ptx";
-                string libsplitter = "Splitter.ptx";
-
-                p.add_lib(libgridder);
-                p.add_lib(libdegridder);
-                p.add_lib(libfft);
-                p.add_lib(libscaler);
-                p.add_lib(libadder);
-                p.add_lib(libsplitter);
-
-                p.add_src_file_to_lib(libgridder, "KernelGridder.cu");
-                p.add_src_file_to_lib(libdegridder, "KernelDegridder.cu");
-                p.add_src_file_to_lib(libfft, "KernelFFT.cu");
-                p.add_src_file_to_lib(libscaler, "KernelScaler.cu");
-                p.add_src_file_to_lib(libadder, "KernelAdder.cu");
-                p.add_src_file_to_lib(libsplitter, "KernelSplitter.cu");
-
-                p.set_delete_shared_objects(true);
-
-                return p;
-            }
-
-            /* Sizeof routines */
-            uint64_t Generic::sizeof_subgrids(int nr_subgrids) {
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
-            }
-
-            uint64_t Generic::sizeof_uvw(int nr_baselines) {
-                auto nr_time = mParams.get_nr_time();
-                return 1ULL * nr_baselines * nr_time * sizeof(UVW);
-            }
-
-            uint64_t Generic::sizeof_visibilities(int nr_baselines) {
-                auto nr_time = mParams.get_nr_time();
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>);
-            }
-
-            uint64_t Generic::sizeof_metadata(int nr_subgrids) {
-                return 1ULL * nr_subgrids * sizeof(Metadata);
-            }
-
-            uint64_t Generic::sizeof_grid() {
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>);
-            }
-
-            uint64_t Generic::sizeof_wavenumbers() {
-                auto nr_channels = mParams.get_nr_channels();
-                return 1ULL * nr_channels * sizeof(float);
-            }
-
-            uint64_t Generic::sizeof_aterm() {
-                auto nr_stations = mParams.get_nr_stations();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
-            }
-
-            uint64_t Generic::sizeof_spheroidal() {
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * subgridsize * subgridsize * sizeof(float);
             }
 
             /* High level routines */
@@ -253,16 +98,16 @@ namespace idg {
 
 
                 #if defined(REPORT_TOTAL)
-                auxiliary::report(" input",
+                auxiliary::report("   input",
                                   PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
                                   0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
-                auxiliary::report("   fft",
+                auxiliary::report("     fft",
                                   PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
-                auxiliary::report("output",
+                auxiliary::report("  output",
                                   PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
                                   0, sizeof_grid(),
                                   PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));

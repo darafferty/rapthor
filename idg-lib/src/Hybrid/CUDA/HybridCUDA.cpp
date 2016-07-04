@@ -12,6 +12,7 @@
 #include "HybridCUDA.h"
 
 using namespace std;
+using namespace idg::proxy::cuda;
 
 namespace idg {
     namespace proxy {

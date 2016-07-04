@@ -8,10 +8,6 @@ int main(int argc, char **argv) {
     idg::Parameters params;
     params.set_from_env();
 
-    // Get device number
-    char *cstr_deviceNumber = getenv("CUDA_DEVICE");
-    unsigned deviceNumber = cstr_deviceNumber ? atoi (cstr_deviceNumber) : 0;
-
     // Retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
@@ -66,7 +62,7 @@ int main(int argc, char **argv) {
 
     // Initialize interface to kernels
     clog << ">>> Initialize proxy" << endl;
-    idg::proxy::cuda::Jetson proxy(params, deviceNumber);
+    idg::proxy::cuda::Jetson proxy(params);
     clog << endl;
 
     // Allocate CUDA host memory

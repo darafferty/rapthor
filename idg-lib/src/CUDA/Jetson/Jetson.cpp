@@ -10,59 +10,13 @@ namespace idg {
             /// Constructors
             Jetson::Jetson(
                 Parameters params,
-                unsigned deviceNumber,
-                Compiler compiler,
-                Compilerflags flags,
                 ProxyInfo info) :
-                CUDA(params, deviceNumber, info)
+                CUDA(params, info)
             {
                 #if defined(DEBUG)
                 cout << "Jetson::" << __func__ << endl;
-                cout << "Compiler: " << compiler << endl;
-                cout << "Compiler flags: " << flags << endl;
                 cout << params;
                 #endif
-
-                init_cuda(deviceNumber);
-                compile_kernels(compiler, append(flags));
-                init_powersensor();
-            }
-
-            dim3 Jetson::get_block_gridder() const {
-                return dim3(32, 4);
-            }
-
-            dim3 Jetson::get_block_degridder() const {
-                return dim3(128);
-            }
-
-            dim3 Jetson::get_block_adder() const {
-                return dim3(128);
-            }
-
-            dim3 Jetson::get_block_splitter() const {
-                return dim3(128);
-            }
-
-            dim3 Jetson::get_block_scaler() const {
-                return dim3(128);
-            }
-
-            int Jetson::get_gridder_batch_size() const {
-                return 32;
-            }
-
-            int Jetson::get_degridder_batch_size() const {
-                dim3 block_degridder = get_block_degridder();
-                return block_degridder.x * block_degridder.y * block_degridder.z;
-            }
-
-            Compilerflags Jetson::append(Compilerflags flags) const {
-                stringstream new_flags;
-                new_flags << flags;
-                new_flags << " -DGRIDDER_BATCH_SIZE=" << get_gridder_batch_size();
-                new_flags << " -DDEGRIDDER_BATCH_SIZE=" << get_degridder_batch_size();
-                return new_flags.str();
             }
 
             void Jetson::transform(DomainAtoDomainB direction,
