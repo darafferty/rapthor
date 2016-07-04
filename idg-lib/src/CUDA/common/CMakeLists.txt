@@ -7,17 +7,17 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
+    CUDA.h
     CU.h
     CUFFT.h
-    CUDA.h
     DeviceInstance.h
     PowerRecord.h
 )
 
 set (${PROJECT_NAME}_sources
+    CUDA.cpp
     CU.cpp
     CUFFT.cpp
-    CUDA.cpp
     Kernels.cpp
     DeviceInstance.cpp
     PowerRecord.cpp
