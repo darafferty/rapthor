@@ -328,6 +328,12 @@ set(LINK_LIRBRARIES idg-fft ${CMAKE_DL_LIBS})
 if (BUILD_LIB_CPU)
   set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
 endif()
+if (BUILD_LIB_CUDA)
+  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cuda)
+endif()
+if (BUILD_LIB_OPENCL)
+  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-opencl)
+endif()
 
 target_link_libraries (
   idg

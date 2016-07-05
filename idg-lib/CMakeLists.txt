@@ -198,7 +198,11 @@ endif (BUILD_WITH_DEMO)
 # See: https://cmake.org/Wiki/CMake/Tutorials/      #
 # How_to_create_a_ProjectConfig.cmake_file          #
 #####################################################
-set(TARGETS_TO_BUILD idg-common)
+set(TARGETS_TO_BUILD idg)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-common)
+if (BUILD_LIB_CPU)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cpu)
+endif()
 if (BUILD_LIB_CUDA)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cuda)
 endif()
