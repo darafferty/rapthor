@@ -33,25 +33,27 @@ set(IDG_LIB_PATH "${IDG_PREFIX_DIR}/lib"
 # Our library dependencies (contains definitions for IMPORTED targets)
 include("${IDG_PREFIX_DIR}/lib/cmake/IDGTargets.cmake")
 
-if (@BUILD_LIB_CPU@)
-set(IDG_CPU_LIB idg-cpu CACHE LOCATION "IDG CPU library")
-endif()
+set(IDG_LIB idg CACHE LOCATION "IDG library")
 
-if (@BUILD_LIB_CUDA@)
-set(IDG_CUDA_LIB idg-cuda CACHE LOCATION "IDG CUDA library")
-endif()
+#if (@BUILD_LIB_CPU@)
+#set(IDG_CPU_LIB idg-cpu CACHE LOCATION "IDG CPU library")
+#endif()
 
-if (@BUILD_LIB_OPENCL@)
-set(IDG_OPENCL_LIB idg-opencl CACHE LOCATION "IDG OpenCL library")
-endif()
+#if (@BUILD_LIB_CUDA@)
+#set(IDG_CUDA_LIB idg-cuda CACHE LOCATION "IDG CUDA library")
+#endif()
 
-if (@BUILD_LIB_CPU@ AND @BUILD_LIB_CUDA@)
-set(IDG_HYBRID_CUDA_LIB idg-hybrid-cuda CACHE LOCATION "IDG hybrid CUDA library")
-endif()
+#if (@BUILD_LIB_OPENCL@)
+#set(IDG_OPENCL_LIB idg-opencl CACHE LOCATION "IDG OpenCL library")
+#endif()
 
-if (@BUILD_LIB_KNC@)
-set(IDG_KNC_LIB idg-knc CACHE LOCATION "IDG KNC library")
-endif()
+#if (@BUILD_LIB_CPU@ AND @BUILD_LIB_CUDA@)
+#set(IDG_HYBRID_CUDA_LIB idg-hybrid-cuda CACHE LOCATION "IDG hybrid CUDA library")
+#endif()
+
+#if (@BUILD_LIB_KNC@)
+#set(IDG_KNC_LIB idg-knc CACHE LOCATION "IDG KNC library")
+#endif()
 
 if (@BUILD_WITH_PYTHON@)
 set(IDG_PYTHON_MODULE_PATH "${IDG_PREFIX_DIR}/lib/python2.7/dist-packages"
