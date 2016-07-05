@@ -98,6 +98,7 @@ install(TARGETS idg-fft
 #########################################################
 # build libidg-utility: init example data, ...
 #########################################################
+if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
 add_library(idg-utility
   $<TARGET_OBJECTS:utility-initialize>
   $<TARGET_OBJECTS:utility-external>
@@ -118,6 +119,7 @@ install(TARGETS idg-utility
   ARCHIVE DESTINATION lib/static
   PUBLIC_HEADER DESTINATION include
 )
+endif()
 
 
 ########################################################
