@@ -28,9 +28,6 @@ if (BUILD_WITH_PYTHON)
     add_subdirectory(python)
     add_subdirectory(python-api)
 endif()
-if (BUILD_WITH_BOOST_PYTHON)
-    add_subdirectory(boost-python)
-endif()
 
 
 
