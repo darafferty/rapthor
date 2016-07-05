@@ -63,5 +63,5 @@ or
 For instance, for the CPU library, include the "idg-cpu." in your source file. In cmake, set the include path and link to the libarary:     
 
 *include_directories (${IDG_INCLUDE_DIR})*    
-*target_link_libraries (a.out ${IDG_CPU_LIB})*      
+*target_link_libraries (a.out ${IDG_LIB})*      
 
