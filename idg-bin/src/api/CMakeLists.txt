@@ -6,6 +6,7 @@ set (${PROJECT_NAME}_headers
     Scheme.h
     GridderPlan.h
     DegridderPlan.h
+    Datatypes.h
 )
 
 set (${PROJECT_NAME}_sources
