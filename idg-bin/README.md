@@ -51,11 +51,7 @@ or
 ## Predefined varibles from find_package
 
 *  IDG_INCLUDE_DIR: general include directories       
-*  IDG_CPU_LIB: CPU library to link against      
-*  IDG_CUDA_LIB: CUDA library to link against     
-*  IDG_HYBRID_CUDA_LIB: hybrid CPU/CUDA library to link against     
-*  IDG_OPENCL_LIB: OpenCl library to link against     
-*  IDG_KNC_LIB: KNC library to link against      
+*  IDG_LIB: IDG library to link against      
 *  IDG_PYTHON_MODULE_PATH: path to 'idg' python module    
 
 ## Linking against IDG
