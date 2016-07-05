@@ -19,6 +19,14 @@
 #if defined(BUILD_LIB_CPU)
 #include "idg-cpu.h"
 #endif
+#if defined(BUILD_LIB_CUDA)
+// TODO: fix
+//#include "idg-cuda.h"
+#endif
+#if defined(BUILD_LIB_OPENCL)
+// TODO: fix
+//#include "idg-opencl.h"
+#endif
 #include "API.h"
 #include "Datatypes.h"
 
@@ -27,8 +35,8 @@ namespace idg {
     enum class Type {
         CPU_REFERENCE,
         CPU_OPTIMIZED,
-        CUDA_KEPLER,
-        CUDA_MAXWELL
+        CUDA_GENERIC,
+        OPENCL_GENERIC
     };
 
 

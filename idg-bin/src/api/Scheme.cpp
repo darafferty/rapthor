@@ -273,6 +273,18 @@ namespace idg {
             m_proxy = new proxy::cpu::HaswellEP(params);
         }
         #endif
+        #if defined(BUILD_LIB_CUDA)
+        if (m_architecture == Type::CUDA_GENERIC) {
+            // TODO: fix
+            //m_proxy = new proxy::cuda::Generic(params);
+        }
+        #endif
+        #if defined(BUILD_LIB_OPENCL)
+        if (m_architecture == Type::OPENCL_GENERIC) {
+            // TODO: fix
+            //m_proxy = new proxy::opencl::Reference(params);
+        }
+        #endif
 
         if (m_proxy == nullptr)
             throw invalid_argument("Unknown architecture type.");
