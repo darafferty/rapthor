@@ -231,27 +231,24 @@ namespace idg {
             {
                 #if defined(MEASURE_POWER_ARDUINO)
                 if (str_power_sensor && str_power_file) {
-                    powerSensor.init(str_power_sensor, str_power_file);
+                    // TODO: ArduinoPowerSensor
+                    //powerSensor.init(str_power_sensor, str_power_file);
                 } else {
-                    powerSensor.init();
+                    powerSensor = new PowerSensor();
                 }
                 #else
-                powerSensor.init();
+                powerSensor = new PowerSensor();
                 #endif
             }
 
             PowerSensor::State DeviceInstance::measure() {
-                return powerSensor.read();
-            }
-            void DeviceInstance::measure(PowerRecord &record, cu::Stream &stream) {
-                stream.record(record.event);
-                record.sensor = &powerSensor;
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
+                return powerSensor->read();
             }
 
-            void PowerRecord::getPower(CUstream, CUresult, void *userData) {
-                PowerRecord *record = static_cast<PowerRecord*>(userData);
-                record->state = record->sensor->read();
+            void DeviceInstance::measure(PowerRecord &record, cu::Stream &stream) {
+                stream.record(record.event);
+                record.sensor = powerSensor;
+                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
             }
 
         } // end namespace cuda

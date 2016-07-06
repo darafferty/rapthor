@@ -159,7 +159,7 @@ namespace idg {
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
-                        cuda::PowerRecord powerRecords[4];
+                        PowerRecord powerRecords[4];
                         LikwidPowerSensor::State powerStates[2];
 
                         #pragma omp critical (GPU)
@@ -380,7 +380,7 @@ namespace idg {
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
-                        cuda::PowerRecord powerRecords[4];
+                        PowerRecord powerRecords[4];
                         LikwidPowerSensor::State powerStates[2];
 
                         // Extract subgrid from grid
