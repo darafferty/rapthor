@@ -9,8 +9,8 @@ namespace idg {
                 info(info) {
 
                 #if defined(DEBUG)
-                cout << "CUDA::" << __func__ << endl;
-                cout << params;
+                std::cout << "CUDA::" << __func__ << std::endl;
+                std::cout << params;
                 #endif
 
                 mParams = params;
@@ -21,32 +21,39 @@ namespace idg {
             };
 
             void CUDA::init_devices() {
-                // The list of CUDA devices to use are read from the environment
-                char *char_cuda_device = getenv("CUDA_DEVICE");
-
                 // Get list of all device numbers
+                char *char_cuda_device = getenv("CUDA_DEVICE");
                 std::vector<int> device_numbers;
-
                 if (!char_cuda_device) {
                     // Use device 0 if no CUDA devices were specified
                     device_numbers.push_back(0);
-                } else if (strlen(char_cuda_device) == 1) {
-                    // Just one device number was specified
-                    device_numbers.push_back(atoi(char_cuda_device));
                 } else {
-                    // Split device numbers on comma
-                    const char *delimiter = (char *) ",";
-                    char *token = strtok(char_cuda_device, delimiter);
-                    if (token) device_numbers.push_back(atoi(token));
-                    while (token) {
-                        token = strtok(NULL, delimiter);
-                        if (token) device_numbers.push_back(atoi(token));
-                    }
+                    device_numbers = idg::auxiliary::split_int(char_cuda_device, ",");
                 }
 
+                // Get list of all power sensors
+                char *char_power_sensor = getenv("POWER_SENSOR");
+                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
+
+                // Get list of all power files
+                char *char_power_file = getenv("POWER_FILE");
+                std::vector<std::string> power_files = idg::auxiliary::split_string(char_power_file, ",");
+
                 // Create a device instance for every device
-                for (int device_number : device_numbers) {
-                    DeviceInstance *device = new DeviceInstance(mParams, info, device_number);
+                for (int i = 0; i < device_numbers.size(); i++) {
+                    DeviceInstance *device;
+                    std::cout << "device_number: " << device_numbers[i] << std::endl;
+                    if (i < power_sensors.size() && i < power_files.size()) {
+                        std::cout << "power_sensor: " << power_sensors[i] << std::endl;
+                        std::cout << "power_file: " << power_files[i] << std::endl;
+                        device = new DeviceInstance(
+                            mParams, info, device_numbers[i],
+                            power_sensors[i].c_str(), power_files[i].c_str());
+                    } else {
+                        std::cout << "no power measurement" << std::endl;
+                        device = new DeviceInstance(
+                            mParams, info, device_numbers[i]);
+                    }
                     devices.push_back(device);
                 }
             }
@@ -73,21 +80,21 @@ namespace idg {
 
             ProxyInfo CUDA::default_info() {
                 #if defined(DEBUG)
-                cout << "Generic::" << __func__ << endl;
+                std::cout << "Generic::" << __func__ << std::endl;
                 #endif
 
                 std::string srcdir = std::string(IDG_INSTALL_DIR)
                     + "/lib/kernels/CUDA/";
 
                 #if defined(DEBUG)
-                cout << "Searching for source files in: " << srcdir << endl;
+                std::cout << "Searching for source files in: " << srcdir << std::endl;
                 #endif
 
                 // Create temp directory
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
                 char *tmpdir = mkdtemp(_tmpdir);
                 #if defined(DEBUG)
-                cout << "Temporary files will be stored in: " << tmpdir << endl;
+                std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
                 #endif
 
                 // Create proxy info

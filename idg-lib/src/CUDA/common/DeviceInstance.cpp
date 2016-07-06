@@ -8,7 +8,9 @@ namespace idg {
             DeviceInstance::DeviceInstance(
                 Parameters &parameters,
                 ProxyInfo &info,
-                int device_number) :
+                int device_number,
+                const char *str_power_sensor,
+                const char *str_power_file) :
                 parameters(parameters),
                 info(info)
             {
@@ -19,6 +21,10 @@ namespace idg {
                 // Initialize members
                 device = new cu::Device(device_number);
                 context = new cu::Context(*device);
+                context->setCurrent();
+                executestream = new cu::Stream();
+                htodstream = new cu::Stream();
+                dtohstream = new cu::Stream();
 
                 // Set kernel parameters
                 set_parameters();
@@ -30,7 +36,7 @@ namespace idg {
                 load_modules();
 
                 // Initialize power sensor
-                init_powersensor();
+                init_powersensor(str_power_sensor, str_power_file);
             }
 
             std::string DeviceInstance::get_compiler_flags() {
@@ -219,16 +225,16 @@ namespace idg {
                     *(modules[which_module.at(name_scaler)]), parameters, block_scaler));
             }
 
-            void DeviceInstance::init_powersensor() {
-                // TODO: support multiple power sensors
+            void DeviceInstance::init_powersensor(
+                const char *str_power_sensor,
+                const char *str_power_file)
+            {
                 #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                std::cout << "Opening power sensor: " << str_power_sensor << std::endl;
-                std::cout << "Writing power consumption to file: " << str_power_file << std::endl;
-                powerSensor.init(str_power_sensor, str_power_file);
+                if (str_power_sensor && str_power_file) {
+                    powerSensor.init(str_power_sensor, str_power_file);
+                } else {
+                    powerSensor.init();
+                }
                 #else
                 powerSensor.init();
                 #endif

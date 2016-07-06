@@ -135,37 +135,26 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                // Load device
-                DeviceInstance *device = devices[0];
+                // Configuration
+                const int nr_devices = devices.size();
+                const int nr_streams = 3;
 
                 // Constants
-                auto nr_stations = mParams.get_nr_stations();
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_time = mParams.get_nr_time();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_channels = mParams.get_nr_channels();
+                auto nr_stations      = mParams.get_nr_stations();
+                auto nr_baselines     = mParams.get_nr_baselines();
+                auto nr_time          = mParams.get_nr_time();
+                auto nr_timeslots     = mParams.get_nr_timeslots();
+                auto nr_channels      = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_gridder();
-
-                // Load kernels
-                unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
-                unique_ptr<Scaler> kernel_scaler   = device->get_kernel_scaler();
-                unique_ptr<Adder> kernel_adder     = device->get_kernel_adder();
+                auto gridsize         = mParams.get_grid_size();
+                auto subgridsize      = mParams.get_subgrid_size();
+                auto jobsize          = mParams.get_job_size_gridder();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
-
-                // Initialize
-                cu::Context &context = device->get_context();
-                cu::Stream executestream;
-                cu::Stream htodstream;
-                cu::Stream dtohstream;
-                const int nr_streams = 3;
 
                 // Host memory
                 #if REUSE_HOST_MEMORY
@@ -177,32 +166,72 @@ namespace idg {
                 h_visibilities.set((void *) visibilities);
                 h_uvw.set((void *) uvw);
                 #endif
+                std::vector<cu::HostMemory*> h_grid_;
+                for (DeviceInstance *device : devices) {
+                    h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
+                }
 
                 // Device memory
-                cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers());
-                cu::DeviceMemory d_spheroidal(sizeof_spheroidal());
-                cu::DeviceMemory d_aterm(sizeof_aterm());
-                cu::DeviceMemory d_grid(sizeof_grid());
-                d_grid.zero();
+                std::vector<cu::DeviceMemory*> d_wavenumbers_;
+                std::vector<cu::DeviceMemory*> d_spheroidal_;
+                std::vector<cu::DeviceMemory*> d_aterm_;
+                std::vector<cu::DeviceMemory*> d_grid_;
+                for (DeviceInstance *device : devices) {
+                    cu::Context &context = device->get_context();
+                    context.setCurrent();
+                    d_wavenumbers_.push_back(new cu::DeviceMemory(sizeof_wavenumbers()));
+                    d_spheroidal_.push_back(new cu::DeviceMemory(sizeof_spheroidal()));
+                    d_aterm_.push_back(new cu::DeviceMemory(sizeof_aterm()));
+                    d_grid_.push_back(new cu::DeviceMemory(sizeof_grid()));
+                }
 
                 // Performance measurements
-                double total_runtime_gridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
-                double total_runtime_adder = 0;
-                PowerSensor::State startState;
+                double total_runtime_gridder  = 0;
+                double total_runtime_fft      = 0;
+                double total_runtime_scaler   = 0;
+                double total_runtime_adder    = 0;
+                double total_runtime_gridding = 0;
+                PowerSensor::State startStates[nr_devices];
+                PowerSensor::State stopStates[nr_devices];
 
-                // Copy static device memory
-                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
-                htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
-                htodstream.memcpyHtoDAsync(d_aterm, aterm);
-                htodstream.synchronize();
-
-                // Start gridder
-                #pragma omp parallel num_threads(nr_streams)
+                #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
-                    // Initialize
+                    int global_id = omp_get_thread_num();
+                    int device_id = global_id / nr_streams;
+                    int local_id = global_id % nr_streams;
+
+                    // Load device
+                    DeviceInstance *device = devices[device_id];
+
+                    // Load kernels
+                    unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
+                    unique_ptr<Scaler> kernel_scaler   = device->get_kernel_scaler();
+                    unique_ptr<Adder> kernel_adder     = device->get_kernel_adder();
+
+                    // Load CUDA objects
+                    cu::Context &context      = device->get_context();
+                    cu::Stream &executestream = device->get_execute_stream();
+                    cu::Stream &htodstream    = device->get_htod_stream();
+                    cu::Stream &dtohstream    = device->get_dtoh_stream();
                     context.setCurrent();
+
+                    // Load memory objects
+                    cu::DeviceMemory &d_wavenumbers = *(d_wavenumbers_[device_id]);
+                    cu::DeviceMemory &d_spheroidal  = *(d_spheroidal_[device_id]);
+                    cu::DeviceMemory &d_aterm       = *(d_aterm_[device_id]);
+                    cu::DeviceMemory &d_grid        = *(d_grid_[device_id]);
+                    cu::HostMemory   &h_grid        = *(h_grid_[device_id]);
+
+                    // Copy static device memory
+                    if (local_id == 0) {
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
+                        htodstream.memcpyHtoDAsync(d_aterm, aterm);
+                        d_grid.zero();
+                    }
+                    htodstream.synchronize();
+
+                    // Initialize
                     cu::Event inputFree;
                     cu::Event outputFree;
                     cu::Event inputReady;
@@ -216,11 +245,19 @@ namespace idg {
                     cu::DeviceMemory d_subgrids(sizeof_subgrids(max_nr_subgrids));
                     cu::DeviceMemory d_metadata(sizeof_metadata(max_nr_subgrids));
 
+                    // Create FFT plan
+                    context.setCurrent();
+                    kernel_fft->plan(subgridsize, max_nr_subgrids);
+
                     // Power measurement
                     PowerRecord powerRecords[5];
-                    #pragma omp single
-                    startState = device->measure();
+                    if (local_id == 0) {
+                        startStates[device_id] = device->measure();
+                    }
 
+                    #pragma omp barrier
+                    #pragma omp single
+                    total_runtime_gridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -250,9 +287,6 @@ namespace idg {
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
-
-                            // Create FFT plan
-                            kernel_fft->plan(subgridsize, current_nr_subgrids);
 
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
@@ -308,24 +342,49 @@ namespace idg {
                                                      PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
                         #endif
                         #if defined(REPORT_TOTAL)
-                        total_runtime_gridder += runtime_gridder;
-                        total_runtime_fft     += runtime_fft;
-                        total_runtime_scaler  += runtime_scaler;
-                        total_runtime_adder   += runtime_adder;
+                        #pragma omp critical
+                        {
+                            total_runtime_gridder += runtime_gridder;
+                            total_runtime_fft     += runtime_fft;
+                            total_runtime_scaler  += runtime_scaler;
+                            total_runtime_adder   += runtime_adder;
+                        }
                         #endif
                     } // end for s
+
+                    // Wait for all jobs to finish
+                    executestream.synchronize();
+
+                    // End power measurement
+                    if (local_id == 0) {
+                        stopStates[device_id] = device->measure();
+                    }
+
+                    // Copy grid to host
+                    if (local_id == 0) {
+                        dtohstream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
+                    }
+                    dtohstream.synchronize();
                 }
 
-                // Wait for all jobs to finish
-                executestream.synchronize();
-                PowerSensor::State stopState = device->measure();
+                total_runtime_gridding += omp_get_wtime();
 
-                // Copy grid to host
-                dtohstream.memcpyDtoHAsync(grid, d_grid, sizeof_grid());
-                dtohstream.synchronize();
+                // Add new grids to existing grid
+                for (int d = 0; d < devices.size(); d++) {
+                    float2 *grid_src = (float2 *) *(h_grid_[d]);
+                    float2 *grid_dst = (float2 *) grid;
+
+                    #pragma omp parallel for
+                    for (int i = 0; i < gridsize * gridsize * nr_polarizations; i++) {
+                        grid_dst[i] += grid_src[i];
+                    }
+                }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft     = devices[0]->get_kernel_fft();
+                unique_ptr<Gridder> kernel_gridder = devices[0]->get_kernel_gridder();
+                unique_ptr<Scaler> kernel_scaler   = devices[0]->get_kernel_scaler();
+                unique_ptr<Adder> kernel_adder     = devices[0]->get_kernel_adder();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
@@ -336,14 +395,16 @@ namespace idg {
                 uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
-                double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
-                double total_watt_gridding    = PowerSensor::Watt(startState, stopState);
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
-                auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
+                for (int d = 0; d < devices.size(); d++) {
+                    double seconds = PowerSensor::seconds(startStates[d], stopStates[d]);
+                    double watts   = PowerSensor::Watt(startStates[d], stopStates[d]);
+                    auxiliary::report("|gridding", seconds, 0, 0, watts);
+                }
                 clog << endl;
                 #endif
             }
