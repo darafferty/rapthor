@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     for time_batch in range(nr_time / bufferTimesteps):
 
-        plan.start_aterm((time_batch+1)*aterms[time_batch,:,:,:])
+        plan.start_aterm(aterms[time_batch,:,:,:])
 
         for time_minor in range(bufferTimesteps):
 

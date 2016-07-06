@@ -47,20 +47,20 @@ int main(int argc, char *argv[])
     int info = 0;
     float tol = 1000*std::numeric_limits<float>::epsilon();
 
-    // Set number of batch to devide time
+    // Set number of batch to divide time
     int nr_batches = 4;
 
     // Set constants explicitly in the parameters parameter
     std::clog << ">>> Configuration"  << std::endl;
     idg::Parameters params;
-    params.set_nr_stations(4);
+    params.set_nr_stations(8);
     params.set_nr_channels(8);
     params.set_nr_time(1024*nr_batches); // multiple of batch for now
     params.set_imagesize(0.08);
     params.set_grid_size(1024);
 
     // for proxy creation
-    params.set_nr_timeslots(1);
+    params.set_nr_timeslots(nr_batches);
     params.set_subgrid_size(32);
     // params.set_subgrid_size(8);
 
