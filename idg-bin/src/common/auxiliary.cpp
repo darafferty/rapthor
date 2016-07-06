@@ -46,7 +46,7 @@ namespace idg {
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << bytes / runtime * 1e-9 << " GB/s";
                 }
-                if  (watt != 0) {
+                if (watt != 0) {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << watt << " Watt";
@@ -125,5 +125,28 @@ namespace idg {
                  << 1e-3 * nr_subgrids / runtime
                  << " Ksubgrids/s" << endl;
         }
+
+        std::vector<int> split_int(char *string, const char *delimiter) {
+            std::vector<int> splits;
+            char *token = strtok(string, delimiter);
+            if (token) splits.push_back(atoi(token));
+            while (token) {
+                token = strtok(NULL, delimiter);
+                if (token) splits.push_back(atoi(token));
+            }
+            return splits;
+        }
+
+        std::vector<std::string> split_string(char *string, const char *delimiter) {
+            std::vector<std::string> splits;
+            char *token = strtok(string, delimiter);
+            if (token) splits.push_back(token);
+            while (token) {
+                token = strtok(NULL, delimiter);
+                if (token) splits.push_back(token);
+            }
+            return splits;
+        }
+
     } // namespace auxiliary
 } // namespace idg

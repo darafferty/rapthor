@@ -31,10 +31,15 @@ namespace idg {
                     DeviceInstance(
                         Parameters &params,
                         ProxyInfo &info,
-                        int device_number);
+                        int device_number,
+                        const char *power_sensor = NULL,
+                        const char *power_file = NULL);
 
                     cu::Context& get_context() const { return *context; }
                     cu::Device&  get_device()  const { return *device; }
+                    cu::Stream&  get_execute_stream() const { return *executestream; };
+                    cu::Stream&  get_htod_stream() const { return *htodstream; };
+                    cu::Stream&  get_dtoh_stream() const { return *dtohstream; };
 
                     std::unique_ptr<kernel::cuda::Gridder>   get_kernel_gridder() const;
                     std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const;
@@ -55,7 +60,9 @@ namespace idg {
                     void set_parameters_kepler();
                     void set_parameters_maxwell();
                     void set_parameters_pascal();
-                    void init_powersensor();
+                    void init_powersensor(
+                        const char *str_power_sensor,
+                        const char *str_power_file);
 
                 protected:
                     // Arguments shared by all DeviceInstance instances
@@ -66,6 +73,9 @@ namespace idg {
                     // CUDA objects private to this DeviceInstance
                     cu::Context *context;
                     cu::Device  *device;
+                    cu::Stream  *executestream;
+                    cu::Stream  *htodstream;
+                    cu::Stream  *dtohstream;
 
                     // All CUDA modules private to this DeviceInstance
                     std::vector<cu::Module*> modules;

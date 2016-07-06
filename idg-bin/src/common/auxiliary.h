@@ -2,6 +2,9 @@
 #define IDG_AUX_H_
 
 #include <cstdint>
+#include <cstring>
+#include <string>
+#include <vector>
 
 #include "idg-config.h"
 
@@ -49,6 +52,9 @@ namespace idg {
         void report_subgrids(
             double runtime,
             uint64_t nr_subgrids);
+
+        std::vector<int> split_int(char *string, const char *delimiter);
+        std::vector<std::string> split_string(char *string, const char *delimiter);
 
     } // namespace auxiliary
 } // namespace idg
