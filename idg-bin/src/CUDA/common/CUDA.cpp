@@ -42,15 +42,11 @@ namespace idg {
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {
                     DeviceInstance *device;
-                    std::cout << "device_number: " << device_numbers[i] << std::endl;
                     if (i < power_sensors.size() && i < power_files.size()) {
-                        std::cout << "power_sensor: " << power_sensors[i] << std::endl;
-                        std::cout << "power_file: " << power_files[i] << std::endl;
                         device = new DeviceInstance(
                             mParams, info, device_numbers[i],
                             power_sensors[i].c_str(), power_files[i].c_str());
                     } else {
-                        std::cout << "no power measurement" << std::endl;
                         device = new DeviceInstance(
                             mParams, info, device_numbers[i]);
                     }

@@ -277,7 +277,7 @@ namespace idg {
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
-                        cuda::PowerRecord powerRecords[5];
+                        PowerRecord powerRecords[5];
 
                         #pragma omp critical (GPU)
                         {

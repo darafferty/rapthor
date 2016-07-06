@@ -15,17 +15,6 @@
 namespace idg {
     namespace proxy {
         namespace cuda {
-            /*
-                Power measurement
-            */
-            class PowerRecord {
-                public:
-                    static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor *sensor;
-                    PowerSensor::State state;
-                    cu::Event event;
-            };
-
             class DeviceInstance {
                 public:
                     DeviceInstance(
@@ -81,7 +70,8 @@ namespace idg {
                     std::vector<cu::Module*> modules;
                     std::map<std::string,int> which_module;
 
-                    PowerSensor powerSensor;
+                    // Power sensor private to this DeviceInstance
+                    PowerSensor *powerSensor;
 
                 protected:
                     dim3 block_gridder;
@@ -94,8 +84,8 @@ namespace idg {
             };
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d);
-        }
-    }
-}
+        } // end namespace cuda
+    } // end namespace proxy
+} // end namespace idg
 
 #endif
