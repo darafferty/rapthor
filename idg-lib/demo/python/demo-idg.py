@@ -220,7 +220,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     img = img/spheroidal_grid
 
     # Crop image
-    img = img[int(grid_size*0.9):int(grid_size*0.1):-1,int(grid_size*0.9):int(grid_size*0.1):-1]
+    # img = img[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
 
     # Set plot properties
     colormap=plt.get_cmap("hot")
