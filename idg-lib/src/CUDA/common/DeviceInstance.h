@@ -5,12 +5,11 @@
 #include <sstream>
 #include <memory>
 
+#include "idg-common.h"
+
 #include "CU.h"
 #include "Kernels.h"
 #include "PowerRecord.h"
-
-#include "common/Parameters.h"
-#include "common/ProxyInfo.h"
 
 namespace idg {
     namespace proxy {
@@ -39,6 +38,7 @@ namespace idg {
 
                     std::string get_compiler_flags();
 
+                    PowerSensor* get_powersensor() { return powerSensor; };
                     PowerSensor::State measure();
                     void measure(PowerRecord &record, cu::Stream &stream);
 

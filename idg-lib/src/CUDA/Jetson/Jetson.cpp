@@ -4,6 +4,9 @@
 using namespace std;
 using namespace idg::kernel::cuda;
 
+#undef REPORT_TOTAL
+#undef REPORT_VERBOSE
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -187,10 +190,10 @@ namespace idg {
 
                     executeFinished.synchronize();
 
-                    double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                    double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                    double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
-                    double runtime_adder   = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
+//                    double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+//                    double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+//                    double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+//                    double runtime_adder   = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report("gridder", runtime_gridder,
                                                  kernel_gridder->flops(current_nr_baselines, current_nr_subgrids),
@@ -349,9 +352,9 @@ namespace idg {
 
                     executeFinished.synchronize();
 
-                    double runtime_splitter  = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                    double runtime_fft       = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                    double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+//                    double runtime_splitter  = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+//                    double runtime_fft       = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+//                    double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                     #if defined(REPORT_VERBOSE)
                     auxiliary::report(" splitter", runtime_splitter,
                                                    kernel_splitter->flops(current_nr_subgrids),
