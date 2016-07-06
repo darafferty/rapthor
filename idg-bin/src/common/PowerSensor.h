@@ -1,23 +1,15 @@
 #ifndef IDG_POWER_SENSOR_H_
 #define IDG_POWER_SENSOR_H_
 
-#include <cstdio>
 #include <cstdlib>
-#include <iostream>
-#include <fstream>
+#include <cstdio>
+#include <cstdint>
+#include <cerrno>
 
-#include <errno.h>
-#include <fcntl.h>
-#include <omp.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <termios.h>
-#include <unistd.h>
-#include <inttypes.h>
 #include <pthread.h>
+#include <omp.h>
 
 #include "idg-config.h"
-
 
 class PowerSensor {
     public:
