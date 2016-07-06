@@ -231,14 +231,14 @@ namespace idg {
             {
                 #if defined(MEASURE_POWER_ARDUINO)
                 if (str_power_sensor && str_power_file) {
-                    // TODO: ArduinoPowerSensor
-                    //powerSensor.init(str_power_sensor, str_power_file);
-                } else {
-                    powerSensor = new PowerSensor();
+                    std::cout << "Power sensor: " << str_power_sensor << std::endl;
+                    std::cout << "Power file:   " << str_power_file << std::endl;
+                    powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
                 }
-                #else
-                powerSensor = new PowerSensor();
                 #endif
+                if (!powerSensor) {
+                    powerSensor = new DummyPowerSensor();
+                }
             }
 
             PowerSensor::State DeviceInstance::measure() {

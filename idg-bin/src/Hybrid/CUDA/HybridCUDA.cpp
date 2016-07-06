@@ -8,11 +8,13 @@
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
 
-#include "idg-config.h"
 #include "HybridCUDA.h"
 
 using namespace std;
 using namespace idg::proxy::cuda;
+
+#undef REPORT_VERBOSE
+#undef REPORT_TOTAL
 
 namespace idg {
     namespace proxy {
@@ -210,9 +212,9 @@ namespace idg {
                         }
                         powerStates[1] = cpu.read_power();
 
-                        double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+                        //double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+                        //double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
+                        //double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_adder   = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
@@ -425,8 +427,8 @@ namespace idg {
 
                 		outputFree.synchronize();
 
-                        double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+                        //double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
+                        //double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_splitter  = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,

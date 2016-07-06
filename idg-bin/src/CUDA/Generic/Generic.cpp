@@ -28,6 +28,7 @@ namespace idg {
 
                 // Load device
                 DeviceInstance *device = devices[0];
+                PowerSensor *power_sensor = device->get_powersensor();
 
                 // Constants
                 auto gridsize = mParams.get_grid_size();
@@ -99,18 +100,18 @@ namespace idg {
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("   input",
-                                  PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state),
+                                  power_sensor->seconds(powerRecords[0].state, powerRecords[1].state),
                                   0, sizeof_grid(),
-                                  PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                                  power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
                 auxiliary::report("     fft",
-                                  PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state),
+                                  power_sensor->seconds(powerRecords[1].state, powerRecords[2].state),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
-                                  PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                                  power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
                 auxiliary::report("  output",
-                                  PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state),
+                                  power_sensor->seconds(powerRecords[2].state, powerRecords[3].state),
                                   0, sizeof_grid(),
-                                  PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                                  power_sensor->Watt(powerRecords[2].state, powerRecords[3].state));
                 auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
                     auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
@@ -202,6 +203,7 @@ namespace idg {
 
                     // Load device
                     DeviceInstance *device = devices[device_id];
+                    PowerSensor *power_sensor = device->get_powersensor();
 
                     // Load kernels
                     unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
@@ -319,27 +321,27 @@ namespace idg {
 
                         outputReady.synchronize();
 
-                        double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
-                        double runtime_adder   = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
+                        double runtime_gridder = power_sensor->seconds(powerRecords[0].state, powerRecords[1].state);
+                        double runtime_fft     = power_sensor->seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_scaler  = power_sensor->seconds(powerRecords[2].state, powerRecords[3].state);
+                        double runtime_adder   = power_sensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
                                                      kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                                                     power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                                                     power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report(" scaler", runtime_scaler,
                                                      kernel_scaler->flops(current_nr_subgrids),
                                                      kernel_scaler->bytes(current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                                                     power_sensor->Watt(powerRecords[2].state, powerRecords[3].state));
                         auxiliary::report("  adder", runtime_adder,
                                                      kernel_adder->flops(current_nr_subgrids),
                                                      kernel_adder->bytes(current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
+                                                     power_sensor->Watt(powerRecords[3].state, powerRecords[4].state));
                         #endif
                         #if defined(REPORT_TOTAL)
                         #pragma omp critical
@@ -401,8 +403,9 @@ namespace idg {
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 for (int d = 0; d < devices.size(); d++) {
-                    double seconds = PowerSensor::seconds(startStates[d], stopStates[d]);
-                    double watts   = PowerSensor::Watt(startStates[d], stopStates[d]);
+                    PowerSensor *power_sensor = devices[d]->get_powersensor();
+                    double seconds = power_sensor->seconds(startStates[d], stopStates[d]);
+                    double watts   = power_sensor->Watt(startStates[d], stopStates[d]);
                     auxiliary::report("|gridding", seconds, 0, 0, watts);
                 }
                 clog << endl;
@@ -428,6 +431,7 @@ namespace idg {
 
                 // Load device
                 DeviceInstance *device = devices[0];
+                PowerSensor *power_sensor = device->get_powersensor();
 
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
@@ -567,22 +571,22 @@ namespace idg {
 
                         outputFree.synchronize();
 
-                        double runtime_splitter  = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_fft       = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_degridder = PowerSensor::seconds(powerRecords[3].state, powerRecords[4].state);
+                        double runtime_splitter  = power_sensor->seconds(powerRecords[0].state, powerRecords[1].state);
+                        double runtime_fft       = power_sensor->seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_degridder = power_sensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                                                       power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("      fft", runtime_fft,
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                                                       power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report("degridder", runtime_degridder,
                                                        kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                        kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[3].state, powerRecords[4].state));
+                                                       power_sensor->Watt(powerRecords[3].state, powerRecords[4].state));
                         #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_splitter  += runtime_splitter;
@@ -611,8 +615,8 @@ namespace idg {
                 uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
-                double total_watt_degridding    = PowerSensor::Watt(startState, stopState);
+                double total_runtime_degridding = power_sensor->seconds(startState, stopState);
+                double total_watt_degridding    = power_sensor->Watt(startState, stopState);
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);

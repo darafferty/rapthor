@@ -11,34 +11,19 @@
 
 #include "idg-config.h"
 
+
 class PowerSensor {
     public:
-        struct State {
-            struct MC_State {
-                int32_t  consumedEnergy = 0;
-                uint32_t microSeconds   = 0;
-            } previousState, lastState;
-            double timeAtRead;
+        class State {
+            public:
+                double timeAtRead;
         };
 
-        PowerSensor();
-        ~PowerSensor();
+        virtual State read() = 0;
 
-        State read();
-
-        static double Joules(const State &firstState, const State &secondState);
-        static double seconds(const State &firstState, const State &secondState);
-        static double Watt(const State &firstState, const State &secondState);
-
-    private:
-        pthread_t	  thread;
-        pthread_mutex_t mutex;
-        volatile bool stop;
-        State::MC_State previousState, lastState;
-
-        static void   *IOthread(void *);
-        void	  *IOthread();
-        void	  doMeasurement();
+        virtual double seconds(const State &firstState, const State &secondState) = 0;
+        virtual double Joules(const State &firstState, const State &secondState) = 0;
+        virtual double Watt(const State &firstState, const State &secondState) = 0;
 };
 
 #endif
