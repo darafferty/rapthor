@@ -158,17 +158,19 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Host memory
-                #if REUSE_HOST_MEMORY
+                #if REDUCE_HOST_MEMORY
+                std::vector<cu::HostMemory*> h_visibilities_;
+                std::vector<cu::HostMemory*> h_uvw_;
+                #else
                 cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
                 cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
-                #else
-                cu::HostMemory h_visibilities(sizeof_visibilities(nr_baselines));
-                cu::HostMemory h_uvw(sizeof_uvw(nr_baselines));
-                h_visibilities.set((void *) visibilities);
-                h_uvw.set((void *) uvw);
                 #endif
                 std::vector<cu::HostMemory*> h_grid_;
                 for (DeviceInstance *device : devices) {
+                    #if REDUCE_HOST_MEMORY
+                    h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(jobsize)));
+                    h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(jobsize)));
+                    #endif
                     h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
                 }
 
@@ -218,13 +220,17 @@ namespace idg {
                     context.setCurrent();
 
                     // Load memory objects
-                    cu::DeviceMemory &d_wavenumbers = *(d_wavenumbers_[device_id]);
-                    cu::DeviceMemory &d_spheroidal  = *(d_spheroidal_[device_id]);
-                    cu::DeviceMemory &d_aterm       = *(d_aterm_[device_id]);
-                    cu::DeviceMemory &d_grid        = *(d_grid_[device_id]);
-                    cu::HostMemory   &h_grid        = *(h_grid_[device_id]);
+                    #if REDUCE_HOST_MEMORY
+                    cu::HostMemory   &h_visibilities = *(h_visibilities_[device_id]);
+                    cu::HostMemory   &h_uvw          = *(h_uvw_[device_id]);
+                    #endif
+                    cu::DeviceMemory &d_wavenumbers  = *(d_wavenumbers_[device_id]);
+                    cu::DeviceMemory &d_spheroidal   = *(d_spheroidal_[device_id]);
+                    cu::DeviceMemory &d_aterm        = *(d_aterm_[device_id]);
+                    cu::DeviceMemory &d_grid         = *(d_grid_[device_id]);
+                    cu::HostMemory   &h_grid         = *(h_grid_[device_id]);
 
-                    // Copy static device memory
+                    // Copy read-only device memory
                     if (local_id == 0) {
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
@@ -274,19 +280,36 @@ namespace idg {
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
+                        #if REDUCE_HOST_MEMORY
+                        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
+                        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
+                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        #else
                         void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
                         void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        #endif
 
                         // Power measurement
                         PowerRecord powerRecords[5];
 
+                        #if REDUCE_HOST_MEMORY
+                        // Copy input data to host memory
+                        memcpy(h_visibilities, visibilities_ptr, sizeof_visibilities(current_nr_baselines));
+                        memcpy(h_uvw, uvw_ptr, sizeof_uvw(current_nr_baselines));
+                        #endif
+
                         #pragma omp critical (GPU)
                         {
-                            // Copy input data to device
+                            // Copy input data to device memory
                             htodstream.waitEvent(inputFree);
+                            #if REDUCE_HOST_MEMORY
+                            htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities(current_nr_baselines));
+                            htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw(current_nr_baselines));
+                            #else
                             htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities(current_nr_baselines));
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw(current_nr_baselines));
+                            #endif
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
