@@ -12,6 +12,19 @@
 
 #include "idg-cuda.h"
 
+/*
+    Toggle between two modes of cu::HostMemory allocation
+        REDUCE_HOST_MEMORY = 0:
+            visibilities and uvw will be completely mapped
+            into host memory shared by all threads
+            (this takes some time, especially for large buffers)
+        REDUCE_HOST_MEMORY = 1:
+            every thread allocates private host memory
+            to hold data for just one job
+            (throughput is lower, due to additional memory copies)
+*/
+#define REDUCE_HOST_MEMORY 0
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -54,6 +67,15 @@ namespace idg {
                     virtual void transform(DomainAtoDomainB direction,
                                            std::complex<float>* grid) override;
 
+                private:
+                    #if REDUCE_HOST_MEMORY
+                    std::vector<cu::HostMemory*> h_visibilities_;
+                    std::vector<cu::HostMemory*> h_uvw_;
+                    #else
+                    cu::HostMemory h_visibilities;
+                    cu::HostMemory h_uvw;
+                    #endif
+                    std::vector<cu::HostMemory*> h_grid_;
             }; // class Generic
 
         } // namespace cuda

@@ -5,36 +5,29 @@
 #include <sstream>
 #include <memory>
 
+#include "idg-common.h"
+
 #include "CU.h"
 #include "Kernels.h"
 #include "PowerRecord.h"
 
-#include "common/Parameters.h"
-#include "common/ProxyInfo.h"
-
 namespace idg {
     namespace proxy {
         namespace cuda {
-            /*
-                Power measurement
-            */
-            class PowerRecord {
-                public:
-                    static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor *sensor;
-                    PowerSensor::State state;
-                    cu::Event event;
-            };
-
             class DeviceInstance {
                 public:
                     DeviceInstance(
                         Parameters &params,
                         ProxyInfo &info,
-                        int device_number);
+                        int device_number,
+                        const char *power_sensor = NULL,
+                        const char *power_file = NULL);
 
                     cu::Context& get_context() const { return *context; }
                     cu::Device&  get_device()  const { return *device; }
+                    cu::Stream&  get_execute_stream() const { return *executestream; };
+                    cu::Stream&  get_htod_stream() const { return *htodstream; };
+                    cu::Stream&  get_dtoh_stream() const { return *dtohstream; };
 
                     std::unique_ptr<kernel::cuda::Gridder>   get_kernel_gridder() const;
                     std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const;
@@ -45,6 +38,7 @@ namespace idg {
 
                     std::string get_compiler_flags();
 
+                    PowerSensor* get_powersensor() { return powerSensor; };
                     PowerSensor::State measure();
                     void measure(PowerRecord &record, cu::Stream &stream);
 
@@ -55,7 +49,9 @@ namespace idg {
                     void set_parameters_kepler();
                     void set_parameters_maxwell();
                     void set_parameters_pascal();
-                    void init_powersensor();
+                    void init_powersensor(
+                        const char *str_power_sensor,
+                        const char *str_power_file);
 
                 protected:
                     // Arguments shared by all DeviceInstance instances
@@ -66,12 +62,16 @@ namespace idg {
                     // CUDA objects private to this DeviceInstance
                     cu::Context *context;
                     cu::Device  *device;
+                    cu::Stream  *executestream;
+                    cu::Stream  *htodstream;
+                    cu::Stream  *dtohstream;
 
                     // All CUDA modules private to this DeviceInstance
                     std::vector<cu::Module*> modules;
                     std::map<std::string,int> which_module;
 
-                    PowerSensor powerSensor;
+                    // Power sensor private to this DeviceInstance
+                    PowerSensor *powerSensor;
 
                 protected:
                     dim3 block_gridder;
@@ -84,8 +84,8 @@ namespace idg {
             };
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d);
-        }
-    }
-}
+        } // end namespace cuda
+    } // end namespace proxy
+} // end namespace idg
 
 #endif
