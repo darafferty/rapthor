@@ -6,14 +6,21 @@
 #include "common/PowerSensor.h"
 #include "CU.h"
 
-class PowerRecord {
-    public:
-        void enqueue(cu::Stream &stream);
-        static void getPower(CUstream, CUresult, void *userData);
-        PowerSensor::State state;
-        cu::Event event;
-};
+namespace idg {
+    namespace proxy {
+        namespace cuda {
 
-void init_powersensor();
+            class PowerRecord {
+                public:
+                    void enqueue(cu::Stream &stream);
+                    static void getPower(CUstream, CUresult, void *userData);
+                    PowerSensor *sensor;
+                    PowerSensor::State state;
+                    cu::Event event;
+            };
+
+        } // end namespace cuda
+    } // end namespace proxy
+} // end namespace idg
 
 #endif

@@ -27,9 +27,4 @@
 #define MKL_INCLUDE_DIRS "@MKL_INCLUDE_DIRS@"
 #define MKL_LIB_DIR "@MKL_LIB_DIR@"
 
-#cmakedefine MEASURE_POWER_LIKWID
-#cmakedefine MEASURE_POWER_ARDUINO
-#define POWER_SENSOR "@POWER_SENSOR@"
-#define POWER_FILE "@POWER_FILE@"
-
 #endif

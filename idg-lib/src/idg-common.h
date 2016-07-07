@@ -7,6 +7,8 @@
 #include "common/RuntimeWrapper.h"
 #include "common/Parameters.h"
 #include "common/PowerSensor.h"
+#include "common/DummyPowerSensor.h"
+#include "common/ArduinoPowerSensor.h"
 #include "common/LikwidPowerSensor.h"
 #include "common/auxiliary.h"
 #include "common/Types.h"

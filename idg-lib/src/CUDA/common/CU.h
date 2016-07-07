@@ -186,6 +186,10 @@ namespace cu {
 				return _size;
 			}
 
+            void set(const void *in) {
+                memcpy(_ptr, in, (size_t) _size);
+            }
+
             void set(void *in) {
                 memcpy(_ptr, in, (size_t) _size);
             }

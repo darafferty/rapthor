@@ -7,6 +7,8 @@ set (${PROJECT_NAME}_headers
     ProxyInfo.h
     RuntimeWrapper.h
     PowerSensor.h
+    DummyPowerSensor.h
+    ArduinoPowerSensor.h
     LikwidPowerSensor.h
     auxiliary.h
     Types.h
@@ -19,7 +21,8 @@ set (${PROJECT_NAME}_sources
     Parameters.cpp
     ProxyInfo.cpp
     RuntimeWrapper.cpp
-    PowerSensor.cpp
+    DummyPowerSensor.cpp
+    ArduinoPowerSensor.cpp
     LikwidPowerSensor.cpp
     auxiliary.cpp
     Types.cpp
