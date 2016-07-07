@@ -13,9 +13,6 @@
 using namespace std;
 using namespace idg::proxy::cuda;
 
-#undef REPORT_VERBOSE
-#undef REPORT_TOTAL
-
 namespace idg {
     namespace proxy {
         namespace hybrid {
@@ -62,6 +59,7 @@ namespace idg {
                 // Get CUDA device
                 vector<DeviceInstance*> devices = cuda.get_devices();
                 DeviceInstance *device = devices[0];
+                PowerSensor *cuda_power_sensor = device->get_powersensor();
 
                 // Constants
                 auto nr_time = mParams.get_nr_time();
@@ -212,23 +210,23 @@ namespace idg {
                         }
                         powerStates[1] = cpu.read_power();
 
-                        //double runtime_gridder = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        //double runtime_fft     = PowerSensor::seconds(powerRecords[1].state, powerRecords[2].state);
-                        //double runtime_scaler  = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+                        double runtime_gridder = cuda_power_sensor->seconds(powerRecords[0].state, powerRecords[1].state);
+                        double runtime_fft     = cuda_power_sensor->seconds(powerRecords[1].state, powerRecords[2].state);
+                        double runtime_scaler  = cuda_power_sensor->seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_adder   = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", runtime_gridder,
                                                      kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                                                     cuda_power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("    fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[1].state, powerRecords[2].state));
+                                                     cuda_power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
                         auxiliary::report(" scaler", runtime_scaler,
                                                      kernel_scaler->flops(current_nr_subgrids),
                                                      kernel_scaler->bytes(current_nr_subgrids),
-                                                     PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                                                     cuda_power_sensor->Watt(powerRecords[2].state, powerRecords[3].state));
                         auxiliary::report("  adder", runtime_adder,
                                                      kernel_adder->flops(current_nr_subgrids),
                                                      kernel_adder->bytes(current_nr_subgrids),
@@ -285,6 +283,7 @@ namespace idg {
                 // Get CUDA device
                 vector<DeviceInstance*> devices = cuda.get_devices();
                 DeviceInstance *device = devices[0];
+                PowerSensor *cuda_power_sensor = device->get_powersensor();
 
                 // Constants
                 auto nr_time = mParams.get_nr_time();
@@ -427,8 +426,8 @@ namespace idg {
 
                 		outputFree.synchronize();
 
-                        //double runtime_fft       = PowerSensor::seconds(powerRecords[0].state, powerRecords[1].state);
-                        //double runtime_degridder = PowerSensor::seconds(powerRecords[2].state, powerRecords[3].state);
+                        double runtime_fft       = cuda_power_sensor->seconds(powerRecords[0].state, powerRecords[1].state);
+                        double runtime_degridder = cuda_power_sensor->seconds(powerRecords[2].state, powerRecords[3].state);
                         double runtime_splitter  = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report(" splitter", runtime_splitter,
@@ -438,11 +437,11 @@ namespace idg {
                         auxiliary::report("      fft", runtime_fft,
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[0].state, powerRecords[1].state));
+                                                       cuda_power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
                         auxiliary::report("degridder", runtime_degridder,
                                                        kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                        kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
-                                                       PowerSensor::Watt(powerRecords[2].state, powerRecords[3].state));
+                                                       cuda_power_sensor->Watt(powerRecords[2].state, powerRecords[3].state));
                         #endif
                         #if defined(REPORT_TOTAL)
                         total_runtime_degridder += runtime_degridder;
