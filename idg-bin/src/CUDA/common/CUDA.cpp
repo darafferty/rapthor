@@ -41,15 +41,10 @@ namespace idg {
 
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {
-                    DeviceInstance *device;
-                    if (i < power_sensors.size() && i < power_files.size()) {
-                        device = new DeviceInstance(
-                            mParams, info, device_numbers[i],
-                            power_sensors[i].c_str(), power_files[i].c_str());
-                    } else {
-                        device = new DeviceInstance(
-                            mParams, info, device_numbers[i]);
-                    }
+                    const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
+                    const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
+                    DeviceInstance *device = new DeviceInstance(
+                        mParams, info, device_numbers[i], power_sensor, power_file);
                     devices.push_back(device);
                 }
             }

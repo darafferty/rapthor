@@ -230,9 +230,11 @@ namespace idg {
                 const char *str_power_file)
             {
                 #if defined(MEASURE_POWER_ARDUINO)
-                if (str_power_sensor && str_power_file) {
+                if (str_power_sensor) {
                     std::cout << "Power sensor: " << str_power_sensor << std::endl;
-                    std::cout << "Power file:   " << str_power_file << std::endl;
+                    if (str_power_file) {
+                        std::cout << "Power file:   " << str_power_file << std::endl;
+                    }
                     powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
                 }
                 #endif

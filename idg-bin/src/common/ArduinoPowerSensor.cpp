@@ -3,37 +3,43 @@
 ArduinoPowerSensor::ArduinoPowerSensor(const char *device, const char *dumpFileName) {
     dumpFile = (dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName));
     stop = false;
-    lastState.microSeconds = 0;
+    lastMeasurement.microSeconds = 0;
 
     if ((fd = open(device, O_RDWR)) < 0) {
         perror("open device");
         exit(1);
     }
 
-    //Configure port for 8N1 transmission
+    // Configure port for 8N1 transmission
     struct termios options;
 
-    tcgetattr(fd, &options);		    // Gets the current options for the port
-    cfsetispeed(&options, B2000000);	// Sets the Input Baud Rate
-    cfsetospeed(&options, B2000000);	// Sets the Output Baud Rate
+    // Get the current options for the port
+    tcgetattr(fd, &options);
 
+    // Sets the Input Baud Rate
+    cfsetispeed(&options, B2000000);
+
+    // Sets the Output Baud Rate
+    cfsetospeed(&options, B2000000);
+
+    // Set more options (TODO: add more comments)
     options.c_cflag = (options.c_cflag & ~CSIZE) | CS8;
     options.c_iflag = IGNBRK;
     options.c_lflag = 0;
     options.c_oflag = 0;
     options.c_cflag |= CLOCAL | CREAD;
-    options.c_cc[VMIN] = sizeof(ArduinoState::MC_State);
+    options.c_cc[VMIN] = sizeof(State::Measurement);
     options.c_cc[VTIME] = 0;
     options.c_iflag &= ~(IXON | IXOFF | IXANY);
     options.c_cflag &= ~(PARENB | PARODD);
 
-    /* Commit the options */
+    // Commit the options
     tcsetattr(fd, TCSANOW, &options);
 
-    /* Wait for the Arduino to reset */
+    // Wait for the Arduino to reset
     sleep(2);
 
-    /* Flush anything already in the serial buffer */
+    // Flush anything already in the serial buffer
     tcflush(fd, TCIFLUSH);
 
     if ((errno = pthread_mutex_init(&mutex, 0)) != 0) {
@@ -41,7 +47,8 @@ ArduinoPowerSensor::ArduinoPowerSensor(const char *device, const char *dumpFileN
         exit(1);
     }
 
-    doMeasurement(); // initialise
+    // Initialize
+    doMeasurement();
 
     if ((errno = pthread_create(&thread, 0, &ArduinoPowerSensor::IOthread, this)) != 0) {
         perror("pthread_create");
@@ -63,7 +70,7 @@ void *ArduinoPowerSensor::IOthread() {
 
 
 void ArduinoPowerSensor::doMeasurement() {
-    ArduinoState::MC_State currentState;
+    State::Measurement currentState;
 
     ssize_t retval, bytesRead = 0;
 
@@ -73,25 +80,25 @@ void ArduinoPowerSensor::doMeasurement() {
     }
 
     do {
-        if ((retval = ::read(fd, (char *) &currentState.consumedEnergy + bytesRead, sizeof(ArduinoState::MC_State) - bytesRead)) < 0) {
+        if ((retval = ::read(fd, (char *) &currentState.consumedEnergy + bytesRead, sizeof(State::Measurement) - bytesRead)) < 0) {
             perror("read device");
             exit(1);
         }
-    } while ((bytesRead += retval) < sizeof(ArduinoState::MC_State));
+    } while ((bytesRead += retval) < sizeof(State::Measurement));
 
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
     }
 
-    if (lastState.microSeconds != currentState.microSeconds) {
-        previousState = lastState;
-        lastState = currentState;
+    if (lastMeasurement.microSeconds != currentState.microSeconds) {
+        previousMeasurement = lastMeasurement;
+        lastMeasurement = currentState;
 
         if (dumpFile != 0)
             *dumpFile << "S " << currentState.microSeconds / 1e6 << ' '
-                              << (currentState.consumedEnergy - previousState.consumedEnergy) * (65536.0 / 511) /
-                                 (currentState.microSeconds - previousState.microSeconds) << std::endl;
+                              << (currentState.consumedEnergy - previousMeasurement.consumedEnergy) * (65536.0 / 511) /
+                                 (currentState.microSeconds - previousMeasurement.microSeconds) << std::endl;
     }
 
     if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
@@ -101,15 +108,15 @@ void ArduinoPowerSensor::doMeasurement() {
 }
 
 PowerSensor::State ArduinoPowerSensor::read() {
-    ArduinoState state;
+    State state;
 
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
     }
 
-    state.previousState = previousState;
-    state.lastState = lastState;
+    state.previousMeasurement = previousMeasurement;
+    state.lastMeasurement = lastMeasurement;
     state.timeAtRead = omp_get_wtime();
 
     if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
@@ -120,26 +127,26 @@ PowerSensor::State ArduinoPowerSensor::read() {
     return state;
 }
 
+
 double ArduinoPowerSensor::seconds(const State &firstState, const State &secondState) {
     return secondState.timeAtRead - firstState.timeAtRead;
 }
+
 
 double ArduinoPowerSensor::Joules(const State &firstState, const State &secondState) {
     return Watt(firstState, secondState) * seconds(firstState, secondState);
 }
 
-double ArduinoPowerSensor::Watt(const State &firstState, const State &secondState) {
-    const ArduinoState *firstState_ = (ArduinoState *) &firstState;
-    const ArduinoState *secondState_ = (ArduinoState *) &secondState;
 
-    uint32_t microSeconds = secondState_->lastState.microSeconds - firstState_->lastState.microSeconds;
+double ArduinoPowerSensor::Watt(const State &firstState, const State &secondState) {
+    uint32_t microSeconds = secondState.lastMeasurement.microSeconds - firstState.lastMeasurement.microSeconds;
 
     if (microSeconds != 0) {
-        return (secondState_->lastState.consumedEnergy -
-                firstState_->lastState.consumedEnergy) * (65536.0 / 511) / microSeconds;
+        return (secondState.lastMeasurement.consumedEnergy -
+                firstState.lastMeasurement.consumedEnergy) * (65536.0 / 511) / microSeconds;
     } else {
-        return (secondState_->lastState.consumedEnergy -
-                secondState_->previousState.consumedEnergy) * (65536.0 / 511) /
-               (secondState_->lastState.microSeconds - secondState_->previousState.microSeconds);
+        return (secondState.lastMeasurement.consumedEnergy -
+                secondState.previousMeasurement.consumedEnergy) * (65536.0 / 511) /
+               (secondState.lastMeasurement.microSeconds - secondState.previousMeasurement.microSeconds);
     }
 }

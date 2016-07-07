@@ -16,7 +16,21 @@ class PowerSensor {
     public:
         class State {
             public:
+                // Timestamp
                 double timeAtRead;
+
+                // Asynchronous measurement (Arduino)
+                struct Measurement {
+                    int32_t  consumedEnergy = 0;
+                    uint32_t microSeconds   = 0;
+                };
+
+                Measurement previousMeasurement;
+                Measurement lastMeasurement;
+
+                // Synchronous measurement (Likwid)
+                int32_t consumedEnergyPKG    = 0;
+                int32_t consumedEnergyDRAM   = 0;
         };
 
         virtual State read() = 0;
