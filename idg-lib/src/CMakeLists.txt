@@ -39,10 +39,8 @@ add_library(idg-common
   $<TARGET_OBJECTS:common>
 )
 
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-    set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-    target_link_libraries(idg-common ${LINK_LIRBRARIES})
-endif()
+set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
+target_link_libraries(idg-common ${LINK_LIRBRARIES})
 
 set_target_properties(idg-common PROPERTIES
                       PUBLIC_HEADER idg-common.h)
@@ -70,10 +68,6 @@ set (LINK_LIRBRARIES ${FFTW3F_LIBRARY} ${FFTW3_LIBRARY})
 # if (BUILD_WITH_PYTHON)
 #  set (LINK_LIRBRARIES ${LINK_LIRBRARIES} mkl_avx2 mkl_def)
 # endif()
-
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-    set (LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-endif()
 
 target_link_libraries(
   idg-fft

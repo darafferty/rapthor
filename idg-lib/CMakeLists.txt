@@ -33,15 +33,21 @@ option (BUILD_WITH_TESTS "Build test executables" OFF)
 option (BUILD_WITH_DEMO "Build LOFAR demo program" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
-option (BUILD_WITH_LIKWID_POWER_SENSOR "Measure power using likiwd library" OFF)
 
 
 # Likwid power sensor
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-    find_package(Numa)
-    find_package(Likwid)
-    set(MEASURE_POWER_LIKWID TRUE)
-endif()
+find_package(Numa QUIET)
+find_package(Likwid QUIET)
+if (${NUMA_FOUND} AND ${LIKWID_FOUND})
+    set (HAVE_LIKWID TRUE)
+else ()
+    # These values are not used when both libraries are not found
+    unset (LIKWID_INCLUDE_DIRS CACHE)
+    unset (LIKWID_LIBRARIES CACHE)
+    unset (NUMA_ROOT_DIR CACHE)
+    unset (NUMA_INCLUDE_DIR CACHE)
+    unset (NUMA_LIBRARY CACHE)
+endif ()
 
 
 # build shared or static libraries (default: shared)

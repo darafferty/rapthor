@@ -27,4 +27,6 @@
 #define MKL_INCLUDE_DIRS "@MKL_INCLUDE_DIRS@"
 #define MKL_LIB_DIR "@MKL_LIB_DIR@"
 
+#cmakedefine HAVE_LIKWID
+
 #endif
