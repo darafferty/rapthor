@@ -30,11 +30,9 @@ set (${PROJECT_NAME}_sources
     Kernels.cpp
 )
 
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-    include_directories(
-        ${LIKWID_INCLUDE_DIRS}
-    )
-endif()
+include_directories(
+    ${LIKWID_INCLUDE_DIRS}
+)
 
 add_library(
   ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
