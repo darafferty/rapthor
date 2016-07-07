@@ -34,16 +34,7 @@ option (BUILD_WITH_TESTS "Build test executables" OFF)
 option (BUILD_WITH_DEMO "Build LOFAR demo program" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
-option (BUILD_WITH_ARDUINO_POWER_SENSOR "Measure power using arduino power sensor" OFF)
 option (BUILD_WITH_LIKWID_POWER_SENSOR "Measure power using likiwd library" OFF)
-
-
-# Power sensor
-if (BUILD_WITH_ARDUINO_POWER_SENSOR)
-    set(POWER_SENSOR "/dev/ttyUSB0" CACHE FILEPATH "Power sensor")
-    set(POWER_FILE "power" CACHE FILEPATH "File to dump power consumption")
-    set(MEASURE_POWER_ARDUINO TRUE)
-endif()
 
 
 # Likwid power sensor
