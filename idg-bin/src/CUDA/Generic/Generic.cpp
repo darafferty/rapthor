@@ -10,10 +10,24 @@ namespace idg {
                 Parameters params,
                 ProxyInfo info) :
                 CUDA(params, info)
+                #if !REDUCE_HOST_MEMORY
+                ,
+                h_visibilities(sizeof_visibilities(params.get_nr_baselines())),
+                h_uvw(sizeof_uvw(params.get_nr_baselines()))
+                #endif
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
                 #endif
+
+                // Allocate memory
+                for (DeviceInstance *device : devices) {
+                    #if REDUCE_HOST_MEMORY
+                    h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines())));
+                    h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(params.get_nr_baselines())));
+                    #endif
+                    h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
+                }
             }
 
             /* High level routines */
@@ -157,22 +171,11 @@ namespace idg {
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
-                // Host memory
-                #if REDUCE_HOST_MEMORY
-                std::vector<cu::HostMemory*> h_visibilities_;
-                std::vector<cu::HostMemory*> h_uvw_;
-                #else
-                cu::HostMemory h_visibilities((void *) visibilities, sizeof_visibilities(nr_baselines));
-                cu::HostMemory h_uvw((void *) uvw, sizeof_uvw(nr_baselines));
+                #if !REDUCE_HOST_MEMORY
+                // Copy input data to host memory
+                h_visibilities.set(visibilities);
+                h_uvw.set(uvw);
                 #endif
-                std::vector<cu::HostMemory*> h_grid_;
-                for (DeviceInstance *device : devices) {
-                    #if REDUCE_HOST_MEMORY
-                    h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(jobsize)));
-                    h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(jobsize)));
-                    #endif
-                    h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
-                }
 
                 // Device memory
                 std::vector<cu::DeviceMemory*> d_wavenumbers_;

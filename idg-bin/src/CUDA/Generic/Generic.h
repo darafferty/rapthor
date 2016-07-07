@@ -67,6 +67,15 @@ namespace idg {
                     virtual void transform(DomainAtoDomainB direction,
                                            std::complex<float>* grid) override;
 
+                private:
+                    #if REDUCE_HOST_MEMORY
+                    std::vector<cu::HostMemory*> h_visibilities_;
+                    std::vector<cu::HostMemory*> h_uvw_;
+                    #else
+                    cu::HostMemory h_visibilities;
+                    cu::HostMemory h_uvw;
+                    #endif
+                    std::vector<cu::HostMemory*> h_grid_;
             }; // class Generic
 
         } // namespace cuda
