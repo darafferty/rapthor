@@ -11,18 +11,6 @@
 #include "PowerSensor.h"
 
 
-class ArduinoState : public PowerSensor::State {
-    public:
-        struct MC_State {
-            int32_t  consumedEnergy = 0;
-            uint32_t microSeconds   = 0;
-        };
-
-        MC_State previousState;
-        MC_State lastState;
-};
-
-
 class ArduinoPowerSensor : public PowerSensor {
     public:
         ArduinoPowerSensor(const char *device, const char *dumpFileName);
@@ -45,8 +33,8 @@ class ArduinoPowerSensor : public PowerSensor {
         void            doMeasurement();
 
         // State
-        ArduinoState::MC_State lastState;
-        ArduinoState::MC_State previousState;
+        State::Measurement lastMeasurement;
+        State::Measurement previousMeasurement;
 
         // Dump
         int fd;
