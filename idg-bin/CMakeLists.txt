@@ -40,6 +40,7 @@ find_package(Numa QUIET)
 find_package(Likwid QUIET)
 if (${NUMA_FOUND} AND ${LIKWID_FOUND})
     set (HAVE_LIKWID TRUE)
+    set (HAVE_NUMA TRUE)
 else ()
     # These values are not used when both libraries are not found
     unset (LIKWID_INCLUDE_DIRS CACHE)

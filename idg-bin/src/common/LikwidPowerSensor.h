@@ -1,46 +1,39 @@
-#if !defined POWER_SENSOR_H
+#ifndef POWER_SENSOR_H
 #define POWER_SENSOR_H
 
-#include <inttypes.h>
-#include <pthread.h>
-
 #include <fstream>
-#include <vector>
+#include <iostream>
 
-#include "idg-config.h"
+#include <unistd.h>
 
+#include "PowerSensor.h"
 
-class LikwidPowerSensor
-{
-  public:
-    struct State
-    {
-      unsigned consumedPKGenergy, consumedDRAMenergy;
-      double timeAtRead;
-    };
-
-    LikwidPowerSensor(const char *dumpFileName = 0);
-    ~LikwidPowerSensor();
+class LikwidPowerSensor : public PowerSensor {
+    public:
+        LikwidPowerSensor(const char *dumpFileName = 0);
+        ~LikwidPowerSensor();
 
     State read();
     void mark(const State &, const char *name = 0, unsigned tag = 0);
     void mark(const State &start, const State &stop, const char *name = 0, unsigned tag = 0);
 
-    static double Joules(const State &firstState, const State &secondState);
-    static double seconds(const State &firstState, const State &secondState);
-    static double Watt(const State &firstState, const State &secondState);
+    virtual double Joules(const State &firstState, const State &secondState) override;
+    virtual double seconds(const State &firstState, const State &secondState) override;
+    virtual double Watt(const State &firstState, const State &secondState) override;
 
-  private:
-    int		  fd;
-    std::ofstream *dumpFile;
-    pthread_t	  thread;
-    pthread_mutex_t mutex;
-    volatile bool stop;
+    private:
+        // Thread
+        pthread_t	    thread;
+        pthread_mutex_t mutex;
+        volatile bool   stop;
+        static void     *IOthread(void *);
+        void	        *IOthread();
+        void	        lock();
+        void            unlock();
 
-    void	  lock(), unlock();
-
-    static void   *IOthread(void *);
-    void	  *IOthread();
+        // Dump
+        int		  fd;
+        std::ofstream *dumpFile;
 };
 
 #endif
