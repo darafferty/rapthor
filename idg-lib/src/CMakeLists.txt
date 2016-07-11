@@ -169,64 +169,83 @@ endif()
 # build libidg-cuda, containing all needed for CUDA code #
 ##########################################################
 if (BUILD_LIB_CUDA)
-add_library(idg-cuda
-  $<TARGET_OBJECTS:cuda-common>
-  $<TARGET_OBJECTS:cuda-jetson>
-  $<TARGET_OBJECTS:cuda-generic>
+
+add_library (
+    idg-cuda
+    $<TARGET_OBJECTS:cuda-common>
+    $<TARGET_OBJECTS:cuda-jetson>
+    $<TARGET_OBJECTS:cuda-generic>
 )
 
-set(LINK_LIRBRARIES idg-common idg-powersensor ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set(
+    LINK_LIRBRARIES
+    idg-common idg-powersensor
+    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
+)
+
 target_link_libraries (
-  idg-cuda
-  ${LINK_LIRBRARIES}
+    idg-cuda
+    ${LINK_LIRBRARIES}
 )
 
-set_target_properties(idg-cuda PROPERTIES
-                      PUBLIC_HEADER idg-cuda.h)
-
-install(TARGETS idg-cuda
-  EXPORT IDGTargets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
+set_target_properties(
+    idg-cuda PROPERTIES
+    PUBLIC_HEADER idg-cuda.h
 )
 
-endif(BUILD_LIB_CUDA)
+install(
+    TARGETS idg-cuda
+    EXPORT IDGTargets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
+)
+
+endif (BUILD_LIB_CUDA)
 
 
 ##############################################################
 # build libidg-hybrid-cuda: containing all for CPU/CUDA code #
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-add_library(idg-hybrid-cuda
-  $<TARGET_OBJECTS:cpu-common>
-  $<TARGET_OBJECTS:cpu-reference>
-  $<TARGET_OBJECTS:cpu-haswellep>
-  $<TARGET_OBJECTS:cuda-common>
-  $<TARGET_OBJECTS:cuda-generic>
-  $<TARGET_OBJECTS:hybrid-cuda>
+
+add_library (
+    idg-hybrid-cuda
+    $<TARGET_OBJECTS:cpu-common>
+    $<TARGET_OBJECTS:cpu-reference>
+    $<TARGET_OBJECTS:cpu-haswellep>
+    $<TARGET_OBJECTS:cuda-common>
+    $<TARGET_OBJECTS:cuda-generic>
+    $<TARGET_OBJECTS:hybrid-cuda>
 )
 
-set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set (
+    LINK_LIRBRARIES
+    idg-common idg-powersensor
+    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
+)
 
 target_link_libraries (
-  idg-hybrid-cuda
-  ${LINK_LIRBRARIES}
+    idg-hybrid-cuda
+    ${LINK_LIRBRARIES}
 )
 
-set_target_properties(idg-hybrid-cuda PROPERTIES
-                      PUBLIC_HEADER idg-hybrid-cuda.h)
-
-install(TARGETS idg-hybrid-cuda
-  EXPORT IDGTargets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
+set_target_properties (
+    idg-hybrid-cuda PROPERTIES
+    PUBLIC_HEADER idg-hybrid-cuda.h
 )
+
+install(
+    TARGETS idg-hybrid-cuda
+    EXPORT IDGTargets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
+)
+
 endif()
-
 
 
 ##################################################################
