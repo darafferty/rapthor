@@ -30,19 +30,6 @@ namespace idg {
                 #endif
 
                 mParams = params;
-
-                // Initialize power sensor
-                #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                cout << "Opening power sensor: " << str_power_sensor << endl;
-                cout << "Writing power consumption to file: " << str_power_file << endl;
-                opencl::powerSensor.init(str_power_sensor, str_power_file);
-                #else
-                opencl::powerSensor.init();
-                #endif
             }
 
             /// Destructor
@@ -86,6 +73,8 @@ namespace idg {
                 // Load context and device
                 cl::Context context = opencl.get_context();
                 cl::Device device = opencl.get_device();
+                PowerSensor *gpu_power_sensor = opencl.get_powersensor();
+                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -160,7 +149,7 @@ namespace idg {
                     vector<PerformanceCounter> counters(3);
                     #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&opencl::powerSensor);
+                        counter.setPowerSensor(&gpu_power_sensor);
                     }
                     #endif
 
@@ -169,9 +158,9 @@ namespace idg {
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Power measurement
-                    LikwidPowerSensor::State powerStates[2];
+                    PowerSensor::State powerStates[2];
                     #pragma omp single
-                    startState = opencl::powerSensor.read();
+                    startState = gpu_power_sensor->read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -219,14 +208,14 @@ namespace idg {
                         // Run adder
                         #pragma omp critical (CPU)
                         {
-                            powerStates[0] = cpu.read_power();
+                            powerStates[0] = cpu_power_sensor->read();
                             kernel_adder->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, grid);
-                            powerStates[1] = cpu.read_power();
+                            powerStates[1] = cpu_power_sensor->read();
                         }
-                        auxiliary::report("  adder", LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
+                        auxiliary::report("  adder", cpu_power_sensor->seconds(powerStates[0], powerStates[1]),
                                                      kernel_adder->flops(current_nr_subgrids),
                                                      kernel_adder->bytes(current_nr_subgrids),
-                                                     LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
+                                                     cpu_power_sensor->Watt(powerStates[0], powerStates[1]));
                     }
 
                     // Unmap subgrids
@@ -234,7 +223,7 @@ namespace idg {
                 }
 
                 dtohqueue.finish();
-                PowerSensor::State stopState  = opencl::powerSensor.read();
+                PowerSensor::State stopState  = gpu_power_sensor->read();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
@@ -245,8 +234,8 @@ namespace idg {
                 uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_adder;
-                double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
-                double total_watt_gridding    = PowerSensor::Watt(startState, stopState);
+                double total_runtime_gridding = gpu_power_sensor->seconds(startState, stopState);
+                double total_watt_gridding    = gpu_power_sensor->Watt(startState, stopState);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
@@ -287,6 +276,8 @@ namespace idg {
                 // Load context and device
                 cl::Context context = opencl.get_context();
                 cl::Device device = opencl.get_device();
+                PowerSensor *gpu_power_sensor = opencl.get_powersensor();
+                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -360,7 +351,7 @@ namespace idg {
                     vector<PerformanceCounter> counters(2);
                     #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&opencl::powerSensor);
+                        counter.setPowerSensor(&gpu_power_sensor);
                     }
                     #endif
 
@@ -369,9 +360,9 @@ namespace idg {
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Power measurement
-                    LikwidPowerSensor::State powerStates[2];
+                    PowerSensor::State powerStates[2];
                     #pragma omp single
-                    startState = opencl::powerSensor.read();
+                    startState = gpu_power_sensor->read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -394,10 +385,10 @@ namespace idg {
                         void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
                         // Run splitter
-                        powerStates[0] = cpu.read_power();
+                        powerStates[0] = cpu_power_sensor->read();
                         kernel_splitter->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, (void *) grid);
                         htodqueue.enqueueWriteBuffer(h_subgrids, CL_FALSE, 0, opencl.sizeof_subgrids(current_nr_subgrids), subgrids_ptr);
-                        powerStates[1] = cpu.read_power();
+                        powerStates[1] = cpu_power_sensor->read();
 
                         #pragma omp critical (GPU)
                         {
@@ -425,10 +416,10 @@ namespace idg {
 
                         outputReady[0].wait();
 
-                        auxiliary::report(" splitter", LikwidPowerSensor::seconds(powerStates[0], powerStates[1]),
+                        auxiliary::report(" splitter", cpu_power_sensor->seconds(powerStates[0], powerStates[1]),
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
-                                                       LikwidPowerSensor::Watt(powerStates[0], powerStates[1]));
+                                                       cpu_power_sensor->Watt(powerStates[0], powerStates[1]));
                    }
 
                     // Unmap subgrids
@@ -437,7 +428,7 @@ namespace idg {
 
                 // Copy visibilities from host memory
                 dtohqueue.finish();
-                PowerSensor::State stopState  = opencl::powerSensor.read();
+                PowerSensor::State stopState  = gpu_power_sensor->read();
                 htodqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, opencl.sizeof_visibilities(nr_baselines), visibilities);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -449,8 +440,8 @@ namespace idg {
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
-                double total_watt_degridding    = PowerSensor::Watt(startState, stopState);
+                double total_runtime_degridding = gpu_power_sensor->seconds(startState, stopState);
+                double total_watt_degridding    = gpu_power_sensor->Watt(startState, stopState);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
