@@ -1,26 +1,17 @@
-project(common)
+project(powersensor)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    Proxy.h
-    Parameters.h
-    ProxyInfo.h
-    RuntimeWrapper.h
-    auxiliary.h
-    Types.h
-    Plan.h
-    Kernels.h
+    PowerSensor.h
+    DummyPowerSensor.h
+    ArduinoPowerSensor.h
+    LikwidPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources
-    Proxy.cpp
-    Parameters.cpp
-    ProxyInfo.cpp
-    RuntimeWrapper.cpp
-    auxiliary.cpp
-    Types.cpp
-    Plan.cpp
-    Kernels.cpp
+    DummyPowerSensor.cpp
+    ArduinoPowerSensor.cpp
+    LikwidPowerSensor.cpp
 )
 
 include_directories(
@@ -38,5 +29,5 @@ install(
     FILES
     ${${PROJECT_NAME}_headers}
     DESTINATION
-    include/common
+    include/powersensor
 )
