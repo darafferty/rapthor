@@ -2,9 +2,7 @@ project(opencl-reference.x)
 
 # Set external header files
 include_directories(
-    ${OPENCL_INCLUDE_DIRS}
     ${CLFFT_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/utility
  )
 
 set (${PROJECT_NAME}_sources
@@ -26,7 +24,7 @@ target_link_libraries (
 
 # install
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin/examples
+    RUNTIME DESTINATION bin/examples/cxx
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
 )

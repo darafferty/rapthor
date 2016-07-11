@@ -10,6 +10,8 @@
 #include <libgen.h> // dirname() and basename()
 #include <unistd.h> // rmdir()
 
+#include <clFFT.h>
+
 #include "idg-config.h"
 #include "OpenCL.h"
 
