@@ -128,6 +128,7 @@ endif()
 # find MKL
 if (BUILD_WITH_MKL AND NOT INTEL_CXX_COMPILER)
 find_package(MKL QUIET)
+endif()
 if (${MKL_FOUND})
     get_filename_component(MKL_LIB_DIR ${MKL_LIBRARIES} PATH)
     set (HAVE_MKL TRUE)
@@ -137,7 +138,6 @@ else()
     unset (MKL_INCLUDE_DIRS CACHE)
     unset (MKL_LIBRARIES CACHE)
     find_package(FFTW3 COMPONENTS single double)
-endif()
 endif()
 
 # find CUDA environment
