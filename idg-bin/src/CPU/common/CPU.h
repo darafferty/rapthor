@@ -10,21 +10,31 @@
 #ifndef IDG_CPU_H_
 #define IDG_CPU_H_
 
-#include <dlfcn.h>
+#include <cstdio> // remove()
+#include <cstdlib>  // rand()
+#include <ctime> // time() to init srand()
+#include <complex>
+#include <sstream>
 #include <memory>
+#include <exception>
 #include <vector>
 
+#include <dlfcn.h> // dlsym()
+#include <omp.h> // omp_get_wtime
+#include <libgen.h> // dirname() and basename()
+#include <unistd.h> // rmdir()
 #include <fftw3.h> // FFTW_BACKWARD, FFTW_FORWARD
 
+#include "idg-config.h"
 #include "idg-common.h"
+#include "idg-powersensor.h"
+
 #include "Kernels.h"
 
 
 namespace idg {
     namespace proxy {
         namespace cpu {
-            // Power sensor
-            static LikwidPowerSensor *powerSensor = nullptr;
 
             class CPU : public Proxy {
                 public:
@@ -133,11 +143,6 @@ namespace idg {
                     virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
                     virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
 
-                    LikwidPowerSensor::State read_power() {
-                        return cpu::powerSensor->read();
-                    }
-
-
                 protected:
                     static std::string make_tempdir();
                     static ProxyInfo default_proxyinfo(std::string srcdir,
@@ -154,6 +159,8 @@ namespace idg {
                     // store the ptr to Module, which each loads an .so-file
                     std::vector<runtime::Module*> modules;
                     std::map<std::string,int> which_module;
+
+                    PowerSensor *powerSensor;
             }; // class CPU
         } // namespace cpu
     } // namespace proxy

@@ -3,6 +3,7 @@ project(idg)
 # add subfolders
 add_subdirectory(common)
 add_subdirectory(api)
+add_subdirectory(powersensor)
 
 if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
 add_subdirectory(utility)
@@ -39,11 +40,6 @@ add_library(idg-common
   $<TARGET_OBJECTS:common>
 )
 
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-    set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-    target_link_libraries(idg-common ${LINK_LIRBRARIES})
-endif()
-
 set_target_properties(idg-common PROPERTIES
                       PUBLIC_HEADER idg-common.h)
 
@@ -56,6 +52,28 @@ install(TARGETS idg-common
 )
 
 
+
+#########################################################
+# build libidg-powersensor, containing all code used to #
+# to measure runtime and power consumption of kernels   #
+#########################################################
+add_library(idg-powersensor
+  $<TARGET_OBJECTS:powersensor>
+)
+
+set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
+target_link_libraries(idg-powersensor ${LINK_LIRBRARIES})
+
+set_target_properties(idg-powersensor PROPERTIES
+                      PUBLIC_HEADER idg-powersensor.h)
+
+install(TARGETS idg-powersensor
+  EXPORT IDGTargets
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+  PUBLIC_HEADER DESTINATION include
+)
 #########################################################
 # build libidg-fft, that wraps calls to FFTW or MKL;    #
 # used in the CPU code, the example init code, API code #
@@ -70,10 +88,6 @@ set (LINK_LIRBRARIES ${FFTW3F_LIBRARY} ${FFTW3_LIBRARY})
 # if (BUILD_WITH_PYTHON)
 #  set (LINK_LIRBRARIES ${LINK_LIRBRARIES} mkl_avx2 mkl_def)
 # endif()
-
-if (BUILD_WITH_LIKWID_POWER_SENSOR)
-    set (LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-endif()
 
 target_link_libraries(
   idg-fft
@@ -130,7 +144,7 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS})
+set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS})
 target_link_libraries (
   idg-cpu
   ${LINK_LIRBRARIES}
@@ -161,7 +175,7 @@ add_library(idg-cuda
   $<TARGET_OBJECTS:cuda-generic>
 )
 
-set(LINK_LIRBRARIES idg-common ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set(LINK_LIRBRARIES idg-common idg-powersensor ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
 target_link_libraries (
   idg-cuda
   ${LINK_LIRBRARIES}
@@ -190,11 +204,11 @@ add_library(idg-hybrid-cuda
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
   $<TARGET_OBJECTS:cuda-common>
-  $<TARGET_OBJECTS:hybrid-cuda>
   $<TARGET_OBJECTS:cuda-generic>
+  $<TARGET_OBJECTS:hybrid-cuda>
 )
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
+set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${CUDA_CUFFT_LIBRARIES} ${CUDA_DRIVER_LIBRARIES})
 
 target_link_libraries (
   idg-hybrid-cuda
@@ -228,7 +242,7 @@ add_library(idg-hybrid-opencl
   $<TARGET_OBJECTS:hybrid-opencl-reference>
 )
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
 target_link_libraries (
   idg-hybrid-opencl
@@ -258,7 +272,7 @@ add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-reference>
 )
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
 target_link_libraries(
   idg-opencl

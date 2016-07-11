@@ -1,16 +1,3 @@
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
-#include <complex>
-#include <sstream>
-#include <memory>
-#include <exception>
-#include <dlfcn.h> // dlsym()
-#include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
-#include <unistd.h> // rmdir()
-
-#include "idg-config.h"
 #include "CPU.h"
 
 using namespace std;
@@ -41,7 +28,11 @@ namespace idg {
                 load_shared_objects();
                 find_kernel_functions();
 
+                #if defined(HAVE_LIKWID)
                 powerSensor = new LikwidPowerSensor();
+                #else
+                powerSensor = new DummyPowerSensor();
+                #endif
             }
 
 
@@ -417,7 +408,7 @@ namespace idg {
                 double total_runtime_gridding = 0;
                 double total_runtime_gridder  = 0;
                 double total_runtime_fft      = 0;
-                LikwidPowerSensor::State powerStates[4];
+                PowerSensor::State powerStates[4];
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -467,11 +458,11 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
-                    double runtime_gridder = LikwidPowerSensor::seconds(powerStates[0], powerStates[1]);
-                    double runtime_fft     = LikwidPowerSensor::seconds(powerStates[2], powerStates[3]);
+                    double runtime_gridder = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    double runtime_fft     = powerSensor->seconds(powerStates[2], powerStates[3]);
                     #if defined(REPORT_VERBOSE)
-                    double power_gridder   = LikwidPowerSensor::Watt(powerStates[0], powerStates[1]);
-                    double power_fft       = LikwidPowerSensor::Watt(powerStates[2], powerStates[3]);
+                    double power_gridder   = powerSensor->Watt(powerStates[0], powerStates[1]);
+                    double power_fft       = powerSensor->Watt(powerStates[2], powerStates[3]);
                     auxiliary::report("gridder", runtime_gridder,
                                       kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                       kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
@@ -673,7 +664,7 @@ namespace idg {
                 double total_runtime_degridding = 0;
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
-                LikwidPowerSensor::State powerStates[4];
+                PowerSensor::State powerStates[4];
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -721,14 +712,14 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
-                    double runtime_fft       = LikwidPowerSensor::seconds(powerStates[0],
+                    double runtime_fft       = powerSensor->seconds(powerStates[0],
                                                                           powerStates[1]);
-                    double runtime_degridder = LikwidPowerSensor::seconds(powerStates[2],
+                    double runtime_degridder = powerSensor->seconds(powerStates[2],
                                                                           powerStates[3]);
                     #if defined(REPORT_VERBOSE)
-                    double power_fft         = LikwidPowerSensor::Watt(powerStates[0],
+                    double power_fft         = powerSensor->Watt(powerStates[0],
                                                                        powerStates[1]);
-                    double power_degridder   = LikwidPowerSensor::Watt(powerStates[2],
+                    double power_degridder   = powerSensor->Watt(powerStates[2],
                                                                        powerStates[3]);
 
                     auxiliary::report("degridder", runtime_degridder,
