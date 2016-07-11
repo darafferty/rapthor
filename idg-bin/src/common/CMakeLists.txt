@@ -23,10 +23,6 @@ set (${PROJECT_NAME}_sources
     Kernels.cpp
 )
 
-include_directories(
-    ${LIKWID_INCLUDE_DIRS}
-)
-
 add_library(
   ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                          ${${PROJECT_NAME}_sources}
