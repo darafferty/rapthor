@@ -32,6 +32,7 @@ option (BUILD_WITH_EXAMPLES "Build example executables" OFF)
 option (BUILD_WITH_TESTS "Build test executables" OFF)
 option (BUILD_WITH_DEMO "Build LOFAR demo program" OFF)
 option (BUILD_WITH_POWER "Enable power measurement" OFF)
+option (BUILD_WITH_MKL "Build with MKL (if available)" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 
@@ -125,7 +126,7 @@ endif()
 
 
 # find MKL
-if (NOT INTEL_CXX_COMPILER)
+if (BUILD_WITH_MKL AND NOT INTEL_CXX_COMPILER)
 find_package(MKL QUIET)
 if (${MKL_FOUND})
     get_filename_component(MKL_LIB_DIR ${MKL_LIBRARIES} PATH)
