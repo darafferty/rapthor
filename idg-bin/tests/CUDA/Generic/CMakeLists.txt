@@ -1,36 +1,36 @@
-project(test-cuda.x)
+project(test-cuda-generic.x)
 
-# Set external header files
-include_directories(
-  ${CUDA_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/utility
-  ${CMAKE_SOURCE_DIR}/src
- )
-
-set (${PROJECT_NAME}_sources
-  main.cpp
+# Set sources
+set (
+    ${PROJECT_NAME}_sources
+    main.cpp
 )
 
 # Set build target
-add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
+add_executable (
+    ${PROJECT_NAME} ${${PROJECT_NAME}_sources}
+)
 
-# link
-link_directories (${LIBRARY_OUTPUT_PATH})
-
-set(LINK_LIRBRARIES idg-utility idg-cpu idg-cuda ${CMAKE_DL_LIBS})
+# Set libraries to link
+set (
+    LINK_LIRBRARIES idg-utility idg-cpu idg-cuda
+)
 
 target_link_libraries (
-  ${PROJECT_NAME}
-  ${LINK_LIRBRARIES}
+    ${PROJECT_NAME}
+    ${LINK_LIRBRARIES}
 )
 
-# install
-install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin/tests
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
+# Set install
+install (
+    TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin/tests
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
 )
 
-# test
-add_test(NAME ${PROJECT_NAME}
-         COMMAND ${CMAKE_BINARY_DIR}/bin/tests/${PROJECT_NAME})
+# Set test
+add_test(
+    NAME ${PROJECT_NAME}
+    COMMAND ${CMAKE_BINARY_DIR}/bin/tests/${PROJECT_NAME}
+)
