@@ -68,9 +68,9 @@ namespace idg {
                 if (!str_power_file) str_power_file = POWER_FILE;
                 cout << "Opening power sensor: " << str_power_sensor << endl;
                 cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor.init(str_power_sensor, str_power_file);
+                powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
                 #else
-                powerSensor.init();
+                powerSensor = new DummyPowerSensor();
                 #endif
             }
 
@@ -257,7 +257,7 @@ namespace idg {
                     }
                     #endif
                     #pragma omp single
-                    startState = powerSensor.read();
+                    startState = powerSensor->read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -303,7 +303,7 @@ namespace idg {
 
                 // Copy grid to host
                 executequeue.finish();
-                PowerSensor::State stopState = powerSensor.read();
+                PowerSensor::State stopState = powerSensor->read();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
                 dtohqueue.finish();
 
@@ -318,8 +318,8 @@ namespace idg {
                 uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
-                double total_runtime_gridding = PowerSensor::seconds(startState, stopState);
-                double total_watt_gridding    = PowerSensor::Watt(startState, stopState);
+                double total_runtime_gridding = powerSensor->seconds(startState, stopState);
+                double total_watt_gridding    = powerSensor->Watt(startState, stopState);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
@@ -435,7 +435,7 @@ namespace idg {
                     }
                     #endif
                     #pragma omp single
-                    startState = powerSensor.read();
+                    startState = powerSensor->read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -484,7 +484,7 @@ namespace idg {
 
                 // Copy visibilities
                 dtohqueue.finish();
-                PowerSensor::State stopState = powerSensor.read();
+                PowerSensor::State stopState = powerSensor->read();
                 dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
                 dtohqueue.finish();
 
@@ -497,8 +497,8 @@ namespace idg {
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                double total_runtime_degridding = PowerSensor::seconds(startState, stopState);
-                double total_watt_degridding    = PowerSensor::Watt(startState, stopState);
+                double total_runtime_degridding = powerSensor->seconds(startState, stopState);
+                double total_watt_degridding    = powerSensor->Watt(startState, stopState);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
