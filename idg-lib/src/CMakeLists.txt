@@ -258,7 +258,7 @@ add_library(idg-hybrid-opencl
   $<TARGET_OBJECTS:cpu-haswellep>
   $<TARGET_OBJECTS:opencl-common>
   $<TARGET_OBJECTS:opencl-reference>
-  $<TARGET_OBJECTS:hybrid-opencl-reference>
+  $<TARGET_OBJECTS:hybrid-opencl>
 )
 
 set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})

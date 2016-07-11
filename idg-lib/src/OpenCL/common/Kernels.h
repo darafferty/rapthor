@@ -12,8 +12,9 @@
 
 #include <clFFT.h>
 
+#include "idg-common.h"
+
 #include "PerformanceCounter.h"
-#include "../../common/Kernels.h"
 
 namespace idg {
     namespace kernel {

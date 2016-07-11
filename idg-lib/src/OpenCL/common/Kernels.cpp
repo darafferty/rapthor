@@ -1,6 +1,3 @@
-#include <cstdint> // unint64_t
-
-#include "idg-config.h"
 #include "Kernels.h"
 
 #define ENABLE_PERFORMANCE_COUNTERS 1

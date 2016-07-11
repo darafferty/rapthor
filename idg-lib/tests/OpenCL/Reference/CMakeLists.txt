@@ -1,10 +1,8 @@
-project(test-opencl-reference.x)
+project(test-opencl.x)
 
 # Set external header files
 include_directories(
-  ${OPENCL_INCLUDE_DIRS}
   ${CLFFT_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/src
  )
 
 set (${PROJECT_NAME}_sources
