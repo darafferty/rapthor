@@ -31,13 +31,16 @@ option (BUILD_WITH_PYTHON "Have Python environment" OFF)
 option (BUILD_WITH_EXAMPLES "Build example executables" OFF)
 option (BUILD_WITH_TESTS "Build test executables" OFF)
 option (BUILD_WITH_DEMO "Build LOFAR demo program" OFF)
+option (BUILD_WITH_POWER "Enable power measurement" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 
 
 # Likwid power sensor
+if (BUILD_WITH_POWER)
 find_package(Numa QUIET)
 find_package(Likwid QUIET)
+endif ()
 if (${NUMA_FOUND} AND ${LIKWID_FOUND})
     set (HAVE_LIKWID TRUE)
     set (HAVE_NUMA TRUE)
