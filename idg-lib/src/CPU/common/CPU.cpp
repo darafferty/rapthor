@@ -408,7 +408,7 @@ namespace idg {
                 double total_runtime_gridding = 0;
                 double total_runtime_gridder  = 0;
                 double total_runtime_fft      = 0;
-                LikwidPowerSensor::State powerStates[4];
+                PowerSensor::State powerStates[4];
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -664,7 +664,7 @@ namespace idg {
                 double total_runtime_degridding = 0;
                 double total_runtime_degridder = 0;
                 double total_runtime_fft = 0;
-                LikwidPowerSensor::State powerStates[4];
+                PowerSensor::State powerStates[4];
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
