@@ -3,7 +3,8 @@
 
 #include <cstdio>
 
-#include "common/PowerSensor.h"
+#include "idg-powersensor.h"
+
 #include "CU.h"
 
 namespace idg {
