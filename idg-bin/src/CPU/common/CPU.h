@@ -27,6 +27,7 @@
 
 #include "idg-config.h"
 #include "idg-common.h"
+#include "idg-powersensor.h"
 
 #include "Kernels.h"
 

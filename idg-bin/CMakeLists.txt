@@ -197,6 +197,7 @@ endif (BUILD_WITH_DEMO)
 #####################################################
 set(TARGETS_TO_BUILD idg)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-common)
+set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-powersensor)
 if (BUILD_LIB_CPU)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cpu)
 endif()
