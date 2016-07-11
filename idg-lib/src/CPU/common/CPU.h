@@ -143,6 +143,9 @@ namespace idg {
                     virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
                     virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
 
+                public:
+                    PowerSensor* get_powersensor() { return powerSensor; };
+
                 protected:
                     static std::string make_tempdir();
                     static ProxyInfo default_proxyinfo(std::string srcdir,
