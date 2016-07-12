@@ -196,7 +196,7 @@ namespace idg {
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-            }
+            } // end grid_visibilities
 
 
             void Generic::degrid_visibilities(
@@ -214,7 +214,174 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-            }
+
+                // Load device
+                DeviceInstance *device    = devices[0];
+                PowerSensor *power_sensor = device->get_powersensor();
+				cl::Context &context      = device->get_context();
+
+                // Constants
+                auto nr_stations = mParams.get_nr_stations();
+                auto nr_baselines = mParams.get_nr_baselines();
+                auto nr_time = mParams.get_nr_time();
+                auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_channels = mParams.get_nr_channels();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
+                auto subgridsize = mParams.get_subgrid_size();
+                auto jobsize = mParams.get_job_size_degridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
+
+                // Load kernels
+                unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
+                unique_ptr<Splitter> kernel_splitter   = device->get_kernel_splitter();;
+                unique_ptr<GridFFT> kernel_fft         = device->get_kernel_fft();
+
+                // Initialize metadata
+                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
+                auto total_nr_subgrids = plan.get_nr_subgrids();
+                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                const Metadata *metadata = plan.get_metadata_ptr();
+
+                // Initialize
+                cl::CommandQueue executequeue = device->get_execute_queue();
+                cl::CommandQueue htodqueue    = device->get_htod_queue();
+                cl::CommandQueue dtohqueue    = device->get_dtoh_queue();
+                const int nr_streams = 3;
+
+                // Host memory
+                cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(nr_baselines));
+                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(nr_baselines));
+                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(total_nr_subgrids));
+
+                // Copy input data to host memory
+                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(total_nr_subgrids), metadata);
+
+                // Device memory
+                cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
+                cl::Buffer d_aterm       = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_aterm());
+                cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal());
+                cl::Buffer d_grid        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
+
+                // Performance measurements
+                double total_runtime_gridder = 0;
+                double total_runtime_fft = 0;
+                double total_runtime_adder = 0;
+                PowerSensor::State startState;
+
+                // Copy static device memory
+                htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
+                htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
+                htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
+                htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                htodqueue.finish();
+
+                // Initialize fft
+                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
+
+                // Start degridder
+                #pragma omp parallel num_threads(nr_streams)
+                {
+                    // Private device memory
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
+                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
+                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
+
+                    // Warmup
+                    #if ENABLE_WARMUP
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
+                    htodqueue.finish();
+                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    executequeue.finish();
+                    #endif
+
+                    // Events
+                    vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
+
+                    // Performance counters
+                    vector<PerformanceCounter> counters(3);
+                    #if defined(MEASURE_POWER_ARDUINO)
+                    for (PerformanceCounter& counter : counters) {
+                        counter.setPowerSensor(&powerSensor);
+                    }
+                    #endif
+                    #pragma omp single
+                    startState = power_sensor->read();
+
+                    #pragma omp for schedule(dynamic)
+                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                        // Compute the number of baselines to process in current iteration
+                        int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+
+                        // Number of subgrids for all baselines in job
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
+                        auto subgrid_offset       = plan.get_subgrid_offset(bl);
+
+                        // Offsets
+                        size_t uvw_offset          = bl * sizeof_uvw(1);
+                        size_t visibilities_offset = bl * sizeof_visibilities(1);
+                        size_t metadata_offset     = subgrid_offset * sizeof_metadata(1);
+
+                        #pragma omp critical (GPU)
+                        {
+        					// Copy input data to device
+                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
+
+                            // Launch splitter kernel
+                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
+                            kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
+
+        					// Launch FFT
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
+
+        					// Launch degridder kernel
+                            kernel_degridder->launchAsync(
+                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
+                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[2]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
+
+        					// Copy visibilities to host
+                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
+                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
+                        }
+
+                        outputReady[0].wait();
+                    }
+                }
+
+                // Copy visibilities
+                dtohqueue.finish();
+                PowerSensor::State stopState = power_sensor->read();
+                dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
+                dtohqueue.finish();
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                uint64_t total_flops_degridder  = kernel_degridder->flops(total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, total_nr_subgrids);
+                uint64_t total_flops_splitter   = kernel_splitter->flops(total_nr_subgrids);
+                uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
+                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
+                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
+                double total_runtime_degridding = power_sensor->seconds(startState, stopState);
+                double total_watt_degridding    = power_sensor->Watt(startState, stopState);
+                auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
+                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
+                clog << endl;
+                #endif
+
+            } // end grid_visibilities
 
             void Generic::transform(
                 DomainAtoDomainB direction,
