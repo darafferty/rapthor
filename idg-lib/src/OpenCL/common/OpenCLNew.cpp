@@ -19,6 +19,64 @@ namespace idg {
                 print_compiler_flags();
             }
 
+
+            OpenCLNew::~OpenCLNew()
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+				clfftTeardown();
+            }
+
+
+            uint64_t OpenCLNew::sizeof_subgrids(int nr_subgrids) {
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgridsize = mParams.get_subgrid_size();
+                return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
+            }
+
+            uint64_t OpenCLNew::sizeof_uvw(int nr_baselines) {
+                auto nr_time = mParams.get_nr_time();
+                return 1ULL * nr_baselines * nr_time * sizeof(UVW);
+            }
+
+            uint64_t OpenCLNew::sizeof_visibilities(int nr_baselines) {
+                auto nr_time = mParams.get_nr_time();
+                auto nr_channels = mParams.get_nr_channels();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>);
+            }
+
+            uint64_t OpenCLNew::sizeof_metadata(int nr_subgrids) {
+                return 1ULL * nr_subgrids * sizeof(Metadata);
+            }
+
+            uint64_t OpenCLNew::sizeof_grid() {
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
+                return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>);
+            }
+
+            uint64_t OpenCLNew::sizeof_wavenumbers() {
+                auto nr_channels = mParams.get_nr_channels();
+                return 1ULL * nr_channels * sizeof(float);
+            }
+
+            uint64_t OpenCLNew::sizeof_aterm() {
+                auto nr_stations = mParams.get_nr_stations();
+                auto nr_timeslots = mParams.get_nr_timeslots();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgridsize = mParams.get_subgrid_size();
+                return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
+            }
+
+            uint64_t OpenCLNew::sizeof_spheroidal() {
+                auto subgridsize = mParams.get_subgrid_size();
+                return 1ULL * subgridsize * subgridsize * sizeof(complex<float>);
+            }
+
+
             void OpenCLNew::init_devices() {
                 // Get list of all device numbers
                 char *char_opencl_device = getenv("OPENCL_DEVICE");

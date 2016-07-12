@@ -5,6 +5,7 @@
 
 #include "Util.h"
 #include "DeviceInstance.h"
+#include "Kernels.h"
 
 namespace idg {
     namespace proxy {
@@ -13,6 +14,8 @@ namespace idg {
                 public:
                     OpenCLNew(
                         Parameters params);
+
+                    ~OpenCLNew();
 
                 public:
                     void print_compiler_flags();
