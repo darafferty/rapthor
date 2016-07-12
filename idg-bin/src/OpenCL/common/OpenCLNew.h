@@ -3,6 +3,7 @@
 
 #include "idg-common.h"
 
+#include "Util.h"
 #include "DeviceInstance.h"
 
 namespace idg {
