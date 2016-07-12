@@ -20,16 +20,20 @@ namespace idg {
     namespace kernel {
         namespace opencl {
 
-        // define the kernel function names
-        static const std::string name_gridder   = "kernel_gridder";
-        static const std::string name_degridder = "kernel_degridder";
-        static const std::string name_adder     = "kernel_adder";
-        static const std::string name_splitter  = "kernel_splitter";
-        static const std::string name_scaler    = "kernel_scaler";
+			// define the kernel function names
+			static const std::string name_gridder   = "kernel_gridder";
+			static const std::string name_degridder = "kernel_degridder";
+			static const std::string name_adder     = "kernel_adder";
+			static const std::string name_splitter  = "kernel_splitter";
+			static const std::string name_scaler    = "kernel_scaler";
 
             class Gridder {
                 public:
                     Gridder(cl::Program &program, const Parameters &parameters);
+                    Gridder(
+						cl::Program &program,
+						const Parameters &parameters,
+						const cl::NDRange &local_size);
                      void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_baselines,
@@ -51,12 +55,17 @@ namespace idg {
                     cl::Event event;
                     cl::Kernel kernel;
                     Parameters parameters;
+					cl::NDRange local_size;
             };
 
 
             class Degridder {
                 public:
                     Degridder(cl::Program &program, const Parameters &parameters);
+                    Degridder(
+						cl::Program &program,
+						const Parameters &parameters,
+						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_baselines,
@@ -78,6 +87,7 @@ namespace idg {
                     cl::Event event;
                     cl::Kernel kernel;
                     Parameters parameters;
+					cl::NDRange local_size;
             };
 
 
@@ -108,6 +118,10 @@ namespace idg {
             class Adder {
                 public:
                     Adder(cl::Program &program, const Parameters &parameters);
+                    Adder(
+						cl::Program &program,
+						const Parameters &parameters,
+						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
@@ -122,11 +136,16 @@ namespace idg {
                     cl::Event event;
                     cl::Kernel kernel;
                     Parameters parameters;
+					cl::NDRange local_size;
             };
 
             class Splitter {
                 public:
                     Splitter(cl::Program &program, const Parameters &parameters);
+                    Splitter(
+						cl::Program &program,
+						const Parameters &parameters,
+						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
@@ -141,11 +160,16 @@ namespace idg {
                     cl::Event event;
                     cl::Kernel kernel;
                     Parameters parameters;
+					cl::NDRange local_size;
             };
 
             class Scaler {
                 public:
                     Scaler(cl::Program &program, const Parameters &parameters);
+                    Scaler(
+						cl::Program &program,
+						const Parameters &parameters,
+						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
@@ -158,6 +182,7 @@ namespace idg {
                     cl::Event event;
                     cl::Kernel kernel;
                     Parameters parameters;
+					cl::NDRange local_size;
             };
 
         } // namespace opencl

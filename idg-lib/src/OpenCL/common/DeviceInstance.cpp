@@ -30,6 +30,33 @@ namespace idg {
 
                 // Compile kernels
                 compile_kernels();
+
+                // Initialize power sensor
+                init_powersensor(str_power_sensor, str_power_file);
+            }
+
+            unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
+                return unique_ptr<Gridder>(new Gridder(*(programs[which_program.at(name_gridder)]), parameters, block_gridder));
+            }
+
+            unique_ptr<Degridder> DeviceInstance::get_kernel_degridder() const {
+                return unique_ptr<Degridder>(new Degridder(*(programs[which_program.at(name_degridder)]), parameters, block_degridder));
+            }
+
+            unique_ptr<GridFFT> DeviceInstance::get_kernel_fft() const {
+                return unique_ptr<GridFFT>(new GridFFT(parameters));
+            }
+
+            unique_ptr<Scaler> DeviceInstance::get_kernel_scaler() const {
+                return unique_ptr<Scaler>(new Scaler(*(programs[which_program.at(name_scaler)]), parameters, block_scaler));
+            }
+
+            unique_ptr<Adder> DeviceInstance::get_kernel_adder() const {
+                return unique_ptr<Adder>(new Adder(*(programs[which_program.at(name_adder)]), parameters, block_adder));
+            }
+
+            unique_ptr<Splitter> DeviceInstance::get_kernel_splitter() const {
+                return unique_ptr<Splitter>(new Splitter(*(programs[which_program.at(name_splitter)]), parameters, block_splitter));
             }
 
             void DeviceInstance::set_parameters() {
@@ -81,9 +108,9 @@ namespace idg {
 
 
                 // Combine flags
-                std::string flags = " " + flags_opencl.str() +
-                                    " " + flags_device.str() +
-                                    " " + flags_parameters;
+                std::string flags = flags_opencl.str() +
+                                    flags_device.str() +
+                                    flags_parameters;
 
                 return flags;
             }
@@ -179,6 +206,20 @@ namespace idg {
                 return os;
             }
 
+            void DeviceInstance::init_powersensor(
+                const char *str_power_sensor,
+                const char *str_power_file)
+            {
+                if (str_power_sensor) {
+                    std::cout << "Power sensor: " << str_power_sensor << std::endl;
+                    if (str_power_file) {
+                        std::cout << "Power file:   " << str_power_file << std::endl;
+                    }
+                    powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
+                } else {
+                    powerSensor = new DummyPowerSensor();
+                }
+            }
 
         } // end namespace opencl
     } // end namespace proxy
