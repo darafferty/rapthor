@@ -2,7 +2,12 @@
 
 #include "Types.cl"
 
+#ifdef GRIDDER_BATCH_SIZE
+#define MAX_NR_TIMESTEPS GRIDDER_BATCH_SIZE
+#else
 #define MAX_NR_TIMESTEPS 32
+#endif
+
 #define NR_CHANNELS_8  8
 #define NR_CHANNELS_4  4
 

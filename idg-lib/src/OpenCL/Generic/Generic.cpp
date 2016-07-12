@@ -1,22 +1,4 @@
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
-#include <complex>
-#include <sstream>
-#include <fstream>
-#include <memory>
-#include <dlfcn.h> // dlsym()
-#include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
-#include <unistd.h> // rmdir()
-
-#include <clFFT.h>
-
-#include "idg-config.h"
-#include "OpenCL.h"
-
-#define ENABLE_WARMUP 1
-#define DUMP_CLFFT_KERNELS 0
+#include "Generic.h"
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -24,135 +6,18 @@ using namespace idg::kernel::opencl;
 namespace idg {
     namespace proxy {
         namespace opencl {
-            /// Constructors
-            OpenCL::OpenCL(
-                Parameters params,
-                unsigned deviceNumber)
+            Generic::Generic(
+                Parameters params) :
+                OpenCLNew(params)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << params;
+                cout << "Generic::" << __func__ << endl;
                 #endif
-
-                // Create context
-                context = cl::Context(CL_DEVICE_TYPE_ALL);
-
-                // Get device
-                const char *str_device_number = getenv("OPENCL_DEVICE");
-                if (str_device_number) deviceNumber = atoi(str_device_number);
-            	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-                device = devices[deviceNumber];
-                printDevices(deviceNumber);
-
-                // Get compiler flags
-                Compilerflags flags = default_compiler_flags();
-
-                // Set/check parameters
-                mParams = params;
-                parameter_sanity_check(); // throws exception if bad parameters
-
-                // Compile kernels
-                compile(flags);
-
-                // Initialize clFFT
-                clfftSetupData setup;
-                clfftInitSetupData(&setup);
-                #if DUMP_CLFFT_KERNELS
-                setup.debugFlags = CLFFT_DUMP_PROGRAMS;
-                #endif
-                clfftSetup(&setup);
-
-                // Initialize power sensor
-                #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                cout << "Opening power sensor: " << str_power_sensor << endl;
-                cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
-                #else
-                powerSensor = new DummyPowerSensor();
-                #endif
-            }
-
-            OpenCL::~OpenCL()
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                for (int i = 0; i < programs.size(); i++) {
-                    delete programs[i];
-                }
-
-                clfftTeardown();
-            }
-
-            string OpenCL::default_compiler_flags() {
-                std::stringstream compiler_flags;
-                compiler_flags << "-cl-fast-relaxed-math";
-
-                float opencl_version = get_opencl_version(device);
-                if (opencl_version >= 2.0) {
-                    //compiler_flags << " -cl-std=CL2.0";
-                    //compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
-                }
-
-                return compiler_flags.str();
-            }
-
-
-            /* Sizeof routines */
-            uint64_t OpenCL::sizeof_subgrids(int nr_subgrids) {
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
-            }
-
-            uint64_t OpenCL::sizeof_uvw(int nr_baselines) {
-                auto nr_time = mParams.get_nr_time();
-                return 1ULL * nr_baselines * nr_time * sizeof(UVW);
-            }
-
-            uint64_t OpenCL::sizeof_visibilities(int nr_baselines) {
-                auto nr_time = mParams.get_nr_time();
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>);
-            }
-
-            uint64_t OpenCL::sizeof_metadata(int nr_subgrids) {
-                return 1ULL * nr_subgrids * sizeof(Metadata);
-            }
-
-            uint64_t OpenCL::sizeof_grid() {
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>);
-            }
-
-            uint64_t OpenCL::sizeof_wavenumbers() {
-                auto nr_channels = mParams.get_nr_channels();
-                return 1ULL * nr_channels * sizeof(float);
-            }
-
-            uint64_t OpenCL::sizeof_aterm() {
-                auto nr_stations = mParams.get_nr_stations();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
-            }
-
-            uint64_t OpenCL::sizeof_spheroidal() {
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * subgridsize * subgridsize * sizeof(complex<float>);
             }
 
 
             /* High level routines */
-            void OpenCL::grid_visibilities(
+            void Generic::grid_visibilities(
                 const complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -168,6 +33,11 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                // Load device
+                DeviceInstance *device    = devices[0];
+                PowerSensor *power_sensor = device->get_powersensor();
+				cl::Context &context      = device->get_context();
+
                 // Constants
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
@@ -178,10 +48,10 @@ namespace idg {
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
-                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
-                unique_ptr<Adder> kernel_adder     = get_kernel_adder();
-                unique_ptr<Scaler> kernel_scaler   = get_kernel_scaler();
-                unique_ptr<GridFFT> kernel_fft     = get_kernel_fft();
+                unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
+                unique_ptr<Adder> kernel_adder     = device->get_kernel_adder();
+                unique_ptr<Scaler> kernel_scaler   = device->get_kernel_scaler();
+                unique_ptr<GridFFT> kernel_fft     = device->get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -190,9 +60,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue &executequeue = device->get_execute_queue();
+                cl::CommandQueue &htodqueue    = device->get_htod_queue();
+                cl::CommandQueue &dtohqueue    = device->get_dtoh_queue();
                 const int nr_streams = 3;
 
                 // Host memory
@@ -259,7 +129,7 @@ namespace idg {
                     }
                     #endif
                     #pragma omp single
-                    startState = powerSensor->read();
+                    startState = power_sensor->read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -285,13 +155,13 @@ namespace idg {
                             htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
-        					// Launch gridder kernel
+							// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
                                 d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
-        					// Launch FFT
+							// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch adder kernel
@@ -305,7 +175,7 @@ namespace idg {
 
                 // Copy grid to host
                 executequeue.finish();
-                PowerSensor::State stopState = powerSensor->read();
+                PowerSensor::State stopState = power_sensor->read();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
                 dtohqueue.finish();
 
@@ -320,16 +190,16 @@ namespace idg {
                 uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
-                double total_runtime_gridding = powerSensor->seconds(startState, stopState);
-                double total_watt_gridding    = powerSensor->Watt(startState, stopState);
+                double total_runtime_gridding = power_sensor->seconds(startState, stopState);
+                double total_watt_gridding    = power_sensor->Watt(startState, stopState);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-            } // grid_visibilities
+            } // end grid_visibilities
 
 
-            void OpenCL::degrid_visibilities(
+            void Generic::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -345,6 +215,11 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                // Load device
+                DeviceInstance *device    = devices[0];
+                PowerSensor *power_sensor = device->get_powersensor();
+				cl::Context &context      = device->get_context();
+
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -358,9 +233,9 @@ namespace idg {
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
-                unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
-                unique_ptr<Splitter> kernel_splitter   = get_kernel_splitter();;
-                unique_ptr<GridFFT> kernel_fft         = get_kernel_fft();
+                unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
+                unique_ptr<Splitter> kernel_splitter   = device->get_kernel_splitter();;
+                unique_ptr<GridFFT> kernel_fft         = device->get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -369,9 +244,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue executequeue = device->get_execute_queue();
+                cl::CommandQueue htodqueue    = device->get_htod_queue();
+                cl::CommandQueue dtohqueue    = device->get_dtoh_queue();
                 const int nr_streams = 3;
 
                 // Host memory
@@ -437,7 +312,7 @@ namespace idg {
                     }
                     #endif
                     #pragma omp single
-                    startState = powerSensor->read();
+                    startState = power_sensor->read();
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -486,7 +361,7 @@ namespace idg {
 
                 // Copy visibilities
                 dtohqueue.finish();
-                PowerSensor::State stopState = powerSensor->read();
+                PowerSensor::State stopState = power_sensor->read();
                 dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
                 dtohqueue.finish();
 
@@ -499,16 +374,16 @@ namespace idg {
                 uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                double total_runtime_degridding = powerSensor->seconds(startState, stopState);
-                double total_watt_degridding    = powerSensor->Watt(startState, stopState);
+                double total_runtime_degridding = power_sensor->seconds(startState, stopState);
+                double total_watt_degridding    = power_sensor->Watt(startState, stopState);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
-           } // degrid_visibilities
 
+            } // end grid_visibilities
 
-            void OpenCL::transform(
+            void Generic::transform(
                 DomainAtoDomainB direction,
                 complex<float>* grid)
             {
@@ -516,13 +391,18 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                // Load device
+                DeviceInstance *device    = devices[0];
+                PowerSensor *power_sensor = device->get_powersensor();
+				cl::Context &context      = device->get_context();
+
                 // Constants
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
                 clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
 
                 // Command queue
-                cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue &queue = device->get_execute_queue();
 
                 // Events
                 vector<cl::Event> inputReady(1);
@@ -539,7 +419,7 @@ namespace idg {
                 #endif
 
                 // Load kernel function
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
@@ -555,7 +435,7 @@ namespace idg {
                 // Create FFT plan
                 kernel_fft->plan(context, queue, gridsize, 1);
 
-        		// Launch FFT
+				// Launch FFT
                 kernel_fft->launchAsync(queue, d_grid, sign);
                 queue.enqueueMarkerWithWaitList(NULL, &fftFinished[0]);
                 fftFinished[0].wait();
@@ -593,105 +473,105 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
-            } // transform
+            } // end transform
 
-            void OpenCL::compile(Compilerflags flags)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Source directory
-                stringstream _srcdir;
-                _srcdir << string(IDG_INSTALL_DIR);
-                _srcdir << "/lib/kernels/OpenCL";
-                string srcdir = _srcdir.str();
-
-                #if defined(DEBUG)
-                cout << "Searching for source files in: " << srcdir << endl;
-                #endif
-
-                // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-                string mparameters = Parameters::definitions(
-                    mParams.get_nr_stations(),
-                    mParams.get_nr_baselines(),
-                    mParams.get_nr_time(),
-                    mParams.get_imagesize(),
-                    mParams.get_nr_polarizations(),
-                    mParams.get_grid_size(),
-                    mParams.get_subgrid_size());
-
-                // Build parameters tring
-                stringstream _parameters;
-                _parameters << " " << flags;
-                _parameters << " " << "-I " << srcdir;
-                _parameters << " " << mparameters;
-                string parameters = _parameters.str();
-
-                // Create vector of devices
-                std::vector<cl::Device> devices;
-                devices.push_back(device);
-
-                // Debug
-                #if defined(DEBUG)
-                cout << "Compiling for:" << endl;
-                printDevice(device);
-                #endif
-
-                // Add all kernels to build
-                vector<string> v;
-                v.push_back("KernelGridder.cl");
-                v.push_back("KernelDegridder.cl");
-                v.push_back("KernelAdder.cl");
-                v.push_back("KernelSplitter.cl");
-                v.push_back("KernelScaler.cl");
-
-                // Build OpenCL programs
-                for (int i = 0; i < v.size(); i++) {
-                    // Get source filename
-                    stringstream _source_file_name;
-                    _source_file_name << srcdir << "/" << v[i];
-                    string source_file_name = _source_file_name.str();
-
-                    // Read source from file
-                    ifstream source_file(source_file_name.c_str());
-                    string source(std::istreambuf_iterator<char>(source_file),
-                                 (std::istreambuf_iterator<char>()));
-                    source_file.close();
-
-                    // Print information about compilation
-                    cout << "Compiling: " << _source_file_name.str() << ":"
-                         << endl << parameters << endl;
-
-                    // Create OpenCL program
-                    cl::Program *program = new cl::Program(context, source);
-                    try {
-                        // Build the program
-                        (*program).build(devices, parameters.c_str());
-                        programs.push_back(program);
-                    } catch (cl::Error &error) {
-                        cerr << "Compilation failed: " << error.what() << endl;
-                        std::string msg;
-                        (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
-                        cout << msg << endl;
-                        exit(EXIT_FAILURE);
-                    }
-                } // for each library
-
-                // Fill which_program structure
-                which_program[name_gridder]   = 0;
-                which_program[name_degridder] = 1;
-                which_program[name_adder]     = 2;
-                which_program[name_splitter]  = 3;
-                which_program[name_scaler]    = 4;
-            } // compile
-
-            void OpenCL::parameter_sanity_check()
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-            }
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
+
+
+// C interface:
+// Rationale: calling the code from C code and Fortran easier,
+// and bases to create interface to scripting languages such as
+// Python, Julia, Matlab, ...
+extern "C" {
+    typedef idg::proxy::opencl::Generic OpenCL_Generic;
+
+    OpenCL_Generic* OpenCL_Generic_init(
+                unsigned int nr_stations,
+                unsigned int nr_channels,
+                unsigned int nr_time,
+                unsigned int nr_timeslots,
+                float        imagesize,
+                unsigned int grid_size,
+                unsigned int subgrid_size)
+    {
+        idg::Parameters P;
+        P.set_nr_stations(nr_stations);
+        P.set_nr_channels(nr_channels);
+        P.set_nr_time(nr_time);
+        P.set_nr_timeslots(nr_timeslots);
+        P.set_imagesize(imagesize);
+        P.set_subgrid_size(subgrid_size);
+        P.set_grid_size(grid_size);
+
+        return new OpenCL_Generic(P);
+    }
+
+    void OpenCL_Generic_grid(OpenCL_Generic* p,
+                            void *visibilities,
+                            void *uvw,
+                            void *wavenumbers,
+                            void *metadata,
+                            void *grid,
+                            float w_offset,
+                            int   kernel_size,
+                            void *aterm,
+                            void *aterm_offsets,
+                            void *spheroidal)
+    {
+         p->grid_visibilities(
+                (const std::complex<float>*) visibilities,
+                (const float*) uvw,
+                (const float*) wavenumbers,
+                (const int*) metadata,
+                (std::complex<float>*) grid,
+                w_offset,
+                kernel_size,
+                (const std::complex<float>*) aterm,
+                (const int*) aterm_offsets,
+                (const float*) spheroidal);
+    }
+
+    void OpenCL_Generic_degrid(OpenCL_Generic* p,
+                            void *visibilities,
+                            void *uvw,
+                            void *wavenumbers,
+                            void *metadata,
+                            void *grid,
+                            float w_offset,
+                            int   kernel_size,
+                            void *aterm,
+                            void *aterm_offsets,
+                            void *spheroidal)
+    {
+         p->degrid_visibilities(
+                (std::complex<float>*) visibilities,
+                    (const float*) uvw,
+                    (const float*) wavenumbers,
+                    (const int*) metadata,
+                    (const std::complex<float>*) grid,
+                    w_offset,
+                    kernel_size,
+                    (const std::complex<float>*) aterm,
+                    (const int*) aterm_offsets,
+                    (const float*) spheroidal);
+     }
+
+    void OpenCL_Generic_transform(OpenCL_Generic* p,
+                    int direction,
+                    void *grid)
+    {
+       if (direction!=0)
+           p->transform(idg::ImageDomainToFourierDomain,
+                    (std::complex<float>*) grid);
+       else
+           p->transform(idg::FourierDomainToImageDomain,
+                    (std::complex<float>*) grid);
+    }
+
+    void OpenCL_Generic_destroy(OpenCL_Generic* p) {
+       delete p;
+    }
+
+} // end extern "C"

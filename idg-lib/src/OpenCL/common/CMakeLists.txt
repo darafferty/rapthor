@@ -9,16 +9,20 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers
     OpenCL.h
+    OpenCLNew.h
     Kernels.h
     PerformanceCounter.h
     Util.h
+    DeviceInstance.h
 )
 
 set (${PROJECT_NAME}_sources
     OpenCL.cpp
+    OpenCLNew.cpp
     Kernels.cpp
     PerformanceCounter.cpp
     Util.cpp
+    DeviceInstance.cpp
 )
 
 # create library

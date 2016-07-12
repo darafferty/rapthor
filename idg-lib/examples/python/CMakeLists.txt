@@ -10,5 +10,6 @@ install(FILES
   cpu-image-haswellep.py
   opencl-reference.py
   cuda-generic.py
+  opencl-generic.py
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION bin/examples/python)
