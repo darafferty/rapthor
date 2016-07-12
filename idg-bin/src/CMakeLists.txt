@@ -289,6 +289,7 @@ if (BUILD_LIB_OPENCL)
 add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-common>
   $<TARGET_OBJECTS:opencl-reference>
+  $<TARGET_OBJECTS:opencl-generic>
 )
 
 set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
