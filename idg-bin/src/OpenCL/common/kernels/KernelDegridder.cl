@@ -1,7 +1,12 @@
 #include "math.cl"
 #include "Types.cl"
 
+#ifdef DEGRIDDER_BATCH_SIZE
+#define NR_THREADS DEGRIDDER_BATCH_SIZE
+#else
 #define NR_THREADS ((SUBGRIDSIZE % 16 == 0) ? 256 : 64)
+#endif
+
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 #define NR_CHANNELS_8 8

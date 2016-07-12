@@ -1,4 +1,4 @@
-project(hybrid-opencl-reference)
+project(hybrid-opencl)
 
 # external header files needed
 include_directories (

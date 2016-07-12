@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "idg-common.h"
+#include "idg-powersensor.h"
 #include "Kernels.h"
 #include "Util.h"
 
@@ -24,11 +25,6 @@
 namespace idg {
     namespace proxy {
         namespace opencl {
-            /*
-                Power measurement
-            */
-            static PowerSensor powerSensor;
-
             class OpenCL : public Proxy {
                 public:
                     /// Constructors
@@ -49,6 +45,9 @@ namespace idg {
 
                     // Get device of proxy
                     cl::Device get_device() const { return device; }
+
+                    // Get power sensor of proxy
+                    PowerSensor *get_powersensor() const { return powerSensor; }
 
                 public:
                     // High level interface, inherited from Proxy
@@ -96,6 +95,9 @@ namespace idg {
                    virtual std::unique_ptr<kernel::opencl::Scaler> get_kernel_scaler() const = 0;
                    virtual std::unique_ptr<kernel::opencl::Adder> get_kernel_adder() const = 0;
                    virtual std::unique_ptr<kernel::opencl::Splitter> get_kernel_splitter() const = 0;
+
+                public:
+                    PowerSensor *powerSensor;
 
                 protected:
                     ProxyInfo default_proxyinfo(std::string srcdir, std::string tmpdir);
