@@ -13,6 +13,14 @@ namespace idg {
                 kernel(program, name_gridder.c_str()),
                 parameters(parameters) {}
 
+            Gridder::Gridder(
+                cl::Program &program,
+                const Parameters &parameters,
+                const cl::NDRange &local_size) :
+                kernel(program, name_gridder.c_str()),
+                parameters(parameters),
+                local_size(local_size) {}
+
             void Gridder::launchAsync(
                 cl::CommandQueue &queue,
                 int nr_timesteps,
@@ -65,6 +73,14 @@ namespace idg {
             Degridder::Degridder(cl::Program &program, const Parameters &parameters) :
                 kernel(program, name_degridder.c_str()),
                 parameters(parameters) {}
+
+            Degridder::Degridder(
+                cl::Program &program,
+                const Parameters &parameters,
+                const cl::NDRange &local_size) :
+                kernel(program, name_degridder.c_str()),
+                parameters(parameters),
+                local_size(local_size) {}
 
             void Degridder::launchAsync(
                 cl::CommandQueue &queue,
@@ -239,6 +255,14 @@ namespace idg {
                 kernel(program, name_adder.c_str()),
                 parameters(parameters) {}
 
+            Adder::Adder(
+                cl::Program &program,
+                const Parameters &parameters,
+                const cl::NDRange &local_size) :
+                kernel(program, name_adder.c_str()),
+                parameters(parameters),
+                local_size(local_size) {}
+
             void Adder::launchAsync(
                 cl::CommandQueue &queue,
                 int nr_subgrids,
@@ -275,6 +299,14 @@ namespace idg {
                 kernel(program, name_splitter.c_str()),
                 parameters(parameters) {}
 
+            Splitter::Splitter(
+                cl::Program &program,
+                const Parameters &parameters,
+                const cl::NDRange &local_size):
+                kernel(program, name_splitter.c_str()),
+                parameters(parameters),
+                local_size(local_size) {}
+
             void Splitter::launchAsync(
                 cl::CommandQueue &queue,
                 int nr_subgrids,
@@ -310,6 +342,14 @@ namespace idg {
             Scaler::Scaler(cl::Program &program, const Parameters &parameters) :
                 kernel(program, name_scaler.c_str()),
                 parameters(parameters) {}
+
+            Scaler::Scaler(
+                cl::Program &program,
+                const Parameters &parameters,
+                const cl::NDRange &local_size) :
+                kernel(program, name_scaler.c_str()),
+                parameters(parameters),
+                local_size(local_size) {}
 
             void Scaler::launchAsync(
                 cl::CommandQueue &queue,
