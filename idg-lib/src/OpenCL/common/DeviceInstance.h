@@ -8,8 +8,8 @@
 #include "idg-common.h"
 #include "idg-powersensor.h"
 
-#include "Kernels.h"
 #include "Util.h"
+#include "Kernels.h"
 
 namespace idg {
     namespace proxy {
@@ -18,7 +18,6 @@ namespace idg {
                 public:
                     DeviceInstance(
                         Parameters &params,
-                        ProxyInfo &info,
                         int device_number,
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);

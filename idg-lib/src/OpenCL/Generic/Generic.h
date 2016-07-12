@@ -36,7 +36,7 @@ namespace idg {
                         const int kernel_size,
                         const std::complex<float> *aterm,
                         const int *aterm_offsets,
-                        const float *spheroidal) override;
+                        const float *spheroidal);
 
                     virtual void degrid_visibilities(
                         std::complex<float> *visibilities,
@@ -48,10 +48,10 @@ namespace idg {
                         const int kernel_size,
                         const std::complex<float> *aterm,
                         const int *aterm_offsets,
-                        const float *spheroidal) override;
+                        const float *spheroidal);
 
                     virtual void transform(DomainAtoDomainB direction,
-                                           std::complex<float>* grid) override;
+                                           std::complex<float>* grid);
 
                 private:
                     //#if REDUCE_HOST_MEMORY

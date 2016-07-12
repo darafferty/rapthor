@@ -8,7 +8,6 @@ namespace idg {
         namespace opencl {
             DeviceInstance::DeviceInstance(
                 Parameters &parameters,
-                ProxyInfo &info,
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
@@ -53,16 +52,40 @@ namespace idg {
 
 
             std::string DeviceInstance::get_compiler_flags() {
-                std::stringstream compiler_flags;
-                compiler_flags << "-cl-fast-relaxed-math";
+                // Parameter flags
+                std::string flags_parameters = Parameters::definitions(
+                    parameters.get_nr_stations(),
+                    parameters.get_nr_baselines(),
+                    parameters.get_nr_time(),
+                    parameters.get_imagesize(),
+                    parameters.get_nr_polarizations(),
+                    parameters.get_grid_size(),
+                    parameters.get_subgrid_size());
 
+
+				// OpenCL specific flags
+                std::stringstream flags_opencl;
+				flags_opencl << "-cl-fast-relaxed-math";
+
+				// OpenCL 2.0 specific flags
                 float opencl_version = get_opencl_version(*device);
                 if (opencl_version >= 2.0) {
-                    //compiler_flags << " -cl-std=CL2.0";
-                    //compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
+                    //flags_opencl << " -cl-std=CL2.0";
+                    //flags_opencl << " -DUSE_ATOMIC_FETCH_ADD";
                 }
 
-                return compiler_flags.str();
+				// Device specific flags
+				std::stringstream flags_device;
+                flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
+                flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
+
+
+                // Combine flags
+                std::string flags = " " + flags_opencl.str() +
+                                    " " + flags_device.str() +
+                                    " " + flags_parameters;
+
+                return flags;
             }
 
 
@@ -84,32 +107,13 @@ namespace idg {
                 // Get compile flags
                 Compilerflags flags = get_compiler_flags();
 
-                // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-                std::string mparameters = Parameters::definitions(
-                    parameters.get_nr_stations(),
-                    parameters.get_nr_baselines(),
-                    parameters.get_nr_time(),
-                    parameters.get_imagesize(),
-                    parameters.get_nr_polarizations(),
-                    parameters.get_grid_size(),
-                    parameters.get_subgrid_size());
-
-                // Build parameters tring
-                std::stringstream _parameters;
-                _parameters << " " << flags;
-                _parameters << " " << "-I " << srcdir;
-                _parameters << " " << mparameters;
-                std::string parameters = _parameters.str();
+				// Construct build options
+				std::string options = flags +
+								      " -I " + srcdir;
 
                 // Create vector of devices
                 std::vector<cl::Device> devices;
                 devices.push_back(*device);
-
-                // Debug
-                #if defined(DEBUG)
-                std::cout << "Compiling for:" << std::endl;
-                printDevice(*device);
-                #endif
 
                 // Add all kernels to build
                 std::vector<std::string> v;
@@ -133,14 +137,15 @@ namespace idg {
                     source_file.close();
 
                     // Print information about compilation
-                    std::cout << "Compiling: " << _source_file_name.str() << ":"
-                              << std::endl << parameters << std::endl;
+					#if defined(DEBUG)
+                    std::cout << "Compiling: " << _source_file_name.str() << std::endl;
+					#endif
 
                     // Create OpenCL program
                     cl::Program *program = new cl::Program(*context, source);
                     try {
                         // Build the program
-                        (*program).build(devices, parameters.c_str());
+                        (*program).build(devices, options.c_str());
                         programs.push_back(program);
                     } catch (cl::Error &error) {
                         std::cerr << "Compilation failed: " << error.what() << std::endl;
@@ -158,6 +163,22 @@ namespace idg {
                 which_program[name_splitter]  = 3;
                 which_program[name_scaler]    = 4;
             }
+
+            std::ostream& operator<<(std::ostream& os, DeviceInstance &di) {
+				cl::Device d = di.get_device();
+
+				os << "Device: "		   << d.getInfo<CL_DEVICE_NAME>()    << std::endl;
+				os << "Driver version  : " << d.getInfo<CL_DRIVER_VERSION>() << std::endl;
+				os << "Device version  : " << d.getInfo<CL_DEVICE_VERSION>() << std::endl;
+				os << "Compute units   : " << d.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << std::endl;
+				os << "Clock frequency : " << d.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << " MHz" << std::endl;
+				os << "Global memory   : " << d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() * 1e-9 << " Gb" << std::endl;
+				os << "Local memory    : " << d.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() * 1e-6 << " Mb" << std::endl;
+				os << std::endl;
+
+                return os;
+            }
+
 
         } // end namespace opencl
     } // end namespace proxy

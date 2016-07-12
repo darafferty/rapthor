@@ -1,5 +1,7 @@
 #include "Generic.h"
 
+using namespace std;
+
 namespace idg {
     namespace proxy {
         namespace opencl {
@@ -7,7 +9,9 @@ namespace idg {
                 Parameters params) :
                 OpenCLNew(params)
             {
-
+                #if defined(DEBUG)
+                cout << "Generic::" << __func__ << endl;
+                #endif
             }
 
 
