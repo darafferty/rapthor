@@ -8,7 +8,7 @@ namespace idg {
         namespace opencl {
             Generic::Generic(
                 Parameters params) :
-                OpenCLNew(params)
+                OpenCL(params)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;

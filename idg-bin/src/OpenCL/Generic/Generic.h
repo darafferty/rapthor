@@ -15,7 +15,7 @@
 namespace idg {
     namespace proxy {
         namespace opencl {
-            class Generic : public OpenCLNew {
+            class Generic : public OpenCL {
                 public:
                     /// Constructor
                     Generic(
