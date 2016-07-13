@@ -59,19 +59,46 @@ namespace idg {
                 return unique_ptr<Splitter>(new Splitter(*(programs[which_program.at(name_splitter)]), parameters, block_splitter));
             }
 
-            void DeviceInstance::set_parameters() {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
+            void DeviceInstance::set_parameters_default() {
                 batch_gridder   = 32;
                 batch_degridder = 256;
-                batch_degridder = (parameters.get_subgrid_size() % 16 == 0) ? 256 : 64;
                 block_gridder   = cl::NDRange(256, 1);
                 block_degridder = cl::NDRange(batch_degridder, 1);
                 block_adder     = cl::NDRange(128, 1);
                 block_splitter  = cl::NDRange(128, 1);
                 block_scaler    = cl::NDRange(128, 1);
+            }
+
+            void DeviceInstance::set_parameters_fiji() {
+				// Fiji parameters are default
+            }
+
+			void DeviceInstance::set_parameters_hawaii() {
+				// TODO
+			}
+
+            void DeviceInstance::set_parameters_tahiti() {
+				// TODO
+            }
+
+            void DeviceInstance::set_parameters() {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
+                #endif
+
+				set_parameters_default();
+
+				// Get device name
+				std::string name = device->getInfo<CL_DEVICE_NAME>();
+
+				// Overide architecture specific parameters
+				if (name.compare("Fiji") == 0) {
+					set_parameters_fiji();
+				} else if (name.compare("Hawaii") == 0) {
+					set_parameters_hawaii();
+				} else if (name.compare("Tahiti") == 0) {
+					set_parameters_tahiti();
+				}
             }
 
 
