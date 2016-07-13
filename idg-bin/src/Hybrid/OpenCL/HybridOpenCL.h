@@ -60,7 +60,7 @@ namespace idg {
 
                 private:
                     idg::proxy::cpu::HaswellEP cpu;
-                    idg::proxy::opencl::Reference opencl;
+                    idg::proxy::opencl::Generic opencl;
 
             }; // class HybridOpenCL
         } // namespace hybrid

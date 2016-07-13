@@ -9,11 +9,13 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
+
 #include "HybridOpenCL.h"
 
 #define ENABLE_WARMUP 1
 
 using namespace std;
+using namespace idg::proxy::opencl;
 
 namespace idg {
     namespace proxy {
@@ -51,9 +53,19 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Get OpenCL device
+                vector<DeviceInstance*> devices = opencl.get_devices();
+                DeviceInstance *device = devices[0];
+                cl::Context &context = device->get_context();
+
+                // Get power sensors
+                PowerSensor *gpu_power_sensor = device->get_powersensor();
+                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Constants
                 auto nr_time = mParams.get_nr_time();
@@ -65,16 +77,10 @@ namespace idg {
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
-                unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = opencl.get_kernel_gridder();
+                unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = device->get_kernel_gridder();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
-                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
-                unique_ptr<idg::kernel::opencl::Scaler> kernel_scaler = opencl.get_kernel_scaler();
-
-                // Load context and device
-                cl::Context context = opencl.get_context();
-                cl::Device device = opencl.get_device();
-                PowerSensor *gpu_power_sensor = opencl.get_powersensor();
-                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = device->get_kernel_fft();
+                unique_ptr<idg::kernel::opencl::Scaler> kernel_scaler = device->get_kernel_scaler();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -83,9 +89,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue &executequeue = device->get_execute_queue();
+                cl::CommandQueue &htodqueue    = device->get_htod_queue();
+                cl::CommandQueue &dtohqueue    = device->get_dtoh_queue();
                 const int nr_streams = 3;
                 omp_set_nested(true);
 
@@ -251,9 +257,20 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Get OpenCL device
+                vector<DeviceInstance*> devices = opencl.get_devices();
+                DeviceInstance *device = devices[0];
+                cl::Context &context = device->get_context();
+
+                // Get power sensors
+                PowerSensor *gpu_power_sensor = device->get_powersensor();
+                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
+
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -267,15 +284,9 @@ namespace idg {
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
-                unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = opencl.get_kernel_degridder();
+                unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = device->get_kernel_degridder();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
-                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
-
-                // Load context and device
-                cl::Context context = opencl.get_context();
-                cl::Device device = opencl.get_device();
-                PowerSensor *gpu_power_sensor = opencl.get_powersensor();
-                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = device->get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -284,9 +295,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue &executequeue = device->get_execute_queue();
+                cl::CommandQueue &htodqueue    = device->get_htod_queue();
+                cl::CommandQueue &dtohqueue    = device->get_dtoh_queue();
                 const int nr_streams = 3;
                 omp_set_nested(true);
 
