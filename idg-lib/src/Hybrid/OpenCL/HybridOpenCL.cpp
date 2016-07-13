@@ -9,18 +9,20 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "OpenCL.h"
+
+#include "HybridOpenCL.h"
 
 #define ENABLE_WARMUP 1
 
 using namespace std;
+using namespace idg::proxy::opencl;
 
 namespace idg {
     namespace proxy {
         namespace hybrid {
 
             /// Constructors
-            OpenCL::OpenCL(
+            HybridOpenCL::HybridOpenCL(
                 Parameters params) :
                 cpu(params), opencl(params)
             {
@@ -33,14 +35,14 @@ namespace idg {
             }
 
             /// Destructor
-            OpenCL::~OpenCL() {
+            HybridOpenCL::~HybridOpenCL() {
             }
 
             /*
                 High level routines
                 These routines operate on grids
             */
-            void OpenCL::grid_visibilities(
+            void HybridOpenCL::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -51,9 +53,19 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Get OpenCL device
+                vector<DeviceInstance*> devices = opencl.get_devices();
+                DeviceInstance *device = devices[0];
+                cl::Context &context = device->get_context();
+
+                // Get power sensors
+                PowerSensor *gpu_power_sensor = device->get_powersensor();
+                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Constants
                 auto nr_time = mParams.get_nr_time();
@@ -65,16 +77,10 @@ namespace idg {
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
-                unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = opencl.get_kernel_gridder();
+                unique_ptr<idg::kernel::opencl::Gridder> kernel_gridder = device->get_kernel_gridder();
                 unique_ptr<idg::kernel::cpu::Adder> kernel_adder = cpu.get_kernel_adder();
-                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
-                unique_ptr<idg::kernel::opencl::Scaler> kernel_scaler = opencl.get_kernel_scaler();
-
-                // Load context and device
-                cl::Context context = opencl.get_context();
-                cl::Device device = opencl.get_device();
-                PowerSensor *gpu_power_sensor = opencl.get_powersensor();
-                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = device->get_kernel_fft();
+                unique_ptr<idg::kernel::opencl::Scaler> kernel_scaler = device->get_kernel_scaler();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -83,9 +89,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue &executequeue = device->get_execute_queue();
+                cl::CommandQueue &htodqueue    = device->get_htod_queue();
+                cl::CommandQueue &dtohqueue    = device->get_dtoh_queue();
                 const int nr_streams = 3;
                 omp_set_nested(true);
 
@@ -147,11 +153,9 @@ namespace idg {
 
                     // Performance counters
                     vector<PerformanceCounter> counters(3);
-                    #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&gpu_power_sensor);
+                        counter.setPowerSensor(gpu_power_sensor);
                     }
-                    #endif
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
@@ -242,7 +246,7 @@ namespace idg {
                 #endif
             }
 
-            void OpenCL::degrid_visibilities(
+            void HybridOpenCL::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -253,9 +257,20 @@ namespace idg {
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
                 const float *spheroidal) {
+
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+
+                // Get OpenCL device
+                vector<DeviceInstance*> devices = opencl.get_devices();
+                DeviceInstance *device = devices[0];
+                cl::Context &context = device->get_context();
+
+                // Get power sensors
+                PowerSensor *gpu_power_sensor = device->get_powersensor();
+                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
+
                 // Constants
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
@@ -269,15 +284,9 @@ namespace idg {
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Load kernels
-                unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = opencl.get_kernel_degridder();
+                unique_ptr<idg::kernel::opencl::Degridder> kernel_degridder = device->get_kernel_degridder();
                 unique_ptr<idg::kernel::cpu::Splitter> kernel_splitter = cpu.get_kernel_splitter();
-                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = opencl.get_kernel_fft();
-
-                // Load context and device
-                cl::Context context = opencl.get_context();
-                cl::Device device = opencl.get_device();
-                PowerSensor *gpu_power_sensor = opencl.get_powersensor();
-                PowerSensor *cpu_power_sensor = cpu.get_powersensor();
+                unique_ptr<idg::kernel::opencl::GridFFT> kernel_fft = device->get_kernel_fft();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -286,9 +295,9 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
 
                 // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                cl::CommandQueue &executequeue = device->get_execute_queue();
+                cl::CommandQueue &htodqueue    = device->get_htod_queue();
+                cl::CommandQueue &dtohqueue    = device->get_dtoh_queue();
                 const int nr_streams = 3;
                 omp_set_nested(true);
 
@@ -349,11 +358,9 @@ namespace idg {
 
                     // Performance counters
                     vector<PerformanceCounter> counters(2);
-                    #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&gpu_power_sensor);
+                        counter.setPowerSensor(gpu_power_sensor);
                     }
-                    #endif
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
@@ -448,7 +455,7 @@ namespace idg {
                 #endif
             }
 
-            void OpenCL::transform(DomainAtoDomainB direction,
+            void HybridOpenCL::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -466,7 +473,7 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::hybrid::OpenCL Hybrid_OpenCL;
+    typedef idg::proxy::hybrid::HybridOpenCL Hybrid_OpenCL;
 
     Hybrid_OpenCL* Hybrid_OpenCL_init(
                 unsigned int nr_stations,
