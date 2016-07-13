@@ -121,6 +121,11 @@ namespace idg {
                 }
                 std::cout << std::endl;
             }
+
+            std::vector<DeviceInstance*> OpenCLNew::get_devices() {
+                return devices;
+            }
+
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
