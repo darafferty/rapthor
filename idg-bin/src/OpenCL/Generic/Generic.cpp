@@ -123,11 +123,9 @@ namespace idg {
 
                     // Performance counters
                     vector<PerformanceCounter> counters(4);
-                    #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&powerSensor);
+                        counter.setPowerSensor(power_sensor);
                     }
-                    #endif
                     #pragma omp single
                     startState = power_sensor->read();
 
@@ -306,11 +304,9 @@ namespace idg {
 
                     // Performance counters
                     vector<PerformanceCounter> counters(3);
-                    #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&powerSensor);
+                        counter.setPowerSensor(power_sensor);
                     }
-                    #endif
                     #pragma omp single
                     startState = power_sensor->read();
 
@@ -414,9 +410,7 @@ namespace idg {
 
                 // Performance counter
                 PerformanceCounter counter_fft;
-                #if defined(MEASURE_POWER_ARDUINO)
-                counter_fft.setPowerSensor(&powerSensor);
-                #endif
+                counter_fft.setPowerSensor(power_sensor);
 
                 // Load kernel function
                 unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();

@@ -29,25 +29,19 @@ double PerformanceCounter::get_runtime(cl_event event1, cl_event event2) {
     Performance Counter for one event
 */
 void PerformanceCounter::startPowerMeasurement(cl_event event, cl_int, void *user_data) {
-    #if defined(MEASURE_POWER_ARDUINO)
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
     descriptor->startState = descriptor->powerSensor->read();
-    #endif
 }
 
 void PerformanceCounter::stopPowerMeasurement(cl_event event, cl_int, void *user_data) {
-    #if defined(MEASURE_POWER_ARDUINO)
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
     descriptor->stopState = descriptor->powerSensor->read();
-    #endif
 }
 
 void PerformanceCounter::report(cl_event event, cl_int, void *user_data) {
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
-    double watts = 0;
-    #if defined(MEASURE_POWER_ARDUINO)
-    watts = PowerSensor::Watt(descriptor->startState, descriptor->stopState);
-    #endif
+    PowerSensor *powerSensor = descriptor->powerSensor;
+    double watts = powerSensor->Watt(descriptor->startState, descriptor->stopState);
     double runtime = get_runtime(event);
     auxiliary::report(descriptor->name, runtime, descriptor->flops, descriptor->bytes, watts);
     delete descriptor;
@@ -58,11 +52,9 @@ void PerformanceCounter::doOperation(cl::Event &event, const char *name, uint64_
     descriptor->name = name;
     descriptor->flops = flops;
     descriptor->bytes = bytes;
-    #if defined(MEASURE_POWER_ARDUINO)
     descriptor->powerSensor = powerSensor;
     event.setCallback(CL_SUBMITTED, &PerformanceCounter::startPowerMeasurement, descriptor);
     event.setCallback(CL_RUNNING, &PerformanceCounter::stopPowerMeasurement, descriptor);
-    #endif
     event.setCallback(CL_COMPLETE, &PerformanceCounter::report, descriptor);
 }
 
@@ -77,18 +69,14 @@ void PerformanceCounter::stopTimingMeasurement(cl_event event, cl_int, void *use
 
 void PerformanceCounter::stopPowerAndTimingMeasurement(cl_event event, cl_int, void *user_data) {
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
-    #if defined(MEASURE_POWER_ARDUINO)
     descriptor->stopState = descriptor->powerSensor->read();
-    #endif
     descriptor->runtime += get_runtime(event);
 }
 
 void PerformanceCounter::report2(cl_event event, cl_int, void *user_data) {
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
-    double watts = 0;
-    #if defined(MEASURE_POWER_ARDUINO)
-    watts = PowerSensor::Watt(descriptor->startState, descriptor->stopState);
-    #endif
+    PowerSensor *powerSensor = descriptor->powerSensor;
+    double watts = powerSensor->Watt(descriptor->startState, descriptor->stopState);
     auxiliary::report(descriptor->name, descriptor->runtime, descriptor->flops, descriptor->bytes, watts);
     delete descriptor;
 }
@@ -99,17 +87,13 @@ void PerformanceCounter::doOperation(cl::Event &start, cl::Event &end, const cha
     descriptor->flops = flops;
     descriptor->bytes = bytes;
     descriptor->runtime = 0;
-    #if defined(MEASURE_POWER_ARDUINO)
     descriptor->powerSensor = powerSensor;
     start.setCallback(CL_SUBMITTED, &PerformanceCounter::startPowerMeasurement, descriptor);
-    #endif
     start.setCallback(CL_RUNNING, &PerformanceCounter::stopTimingMeasurement, descriptor);
     end.setCallback(CL_RUNNING, &PerformanceCounter::stopPowerAndTimingMeasurement, descriptor);
     end.setCallback(CL_COMPLETE, &PerformanceCounter::report2, descriptor);
 }
 
-#if defined(MEASURE_POWER_ARDUINO)
 void PerformanceCounter::setPowerSensor(PowerSensor *_powerSensor) {
     powerSensor = _powerSensor;
 }
-#endif
