@@ -9,7 +9,7 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "OpenCL.h"
+#include "HybridOpenCL.h"
 
 #define ENABLE_WARMUP 1
 
@@ -20,7 +20,7 @@ namespace idg {
         namespace hybrid {
 
             /// Constructors
-            OpenCL::OpenCL(
+            HybridOpenCL::HybridOpenCL(
                 Parameters params) :
                 cpu(params), opencl(params)
             {
@@ -33,14 +33,14 @@ namespace idg {
             }
 
             /// Destructor
-            OpenCL::~OpenCL() {
+            HybridOpenCL::~HybridOpenCL() {
             }
 
             /*
                 High level routines
                 These routines operate on grids
             */
-            void OpenCL::grid_visibilities(
+            void HybridOpenCL::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -147,11 +147,9 @@ namespace idg {
 
                     // Performance counters
                     vector<PerformanceCounter> counters(3);
-                    #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&gpu_power_sensor);
+                        counter.setPowerSensor(gpu_power_sensor);
                     }
-                    #endif
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
@@ -242,7 +240,7 @@ namespace idg {
                 #endif
             }
 
-            void OpenCL::degrid_visibilities(
+            void HybridOpenCL::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -349,11 +347,9 @@ namespace idg {
 
                     // Performance counters
                     vector<PerformanceCounter> counters(2);
-                    #if defined(MEASURE_POWER_ARDUINO)
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&gpu_power_sensor);
+                        counter.setPowerSensor(gpu_power_sensor);
                     }
-                    #endif
 
                     // Events
                     vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
@@ -448,7 +444,7 @@ namespace idg {
                 #endif
             }
 
-            void OpenCL::transform(DomainAtoDomainB direction,
+            void HybridOpenCL::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -466,7 +462,7 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::hybrid::OpenCL Hybrid_OpenCL;
+    typedef idg::proxy::hybrid::HybridOpenCL Hybrid_OpenCL;
 
     Hybrid_OpenCL* Hybrid_OpenCL_init(
                 unsigned int nr_stations,

@@ -8,11 +8,11 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    OpenCL.h
+    HybridOpenCL.h
 )
 
 set (${PROJECT_NAME}_sources
-    OpenCL.cpp
+    HybridOpenCL.cpp
 )
 
 # create library
