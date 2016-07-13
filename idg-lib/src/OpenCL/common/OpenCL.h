@@ -13,12 +13,12 @@
 namespace idg {
     namespace proxy {
         namespace opencl {
-            class OpenCLNew : public Proxy {
+            class OpenCL : public Proxy {
                 public:
-                    OpenCLNew(
+                    OpenCL(
                         Parameters params);
 
-                    ~OpenCLNew();
+                    ~OpenCL();
 
                 public:
                     void print_compiler_flags();

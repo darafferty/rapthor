@@ -1,11 +1,11 @@
-#include "OpenCLNew.h"
+#include "OpenCL.h"
 
 using namespace idg::kernel::opencl;
 
 namespace idg {
     namespace proxy {
         namespace opencl {
-            OpenCLNew::OpenCLNew(
+            OpenCL::OpenCL(
                 Parameters params) {
 
                 #if defined(DEBUG)
@@ -20,7 +20,7 @@ namespace idg {
             }
 
 
-            OpenCLNew::~OpenCLNew()
+            OpenCL::~OpenCL()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -30,40 +30,40 @@ namespace idg {
             }
 
 
-            uint64_t OpenCLNew::sizeof_subgrids(int nr_subgrids) {
+            uint64_t OpenCL::sizeof_subgrids(int nr_subgrids) {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
                 return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
             }
 
-            uint64_t OpenCLNew::sizeof_uvw(int nr_baselines) {
+            uint64_t OpenCL::sizeof_uvw(int nr_baselines) {
                 auto nr_time = mParams.get_nr_time();
                 return 1ULL * nr_baselines * nr_time * sizeof(UVW);
             }
 
-            uint64_t OpenCLNew::sizeof_visibilities(int nr_baselines) {
+            uint64_t OpenCL::sizeof_visibilities(int nr_baselines) {
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(complex<float>);
             }
 
-            uint64_t OpenCLNew::sizeof_metadata(int nr_subgrids) {
+            uint64_t OpenCL::sizeof_metadata(int nr_subgrids) {
                 return 1ULL * nr_subgrids * sizeof(Metadata);
             }
 
-            uint64_t OpenCLNew::sizeof_grid() {
+            uint64_t OpenCL::sizeof_grid() {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
                 return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(complex<float>);
             }
 
-            uint64_t OpenCLNew::sizeof_wavenumbers() {
+            uint64_t OpenCL::sizeof_wavenumbers() {
                 auto nr_channels = mParams.get_nr_channels();
                 return 1ULL * nr_channels * sizeof(float);
             }
 
-            uint64_t OpenCLNew::sizeof_aterm() {
+            uint64_t OpenCL::sizeof_aterm() {
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_polarizations = mParams.get_nr_polarizations();
@@ -71,13 +71,13 @@ namespace idg {
                 return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(complex<float>);
             }
 
-            uint64_t OpenCLNew::sizeof_spheroidal() {
+            uint64_t OpenCL::sizeof_spheroidal() {
                 auto subgridsize = mParams.get_subgrid_size();
                 return 1ULL * subgridsize * subgridsize * sizeof(complex<float>);
             }
 
 
-            void OpenCLNew::init_devices() {
+            void OpenCL::init_devices() {
                 // Get list of all device numbers
                 char *char_opencl_device = getenv("OPENCL_DEVICE");
                 std::vector<int> device_numbers;
@@ -106,7 +106,7 @@ namespace idg {
                 }
             }
 
-            void OpenCLNew::print_devices() {
+            void OpenCL::print_devices() {
                 std::cout << "Devices: " << std::endl;
                 for (DeviceInstance *device : devices) {
                     std::cout << *device;
@@ -114,7 +114,7 @@ namespace idg {
                 std::cout << std::endl;
             }
 
-            void OpenCLNew::print_compiler_flags() {
+            void OpenCL::print_compiler_flags() {
                 std::cout << "Compiler flags: " << std::endl;
                 for (DeviceInstance *device : devices) {
                     std::cout << device->get_compiler_flags() << std::endl;
@@ -122,7 +122,7 @@ namespace idg {
                 std::cout << std::endl;
             }
 
-            std::vector<DeviceInstance*> OpenCLNew::get_devices() {
+            std::vector<DeviceInstance*> OpenCL::get_devices() {
                 return devices;
             }
 

@@ -8,7 +8,7 @@ include_directories (
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    OpenCLNew.h
+    OpenCL.h
     Kernels.h
     PerformanceCounter.h
     Util.h
@@ -16,7 +16,7 @@ set (${PROJECT_NAME}_headers
 )
 
 set (${PROJECT_NAME}_sources
-    OpenCLNew.cpp
+    OpenCL.cpp
     Kernels.cpp
     PerformanceCounter.cpp
     Util.cpp
