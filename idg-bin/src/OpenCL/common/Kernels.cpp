@@ -36,10 +36,9 @@ namespace idg {
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
                 int subgridsize = parameters.get_subgrid_size();
-                int localSizeX = 256;
-                int localSizeY = 1;
-                cl::NDRange globalSize(localSizeX * nr_subgrids, localSizeY);
-                cl::NDRange localSize(localSizeX, localSizeY);
+                int local_size_x = local_size[0];
+                int local_size_y = local_size[1];
+                cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel.setArg(0, w_offset);
                 kernel.setArg(1, nr_channels);
                 kernel.setArg(2, d_uvw);
@@ -50,7 +49,7 @@ namespace idg {
                 kernel.setArg(7, d_metadata);
                 kernel.setArg(8, d_subgrid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "gridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
                     #endif
@@ -96,11 +95,9 @@ namespace idg {
                 cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
-                // IF wgSize IS MODIFIED, ALSO MODIFY NR_THREADS in KernelDegridder.cl
-                int subgridsize = parameters.get_subgrid_size();
-                int wgSize = subgridsize % 16 == 0 ? 256 : 64;
-                cl::NDRange globalSize(wgSize * nr_subgrids);
-                cl::NDRange localSize(wgSize);
+                int local_size_x = local_size[0];
+                int local_size_y = local_size[1];
+                cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel.setArg(0, w_offset);
                 kernel.setArg(1, nr_channels);
                 kernel.setArg(2, d_uvw);
@@ -111,7 +108,7 @@ namespace idg {
                 kernel.setArg(7, d_metadata);
                 kernel.setArg(8, d_subgrid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "degridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
                     #endif
@@ -270,13 +267,14 @@ namespace idg {
                 cl::Buffer d_subgrid,
                 cl::Buffer d_grid,
                 PerformanceCounter &counter) {
-                cl::NDRange globalSize(128 * nr_subgrids, 1);
-                cl::NDRange localSize(128, 1);
+                int local_size_x = local_size[0];
+                int local_size_y = local_size[1];
+                cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel.setArg(0, d_metadata);
                 kernel.setArg(1, d_subgrid);
                 kernel.setArg(2, d_grid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
                     #endif
@@ -314,13 +312,14 @@ namespace idg {
                 cl::Buffer d_subgrid,
                 cl::Buffer d_grid,
                 PerformanceCounter &counter) {
-                cl::NDRange globalSize(128 * nr_subgrids, 1);
-                cl::NDRange localSize(128, 1);
+                int local_size_x = local_size[0];
+                int local_size_y = local_size[1];
+                cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel.setArg(0, d_metadata);
                 kernel.setArg(1, d_subgrid);
                 kernel.setArg(2, d_grid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "splitter", flops(nr_subgrids), bytes(nr_subgrids));
                     #endif
@@ -356,16 +355,17 @@ namespace idg {
                 int nr_subgrids,
                 cl::Buffer d_subgrid,
                 PerformanceCounter &counter) {
-                cl::NDRange globalSize(128 * nr_subgrids, 1);
-                cl::NDRange localSize(128, 1);
+                int local_size_x = local_size[0];
+                int local_size_y = local_size[1];
+                cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel.setArg(0, d_subgrid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize, NULL, &event);
+                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
                     counter.doOperation(event, "scaler", flops(nr_subgrids), bytes(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
-                    std::cerr << "Error launching gridder: " << error.what() << std::endl;
+                    std::cerr << "Error launching scaler: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }

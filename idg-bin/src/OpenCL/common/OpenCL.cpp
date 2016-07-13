@@ -1,80 +1,24 @@
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
-#include <complex>
-#include <sstream>
-#include <fstream>
-#include <memory>
-#include <dlfcn.h> // dlsym()
-#include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
-#include <unistd.h> // rmdir()
-
-#include <clFFT.h>
-
-#include "idg-config.h"
 #include "OpenCL.h"
 
-#define ENABLE_WARMUP 1
-#define DUMP_CLFFT_KERNELS 0
-
-using namespace std;
 using namespace idg::kernel::opencl;
 
 namespace idg {
     namespace proxy {
         namespace opencl {
-            /// Constructors
             OpenCL::OpenCL(
-                Parameters params,
-                unsigned deviceNumber)
-            {
+                Parameters params) {
+
                 #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << params;
+                std::cout << "OPENCL::" << __func__ << std::endl;
+                std::cout << params;
                 #endif
 
-                // Create context
-                context = cl::Context(CL_DEVICE_TYPE_ALL);
-
-                // Get device
-                const char *str_device_number = getenv("OPENCL_DEVICE");
-                if (str_device_number) deviceNumber = atoi(str_device_number);
-            	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-                device = devices[deviceNumber];
-                printDevices(deviceNumber);
-
-                // Get compiler flags
-                Compilerflags flags = default_compiler_flags();
-
-                // Set/check parameters
                 mParams = params;
-                parameter_sanity_check(); // throws exception if bad parameters
-
-                // Compile kernels
-                compile(flags);
-
-                // Initialize clFFT
-                clfftSetupData setup;
-                clfftInitSetupData(&setup);
-                #if DUMP_CLFFT_KERNELS
-                setup.debugFlags = CLFFT_DUMP_PROGRAMS;
-                #endif
-                clfftSetup(&setup);
-
-                // Initialize power sensor
-                #if defined(MEASURE_POWER_ARDUINO)
-                const char *str_power_sensor = getenv("POWER_SENSOR");
-                if (!str_power_sensor) str_power_sensor = POWER_SENSOR;
-                const char *str_power_file = getenv("POWER_FILE");
-                if (!str_power_file) str_power_file = POWER_FILE;
-                cout << "Opening power sensor: " << str_power_sensor << endl;
-                cout << "Writing power consumption to file: " << str_power_file << endl;
-                powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
-                #else
-                powerSensor = new DummyPowerSensor();
-                #endif
+                init_devices();
+                print_devices();
+                print_compiler_flags();
             }
+
 
             OpenCL::~OpenCL()
             {
@@ -82,28 +26,10 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                for (int i = 0; i < programs.size(); i++) {
-                    delete programs[i];
-                }
-
-                clfftTeardown();
-            }
-
-            string OpenCL::default_compiler_flags() {
-                std::stringstream compiler_flags;
-                compiler_flags << "-cl-fast-relaxed-math";
-
-                float opencl_version = get_opencl_version(device);
-                if (opencl_version >= 2.0) {
-                    //compiler_flags << " -cl-std=CL2.0";
-                    //compiler_flags << " -DUSE_ATOMIC_FETCH_ADD";
-                }
-
-                return compiler_flags.str();
+				clfftTeardown();
             }
 
 
-            /* Sizeof routines */
             uint64_t OpenCL::sizeof_subgrids(int nr_subgrids) {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
@@ -151,547 +77,55 @@ namespace idg {
             }
 
 
-            /* High level routines */
-            void OpenCL::grid_visibilities(
-                const complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Constants
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_time = mParams.get_nr_time();
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_gridder();
-                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
-
-                // Load kernels
-                unique_ptr<Gridder> kernel_gridder = get_kernel_gridder();
-                unique_ptr<Adder> kernel_adder     = get_kernel_adder();
-                unique_ptr<Scaler> kernel_scaler   = get_kernel_scaler();
-                unique_ptr<GridFFT> kernel_fft     = get_kernel_fft();
-
-                // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
-                const Metadata *metadata = plan.get_metadata_ptr();
-
-                // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                const int nr_streams = 3;
-
-                // Host memory
-                cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(nr_baselines));
-                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(nr_baselines));
-                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(total_nr_subgrids));
-
-                // Copy input data to host memory
-                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
-                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
-                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(total_nr_subgrids), metadata);
-
-                // Device memory
-                cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
-                cl::Buffer d_aterm       = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_aterm());
-                cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal());
-                cl::Buffer d_grid        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
-
-                // Performance measurements
-                double total_runtime_gridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_scaler = 0;
-                double total_runtime_adder = 0;
-                PowerSensor::State startState;
-
-                // Copy static device memory
-                htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
-                htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
-                htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
-                htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
-
-                // Initialize fft
-                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
-
-                // Start gridder
-                #pragma omp parallel num_threads(nr_streams)
-                {
-                    // Private device memory
-                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
-
-                    // Warmup
-                    #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
-                    htodqueue.finish();
-                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                    executequeue.finish();
-                    #endif
-
-                    // Events
-                    vector<cl::Event> inputReady(1), outputReady(1);
-                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
-
-                    // Performance counters
-                    vector<PerformanceCounter> counters(4);
-                    #if defined(MEASURE_POWER_ARDUINO)
-                    for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&powerSensor);
-                    }
-                    #endif
-                    #pragma omp single
-                    startState = powerSensor->read();
-
-                    #pragma omp for schedule(dynamic)
-                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Compute the number of baselines to process in current iteration
-                        int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
-                        // Number of subgrids for all baselines in job
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        auto subgrid_offset       = plan.get_subgrid_offset(bl);
-
-                        // Offsets
-                        size_t uvw_offset          = bl * sizeof_uvw(1);
-                        size_t visibilities_offset = bl * sizeof_visibilities(1);
-                        size_t metadata_offset     = subgrid_offset * sizeof_metadata(1);
-
-                        #pragma omp critical (GPU)
-                        {
-                            // Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
-                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
-
-        					// Launch gridder kernel
-                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            kernel_gridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
-
-        					// Launch FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-
-                            // Launch adder kernel
-                            kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
-                        }
-                    }
-
-                    outputReady[0].wait();
+            void OpenCL::init_devices() {
+                // Get list of all device numbers
+                char *char_opencl_device = getenv("OPENCL_DEVICE");
+                std::vector<int> device_numbers;
+                if (!char_opencl_device) {
+                    // Use device 0 if no OpenCL devices were specified
+                    device_numbers.push_back(0);
+                } else {
+                    device_numbers = idg::auxiliary::split_int(char_opencl_device, ",");
                 }
 
-                // Copy grid to host
-                executequeue.finish();
-                PowerSensor::State stopState = powerSensor->read();
-                dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
-                dtohqueue.finish();
+                // Get list of all power sensors
+                char *char_power_sensor = getenv("POWER_SENSOR");
+                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
-                uint64_t total_flops_scaler   = kernel_scaler->flops(total_nr_subgrids);
-                uint64_t total_bytes_scaler   = kernel_scaler->bytes(total_nr_subgrids);
-                uint64_t total_flops_adder    = kernel_adder->flops(total_nr_subgrids);
-                uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
-                double total_runtime_gridding = powerSensor->seconds(startState, stopState);
-                double total_watt_gridding    = powerSensor->Watt(startState, stopState);
-                auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, total_watt_gridding);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
-                clog << endl;
-                #endif
-            } // grid_visibilities
+                // Get list of all power files
+                char *char_power_file = getenv("POWER_FILE");
+                std::vector<std::string> power_files = idg::auxiliary::split_string(char_power_file, ",");
 
-
-            void OpenCL::degrid_visibilities(
-                std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                const std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Constants
-                auto nr_stations = mParams.get_nr_stations();
-                auto nr_baselines = mParams.get_nr_baselines();
-                auto nr_time = mParams.get_nr_time();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_degridder();
-                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
-
-                // Load kernels
-                unique_ptr<Degridder> kernel_degridder = get_kernel_degridder();
-                unique_ptr<Splitter> kernel_splitter   = get_kernel_splitter();;
-                unique_ptr<GridFFT> kernel_fft         = get_kernel_fft();
-
-                // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
-                auto total_nr_subgrids = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
-                const Metadata *metadata = plan.get_metadata_ptr();
-
-                // Initialize
-                cl::CommandQueue executequeue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue htodqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                cl::CommandQueue dtohqueue    = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-                const int nr_streams = 3;
-
-                // Host memory
-                cl::Buffer h_visibilities(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(nr_baselines));
-                cl::Buffer h_uvw(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(nr_baselines));
-                cl::Buffer h_metadata(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(total_nr_subgrids));
-
-                // Copy input data to host memory
-                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
-                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(total_nr_subgrids), metadata);
-
-                // Device memory
-                cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers());
-                cl::Buffer d_aterm       = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_aterm());
-                cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal());
-                cl::Buffer d_grid        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
-
-                // Performance measurements
-                double total_runtime_gridder = 0;
-                double total_runtime_fft = 0;
-                double total_runtime_adder = 0;
-                PowerSensor::State startState;
-
-                // Copy static device memory
-                htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
-                htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
-                htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
-                htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
-                htodqueue.finish();
-
-                // Initialize fft
-                auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                kernel_fft->plan(context, executequeue, subgridsize, max_nr_subgrids);
-
-                // Start degridder
-                #pragma omp parallel num_threads(nr_streams)
-                {
-                    // Private device memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
-
-                    // Warmup
-                    #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
-                    htodqueue.finish();
-                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                    executequeue.finish();
-                    #endif
-
-                    // Events
-                    vector<cl::Event> inputReady(1), computeReady(1), outputReady(1);
-                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
-
-                    // Performance counters
-                    vector<PerformanceCounter> counters(3);
-                    #if defined(MEASURE_POWER_ARDUINO)
-                    for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(&powerSensor);
-                    }
-                    #endif
-                    #pragma omp single
-                    startState = powerSensor->read();
-
-                    #pragma omp for schedule(dynamic)
-                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Compute the number of baselines to process in current iteration
-                        int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
-                        // Number of subgrids for all baselines in job
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        auto subgrid_offset       = plan.get_subgrid_offset(bl);
-
-                        // Offsets
-                        size_t uvw_offset          = bl * sizeof_uvw(1);
-                        size_t visibilities_offset = bl * sizeof_visibilities(1);
-                        size_t metadata_offset     = subgrid_offset * sizeof_metadata(1);
-
-                        #pragma omp critical (GPU)
-                        {
-        					// Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
-                            htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
-
-                            // Launch splitter kernel
-                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
-
-        					// Launch FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
-
-        					// Launch degridder kernel
-                            kernel_degridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[2]);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
-
-        					// Copy visibilities to host
-                            dtohqueue.enqueueBarrierWithWaitList(&computeReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputReady[0]);
-                        }
-
-                        outputReady[0].wait();
-                    }
+                // Create a device instance for every device
+                for (int i = 0; i < device_numbers.size(); i++) {
+                    const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
+                    const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
+                    DeviceInstance *device = new DeviceInstance(
+                        mParams, device_numbers[i], power_sensor, power_file);
+                    devices.push_back(device);
                 }
-
-                // Copy visibilities
-                dtohqueue.finish();
-                PowerSensor::State stopState = powerSensor->read();
-                dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities, NULL, NULL);
-                dtohqueue.finish();
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                uint64_t total_flops_degridder  = kernel_degridder->flops(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, total_nr_subgrids);
-                uint64_t total_flops_splitter   = kernel_splitter->flops(total_nr_subgrids);
-                uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
-                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
-                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                double total_runtime_degridding = powerSensor->seconds(startState, stopState);
-                double total_watt_degridding    = powerSensor->Watt(startState, stopState);
-                auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, total_watt_degridding);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
-                clog << endl;
-                #endif
-           } // degrid_visibilities
-
-
-            void OpenCL::transform(
-                DomainAtoDomainB direction,
-                complex<float>* grid)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Constants
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
-
-                // Command queue
-                cl::CommandQueue queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
-
-                // Events
-                vector<cl::Event> inputReady(1);
-                vector<cl::Event> fftFinished(1);
-                vector<cl::Event> outputReady(1);
-
-                // Device memory
-                cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid());
-
-                // Performance counter
-                PerformanceCounter counter_fft;
-                #if defined(MEASURE_POWER_ARDUINO)
-                counter_fft.setPowerSensor(&powerSensor);
-                #endif
-
-                // Load kernel function
-                unique_ptr<GridFFT> kernel_fft = get_kernel_fft();
-
-                // Perform fft shift
-                double time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
-                time_shift += omp_get_wtime();
-
-                // Copy grid to device
-                double time_input = -omp_get_wtime();
-                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid, NULL, &inputReady[0]);
-                inputReady[0].wait();
-                time_input += omp_get_wtime();
-
-                // Create FFT plan
-                kernel_fft->plan(context, queue, gridsize, 1);
-
-        		// Launch FFT
-                kernel_fft->launchAsync(queue, d_grid, sign);
-                queue.enqueueMarkerWithWaitList(NULL, &fftFinished[0]);
-                fftFinished[0].wait();
-
-                // Copy grid to host
-                double time_output = -omp_get_wtime();
-                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid, &fftFinished, &outputReady[0]);
-                outputReady[0].wait();
-                time_output += omp_get_wtime();
-
-                // Perform fft shift
-                time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
-                time_shift += omp_get_wtime();
-
-                // Perform fft scaling
-                double time_scale = -omp_get_wtime();
-                complex<float> scale = complex<float>(2, 0);
-                if (direction == FourierDomainToImageDomain) {
-                    kernel_fft->scale(grid, scale);
-                }
-                time_scale += omp_get_wtime();
-
-                #if defined(REPORT_TOTAL)
-                auxiliary::report("   input", time_input, 0, sizeof_grid(), 0);
-                auxiliary::report("     fft",
-                                  PerformanceCounter::get_runtime((cl_event) inputReady[0](), (cl_event) fftFinished[0]()),
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1),
-                                  0);
-                auxiliary::report("  output", time_output, 0, sizeof_grid(), 0);
-                auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
-                if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
-                }
-                clog << endl;
-                #endif
-            } // transform
-
-            void OpenCL::compile(Compilerflags flags)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Source directory
-                stringstream _srcdir;
-                _srcdir << string(IDG_INSTALL_DIR);
-                _srcdir << "/lib/kernels/OpenCL";
-                string srcdir = _srcdir.str();
-
-                #if defined(DEBUG)
-                cout << "Searching for source files in: " << srcdir << endl;
-                #endif
-
-                // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
-                string mparameters = Parameters::definitions(
-                    mParams.get_nr_stations(),
-                    mParams.get_nr_baselines(),
-                    mParams.get_nr_time(),
-                    mParams.get_imagesize(),
-                    mParams.get_nr_polarizations(),
-                    mParams.get_grid_size(),
-                    mParams.get_subgrid_size());
-
-                // Build parameters tring
-                stringstream _parameters;
-                _parameters << " " << flags;
-                _parameters << " " << "-I " << srcdir;
-                _parameters << " " << mparameters;
-                string parameters = _parameters.str();
-
-                // Create vector of devices
-                std::vector<cl::Device> devices;
-                devices.push_back(device);
-
-                // Debug
-                #if defined(DEBUG)
-                cout << "Compiling for:" << endl;
-                printDevice(device);
-                #endif
-
-                // Add all kernels to build
-                vector<string> v;
-                v.push_back("KernelGridder.cl");
-                v.push_back("KernelDegridder.cl");
-                v.push_back("KernelAdder.cl");
-                v.push_back("KernelSplitter.cl");
-                v.push_back("KernelScaler.cl");
-
-                // Build OpenCL programs
-                for (int i = 0; i < v.size(); i++) {
-                    // Get source filename
-                    stringstream _source_file_name;
-                    _source_file_name << srcdir << "/" << v[i];
-                    string source_file_name = _source_file_name.str();
-
-                    // Read source from file
-                    ifstream source_file(source_file_name.c_str());
-                    string source(std::istreambuf_iterator<char>(source_file),
-                                 (std::istreambuf_iterator<char>()));
-                    source_file.close();
-
-                    // Print information about compilation
-                    cout << "Compiling: " << _source_file_name.str() << ":"
-                         << endl << parameters << endl;
-
-                    // Create OpenCL program
-                    cl::Program *program = new cl::Program(context, source);
-                    try {
-                        // Build the program
-                        (*program).build(devices, parameters.c_str());
-                        programs.push_back(program);
-                    } catch (cl::Error &error) {
-                        cerr << "Compilation failed: " << error.what() << endl;
-                        std::string msg;
-                        (*program).getBuildInfo(device, CL_PROGRAM_BUILD_LOG, &msg);
-                        cout << msg << endl;
-                        exit(EXIT_FAILURE);
-                    }
-                } // for each library
-
-                // Fill which_program structure
-                which_program[name_gridder]   = 0;
-                which_program[name_degridder] = 1;
-                which_program[name_adder]     = 2;
-                which_program[name_splitter]  = 3;
-                which_program[name_scaler]    = 4;
-            } // compile
-
-            void OpenCL::parameter_sanity_check()
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
             }
+
+            void OpenCL::print_devices() {
+                std::cout << "Devices: " << std::endl;
+                for (DeviceInstance *device : devices) {
+                    std::cout << *device;
+                }
+                std::cout << std::endl;
+            }
+
+            void OpenCL::print_compiler_flags() {
+                std::cout << "Compiler flags: " << std::endl;
+                for (DeviceInstance *device : devices) {
+                    std::cout << device->get_compiler_flags() << std::endl;
+                }
+                std::cout << std::endl;
+            }
+
+            std::vector<DeviceInstance*> OpenCL::get_devices() {
+                return devices;
+            }
+
         } // namespace opencl
     } // namespace proxy
 } // namespace idg

@@ -257,7 +257,7 @@ add_library(idg-hybrid-opencl
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-haswellep>
   $<TARGET_OBJECTS:opencl-common>
-  $<TARGET_OBJECTS:opencl-reference>
+  $<TARGET_OBJECTS:opencl-generic>
   $<TARGET_OBJECTS:hybrid-opencl>
 )
 
@@ -288,7 +288,6 @@ endif()
 if (BUILD_LIB_OPENCL)
 add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-common>
-  $<TARGET_OBJECTS:opencl-reference>
   $<TARGET_OBJECTS:opencl-generic>
 )
 

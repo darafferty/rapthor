@@ -64,17 +64,14 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
-                // TODO: add different sets of parameters for every architecture
-                // TODO: actually use these values in Kernels.cpp
-
                 batch_gridder   = 32;
                 batch_degridder = 256;
                 batch_degridder = (parameters.get_subgrid_size() % 16 == 0) ? 256 : 64;
-                block_gridder   = cl::NDRange(256);
-                block_degridder = cl::NDRange(batch_degridder);
-                block_adder     = cl::NDRange(128);
-                block_splitter  = cl::NDRange(128);
-                block_scaler    = cl::NDRange(128);
+                block_gridder   = cl::NDRange(256, 1);
+                block_degridder = cl::NDRange(batch_degridder, 1);
+                block_adder     = cl::NDRange(128, 1);
+                block_splitter  = cl::NDRange(128, 1);
+                block_scaler    = cl::NDRange(128, 1);
             }
 
 
