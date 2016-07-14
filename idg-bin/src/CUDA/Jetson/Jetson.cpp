@@ -167,8 +167,8 @@ namespace idg {
                     // Launch gridder kernel
                     device->measure(powerRecords[0], stream);
                     kernel_gridder->launch(
-                        stream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                        d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                        stream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                     device->measure(powerRecords[1], stream);
 
                     // Launch FFT
@@ -345,8 +345,8 @@ namespace idg {
 
                     // Launch degridder kernel
                     kernel_degridder->launch(
-                        stream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                        d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                        stream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                     device->measure(powerRecords[3], stream);
                     stream.record(executeFinished);
 
