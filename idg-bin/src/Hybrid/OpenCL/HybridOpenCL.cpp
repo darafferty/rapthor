@@ -68,8 +68,9 @@ namespace idg {
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Constants
-                auto nr_time = mParams.get_nr_time();
+                auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
+                auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
@@ -195,8 +196,8 @@ namespace idg {
                             // Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady);
                             kernel_gridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
+                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
@@ -275,7 +276,6 @@ namespace idg {
                 auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
-                auto nr_timeslots = mParams.get_nr_timeslots();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
@@ -412,8 +412,8 @@ namespace idg {
 
                             // Launch degridder kernel
                             kernel_degridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[1]);
+                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[1]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
                             // Copy visibilities to host

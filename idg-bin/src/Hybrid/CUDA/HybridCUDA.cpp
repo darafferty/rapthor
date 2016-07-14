@@ -65,8 +65,9 @@ namespace idg {
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Constants
-                auto nr_time = mParams.get_nr_time();
+                auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
+                auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
@@ -182,8 +183,8 @@ namespace idg {
                 			executestream.waitEvent(outputFree);
                             device->measure(powerRecords[0], executestream);
                             kernel_gridder->launch(
-                                executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                				d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                                executestream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[1], executestream);
 
                 			// Launch FFT
@@ -292,8 +293,9 @@ namespace idg {
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
                 // Constants
-                auto nr_time = mParams.get_nr_time();
+                auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
+                auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
@@ -418,8 +420,8 @@ namespace idg {
                 			executestream.waitEvent(outputFree);
                             device->measure(powerRecords[2], executestream);
                             kernel_degridder->launch(
-                                executestream, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                                executestream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[3], executestream);
                 			executestream.record(outputReady);
                 			executestream.record(inputFree);

@@ -14,6 +14,7 @@ __device__ void kernel_degridder_(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
+    const int nr_stations,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
 	VisibilitiesType	    __restrict__ visibilities,
@@ -77,16 +78,16 @@ __device__ void kernel_degridder_(
             __syncthreads();
 
             if (y < SUBGRIDSIZE) {
-                float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-                float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-                float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-                float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+                float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+                float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+                float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+                float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
                 // Load aterm for station2
-                float2 aXX2 = cuConjf(aterm[aterm_index][station2][y][x][0]);
-                float2 aXY2 = cuConjf(aterm[aterm_index][station2][y][x][1]);
-                float2 aYX2 = cuConjf(aterm[aterm_index][station2][y][x][2]);
-                float2 aYY2 = cuConjf(aterm[aterm_index][station2][y][x][3]);
+                float2 aXX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][0]);
+                float2 aXY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][1]);
+                float2 aYX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][2]);
+                float2 aYY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
                 // Load spheroidal
                 float _spheroidal = spheroidal[y][x];
@@ -192,6 +193,7 @@ extern "C" {
 __global__ void kernel_degridder(
     const float w_offset,
     const int nr_channels,
+    const int nr_stations,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
 	VisibilitiesType	    __restrict__ visibilities,
@@ -203,14 +205,14 @@ __global__ void kernel_degridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_<8>(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_<1>(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 }
 }

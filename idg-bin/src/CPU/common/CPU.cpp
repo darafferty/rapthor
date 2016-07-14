@@ -397,6 +397,7 @@ namespace idg {
                 auto nr_baselines     = mParams.get_nr_baselines();
                 auto nr_time          = mParams.get_nr_time();
                 auto nr_channels      = mParams.get_nr_channels();
+                auto nr_stations      = mParams.get_nr_stations();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize      = mParams.get_subgrid_size();
 
@@ -441,6 +442,7 @@ namespace idg {
                         current_nr_subgrids,
                         w_offset,
                         nr_channels,
+                        nr_stations,
                         uvw_ptr,
                         wavenumbers_ptr,
                         visibilities_ptr,
@@ -653,6 +655,7 @@ namespace idg {
                 auto nr_baselines     = mParams.get_nr_baselines();
                 auto nr_time          = mParams.get_nr_time();
                 auto nr_channels      = mParams.get_nr_channels();
+                auto nr_stations      = mParams.get_nr_stations();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize      = mParams.get_subgrid_size();
 
@@ -702,6 +705,7 @@ namespace idg {
                         current_nr_subgrids,
                         w_offset,
                         nr_channels,
+                        nr_stations,
                         uvw_ptr,
                         wavenumbers_ptr,
                         visibilities_ptr,
@@ -833,8 +837,6 @@ namespace idg {
 
                 // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
                 string mparameters =  Parameters::definitions(
-                  mParams.get_nr_stations(),
-                  mParams.get_nr_baselines(),
                   mParams.get_imagesize(),
                   mParams.get_nr_polarizations(),
                   mParams.get_grid_size(),
