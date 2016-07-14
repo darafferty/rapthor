@@ -13,10 +13,6 @@ void run() {
     idg::Parameters params;
     params.set_from_env();
 
-    // Get device number
-    char *cstr_deviceNumber = getenv("OPENCL_DEVICE");
-    unsigned deviceNumber = cstr_deviceNumber ? atoi (cstr_deviceNumber) : 0;
-
     // Retrieve constants for memory allocation
     int nr_stations = params.get_nr_stations();
     int nr_baselines = params.get_nr_baselines();
@@ -71,7 +67,7 @@ void run() {
 
     // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
-    PROXYNAME proxy(params, deviceNumber);
+    PROXYNAME proxy(params);
     clog << endl;
 
     // Run

@@ -107,7 +107,6 @@ namespace idg {
                 std::string flags_parameters = Parameters::definitions(
                     parameters.get_nr_stations(),
                     parameters.get_nr_baselines(),
-                    parameters.get_nr_time(),
                     parameters.get_imagesize(),
                     parameters.get_nr_polarizations(),
                     parameters.get_grid_size(),
