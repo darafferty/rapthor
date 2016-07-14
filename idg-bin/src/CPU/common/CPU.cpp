@@ -350,7 +350,7 @@ namespace idg {
                     #if defined(DEBUG)
                     cout << "FFT (direction: " << direction << ")" << endl;
                     #endif
-                    kernel_fft->run(gridsize, 1, grid, sign);
+                    kernel_fft->run(gridsize, gridsize, 1, grid, sign);
 
                     if (direction == FourierDomainToImageDomain)
                         fftshift(nr_polarizations, grid); // TODO: remove
@@ -400,6 +400,8 @@ namespace idg {
                 auto nr_stations      = mParams.get_nr_stations();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize      = mParams.get_subgrid_size();
+                auto gridsize         = mParams.get_grid_size();
+                auto imagesize        = mParams.get_imagesize();
 
                 // Load kernel functions
                 unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
@@ -440,6 +442,8 @@ namespace idg {
 
                     kernel_gridder->run(
                         current_nr_subgrids,
+                        gridsize,
+                        imagesize,
                         w_offset,
                         nr_channels,
                         nr_stations,
@@ -456,7 +460,7 @@ namespace idg {
 
                     // FFT kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
+                    kernel_fft->run(gridsize, subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
@@ -513,6 +517,7 @@ namespace idg {
                 auto nr_baselines     = mParams.get_nr_baselines();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize      = mParams.get_subgrid_size();
+                auto gridsize         = mParams.get_grid_size();
 
                 // Load kernel function
                 unique_ptr<kernel::cpu::Adder> kernel_adder = get_kernel_adder();
@@ -539,7 +544,7 @@ namespace idg {
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
                     double runtime_adder = -omp_get_wtime();
-                    kernel_adder->run(nr_subgrids, metadata_ptr, subgrid_ptr, grid_ptr);
+                    kernel_adder->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
                     runtime_adder += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE)
@@ -580,6 +585,7 @@ namespace idg {
                 auto nr_baselines     = mParams.get_nr_baselines();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize      = mParams.get_subgrid_size();
+                auto gridsize         = mParams.get_grid_size();
 
                 // Load kernel function
                 unique_ptr<kernel::cpu::Splitter> kernel_splitter = get_kernel_splitter();
@@ -606,7 +612,7 @@ namespace idg {
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
                     double runtime_splitter = -omp_get_wtime();
-                    kernel_splitter->run(nr_subgrids, metadata_ptr, subgrid_ptr, grid_ptr);
+                    kernel_splitter->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
                     runtime_splitter += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE)
@@ -658,6 +664,8 @@ namespace idg {
                 auto nr_stations      = mParams.get_nr_stations();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize      = mParams.get_subgrid_size();
+                auto gridsize         = mParams.get_grid_size();
+                auto imagesize        = mParams.get_imagesize();
 
                 // Load kernel functions
                 unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
@@ -696,13 +704,15 @@ namespace idg {
 
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
-                    kernel_fft->run(subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
+                    kernel_fft->run(gridsize, subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
                     powerStates[1] = powerSensor->read();
 
                     // Degridder kernel
                     powerStates[2] = powerSensor->read();
                     kernel_degridder->run(
                         current_nr_subgrids,
+                        gridsize,
+                        imagesize,
                         w_offset,
                         nr_channels,
                         nr_stations,
@@ -837,9 +847,7 @@ namespace idg {
 
                 // Set compile options: -DNR_STATIONS=... -DNR_BASELINES=... [...]
                 string mparameters =  Parameters::definitions(
-                  mParams.get_imagesize(),
                   mParams.get_nr_polarizations(),
-                  mParams.get_grid_size(),
                   mParams.get_subgrid_size());
 
                 stringstream parameters_;

@@ -19,10 +19,12 @@ namespace idg {
                 parameters(parameters) {}
 
             void Gridder::run(
-                    int nr_subgrids, float w_offset, int nr_channels, int nr_stations,
+                    int nr_subgrids, int gridsize, float image_size,
+                    float w_offset, int nr_channels, int nr_stations,
                     void *uvw, void *wavenumbers, void *visibilities,
                     void *spheroidal, void *aterm, void *metadata, void *subgrid) {
-                  (sig_gridder (void *) _run)(nr_subgrids, w_offset, nr_channels, nr_stations,
+                  (sig_gridder (void *) _run)(
+                  nr_subgrids, gridsize, image_size, w_offset, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
@@ -41,11 +43,13 @@ namespace idg {
                 parameters(parameters) {}
 
             void Degridder::run(
-                    int nr_subgrids, float w_offset, int nr_channels, int nr_stations,
+                    int nr_subgrids, int gridsize, float image_size,
+                    float w_offset, int nr_channels, int nr_stations,
                     void *uvw, void *wavenumbers,
                     void *visibilities, void *spheroidal, void *aterm,
                     void *metadata, void *subgrid) {
-                  (sig_degridder (void *) _run)(nr_subgrids, w_offset, nr_channels, nr_stations,
+                  (sig_degridder (void *) _run)(
+                  nr_subgrids, gridsize, image_size, w_offset, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
@@ -63,8 +67,8 @@ namespace idg {
                 _run(module, name_fft.c_str()),
                 parameters(parameters) {}
 
-            void GridFFT::run(int size, int batch, void *data, int direction) {
-                (sig_fft (void *) _run)(size, batch, data, direction);
+            void GridFFT::run(int gridsize, int size, int batch, void *data, int direction) {
+                (sig_fft (void *) _run)(gridsize, size, batch, data, direction);
             }
 
             uint64_t GridFFT::flops(int size, int batch) {
@@ -81,8 +85,8 @@ namespace idg {
                 _run(module, name_adder.c_str()),
                 parameters(parameters) {}
 
-            void Adder::run(int nr_subgrids, void *metadata, void *subgrid, void *grid) {
-                (sig_adder (void *) _run)(nr_subgrids, metadata, subgrid, grid);
+            void Adder::run(int nr_subgrids, int gridsize, void *metadata, void *subgrid, void *grid) {
+                (sig_adder (void *) _run)(nr_subgrids, gridsize, metadata, subgrid, grid);
             }
 
             uint64_t Adder::flops(int nr_subgrids) {
@@ -99,8 +103,8 @@ namespace idg {
                 _run(module, name_splitter.c_str()),
                 parameters(parameters) {}
 
-            void Splitter::run(int nr_subgrids, void *metadata, void *subgrid, void *grid) {
-                (sig_splitter (void *) _run)(nr_subgrids, metadata, subgrid, grid);
+            void Splitter::run(int nr_subgrids, int gridsize, void *metadata, void *subgrid, void *grid) {
+                (sig_splitter (void *) _run)(nr_subgrids, gridsize, metadata, subgrid, grid);
             }
 
             uint64_t Splitter::flops(int nr_subgrids) {

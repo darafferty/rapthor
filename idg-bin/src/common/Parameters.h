@@ -90,9 +90,7 @@ namespace idg {
       void set_from_env();
 
       static std::string definitions(
-        float imagesize,
         unsigned int nr_polarizations,
-        unsigned int grid_size,
         unsigned int subgrid_size);
 
   private:

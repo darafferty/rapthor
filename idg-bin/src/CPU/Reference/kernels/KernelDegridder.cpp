@@ -12,6 +12,8 @@
 extern "C" {
     void kernel_degridder(
         const int           nr_subgrids,
+        const int           gridsize,
+        const float         imagesize,
         const float         w_offset_in_lambda,
         const int           nr_channels,
         const int           nr_stations,
@@ -108,10 +110,10 @@ extern "C" {
                 } // end y
 
                 // Compute u and v offset in wavelenghts
-                const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
-                                       * (2*M_PI / IMAGESIZE);
-                const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2)
-                                       * (2*M_PI / IMAGESIZE);
+                const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2)
+                                       * (2*M_PI / imagesize);
+                const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2)
+                                       * (2*M_PI / imagesize);
                 const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
 
                 // Iterate all timesteps
@@ -133,8 +135,8 @@ extern "C" {
                             for (int x = 0; x < SUBGRIDSIZE; x++) {
 
                                 // Compute l,m,n
-                                const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                                const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                                const float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                                const float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                                 // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                                 // accurately for small values of l and m
                                 const float tmp = (l * l) + (m * m);

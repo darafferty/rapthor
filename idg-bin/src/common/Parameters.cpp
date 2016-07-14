@@ -249,14 +249,10 @@ namespace idg {
 
 
   string Parameters::definitions(
-            float imagesize,
             unsigned int nr_polarizations,
-            unsigned int grid_size,
             unsigned int subgrid_size) {
     stringstream parameters;
-    parameters << " -DIMAGESIZE=" << imagesize;
     parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
-    parameters << " -DGRIDSIZE=" << grid_size;
     parameters << " -DSUBGRIDSIZE=" << subgrid_size;
     return parameters.str();
   }
