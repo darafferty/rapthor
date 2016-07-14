@@ -39,6 +39,7 @@ namespace idg {
 				cl::Context &context      = device->get_context();
 
                 // Constants
+                auto nr_stations = mParams.get_nr_stations();
                 auto nr_baselines = mParams.get_nr_baselines();
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
@@ -156,8 +157,8 @@ namespace idg {
 							// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
+                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
 							// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
@@ -342,8 +343,8 @@ namespace idg {
 
         					// Launch degridder kernel
                             kernel_degridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, d_uvw, d_wavenumbers,
-                                d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[2]);
+                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
         					// Copy visibilities to host

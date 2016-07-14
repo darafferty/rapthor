@@ -14,6 +14,7 @@ __kernel void kernel_degridder_1(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
+    const int nr_stations,
     __global const UVWType			uvw,
     __global const WavenumberType	wavenumbers,
     __global       VisibilitiesType	visibilities,
@@ -64,16 +65,16 @@ __kernel void kernel_degridder_1(
 
             if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
-                float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-                float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-                float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-                float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+                float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+                float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+                float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+                float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
                 // Load aterm for station2
-                float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-                float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-                float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-                float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+                float2 aXX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][0]);
+                float2 aXY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][1]);
+                float2 aYX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][2]);
+                float2 aYY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
                 // Load spheroidal
                 float _spheroidal = spheroidal[y][x];
@@ -178,6 +179,7 @@ __kernel void kernel_degridder_8(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
+    const int nr_stations,
     __global const UVWType			uvw,
     __global const WavenumberType	wavenumbers,
     __global       VisibilitiesType	visibilities,
@@ -231,16 +233,16 @@ __kernel void kernel_degridder_8(
 
             if (y < SUBGRIDSIZE) {
                 // Load aterm for station1
-                float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-                float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-                float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-                float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+                float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+                float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+                float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+                float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
                 // Load aterm for station2
-                float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-                float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-                float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-                float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+                float2 aXX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][0]);
+                float2 aXY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][1]);
+                float2 aYX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][2]);
+                float2 aYY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
                 // Load spheroidal
                 float _spheroidal = spheroidal[y][x];
@@ -344,6 +346,7 @@ __kernel void kernel_degridder_8(
 __kernel void kernel_degridder(
     const float w_offset,
     const int nr_channels,
+    const int nr_stations,
     __global const UVWType			uvw,
     __global const WavenumberType	wavenumbers,
     __global       VisibilitiesType	visibilities,
@@ -359,15 +362,15 @@ __kernel void kernel_degridder(
 
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_8(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid,
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid,
             _pix, _lmn_phaseoffset);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_1(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid,
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid,
             _pix, _lmn_phaseoffset);
     }
 }
