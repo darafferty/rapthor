@@ -249,15 +249,11 @@ namespace idg {
 
 
   string Parameters::definitions(
-            unsigned int nr_stations,
-            unsigned int nr_baselines,
             float imagesize,
             unsigned int nr_polarizations,
             unsigned int grid_size,
             unsigned int subgrid_size) {
     stringstream parameters;
-    parameters << " -DNR_STATIONS=" << nr_stations;
-    parameters << " -DNR_BASELINES=" << nr_baselines;
     parameters << " -DIMAGESIZE=" << imagesize;
     parameters << " -DNR_POLARIZATIONS=" << nr_polarizations;
     parameters << " -DGRIDSIZE=" << grid_size;

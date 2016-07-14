@@ -89,13 +89,11 @@ namespace idg {
       void print(std::ostream& os) const;
       void set_from_env();
 
-      static std::string
-          definitions(unsigned int nr_stations,
-                      unsigned int nr_baselines,
-                      float imagesize,
-                      unsigned int nr_polarizations,
-                      unsigned int grid_size,
-                      unsigned int subgrid_size);
+      static std::string definitions(
+        float imagesize,
+        unsigned int nr_polarizations,
+        unsigned int grid_size,
+        unsigned int subgrid_size);
 
   private:
       unsigned int nr_stations;

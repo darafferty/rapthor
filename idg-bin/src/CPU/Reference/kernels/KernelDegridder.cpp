@@ -14,11 +14,12 @@ extern "C" {
         const int           nr_subgrids,
         const float         w_offset_in_lambda,
         const int           nr_channels,
+        const int           nr_stations,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
               idg::float2   visibilities[][NR_POLARIZATIONS],
         const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-        const idg::float2   aterm[][NR_STATIONS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+        const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
         const idg::Metadata metadata[],
         const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
         )
@@ -52,16 +53,16 @@ extern "C" {
                 for (int y = 0; y < SUBGRIDSIZE; y++) {
                     for (int x = 0; x < SUBGRIDSIZE; x++) {
                         // Load aterm for station1
-                        idg::float2 aXX1 = conj(aterm[aterm_index][station1][y][x][0]);
-                        idg::float2 aXY1 = conj(aterm[aterm_index][station1][y][x][1]);
-                        idg::float2 aYX1 = conj(aterm[aterm_index][station1][y][x][2]);
-                        idg::float2 aYY1 = conj(aterm[aterm_index][station1][y][x][3]);
+                        idg::float2 aXX1 = conj(aterm[aterm_index * nr_stations + station1][y][x][0]);
+                        idg::float2 aXY1 = conj(aterm[aterm_index * nr_stations + station1][y][x][1]);
+                        idg::float2 aYX1 = conj(aterm[aterm_index * nr_stations + station1][y][x][2]);
+                        idg::float2 aYY1 = conj(aterm[aterm_index * nr_stations + station1][y][x][3]);
 
                         // Load aterm for station2
-                        idg::float2 aXX2 = aterm[aterm_index][station2][y][x][0];
-                        idg::float2 aXY2 = aterm[aterm_index][station2][y][x][1];
-                        idg::float2 aYX2 = aterm[aterm_index][station2][y][x][2];
-                        idg::float2 aYY2 = aterm[aterm_index][station2][y][x][3];
+                        idg::float2 aXX2 = aterm[aterm_index * nr_stations + station2][y][x][0];
+                        idg::float2 aXY2 = aterm[aterm_index * nr_stations + station2][y][x][1];
+                        idg::float2 aYX2 = aterm[aterm_index * nr_stations + station2][y][x][2];
+                        idg::float2 aYY2 = aterm[aterm_index * nr_stations + station2][y][x][3];
 
                         // Load spheroidal
                         float _spheroidal = spheroidal[y][x];
