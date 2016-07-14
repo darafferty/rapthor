@@ -15,24 +15,26 @@ namespace idg {
                 function(module, name_gridder.c_str()), parameters(params), block(block) { }
 
             void Gridder::launch(
-               cu::Stream &stream,
-               int nr_subgrids,
-               float w_offset,
-               int nr_channels,
-               cu::DeviceMemory &d_uvw,
-               cu::DeviceMemory &d_wavenumbers,
-               cu::DeviceMemory &d_visibilities,
-               cu::DeviceMemory &d_spheroidal,
-               cu::DeviceMemory &d_aterm,
-               cu::DeviceMemory &d_metadata,
-               cu::DeviceMemory &d_subgrid) {
+                cu::Stream &stream,
+                int nr_subgrids,
+                float w_offset,
+                int nr_channels,
+                int nr_stations,
+                cu::DeviceMemory &d_uvw,
+                cu::DeviceMemory &d_wavenumbers,
+                cu::DeviceMemory &d_visibilities,
+                cu::DeviceMemory &d_spheroidal,
+                cu::DeviceMemory &d_aterm,
+                cu::DeviceMemory &d_metadata,
+                cu::DeviceMemory &d_subgrid) {
 
-               const void *parameters[] = {
-                   &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
-                   d_spheroidal, d_aterm, d_metadata, d_subgrid };
+                const void *parameters[] = {
+                    &w_offset, &nr_channels, &nr_stations,
+                    d_uvw, d_wavenumbers, d_visibilities,
+                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
-               dim3 grid(nr_subgrids);
-               stream.launchKernel(function, grid, block, 0, parameters);
+                dim3 grid(nr_subgrids);
+                stream.launchKernel(function, grid, block, 0, parameters);
             }
 
             // Degridder class
@@ -47,6 +49,7 @@ namespace idg {
                 int nr_subgrids,
                 float w_offset,
                 int nr_channels,
+                int nr_stations,
                 cu::DeviceMemory &d_uvw,
                 cu::DeviceMemory &d_wavenumbers,
                 cu::DeviceMemory &d_visibilities,
@@ -56,11 +59,12 @@ namespace idg {
                 cu::DeviceMemory &d_subgrid) {
 
                 const void *parameters[] = {
-                    &w_offset, &nr_channels, d_uvw, d_wavenumbers, d_visibilities,
+                    &w_offset, &nr_channels, &nr_stations,
+                    d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
-                stream.launchKernel( function, grid, block, 0, parameters);
+                stream.launchKernel(function, grid, block, 0, parameters);
             }
 
 

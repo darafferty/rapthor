@@ -20,11 +20,12 @@ void kernel_gridder_(
     const float         w_offset_in_lambda,
     const int           nr_channels,
     const int           channel_offset,
+    const int           nr_stations,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
     const idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   aterm[][NR_STATIONS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+    const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
     const idg::Metadata metadata[],
           idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
 {
@@ -161,16 +162,16 @@ void kernel_gridder_(
                 pixels[3] = {pixels_yy_real, pixels_yy_imag};
 
                 // Load a term for station1
-                idg::float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-                idg::float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-                idg::float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-                idg::float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+                idg::float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+                idg::float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+                idg::float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+                idg::float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
                 // Load aterm for station2
-                idg::float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-                idg::float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-                idg::float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-                idg::float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+                idg::float2 aXX2 = aterm[aterm_index * nr_stations + station2][y][x][0];
+                idg::float2 aXY2 = aterm[aterm_index * nr_stations + station2][y][x][1];
+                idg::float2 aYX2 = aterm[aterm_index * nr_stations + station2][y][x][2];
+                idg::float2 aYY2 = aterm[aterm_index * nr_stations + station2][y][x][3];
 
                 // Apply aterm
                 apply_aterm(
@@ -206,11 +207,12 @@ void kernel_gridder(
     const int           nr_subgrids,
     const float         w_offset,
     const int           nr_channels,
+    const int           nr_stations,
     const idg::UVW		uvw[],
     const float         wavenumbers[],
     const idg::float2   visibilities[][NR_POLARIZATIONS],
     const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   aterm[][NR_STATIONS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+    const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
     const idg::Metadata metadata[],
           idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
@@ -218,20 +220,20 @@ void kernel_gridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(
-            nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            nr_subgrids, w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
         kernel_gridder_<4>(
-            nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            nr_subgrids, w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_gridder_<1>(
-            nr_subgrids, w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities, spheroidal, aterm, metadata, subgrid);
+            nr_subgrids, w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 } // end kernel_gridder
 
