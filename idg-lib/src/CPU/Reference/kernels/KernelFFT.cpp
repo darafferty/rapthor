@@ -8,6 +8,7 @@
 
 extern "C" {
 void kernel_fft(
+    int gridsize,
 	int size,
 	int batch,
     fftwf_complex *data,
@@ -49,7 +50,7 @@ void kernel_fft(
         // TODO: A bit of a hack to have it here:
         // Since we only take half the visibilities
         // scale real part by two, and set imaginery part to zero
-        if (size == GRIDSIZE) {
+        if (size == gridsize) {
             scale_real = 2.0f / (float(size)*float(size));
             scale_imag = 0.0f;
         }
