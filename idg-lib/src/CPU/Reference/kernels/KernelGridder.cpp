@@ -17,11 +17,12 @@ extern "C" {
         const int           nr_subgrids,
         const float         w_offset_in_lambda,
         const int           nr_channels,
+        const int           nr_stations,
         const idg::UVW		uvw[],
         const float         wavenumbers[],
         const idg::float2   visibilities[][NR_POLARIZATIONS],
         const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-        const idg::float2   aterm[][NR_STATIONS][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+        const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
         const idg::Metadata metadata[],
               idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
     {
@@ -99,16 +100,16 @@ extern "C" {
                         }
 
                         // Load a term for station1
-                        idg::float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-                        idg::float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-                        idg::float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-                        idg::float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+                        idg::float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+                        idg::float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+                        idg::float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+                        idg::float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
                         // Load aterm for station2
-                        idg::float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-                        idg::float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-                        idg::float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-                        idg::float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+                        idg::float2 aXX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][0]);
+                        idg::float2 aXY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][1]);
+                        idg::float2 aYX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][2]);
+                        idg::float2 aYY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
                         // Apply aterm to subgrid: P*A1
                         // [ pixels[0], pixels[1];    [ aXX1, aXY1;

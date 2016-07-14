@@ -19,11 +19,11 @@ namespace idg {
                 parameters(parameters) {}
 
             void Gridder::run(
-                    int nr_subgrids, float w_offset, int nr_channels,
+                    int nr_subgrids, float w_offset, int nr_channels, int nr_stations,
                     void *uvw, void *wavenumbers, void *visibilities,
                     void *spheroidal, void *aterm, void *metadata, void *subgrid) {
-                  (sig_gridder (void *) _run)(nr_subgrids, w_offset, nr_channels, uvw, wavenumbers,
-                  visibilities, spheroidal, aterm, metadata, subgrid);
+                  (sig_gridder (void *) _run)(nr_subgrids, w_offset, nr_channels, nr_stations,
+                  uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
             uint64_t Gridder::flops(int nr_baselines, int nr_subgrids) {
@@ -41,12 +41,12 @@ namespace idg {
                 parameters(parameters) {}
 
             void Degridder::run(
-                    int nr_subgrids, float w_offset, int nr_channels,
+                    int nr_subgrids, float w_offset, int nr_channels, int nr_stations,
                     void *uvw, void *wavenumbers,
                     void *visibilities, void *spheroidal, void *aterm,
                     void *metadata, void *subgrid) {
-                  (sig_degridder (void *) _run)(nr_subgrids, w_offset, nr_channels, uvw, wavenumbers,
-                  visibilities, spheroidal, aterm, metadata, subgrid);
+                  (sig_degridder (void *) _run)(nr_subgrids, w_offset, nr_channels, nr_stations,
+                  uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
             uint64_t Degridder::flops(int nr_baselines, int nr_subgrids) {

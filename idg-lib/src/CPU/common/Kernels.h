@@ -21,8 +21,8 @@ namespace idg {
             static const std::string name_scaler    = "kernel_scaler";
 
             // Function signatures
-            #define sig_gridder   (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder (void (*)(int,float,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_gridder   (void (*)(int,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder (void (*)(int,float,int,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_fft		  (void (*)(int,int,void*,int))
             #define sig_adder	  (void (*)(int,void*,void*,void*))
             #define sig_splitter  (void (*)(int,void*,void*,void*))
@@ -47,6 +47,7 @@ namespace idg {
                         int nr_subgrids,
                         float w_offset,
                         int nr_channels,
+                        int nr_stations,
                         void *uvw,
                         void *wavenumbers,
                         void *visibilities,
@@ -70,6 +71,7 @@ namespace idg {
                         int nr_subgrids,
                         float w_offset,
                         int nr_channels,
+                        int nr_stations,
                         void *uvw,
                         void *wavenumbers,
                         void *visibilities,
