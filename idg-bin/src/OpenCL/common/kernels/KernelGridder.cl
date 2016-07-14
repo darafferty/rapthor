@@ -14,6 +14,7 @@ __kernel void kernel_gridder_1(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
+    const int nr_stations,
     __global const UVWType			uvw,
     __global const WavenumberType	wavenumbers,
     __global const VisibilitiesType	visibilities,
@@ -152,16 +153,16 @@ __kernel void kernel_gridder_1(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+            float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-            float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-            float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-            float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+            float2 aXX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][0]);
+            float2 aXY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][1]);
+            float2 aYX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][2]);
+            float2 aYY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
             // Apply aterm
             apply_aterm(
@@ -189,6 +190,7 @@ __kernel void kernel_gridder_4(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
+    const int nr_stations,
     __global const UVWType			uvw,
     __global const WavenumberType	wavenumbers,
     __global const VisibilitiesType	visibilities,
@@ -337,16 +339,16 @@ __kernel void kernel_gridder_4(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+            float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-            float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-            float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-            float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+            float2 aXX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][0]);
+            float2 aXY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][1]);
+            float2 aYX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][2]);
+            float2 aYY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
             // Apply aterm
             apply_aterm(
@@ -374,6 +376,7 @@ __kernel void kernel_gridder_8(
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
+    const int nr_stations,
     __global const UVWType			uvw,
     __global const WavenumberType	wavenumbers,
     __global const VisibilitiesType	visibilities,
@@ -522,16 +525,16 @@ __kernel void kernel_gridder_8(
             }
 
             // Get a term for station1
-            float2 aXX1 = aterm[aterm_index][station1][y][x][0];
-            float2 aXY1 = aterm[aterm_index][station1][y][x][1];
-            float2 aYX1 = aterm[aterm_index][station1][y][x][2];
-            float2 aYY1 = aterm[aterm_index][station1][y][x][3];
+            float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+            float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+            float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+            float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
 
             // Get aterm for station2
-            float2 aXX2 = conj(aterm[aterm_index][station2][y][x][0]);
-            float2 aXY2 = conj(aterm[aterm_index][station2][y][x][1]);
-            float2 aYX2 = conj(aterm[aterm_index][station2][y][x][2]);
-            float2 aYY2 = conj(aterm[aterm_index][station2][y][x][3]);
+            float2 aXX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][0]);
+            float2 aXY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][1]);
+            float2 aYX2 = conj(aterm[aterm_index * nr_stations + station2][y][x][2]);
+            float2 aYY2 = conj(aterm[aterm_index * nr_stations + station2][y][x][3]);
 
             // Apply aterm
             apply_aterm(
@@ -558,6 +561,7 @@ __kernel void kernel_gridder_8(
 __kernel void kernel_gridder(
 	const float w_offset,
     const int nr_channels,
+    const int nr_stations,
 	__global const UVWType			uvw,
 	__global const WavenumberType	wavenumbers,
 	__global const VisibilitiesType	visibilities,
@@ -574,8 +578,8 @@ __kernel void kernel_gridder(
         __local float  _wavenumbers[NR_CHANNELS_8];
 
         kernel_gridder_8(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid,
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities,spheroidal, aterm, metadata, subgrid,
             _visibilities, _uvw, _wavenumbers);
     }
 
@@ -585,8 +589,8 @@ __kernel void kernel_gridder(
         __local float  _wavenumbers[NR_CHANNELS_4];
 
         kernel_gridder_4(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid,
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities,spheroidal, aterm, metadata, subgrid,
             _visibilities, _uvw, _wavenumbers);
     }
 
@@ -596,8 +600,8 @@ __kernel void kernel_gridder(
 	    __local float4 _uvw[MAX_NR_TIMESTEPS];
 
         kernel_gridder_1(
-            w_offset, nr_channels, channel_offset, uvw, wavenumbers,
-            visibilities,spheroidal, aterm, metadata, subgrid,
+            w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities,spheroidal, aterm, metadata, subgrid,
             _visibilities, _uvw);
     }
 }
