@@ -105,9 +105,7 @@ namespace idg {
             std::string DeviceInstance::get_compiler_flags() {
                 // Parameter flags
                 std::string flags_parameters = Parameters::definitions(
-                    parameters.get_imagesize(),
                     parameters.get_nr_polarizations(),
-                    parameters.get_grid_size(),
                     parameters.get_subgrid_size());
 
 
