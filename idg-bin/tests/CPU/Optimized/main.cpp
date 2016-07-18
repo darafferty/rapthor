@@ -5,7 +5,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
     // Compares to reference implementation
-    int info = compare_to_reference<idg::proxy::cpu::HaswellEP>();
+    int info = compare_to_reference<idg::proxy::cpu::Optimized>();
 
     return info;
 }

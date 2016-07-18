@@ -1,12 +1,12 @@
-project(cpu-haswellep)
+project(cpu-optimized)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  HaswellEP.h
+  Optimized.h
 )
 
 set (${PROJECT_NAME}_sources
-  HaswellEP.cpp
+  Optimized.cpp
 )
 
 # create library
@@ -29,7 +29,7 @@ install(
     ${CMAKE_SOURCE_DIR}/src/common/Types.h
     kernels/Math.h
     DESTINATION
-    lib/kernels/CPU/HaswellEP
+    lib/kernels/CPU/Optimized
 )
 
 # Copy header files
@@ -37,5 +37,5 @@ install(
     FILES
     ${${PROJECT_NAME}_headers}
     DESTINATION
-    include/CPU/HaswellEP
+    include/CPU/Optimized
 )
