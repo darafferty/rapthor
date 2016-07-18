@@ -245,7 +245,7 @@ if __name__ == "__main__":
     ##################
     # initialize proxy
     ##################
-    p_cpu = idg.CPU.HaswellEP(nr_stations,
+    p_cpu = idg.CPU.Optimized(nr_stations,
                               nr_channels,
                               nr_time,
                               nr_timeslots,
