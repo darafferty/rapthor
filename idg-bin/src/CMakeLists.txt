@@ -140,7 +140,7 @@ if (BUILD_LIB_CPU)
 add_library(idg-cpu
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
-  $<TARGET_OBJECTS:cpu-haswellep>
+  $<TARGET_OBJECTS:cpu-optimized>
 )
 
 
@@ -214,7 +214,7 @@ add_library (
     idg-hybrid-cuda
     $<TARGET_OBJECTS:cpu-common>
     $<TARGET_OBJECTS:cpu-reference>
-    $<TARGET_OBJECTS:cpu-haswellep>
+    $<TARGET_OBJECTS:cpu-optimized>
     $<TARGET_OBJECTS:cuda-common>
     $<TARGET_OBJECTS:cuda-generic>
     $<TARGET_OBJECTS:hybrid-cuda>
@@ -255,7 +255,7 @@ if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
 add_library(idg-hybrid-opencl
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
-  $<TARGET_OBJECTS:cpu-haswellep>
+  $<TARGET_OBJECTS:cpu-optimized>
   $<TARGET_OBJECTS:opencl-common>
   $<TARGET_OBJECTS:opencl-generic>
   $<TARGET_OBJECTS:hybrid-opencl>

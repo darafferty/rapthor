@@ -5,6 +5,6 @@
 #include "CPU/common/CPU.h"
 #include "CPU/common/Kernels.h"
 #include "CPU/Reference/Reference.h"
-#include "CPU/HaswellEP/HaswellEP.h"
+#include "CPU/Optimized/Optimized.h"
 
 #endif

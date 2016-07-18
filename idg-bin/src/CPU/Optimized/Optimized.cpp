@@ -9,7 +9,7 @@
 #include <libgen.h> // dirname() and basename()
 
 #include "idg-config.h"
-#include "HaswellEP.h"
+#include "Optimized.h"
 
 using namespace std;
 
@@ -40,7 +40,7 @@ namespace idg {
             #endif
 
             string  srcdir = string(IDG_INSTALL_DIR)
-                + "/lib/kernels/CPU/HaswellEP";
+                + "/lib/kernels/CPU/Optimized";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
