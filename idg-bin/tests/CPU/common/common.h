@@ -43,7 +43,7 @@ float get_accucary(
 
 
 // run gridding and degridding for ProxyType and reference CPU
-// proxy and compare the outcome; usage run_test<proxy::cpu::HaswellEP>();
+// proxy and compare the outcome; usage run_test<proxy::cpu::Optimized>();
 template <typename ProxyType>
 int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 {
