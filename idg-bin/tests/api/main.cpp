@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
 
     /////////////////////////////////////////////////////////////////////
 
-    idg::proxy::cpu::HaswellEP proxy(params);
+    idg::proxy::cpu::Optimized proxy(params);
 
     clog << ">>> Run reference predict" << endl;
     proxy.transform(idg::ImageDomainToFourierDomain, image_reference);
