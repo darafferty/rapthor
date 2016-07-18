@@ -10,14 +10,14 @@
 
 extern "C" {
 void kernel_fft_grid(
-	int size, 
+	int size,
     fftwf_complex *_data,
     int sign    // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
 	) {
     #pragma omp parallel for
 	for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
 		fftwf_complex *data = (fftwf_complex *) _data + pol * (size * size);
-	
+
         // Create plan
         fftwf_plan plan;
         #pragma omp critical
@@ -40,36 +40,36 @@ void kernel_fft_grid(
                 data[i][1] *= scale_imag;
             }
         }
-        
+
         // Destroy plan
         fftwf_destroy_plan(plan);
     }
 }
 
 void kernel_fft_subgrid(
-	int size, 
+	int size,
 	int batch,
     fftwf_complex *_data,
 	int sign
 	) {
     #pragma omp parallel for
     for (int i = 0; i < batch; i++) {
-        fftwf_complex *data = (fftwf_complex *) _data + i * (NR_POLARIZATIONS * size * size);	
-        
+        fftwf_complex *data = (fftwf_complex *) _data + i * (NR_POLARIZATIONS * size * size);
+
         // 2D FFT
         int rank = 2;
-        
+
         // For grids of size*size elements
         int n[] = {size, size};
-        
+
         // Set stride
         int istride = 1;
         int ostride = istride;
-        
+
         // Set dist
         int idist = n[0] * n[1];
         int odist = idist;
-        
+
         // Planner flags
         int flags = FFTW_ESTIMATE;
         fftwf_plan plan;
@@ -78,7 +78,7 @@ void kernel_fft_subgrid(
             rank, n, NR_POLARIZATIONS, data, n,
             istride, idist, data, n,
             ostride, odist, sign, flags);
-        
+
         // Execute FFTs
         fftwf_execute_dft(plan, data, data);
 
@@ -91,19 +91,20 @@ void kernel_fft_subgrid(
                 data[i][1] *= scale;
             }
         }
-        
+
         // Destroy plan
         fftwf_destroy_plan(plan);
     }
 }
 
 void kernel_fft(
-	int size, 
+    int gridsize,
+	int size,
 	int batch,
     fftwf_complex *data,
 	int sign
 	) {
-    if (size == GRIDSIZE) {  // a bit of a hack; TODO: make separate functions for two cases
+    if (size == gridsize) {  // a bit of a hack; TODO: make separate functions for two cases
         kernel_fft_grid(size, data, sign);
 	} else {
 		kernel_fft_subgrid(size, batch, data, sign);

@@ -11,6 +11,8 @@
 	Kernel
 */
 __kernel void kernel_degridder_1(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
@@ -42,8 +44,8 @@ __kernel void kernel_degridder_1(
 	const int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
+    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
 
     // Iterate all timesteps
     for (int time = tidx; time < ALIGN(nr_timesteps, NR_THREADS); time += NR_THREADS) {
@@ -100,8 +102,8 @@ __kernel void kernel_degridder_1(
                 _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x-(SUBGRIDSIZE / 2)) * IMAGESIZE/SUBGRIDSIZE;
-                float m = (y-(SUBGRIDSIZE / 2)) * IMAGESIZE/SUBGRIDSIZE;
+                float l = (x-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
+                float m = (y-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);
@@ -176,6 +178,8 @@ __kernel void kernel_degridder_1(
 }
 
 __kernel void kernel_degridder_8(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
@@ -207,8 +211,8 @@ __kernel void kernel_degridder_8(
 	const int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
+    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
 
     // Iterate timesteps and channels
     for (int i = tidx; i < ALIGN(nr_timesteps * NR_CHANNELS_8, NR_THREADS); i += NR_THREADS) {
@@ -268,8 +272,8 @@ __kernel void kernel_degridder_8(
                 _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x-(SUBGRIDSIZE / 2)) * IMAGESIZE/SUBGRIDSIZE;
-                float m = (y-(SUBGRIDSIZE / 2)) * IMAGESIZE/SUBGRIDSIZE;
+                float l = (x-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
+                float m = (y-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);
@@ -344,6 +348,8 @@ __kernel void kernel_degridder_8(
 }
 
 __kernel void kernel_degridder(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int nr_stations,
@@ -362,14 +368,14 @@ __kernel void kernel_degridder(
 
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_8(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid,
             _pix, _lmn_phaseoffset);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_1(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid,
             _pix, _lmn_phaseoffset);
     }

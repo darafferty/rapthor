@@ -10,9 +10,10 @@
 extern "C" {
 void kernel_splitter(
     const int nr_subgrids,
+    const int gridsize,
     const idg::Metadata metadata[],
           idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   grid[NR_POLARIZATIONS][GRIDSIZE][GRIDSIZE]
+    const idg::float2   grid[]
     ) {
 
     #pragma omp parallel for
@@ -28,12 +29,13 @@ void kernel_splitter(
                 int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
                 // Check wheter subgrid fits in grid
-                if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
-                    grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
+                if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
+                    grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
 
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        subgrid[s][pol][y_dst][x_dst] = grid[pol][grid_y+y][grid_x+x];
+						int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+                        subgrid[s][pol][y_dst][x_dst] = grid[grid_idx];
                     }
                 }
             }

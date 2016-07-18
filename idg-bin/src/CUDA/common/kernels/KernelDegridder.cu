@@ -11,6 +11,8 @@
 */
 template<int current_nr_channels>
 __device__ void kernel_degridder_(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
@@ -40,8 +42,8 @@ __device__ void kernel_degridder_(
 	const int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
+    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
 
     // Shared data
     __shared__ float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
@@ -113,8 +115,8 @@ __device__ void kernel_degridder_(
                 _pix[1][tidx] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[tidx] = make_float4(l, m, n, phase_offset);
@@ -191,6 +193,8 @@ __device__ void kernel_degridder_(
 
 extern "C" {
 __global__ void kernel_degridder(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int nr_stations,
@@ -205,13 +209,13 @@ __global__ void kernel_degridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_<8>(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_<1>(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 }

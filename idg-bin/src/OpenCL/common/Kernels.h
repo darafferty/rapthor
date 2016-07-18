@@ -38,6 +38,8 @@ namespace idg {
                         cl::CommandQueue &queue,
                         int nr_baselines,
                         int nr_subgrids,
+                        int gridsize,
+                        float imagesize,
                         float w_offset,
                         int nr_channels,
                         int nr_stations,
@@ -71,6 +73,8 @@ namespace idg {
                         cl::CommandQueue &queue,
                         int nr_baselines,
                         int nr_subgrids,
+                        int gridsize,
+                        float imagesize,
                         float w_offset,
                         int nr_channels,
                         int nr_stations,
@@ -127,6 +131,7 @@ namespace idg {
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
+                        int gridsize,
                         cl::Buffer d_metadata,
                         cl::Buffer d_subgrid,
                         cl::Buffer d_grid,
@@ -151,6 +156,7 @@ namespace idg {
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
+                        int gridsize,
                         cl::Buffer d_metadata,
                         cl::Buffer d_subgrid,
                         cl::Buffer d_grid,
