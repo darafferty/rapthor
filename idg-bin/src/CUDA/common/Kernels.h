@@ -33,6 +33,8 @@ namespace idg {
                     void launch(
                         cu::Stream &stream,
                         int nr_subgrids,
+                        int gridsize,
+                        float imagesize,
                         float w_offset,
                         int nr_channels,
                         int nr_stations,
@@ -69,6 +71,8 @@ namespace idg {
                     void launch(
                         cu::Stream &stream,
                         int nr_subgrids,
+                        int gridsize,
+                        float imagesize,
                         float w_offset,
                         int nr_channels,
                         int nr_stations,
@@ -136,7 +140,9 @@ namespace idg {
                         const dim3 block);
 
                     void launch(
-                        cu::Stream &stream, int nr_subgrids,
+                        cu::Stream &stream,
+                        int nr_subgrids,
+                        int gridsize,
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid,
                         cu::DeviceMemory &d_grid);
@@ -167,7 +173,9 @@ namespace idg {
                         const dim3 block);
 
                     void launch(
-                        cu::Stream &stream, int nr_subgrids,
+                        cu::Stream &stream,
+                        int nr_subgrids,
+                        int gridsize,
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid,
                         cu::DeviceMemory &d_grid);

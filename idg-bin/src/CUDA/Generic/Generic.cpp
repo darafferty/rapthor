@@ -164,6 +164,7 @@ namespace idg {
                 auto gridsize         = mParams.get_grid_size();
                 auto subgridsize      = mParams.get_subgrid_size();
                 auto jobsize          = mParams.get_job_size_gridder();
+                auto imagesize = mParams.get_imagesize();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -313,7 +314,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device->measure(powerRecords[0], executestream);
                             kernel_gridder->launch(
-                                executestream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executestream, current_nr_subgrids, gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[1], executestream);
 
@@ -330,7 +331,7 @@ namespace idg {
 
                             // Launch adder kernel
                             kernel_adder->launch(
-                                executestream, current_nr_subgrids,
+                                executestream, current_nr_subgrids, gridsize,
                                 d_metadata, d_subgrids, d_grid);
 
                             device->measure(powerRecords[4], executestream);
@@ -461,6 +462,7 @@ namespace idg {
                 auto gridsize         = mParams.get_grid_size();
                 auto subgridsize      = mParams.get_subgrid_size();
                 auto jobsize          = mParams.get_job_size_degridder();
+                auto imagesize = mParams.get_imagesize();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -607,7 +609,7 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device->measure(powerRecords[0], executestream);
                             kernel_splitter->launch(
-                                executestream, current_nr_subgrids,
+                                executestream, current_nr_subgrids, gridsize,
                                 d_metadata, d_subgrids, d_grid);
                             device->measure(powerRecords[1], executestream);
 
@@ -619,7 +621,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device->measure(powerRecords[3], executestream);
                             kernel_degridder->launch(
-                                executestream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executestream, current_nr_subgrids, gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[4], executestream);
                             executestream.record(outputReady);

@@ -10,6 +10,8 @@
 */
 template<int current_nr_channels>
 __device__ void kernel_gridder_(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
@@ -93,8 +95,8 @@ __device__ void kernel_gridder_(
 	    __syncthreads();
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) / IMAGESIZE * 2 * M_PI;
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
 
 	    // Iterate all pixels in subgrid
         for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
@@ -108,8 +110,8 @@ __device__ void kernel_gridder_(
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-            float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+            float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
             float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
             // Iterate all timesteps
@@ -199,6 +201,8 @@ __device__ void kernel_gridder_(
 
 extern "C" {
 __global__ void kernel_gridder(
+    const int gridsize,
+    const float imagesize,
     const float w_offset,
     const int nr_channels,
     const int nr_stations,
@@ -213,19 +217,19 @@ __global__ void kernel_gridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
         kernel_gridder_<4>(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_gridder_<1>(
-            w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 }
