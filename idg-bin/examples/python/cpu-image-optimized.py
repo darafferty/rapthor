@@ -92,45 +92,35 @@ if __name__ == "__main__":
         dtype = idg.visibilitiestype)
 
     # uvw
-    uvw = numpy.zeros((nr_baselines, nr_time),
-                      dtype = idg.uvwtype)
-    idg.utils.init_uvw(uvw, integration_time)
+    uvw = idg.utils.get_example_uvw(nr_baselines, nr_time, integration_time)
     idg.utils.plot_uvw(uvw)
 
     # wavenumbers
-    wavenumbers = numpy.ones(nr_channels,
-                             dtype = idg.wavenumberstype)
-    idg.utils.init_wavenumbers(wavenumbers)
+    wavenumbers = idg.utils.get_example_wavenumbers(nr_channels)
     #idg.utils.plot_wavenumbers(wavenumbers)
 
     # baselines
-    baselines = numpy.zeros(nr_baselines, dtype = idg.baselinetype)
-    idg.utils.init_baselines(baselines)
+    baselines = idg.utils.get_example_baselines(nr_baselines)
 
     # grid
-    grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
-                       dtype = idg.gridtype)
+    grid = idg.utils.get_example_grid(nr_polarizations, grid_size)
     grid[:,:,:] = example_img
     idg.utils.plot_grid(grid, scaling='log')
     p.transform(idg.ImageDomainToFourierDomain, grid)
     idg.utils.plot_grid(grid, scaling='log')
 
     # aterms
-    aterms = numpy.zeros((nr_timeslots, nr_stations,
-                          subgrid_size, subgrid_size, nr_polarizations), \
-                         dtype = idg.atermtype)
-    idg.utils.init_aterms(aterms)
+    aterms = idg.utils.get_example_aterms(nr_timeslots, nr_stations,
+                                                 subgrid_size,
+                                                 nr_polarizations)
 
     # aterm offset
-    aterms_offset = numpy.zeros((nr_timeslots + 1), dtype = idg.atermoffsettype)
-    idg.utils.init_aterms_offset(aterms_offset, nr_time)
+    aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots,
+                                                        nr_time)
 
     # spheroidal
-    #spheroidal = numpy.ones((subgrid_size, subgrid_size),
-    #                         dtype = idg.spheroidaltype)
-    #idg.utils.init_spheroidal(spheroidal)
-    spheroidal_subgrid = idg.utils.init_spheroidal_subgrid(subgrid_size)
-    spheroidal_grid = idg.utils.init_spheroidal_grid(subgrid_size, grid_size)
+    spheroidal_subgrid = idg.utils.init_example_spheroidal_subgrid(subgrid_size)
+    spheroidal_grid = idg.utils.init_example_spheroidal_grid(subgrid_size, grid_size)
     idg.utils.plot_spheroidal(spheroidal_subgrid)
     idg.utils.plot_spheroidal(spheroidal_grid)
 
