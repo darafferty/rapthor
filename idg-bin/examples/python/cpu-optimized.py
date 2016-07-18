@@ -3,4 +3,4 @@
 from common import *
 
 if __name__ == "__main__":
-    main(idg.CPU.HaswellEP)
+    main(idg.CPU.Optimized)
