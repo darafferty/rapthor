@@ -270,7 +270,7 @@ namespace idg {
         if (m_architecture == Type::CPU_REFERENCE) {
             m_proxy = new proxy::cpu::Reference(params);
         } else if (m_architecture == Type::CPU_OPTIMIZED) {
-            m_proxy = new proxy::cpu::HaswellEP(params);
+            m_proxy = new proxy::cpu::Optimized(params);
         }
         #endif
         #if defined(BUILD_LIB_CUDA)

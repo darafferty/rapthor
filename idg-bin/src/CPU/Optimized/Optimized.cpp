@@ -18,7 +18,7 @@ namespace idg {
         namespace cpu {
 
         /// Constructors
-        HaswellEP::HaswellEP(
+        Optimized::Optimized(
             Parameters params,
             Compiler compiler,
             Compilerflags flags,
@@ -33,7 +33,7 @@ namespace idg {
             #endif
         }
 
-        ProxyInfo HaswellEP::default_info()
+        ProxyInfo Optimized::default_info()
         {
             #if defined(DEBUG)
             cout << __func__ << endl;
@@ -56,7 +56,7 @@ namespace idg {
         }
 
 
-        string HaswellEP::default_compiler()
+        string Optimized::default_compiler()
         {
             #if defined(GNU_CXX_COMPILER)
             return "g++";
@@ -68,7 +68,7 @@ namespace idg {
         }
 
 
-        string HaswellEP::default_compiler_flags()
+        string Optimized::default_compiler_flags()
         {
             stringstream flags;
 
@@ -144,9 +144,9 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::cpu::HaswellEP CPU_HaswellEP;
+    typedef idg::proxy::cpu::Optimized CPU_Optimized;
 
-    CPU_HaswellEP* CPU_HaswellEP_init(
+    CPU_Optimized* CPU_Optimized_init(
                 unsigned int nr_stations,
                 unsigned int nr_channels,
                 unsigned int nr_time,
@@ -164,10 +164,10 @@ extern "C" {
         P.set_subgrid_size(subgrid_size);
         P.set_grid_size(grid_size);
 
-        return new CPU_HaswellEP(P);
+        return new CPU_Optimized(P);
     }
 
-    void CPU_HaswellEP_grid(CPU_HaswellEP* p,
+    void CPU_Optimized_grid(CPU_Optimized* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -192,7 +192,7 @@ extern "C" {
                 (const float*) spheroidal);
     }
 
-    void CPU_HaswellEP_degrid(CPU_HaswellEP* p,
+    void CPU_Optimized_degrid(CPU_Optimized* p,
                             void *visibilities,
                             void *uvw,
                             void *wavenumbers,
@@ -217,7 +217,7 @@ extern "C" {
                 (const float*) spheroidal);
     }
 
-    void CPU_HaswellEP_transform(CPU_HaswellEP* p,
+    void CPU_Optimized_transform(CPU_Optimized* p,
                     int direction,
                     void *grid)
     {
@@ -229,7 +229,7 @@ extern "C" {
                     (std::complex<float>*) grid);
     }
 
-    void CPU_HaswellEP_destroy(CPU_HaswellEP* p) {
+    void CPU_Optimized_destroy(CPU_Optimized* p) {
        delete p;
     }
 
