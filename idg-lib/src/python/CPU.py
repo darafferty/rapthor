@@ -134,7 +134,7 @@ class Reference(Proxy):
                                     grid.ctypes.data_as(ctypes.c_void_p))
 
 
-class HaswellEP(Reference):
+class Optimized(Reference):
 
     def __init__(self, nr_stations,
                        nr_channels,
@@ -143,16 +143,16 @@ class HaswellEP(Reference):
                        imagesize,
                        grid_size,
                        subgrid_size = 32):
-        """CPU implementation optimized for Intel HaswellEP"""
+        """CPU implementation optimized for Intel Optimized"""
         try:
-            lib.CPU_HaswellEP_init.argtypes = [ctypes.c_uint, \
+            lib.CPU_Optimized_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint, \
                                                ctypes.c_float, \
                                                ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = lib.CPU_HaswellEP_init(
+            self.obj = lib.CPU_Optimized_init(
                 ctypes.c_uint(nr_stations),
                 ctypes.c_uint(nr_channels),
                 ctypes.c_uint(nr_time),
@@ -164,8 +164,8 @@ class HaswellEP(Reference):
             print "The chosen proxy was not built into the library"
 
     def __del__(self):
-        """CPU implementation optimized for Intel HaswellEP"""
-        lib.CPU_HaswellEP_destroy(self.obj)
+        """CPU implementation optimized for Intel Optimized"""
+        lib.CPU_Optimized_destroy(self.obj)
 
     def _cwrap_grid_visibilities(self,
                                  visibilities,
@@ -178,7 +178,7 @@ class HaswellEP(Reference):
                                  aterms,
                                  aterms_offset,
                                  spheroidal):
-            lib.CPU_HaswellEP_grid(self.obj,
+            lib.CPU_Optimized_grid(self.obj,
                                visibilities.ctypes.data_as(ctypes.c_void_p),
                                uvw.ctypes.data_as(ctypes.c_void_p),
                                wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -201,7 +201,7 @@ class HaswellEP(Reference):
                                    aterms,
                                    aterms_offset,
                                    spheroidal):
-        lib.CPU_HaswellEP_degrid(self.obj,
+        lib.CPU_Optimized_degrid(self.obj,
                                  visibilities.ctypes.data_as(ctypes.c_void_p),
                                  uvw.ctypes.data_as(ctypes.c_void_p),
                                  wavenumbers.ctypes.data_as(ctypes.c_void_p),
@@ -215,6 +215,6 @@ class HaswellEP(Reference):
 
 
     def _cwrap_transform(self, direction, grid):
-        lib.CPU_HaswellEP_transform(self.obj,
+        lib.CPU_Optimized_transform(self.obj,
                                     ctypes.c_int(direction),
                                     grid.ctypes.data_as(ctypes.c_void_p))
