@@ -73,7 +73,9 @@ namespace idg {
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
+                auto imagesize = mParams.get_imagesize();
                 auto jobsize = mParams.get_job_size_gridder();
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
@@ -196,7 +198,8 @@ namespace idg {
                             // Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady);
                             kernel_gridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executequeue, current_nr_timesteps, current_nr_subgrids,
+                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
@@ -214,7 +217,7 @@ namespace idg {
                         #pragma omp critical (CPU)
                         {
                             powerStates[0] = cpu_power_sensor->read();
-                            kernel_adder->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, grid);
+                            kernel_adder->run(current_nr_subgrids, gridsize, metadata_ptr, subgrids_ptr, grid);
                             powerStates[1] = cpu_power_sensor->read();
                         }
                         auxiliary::report("  adder", cpu_power_sensor->seconds(powerStates[0], powerStates[1]),
@@ -280,6 +283,7 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
+                auto imagesize = mParams.get_imagesize();
                 auto jobsize = mParams.get_job_size_degridder();
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
@@ -393,7 +397,7 @@ namespace idg {
 
                         // Run splitter
                         powerStates[0] = cpu_power_sensor->read();
-                        kernel_splitter->run(current_nr_subgrids, metadata_ptr, subgrids_ptr, (void *) grid);
+                        kernel_splitter->run(current_nr_subgrids, gridsize, metadata_ptr, subgrids_ptr, (void *) grid);
                         htodqueue.enqueueWriteBuffer(h_subgrids, CL_FALSE, 0, opencl.sizeof_subgrids(current_nr_subgrids), subgrids_ptr);
                         powerStates[1] = cpu_power_sensor->read();
 
@@ -412,7 +416,8 @@ namespace idg {
 
                             // Launch degridder kernel
                             kernel_degridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executequeue, current_nr_timesteps, current_nr_subgrids,
+                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[1]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 

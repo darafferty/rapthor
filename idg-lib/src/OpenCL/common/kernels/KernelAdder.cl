@@ -6,6 +6,7 @@
 	Kernel
 */
 __kernel void kernel_adder(
+    const int                   gridsize,
 	__global const MetadataType metadata,
 	__global const SubGridType  subgrid,
 	__global GridType           grid
@@ -27,17 +28,18 @@ __kernel void kernel_adder(
         int x = i % SUBGRIDSIZE;
 
         // Check wheter subgrid fits in grid
-        if (grid_x >= 0 && grid_x < GRIDSIZE-SUBGRIDSIZE &&
-            grid_y >= 0 && grid_y < GRIDSIZE-SUBGRIDSIZE) {
+        if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
+            grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
             // Compute shifted position in subgrid
             int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
             int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
             // Add subgrid value to grid
-            atomicAdd(&(grid[0][grid_y+y][grid_x+x]), subgrid[s][0][y_src][x_src]);
-            atomicAdd(&(grid[1][grid_y+y][grid_x+x]), subgrid[s][1][y_src][x_src]);
-            atomicAdd(&(grid[2][grid_y+y][grid_x+x]), subgrid[s][2][y_src][x_src]);
-            atomicAdd(&(grid[3][grid_y+y][grid_x+x]), subgrid[s][3][y_src][x_src]);
+            #pragma unroll 4
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+                atomicAdd(&(grid[grid_idx]), subgrid[s][pol][y_src][x_src]);
+            }
         }
     }
 }

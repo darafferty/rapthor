@@ -25,6 +25,8 @@ namespace idg {
                 cl::CommandQueue &queue,
                 int nr_timesteps,
                 int nr_subgrids,
+                int gridsize,
+                float imagesize,
                 float w_offset,
                 int nr_channels,
                 int nr_stations,
@@ -40,16 +42,18 @@ namespace idg {
                 int local_size_x = local_size[0];
                 int local_size_y = local_size[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, w_offset);
-                kernel.setArg(1, nr_channels);
-                kernel.setArg(2, nr_stations);
-                kernel.setArg(3, d_uvw);
-                kernel.setArg(4, d_wavenumbers);
-                kernel.setArg(5, d_visibilities);
-                kernel.setArg(6, d_spheroidal);
-                kernel.setArg(7, d_aterm);
-                kernel.setArg(8, d_metadata);
-                kernel.setArg(9, d_subgrid);
+                kernel.setArg(0,  gridsize);
+                kernel.setArg(1,  imagesize);
+                kernel.setArg(2,  w_offset);
+                kernel.setArg(3,  nr_channels);
+                kernel.setArg(4,  nr_stations);
+                kernel.setArg(5,  d_uvw);
+                kernel.setArg(6,  d_wavenumbers);
+                kernel.setArg(7,  d_visibilities);
+                kernel.setArg(8,  d_spheroidal);
+                kernel.setArg(9,  d_aterm);
+                kernel.setArg(10, d_metadata);
+                kernel.setArg(11, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
@@ -87,6 +91,8 @@ namespace idg {
                 cl::CommandQueue &queue,
                 int nr_timesteps,
                 int nr_subgrids,
+                int gridsize,
+                float imagesize,
                 float w_offset,
                 int nr_channels,
                 int nr_stations,
@@ -101,16 +107,18 @@ namespace idg {
                 int local_size_x = local_size[0];
                 int local_size_y = local_size[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, w_offset);
-                kernel.setArg(1, nr_channels);
-                kernel.setArg(2, nr_stations);
-                kernel.setArg(3, d_uvw);
-                kernel.setArg(4, d_wavenumbers);
-                kernel.setArg(5, d_visibilities);
-                kernel.setArg(6, d_spheroidal);
-                kernel.setArg(7, d_aterm);
-                kernel.setArg(8, d_metadata);
-                kernel.setArg(9, d_subgrid);
+                kernel.setArg(0,  gridsize);
+                kernel.setArg(1,  imagesize);
+                kernel.setArg(2,  w_offset);
+                kernel.setArg(3,  nr_channels);
+                kernel.setArg(4,  nr_stations);
+                kernel.setArg(5,  d_uvw);
+                kernel.setArg(6,  d_wavenumbers);
+                kernel.setArg(7,  d_visibilities);
+                kernel.setArg(8,  d_spheroidal);
+                kernel.setArg(9,  d_aterm);
+                kernel.setArg(10, d_metadata);
+                kernel.setArg(11, d_subgrid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
@@ -267,6 +275,7 @@ namespace idg {
             void Adder::launchAsync(
                 cl::CommandQueue &queue,
                 int nr_subgrids,
+                int gridsize,
                 cl::Buffer d_metadata,
                 cl::Buffer d_subgrid,
                 cl::Buffer d_grid,
@@ -274,9 +283,10 @@ namespace idg {
                 int local_size_x = local_size[0];
                 int local_size_y = local_size[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, d_metadata);
-                kernel.setArg(1, d_subgrid);
-                kernel.setArg(2, d_grid);
+                kernel.setArg(0, gridsize);
+                kernel.setArg(1, d_metadata);
+                kernel.setArg(2, d_subgrid);
+                kernel.setArg(3, d_grid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
@@ -312,6 +322,7 @@ namespace idg {
             void Splitter::launchAsync(
                 cl::CommandQueue &queue,
                 int nr_subgrids,
+                int gridsize,
                 cl::Buffer d_metadata,
                 cl::Buffer d_subgrid,
                 cl::Buffer d_grid,
@@ -319,9 +330,10 @@ namespace idg {
                 int local_size_x = local_size[0];
                 int local_size_y = local_size[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, d_metadata);
-                kernel.setArg(1, d_subgrid);
-                kernel.setArg(2, d_grid);
+                kernel.setArg(0, gridsize);
+                kernel.setArg(1, d_metadata);
+                kernel.setArg(2, d_subgrid);
+                kernel.setArg(3, d_grid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
