@@ -17,6 +17,8 @@ namespace idg {
             void Gridder::launch(
                 cu::Stream &stream,
                 int nr_subgrids,
+                int gridsize,
+                float imagesize,
                 float w_offset,
                 int nr_channels,
                 int nr_stations,
@@ -29,7 +31,7 @@ namespace idg {
                 cu::DeviceMemory &d_subgrid) {
 
                 const void *parameters[] = {
-                    &w_offset, &nr_channels, &nr_stations,
+                    &gridsize, &imagesize, &w_offset, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
@@ -47,6 +49,8 @@ namespace idg {
             void Degridder::launch(
                 cu::Stream &stream,
                 int nr_subgrids,
+                int gridsize,
+                float imagesize,
                 float w_offset,
                 int nr_channels,
                 int nr_stations,
@@ -59,7 +63,7 @@ namespace idg {
                 cu::DeviceMemory &d_subgrid) {
 
                 const void *parameters[] = {
-                    &w_offset, &nr_channels, &nr_stations,
+                    &gridsize, &imagesize, &w_offset, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
@@ -199,11 +203,13 @@ namespace idg {
                 function(module, name_adder.c_str()), parameters(params), block(block) {}
 
             void Adder::launch(
-                cu::Stream &stream, int nr_subgrids,
+                cu::Stream &stream,
+                int nr_subgrids,
+                int gridsize,
                 cu::DeviceMemory &d_metadata,
                 cu::DeviceMemory &d_subgrid,
                 cu::DeviceMemory &d_grid) {
-                const void *parameters[] = { d_metadata, d_subgrid, d_grid };
+                const void *parameters[] = { &gridsize, d_metadata, d_subgrid, d_grid };
                 dim3 grid(nr_subgrids);
                 stream.launchKernel(function, grid, block, 0, parameters);
             }
@@ -217,11 +223,13 @@ namespace idg {
                 function(module, name_splitter.c_str()), parameters(params), block(block) {}
 
             void Splitter::launch(
-                cu::Stream &stream, int nr_subgrids,
+                cu::Stream &stream,
+                int nr_subgrids,
+                int gridsize,
                 cu::DeviceMemory &d_metadata,
                 cu::DeviceMemory &d_subgrid,
                 cu::DeviceMemory &d_grid) {
-                const void *parameters[] = { d_metadata, d_subgrid, d_grid };
+                const void *parameters[] = { &gridsize, d_metadata, d_subgrid, d_grid };
                 dim3 grid(nr_subgrids);
                 stream.launchKernel(function, grid, block, 0, parameters);
             }

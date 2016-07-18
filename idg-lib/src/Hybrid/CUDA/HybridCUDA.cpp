@@ -72,6 +72,8 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_gridder();
+                auto gridsize = mParams.get_grid_size();
+                auto imagesize = mParams.get_imagesize();
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Gridder> kernel_gridder = device->get_kernel_gridder();
@@ -183,7 +185,7 @@ namespace idg {
                 			executestream.waitEvent(outputFree);
                             device->measure(powerRecords[0], executestream);
                             kernel_gridder->launch(
-                                executestream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executestream, current_nr_subgrids, gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[1], executestream);
 
@@ -210,7 +212,7 @@ namespace idg {
                         powerStates[0] = cpu_power_sensor->read();
                         #pragma omp critical (CPU)
                         {
-                            kernel_adder->run(current_nr_subgrids, metadata_ptr, h_subgrids, grid);
+                            kernel_adder->run(current_nr_subgrids, gridsize, metadata_ptr, h_subgrids, grid);
                         }
                         powerStates[1] = cpu_power_sensor->read();
 
@@ -300,6 +302,8 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
                 auto jobsize = mParams.get_job_size_degridder();
+                auto gridsize = mParams.get_grid_size();
+                auto imagesize = mParams.get_imagesize();
 
                 // Load kernels
                 unique_ptr<idg::kernel::cuda::Degridder> kernel_degridder = device->get_kernel_degridder();
@@ -394,7 +398,7 @@ namespace idg {
 
                         // Extract subgrid from grid
                         powerStates[0] = cpu_power_sensor->read();
-                        kernel_splitter->run(current_nr_subgrids, metadata_ptr, h_subgrids, (void *) grid);
+                        kernel_splitter->run(current_nr_subgrids, gridsize, metadata_ptr, h_subgrids, (void *) grid);
                         powerStates[1] = cpu_power_sensor->read();
 
                         #pragma omp critical (GPU)
@@ -420,7 +424,7 @@ namespace idg {
                 			executestream.waitEvent(outputFree);
                             device->measure(powerRecords[2], executestream);
                             kernel_degridder->launch(
-                                executestream, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executestream, current_nr_subgrids, gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[3], executestream);
                 			executestream.record(outputReady);

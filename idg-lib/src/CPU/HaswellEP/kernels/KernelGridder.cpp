@@ -17,6 +17,8 @@
 template<int current_nr_channels>
 void kernel_gridder_(
     const int           nr_subgrids,
+    const int           gridsize,
+    const float         imagesize,
     const float         w_offset_in_lambda,
     const int           nr_channels,
     const int           channel_offset,
@@ -49,8 +51,8 @@ void kernel_gridder_(
         const int y_coordinate = m.coordinate.y;
 
         // Compute u and v offset in wavelenghts
-        const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) * (2*M_PI / IMAGESIZE);
-        const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - GRIDSIZE/2) * (2*M_PI / IMAGESIZE);
+        const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);
+        const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);
         const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
 
         // Preload visibilities
@@ -75,8 +77,8 @@ void kernel_gridder_(
                 float phase[nr_timesteps][current_nr_channels] __attribute__((aligned(32)));
 
                 // Compute l,m,n
-                const float l = (x-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
-                const float m = (y-(SUBGRIDSIZE/2)) * IMAGESIZE/SUBGRIDSIZE;
+                const float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                const float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                 // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                 // accurately for small values of l and m
                 const float tmp = (l * l) + (m * m);
@@ -205,6 +207,8 @@ extern "C" {
 
 void kernel_gridder(
     const int           nr_subgrids,
+    const int           gridsize,
+    const float         imagesize,
     const float         w_offset,
     const int           nr_channels,
     const int           nr_stations,
@@ -220,19 +224,19 @@ void kernel_gridder(
     int channel_offset = 0;
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(
-            nr_subgrids, w_offset, nr_channels, channel_offset, nr_stations,
+            nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
         kernel_gridder_<4>(
-            nr_subgrids, w_offset, nr_channels, channel_offset, nr_stations,
+            nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_gridder_<1>(
-            nr_subgrids, w_offset, nr_channels, channel_offset, nr_stations,
+            nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 } // end kernel_gridder

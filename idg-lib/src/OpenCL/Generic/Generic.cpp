@@ -44,7 +44,9 @@ namespace idg {
                 auto nr_time = mParams.get_nr_time();
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
+                auto imagesize = mParams.get_imagesize();
                 auto jobsize = mParams.get_job_size_gridder();
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
@@ -157,14 +159,17 @@ namespace idg {
 							// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_gridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executequeue, current_nr_timesteps, current_nr_subgrids,
+                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
 							// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
 
                             // Launch adder kernel
-                            kernel_adder->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[3]);
+                            kernel_adder->launchAsync(
+                                executequeue, current_nr_subgrids, gridsize,
+                                d_metadata, d_subgrids, d_grid, counters[3]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
                     }
@@ -228,6 +233,7 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize = mParams.get_grid_size();
                 auto subgridsize = mParams.get_subgrid_size();
+                auto imagesize = mParams.get_imagesize();
                 auto jobsize = mParams.get_job_size_degridder();
                 jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
@@ -336,14 +342,17 @@ namespace idg {
 
                             // Launch splitter kernel
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            kernel_splitter->launchAsync(executequeue, current_nr_subgrids, d_metadata, d_subgrids, d_grid, counters[0]);
+                            kernel_splitter->launchAsync(
+                                executequeue, current_nr_subgrids, gridsize,
+                                d_metadata, d_subgrids, d_grid, counters[0]);
 
         					// Launch FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
 
         					// Launch degridder kernel
                             kernel_degridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids, w_offset, nr_channels, nr_stations,
+                                executequeue, current_nr_timesteps, current_nr_subgrids,
+                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
