@@ -1,4 +1,4 @@
-project(cpu-haswellep.x)
+project(cpu-optimized.x)
 
 # Set external header files
 include_directories(
