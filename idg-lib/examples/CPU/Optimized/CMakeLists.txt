@@ -1,4 +1,4 @@
-project(test-cpu-haswellep.x)
+project(cpu-optimized.x)
 
 # Set external header files
 include_directories(
@@ -24,11 +24,7 @@ target_link_libraries (
 
 # install
 install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin/tests
+  RUNTIME DESTINATION bin/examples/cxx
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
 )
-
-# test
-add_test(NAME ${PROJECT_NAME}
-         COMMAND ${CMAKE_BINARY_DIR}/bin/tests/${PROJECT_NAME})

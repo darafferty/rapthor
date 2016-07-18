@@ -63,7 +63,7 @@ namespace idg {
                     std::complex<float>* grid) override;
 
                 private:
-                    idg::proxy::cpu::HaswellEP cpu;
+                    idg::proxy::cpu::Optimized cpu;
                     idg::proxy::cuda::Generic cuda;
             }; // class HybridCUDA
         } // namespace hybrid

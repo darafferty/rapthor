@@ -92,7 +92,7 @@ wavenumbers = np.array(2*np.pi / wavelengths, dtype=np.float32)
 ######################################################################
 # Initialize proxy
 ######################################################################
-proxy = idg.CPU.HaswellEP(
+proxy = idg.CPU.Optimized(
     nr_stations, nr_channels,
     nr_time, nr_timeslots,
     image_size, grid_size, subgrid_size)
