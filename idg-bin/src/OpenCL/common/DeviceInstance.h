@@ -23,6 +23,8 @@ namespace idg {
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);
 
+                    ~DeviceInstance();
+
                     cl::Device&  get_device()  const { return *device; }
                     cl::CommandQueue&  get_execute_queue() const { return *executequeue; };
                     cl::CommandQueue&  get_htod_queue() const { return *htodqueue; };

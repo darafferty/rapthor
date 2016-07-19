@@ -26,6 +26,12 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                for (DeviceInstance *device : devices) {
+                    delete device;
+                }
+
+                delete context;
+
 				clfftTeardown();
             }
 
