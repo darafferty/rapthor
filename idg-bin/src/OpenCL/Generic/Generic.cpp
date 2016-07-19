@@ -275,6 +275,9 @@ namespace idg {
                     d_grid_.push_back(new cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid()));
                 }
 
+                // Locks
+                int locks[nr_devices];
+
                 // Performance measurements
                 double total_runtime_degridding = 0;
                 PowerSensor::State startStates[nr_devices];
@@ -334,10 +337,13 @@ namespace idg {
                     // Create FFT plan
                     kernel_fft->plan(*context, executequeue, subgridsize, max_nr_subgrids);
 
+                    // Lock
+                    int lock = locks[device_id];
+
                     // Warmup
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
+                    htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(max_nr_subgrids), metadata);
                     htodqueue.finish();
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
                     executequeue.finish();
@@ -384,7 +390,7 @@ namespace idg {
                         #endif
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
-                        #pragma omp critical (GPU)
+                        #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);

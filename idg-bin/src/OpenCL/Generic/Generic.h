@@ -25,6 +25,12 @@
 */
 #define REDUCE_HOST_MEMORY 0
 
+/*
+    Toggle warmup
+        Copy some memory to device and execute an FFT
+        prior to starting the actual computation
+*/
+#define ENABLE_WARMUP 1
 namespace idg {
     namespace proxy {
         namespace opencl {
