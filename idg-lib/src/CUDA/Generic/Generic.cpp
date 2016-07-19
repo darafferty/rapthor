@@ -54,7 +54,7 @@ namespace idg {
                 context.setCurrent();
 
                 // Host memory
-                #if REUSE_HOST_MEMORY
+                #if REDUCE_HOST_MEMORY
                 cu::HostMemory h_grid(grid, sizeof_grid());
                 #else
                 cu::HostMemory h_grid(sizeof_grid());
@@ -69,7 +69,7 @@ namespace idg {
                 context.setCurrent();
 
                 // Performance measurements
-                PowerRecord powerRecords[4];
+                PowerRecord powerRecords[5];
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
@@ -78,19 +78,19 @@ namespace idg {
 
                 // Copy grid to device
                 cu::DeviceMemory d_grid(sizeof_grid());
-                //powerRecords[0].enqueue(stream);
                 device->measure(powerRecords[0], stream);
                 stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
+                device->measure(powerRecords[1], stream);
 
                 // Execute fft
                 kernel_fft->plan(gridsize, 1);
-                device->measure(powerRecords[1], stream);
-                kernel_fft->launch(stream, d_grid, sign);
                 device->measure(powerRecords[2], stream);
+                kernel_fft->launch(stream, d_grid, sign);
+                device->measure(powerRecords[3], stream);
 
                 // Copy grid to host
                 stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
-                device->measure(powerRecords[3], stream);
+                device->measure(powerRecords[4], stream);
                 stream.synchronize();
 
                 // Perform fft shift
@@ -99,7 +99,7 @@ namespace idg {
                 time_shift += omp_get_wtime();
 
                 // Copy grid from h_grid to grid
-                #if !REUSE_HOST_MEMORY
+                #if !REDUCE_HOST_MEMORY
                 memcpy(grid, h_grid, sizeof_grid());
                 #endif
 
@@ -117,15 +117,18 @@ namespace idg {
                                   power_sensor->seconds(powerRecords[0].state, powerRecords[1].state),
                                   0, sizeof_grid(),
                                   power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                auxiliary::report("     fft",
+                auxiliary::report("plan fft",
                                   power_sensor->seconds(powerRecords[1].state, powerRecords[2].state),
+                                  0, 0, 0);
+                auxiliary::report("     fft",
+                                  power_sensor->seconds(powerRecords[2].state, powerRecords[3].state),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
-                                  power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
-                auxiliary::report("  output",
-                                  power_sensor->seconds(powerRecords[2].state, powerRecords[3].state),
-                                  0, sizeof_grid(),
                                   power_sensor->Watt(powerRecords[2].state, powerRecords[3].state));
+                auxiliary::report("  output",
+                                  power_sensor->seconds(powerRecords[3].state, powerRecords[4].state),
+                                  0, sizeof_grid(),
+                                  power_sensor->Watt(powerRecords[3].state, powerRecords[4].state));
                 auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
                     auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
