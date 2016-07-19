@@ -29,6 +29,16 @@ namespace idg {
                 }
             }
 
+            Generic::~Generic() {
+                for (int i = 0; i < devices.size(); i++) {
+                    #if REDUCE_HOST_MEMORY
+                    delete h_visibilities_[i];
+                    delete h_uvw_[i];
+                    #endif
+                    delete h_grid_[i];
+                }
+            }
+
 
             /* High level routines */
             void Generic::grid_visibilities(

@@ -36,12 +36,12 @@ namespace idg {
         namespace opencl {
             class Generic : public OpenCL {
                 public:
-                    /// Constructor
+                    // Constructor
                     Generic(
                         Parameters params);
 
-                    /// Destructor
-                    ~Generic() = default;
+                    // Destructor
+                    ~Generic();
 
                 public:
                     // High level interface, inherited from Proxy

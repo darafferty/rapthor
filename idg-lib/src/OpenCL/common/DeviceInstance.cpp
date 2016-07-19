@@ -35,6 +35,16 @@ namespace idg {
                 init_powersensor(str_power_sensor, str_power_file);
             }
 
+            DeviceInstance::~DeviceInstance() {
+                delete device;
+                delete executequeue;
+                delete htodqueue;
+                delete dtohqueue;
+                for (cl::Program *program : programs) {
+                    delete program;
+                }
+            }
+
             unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
                 return unique_ptr<Gridder>(new Gridder(*(programs[which_program.at(name_gridder)]), parameters, block_gridder));
             }
