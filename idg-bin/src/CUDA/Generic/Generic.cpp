@@ -516,10 +516,11 @@ namespace idg {
 
                     // Load kernels
                     unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
-                    unique_ptr<Splitter> kernel_splitter   = device->get_kernel_splitter();
+                    unique_ptr<Splitter>  kernel_splitter  = device->get_kernel_splitter();
+                    unique_ptr<GridFFT>   kernel_fft       = device->get_kernel_fft();
 
                     // Load CUDA objects
-                    cu::Context &context = device->get_context();
+                    cu::Context &context      = device->get_context();
                     cu::Stream &executestream = device->get_execute_stream();
                     cu::Stream &htodstream    = device->get_htod_stream();
                     cu::Stream &dtohstream    = device->get_dtoh_stream();
@@ -544,12 +545,11 @@ namespace idg {
                     }
                     htodstream.synchronize();
 
-                    // Initialize
+                    // Events
                     cu::Event inputFree;
                     cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
-                    unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
 
                     // Private device memory
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -628,6 +628,7 @@ namespace idg {
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
                             device->measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
+                            executestream.record(inputFree);
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
