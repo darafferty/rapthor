@@ -521,7 +521,6 @@ namespace idg {
                 // Copy grid to device
                 double time_input = -omp_get_wtime();
                 queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid, NULL, &inputReady[0]);
-                inputReady[0].wait();
                 time_input += omp_get_wtime();
 
                 // Create FFT plan
