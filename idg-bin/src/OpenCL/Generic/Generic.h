@@ -31,6 +31,22 @@
         prior to starting the actual computation
 */
 #define ENABLE_WARMUP 1
+
+/*
+    Toggle planning and execution of Fourier transformations on and off
+        The clFFT library contains memory leaks, which makes it much harder
+        to find and resolve issues in non-library code. This option disables
+        usage of the library so that they can be resolved
+*/
+#define ENABLE_FFT 1
+
+/*
+    When a large amount of data is copies using enqueueWriteBuffer
+    the timeline in CodeXL is broken. As a workaround, data is copied
+    in many smaller pieces. (Which seems to be faster anyway)
+*/
+#define PREVENT_CODEXL_BUG 1
+
 namespace idg {
     namespace proxy {
         namespace opencl {

@@ -97,7 +97,15 @@ namespace idg {
                 cl::Buffer h_metadata(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata(total_nr_subgrids));
 
                 // Copy input data to host memory
+                #if PREVENT_CODEXL_BUG
+                for (int bl = 0; bl < nr_baselines; bl++) {
+                    auto offset = bl * sizeof_visibilities(1);
+                    const void *visibilities_ptr = visibilities + (offset/sizeof(complex<float>));
+                    htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, offset, sizeof_visibilities(1), visibilities_ptr);
+                }
+                #else
                 htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
+                #endif
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
                 htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(total_nr_subgrids), metadata);
 
@@ -122,7 +130,10 @@ namespace idg {
 
                 // Initialize fft
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+
+                #if ENABLE_FFT
                 kernel_fft->plan(*context, executequeue, subgridsize, max_nr_subgrids);
+                #endif
 
                 // Start gridder
                 #pragma omp parallel num_threads(nr_streams)
@@ -139,7 +150,9 @@ namespace idg {
                     htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
                     htodqueue.finish();
+                    #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    #endif
                     executequeue.finish();
                     #endif
 
@@ -187,7 +200,9 @@ namespace idg {
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
 							// Launch FFT
+                            #if ENABLE_FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            #endif
 
                             // Launch adder kernel
                             kernel_adder->launchAsync(
@@ -204,7 +219,6 @@ namespace idg {
                 executequeue.finish();
                 PowerSensor::State stopState = power_sensor->read();
                 dtohqueue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid, NULL, NULL);
-                dtohqueue.finish();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
@@ -345,7 +359,9 @@ namespace idg {
                     cl::Buffer d_metadata     = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
 
                     // Create FFT plan
+                    #if ENABLE_FFT
                     kernel_fft->plan(*context, executequeue, subgridsize, max_nr_subgrids);
+                    #endif
 
                     // Lock
                     int lock = locks[device_id];
@@ -355,7 +371,9 @@ namespace idg {
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
                     htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(max_nr_subgrids), metadata);
                     htodqueue.finish();
+                    #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                    #endif
                     executequeue.finish();
                     #endif
 
@@ -415,7 +433,9 @@ namespace idg {
                                 d_metadata, d_subgrids, d_grid, counters[0]);
 
                             // Launch FFT
+                            #if ENABLE_FFT
                             kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
+                            #endif
 
                             // Launch degridder kernel
                             executequeue.enqueueBarrierWithWaitList(&outputFree, NULL);
@@ -446,11 +466,28 @@ namespace idg {
                     }
                 } // end omp parallel
 
+                // Free device memory
+                for (int d = 0; d < devices.size(); d++) {
+                    delete d_wavenumbers_[d];
+                    delete d_spheroidal_[d];
+                    delete d_aterm_[d];
+                    delete d_grid_[d];
+                }
+
                 total_runtime_degridding += omp_get_wtime();
 
                 // Copy visibilities from opencl h_visibilities to visibilities
                 #if !REDUCE_HOST_MEMORY
+                #if PREVENT_CODEXL_BUG
+                for (int bl = 0; bl < nr_baselines; bl++) {
+                    auto offset = bl * sizeof_visibilities(1);
+                    void *visibilities_ptr = visibilities + (offset/sizeof(complex<float>));
+                    queue.enqueueReadBuffer(h_visibilities, CL_FALSE, offset, sizeof_visibilities(1), visibilities_ptr);
+                }
+                queue.finish(); // This line triggers a redundant synchronization warning in CodeXL
+                #else
                 queue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(nr_baselines), visibilities);
+                #endif
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -475,7 +512,6 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
-
             } // end degrid_visibilities
 
             void Generic::transform(
@@ -524,10 +560,12 @@ namespace idg {
                 time_input += omp_get_wtime();
 
                 // Create FFT plan
+                #if ENABLE_FFT
                 kernel_fft->plan(*context, queue, gridsize, 1);
 
 				// Launch FFT
                 kernel_fft->launchAsync(queue, d_grid, sign);
+                #endif
                 queue.enqueueMarkerWithWaitList(NULL, &fftFinished[0]);
                 fftFinished[0].wait();
 
