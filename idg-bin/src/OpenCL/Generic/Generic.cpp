@@ -1,19 +1,6 @@
 #include "Generic.h"
 
 /*
-    Toggle between two modes of cu::HostMemory allocation
-        REDUCE_HOST_MEMORY = 0:
-            visibilities and uvw will be completely mapped
-            into host memory shared by all threads
-            (this takes some time, especially for large buffers)
-        REDUCE_HOST_MEMORY = 1:
-            every thread allocates private host memory
-            to hold data for just one job
-            (throughput is lower, due to additional memory copies)
-*/
-#define REDUCE_HOST_MEMORY 0
-
-/*
     Toggle warmup
         Copy some memory to device and execute an FFT
         prior to starting the actual computation
@@ -490,7 +477,7 @@ namespace idg {
 
                         #if REDUCE_HOST_MEMORY
                         outputFree[0].wait();
-                        dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0, sizeof_visibilities(current_nr_baselines), visibilities_ptr);
+                        dtohqueue.enqueueReadBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(current_nr_baselines), visibilities_ptr);
                         #endif
                     } // end for bl
 
