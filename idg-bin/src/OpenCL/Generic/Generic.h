@@ -10,42 +10,9 @@
 #ifndef IDG_OPENCL_GENERIC_H_
 #define IDG_OPENCL_GENERIC_H_
 
+
 #include "idg-opencl.h"
 
-/*
-    Toggle between two modes of cu::HostMemory allocation
-        REDUCE_HOST_MEMORY = 0:
-            visibilities and uvw will be completely mapped
-            into host memory shared by all threads
-            (this takes some time, especially for large buffers)
-        REDUCE_HOST_MEMORY = 1:
-            every thread allocates private host memory
-            to hold data for just one job
-            (throughput is lower, due to additional memory copies)
-*/
-#define REDUCE_HOST_MEMORY 0
-
-/*
-    Toggle warmup
-        Copy some memory to device and execute an FFT
-        prior to starting the actual computation
-*/
-#define ENABLE_WARMUP 1
-
-/*
-    Toggle planning and execution of Fourier transformations on and off
-        The clFFT library contains memory leaks, which makes it much harder
-        to find and resolve issues in non-library code. This option disables
-        usage of the library so that they can be resolved
-*/
-#define ENABLE_FFT 1
-
-/*
-    When a large amount of data is copies using enqueueWriteBuffer
-    the timeline in CodeXL is broken. As a workaround, data is copied
-    in many smaller pieces. (Which seems to be faster anyway)
-*/
-#define PREVENT_CODEXL_BUG 1
 
 namespace idg {
     namespace proxy {

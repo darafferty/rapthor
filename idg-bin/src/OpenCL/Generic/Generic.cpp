@@ -1,7 +1,44 @@
 #include "Generic.h"
 
+/*
+    Toggle between two modes of cu::HostMemory allocation
+        REDUCE_HOST_MEMORY = 0:
+            visibilities and uvw will be completely mapped
+            into host memory shared by all threads
+            (this takes some time, especially for large buffers)
+        REDUCE_HOST_MEMORY = 1:
+            every thread allocates private host memory
+            to hold data for just one job
+            (throughput is lower, due to additional memory copies)
+*/
+#define REDUCE_HOST_MEMORY 0
+
+/*
+    Toggle warmup
+        Copy some memory to device and execute an FFT
+        prior to starting the actual computation
+*/
+#define ENABLE_WARMUP 1
+
+/*
+    Toggle planning and execution of Fourier transformations on and off
+        The clFFT library contains memory leaks, which makes it much harder
+        to find and resolve issues in non-library code. This option disables
+        usage of the library so that they can be resolved
+*/
+#define ENABLE_FFT 1
+
+/*
+    When a large amount of data is copies using enqueueWriteBuffer
+    the timeline in CodeXL is broken. As a workaround, data is copied
+    in many smaller pieces. (Which seems to be faster anyway)
+*/
+#define PREVENT_CODEXL_BUG 1
+
+
 using namespace std;
 using namespace idg::kernel::opencl;
+
 
 namespace idg {
     namespace proxy {
@@ -304,6 +341,7 @@ namespace idg {
 
                 // Performance measurements
                 double total_runtime_degridding = 0;
+                double time_degridding_start = 0;
                 PowerSensor::State startStates[nr_devices];
                 PowerSensor::State stopStates[nr_devices];
 
@@ -369,12 +407,11 @@ namespace idg {
                     // Warmup
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(max_nr_subgrids), metadata);
                     htodqueue.finish();
                     #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                    #endif
                     executequeue.finish();
+                    #endif
                     #endif
 
                     // Performance measurement
@@ -388,7 +425,7 @@ namespace idg {
 
                     #pragma omp barrier
                     #pragma omp single
-                    total_runtime_degridding -= omp_get_wtime();
+                    time_degridding_start = omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -457,13 +494,19 @@ namespace idg {
                         #endif
                     } // end for bl
 
-                    // Wait for all jobs to finish
-                    dtohqueue.finish();
+                    // End degridding timing
+                    #pragma atomic
+                    {
+                        total_runtime_degridding = omp_get_wtime() - time_degridding_start;
+                    }
 
                     // End power measurement
                     if (local_id == 0) {
                         stopStates[device_id] = power_sensor->read();
                     }
+
+                    // Wait for all jobs to finish
+                    dtohqueue.finish();
                 } // end omp parallel
 
                 // Free device memory
@@ -473,8 +516,6 @@ namespace idg {
                     delete d_aterm_[d];
                     delete d_grid_[d];
                 }
-
-                total_runtime_degridding += omp_get_wtime();
 
                 // Copy visibilities from opencl h_visibilities to visibilities
                 #if !REDUCE_HOST_MEMORY
