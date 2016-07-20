@@ -61,7 +61,7 @@ namespace idg {
                 // Get OpenCL device
                 vector<DeviceInstance*> devices = opencl.get_devices();
                 DeviceInstance *device = devices[0];
-                cl::Context &context = device->get_context();
+                cl::Context &context = opencl.get_context();
 
                 // Get power sensors
                 PowerSensor *gpu_power_sensor = device->get_powersensor();
@@ -269,7 +269,7 @@ namespace idg {
                 // Get OpenCL device
                 vector<DeviceInstance*> devices = opencl.get_devices();
                 DeviceInstance *device = devices[0];
-                cl::Context &context = device->get_context();
+                cl::Context &context = opencl.get_context();
 
                 // Get power sensors
                 PowerSensor *gpu_power_sensor = device->get_powersensor();

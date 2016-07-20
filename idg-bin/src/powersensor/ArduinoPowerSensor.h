@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 
 #include <fcntl.h>
 #include <termios.h>

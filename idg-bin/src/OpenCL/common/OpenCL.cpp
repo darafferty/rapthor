@@ -26,6 +26,12 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                for (DeviceInstance *device : devices) {
+                    delete device;
+                }
+
+                delete context;
+
 				clfftTeardown();
             }
 
@@ -78,6 +84,9 @@ namespace idg {
 
 
             void OpenCL::init_devices() {
+                // Create context
+                context = new cl::Context(CL_DEVICE_TYPE_ALL);
+
                 // Get list of all device numbers
                 char *char_opencl_device = getenv("OPENCL_DEVICE");
                 std::vector<int> device_numbers;
@@ -101,7 +110,7 @@ namespace idg {
                     const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
                     const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
                     DeviceInstance *device = new DeviceInstance(
-                        mParams, device_numbers[i], power_sensor, power_file);
+                        mParams, *context, device_numbers[i], power_sensor, power_file);
                     devices.push_back(device);
                 }
             }

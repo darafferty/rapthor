@@ -10,19 +10,35 @@
 #ifndef IDG_OPENCL_GENERIC_H_
 #define IDG_OPENCL_GENERIC_H_
 
+
 #include "idg-opencl.h"
+
+
+/*
+    Toggle between two modes of cu::HostMemory allocation
+        REDUCE_HOST_MEMORY = 0:
+            visibilities and uvw will be completely mapped
+            into host memory shared by all threads
+            (this takes some time, especially for large buffers)
+        REDUCE_HOST_MEMORY = 1:
+            every thread allocates private host memory
+            to hold data for just one job
+            (throughput is lower, due to additional memory copies)
+*/
+#define REDUCE_HOST_MEMORY 0
+
 
 namespace idg {
     namespace proxy {
         namespace opencl {
             class Generic : public OpenCL {
                 public:
-                    /// Constructor
+                    // Constructor
                     Generic(
                         Parameters params);
 
-                    /// Destructor
-                    ~Generic() = default;
+                    // Destructor
+                    ~Generic();
 
                 public:
                     // High level interface, inherited from Proxy
@@ -54,14 +70,14 @@ namespace idg {
                                            std::complex<float>* grid);
 
                 private:
-                    //#if REDUCE_HOST_MEMORY
-                    //std::vector<cl::Buffer*> h_visibilities_;
-                    //std::vector<cl::Buffer*> h_uvw_;
-                    //#else
-                    //cu::Buffer *h_visibilities;
-                    //cu::Buffer *h_uvw;
-                    //#endif
-                    //std::vector<cu::HostMemory*> h_grid_;
+                    #if REDUCE_HOST_MEMORY
+                    std::vector<cl::Buffer*> h_visibilities_;
+                    std::vector<cl::Buffer*> h_uvw_;
+                    #else
+                    cl::Buffer h_visibilities;
+                    cl::Buffer h_uvw;
+                    #endif
+                    std::vector<cl::Buffer*> h_grid_;
             }; // class Generic
 
         } // namespace opencl

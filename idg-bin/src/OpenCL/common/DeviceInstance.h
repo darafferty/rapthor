@@ -18,11 +18,13 @@ namespace idg {
                 public:
                     DeviceInstance(
                         Parameters &params,
+                        cl::Context &context,
                         int device_number,
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);
 
-                    cl::Context& get_context() const { return *context; }
+                    ~DeviceInstance();
+
                     cl::Device&  get_device()  const { return *device; }
                     cl::CommandQueue&  get_execute_queue() const { return *executequeue; };
                     cl::CommandQueue&  get_htod_queue() const { return *htodqueue; };
@@ -40,7 +42,7 @@ namespace idg {
                     PowerSensor* get_powersensor() { return powerSensor; };
 
                 protected:
-                    void compile_kernels();
+                    void compile_kernels(cl::Context &context);
                     void load_modules();
                     void set_parameters();
                     void set_parameters_default();
@@ -58,7 +60,6 @@ namespace idg {
 
                 private:
                     // OpenCL objects private to this DeviceInstance
-                    cl::Context *context;
                     cl::Device *device;
                     cl::CommandQueue  *executequeue;
                     cl::CommandQueue  *htodqueue;

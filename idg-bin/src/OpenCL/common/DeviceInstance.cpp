@@ -8,6 +8,7 @@ namespace idg {
         namespace opencl {
             DeviceInstance::DeviceInstance(
                 Parameters &parameters,
+                cl::Context &context,
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
@@ -19,20 +20,29 @@ namespace idg {
                 #endif
 
                 // Initialize members
-                context      = new cl::Context(CL_DEVICE_TYPE_ALL);
-                device       = new cl::Device(context->getInfo<CL_CONTEXT_DEVICES>()[device_number]);
-                executequeue = new cl::CommandQueue(*context, *device, CL_QUEUE_PROFILING_ENABLE);
-                htodqueue    = new cl::CommandQueue(*context, *device, CL_QUEUE_PROFILING_ENABLE);
-                dtohqueue    = new cl::CommandQueue(*context, *device, CL_QUEUE_PROFILING_ENABLE);
+                device       = new cl::Device(context.getInfo<CL_CONTEXT_DEVICES>()[device_number]);
+                executequeue = new cl::CommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE);
+                htodqueue    = new cl::CommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE);
+                dtohqueue    = new cl::CommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE);
 
                 // Set kernel parameters
                 set_parameters();
 
                 // Compile kernels
-                compile_kernels();
+                compile_kernels(context);
 
                 // Initialize power sensor
                 init_powersensor(str_power_sensor, str_power_file);
+            }
+
+            DeviceInstance::~DeviceInstance() {
+                delete device;
+                delete executequeue;
+                delete htodqueue;
+                delete dtohqueue;
+                for (cl::Program *program : programs) {
+                    delete program;
+                }
             }
 
             unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
@@ -135,7 +145,7 @@ namespace idg {
             }
 
 
-            void DeviceInstance::compile_kernels() {
+            void DeviceInstance::compile_kernels(cl::Context &context) {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -188,7 +198,7 @@ namespace idg {
 					#endif
 
                     // Create OpenCL program
-                    cl::Program *program = new cl::Program(*context, source);
+                    cl::Program *program = new cl::Program(context, source);
                     try {
                         // Build the program
                         (*program).build(devices, options.c_str());
@@ -234,7 +244,12 @@ namespace idg {
                     if (str_power_file) {
                         std::cout << "Power file:   " << str_power_file << std::endl;
                     }
-                    powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
+                    try {
+                        powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
+                    } catch (const std::invalid_argument& ia) {
+                        std::cerr << "Invalid argument: " << ia.what() << '\n';
+                        powerSensor = new DummyPowerSensor();
+                    }
                 } else {
                     powerSensor = new DummyPowerSensor();
                 }

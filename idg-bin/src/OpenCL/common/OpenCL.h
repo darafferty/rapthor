@@ -23,12 +23,14 @@ namespace idg {
                 public:
                     void print_compiler_flags();
                     void print_devices();
+                    cl::Context&  get_context()  const { return *context; }
                     std::vector<DeviceInstance*> get_devices();
 
                 protected:
                     void init_devices();
 
                 protected:
+                    cl::Context *context;
                     std::vector<DeviceInstance*> devices;
 
                 public:

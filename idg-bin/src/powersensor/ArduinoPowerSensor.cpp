@@ -7,7 +7,7 @@ ArduinoPowerSensor::ArduinoPowerSensor(const char *device, const char *dumpFileN
 
     if ((fd = open(device, O_RDWR)) < 0) {
         perror("open device");
-        exit(1);
+        throw std::invalid_argument("invalid device");
     }
 
     // Configure port for 8N1 transmission
