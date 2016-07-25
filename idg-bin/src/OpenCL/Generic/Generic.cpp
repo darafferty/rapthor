@@ -96,6 +96,7 @@ namespace idg {
                 auto subgridsize      = mParams.get_subgrid_size();
                 auto imagesize        = mParams.get_imagesize();
                 auto jobsize          = mParams.get_job_size_degridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -116,7 +117,6 @@ namespace idg {
                 queue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
                 #endif
                 queue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
-                //queue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata(total_nr_subgrids), metadata);
                 #endif
 
                 // Device memory
@@ -171,7 +171,6 @@ namespace idg {
                     cl::Buffer &d_spheroidal   = *(d_spheroidal_[device_id]);
                     cl::Buffer &d_aterm        = *(d_aterm_[device_id]);
                     cl::Buffer &d_grid         = *(d_grid_[device_id]);
-                    cl::Buffer &h_grid         = *(h_grid_[device_id]);
 
                     // Copy read-only device memory
                     if (local_id == 0) {
@@ -179,6 +178,9 @@ namespace idg {
                         htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
                         htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
                     }
+                    array<float, 1> pattern;
+                    pattern[0] = 0.;
+                    htodqueue.enqueueFillBuffer(d_grid, pattern, 0, sizeof_grid());
                     htodqueue.finish();
 
                     // Events
@@ -204,7 +206,6 @@ namespace idg {
                     // Warmup
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
-                    //htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, 0, 0, sizeof_metadata(max_nr_subgrids), NULL, NULL);
                     htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
                     htodqueue.finish();
                     #if ENABLE_FFT
@@ -261,7 +262,6 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines), NULL, NULL);
-                            //htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0, sizeof_metadata(current_nr_subgrids), NULL, NULL);
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
@@ -287,7 +287,6 @@ namespace idg {
                     }
 
                     // Wait for all jobs to finish
-                    //outputReady[0].wait();
                     executequeue.finish();
 
                     // End gridding timing
@@ -300,22 +299,14 @@ namespace idg {
                     if (local_id == 0) {
                         stopStates[device_id] = power_sensor->read();
                     }
-
-                    // Copy grid to host
-                    if (local_id == 0) {
-                        dtohqueue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, sizeof_grid(), NULL, NULL);
-                    }
-                    dtohqueue.finish();
                 }
 
                 // Add new grids to existing grid
                 for (int d = 0; d < devices.size(); d++) {
-                    cl::Buffer &h_grid = *(h_grid_[d]);
+                    cl::Buffer &d_grid = *(d_grid_[d]);
                     float2 grid_src[gridsize * gridsize * nr_polarizations];
+                    queue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid_src, NULL, NULL);
                     float2 *grid_dst = (float2 *) grid;
-
-                    queue.enqueueReadBuffer(h_grid, CL_TRUE, 0, sizeof_grid(), grid_src, NULL, NULL);
-
                     #pragma omp parallel for
                     for (int i = 0; i < gridsize * gridsize * nr_polarizations; i++) {
                         grid_dst[i] += grid_src[i];
@@ -381,6 +372,7 @@ namespace idg {
                 auto subgridsize      = mParams.get_subgrid_size();
                 auto imagesize        = mParams.get_imagesize();
                 auto jobsize          = mParams.get_job_size_degridder();
+                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
@@ -530,7 +522,7 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
+                            htodqueue.enqueueBarrierWithWaitList(&inputFree, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
@@ -626,6 +618,7 @@ namespace idg {
                 clog << endl;
                 #endif
             } // end degrid_visibilities
+
 
             void Generic::transform(
                 DomainAtoDomainB direction,
