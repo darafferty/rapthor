@@ -205,8 +205,8 @@ namespace idg {
 
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize));
                     htodqueue.finish();
                     #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
@@ -260,8 +260,8 @@ namespace idg {
                         {
                             // Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines), NULL, NULL);
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines), NULL, NULL);
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
@@ -305,7 +305,7 @@ namespace idg {
                 for (int d = 0; d < devices.size(); d++) {
                     cl::Buffer &d_grid = *(d_grid_[d]);
                     float2 grid_src[gridsize * gridsize * nr_polarizations];
-                    queue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid_src, NULL, NULL);
+                    queue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid_src);
                     float2 *grid_dst = (float2 *) grid;
                     #pragma omp parallel for
                     for (int i = 0; i < gridsize * gridsize * nr_polarizations; i++) {
@@ -470,7 +470,7 @@ namespace idg {
 
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize), NULL, NULL);
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
                     htodqueue.finish();
                     #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
