@@ -248,7 +248,6 @@ namespace idg {
 
                     // Initialize
                     cu::Event inputFree;
-                    cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
                     unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
@@ -314,7 +313,6 @@ namespace idg {
 
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
-                            executestream.waitEvent(outputFree);
                             device->measure(powerRecords[0], executestream);
                             kernel_gridder->launch(
                                 executestream, current_nr_subgrids, gridsize, imagesize, w_offset, nr_channels, nr_stations,
