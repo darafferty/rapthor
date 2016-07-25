@@ -558,12 +558,6 @@ namespace idg {
                         #endif
                     } // end for bl
 
-                    // End degridding timing
-                    #pragma atomic
-                    {
-                        total_runtime_degridding = omp_get_wtime() - time_degridding_start;
-                    }
-
                     // End power measurement
                     if (local_id == 0) {
                         stopStates[device_id] = power_sensor->read();
@@ -572,6 +566,12 @@ namespace idg {
                     // Wait for all jobs to finish
                     dtohqueue.finish();
                 } // end omp parallel
+
+                // End degridding timing
+                #pragma atomic
+                {
+                    total_runtime_degridding = omp_get_wtime() - time_degridding_start;
+                }
 
                 // Free device memory
                 for (int d = 0; d < devices.size(); d++) {
