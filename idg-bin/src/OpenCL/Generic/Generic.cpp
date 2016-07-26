@@ -184,7 +184,7 @@ namespace idg {
                     htodqueue.finish();
 
                     // Events
-                    vector<cl::Event> inputFree(1), outputFree(1), inputReady(1), outputReady(1);
+                    vector<cl::Event> inputFree(1), outputFree(1), inputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &inputFree[0]);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
 
@@ -282,9 +282,11 @@ namespace idg {
                             kernel_adder->launchAsync(
                                 executequeue, current_nr_subgrids, gridsize,
                                 d_metadata, d_subgrids, d_grid, counters[3]);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
-                    }
+
+                        inputReady[0].wait();
+                    } // end for bl
 
                     // Wait for all jobs to finish
                     executequeue.finish();
