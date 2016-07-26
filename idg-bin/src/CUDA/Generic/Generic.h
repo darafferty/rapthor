@@ -76,6 +76,10 @@ namespace idg {
                     cu::HostMemory h_uvw;
                     #endif
                     std::vector<cu::HostMemory*> h_grid_;
+
+                    void init_benchmark();
+                    bool enable_benchmark = false;
+                    int nr_repetitions = 1;
             }; // class Generic
 
         } // namespace cuda

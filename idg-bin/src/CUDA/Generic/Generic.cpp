@@ -28,6 +28,9 @@ namespace idg {
                     #endif
                     h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
                 }
+
+                // Setup benchmark
+                init_benchmark();
             }
 
             /* High level routines */
@@ -269,6 +272,7 @@ namespace idg {
                         startStates[device_id] = device->measure();
                     }
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     total_runtime_gridding = -omp_get_wtime();
@@ -373,6 +377,7 @@ namespace idg {
                         }
                         #endif
                     } // end for bl
+                    } // end for repetitions
 
                     // Wait for all jobs to finish
                     executestream.synchronize();
@@ -566,6 +571,7 @@ namespace idg {
                         startStates[device_id] = device->measure();
                     }
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     total_runtime_degridding = -omp_get_wtime();
@@ -664,6 +670,7 @@ namespace idg {
                         total_runtime_degridder += runtime_degridder;
                         #endif
                     } // end for bl
+                    } // end for repetitions
 
                     // Wait for all jobs to finish
                     dtohstream.synchronize();
@@ -707,6 +714,16 @@ namespace idg {
                 #endif
             }
 
+            void Generic::init_benchmark() {
+                char *char_nr_repetitions = getenv("NR_REPETITIONS");
+                if (char_nr_repetitions) {
+                    nr_repetitions = atoi(char_nr_repetitions);
+                    enable_benchmark = nr_repetitions > 1;
+                }
+                if (enable_benchmark) {
+                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+                }
+            }
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
