@@ -558,6 +558,8 @@ namespace idg {
                         outputFree[0].wait();
                         dtohqueue.enqueueReadBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(current_nr_baselines), visibilities_ptr);
                         #endif
+
+                        inputFree[0].wait();
                     } // end for bl
 
                     // End power measurement
