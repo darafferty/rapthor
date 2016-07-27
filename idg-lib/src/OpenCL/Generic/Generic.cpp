@@ -110,16 +110,8 @@ namespace idg {
                 // Copy input data to host memory
                 #if !REDUCE_HOST_MEMORY
                 cl::CommandQueue &queue = devices[0]->get_htod_queue();
-                #if PREVENT_CODEXL_BUG
-                for (int bl = 0; bl < nr_baselines; bl++) {
-                    auto offset = bl * sizeof_visibilities(1);
-                    const void *visibilities_ptr = visibilities + (offset/sizeof(complex<float>));
-                    queue.enqueueWriteBuffer(h_visibilities, CL_FALSE, offset, sizeof_visibilities(1), visibilities_ptr);
-                }
-                #else
-                queue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
-                #endif
-                queue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                writeBufferBatched(queue, h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
+                writeBufferBatched(queue, h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
                 #endif
 
                 // Device memory
