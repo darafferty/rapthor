@@ -51,6 +51,9 @@ namespace idg {
                     #endif
                     h_grid_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid()));
                 }
+
+                // Setup benchmark
+                init_benchmark();
             }
 
             Generic::~Generic() {
@@ -107,16 +110,8 @@ namespace idg {
                 // Copy input data to host memory
                 #if !REDUCE_HOST_MEMORY
                 cl::CommandQueue &queue = devices[0]->get_htod_queue();
-                #if PREVENT_CODEXL_BUG
-                for (int bl = 0; bl < nr_baselines; bl++) {
-                    auto offset = bl * sizeof_visibilities(1);
-                    const void *visibilities_ptr = visibilities + (offset/sizeof(complex<float>));
-                    queue.enqueueWriteBuffer(h_visibilities, CL_FALSE, offset, sizeof_visibilities(1), visibilities_ptr);
-                }
-                #else
-                queue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
-                #endif
-                queue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                writeBufferBatched(queue, h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
+                writeBufferBatched(queue, h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
                 #endif
 
                 // Device memory
@@ -184,7 +179,7 @@ namespace idg {
                     htodqueue.finish();
 
                     // Events
-                    vector<cl::Event> inputFree(1), outputFree(1), inputReady(1), outputReady(1);
+                    vector<cl::Event> inputFree(1), outputFree(1), inputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &inputFree[0]);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
 
@@ -223,6 +218,7 @@ namespace idg {
                         startStates[device_id] = power_sensor->read();
                     }
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     time_gridding_start = omp_get_wtime();
@@ -282,9 +278,12 @@ namespace idg {
                             kernel_adder->launchAsync(
                                 executequeue, current_nr_subgrids, gridsize,
                                 d_metadata, d_subgrids, d_grid, counters[3]);
-                            executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
+                            executequeue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
-                    }
+
+                        inputReady[0].wait();
+                    } // end for bl
+                    } // end for repetitions
 
                     // Wait for all jobs to finish
                     executequeue.finish();
@@ -487,6 +486,7 @@ namespace idg {
                         startStates[device_id] = power_sensor->read();
                     }
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     time_degridding_start = omp_get_wtime();
@@ -556,7 +556,10 @@ namespace idg {
                         outputFree[0].wait();
                         dtohqueue.enqueueReadBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(current_nr_baselines), visibilities_ptr);
                         #endif
+
+                        inputFree[0].wait();
                     } // end for bl
+                    } // end for repetitions
 
                     // End power measurement
                     if (local_id == 0) {
@@ -710,6 +713,16 @@ namespace idg {
                 #endif
             } // end transform
 
+            void Generic::init_benchmark() {
+                char *char_nr_repetitions = getenv("NR_REPETITIONS");
+                if (char_nr_repetitions) {
+                    nr_repetitions = atoi(char_nr_repetitions);
+                    enable_benchmark = nr_repetitions > 1;
+                }
+                if (enable_benchmark) {
+                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+                }
+            }
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
