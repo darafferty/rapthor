@@ -78,6 +78,10 @@ namespace idg {
                     cl::Buffer h_uvw;
                     #endif
                     std::vector<cl::Buffer*> h_grid_;
+
+                    void init_benchmark();
+                    bool enable_benchmark = false;
+                    int nr_repetitions = 1;
             }; // class Generic
 
         } // namespace opencl

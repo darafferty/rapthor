@@ -51,6 +51,9 @@ namespace idg {
                     #endif
                     h_grid_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid()));
                 }
+
+                // Setup benchmark
+                init_benchmark();
             }
 
             Generic::~Generic() {
@@ -223,6 +226,7 @@ namespace idg {
                         startStates[device_id] = power_sensor->read();
                     }
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     time_gridding_start = omp_get_wtime();
@@ -287,6 +291,7 @@ namespace idg {
 
                         inputReady[0].wait();
                     } // end for bl
+                    } // end for repetitions
 
                     // Wait for all jobs to finish
                     executequeue.finish();
@@ -489,6 +494,7 @@ namespace idg {
                         startStates[device_id] = power_sensor->read();
                     }
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     time_degridding_start = omp_get_wtime();
@@ -561,6 +567,7 @@ namespace idg {
 
                         inputFree[0].wait();
                     } // end for bl
+                    } // end for repetitions
 
                     // End power measurement
                     if (local_id == 0) {
@@ -714,6 +721,16 @@ namespace idg {
                 #endif
             } // end transform
 
+            void Generic::init_benchmark() {
+                char *char_nr_repetitions = getenv("NR_REPETITIONS");
+                if (char_nr_repetitions) {
+                    nr_repetitions = atoi(char_nr_repetitions);
+                    enable_benchmark = nr_repetitions > 1;
+                }
+                if (enable_benchmark) {
+                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+                }
+            }
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
