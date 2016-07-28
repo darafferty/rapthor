@@ -6,16 +6,13 @@
 #define NR_THREADS DEGRIDDER_BATCH_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
-/*
-	Kernel
-*/
-template<int current_nr_channels>
-__device__ void kernel_degridder_(
+
+extern "C" {
+__global__ void kernel_degridder(
     const int gridsize,
     const float imagesize,
     const float w_offset,
     const int nr_channels,
-    const int channel_offset,
     const int nr_stations,
 	const UVWType			__restrict__ uvw,
 	const WavenumberType	__restrict__ wavenumbers,
@@ -24,7 +21,7 @@ __device__ void kernel_degridder_(
 	const ATermType			__restrict__ aterm,
 	const MetadataType		__restrict__ metadata,
 	const SubGridType	    __restrict__ subgrid
-    ) {
+	) {
     int tidx = threadIdx.x;
 	int s = blockIdx.x;
 
@@ -49,11 +46,9 @@ __device__ void kernel_degridder_(
     __shared__ float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
 	__shared__ float4 _lmn_phaseoffset[NR_THREADS];
 
+    for (int chan = 0; chan < nr_channels; chan++) {
     // Iterate all visibilities
-    for (int i = tidx; i < ALIGN(nr_timesteps * current_nr_channels, NR_THREADS); i += NR_THREADS) {
-        int time = i / current_nr_channels;
-        int chan = i % current_nr_channels;
-
+    for (int time = tidx; time < ALIGN(nr_timesteps, NR_THREADS); time += NR_THREADS) {
         float2 visXX, visXY, visYX, visYY;
         float  u, v, w;
         float  wavenumber;
@@ -68,7 +63,7 @@ __device__ void kernel_degridder_(
             v = uvw[time_offset_global + time].v;
             w = uvw[time_offset_global + time].w;
 
-            wavenumber = wavenumbers[chan + channel_offset];
+            wavenumber = wavenumbers[chan];
         }
 
         __syncthreads();
@@ -181,7 +176,7 @@ __device__ void kernel_degridder_(
 
         // Set visibility value
         const float scale = 1.0f / (SUBGRIDSIZE*SUBGRIDSIZE);
-        int index = (time_offset_global + time) * nr_channels + (channel_offset + chan);
+        int index = (time_offset_global + time) * nr_channels + chan;
         if (time < nr_timesteps) {
             visibilities[index][0] = visXX * scale;
             visibilities[index][1] = visXY * scale;
@@ -189,34 +184,6 @@ __device__ void kernel_degridder_(
             visibilities[index][3] = visYY * scale;
         }
     }
-}
-
-extern "C" {
-__global__ void kernel_degridder(
-    const int gridsize,
-    const float imagesize,
-    const float w_offset,
-    const int nr_channels,
-    const int nr_stations,
-	const UVWType			__restrict__ uvw,
-	const WavenumberType	__restrict__ wavenumbers,
-	VisibilitiesType	    __restrict__ visibilities,
-	const SpheroidalType	__restrict__ spheroidal,
-	const ATermType			__restrict__ aterm,
-	const MetadataType		__restrict__ metadata,
-	const SubGridType	    __restrict__ subgrid
-	) {
-    int channel_offset = 0;
-    for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
-        kernel_degridder_<8>(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-    }
-
-    for (; channel_offset < nr_channels; channel_offset++) {
-        kernel_degridder_<1>(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 }
 }
