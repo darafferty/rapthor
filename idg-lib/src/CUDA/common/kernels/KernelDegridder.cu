@@ -3,7 +3,7 @@
 #include "Types.h"
 #include "math.cu"
 
-#define NR_THREADS DEGRIDDER_BATCH_SIZE
+#define BATCH_SIZE DEGRIDDER_BATCH_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 
@@ -24,6 +24,7 @@ __global__ void kernel_degridder(
 	) {
     int tidx = threadIdx.x;
 	int s = blockIdx.x;
+    int nr_threads = blockDim.x;
 
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
@@ -43,12 +44,12 @@ __global__ void kernel_degridder(
     float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
 
     // Shared data
-    __shared__ float4 _pix[NR_POLARIZATIONS / 2][NR_THREADS];
-	__shared__ float4 _lmn_phaseoffset[NR_THREADS];
+    __shared__ float4 _pix[NR_POLARIZATIONS / 2][BATCH_SIZE];
+	__shared__ float4 _lmn_phaseoffset[BATCH_SIZE];
 
     for (int chan = 0; chan < nr_channels; chan++) {
     // Iterate all visibilities
-    for (int time = tidx; time < ALIGN(nr_timesteps, NR_THREADS); time += NR_THREADS) {
+    for (int time = tidx; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
         float2 visXX, visXY, visYX, visYY;
         float  u, v, w;
         float  wavenumber;
@@ -68,7 +69,7 @@ __global__ void kernel_degridder(
 
         __syncthreads();
 
-        for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, NR_THREADS); j += NR_THREADS) {
+        for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, nr_threads); j += nr_threads) {
             int y = j / SUBGRIDSIZE;
             int x = j % SUBGRIDSIZE;
 
@@ -119,12 +120,13 @@ __global__ void kernel_degridder(
             __syncthreads();
 
             if (time < nr_timesteps) {
-                #if SUBGRIDSIZE * SUBGRIDSIZE % NR_THREADS == 0
-                int last_k = NR_THREADS;
-                #else
-                int first_j = (j / NR_THREADS) * NR_THREADS;
-                int last_k =  first_j + NR_THREADS < SUBGRIDSIZE * SUBGRIDSIZE ? NR_THREADS : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
-                #endif
+                int last_k = 0;
+                if (SUBGRIDSIZE * SUBGRIDSIZE % nr_threads == 0) {
+                    last_k = BATCH_SIZE;
+                } else {
+                    int first_j = (j / BATCH_SIZE) * BATCH_SIZE;
+                    last_k =  first_j + BATCH_SIZE < SUBGRIDSIZE * SUBGRIDSIZE ? BATCH_SIZE : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
+                }
 
                 for (int k = 0; k < last_k; k++) {
                     // Load l,m,n
