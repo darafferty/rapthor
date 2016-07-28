@@ -18,7 +18,12 @@ namespace idg {
                 init_devices();
                 print_devices();
                 print_compiler_flags();
+                cuProfilerStart();
             };
+
+            CUDA::~CUDA() {
+                cuProfilerStop();
+            }
 
             void CUDA::init_devices() {
                 // Get list of all device numbers
