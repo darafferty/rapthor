@@ -156,12 +156,12 @@ namespace idg {
             }
 
             void DeviceInstance::set_parameters_pascal() {
-                block_gridder    = dim3(32, 4);
+                block_gridder = dim3(192);
                 block_degridder  = dim3(128);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 32;
+                batch_gridder    = 64;
                 batch_degridder  = block_degridder.x;
             }
 
