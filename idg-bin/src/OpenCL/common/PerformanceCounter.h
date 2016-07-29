@@ -37,12 +37,9 @@ class PerformanceCounter {
         static double get_runtime(cl_event event1, cl_event event2);
 
    private:
-        static void startPowerMeasurement(cl_event event, cl_int, void *user_data);
-        static void stopPowerMeasurement(cl_event event, cl_int, void *user_data);
-        static void stopTimingMeasurement(cl_event event, cl_int, void *user_data);
-        static void stopPowerAndTimingMeasurement(cl_event event, cl_int, void *user_data);
-        static void report(cl_event, cl_int, void *user_data);
-        static void report2(cl_event, cl_int, void *user_data);
+        static void startMeasurement(cl_event event, cl_int, void *user_data);
+        static void stopMeasurement(cl_event event, cl_int, void *user_data);
+        static void stopMeasurement2(cl_event event, cl_int, void *user_data);
 };
 
 #endif
