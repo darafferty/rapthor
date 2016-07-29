@@ -156,9 +156,13 @@ namespace idg {
             }
 
             void DeviceInstance::set_parameters_pascal() {
-                // TODO: Find best parameters for pascal, for now
-                //       Maxwell parameters are used
-                set_parameters_maxwell();
+                block_gridder = dim3(192);
+                block_degridder  = dim3(128);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 64;
+                batch_degridder  = block_degridder.x;
             }
 
             void DeviceInstance::set_parameters() {
