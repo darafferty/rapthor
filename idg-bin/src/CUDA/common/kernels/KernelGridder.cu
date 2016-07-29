@@ -3,7 +3,7 @@
 #include "Types.h"
 #include "math.cu"
 
-#define MAX_NR_TIMESTEPS GRIDDER_BATCH_SIZE
+#define BATCH_SIZE GRIDDER_BATCH_SIZE
 
 /*
 	Kernel
@@ -56,8 +56,8 @@ __device__ void kernel_gridder_(
 	const int y_coordinate = m.coordinate.y;
 
     // Shared data
-	__shared__ float4 _visibilities[MAX_NR_TIMESTEPS][current_nr_channels][NR_POLARIZATIONS/2];
-	__shared__ float4 _uvw[MAX_NR_TIMESTEPS];
+	__shared__ float4 _visibilities[BATCH_SIZE][current_nr_channels][NR_POLARIZATIONS/2];
+	__shared__ float4 _uvw[BATCH_SIZE];
 	__shared__ float _wavenumbers[current_nr_channels];
 
     // Load wavenumbers
@@ -66,10 +66,10 @@ __device__ void kernel_gridder_(
     }
 
     // Iterate all timesteps
-    int current_nr_timesteps = MAX_NR_TIMESTEPS;
+    int current_nr_timesteps = BATCH_SIZE;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        current_nr_timesteps = nr_timesteps - time_offset_local < MAX_NR_TIMESTEPS ?
-                               nr_timesteps - time_offset_local : MAX_NR_TIMESTEPS;
+        current_nr_timesteps = nr_timesteps - time_offset_local < BATCH_SIZE ?
+                               nr_timesteps - time_offset_local : BATCH_SIZE;
 
         __syncthreads();
 
