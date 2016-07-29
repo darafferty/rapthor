@@ -210,7 +210,7 @@ namespace idg {
                     #endif
 
                     // Performance measurement
-                    vector<PerformanceCounter> counters(4);
+                    vector<PerformanceCounter> counters(5);
                     for (PerformanceCounter& counter : counters) {
                         counter.setPowerSensor(power_sensor);
                     }
@@ -271,7 +271,7 @@ namespace idg {
 
 							// Launch FFT
                             #if ENABLE_FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[4]);
                             #endif
 
                             // Launch adder kernel
@@ -478,7 +478,7 @@ namespace idg {
                     #endif
 
                     // Performance measurement
-                    vector<PerformanceCounter> counters(3);
+                    vector<PerformanceCounter> counters(4);
                     for (PerformanceCounter& counter : counters) {
                         counter.setPowerSensor(power_sensor);
                     }
@@ -535,7 +535,7 @@ namespace idg {
 
                             // Launch FFT
                             #if ENABLE_FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[3]);
                             #endif
 
                             // Launch degridder kernel
@@ -648,12 +648,12 @@ namespace idg {
                 vector<cl::Event> fft(2);
                 vector<cl::Event> output(2);
 
+                // Performance counter
+                PerformanceCounter counter;
+                counter.setPowerSensor(power_sensor);
+
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid());
-
-                // Performance counter
-                PerformanceCounter counter_fft;
-                counter_fft.setPowerSensor(power_sensor);
 
                 // Load kernel function
                 unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();

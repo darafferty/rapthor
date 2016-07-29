@@ -201,6 +201,22 @@ namespace idg {
                 }
             }
 
+            void GridFFT::launchAsync(
+                cl::CommandQueue &queue,
+                cl::Buffer &d_data,
+                clfftDirection direction,
+                PerformanceCounter &counter)
+            {
+                queue.enqueueMarkerWithWaitList(NULL, &start);
+                clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                queue.enqueueMarkerWithWaitList(NULL, &end);
+                counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+                if (status != CL_SUCCESS) {
+                    std::cerr << "Error enqueing fft plan" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+            }
+
             void GridFFT::shift(std::complex<float> *data) {
                 int gridsize = parameters.get_grid_size();
                 int nr_polarizations = parameters.get_nr_polarizations();

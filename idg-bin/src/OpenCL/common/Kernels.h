@@ -108,6 +108,11 @@ namespace idg {
                         cl::CommandQueue &queue,
                         cl::Buffer &d_data,
                         clfftDirection direction);
+                    void launchAsync(
+                        cl::CommandQueue &queue,
+                        cl::Buffer &d_data,
+                        clfftDirection direction,
+                        PerformanceCounter &counter);
                     void shift(std::complex<float> *data);
                     void scale(std::complex<float> *data, std::complex<float> scale);
                     uint64_t flops(int size, int batch);
@@ -119,6 +124,8 @@ namespace idg {
                     int planned_size;
                     int planned_batch;
                     clfftPlanHandle fft;
+                    cl::Event start;
+                    cl::Event end;
             };
 
             class Adder {
