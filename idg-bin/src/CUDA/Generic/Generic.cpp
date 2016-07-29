@@ -74,6 +74,8 @@ namespace idg {
                 // Performance measurements
                 PowerRecord powerRecords[5];
 
+                for (int i = 0; i < nr_repetitions; i++) {
+
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
                 kernel_fft->shift(h_grid);
@@ -138,6 +140,8 @@ namespace idg {
                 }
                 std::cout << std::endl;
                 #endif
+
+                } // end for repetitions
             }
 
             void Generic::grid_visibilities(
