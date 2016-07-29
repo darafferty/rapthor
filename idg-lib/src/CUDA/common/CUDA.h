@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <complex>
+#include <cuda.h>
+#include <cudaProfiler.h>
 
 #include "idg-common.h"
 
@@ -17,6 +19,7 @@ namespace idg {
                     CUDA(
                         Parameters params,
                         ProxyInfo info = default_info());
+                    ~CUDA();
 
                 public:
                     void print_compiler_flags();

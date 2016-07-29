@@ -1,6 +1,7 @@
 #include "idg-cuda.h"
+#include "idg-utility.h"
 
-#include "../common/common.h"
+using namespace std;
 
 int main(int argc, char **argv) {
     // Set constants explicitly in the parameters parameter
@@ -98,9 +99,6 @@ int main(int argc, char **argv) {
     idg::init_example_baselines(baselines, nr_stations, nr_baselines);
     std::clog << std::endl;
 
-    // Start profiling
-    cuProfilerStart();
-
     // Run
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
@@ -113,7 +111,4 @@ int main(int argc, char **argv) {
 
     clog << ">>> Run degridder" << endl;
     proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines, grid, w_offset, kernel_size, aterm, aterm_offsets, spheroidal);
-
-    // Stop profiling
-    cuProfilerStop();
 }
