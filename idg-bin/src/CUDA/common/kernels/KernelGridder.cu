@@ -163,7 +163,7 @@ __device__ void kernel_gridder_(
                     uvYY.x -= phasor.y * visYY.y;
                     uvYY.y += phasor.y * visYY.x;
                 }
-            }
+            } // end for time
 
             // Get aterm for station1
             float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
@@ -195,8 +195,8 @@ __device__ void kernel_gridder_(
             subgrid[s][1][y_dst][x_dst] += uvXY * sph;
             subgrid[s][2][y_dst][x_dst] += uvYX * sph;
             subgrid[s][3][y_dst][x_dst] += uvYY * sph;
-	    }
-    }
+	    } // end for i
+    } // end for time_offset_local
 }
 
 extern "C" {
