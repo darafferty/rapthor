@@ -131,8 +131,7 @@ namespace idg {
                     Adder(
 						cl::Program &program,
 						const Parameters &parameters,
-						const cl::NDRange &local_size,
-                        const int tile_factor);
+						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
@@ -149,7 +148,6 @@ namespace idg {
                     cl::Kernel kernel;
                     Parameters parameters;
 					cl::NDRange local_size;
-                    int tile_factor;
             };
 
             class Splitter {

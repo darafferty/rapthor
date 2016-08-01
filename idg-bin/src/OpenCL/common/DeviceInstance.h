@@ -80,7 +80,6 @@ namespace idg {
                     cl::NDRange block_scaler;
                     int batch_gridder;
                     int batch_degridder;
-                    int tile_adder;
             };
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d);

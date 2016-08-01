@@ -62,7 +62,7 @@ namespace idg {
             }
 
             unique_ptr<Adder> DeviceInstance::get_kernel_adder() const {
-                return unique_ptr<Adder>(new Adder(*(programs[which_program.at(name_adder)]), parameters, block_adder, tile_adder));
+                return unique_ptr<Adder>(new Adder(*(programs[which_program.at(name_adder)]), parameters, block_adder));
             }
 
             unique_ptr<Splitter> DeviceInstance::get_kernel_splitter() const {
@@ -72,7 +72,6 @@ namespace idg {
             void DeviceInstance::set_parameters_default() {
                 batch_gridder   = 32;
                 batch_degridder = 256;
-                tile_adder      = 4;
                 block_gridder   = cl::NDRange(256, 1);
                 block_degridder = cl::NDRange(batch_degridder, 1);
                 block_adder     = cl::NDRange(128, 1);
@@ -135,8 +134,6 @@ namespace idg {
 				std::stringstream flags_device;
                 flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
                 flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
-                flags_device << " -DADDER_TILE_FACTOR="    << tile_adder;
-
 
                 // Combine flags
                 std::string flags = flags_opencl.str() +
