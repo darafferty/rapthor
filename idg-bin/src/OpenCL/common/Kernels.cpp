@@ -276,17 +276,15 @@ namespace idg {
             }
 
             // Adder class
-            Adder::Adder(cl::Program &program, const Parameters &parameters) :
-                kernel(program, name_adder.c_str()),
-                parameters(parameters) {}
-
             Adder::Adder(
                 cl::Program &program,
                 const Parameters &parameters,
-                const cl::NDRange &local_size) :
+                const cl::NDRange &local_size,
+                const int tile_factor) :
                 kernel(program, name_adder.c_str()),
                 parameters(parameters),
-                local_size(local_size) {}
+                local_size(local_size),
+                tile_factor(tile_factor) {}
 
             void Adder::launchAsync(
                 cl::CommandQueue &queue,
@@ -298,11 +296,12 @@ namespace idg {
                 PerformanceCounter &counter) {
                 int local_size_x = local_size[0];
                 int local_size_y = local_size[1];
-                cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, gridsize);
-                kernel.setArg(1, d_metadata);
-                kernel.setArg(2, d_subgrid);
-                kernel.setArg(3, d_grid);
+                cl::NDRange global_size(tile_factor * nr_subgrids, tile_factor * local_size_y);
+                kernel.setArg(0, nr_subgrids);
+                kernel.setArg(1, gridsize);
+                kernel.setArg(2, d_metadata);
+                kernel.setArg(3, d_subgrid);
+                kernel.setArg(4, d_grid);
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
