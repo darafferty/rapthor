@@ -29,7 +29,6 @@ namespace idg {
 
             class Gridder {
                 public:
-                    Gridder(cl::Program &program, const Parameters &parameters);
                     Gridder(
 						cl::Program &program,
 						const Parameters &parameters,
@@ -64,7 +63,6 @@ namespace idg {
 
             class Degridder {
                 public:
-                    Degridder(cl::Program &program, const Parameters &parameters);
                     Degridder(
 						cl::Program &program,
 						const Parameters &parameters,
@@ -156,7 +154,6 @@ namespace idg {
 
             class Splitter {
                 public:
-                    Splitter(cl::Program &program, const Parameters &parameters);
                     Splitter(
 						cl::Program &program,
 						const Parameters &parameters,
@@ -181,7 +178,6 @@ namespace idg {
 
             class Scaler {
                 public:
-                    Scaler(cl::Program &program, const Parameters &parameters);
                     Scaler(
 						cl::Program &program,
 						const Parameters &parameters,
