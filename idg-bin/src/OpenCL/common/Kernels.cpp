@@ -9,10 +9,6 @@ namespace idg {
         namespace opencl {
 
             // Gridder class
-            Gridder::Gridder(cl::Program &program, const Parameters &parameters) :
-                kernel(program, name_gridder.c_str()),
-                parameters(parameters) {}
-
             Gridder::Gridder(
                 cl::Program &program,
                 const Parameters &parameters,
@@ -75,10 +71,6 @@ namespace idg {
 
 
             // Degridder class
-            Degridder::Degridder(cl::Program &program, const Parameters &parameters) :
-                kernel(program, name_degridder.c_str()),
-                parameters(parameters) {}
-
             Degridder::Degridder(
                 cl::Program &program,
                 const Parameters &parameters,
@@ -322,10 +314,6 @@ namespace idg {
             }
 
             // Splitter class
-            Splitter::Splitter(cl::Program &program, const Parameters &parameters) :
-                kernel(program, name_splitter.c_str()),
-                parameters(parameters) {}
-
             Splitter::Splitter(
                 cl::Program &program,
                 const Parameters &parameters,
@@ -369,10 +357,6 @@ namespace idg {
             }
 
             // Scaler class
-            Scaler::Scaler(cl::Program &program, const Parameters &parameters) :
-                kernel(program, name_scaler.c_str()),
-                parameters(parameters) {}
-
             Scaler::Scaler(
                 cl::Program &program,
                 const Parameters &parameters,
