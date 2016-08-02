@@ -135,7 +135,6 @@ namespace idg {
                 flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
                 flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
 
-
                 // Combine flags
                 std::string flags = flags_opencl.str() +
                                     flags_device.str() +
