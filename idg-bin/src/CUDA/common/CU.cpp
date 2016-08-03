@@ -273,10 +273,6 @@ namespace cu {
         memcpy(_ptr, in, bytes);
     }
 
-    void HostMemory::get(void *out) {
-        memcpy(out, _ptr, (size_t) _size);
-    }
-
     void HostMemory::zero() {
         memset(_ptr, 0, _size);
     }
@@ -315,10 +311,6 @@ namespace cu {
 
     void DeviceMemory::set(void *in) {
         cuMemcpyHtoD(_ptr, in, _size);
-    }
-
-    void DeviceMemory::get(void *out) {
-        cuMemcpyDtoH(out, _ptr, _size);
     }
 
     void* DeviceMemory::get(size_t offset) {

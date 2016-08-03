@@ -70,7 +70,6 @@ namespace cu {
             void set(const void *in);
             void set(void *in);
             void set(void *in, size_t bytes);
-            void get(void *out);
             void zero();
 
             template <typename T> operator T *();
@@ -90,7 +89,6 @@ namespace cu {
 
             size_t size();
             void set(void *in);
-            void get(void *out);
             void* get(size_t offset);
             void zero();
 
