@@ -29,11 +29,10 @@ namespace cu {
             Device(int ordinal);
 
             static int getCount();
-            std::string getName() const;
-            size_t getTotalMem() const;
-            int getComputeCapability() const;
-            size_t free_memory();
-            size_t total_memory();
+            std::string get_name() const;
+            int get_capability() const;
+            size_t get_free_memory() const;
+            size_t get_total_memory() const;
             template <CUdevice_attribute attribute> int getAttribute() const;
 
             operator CUdevice();
