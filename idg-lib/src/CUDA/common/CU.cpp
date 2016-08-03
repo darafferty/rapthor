@@ -149,19 +149,13 @@ namespace cu {
         checkCudaCall(cuDeviceGet(&_device, ordinal));
     }
 
-    std::string Device::getName() const {
+    std::string Device::get_name() const {
         char name[64];
         checkCudaCall(cuDeviceGetName(name, sizeof(name), _device));
         return std::string(name);
     }
 
-    size_t Device::getTotalMem() const {
-        size_t bytes = 0;
-        checkCudaCall(cuDeviceTotalMem(&bytes, _device));
-        return bytes;
-    }
-
-    int Device::getComputeCapability() const {
+    int Device::get_capability() const {
         int capability = 10 * getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
                               getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
         return capability;
@@ -177,14 +171,14 @@ namespace cu {
         return _device;
     }
 
-    size_t Device::free_memory() {
+    size_t Device::get_free_memory() const {
         size_t free;
         size_t total;
         cuMemGetInfo(&free, &total);
         return free;
     }
 
-    size_t Device::total_memory() {
+    size_t Device::get_total_memory() const {
         size_t free;
         size_t total;
         cuMemGetInfo(&free, &total);
