@@ -1,6 +1,8 @@
 #include "idg-cuda.h"
 #include "idg-utility.h"
 
+#include "cuda.h"
+
 using namespace std;
 
 int main(int argc, char **argv) {

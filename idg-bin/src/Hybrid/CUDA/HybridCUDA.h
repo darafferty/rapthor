@@ -10,11 +10,8 @@
 #ifndef IDG_HYBRID_CUDA_H_
 #define IDG_HYBRID_CUDA_H_
 
-#include <dlfcn.h>
-#include <cuda.h>
-#include <cudaProfiler.h>
-
-#include "idg-hybrid-cuda.h"
+#include "idg-cpu.h"
+#include "idg-cuda.h"
 
 namespace idg {
     namespace proxy {
