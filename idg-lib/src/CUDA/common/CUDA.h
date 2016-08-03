@@ -4,8 +4,6 @@
 #include <vector>
 #include <string>
 #include <complex>
-#include <cuda.h>
-#include <cudaProfiler.h>
 
 #include "idg-common.h"
 

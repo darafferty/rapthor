@@ -1,3 +1,6 @@
+#include <cuda.h>
+#include <cudaProfiler.h>
+
 #include "CUDA.h"
 
 namespace idg {
