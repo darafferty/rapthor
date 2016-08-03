@@ -14,6 +14,7 @@ endif()
 if (BUILD_WITH_PYTHON)
     add_subdirectory(python)
     add_subdirectory(python-api)
+    add_subdirectory(python-misc)
 endif()
 
 add_subdirectory(api)
