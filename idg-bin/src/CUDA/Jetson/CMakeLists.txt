@@ -1,6 +1,11 @@
 project(cuda-jetson)
 
 # Set headers
+include_directories (
+    ${CUDA_INCLUDE_DIRS}
+)
+
+# Set headers
 set (${PROJECT_NAME}_headers
     Jetson.h
 )

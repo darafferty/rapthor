@@ -1,6 +1,11 @@
 project(hybrid-cuda)
 
 # Set headers
+include_directories (
+    ${CUDA_INCLUDE_DIRS}
+)
+
+# Set headers
 set (
     ${PROJECT_NAME}_headers
     HybridCUDA.h
