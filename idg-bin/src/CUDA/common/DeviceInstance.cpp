@@ -52,7 +52,7 @@ namespace idg {
                 flags_cuda << "-src-in-ptx";
 
                 // Device specific flags
-                int capability = (*device).getComputeCapability();
+                int capability = (*device).get_capability();
                 std::stringstream flags_device;
                 flags_device << "-arch=sm_"                << capability;
                 flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
@@ -170,7 +170,7 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
-                int capability = (*device).getComputeCapability();
+                int capability = (*device).get_capability();
 
                 if (capability >= 60) {
                     set_parameters_pascal();
@@ -185,11 +185,11 @@ namespace idg {
             }
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d) {
-                os << "\t"                 << d.get_device().getName() << std::endl;
-                os << "Device memory   : " << d.get_device().getTotalMem() / (float) (1000*1000*1000) << " Gb" << std::endl;
+                os << "\t"                 << d.get_device().get_name() << std::endl;
+                os << "Device memory   : " << d.get_device().get_total_memory() / (float) (1000*1000*1000) << " Gb" << std::endl;
                 os << "Shared memory   : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>() / 1024 << " Kb"<< std::endl;
                 os << "Clock frequency : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000 << std::endl;
-                os << "Capability      : " << d.get_device().getComputeCapability() << std::endl;
+                os << "Capability      : " << d.get_device().get_capability() << std::endl;
                 os << std::endl;
                 return os;
             }

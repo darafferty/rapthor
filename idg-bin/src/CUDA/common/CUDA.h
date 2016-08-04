@@ -4,16 +4,15 @@
 #include <vector>
 #include <string>
 #include <complex>
-#include <cuda.h>
-#include <cudaProfiler.h>
 
 #include "idg-common.h"
 
-#include "DeviceInstance.h"
 
 namespace idg {
     namespace proxy {
         namespace cuda {
+            class DeviceInstance;
+
             class CUDA : public Proxy {
                 public:
                     CUDA(

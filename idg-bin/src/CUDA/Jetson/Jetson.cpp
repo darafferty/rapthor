@@ -1,6 +1,9 @@
 #include "idg-config.h"
 #include "Jetson.h"
 
+#include "../common/CU.h"
+#include "../common/DeviceInstance.h"
+
 using namespace std;
 using namespace idg::kernel::cuda;
 

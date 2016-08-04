@@ -1,5 +1,8 @@
 #include "Generic.h"
 
+#include "../common/CU.h"
+#include "../common/DeviceInstance.h"
+
 using namespace std;
 using namespace idg::kernel::cuda;
 
@@ -10,11 +13,6 @@ namespace idg {
                 Parameters params,
                 ProxyInfo info) :
                 CUDA(params, info)
-                #if !REDUCE_HOST_MEMORY
-                ,
-                h_visibilities(sizeof_visibilities(params.get_nr_baselines())),
-                h_uvw(sizeof_uvw(params.get_nr_baselines()))
-                #endif
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
@@ -28,6 +26,10 @@ namespace idg {
                     #endif
                     h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
                 }
+                #if !REDUCE_HOST_MEMORY
+                h_visibilities_ = new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines()));
+                h_uvw_ = new cu::HostMemory(sizeof_uvw(params.get_nr_baselines()));
+                #endif
 
                 // Setup benchmark
                 init_benchmark();
@@ -182,8 +184,10 @@ namespace idg {
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
+                // Host memory
                 #if !REDUCE_HOST_MEMORY
-                // Copy input data to host memory
+                cu::HostMemory   &h_visibilities = *h_visibilities_;
+                cu::HostMemory   &h_uvw          = *h_uvw_;
                 h_visibilities.set(visibilities);
                 h_uvw.set(uvw);
                 #endif
@@ -480,12 +484,12 @@ namespace idg {
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
 
+                // Host memory
                 #if !REDUCE_HOST_MEMORY
-                // Copy input data to host memory
+                cu::HostMemory   &h_visibilities = *h_visibilities_;
+                cu::HostMemory   &h_uvw          = *h_uvw_;
                 h_uvw.set(uvw);
                 #endif
-
-                // Host memory
                 cu::HostMemory &h_grid = *(h_grid_[0]);
                 h_grid.set(grid);
 
