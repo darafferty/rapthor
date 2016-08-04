@@ -56,7 +56,7 @@ __device__ void kernel_gridder_(
 	const int y_coordinate = m.coordinate.y;
 
     // Shared data
-	__shared__ float4 _visibilities[BATCH_SIZE][current_nr_channels][NR_POLARIZATIONS/2];
+	__shared__ float4 _visibilities[2][BATCH_SIZE][current_nr_channels];
 	__shared__ float4 _uvw[BATCH_SIZE];
 	__shared__ float _wavenumbers[current_nr_channels];
 
@@ -88,8 +88,8 @@ __device__ void kernel_gridder_(
             float2 b = visibilities[index][1];
             float2 c = visibilities[index][2];
             float2 d = visibilities[index][3];
-            _visibilities[time][chan][0] = make_float4(a.x, a.y, b.x, b.y);
-            _visibilities[time][chan][1] = make_float4(c.x, c.y, d.x, d.y);
+            _visibilities[0][time][chan] = make_float4(a.x, a.y, b.x, b.y);
+            _visibilities[1][time][chan] = make_float4(c.x, c.y, d.x, d.y);
         }
 
 	    __syncthreads();
@@ -135,8 +135,8 @@ __device__ void kernel_gridder_(
                     float2 phasor = make_float2(cos(phase), sin(phase));
 
                     // Load visibilities from shared memory
-                    float4 a = _visibilities[time][chan][0];
-                    float4 b = _visibilities[time][chan][1];
+                    float4 a = _visibilities[0][time][chan];
+                    float4 b = _visibilities[1][time][chan];
                     float2 visXX = make_float2(a.x, a.y);
                     float2 visXY = make_float2(a.z, a.w);
                     float2 visYX = make_float2(b.x, b.y);
