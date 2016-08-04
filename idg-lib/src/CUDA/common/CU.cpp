@@ -161,12 +161,6 @@ namespace cu {
         return capability;
     }
 
-    template <CUdevice_attribute attribute> int Device::getAttribute() const {
-        int value;
-        checkCudaCall(cuDeviceGetAttribute(&value, attribute, _device));
-        return value;
-    }
-
     Device::operator CUdevice() {
         return _device;
     }
@@ -245,10 +239,6 @@ namespace cu {
         if (unregister) {
             cuMemHostUnregister(_ptr);
         }
-    }
-
-    template <typename T> HostMemory::operator T *() {
-        return static_cast<T *>(_ptr);
     }
 
     size_t HostMemory::size() {
