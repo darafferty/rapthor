@@ -76,8 +76,8 @@ namespace idg {
                     std::vector<cu::HostMemory*> h_visibilities_;
                     std::vector<cu::HostMemory*> h_uvw_;
                     #else
-                    cu::HostMemory *h_visibilities;
-                    cu::HostMemory *h_uvw;
+                    cu::HostMemory *h_visibilities_;
+                    cu::HostMemory *h_uvw_;
                     #endif
                     std::vector<cu::HostMemory*> h_grid_;
 
