@@ -1,4 +1,8 @@
+#include <cuda.h>
+#include <cudaProfiler.h>
+
 #include "CUDA.h"
+#include "DeviceInstance.h"
 
 namespace idg {
     namespace proxy {

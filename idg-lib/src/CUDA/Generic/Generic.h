@@ -10,7 +10,7 @@
 #ifndef IDG_CUDA_GENERIC_H_
 #define IDG_CUDA_GENERIC_H_
 
-#include "idg-cuda.h"
+#include "../common/CUDA.h"
 
 /*
     Toggle between two modes of cu::HostMemory allocation
@@ -24,6 +24,10 @@
             (throughput is lower, due to additional memory copies)
 */
 #define REDUCE_HOST_MEMORY 0
+
+namespace cu {
+    class HostMemory;
+}
 
 namespace idg {
     namespace proxy {
@@ -72,8 +76,8 @@ namespace idg {
                     std::vector<cu::HostMemory*> h_visibilities_;
                     std::vector<cu::HostMemory*> h_uvw_;
                     #else
-                    cu::HostMemory h_visibilities;
-                    cu::HostMemory h_uvw;
+                    cu::HostMemory *h_visibilities_;
+                    cu::HostMemory *h_uvw_;
                     #endif
                     std::vector<cu::HostMemory*> h_grid_;
 

@@ -1,14 +1,10 @@
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
-#include <complex>
-#include <sstream>
-#include <memory>
-#include <dlfcn.h> // dlsym()
-#include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
+#include <cuda.h>
+#include <cudaProfiler.h>
 
 #include "HybridCUDA.h"
+
+#include "CU.h"
+#include "DeviceInstance.h"
 
 using namespace std;
 using namespace idg::proxy::cuda;

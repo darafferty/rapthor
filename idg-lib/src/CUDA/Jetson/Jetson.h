@@ -10,9 +10,7 @@
 #ifndef IDG_CUDA_JETSON_H_
 #define IDG_CUDA_JETSON_H_
 
-#include <complex>
-
-#include "idg-cuda.h"
+#include "../common/CUDA.h"
 
 namespace idg {
     namespace proxy {
