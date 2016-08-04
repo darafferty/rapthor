@@ -33,7 +33,16 @@ namespace cu {
             int get_capability() const;
             size_t get_free_memory() const;
             size_t get_total_memory() const;
-            template <CUdevice_attribute attribute> int getAttribute() const;
+            //template <CUdevice_attribute attribute> int getAttribute() const;
+
+            template <CUdevice_attribute attribute>
+            int getAttribute() const {
+                int value;
+                // TODO: checkCudaCall
+                //checkCudaCall(cuDeviceGetAttribute(&value, attribute, _device));
+                cuDeviceGetAttribute(&value, attribute, _device);
+                return value;
+            }
 
             operator CUdevice();
 
@@ -71,7 +80,9 @@ namespace cu {
             void set(void *in, size_t bytes);
             void zero();
 
-            template <typename T> operator T *();
+            template <typename T> operator T *() {
+                return static_cast<T *>(_ptr);
+            }
 
         private:
             void *_ptr;
