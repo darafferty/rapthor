@@ -185,11 +185,23 @@ namespace idg {
             }
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d) {
-                os << "\t"                 << d.get_device().get_name() << std::endl;
-                os << "Device memory   : " << d.get_device().get_total_memory() / (float) (1000*1000*1000) << " Gb" << std::endl;
-                os << "Shared memory   : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>() / 1024 << " Kb"<< std::endl;
-                os << "Clock frequency : " << d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000 << std::endl;
-                os << "Capability      : " << d.get_device().get_capability() << std::endl;
+                os << d.get_device().get_name() << std::endl;
+                os << std::setprecision(2);
+                d.get_context().setCurrent();
+                auto device_memory   = d.get_device().get_total_memory(); // Bytes
+                auto shared_memory   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>(); // Bytes
+                auto clock_frequency = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000; // Mhz
+                auto mem_frequency   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE>() / 1000; // Mhz
+                auto nr_sm           = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT>();
+                auto mem_bus_width   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH>(); // Bits
+                os << "\tDevice memory : " << device_memory / (float) (1024*1024*1024) << " Gb" << std::endl;
+                os << "\tShared memory : " << shared_memory / (float) 1024 << " Kb"<< std::endl;
+                os << "\tClk frequency : " << clock_frequency << " Ghz" << std::endl;
+                os << "\tMem frequency : " << mem_frequency << " Ghz" << std::endl;
+                os << "\tNumber of SM  : " << nr_sm << std::endl;
+                os << "\tMem bus width : " << mem_bus_width << " bit" << std::endl;
+                os << "\tMem bandwidth : " << 2 * (mem_bus_width / 8) * mem_frequency / 1000 << " GB/s" << std::endl;
+                os << "\tCapability    : " << d.get_device().get_capability() << std::endl;
                 os << std::endl;
                 return os;
             }
