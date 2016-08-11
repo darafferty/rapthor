@@ -526,6 +526,7 @@ namespace idg {
                 double total_runtime_adding = 0;
                 double total_runtime_adder  = 0;
                 total_runtime_adding = -omp_get_wtime();
+                PowerSensor::State powerStates[2];
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -543,14 +544,17 @@ namespace idg {
                     void *grid_ptr     = grid;
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
-                    double runtime_adder = -omp_get_wtime();
+                    powerStates[0] = powerSensor->read();
                     kernel_adder->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
-                    runtime_adder += omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
 
+                    double runtime_adder = powerSensor->seconds(powerStates[0], powerStates[1]);
                     #if defined(REPORT_VERBOSE)
+                    double power_adder = powerSensor->Watt(powerStates[0], powerStates[1]);
                     auxiliary::report("adder", runtime_adder,
                                       kernel_adder->flops(nr_subgrids),
-                                      kernel_adder->bytes(nr_subgrids));
+                                      kernel_adder->bytes(nr_subgrids),
+                                      power_adder);
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_adder += runtime_adder;
@@ -594,6 +598,7 @@ namespace idg {
                 double total_runtime_splitting = 0;
                 double total_runtime_splitter = 0;
                 total_runtime_splitting = -omp_get_wtime();
+                PowerSensor::State powerStates[2];
 
                 // Run splitter
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -611,14 +616,17 @@ namespace idg {
                     void *grid_ptr     = const_cast<complex<float>*>(grid);
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
-                    double runtime_splitter = -omp_get_wtime();
+                    powerStates[0] = powerSensor->read();
                     kernel_splitter->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
-                    runtime_splitter += omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
 
+                    double runtime_splitter = powerSensor->seconds(powerStates[0], powerStates[1]);
                     #if defined(REPORT_VERBOSE)
+                    double power_splitter = powerSensor->Watt(powerStates[0], powerStates[1]);
                     auxiliary::report("splitter", runtime_splitter,
                                       kernel_splitter->flops(nr_subgrids),
-                                      kernel_splitter->bytes(nr_subgrids));
+                                      kernel_splitter->bytes(nr_subgrids),
+                                      power_splitter);
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_splitter += runtime_splitter;
