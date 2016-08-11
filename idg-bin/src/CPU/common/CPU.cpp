@@ -360,7 +360,7 @@ namespace idg {
                     runtime += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    auxiliary::report(">grid_fft", runtime,
+                    auxiliary::report("grid-fft", runtime,
                         kernel_fft->flops(gridsize, 1),
                         kernel_fft->bytes(gridsize, 1));
                     clog << endl;
@@ -473,7 +473,7 @@ namespace idg {
                                       kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                       kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                       power_gridder);
-                    auxiliary::report("fft", runtime_fft,
+                    auxiliary::report("sub-fft", runtime_fft,
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                       power_fft);
@@ -496,7 +496,7 @@ namespace idg {
                 uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
                 auxiliary::report("|gridder", total_runtime_gridder,
                                   total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft,
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft,
                                   total_bytes_fft);
                 clog << endl;
                 #endif
@@ -742,7 +742,7 @@ namespace idg {
                                       kernel_degridder->bytes(current_nr_timesteps,
                                                               current_nr_subgrids),
                                       power_degridder);
-                    auxiliary::report("fft", runtime_fft,
+                    auxiliary::report("sub-fft", runtime_fft,
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                       power_fft);
@@ -769,7 +769,7 @@ namespace idg {
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
                 auxiliary::report("|degridder", total_runtime_degridder,
                                   total_flops_degridder, total_bytes_degridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 clog << endl;
                 #endif
             }
