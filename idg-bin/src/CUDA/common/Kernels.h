@@ -107,7 +107,7 @@ namespace idg {
 
                     void plan(int size, int batch);
 
-                    void launch( cu::Stream &stream, cu::DeviceMemory &data, int direction);
+                    void launch(cu::Stream &stream, cu::DeviceMemory &data, int direction);
 
                     void shift(std::complex<float> *data);
 
@@ -120,6 +120,9 @@ namespace idg {
                     uint64_t bytes(int size, int batch) {
                         return idg::kernel::bytes_fft(parameters, size, batch);
                     }
+
+                private:
+                    void plan_bulk();
 
                 private:
                     cu::Function function;
