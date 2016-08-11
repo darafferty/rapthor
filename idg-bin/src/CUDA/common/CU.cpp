@@ -1,9 +1,6 @@
 #include "CU.h"
 
-#include <iostream>
 #include <sstream>
-
-#include <string>
 #include <cstring>
 
 #include <cuda.h>

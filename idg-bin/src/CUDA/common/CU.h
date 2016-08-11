@@ -2,6 +2,7 @@
 #define CU_WRAPPER_H
 
 #include <string>
+#include <iostream>
 #include <cuda.h>
 
 struct dim3;
@@ -38,9 +39,10 @@ namespace cu {
             template <CUdevice_attribute attribute>
             int getAttribute() const {
                 int value;
-                // TODO: checkCudaCall
-                //checkCudaCall(cuDeviceGetAttribute(&value, attribute, _device));
-                cuDeviceGetAttribute(&value, attribute, _device);
+                if (cuDeviceGetAttribute(&value, attribute, _device) != CUDA_SUCCESS) {
+                    std::cerr << "CUDA Error: could not get attribute: " << attribute << std::endl;
+                    exit(EXIT_FAILURE);
+                }
                 return value;
             }
 

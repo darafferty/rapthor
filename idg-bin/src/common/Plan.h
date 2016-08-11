@@ -48,6 +48,9 @@ namespace idg {
 
             // max number of subgrids for n baselines between bl1 and bl2+n
             int get_max_nr_subgrids(int bl1, int bl2, int n);
+            // max number of subgrids for 1 baseline
+
+            int get_max_nr_subgrids();
 
             void print_subgrid_offset() const;
 
@@ -68,6 +71,7 @@ namespace idg {
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;
             std::vector<int> timesteps_per_baseline;
+            int nr_baselines;
 
         }; // class Plan
 
