@@ -164,7 +164,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = devices.size();
-                const int nr_streams = 3;
+                const int nr_streams = 2;
 
                 // Constants
                 auto nr_stations      = mParams.get_nr_stations();
@@ -175,14 +175,14 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize         = mParams.get_grid_size();
                 auto subgridsize      = mParams.get_subgrid_size();
-                auto jobsize          = mParams.get_job_size_gridder();
-                auto imagesize = mParams.get_imagesize();
+                auto imagesize        = mParams.get_imagesize();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_streams);
 
                 // Host memory
                 #if !REDUCE_HOST_MEMORY
@@ -220,6 +220,7 @@ namespace idg {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
+                    int jobsize   = jobsize_[device_id];
 
                     // Load device
                     DeviceInstance *device = devices[device_id];
@@ -445,8 +446,7 @@ namespace idg {
                 #endif
             }
 
-
-            void Generic::degrid_visibilities(
+           void Generic::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
                 const float *wavenumbers,
@@ -475,14 +475,14 @@ namespace idg {
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto gridsize         = mParams.get_grid_size();
                 auto subgridsize      = mParams.get_subgrid_size();
-                auto jobsize          = mParams.get_job_size_degridder();
-                auto imagesize = mParams.get_imagesize();
+                auto imagesize        = mParams.get_imagesize();
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_streams);
 
                 // Host memory
                 #if !REDUCE_HOST_MEMORY
@@ -520,6 +520,7 @@ namespace idg {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id = global_id % nr_streams;
+                    int jobsize = jobsize_[device_id];
 
                     // Load device
                     DeviceInstance *device = devices[device_id];
