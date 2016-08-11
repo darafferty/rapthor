@@ -57,6 +57,9 @@ namespace idg {
         return max_nr_subgrids;
     }
 
+    int Plan::get_max_nr_subgrids() {
+        return get_max_nr_subgrids(0, nr_baselines, 1);
+    }
 
     int Plan::get_nr_timesteps() const {
         return accumulate(timesteps_per_baseline.begin(), timesteps_per_baseline.end(), 0);
@@ -116,13 +119,13 @@ namespace idg {
         #endif
 
         // Load parameters
-        auto nr_baselines = mParams.get_nr_baselines();
-        auto nr_time = mParams.get_nr_time();
+        nr_baselines      = mParams.get_nr_baselines();
+        auto nr_time      = mParams.get_nr_time();
         auto nr_timeslots = mParams.get_nr_timeslots();
-        auto nr_channels = mParams.get_nr_channels();
-        auto grid_size = mParams.get_grid_size();
+        auto nr_channels  = mParams.get_nr_channels();
+        auto grid_size    = mParams.get_grid_size();
         auto subgrid_size = mParams.get_subgrid_size();
-        auto imagesize = mParams.get_imagesize();
+        auto imagesize    = mParams.get_imagesize();
 
         // Pointers to datastructures
         UVW *uvw = (UVW *) _uvw;
