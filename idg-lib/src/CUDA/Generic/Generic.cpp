@@ -120,25 +120,25 @@ namespace idg {
 
 
                 #if defined(REPORT_TOTAL)
-                auxiliary::report("   input",
+                auxiliary::report("     input",
                                   power_sensor->seconds(powerRecords[0].state, powerRecords[1].state),
                                   0, sizeof_grid(),
                                   power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                auxiliary::report("plan fft",
+                auxiliary::report("  plan-fft",
                                   power_sensor->seconds(powerRecords[1].state, powerRecords[2].state),
                                   0, 0, 0);
-                auxiliary::report("     fft",
+                auxiliary::report("  grid-fft",
                                   power_sensor->seconds(powerRecords[2].state, powerRecords[3].state),
                                   kernel_fft->flops(gridsize, 1),
                                   kernel_fft->bytes(gridsize, 1),
                                   power_sensor->Watt(powerRecords[2].state, powerRecords[3].state));
-                auxiliary::report("  output",
+                auxiliary::report("    output",
                                   power_sensor->seconds(powerRecords[3].state, powerRecords[4].state),
                                   0, sizeof_grid(),
                                   power_sensor->Watt(powerRecords[3].state, powerRecords[4].state));
-                auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale/2, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("grid-scale", time_scale/2, 0, sizeof_grid() * 2, 0);
                 }
                 std::cout << std::endl;
                 #endif
@@ -362,7 +362,7 @@ namespace idg {
                                                      kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                                      power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                        auxiliary::report("    fft", runtime_fft,
+                        auxiliary::report("sub-fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                      power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
@@ -431,7 +431,7 @@ namespace idg {
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
@@ -663,7 +663,7 @@ namespace idg {
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
                                                        power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                        auxiliary::report("      fft", runtime_fft,
+                        auxiliary::report("  sub-fft", runtime_fft,
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                        power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
@@ -709,7 +709,7 @@ namespace idg {
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 for (int d = 0; d < devices.size(); d++) {
