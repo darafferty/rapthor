@@ -326,10 +326,10 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
+                cout << "FFT (direction: " << direction << ")" << endl;
                 #endif
 
                 try {
-
                     int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
                     // Constants
@@ -339,30 +339,33 @@ namespace idg {
                     // Load kernel function
                     unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
 
-                    double runtime = -omp_get_wtime();
-
-                    if (direction == FourierDomainToImageDomain)
+                    // FFT shift
+                    if (direction == FourierDomainToImageDomain) {
                         ifftshift(nr_polarizations, grid); // TODO: integrate into adder?
-                    else
+                    } else {
                         ifftshift(nr_polarizations, grid); // TODO: remove
+                    }
 
-                    // Start fft
-                    #if defined(DEBUG)
-                    cout << "FFT (direction: " << direction << ")" << endl;
-                    #endif
+                    // Run FFT
+                    PowerSensor::State powerStates[2];
+                    powerStates[0] = powerSensor->read();
                     kernel_fft->run(gridsize, gridsize, 1, grid, sign);
+                    powerStates[1] = powerSensor->read();
 
+                    // FFT shift
                     if (direction == FourierDomainToImageDomain)
                         fftshift(nr_polarizations, grid); // TODO: remove
                     else
                         fftshift(nr_polarizations, grid); // TODO: integrate into splitter?
 
-                    runtime += omp_get_wtime();
-
+                    // Report performance
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    auxiliary::report(">grid_fft", runtime,
-                        kernel_fft->flops(gridsize, 1),
-                        kernel_fft->bytes(gridsize, 1));
+                    double runtime_fft = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    double power_fft   = powerSensor->Watt(powerStates[0], powerStates[1]);
+                    auxiliary::report("grid-fft", runtime_fft,
+                                      kernel_fft->flops(gridsize, 1),
+                                      kernel_fft->bytes(gridsize, 1),
+                                      power_fft);
                     clog << endl;
                     #endif
 
@@ -473,7 +476,7 @@ namespace idg {
                                       kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                       kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                       power_gridder);
-                    auxiliary::report("fft", runtime_fft,
+                    auxiliary::report("sub-fft", runtime_fft,
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                       power_fft);
@@ -496,7 +499,7 @@ namespace idg {
                 uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
                 auxiliary::report("|gridder", total_runtime_gridder,
                                   total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft,
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft,
                                   total_bytes_fft);
                 clog << endl;
                 #endif
@@ -526,6 +529,7 @@ namespace idg {
                 double total_runtime_adding = 0;
                 double total_runtime_adder  = 0;
                 total_runtime_adding = -omp_get_wtime();
+                PowerSensor::State powerStates[2];
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -543,14 +547,17 @@ namespace idg {
                     void *grid_ptr     = grid;
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
-                    double runtime_adder = -omp_get_wtime();
+                    powerStates[0] = powerSensor->read();
                     kernel_adder->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
-                    runtime_adder += omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
 
+                    double runtime_adder = powerSensor->seconds(powerStates[0], powerStates[1]);
                     #if defined(REPORT_VERBOSE)
+                    double power_adder = powerSensor->Watt(powerStates[0], powerStates[1]);
                     auxiliary::report("adder", runtime_adder,
                                       kernel_adder->flops(nr_subgrids),
-                                      kernel_adder->bytes(nr_subgrids));
+                                      kernel_adder->bytes(nr_subgrids),
+                                      power_adder);
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_adder += runtime_adder;
@@ -594,6 +601,7 @@ namespace idg {
                 double total_runtime_splitting = 0;
                 double total_runtime_splitter = 0;
                 total_runtime_splitting = -omp_get_wtime();
+                PowerSensor::State powerStates[2];
 
                 // Run splitter
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -611,14 +619,17 @@ namespace idg {
                     void *grid_ptr     = const_cast<complex<float>*>(grid);
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
 
-                    double runtime_splitter = -omp_get_wtime();
+                    powerStates[0] = powerSensor->read();
                     kernel_splitter->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
-                    runtime_splitter += omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
 
+                    double runtime_splitter = powerSensor->seconds(powerStates[0], powerStates[1]);
                     #if defined(REPORT_VERBOSE)
+                    double power_splitter = powerSensor->Watt(powerStates[0], powerStates[1]);
                     auxiliary::report("splitter", runtime_splitter,
                                       kernel_splitter->flops(nr_subgrids),
-                                      kernel_splitter->bytes(nr_subgrids));
+                                      kernel_splitter->bytes(nr_subgrids),
+                                      power_splitter);
                     #endif
                     #if defined(REPORT_TOTAL)
                     total_runtime_splitter += runtime_splitter;
@@ -742,7 +753,7 @@ namespace idg {
                                       kernel_degridder->bytes(current_nr_timesteps,
                                                               current_nr_subgrids),
                                       power_degridder);
-                    auxiliary::report("fft", runtime_fft,
+                    auxiliary::report("sub-fft", runtime_fft,
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                       power_fft);
@@ -769,7 +780,7 @@ namespace idg {
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
                 auxiliary::report("|degridder", total_runtime_degridder,
                                   total_flops_degridder, total_bytes_degridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 clog << endl;
                 #endif
             }
