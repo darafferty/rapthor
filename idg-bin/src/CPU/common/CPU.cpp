@@ -326,10 +326,10 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
+                cout << "FFT (direction: " << direction << ")" << endl;
                 #endif
 
                 try {
-
                     int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
                     // Constants
@@ -339,30 +339,33 @@ namespace idg {
                     // Load kernel function
                     unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
 
-                    double runtime = -omp_get_wtime();
-
-                    if (direction == FourierDomainToImageDomain)
+                    // FFT shift
+                    if (direction == FourierDomainToImageDomain) {
                         ifftshift(nr_polarizations, grid); // TODO: integrate into adder?
-                    else
+                    } else {
                         ifftshift(nr_polarizations, grid); // TODO: remove
+                    }
 
-                    // Start fft
-                    #if defined(DEBUG)
-                    cout << "FFT (direction: " << direction << ")" << endl;
-                    #endif
+                    // Run FFT
+                    PowerSensor::State powerStates[2];
+                    powerStates[0] = powerSensor->read();
                     kernel_fft->run(gridsize, gridsize, 1, grid, sign);
+                    powerStates[1] = powerSensor->read();
 
+                    // FFT shift
                     if (direction == FourierDomainToImageDomain)
                         fftshift(nr_polarizations, grid); // TODO: remove
                     else
                         fftshift(nr_polarizations, grid); // TODO: integrate into splitter?
 
-                    runtime += omp_get_wtime();
-
+                    // Report performance
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    auxiliary::report("grid-fft", runtime,
-                        kernel_fft->flops(gridsize, 1),
-                        kernel_fft->bytes(gridsize, 1));
+                    double runtime_fft = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    double power_fft   = powerSensor->Watt(powerStates[0], powerStates[1]);
+                    auxiliary::report("grid-fft", runtime_fft,
+                                      kernel_fft->flops(gridsize, 1),
+                                      kernel_fft->bytes(gridsize, 1),
+                                      power_fft);
                     clog << endl;
                     #endif
 
