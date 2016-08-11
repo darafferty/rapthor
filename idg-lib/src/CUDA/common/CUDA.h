@@ -42,6 +42,9 @@ namespace idg {
                     uint64_t sizeof_wavenumbers();
                     uint64_t sizeof_aterm();
                     uint64_t sizeof_spheroidal();
+
+                protected:
+                    std::vector<int> compute_jobsize(Plan &plan, int nr_streams);
             };
         } // end namespace idg
     } // end namespace proxy

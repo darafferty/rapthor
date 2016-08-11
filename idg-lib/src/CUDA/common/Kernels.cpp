@@ -79,8 +79,19 @@ namespace idg {
                 const Parameters &params) :
                 function(module, name_fft.c_str()), parameters(params)
             {
-                fft_bulk = NULL;
+                plan_bulk();
                 fft_remainder = NULL;
+            }
+
+            void GridFFT::plan_bulk() {
+                // Parameters
+                int size = parameters.get_subgrid_size();
+                int stride = 1;
+                int dist = size * size;
+                int nr_polarizations = parameters.get_nr_polarizations();
+
+                // Plan bulk fft
+                fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
             }
 
             void GridFFT::plan(int size, int batch) {
@@ -88,12 +99,6 @@ namespace idg {
                 int stride = 1;
                 int dist = size * size;
                 int nr_polarizations = parameters.get_nr_polarizations();
-
-                // Plan bulk fft
-                if ((fft_bulk == NULL || size != planned_size) && batch > bulk_size)
-                {
-                    fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
-                }
 
                 // Plan remainder fft
                 if (fft_remainder == NULL || size != planned_size || batch != planned_batch)
