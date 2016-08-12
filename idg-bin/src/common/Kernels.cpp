@@ -69,7 +69,7 @@ namespace kernel {
 
     uint64_t flops_fft(Parameters &parameters, uint64_t size, uint64_t batch) {
         uint64_t nr_polarizations = parameters.get_nr_polarizations();
-        return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size);
+        return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2);
     }
 
     uint64_t bytes_fft(Parameters &parameters, uint64_t size, uint64_t batch) {
