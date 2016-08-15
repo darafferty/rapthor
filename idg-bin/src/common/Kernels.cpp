@@ -69,7 +69,11 @@ namespace kernel {
 
     uint64_t flops_fft(Parameters &parameters, uint64_t size, uint64_t batch) {
         uint64_t nr_polarizations = parameters.get_nr_polarizations();
-        return 1ULL * batch * nr_polarizations * 5 * size * size * log(size * size) / log(2);
+        // Pseudo number of flops:
+        // return 1ULL * 5 * batch * nr_polarizations * size * size * log2(size * size);
+        // Estimated number of flops based on fftwf_flops, which seems to
+        // return the number of simd instructions, not scalar flops.
+        return 1ULL * 4 * batch * nr_polarizations * size * size * log2(size * size);
     }
 
     uint64_t bytes_fft(Parameters &parameters, uint64_t size, uint64_t batch) {
