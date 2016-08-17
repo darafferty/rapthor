@@ -110,7 +110,8 @@ namespace idg {
                         cl::CommandQueue &queue,
                         cl::Buffer &d_data,
                         clfftDirection direction,
-                        PerformanceCounter &counter);
+                        PerformanceCounter &counter,
+                        const char *name);
                     void shift(std::complex<float> *data);
                     void scale(std::complex<float> *data, std::complex<float> scale);
                     uint64_t flops(int size, int batch);

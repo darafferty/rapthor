@@ -197,12 +197,13 @@ namespace idg {
                 cl::CommandQueue &queue,
                 cl::Buffer &d_data,
                 clfftDirection direction,
-                PerformanceCounter &counter)
+                PerformanceCounter &counter,
+                const char *name)
             {
                 queue.enqueueMarkerWithWaitList(NULL, &start);
                 clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 queue.enqueueMarkerWithWaitList(NULL, &end);
-                counter.doOperation(start, end, "fft", flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+                counter.doOperation(start, end, name, flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
