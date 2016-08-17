@@ -55,6 +55,43 @@ namespace idg {
     using VisibilityGroups = std::vector<VisibilityGroup<T>>;
 
 
+    template<class UVW_Datatype, class Visibility_Datatype>
+    struct Measurement
+    {
+        Measurement(size_t rowid, size_t timeIndex,
+                    size_t antenna1, size_t antenna2,
+                    UVWCoordinate<UVW_Datatype> uvw,
+                    VisibilityGroup<Visibility_Datatype> visibilities)
+        : rowid(rowid),
+          timeIndex(timeIndex),
+          antenna1(antenna1),
+          antenna2(antenna2),
+          uvw(uvw),
+          visibilities(visibilities)
+        { }
+
+        size_t get_row_id() { return rowid; }
+        size_t get_time_index() { return timeIndex; }
+        size_t get_antenna1() { return antenna1; }
+        size_t get_antenna2() { return antenna2; }
+
+        UVW_Datatype* get_uvw_ptr() {
+            return &uvw.u;
+        }
+
+        Visibility_Datatype* get_visibilities_ptr() {
+            return (Visibility_Datatype*) visibilities.data();
+        }
+
+        size_t rowid;
+        size_t timeIndex;
+        size_t antenna1;
+        size_t antenna2;
+        UVWCoordinate<UVW_Datatype> uvw;
+        VisibilityGroup<Visibility_Datatype> visibilities;
+    };
+
+
     template<class T>
     class Grid2D {
     public:
@@ -278,6 +315,17 @@ namespace idg {
                 os << std::endl;
             }
         }
+        return os;
+    }
+
+
+    template<class UVW_Datatype, class Visibility_Datatype>
+    std::ostream& operator<<(std::ostream& os,
+                             const Measurement<UVW_Datatype,Visibility_Datatype>& c)
+    {
+        os << "{" << c.rowid << ", " << c.timeIndex << ", (" << c.antenna1
+           << "," << c.antenna2 << "), " << c.uvw << ", "
+           << c.visibilities << "}";
         return os;
     }
 
