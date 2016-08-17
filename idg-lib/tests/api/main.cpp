@@ -6,6 +6,7 @@
 
 using namespace std;
 
+#define NO_ROW_ID_INDENTIFIER 0
 
 // computes max|A[i]-B[i]| / max|B[i]|
 template <typename S, typename T>
@@ -183,6 +184,7 @@ int main(int argc, char *argv[])
                 auto antenna2 = baselines[bl*2 + 1];
 
                 degridder.request_visibilities(
+                    NO_ROW_ID_INDENTIFIER,
                     time_minor,  // or 'time'
                     antenna1,
                     antenna2,
