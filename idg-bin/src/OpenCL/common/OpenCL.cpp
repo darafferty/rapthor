@@ -35,6 +35,35 @@ namespace idg {
 				clfftTeardown();
             }
 
+            std::vector<int> OpenCL::compute_jobsize(Plan &plan, int nr_streams) {
+                // Compute the maximum number of subgrids for any baseline
+                int max_nr_subgrids = plan.get_max_nr_subgrids();
+
+                // Compute the amount of bytes needed for that job
+                auto bytes_required = 0;
+                bytes_required += sizeof_visibilities(1);
+                bytes_required += sizeof_uvw(1);
+                bytes_required += sizeof_subgrids(max_nr_subgrids);
+                bytes_required += sizeof_metadata(max_nr_subgrids);
+                bytes_required *= nr_streams;
+
+                // Adjust jobsize to amount of available device memory
+                int nr_devices = devices.size();
+                std::vector<int> jobsize(nr_devices);
+                for (int i = 0; i < nr_devices; i++) {
+                    DeviceInstance *di = devices[i];
+				    cl::Device &d = di->get_device();
+                    auto bytes_total = d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+                    jobsize[i] = (bytes_total * 0.8) /  bytes_required;
+                    #if defined(DEBUG)
+                    printf("Bytes required: %lu\n", bytes_required);
+                    printf("Bytes total:    %lu\n", bytes_total);
+                    printf("Jobsize: %d\n", jobsize[i]);
+                    #endif
+                }
+
+                return jobsize;
+            }
 
             uint64_t OpenCL::sizeof_subgrids(int nr_subgrids) {
                 auto nr_polarizations = mParams.get_nr_polarizations();
