@@ -275,7 +275,7 @@ namespace idg {
 
 							// Launch FFT
                             #if ENABLE_FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[4]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[4], "sub-fft");
                             #endif
 
                             // Launch adder kernel
@@ -546,7 +546,7 @@ namespace idg {
 
                             // Launch FFT
                             #if ENABLE_FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[3]);
+                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_FORWARD, counters[3], "sub-fft");
                             #endif
 
                             // Launch degridder kernel
@@ -656,7 +656,6 @@ namespace idg {
 
                 // Events
                 vector<cl::Event> input(2);
-                vector<cl::Event> fft(2);
                 vector<cl::Event> output(2);
 
                 // Performance counter
@@ -687,12 +686,9 @@ namespace idg {
                 #endif
 
 				// Launch FFT
-                queue.enqueueMarkerWithWaitList(NULL, &fft[0]);
                 #if ENABLE_FFT
-                kernel_fft->launchAsync(queue, d_grid, sign);
+                kernel_fft->launchAsync(queue, d_grid, sign, counter, "  grid-fft");
                 #endif
-                queue.enqueueMarkerWithWaitList(NULL, &fft[1]);
-                fft[1].wait();
 
                 // Copy grid to host
                 queue.enqueueMarkerWithWaitList(NULL, &output[0]);
@@ -714,20 +710,15 @@ namespace idg {
                 time_scale += omp_get_wtime();
 
                 #if defined(REPORT_TOTAL)
-                auxiliary::report("   input",
+                auxiliary::report("    input",
                                   PerformanceCounter::get_runtime((cl_event) input[0](), (cl_event) input[1]()),
                                   0, sizeof_grid(), 0);
-                auxiliary::report("     fft",
-                                  PerformanceCounter::get_runtime((cl_event) fft[0](), (cl_event) fft[1]()),
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1),
-                                  0);
-                auxiliary::report("  output",
+                auxiliary::report("   output",
                                   PerformanceCounter::get_runtime((cl_event) output[0](), (cl_event) output[1]()),
                                   0, sizeof_grid(), 0);
-                auxiliary::report("fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    auxiliary::report(" scaling", time_scale, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("grid-scale", time_scale, 0, sizeof_grid() * 2, 0);
                 }
                 clog << endl;
                 #endif
