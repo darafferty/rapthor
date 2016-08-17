@@ -13,7 +13,9 @@ namespace idg {
 
     DegridderPlan::DegridderPlan(Type architecture,
                                  size_t bufferTimesteps)
-        : Scheme(architecture, bufferTimesteps)
+        : Scheme(architecture, bufferTimesteps),
+          m_buffer_full(false),
+          m_data_read(true)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -29,38 +31,118 @@ namespace idg {
     }
 
 
-    void DegridderPlan::request_visibilities(
+    // void DegridderPlan::request_visibilities(
+    //     size_t timeIndex,
+    //     size_t antenna1,
+    //     size_t antenna2,
+    //     const double* uvwInMeters)
+    // {
+    //     // exclude auto-correlations
+    //     if (antenna1 == antenna2) return;
+
+    //     int    local_time = timeIndex - m_timeStartThisBatch;
+    //     size_t local_bl   = baseline_index(antenna1, antenna2);
+
+    //     // In this API it is the responsibility of the user to read the buffer
+    //     // before requesting visibilities outside of the current time window.
+    //     // If time index outside of the window is requested we reset the buffers
+    //     // and assume a new time window is processed from now on.
+    //     if (local_time < 0) {
+    //         m_timeStartThisBatch = 0;
+    //         m_timeStartNextBatch = m_bufferTimesteps;
+    //         local_time = timeIndex;
+    //     }
+
+    //     if (local_time >= m_bufferTimesteps) {
+    //         while (local_time >= m_bufferTimesteps) {
+    //             m_timeStartThisBatch += m_bufferTimesteps;
+    //             local_time = timeIndex - m_timeStartThisBatch;
+    //         }
+    //         m_timeStartNextBatch = m_timeStartThisBatch + m_bufferTimesteps;
+    //     }
+
+    //     // Keep track of all time indices pushed into the buffer
+    //     m_timeindices.insert(timeIndex);
+
+    //     // Copy data into buffers
+    //     m_bufferUVW(local_bl, local_time) = {
+    //         static_cast<float>(uvwInMeters[0]),
+    //         static_cast<float>(uvwInMeters[1]),
+    //         static_cast<float>(uvwInMeters[2])
+    //     };
+
+    //     if (antenna1 > antenna2) swap(antenna1, antenna2);
+    //     m_bufferStationPairs[local_bl] = {
+    //         int(antenna1),
+    //         int(antenna2)
+    //     };
+    // }
+
+
+    bool DegridderPlan::request_visibilities(
+        size_t rowId,
         size_t timeIndex,
         size_t antenna1,
         size_t antenna2,
         const double* uvwInMeters)
     {
+        // Do not do anything if the buffer is already full
+        if (m_buffer_full == true) {
+            #if defined(DEBUG)
+            cout << "BUFFER ALREADY FULL" << endl;
+            #endif
+            return m_buffer_full;
+        }
+
         // exclude auto-correlations
-        if (antenna1 == antenna2) return;
+        if (antenna1 == antenna2) {
+            #if defined(DEBUG)
+            cout << "IGNORE AUTO CORRELATION" << endl;
+            #endif
+            return m_buffer_full;
+        }
 
         int    local_time = timeIndex - m_timeStartThisBatch;
         size_t local_bl   = baseline_index(antenna1, antenna2);
+
+        #if defined(DEBUG)
+        cout << "REQUEST: row " << rowId << ", local time " << local_time << endl;
+        #endif
 
         // In this API it is the responsibility of the user to read the buffer
         // before requesting visibilities outside of the current time window.
         // If time index outside of the window is requested we reset the buffers
         // and assume a new time window is processed from now on.
         if (local_time < 0) {
+            m_buffer_full = false;
             m_timeStartThisBatch = 0;
             m_timeStartNextBatch = m_bufferTimesteps;
             local_time = timeIndex;
         }
 
         if (local_time >= m_bufferTimesteps) {
-            while (local_time >= m_bufferTimesteps) {
+
+            m_buffer_full = true;
+
+            while (local_time > m_bufferTimesteps) {
                 m_timeStartThisBatch += m_bufferTimesteps;
                 local_time = timeIndex - m_timeStartThisBatch;
             }
             m_timeStartNextBatch = m_timeStartThisBatch + m_bufferTimesteps;
+
+            return m_buffer_full;
         }
 
         // Keep track of all time indices pushed into the buffer
         m_timeindices.insert(timeIndex);
+
+        #if defined(DEBUG)
+        cout << "INSERT: {" << rowId << ", (" << local_bl << ", "
+             << local_time << ") }" << endl;
+        #endif
+
+        // Keep mapping rowId -> (local_bl, local_time) for reading
+        m_row_ids_to_indices.emplace(make_pair(rowId,make_pair(local_bl, local_time)));
 
         // Copy data into buffers
         m_bufferUVW(local_bl, local_time) = {
@@ -74,8 +156,31 @@ namespace idg {
             int(antenna1),
             int(antenna2)
         };
+
+        return m_buffer_full;
     }
 
+
+    void DegridderPlan::read_visibilities(
+     size_t rowId,
+     complex<float>* visibilities)
+    {
+        auto indices    = m_row_ids_to_indices.at(rowId);
+        auto local_bl   = indices.first;
+        auto local_time = indices.second;
+
+        #if defined(DEBUG)
+        cout << "READING: row " << rowId
+             << " at location (" <<  local_bl << ", " <<  local_time << ")"
+             << endl;
+        #endif
+
+        // copy visibilities
+        complex<float>* start_ptr = (complex<float>*)
+            &m_bufferVisibilities(local_bl, local_time, 0);
+        copy(start_ptr, start_ptr + get_frequencies_size() * m_nrPolarizations,
+             visibilities);
+    }
 
     void DegridderPlan::read_visibilities(
         size_t timeIndex,
@@ -107,8 +212,12 @@ namespace idg {
     // Must be called whenever the buffer is full or no more data added
     void DegridderPlan::flush()
     {
+        if (m_buffer_full == true && m_data_read == false) return;
+
         // Return if no input in buffer
-        if (m_timeindices.size() == 0) return;
+        if (m_timeindices.size() == 0) return
+
+        m_row_ids_to_read.clear();
 
         // TODO: remove below //////////////////////////
         // HACK: copy double precison grid to single precison
@@ -138,11 +247,17 @@ namespace idg {
             m_aterm_offsets,
             (float*) m_spheroidal.data());
 
+        m_row_ids_to_read.clear();
+        for (auto& x : m_row_ids_to_indices) {
+            m_row_ids_to_read.push_back(x.first);
+        }
+
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
         set_uvw_to_infinity();
+        m_data_read = false;
     }
 
 
@@ -190,6 +305,25 @@ namespace idg {
         // }
     }
 
+
+    vector<size_t> DegridderPlan::compute()
+    {
+        flush();
+        m_buffer_full =  false;
+        return m_row_ids_to_read;
+    }
+
+
+    void DegridderPlan::finished_reading()
+    {
+        #if defined(DEBUG)
+        cout << "FINISHED READING: buffer full " << m_buffer_full << endl;
+        #endif
+
+        m_row_ids_to_indices.clear();
+        m_data_read = true;
+    }
+
 } // namespace idg
 
 
@@ -216,18 +350,36 @@ extern "C" {
        delete p;
     }
 
-    void DegridderPlan_request_visibilities(
+    // void DegridderPlan_request_visibilities(
+    //     idg::DegridderPlan* p,
+    //     int timeIndex,
+    //     int antenna1,
+    //     int antenna2,
+    //     double* uvwInMeters)
+    // {
+    //     p->request_visibilities(
+    //         timeIndex,
+    //         antenna1,
+    //         antenna2,
+    //         uvwInMeters);
+    // }
+
+    int DegridderPlan_request_visibilities_with_rowid(
         idg::DegridderPlan* p,
+        int rowId,
         int timeIndex,
         int antenna1,
         int antenna2,
         double* uvwInMeters)
     {
-        p->request_visibilities(
+        bool data_avail = p->request_visibilities(
+            rowId,
             timeIndex,
             antenna1,
             antenna2,
             uvwInMeters);
+        if (data_avail) return 1;
+        else return 0;
     }
 
     void DegridderPlan_read_visibilities(

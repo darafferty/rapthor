@@ -32,11 +32,17 @@ namespace idg {
 
         virtual ~DegridderPlan();
 
-        void request_visibilities(
+        bool request_visibilities(
+            size_t rowId,                      // unique indentifier
             size_t timeIndex,                  // 0 <= timeIndex < NR_TIMESTEPS
             size_t antenna1,                   // 0 <= antenna1 < nrStations
             size_t antenna2,                   // antenna1 < antenna2 < nrStations
             const double* uvwInMeters);        // (u, v, w)
+
+        std::vector<size_t> compute();
+        void finished_reading();
+
+        void read_visibilities(size_t rowId, std::complex<float>* visibilities);
 
         void read_visibilities(
             size_t timeIndex,                   // 0 <= timeIndex < NR_TIMESTEPS
@@ -54,6 +60,12 @@ namespace idg {
             size_t height              = 0,
             size_t width               = 0,
             std::complex<double> *grid = nullptr) override;
+
+    private:
+        bool m_buffer_full;
+        bool m_data_read;
+        std::vector<size_t> m_row_ids_to_read;
+        std::map<size_t,std::pair<size_t,int>> m_row_ids_to_indices;
     };
 
 } // namespace idg
