@@ -86,7 +86,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = devices.size();
-                const int nr_streams = 3;
+                const int nr_streams = 2;
 
                 // Constants
                 auto nr_stations      = mParams.get_nr_stations();
@@ -98,14 +98,13 @@ namespace idg {
                 auto gridsize         = mParams.get_grid_size();
                 auto subgridsize      = mParams.get_subgrid_size();
                 auto imagesize        = mParams.get_imagesize();
-                auto jobsize          = mParams.get_job_size_degridder();
-                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_streams);
 
                 // Copy input data to host memory
                 #if !REDUCE_HOST_MEMORY
@@ -140,6 +139,10 @@ namespace idg {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id = global_id % nr_streams;
+                    int jobsize = jobsize_[device_id];
+
+                    // Limit jobsize
+                    jobsize = min(jobsize, nr_baselines); // Jobs can't be larger than number of baselines
 
                     // Load device
                     DeviceInstance *device    = devices[device_id];
@@ -218,10 +221,11 @@ namespace idg {
                         startStates[device_id] = power_sensor->read();
                     }
 
-                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     time_gridding_start = omp_get_wtime();
+
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -252,7 +256,7 @@ namespace idg {
                         #endif
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
-                        #pragma omp critical (GPU)
+                        #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
@@ -288,16 +292,16 @@ namespace idg {
                     // Wait for all jobs to finish
                     executequeue.finish();
 
-                    // End gridding timing
-                    #pragma atomic
-                    {
-                        total_runtime_gridding = omp_get_wtime() - time_gridding_start;
-                    }
-
                     // End power measurement
                     if (local_id == 0) {
                         stopStates[device_id] = power_sensor->read();
                     }
+                } // end omp parallel
+
+                // End gridding timing
+                #pragma atomic
+                {
+                    total_runtime_gridding = (omp_get_wtime() - time_gridding_start) / nr_repetitions;
                 }
 
                 // Add new grids to existing grid
@@ -370,14 +374,13 @@ namespace idg {
                 auto gridsize         = mParams.get_grid_size();
                 auto subgridsize      = mParams.get_subgrid_size();
                 auto imagesize        = mParams.get_imagesize();
-                auto jobsize          = mParams.get_job_size_degridder();
-                jobsize = nr_baselines < jobsize ? nr_baselines : jobsize;
 
                 // Initialize metadata
                 auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_streams);
 
                 // Host memory
                 cl::Buffer &h_grid = *(h_grid_[0]);
@@ -413,6 +416,11 @@ namespace idg {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id = global_id % nr_streams;
+                    int jobsize = jobsize_[device_id];
+
+                    // Limit jobsize
+                    jobsize = min(jobsize, nr_baselines); // Jobs can't be larger than number of baselines
+                    jobsize = min(jobsize, 256); // TODO: larger values cause performance degradation
 
                     // Load device
                     DeviceInstance *device    = devices[device_id];
@@ -470,6 +478,8 @@ namespace idg {
                     // Warmup
                     #if ENABLE_WARMUP
                     htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
+                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(0);
+                    htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(max_nr_subgrids), metadata_ptr);
                     htodqueue.finish();
                     #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
@@ -486,10 +496,11 @@ namespace idg {
                         startStates[device_id] = power_sensor->read();
                     }
 
-                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     time_degridding_start = omp_get_wtime();
+
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -522,13 +533,13 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueBarrierWithWaitList(&inputFree, NULL);
+                            htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch splitter kernel
-                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
+                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             kernel_splitter->launchAsync(
                                 executequeue, current_nr_subgrids, gridsize,
                                 d_metadata, d_subgrids, d_grid, counters[0]);
@@ -539,7 +550,7 @@ namespace idg {
                             #endif
 
                             // Launch degridder kernel
-                            executequeue.enqueueBarrierWithWaitList(&outputFree, NULL);
+                            executequeue.enqueueMarkerWithWaitList(&outputFree, NULL);
                             kernel_degridder->launchAsync(
                                 executequeue, current_nr_timesteps, current_nr_subgrids,
                                 gridsize, imagesize, w_offset, nr_channels, nr_stations,
@@ -548,7 +559,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &inputFree[0]);
 
                             // Copy visibilities to host
-                            dtohqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
+                            dtohqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputFree[0]);
                         }
 
@@ -561,19 +572,19 @@ namespace idg {
                     } // end for bl
                     } // end for repetitions
 
+                    // Wait for all jobs to finish
+                    dtohqueue.finish();
+
                     // End power measurement
                     if (local_id == 0) {
                         stopStates[device_id] = power_sensor->read();
                     }
-
-                    // Wait for all jobs to finish
-                    dtohqueue.finish();
                 } // end omp parallel
 
                 // End degridding timing
                 #pragma atomic
                 {
-                    total_runtime_degridding = omp_get_wtime() - time_degridding_start;
+                    total_runtime_degridding = (omp_get_wtime() - time_degridding_start) / nr_repetitions;
                 }
 
                 // Free device memory
