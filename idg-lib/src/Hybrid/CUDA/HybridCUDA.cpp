@@ -87,13 +87,11 @@ namespace idg {
                 std::vector<int> jobsize_ = cuda.compute_jobsize(plan, nr_streams);
                 int jobsize = jobsize_[0];
 
-				// Load context
-				cu::Context &context = device->get_context();
-
                 // Initialize
-                cu::Stream executestream;
-                cu::Stream htodstream;
-                cu::Stream dtohstream;
+                cu::Context &context      = device->get_context();
+                cu::Stream &executestream = device->get_execute_stream();
+                cu::Stream &htodstream    = device->get_htod_stream();
+                cu::Stream &dtohstream    = device->get_dtoh_stream();
                 omp_set_nested(true);
 
                 // Shared host memory
@@ -320,13 +318,11 @@ namespace idg {
                 std::vector<int> jobsize_ = cuda.compute_jobsize(plan, nr_streams);
                 int jobsize = jobsize_[0];
 
-                // Load context
-				cu::Context &context = device->get_context();
-
                 // Initialize
-                cu::Stream executestream;
-                cu::Stream htodstream;
-                cu::Stream dtohstream;
+                cu::Context &context      = device->get_context();
+                cu::Stream &executestream = device->get_execute_stream();
+                cu::Stream &htodstream    = device->get_htod_stream();
+                cu::Stream &dtohstream    = device->get_dtoh_stream();
                 omp_set_nested(true);
 
                 // Shared host memory
