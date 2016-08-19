@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     idg::DegridderPlan degridder(idg::Type::CPU_OPTIMIZED, bufferSize);
     degridder.set_stations(NR_STATIONS);
     degridder.set_frequencies(NR_CHANNELS, frequencies.data());
-    degridder.set_grid(NR_POLARIZATIONS, GRIDSIZE, GRIDSIZE, image.data());
+    degridder.set_image(NR_POLARIZATIONS, GRIDSIZE, GRIDSIZE, image.data());
     degridder.set_spheroidal(SUBGRIDSIZE, spheroidal_double.data());
     degridder.set_image_size(IMAGESIZE);
     degridder.set_w_kernel(kernel_size);
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     // (1) Predict visibilities: tranform + degrid + write visibilities
 
     // Since we did initialize with the image, we need to transfor the grid
-    degridder.transform_grid();
+    degridder.image_to_fourier();
 
     for (auto row = 0; row < nr_rows; ++row) {
 
@@ -249,8 +249,7 @@ int main(int argc, char *argv[])
 
     }
 
-    // gridder.finished_gridding();
-    gridder.flush();  // gridder.finish()? gridder.close()?
+    gridder.finished();
 
     idg::NamedWindow fig1("grid");
     fig1.display_matrix(GRIDSIZE, GRIDSIZE, grid.data(), "log", "jet");
