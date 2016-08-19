@@ -1,4 +1,4 @@
-project(test-wsclean-api.x)
+project(test-api-wsclean.x)
 
 # Set external header files
 include_directories(

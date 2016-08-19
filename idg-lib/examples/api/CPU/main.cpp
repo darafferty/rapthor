@@ -6,8 +6,6 @@
 
 using namespace std;
 
-#define NO_ROW_ID_INDENTIFIER 0
-
 int main(int argc, char *argv[])
 {
     // Set constants explicitly in the parameters parameter
@@ -130,7 +128,6 @@ int main(int argc, char *argv[])
                 auto antenna2 = baselines[bl*2 + 1];
 
                 degridder.request_visibilities(
-                    NO_ROW_ID_INDENTIFIER,
                     time,
                     antenna1,
                     antenna2,

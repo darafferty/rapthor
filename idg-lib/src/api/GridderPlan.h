@@ -1,6 +1,31 @@
-/*
+/**
  * GridderPlan.h
- * Access to IDG's high level gridder routines
+ *
+ * \class GridderPlan
+ *
+ * \brief Access to IDG's high level gridder routines
+ *
+ * The GridderPlan manages a buffer of a fixed number of time steps
+ * One fills the buffer, which fill occasionally be flushed to grid
+ * the visibilities onto the grid.
+ *
+ * Usage (pseudocode):
+ *
+ * idg::GridderPlan plan(...);
+ * plan.set_grid(grid);
+ * plan.set_other_properties(...);
+ * plan.bake();
+ *
+ * for (auto row = 0; row < nr_rows; ++row) {
+ *    gridder.grid_visibilities(...);
+ * }
+ *
+ * // Make sure no visibilites are still in the buffer
+ * gridder.finished();
+ *
+ * // Transform the gridded visibilities to an image
+ * gridder.transform_grid();
+ *
  */
 
 #ifndef IDG_GRIDDERPLAN_H_
@@ -8,7 +33,6 @@
 
 #include <complex>
 #include <vector>
-#include <set>
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
@@ -30,19 +54,37 @@ namespace idg {
 
         virtual ~GridderPlan();
 
-        // Adds the visibilities to the buffer and eventually to the grid
+        /** \brief Adds the visibilities to the buffer
+         *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
+         *                        or 0 <= timeIndex < bufferTimesteps
+         *  \param antenna1 [in]  0 <= antenna1 < nrStations
+         *  \param antenna2 [in]  antenna1 < antenna2 < nrStations
+         *  \param uvwInMeters [in] double[3]: (u, v, w)
+         *  \param visibilities [in] std::complex<float>[NR_CHANNELS][NR_POLARIZATIONS]
+         */
         void grid_visibilities(
-            size_t timeIndex,                         // 0 <= timeIndex < NR_TIMESTEPS
-            size_t antenna1,                          // 0 <= antenna1 < nrStations
-            size_t antenna2,                          // antenna1 < antenna2 < nrStations
-            const double* uvwInMeters,                // (u, v, w)
-            const std::complex<float>* visibilities); // size CH x PL
+            size_t timeIndex,
+            size_t antenna1,
+            size_t antenna2,
+            const double* uvwInMeters,
+            const std::complex<float>* visibilities);
 
-        // To flush the buffer explicitly
+        /** \brief Signal that not more visibilies are gridded */
+        void finished() { flush(); }
+
+        /** \brief Explicitly flush the buffer */
         virtual void flush() override;
 
-        // To transform the provided image before prediction
-        // No arguments => perform on grid set by set_grid()
+        /** \brief Transform the grid; normal use without arguments
+         * No arguments => perform on grid set by set_grid()
+         * Paremeters are need as transform is done on an external grid
+         * i.e. on a copy
+         * param crop_tolerance [in] ...
+         * param nr_polarizations [in] number of correlations (normally 4)
+         * param height [in] width in pixel
+         * param width [in] width in pixel
+         * param grid [in] complex<double>[nr_polarizations][height][width]
+         */
         virtual void transform_grid(
             double crop_tolerance      = 5e-3,
             size_t nr_polarizations    = 0,
