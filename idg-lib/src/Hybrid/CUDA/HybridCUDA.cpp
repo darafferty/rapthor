@@ -57,6 +57,10 @@ namespace idg {
                 DeviceInstance *device = devices[0];
                 PowerSensor *gpu_power_sensor = device->get_powersensor();
 
+                // Configuration
+                const int nr_devices = devices.size();
+                const int nr_streams = 2;
+
                 // Get CPU power sensor
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
@@ -67,7 +71,6 @@ namespace idg {
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_gridder();
                 auto gridsize = mParams.get_grid_size();
                 auto imagesize = mParams.get_imagesize();
 
@@ -81,6 +84,8 @@ namespace idg {
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = cuda.compute_jobsize(plan, nr_streams);
+                int jobsize = jobsize_[0];
 
 				// Load context
 				cu::Context &context = device->get_context();
@@ -89,7 +94,6 @@ namespace idg {
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
-                const int nr_streams = 3;
                 omp_set_nested(true);
 
                 // Shared host memory
@@ -287,6 +291,10 @@ namespace idg {
                 DeviceInstance *device = devices[0];
                 PowerSensor *gpu_power_sensor = device->get_powersensor();
 
+                // Configuration
+                const int nr_devices = devices.size();
+                const int nr_streams = 3;
+
                 // Get CPU power sensor
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
@@ -297,7 +305,6 @@ namespace idg {
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_degridder();
                 auto gridsize = mParams.get_grid_size();
                 auto imagesize = mParams.get_imagesize();
 
@@ -310,6 +317,8 @@ namespace idg {
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = cuda.compute_jobsize(plan, nr_streams);
+                int jobsize = jobsize_[0];
 
                 // Load context
 				cu::Context &context = device->get_context();
@@ -318,7 +327,6 @@ namespace idg {
                 cu::Stream executestream;
                 cu::Stream htodstream;
                 cu::Stream dtohstream;
-                const int nr_streams = 3;
                 omp_set_nested(true);
 
                 // Shared host memory
