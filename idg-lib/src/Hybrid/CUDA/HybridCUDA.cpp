@@ -25,6 +25,9 @@ namespace idg {
 
                 mParams = params;
                 cuProfilerStart();
+
+                // Setup benchmark
+                init_benchmark();
             }
 
             /// Destructor
@@ -57,6 +60,10 @@ namespace idg {
                 DeviceInstance *device = devices[0];
                 PowerSensor *gpu_power_sensor = device->get_powersensor();
 
+                // Configuration
+                const int nr_devices = devices.size();
+                const int nr_streams = 3;
+
                 // Get CPU power sensor
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
@@ -67,7 +74,6 @@ namespace idg {
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_gridder();
                 auto gridsize = mParams.get_grid_size();
                 auto imagesize = mParams.get_imagesize();
 
@@ -81,15 +87,14 @@ namespace idg {
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_subgrids();
                 const Metadata *metadata = plan.get_metadata_ptr();
-
-				// Load context
-				cu::Context &context = device->get_context();
+                std::vector<int> jobsize_ = cuda.compute_jobsize(plan, nr_streams);
+                int jobsize = jobsize_[0];
 
                 // Initialize
-                cu::Stream executestream;
-                cu::Stream htodstream;
-                cu::Stream dtohstream;
-                const int nr_streams = 3;
+                cu::Context &context      = device->get_context();
+                cu::Stream &executestream = device->get_execute_stream();
+                cu::Stream &htodstream    = device->get_htod_stream();
+                cu::Stream &dtohstream    = device->get_dtoh_stream();
                 omp_set_nested(true);
 
                 // Shared host memory
@@ -142,6 +147,7 @@ namespace idg {
                     #pragma omp single
                     total_runtime_gridding = -omp_get_wtime();
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -221,7 +227,7 @@ namespace idg {
                                                      kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                                      gpu_power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                        auxiliary::report("    fft", runtime_fft,
+                        auxiliary::report("sub-fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                      gpu_power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
@@ -240,11 +246,12 @@ namespace idg {
                         total_runtime_scaler  += runtime_scaler;
                         total_runtime_adder   += runtime_adder;
                         #endif
-                    } // end for s
-                }
+                    } // end for bl
+                } // end for repetitions
+                } // end omp parallel
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_gridding += omp_get_wtime();
+                total_runtime_gridding = (total_runtime_gridding + omp_get_wtime()) / nr_repetitions;
                 unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
@@ -257,7 +264,7 @@ namespace idg {
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, 0);
@@ -287,6 +294,10 @@ namespace idg {
                 DeviceInstance *device = devices[0];
                 PowerSensor *gpu_power_sensor = device->get_powersensor();
 
+                // Configuration
+                const int nr_devices = devices.size();
+                const int nr_streams = 3;
+
                 // Get CPU power sensor
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
 
@@ -297,7 +308,6 @@ namespace idg {
                 auto nr_channels = mParams.get_nr_channels();
                 auto nr_polarizations = mParams.get_nr_polarizations();
                 auto subgridsize = mParams.get_subgrid_size();
-                auto jobsize = mParams.get_job_size_degridder();
                 auto gridsize = mParams.get_grid_size();
                 auto imagesize = mParams.get_imagesize();
 
@@ -310,15 +320,14 @@ namespace idg {
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
-
-                // Load context
-				cu::Context &context = device->get_context();
+                std::vector<int> jobsize_ = cuda.compute_jobsize(plan, nr_streams);
+                int jobsize = jobsize_[0];
 
                 // Initialize
-                cu::Stream executestream;
-                cu::Stream htodstream;
-                cu::Stream dtohstream;
-                const int nr_streams = 3;
+                cu::Context &context      = device->get_context();
+                cu::Stream &executestream = device->get_execute_stream();
+                cu::Stream &htodstream    = device->get_htod_stream();
+                cu::Stream &dtohstream    = device->get_dtoh_stream();
                 omp_set_nested(true);
 
                 // Shared host memory
@@ -370,6 +379,7 @@ namespace idg {
                     #pragma omp single
                     total_runtime_degridding = -omp_get_wtime();
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -442,7 +452,7 @@ namespace idg {
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
                                                        cpu_power_sensor->Watt(powerStates[0], powerStates[1]));
-                        auxiliary::report("      fft", runtime_fft,
+                        auxiliary::report("  sub-fft", runtime_fft,
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                        gpu_power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
@@ -456,11 +466,12 @@ namespace idg {
                         total_runtime_fft       += runtime_fft;
                         total_runtime_splitter  += runtime_splitter;
                         #endif
-                    } // end for s
-                }
+                    } // end for bl
+                } // end for repetitions
+                } // end omp parallel
 
                 // End runtime measurement
-                total_runtime_degridding += omp_get_wtime();
+                total_runtime_degridding = (total_runtime_degridding + omp_get_wtime()) / nr_repetitions;
 
                 // Copy visibilities from host memory
                 memcpy(visibilities, h_visibilities, cuda.sizeof_visibilities(nr_baselines));
@@ -477,7 +488,7 @@ namespace idg {
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, 0);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
@@ -493,6 +504,16 @@ namespace idg {
                 cpu.transform(direction, grid);
             }
 
+            void HybridCUDA::init_benchmark() {
+                char *char_nr_repetitions = getenv("NR_REPETITIONS");
+                if (char_nr_repetitions) {
+                    nr_repetitions = atoi(char_nr_repetitions);
+                    enable_benchmark = nr_repetitions > 1;
+                }
+                if (enable_benchmark) {
+                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+                }
+            }
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
