@@ -221,7 +221,7 @@ namespace idg {
                                                      kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                                      gpu_power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                        auxiliary::report("    fft", runtime_fft,
+                        auxiliary::report("sub-fft", runtime_fft,
                                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                      gpu_power_sensor->Watt(powerRecords[1].state, powerRecords[2].state));
@@ -257,7 +257,7 @@ namespace idg {
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, 0);
@@ -442,7 +442,7 @@ namespace idg {
                                                        kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
                                                        cpu_power_sensor->Watt(powerStates[0], powerStates[1]));
-                        auxiliary::report("      fft", runtime_fft,
+                        auxiliary::report("  sub-fft", runtime_fft,
                                                        kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
                                                        gpu_power_sensor->Watt(powerRecords[0].state, powerRecords[1].state));
@@ -477,7 +477,7 @@ namespace idg {
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-                auxiliary::report("|fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, 0);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
                 clog << endl;
