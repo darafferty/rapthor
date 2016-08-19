@@ -1,7 +1,5 @@
 project(cpu-api-wsclean.x)
 
-find_package(OpenCV REQUIRED)
-
 # Set external header files
 include_directories(
   ${OpenCV_INCLUDE_DIR}
