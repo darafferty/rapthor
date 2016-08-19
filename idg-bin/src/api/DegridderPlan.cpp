@@ -31,54 +31,6 @@ namespace idg {
     }
 
 
-    // void DegridderPlan::request_visibilities(
-    //     size_t timeIndex,
-    //     size_t antenna1,
-    //     size_t antenna2,
-    //     const double* uvwInMeters)
-    // {
-    //     // exclude auto-correlations
-    //     if (antenna1 == antenna2) return;
-
-    //     int    local_time = timeIndex - m_timeStartThisBatch;
-    //     size_t local_bl   = baseline_index(antenna1, antenna2);
-
-    //     // In this API it is the responsibility of the user to read the buffer
-    //     // before requesting visibilities outside of the current time window.
-    //     // If time index outside of the window is requested we reset the buffers
-    //     // and assume a new time window is processed from now on.
-    //     if (local_time < 0) {
-    //         m_timeStartThisBatch = 0;
-    //         m_timeStartNextBatch = m_bufferTimesteps;
-    //         local_time = timeIndex;
-    //     }
-
-    //     if (local_time >= m_bufferTimesteps) {
-    //         while (local_time >= m_bufferTimesteps) {
-    //             m_timeStartThisBatch += m_bufferTimesteps;
-    //             local_time = timeIndex - m_timeStartThisBatch;
-    //         }
-    //         m_timeStartNextBatch = m_timeStartThisBatch + m_bufferTimesteps;
-    //     }
-
-    //     // Keep track of all time indices pushed into the buffer
-    //     m_timeindices.insert(timeIndex);
-
-    //     // Copy data into buffers
-    //     m_bufferUVW(local_bl, local_time) = {
-    //         static_cast<float>(uvwInMeters[0]),
-    //         static_cast<float>(uvwInMeters[1]),
-    //         static_cast<float>(uvwInMeters[2])
-    //     };
-
-    //     if (antenna1 > antenna2) swap(antenna1, antenna2);
-    //     m_bufferStationPairs[local_bl] = {
-    //         int(antenna1),
-    //         int(antenna2)
-    //     };
-    // }
-
-
     bool DegridderPlan::request_visibilities(
         size_t rowId,
         size_t timeIndex,
@@ -87,32 +39,18 @@ namespace idg {
         const double* uvwInMeters)
     {
         // Do not do anything if the buffer is already full
-        if (m_buffer_full == true) {
-            #if defined(DEBUG)
-            cout << "BUFFER ALREADY FULL" << endl;
-            #endif
-            return m_buffer_full;
-        }
+        if (m_buffer_full == true) return m_buffer_full;
 
         // exclude auto-correlations
-        if (antenna1 == antenna2) {
-            #if defined(DEBUG)
-            cout << "IGNORE AUTO CORRELATION" << endl;
-            #endif
-            return m_buffer_full;
-        }
+        if (antenna1 == antenna2) return m_buffer_full;
 
         int    local_time = timeIndex - m_timeStartThisBatch;
         size_t local_bl   = baseline_index(antenna1, antenna2);
 
-        #if defined(DEBUG)
-        cout << "REQUEST: row " << rowId << ", local time " << local_time << endl;
-        #endif
+        // #if defined(DEBUG)
+        // cout << "REQUEST: row " << rowId << ", local time " << local_time << endl;
+        // #endif
 
-        // In this API it is the responsibility of the user to read the buffer
-        // before requesting visibilities outside of the current time window.
-        // If time index outside of the window is requested we reset the buffers
-        // and assume a new time window is processed from now on.
         if (local_time < 0) {
             m_buffer_full = false;
             m_timeStartThisBatch = 0;
@@ -136,10 +74,10 @@ namespace idg {
         // Keep track of all time indices pushed into the buffer
         m_timeindices.insert(timeIndex);
 
-        #if defined(DEBUG)
-        cout << "INSERT: {" << rowId << ", (" << local_bl << ", "
-             << local_time << ") }" << endl;
-        #endif
+        // #if defined(DEBUG)
+        // cout << "INSERT: {" << rowId << ", (" << local_bl << ", "
+        //      << local_time << ") }" << endl;
+        // #endif
 
         // Keep mapping rowId -> (local_bl, local_time) for reading
         m_row_ids_to_indices.emplace(make_pair(rowId,make_pair(local_bl, local_time)));
@@ -169,11 +107,11 @@ namespace idg {
         auto local_bl   = indices.first;
         auto local_time = indices.second;
 
-        #if defined(DEBUG)
-        cout << "READING: row " << rowId
-             << " at location (" <<  local_bl << ", " <<  local_time << ")"
-             << endl;
-        #endif
+        // #if defined(DEBUG)
+        // cout << "READING: row " << rowId
+        //      << " at location (" <<  local_bl << ", " <<  local_time << ")"
+        //      << endl;
+        // #endif
 
         // copy visibilities
         complex<float>* start_ptr = (complex<float>*)

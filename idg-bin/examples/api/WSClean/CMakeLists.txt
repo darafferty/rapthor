@@ -1,4 +1,4 @@
-project(cpu-api-ms.x)
+project(cpu-api-wsclean.x)
 
 find_package(OpenCV REQUIRED)
 
