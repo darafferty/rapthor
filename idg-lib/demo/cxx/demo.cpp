@@ -3,14 +3,17 @@
 #include <memory>
 #include <vector>
 
-#include "casacore/ms/MeasurementSets.h"
-#include "casacore/casa/Arrays/ArrayMath.h"
+#include "casacore/tables/Tables/TableIter.h"
+#include "casacore/tables/Tables/ScalarColumn.h"
+#include "casacore/tables/Tables/ArrayColumn.h"
+#include <casacore/casa/Arrays/Cube.h>
+
 #include "idg.h"
 #include "visualize.h"
 
 using namespace std;
 
-
+// TODO: make 'percentage' parameter work again
 int run_demo(string ms_name,
              int percentage)
 {
@@ -22,129 +25,127 @@ int run_demo(string ms_name,
     idg::NamedWindow fig("Gridded visibilities");
 
     // Open measurement set
-    casacore::MeasurementSet ms(ms_name);
-    casacore::ROMSColumns msCols(ms);
-    int nr_antennas  = msCols.antenna().nrow();
-    int nr_channels  = msCols.spectralWindow().numChan()(0);
-    auto frequencies = msCols.spectralWindow().chanFreq()(0);
-    // int nr_data_rows = msCols.data().nrow();
+    casacore::Table ms_table(ms_name);
 
-    // alternatively:
-    casacore::Table table(ms_name);
-    casacore::ROScalarColumn<casacore::Double> timeCol(table, "TIME");
-    casacore::ROScalarColumn<casacore::Int> antenna1Col(table, "ANTENNA1");
-    casacore::ROScalarColumn<casacore::Int> antenna2Col(table, "ANTENNA2");
-    casacore::ROArrayColumn<casacore::Double> uvwCol(table, "UVW");
-    casacore::ROArrayColumn<casacore::Complex> dataCol(table, "DATA");
-    casacore::ROArrayColumn<casacore::Bool> flagCol(table, "FLAG");
+    // Get iterator for column TIME
+    casacore::TableIterator iter(
+        ms_table,
+        casacore::Block<casacore::String>(1, "TIME"),
+        casacore::TableIterator::Ascending,
+        casacore::TableIterator::NoSort);
 
-    // Parameters
-    //casacore::ROScalarColumn<casacore::Double> freqCol(table, "WEIGHT_SPECTRUM");
-    //??? baselineCol(table, "BASELINE");
-    //cout << freqCol(0) << endl;
-    //exit(0);
+    // Read frequencies
+    casacore::Table channel_table(ms_name + "/SPECTRAL_WINDOW");
+    casacore::ArrayColumn<casacore::Double> channel_column(channel_table, "CHAN_FREQ");
+    casacore::Matrix<casacore::Double> channel_frequencies = channel_column.getColumn();
+    int nr_channels = channel_frequencies.nelements();
 
-    int nr_data_rows = table.nrow();
+    // Read antenna IDs
+    casacore::Table antenna_table(ms_name + "/ANTENNA");
+
+    casacore::ScalarColumn<casacore::Int> antenna1_column(iter.table(), "ANTENNA1");
+    casacore::ScalarColumn<casacore::Int> antenna2_column(iter.table(), "ANTENNA2");
+    casacore::Vector<casacore::Int> ant1 = antenna1_column.getColumn();
+    casacore::Vector<casacore::Int> ant2 = antenna2_column.getColumn();
+
+    // Get parameters from MS
+    int nr_baselines    = iter.table().nrow();
+    int nr_correlations = 4; // Number of correlations: xx, xy, yx, yy
+    int nr_antennas     = antenna_table.nrow();
 
     #if defined(DEBUG)
-    cout << "NR_DATA_ROWS = " << nr_data_rows << endl;
-    cout << "NR_ANTENNAS  = " << nr_antennas  << endl;
-    cout << "NR_CHANNELS  = " << nr_channels  << endl;
+    cout << "PARAMETERS READ FROM MS" << endl;
+    cout << "Number of baselines:   " << nr_baselines    << endl;
+    cout << "Number of correlation: " << nr_correlations << endl;
+    cout << "Number of channels:    " << nr_channels     << endl;
+    cout << "Number of antennas:    " << nr_antennas     << endl;
+    cout << endl;
     #endif
 
-    // Initialize proxy
+    // Set parameters fro proxy
     int buffer_timesteps = 256;
     int nr_timeslots     = 1;
-    int nr_polarizations = 4;
+    int nr_polarizations = nr_correlations;
     int grid_size        = 1024;
     float cell_size      = 0.05/grid_size;
     int subgrid_size     = 32;
     int kernel_size      = subgrid_size/2;
-    int nr_baselines     = ( (nr_antennas - 1) * nr_antennas ) / 2;
 
+    #if defined(DEBUG)
+    cout << "PARAMETERS FOR PROXY" << endl;
+    cout << "Buffer timesteps:      " << buffer_timesteps << endl;
+    cout << "Cell size:             " << cell_size        << endl;
+    cout << "Grid size:             " << grid_size        << endl;
+    #endif
+
+    // Allocate memory
     auto size_grid  = 1ULL * nr_polarizations * grid_size * grid_size;
     unique_ptr<complex<double>> grid(new complex<double>[size_grid]);
 
+    // Initialize proxy
     idg::GridderPlan gridder(idg::Type::CPU_OPTIMIZED, buffer_timesteps);
     gridder.set_stations(nr_antennas);
-    gridder.set_frequencies(nr_channels, frequencies.data());
+    gridder.set_frequencies(nr_channels, channel_frequencies.data());
     gridder.set_grid(nr_polarizations, grid_size, grid_size, grid.get());
     gridder.set_cell_size(cell_size, cell_size);
     gridder.set_w_kernel(kernel_size);
     gridder.internal_set_subgrid_size(subgrid_size);
     gridder.bake();
 
-    // loop over data rows and grid visibilities
-    int    timeIndex = -1;
-    double time_previous = 1;
-    auto visibilities_copy = new complex<float>[nr_channels * nr_polarizations];
-    auto flags_copy = new bool[nr_channels * nr_polarizations];
-    for (auto row = 0; row < nr_data_rows * (percentage/100.); row++) {
+    // Read data
+    casacore::Cube<casacore::Complex> data(nr_correlations, nr_channels, nr_baselines);
+    casacore::Matrix<casacore::Double> uvw(3, nr_baselines);
+    casacore::Cube<casacore::Bool> flag(nr_correlations, nr_channels, nr_baselines);
+    unsigned int time_index = 0;
 
-        auto time         = timeCol.get(row);
-        auto antenna1     = antenna1Col.get(row);
-        auto antenna2     = antenna2Col.get(row);
-        // auto visibilities = dataCol.get(row).data();
-        // auto uvw          = uvwCol.get(row).data();
+    while (!iter.pastEnd()) {
 
-        double uvw_copy[3];
-        int k = 0;
-        for (auto &x : uvwCol.get(row)) {
-            uvw_copy[k] = x;
-            k++;
-        }
+        casacore::ScalarColumn<double> time_column(iter.table(), "TIME");
+        auto timestamp = time_column.getColumn()(0);
 
-        k = 0;
-        for (auto &x : flagCol.get(row)) {
-            flags_copy[k] = x;
-            k++;
-        }
+        casacore::ArrayColumn<casacore::Complex> data_column(iter.table(), "DATA");
+        casacore::ArrayColumn<casacore::Double> uvw_column(iter.table(), "UVW");
+        casacore::ArrayColumn<casacore::Bool> flag_column(iter.table(), "FLAG");
 
-        k = 0;
-        for (auto &x : dataCol.get(row)) {
-            if (!flags_copy[k]) visibilities_copy[k] = x;
-            else visibilities_copy[k] = 0;
-            k++;
-        }
+        data_column.getColumn(data);
+        uvw_column.getColumn(uvw);
+        flag_column.getColumn(flag);
 
-        if (fabs(time - time_previous)) timeIndex++;
+        for (auto bl = 0; bl < nr_baselines; ++bl) {
 
-        // TODO: apply (1 - flags) * visibilities to set flagged data to zero
-        // auto tmp_visibilities = dataCol(row);
-        // auto tmp_flags        = flagCol(row);
-        // cout << tmp_visibilities << endl;
-        // cout << tmp_flags << endl;
+            auto antenna1 = ant1(bl);
+            auto antenna2 = ant2(bl);
 
+            double *uvw_ptr  = uvw.data() + bl*3;
+            complex<float> *visibilities_ptr  = data.data() + bl*nr_channels*nr_correlations;
+            bool *flag_ptr  = flag.data() + bl*nr_channels*nr_correlations;
 
-        // #if defined(DEBUG)
-        // cout << "time =" << time
-        //      << ", timeIndex = " << timeIndex
-        //      << ", antenna1 = " << antenna1
-        //      << ", antenna2 = " << antenna2
-        //      << ", uvw = " << uvwCol(row) << endl;
-        // #endif
+            // TODO: clean up the lines below
+            for (auto k = 0; k < nr_channels*nr_correlations; ++k) {
+                if ( *(flag_ptr + k) ) *(visibilities_ptr + k) = 0;
+            }
 
-        // cout << msCols.data()(row) << endl;
-
-        gridder.grid_visibilities(
-            timeIndex,
-            antenna1,
-            antenna2,
-            uvw_copy,
-            visibilities_copy);
-
-        time_previous = time;
+            gridder.grid_visibilities(
+                  time_index,
+                  antenna1,
+                  antenna2,
+                  uvw_ptr,
+                  visibilities_ptr);
+         }
 
         // Display grid (note: equals one as buffer flushed iteration AFTER being full)
-        if (row % (buffer_timesteps * (nr_baselines + nr_antennas)) == 1) {
-            fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
+        if (time_index % buffer_timesteps == 1) {
+             fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
         }
+
+        time_index++;
+        iter.next();
     }
 
-    gridder.flush(); // makes sure buffer is empty at the end
-    delete [] visibilities_copy;
-    delete [] flags_copy;
+    // Make sure buffer is empty at the end
+    gridder.finished();
 
+    // Display results
     fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
 
     gridder.transform_grid();
