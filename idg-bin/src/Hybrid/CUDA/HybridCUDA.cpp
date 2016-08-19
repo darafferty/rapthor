@@ -25,6 +25,9 @@ namespace idg {
 
                 mParams = params;
                 cuProfilerStart();
+
+                // Setup benchmark
+                init_benchmark();
             }
 
             /// Destructor
@@ -59,7 +62,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = devices.size();
-                const int nr_streams = 2;
+                const int nr_streams = 3;
 
                 // Get CPU power sensor
                 PowerSensor *cpu_power_sensor = cpu.get_powersensor();
@@ -144,6 +147,7 @@ namespace idg {
                     #pragma omp single
                     total_runtime_gridding = -omp_get_wtime();
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -242,11 +246,12 @@ namespace idg {
                         total_runtime_scaler  += runtime_scaler;
                         total_runtime_adder   += runtime_adder;
                         #endif
-                    } // end for s
-                }
+                    } // end for bl
+                } // end for repetitions
+                } // end omp parallel
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_gridding += omp_get_wtime();
+                total_runtime_gridding = (total_runtime_gridding + omp_get_wtime()) / nr_repetitions;
                 unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
@@ -374,6 +379,7 @@ namespace idg {
                     #pragma omp single
                     total_runtime_degridding = -omp_get_wtime();
 
+                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         // Compute the number of baselines to process in current iteration
@@ -460,11 +466,12 @@ namespace idg {
                         total_runtime_fft       += runtime_fft;
                         total_runtime_splitter  += runtime_splitter;
                         #endif
-                    } // end for s
-                }
+                    } // end for bl
+                } // end for repetitions
+                } // end omp parallel
 
                 // End runtime measurement
-                total_runtime_degridding += omp_get_wtime();
+                total_runtime_degridding = (total_runtime_degridding + omp_get_wtime()) / nr_repetitions;
 
                 // Copy visibilities from host memory
                 memcpy(visibilities, h_visibilities, cuda.sizeof_visibilities(nr_baselines));
@@ -497,6 +504,16 @@ namespace idg {
                 cpu.transform(direction, grid);
             }
 
+            void HybridCUDA::init_benchmark() {
+                char *char_nr_repetitions = getenv("NR_REPETITIONS");
+                if (char_nr_repetitions) {
+                    nr_repetitions = atoi(char_nr_repetitions);
+                    enable_benchmark = nr_repetitions > 1;
+                }
+                if (enable_benchmark) {
+                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+                }
+            }
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
