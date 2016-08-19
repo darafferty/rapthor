@@ -62,6 +62,10 @@ namespace idg {
                 private:
                     idg::proxy::cpu::Optimized cpu;
                     idg::proxy::cuda::Generic cuda;
+
+                    void init_benchmark();
+                    bool enable_benchmark = false;
+                    int nr_repetitions = 1;
             }; // class HybridCUDA
         } // namespace hybrid
     } // namespace proxy
