@@ -24,6 +24,7 @@ namespace idg {
                     void print_compiler_flags();
                     void print_devices();
                     std::vector<DeviceInstance*> get_devices();
+                    std::vector<int> compute_jobsize(Plan &plan, int nr_streams);
 
                 protected:
                     void init_devices();
@@ -42,9 +43,6 @@ namespace idg {
                     uint64_t sizeof_wavenumbers();
                     uint64_t sizeof_aterm();
                     uint64_t sizeof_spheroidal();
-
-                protected:
-                    std::vector<int> compute_jobsize(Plan &plan, int nr_streams);
             };
         } // end namespace idg
     } // end namespace proxy
