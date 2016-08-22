@@ -211,12 +211,12 @@ namespace idg {
                 		outputFree.synchronize();
 
                         // Add subgrid to grid
-                        powerStates[0] = cpu_power_sensor->read();
                         #pragma omp critical (CPU)
                         {
+                            powerStates[0] = cpu_power_sensor->read();
                             kernel_adder->run(current_nr_subgrids, gridsize, metadata_ptr, h_subgrids, grid);
+                            powerStates[1] = cpu_power_sensor->read();
                         }
-                        powerStates[1] = cpu_power_sensor->read();
 
                         double runtime_gridder = gpu_power_sensor->seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft     = gpu_power_sensor->seconds(powerRecords[1].state, powerRecords[2].state);
@@ -251,7 +251,7 @@ namespace idg {
                 } // end omp parallel
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_gridding = (total_runtime_gridding + omp_get_wtime()) / nr_repetitions;
+                total_runtime_gridding += omp_get_wtime();
                 unique_ptr<idg::kernel::cuda::GridFFT> kernel_fft = device->get_kernel_fft();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
@@ -268,7 +268,7 @@ namespace idg {
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding, 0);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding/nr_repetitions, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
             }
@@ -471,7 +471,7 @@ namespace idg {
                 } // end omp parallel
 
                 // End runtime measurement
-                total_runtime_degridding = (total_runtime_degridding + omp_get_wtime()) / nr_repetitions;
+                total_runtime_degridding += omp_get_wtime();
 
                 // Copy visibilities from host memory
                 memcpy(visibilities, h_visibilities, cuda.sizeof_visibilities(nr_baselines));
@@ -490,7 +490,7 @@ namespace idg {
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding, 0);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
+                auxiliary::report_visibilities("|degridding", total_runtime_degridding/nr_repetitions, nr_baselines, nr_time, nr_channels);
                 clog << endl;
                 #endif
             }
