@@ -54,6 +54,10 @@ namespace idg {
                     DeviceInstance *di = devices[i];
 				    cl::Device &d = di->get_device();
                     auto bytes_total = d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+                    bytes_total -= sizeof_wavenumbers();
+                    bytes_total -= sizeof_spheroidal();
+                    bytes_total -= sizeof_aterm();
+                    bytes_total -= sizeof_grid();
                     jobsize[i] = (bytes_total * 0.8) /  bytes_required;
                     #if defined(DEBUG)
                     printf("Bytes required: %lu\n", bytes_required);
