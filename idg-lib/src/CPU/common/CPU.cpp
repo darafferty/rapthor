@@ -143,8 +143,8 @@ namespace idg {
                     // Initialize metadata
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
-                    auto total_nr_subgrids = plan.get_nr_subgrids();
-                    auto total_nr_time     = plan.get_nr_timesteps();
+                    auto total_nr_subgrids  = plan.get_nr_subgrids();
+                    auto total_nr_timesteps = plan.get_nr_timesteps();
 
                     // Allocate 'subgrids' memory for subgrids
                     auto size_subgrids = 1ULL * total_nr_subgrids * nr_polarizations *
@@ -180,9 +180,9 @@ namespace idg {
                     unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
                     unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
                     unique_ptr<kernel::cpu::Adder> kernel_adder = get_kernel_adder();
-                    uint64_t flops_gridder  = kernel_gridder->flops(nr_baselines,
+                    uint64_t flops_gridder  = kernel_gridder->flops(total_nr_timesteps,
                                                                     total_nr_subgrids);
-                    uint64_t bytes_gridder  = kernel_gridder->bytes(nr_baselines,
+                    uint64_t bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps,
                                                                     total_nr_subgrids);
                     uint64_t flops_fft      = kernel_fft->flops(subgridsize,
                                                                 total_nr_subgrids);
@@ -195,7 +195,7 @@ namespace idg {
                     auxiliary::report("|gridding", runtime,
                         flops_gridding, bytes_gridding);
                     auxiliary::report_visibilities("|gridding",
-                        runtime, total_nr_time, nr_channels);
+                        runtime, total_nr_timesteps, nr_channels);
                     clog << endl;
                     #endif
 
@@ -250,8 +250,8 @@ namespace idg {
                     // Initialize metadata
                     auto plan = create_plan(uvw, wavenumbers, baselines,
                                             aterm_offsets, kernel_size);
-                    auto total_nr_subgrids = plan.get_nr_subgrids();
-                    auto total_nr_time     = plan.get_nr_timesteps();
+                    auto total_nr_subgrids  = plan.get_nr_subgrids();
+                    auto total_nr_timesteps = plan.get_nr_timesteps();
 
                     // Allocate 'subgrids' memory for subgrids
                     auto size_subgrids = 1ULL * total_nr_subgrids * nr_polarizations *
@@ -287,9 +287,9 @@ namespace idg {
                     unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
                     unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
                     unique_ptr<kernel::cpu::Splitter> kernel_splitter = get_kernel_splitter();
-                    uint64_t flops_degridder  = kernel_degridder->flops(nr_baselines,
+                    uint64_t flops_degridder  = kernel_degridder->flops(total_nr_timesteps,
                                                                         total_nr_subgrids);
-                    uint64_t bytes_degridder  = kernel_degridder->bytes(nr_baselines,
+                    uint64_t bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps,
                                                                         total_nr_subgrids);
                     uint64_t flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
                     uint64_t bytes_fft        = kernel_fft->bytes(subgridsize, total_nr_subgrids);
@@ -300,7 +300,7 @@ namespace idg {
                     auxiliary::report("|degridding", runtime,
                         flops_degridding, bytes_degridding);
                     auxiliary::report_visibilities("|degridding",
-                        runtime, total_nr_time, nr_channels);
+                        runtime, total_nr_timesteps, nr_channels);
                     clog << endl;
                     #endif
 
@@ -493,7 +493,7 @@ namespace idg {
                 auto total_nr_timesteps = plan.get_nr_timesteps();
                 uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps,
                                                                       total_nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder->bytes(nr_baselines,
+                uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps,
                                                                       total_nr_subgrids);
                 uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
                 uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
