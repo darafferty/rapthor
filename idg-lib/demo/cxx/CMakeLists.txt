@@ -1,32 +1,13 @@
-project(demo.x)
+project(demo-cxx)
 
-include_directories(
-  ${CASACORE_INCLUDE_DIR}
-  ${OpenCV_INCLUDE_DIR}
-  ${CMAKE_SOURCE_DIR}/utility   # TODO: remove
-)
+# if found casacore
+find_package(CasaCore)
+if (CASACORE_FOUND)
+add_subdirectory(Casacore)
+endif()
 
-set (${PROJECT_NAME}_sources
-  demo.cpp
-)
-
-# Set build target
-add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
-
-set(LINK_LIRBRARIES
-  idg
-  idg-utility    # TODO: remove
-  ${CASACORE_LIBRARIES}
-  ${OpenCV_LIBS})
-
-target_link_libraries (
-  ${PROJECT_NAME}
-  ${LINK_LIRBRARIES}
-)
-
-# install
-install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION bin/demo/cxx
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-)
+# if found HDF5
+find_package(HDF5 COMPONENTS CXX)
+if (HDF5_FOUND)
+add_subdirectory(HDF5)
+endif()
