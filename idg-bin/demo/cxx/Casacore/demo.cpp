@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 #include "casacore/tables/Tables/TableIter.h"
 #include "casacore/tables/Tables/ScalarColumn.h"
@@ -92,6 +93,12 @@ int run_demo(string ms_name,
     gridder.internal_set_subgrid_size(subgrid_size);
     gridder.bake();
 
+    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+    chrono::high_resolution_clock::time_point t_start_block;
+    chrono::high_resolution_clock::time_point t_end_block;
+    t_start_block = chrono::high_resolution_clock::now();
+    #endif
+
     // Read data
     casacore::Cube<casacore::Complex> data(nr_correlations, nr_channels, nr_baselines);
     casacore::Matrix<casacore::Double> uvw(3, nr_baselines);
@@ -133,9 +140,32 @@ int run_demo(string ms_name,
                   visibilities_ptr);
          }
 
-        // Display grid (note: equals one as buffer flushed iteration AFTER being full)
+        // The rest of the loop body for timing and plotting purposes only
         if (time_index % buffer_timesteps == 1) {
+             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+             // display total time of processing the block (without plotting)
+             t_end_block = chrono::high_resolution_clock::now();
+             auto t_block = chrono::duration_cast<chrono::milliseconds>(
+                 t_end_block - t_start_block).count();
+             cout << "Runtime total: " << t_block << " ms" << endl;
+
+             // start plot
+             auto t_start_plot = chrono::high_resolution_clock::now();
+             #endif
+
+             // Display grid (note: equals one as buffer flushed iteration AFTER being full)
              fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
+
+             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+             auto t_end_plot = chrono::high_resolution_clock::now();
+             auto t_plot = chrono::duration_cast<chrono::milliseconds>(
+                 t_end_plot - t_start_plot).count();
+             cout << "Runtime plot: " << t_plot << " ms" << endl;
+             #endif
+
+             #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+             t_start_block = chrono::high_resolution_clock::now();
+             #endif
         }
 
         time_index++;
@@ -145,8 +175,24 @@ int run_demo(string ms_name,
     // Make sure buffer is empty at the end
     gridder.finished();
 
+    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+    t_end_block = chrono::high_resolution_clock::now();
+    auto t_block = chrono::duration_cast<chrono::milliseconds>(
+        t_end_block - t_start_block).count();
+    cout << "Runtime total: " << t_block << " ms" << endl;
+
+    auto t_start_plot = chrono::high_resolution_clock::now();
+    #endif
+
     // Display results
     fig.display_matrix(grid_size, grid_size, grid.get(), "log", "jet");
+
+    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+    auto t_end_plot = chrono::high_resolution_clock::now();
+    auto t_plot = chrono::duration_cast<chrono::milliseconds>(
+    t_end_plot - t_start_plot).count();
+    cout << "Runtime plot: " << t_plot << " ms" << endl;
+    #endif
 
     gridder.transform_grid();
 
