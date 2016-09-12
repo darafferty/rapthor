@@ -5,12 +5,19 @@ include_directories(
   ${OpenCV_INCLUDE_DIR}
 )
 
+set (${PROJECT_NAME}_headers
+  MS-hdf5.h
+)
+
 set (${PROJECT_NAME}_sources
   demo.cpp
+  MS-hdf5.cpp
 )
 
 # Set build target
-add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
+add_executable (${PROJECT_NAME}
+  ${${PROJECT_NAME}_headers}
+  ${${PROJECT_NAME}_sources})
 
 set(LINK_LIRBRARIES
   idg

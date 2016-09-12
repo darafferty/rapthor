@@ -111,10 +111,41 @@ namespace idg {
         {}
 
         Grid2D(const Grid2D& v) = delete;
+
+        Grid2D(Grid2D&& other)
+            : m_width(other.m_width),
+              m_height(other.m_height),
+              m_delete_buffer(other.m_delete_buffer),
+              m_buffer(other.m_buffer)
+        {
+            other.m_buffer = nullptr;
+        }
+
+        Grid2D& operator=(Grid2D&& other)
+
+        {
+            if (this != nullptr) {
+                if (m_delete_buffer) delete[] m_buffer;
+                m_width         = other.m_width;
+                m_height        = other.m_height;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer        = other.m_buffer;
+
+                // reset other
+                other.m_width         = 0;
+                other.m_height        = 0;
+                other.m_delete_buffer = false;
+                other.m_buffer        = nullptr;
+            }
+            return *this;
+        }
+
         Grid2D& operator=(const Grid2D& rhs) = delete;
         virtual ~Grid2D() { if (m_delete_buffer) delete[] m_buffer; }
 
-        T* data(size_t row=0) const { return &m_buffer[row*m_width]; }
+        T* data(size_t row=0, size_t column=0) const {
+            return &m_buffer[row*m_width + column];
+        }
 
         size_t get_width() const { return m_width; }
         size_t get_height() const { return m_height; }
@@ -174,11 +205,45 @@ namespace idg {
                m_buffer(data)
         {}
 
-        Grid3D(const Grid3D& v) = delete;
+        Grid3D(const Grid3D& other) = delete;
+
+        Grid3D(Grid3D&& other)
+            : m_width(other.m_width),
+              m_height(other.m_height),
+              m_depth(other.m_depth),
+              m_delete_buffer(other.m_delete_buffer),
+              m_buffer(other.m_buffer)
+        {
+            other.m_buffer = nullptr;
+        }
+
+        Grid3D& operator=(Grid3D&& other)
+
+        {
+            if (this != nullptr) {
+                if (m_delete_buffer) delete[] m_buffer;
+                m_width         = other.m_width;
+                m_height        = other.m_height;
+                m_depth         = other.m_depth;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer        = other.m_buffer;
+
+                // reset other
+                other.m_width         = 0;
+                other.m_height        = 0;
+                other.m_depth         = 0,
+                other.m_delete_buffer = false;
+                other.m_buffer        = nullptr;
+            }
+            return *this;
+        }
+
         Grid3D& operator=(const Grid3D& rhs) = delete;
         virtual ~Grid3D() { if (m_delete_buffer) delete[] m_buffer; }
 
-        T* data(size_t layer=0) const { return &m_buffer[layer*m_height*m_width]; }
+        T* data(size_t z=0, size_t y=0, size_t x=0) const {
+            return &m_buffer[z*m_height*m_width + y*m_width + x];
+        }
 
         size_t get_width() const { return m_width; }
         size_t get_height() const { return m_height; }
