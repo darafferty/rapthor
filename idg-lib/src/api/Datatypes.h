@@ -92,6 +92,7 @@ namespace idg {
     };
 
 
+
     template<class T>
     class Grid2D {
     public:
@@ -124,8 +125,7 @@ namespace idg {
         Grid2D& operator=(Grid2D&& other)
 
         {
-            if (this != nullptr) {
-                if (m_delete_buffer) delete[] m_buffer;
+            if (this != &other) {
                 m_width         = other.m_width;
                 m_height        = other.m_height;
                 m_delete_buffer = other.m_delete_buffer;
@@ -220,8 +220,7 @@ namespace idg {
         Grid3D& operator=(Grid3D&& other)
 
         {
-            if (this != nullptr) {
-                if (m_delete_buffer) delete[] m_buffer;
+            if (this != &other) {
                 m_width         = other.m_width;
                 m_height        = other.m_height;
                 m_depth         = other.m_depth;
