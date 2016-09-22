@@ -85,11 +85,11 @@ int run_demo(string ms_name,
     t_start_block = chrono::high_resolution_clock::now();
     #endif
 
-    int number_timestips = min(nr_timesteps * (double)percentage/100, nr_timesteps);
+    int number_timesteps = min(nr_timesteps * (double)percentage/100, nr_timesteps);
 
     // TODO: the data can also be loaded in chunks (more than one timestep at a time)
     // Is this faster/better?
-    for (auto t = 0; t < number_timestips; ++t) {
+    for (auto t = 0; t < number_timesteps; ++t) {
 
         // TODO: if expensive, do not allocate and initialize arrays every timestep
         auto visibilities    = hdf5_file.read_visibilities(t);
