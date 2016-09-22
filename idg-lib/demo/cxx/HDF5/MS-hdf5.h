@@ -38,7 +38,6 @@ namespace idg {
         idg::Grid2D<idg::UVWCoordinate<double>>
         read_uvw_coordinates(int start_index, int timesteps=1);
 
-
     private:
         H5::H5File file;
     };

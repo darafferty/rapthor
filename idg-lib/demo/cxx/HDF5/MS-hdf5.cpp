@@ -123,7 +123,8 @@ namespace idg {
         hsize_t dims[rank];
         dataspace.getSimpleExtentDims(dims, NULL);
 
-        hsize_t start[4]  = {start_index, 0, 0, 0};
+        hsize_t s = start_index;
+        hsize_t start[4]  = {s, 0, 0, 0};
         hsize_t stride[4] = {1, 1, 1, 1};
         hsize_t count[4]  = {1, 1, 1, 1};
         hsize_t block[4];
@@ -162,7 +163,8 @@ namespace idg {
         hsize_t dims[rank];
         dataspace.getSimpleExtentDims(dims, NULL);
 
-        hsize_t start[4]  = {start_index, 0, 0, 0};
+        hsize_t s = start_index;
+        hsize_t start[4]  = {s, 0, 0, 0};
         hsize_t stride[4] = {1, 1, 1, 1};
         hsize_t count[4]  = {1, 1, 1, 1};
         hsize_t block[4];
@@ -200,7 +202,8 @@ namespace idg {
         hsize_t dims[rank];
         dataspace.getSimpleExtentDims(dims, NULL);
 
-        hsize_t start[3]  = {start_index, 0, 0};
+        hsize_t s = start_index;
+        hsize_t start[3]  = {s, 0, 0};
         hsize_t stride[3] = {1, 1, 1};
         hsize_t count[3]  = {1, 1, 1};
         hsize_t block[3];
