@@ -105,6 +105,8 @@ namespace idg {
                         cu::Module &module,
                         const Parameters &params);
 
+                    ~GridFFT();
+
                     void plan(int size, int batch);
 
                     void launch(cu::Stream &stream, cu::DeviceMemory &data, int direction);
