@@ -83,6 +83,15 @@ namespace idg {
                 fft_remainder = NULL;
             }
 
+            GridFFT::~GridFFT() {
+                if (fft_bulk) {
+                    delete fft_bulk;
+                }
+                if (fft_remainder) {
+                    delete fft_remainder;
+                }
+            }
+
             void GridFFT::plan_bulk() {
                 // Parameters
                 int size = parameters.get_subgrid_size();
