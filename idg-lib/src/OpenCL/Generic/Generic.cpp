@@ -299,7 +299,7 @@ namespace idg {
                 } // end omp parallel
 
                 // End gridding timing
-                #pragma atomic
+                #pragma omp critical
                 {
                     total_runtime_gridding = (omp_get_wtime() - time_gridding_start) / nr_repetitions;
                 }
@@ -582,7 +582,7 @@ namespace idg {
                 } // end omp parallel
 
                 // End degridding timing
-                #pragma atomic
+                #pragma omp critical
                 {
                     total_runtime_degridding = (omp_get_wtime() - time_degridding_start) / nr_repetitions;
                 }
