@@ -35,6 +35,7 @@ option (BUILD_WITH_POWER "Enable power measurement" OFF)
 option (BUILD_WITH_MKL "Build with MKL (if available)" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
+option (REPORT_OPS "Report performance in ops (fma, sincos) instead of flops (add, mul)" OFF)
 
 
 # Likwid power sensor
