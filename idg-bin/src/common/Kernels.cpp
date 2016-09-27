@@ -19,8 +19,9 @@ namespace kernel {
         #if defined(REPORT_OPS)
         flops_per_visibility += nr_channels * 1; // phasor
         flops_per_visibility += nr_channels * nr_polarizations * 8 / 2; // update
-        #endif
+        #else
         flops_per_visibility += nr_channels * nr_polarizations * 8; // update
+        #endif
 
         // Number of flops per subgrid
         uint64_t flops_per_subgrid = 0;
