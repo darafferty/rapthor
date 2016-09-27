@@ -35,12 +35,21 @@ namespace idg {
                 clog << setw(FW1) << left << string(name) + ": "
                      << setw(FW2) << right << scientific << setprecision(4)
                      << runtime << " s";
+                #if defined(REPORT_OPS)
+                if (flops != 0) {
+                    clog << ", ";
+                    double gops = (flops / runtime) * 1e-9;
+                        clog << setw(FW2) << right << fixed << setprecision(2)
+                                          << gops << " GOPS";
+                }
+                #else
                 if (flops != 0) {
                     clog << ", ";
                     double gflops = (flops / runtime) * 1e-9;
                         clog << setw(FW2) << right << fixed << setprecision(2)
                                           << gflops << " GFLOPS";
                 }
+                #endif
                 if (bytes != 0) {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
