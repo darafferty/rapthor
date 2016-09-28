@@ -102,7 +102,7 @@ namespace idg {
             size_t antenna2,
             const double* uvwInMeters)
         {
-            request_visibilities(0, timeIndex, antenna1,
+            return request_visibilities(0, timeIndex, antenna1,
                                  antenna2, uvwInMeters);
         }
 
