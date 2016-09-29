@@ -403,7 +403,12 @@ namespace idg {
                     dtohstream.synchronize();
                 } // end omp parallel
 
+                // End timing
                 total_runtime_gridding += omp_get_wtime();
+                total_runtime_gridder  /= nr_repetitions;
+                total_runtime_fft      /= nr_repetitions;
+                total_runtime_scaler   /= nr_repetitions;
+                total_runtime_adder    /= nr_repetitions;
 
                 // Add new grids to existing grid
                 for (int d = 0; d < devices.size(); d++) {
@@ -690,7 +695,11 @@ namespace idg {
                     }
                 } // end omp parallel
 
+                // End timing
                 total_runtime_degridding += omp_get_wtime();
+                total_runtime_splitter   /= nr_repetitions;
+                total_runtime_fft        /= nr_repetitions;
+                total_runtime_degridder  /= nr_repetitions;
 
                 // Copy visibilities from cuda h_visibilities to visibilities
                 #if !REDUCE_HOST_MEMORY
