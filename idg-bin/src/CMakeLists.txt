@@ -141,6 +141,7 @@ add_library(idg-cpu
   $<TARGET_OBJECTS:cpu-common>
   $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-optimized>
+  $<TARGET_OBJECTS:cpu-knl>
 )
 
 
