@@ -4,4 +4,5 @@ project(cpu)
 add_subdirectory(common)
 add_subdirectory(Reference)
 add_subdirectory(Optimized)
+add_subdirectory(KNL)
 
