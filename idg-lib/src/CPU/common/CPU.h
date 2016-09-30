@@ -164,6 +164,10 @@ namespace idg {
                     std::map<std::string,int> which_module;
 
                     PowerSensor *powerSensor;
+
+                    void init_benchmark();
+                    bool enable_benchmark = false;
+                    int nr_repetitions = 1;
             }; // class CPU
         } // namespace cpu
     } // namespace proxy
