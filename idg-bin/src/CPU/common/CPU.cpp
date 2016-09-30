@@ -33,6 +33,9 @@ namespace idg {
                 #else
                 powerSensor = new DummyPowerSensor();
                 #endif
+
+                // Setup benchmark
+                init_benchmark();
             }
 
 
@@ -107,6 +110,17 @@ namespace idg {
                 return p;
             }
 
+            void CPU::init_benchmark() {
+                char *char_nr_repetitions = getenv("NR_REPETITIONS");
+                if (char_nr_repetitions) {
+                    nr_repetitions = atoi(char_nr_repetitions);
+                    enable_benchmark = nr_repetitions > 1;
+                }
+                if (enable_benchmark) {
+                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+                }
+            }
+
 
             /* High level routines */
             void CPU::grid_visibilities(
@@ -159,22 +173,25 @@ namespace idg {
                     runtime -= omp_get_wtime();
 
                     // Run subroutines
-                    grid_onto_subgrids(
-                        plan,
-                        w_offset,
-                        uvw,
-                        wavenumbers,
-                        visibilities,
-                        spheroidal,
-                        aterm,
-                        subgrids);
+                    for (int i = 0; i < nr_repetitions; i++) {
+                        grid_onto_subgrids(
+                            plan,
+                            w_offset,
+                            uvw,
+                            wavenumbers,
+                            visibilities,
+                            spheroidal,
+                            aterm,
+                            subgrids);
 
-                    add_subgrids_to_grid(
-                        plan,
-                        subgrids,
-                        grid);
+                        add_subgrids_to_grid(
+                            plan,
+                            subgrids,
+                            grid);
+                    }
 
                     runtime += omp_get_wtime();
+                    runtime /= nr_repetitions;
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
@@ -265,23 +282,26 @@ namespace idg {
 
                     runtime -= omp_get_wtime();
 
-                    // Run subroutines
-                    split_grid_into_subgrids(
-                         plan,
-                         subgrids,
-                         grid);
+                    for (int i = 0; i < nr_repetitions; i++) {
+                        // Run subroutines
+                        split_grid_into_subgrids(
+                             plan,
+                             subgrids,
+                             grid);
 
-                    degrid_from_subgrids(
-                        plan,
-                        w_offset,
-                        uvw,
-                        wavenumbers,
-                        visibilities,
-                        spheroidal,
-                        aterm,
-                        subgrids);
+                        degrid_from_subgrids(
+                            plan,
+                            w_offset,
+                            uvw,
+                            wavenumbers,
+                            visibilities,
+                            spheroidal,
+                            aterm,
+                            subgrids);
+                    }
 
                     runtime += omp_get_wtime();
+                    runtime /= nr_repetitions;
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
@@ -339,6 +359,8 @@ namespace idg {
                     // Load kernel function
                     unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
 
+                    for (int i = 0; i < nr_repetitions; i++) {
+
                     // FFT shift
                     if (direction == FourierDomainToImageDomain) {
                         ifftshift(nr_polarizations, grid); // TODO: integrate into adder?
@@ -369,6 +391,7 @@ namespace idg {
                     clog << endl;
                     #endif
 
+                    } // end for repetitions
                 } catch (const exception& e) {
                     cerr << __func__ << " caught exception: "
                          << e.what() << endl;
