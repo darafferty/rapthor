@@ -42,6 +42,7 @@ void kernel_fft_grid(
         }
 
         // Destroy plan
+        #pragma omp critical
         fftwf_destroy_plan(plan);
     }
 }
@@ -74,10 +75,12 @@ void kernel_fft_subgrid(
         int flags = FFTW_ESTIMATE;
         fftwf_plan plan;
         #pragma omp critical
-        plan = fftwf_plan_many_dft(
-            rank, n, NR_POLARIZATIONS, data, n,
-            istride, idist, data, n,
-            ostride, odist, sign, flags);
+        {
+            plan = fftwf_plan_many_dft(
+                rank, n, NR_POLARIZATIONS, data, n,
+                istride, idist, data, n,
+                ostride, odist, sign, flags);
+        }
 
         // Execute FFTs
         fftwf_execute_dft(plan, data, data);
@@ -93,6 +96,7 @@ void kernel_fft_subgrid(
         }
 
         // Destroy plan
+        #pragma omp critical
         fftwf_destroy_plan(plan);
     }
 }
