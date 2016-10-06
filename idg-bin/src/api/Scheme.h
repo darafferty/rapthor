@@ -20,8 +20,7 @@
 #include "idg-cpu.h"
 #endif
 #if defined(BUILD_LIB_CUDA)
-// TODO: fix
-//#include "idg-cuda.h"
+#include "idg-cuda.h"
 #endif
 #if defined(BUILD_LIB_OPENCL)
 // TODO: fix
