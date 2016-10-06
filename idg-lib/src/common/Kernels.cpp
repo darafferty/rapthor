@@ -17,11 +17,9 @@ namespace kernel {
         flops_per_visibility += 5; // phase offset
         flops_per_visibility += nr_channels * 2; // phase
         #if defined(REPORT_OPS)
-        flops_per_visibility += nr_channels * 1; // phasor
-        flops_per_visibility += nr_channels * nr_polarizations * 8 / 2; // update
-        #else
-        flops_per_visibility += nr_channels * nr_polarizations * 8; // update
+        flops_per_visibility += nr_channels * 2; // phasor
         #endif
+        flops_per_visibility += nr_channels * nr_polarizations * 8; // update
 
         // Number of flops per subgrid
         uint64_t flops_per_subgrid = 0;
