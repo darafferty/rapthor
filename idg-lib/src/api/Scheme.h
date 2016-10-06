@@ -27,7 +27,6 @@
 // TODO: fix
 //#include "idg-opencl.h"
 #endif
-#include "API.h"
 #include "Datatypes.h"
 
 namespace idg {

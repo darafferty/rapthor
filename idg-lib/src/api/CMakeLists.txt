@@ -2,7 +2,6 @@ project(idg-api)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    API.h
     Scheme.h
     GridderPlan.h
     DegridderPlan.h
