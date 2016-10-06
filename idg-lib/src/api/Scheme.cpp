@@ -275,14 +275,12 @@ namespace idg {
         #endif
         #if defined(BUILD_LIB_CUDA)
         if (m_architecture == Type::CUDA_GENERIC) {
-            // TODO: fix
-            //m_proxy = new proxy::cuda::Generic(params);
+            m_proxy = new proxy::cuda::Generic(params);
         }
         #endif
         #if defined(BUILD_LIB_OPENCL)
         if (m_architecture == Type::OPENCL_GENERIC) {
-            // TODO: fix
-            //m_proxy = new proxy::opencl::Reference(params);
+            m_proxy = new proxy::opencl::Generic(params);
         }
         #endif
 

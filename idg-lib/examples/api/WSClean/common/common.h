@@ -3,7 +3,7 @@
 
 #include "idg.h"
 #include "idg-utility.h"  // Data init routines
-#include "visualize.h" // HACK
+#include "../common/visualize.h" // HACK
 
 using namespace std;
 
@@ -114,7 +114,8 @@ vector<double> get_example_frequencies()
 
 
 
-int main(int argc, char *argv[])
+template <idg::Type ProxyType>
+int run()
 {
     // Set params
     idg::Parameters params;
@@ -168,7 +169,7 @@ int main(int argc, char *argv[])
 
     // /////////////////////////////////////////////////////////////////////
 
-    idg::DegridderPlan degridder(idg::Type::CPU_OPTIMIZED, bufferSize);
+    idg::DegridderPlan degridder(ProxyType, bufferSize);
     degridder.set_stations(NR_STATIONS);
     degridder.set_frequencies(NR_CHANNELS, frequencies.data());
     degridder.set_image(NR_POLARIZATIONS, GRIDSIZE, GRIDSIZE, image.data());
@@ -178,7 +179,7 @@ int main(int argc, char *argv[])
     degridder.internal_set_subgrid_size(SUBGRIDSIZE);
     degridder.bake();
 
-    idg::GridderPlan gridder(idg::Type::CPU_OPTIMIZED, bufferSize);
+    idg::GridderPlan gridder(ProxyType, bufferSize);
     gridder.set_stations(NR_STATIONS);
     gridder.set_frequencies(NR_CHANNELS, frequencies.data());
     gridder.set_grid(NR_POLARIZATIONS, GRIDSIZE, GRIDSIZE, grid.data());
