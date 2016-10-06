@@ -9,6 +9,9 @@ if (BUILD_LIB_CUDA)
     add_subdirectory(CUDA)
 endif()
 if (BUILD_LIB_OPENCL)
+    include_directories(
+        ${CLFFT_INCLUDE_DIRS}
+    )
     add_subdirectory(OpenCL)
 endif()
 if (BUILD_WITH_PYTHON)
