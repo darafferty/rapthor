@@ -1,5 +1,12 @@
 project(idg-api)
 
+# Hack
+if (BUILD_LIB_OPENCL)
+    include_directories(
+        ${CLFFT_INCLUDE_DIRS}
+    )
+endif()
+
 # sources and header files
 set (${PROJECT_NAME}_headers
     Scheme.h

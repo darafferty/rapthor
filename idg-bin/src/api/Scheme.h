@@ -23,8 +23,7 @@
 #include "idg-cuda.h"
 #endif
 #if defined(BUILD_LIB_OPENCL)
-// TODO: fix
-//#include "idg-opencl.h"
+#include "idg-opencl.h"
 #endif
 #include "Datatypes.h"
 
