@@ -1,21 +1,4 @@
 
-inline void compute_sincos(
-    const int n,
-    const float *x,
-    float *sin,
-    float *cos
-) {
-    #if defined(USE_VML)
-    vmsSinCos(n, x, sin, cos, VML_PRECISION);
-    #else
-    for (int i = 0; i < n; i++) {
-            sin[i] = sinf(x[i]);
-            cos[i] = cosf(x[i]);
-        }
-    #endif
-}
-
-
 inline void apply_aterm(
     const idg::float2 aXX1, const idg::float2 aXY1,
     const idg::float2 aYX1, const idg::float2 aYY1,

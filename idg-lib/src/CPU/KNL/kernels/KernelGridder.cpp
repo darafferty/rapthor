@@ -5,12 +5,6 @@
 
 #include <stdio.h>
 
-#if defined(__INTEL_COMPILER) || defined(HAVE_MKL)
-#define USE_VML
-#define VML_PRECISION VML_LA
-#include <mkl_vml.h>
-#endif
-
 #include "Types.h"
 #include "Math.h"
 
@@ -56,8 +50,8 @@ void kernel_gridder_(
         const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
 
         // Preload visibilities
-        float vis_real[nr_timesteps][NR_POLARIZATIONS][current_nr_channels] __attribute__((aligned(32)));
-        float vis_imag[nr_timesteps][NR_POLARIZATIONS][current_nr_channels] __attribute__((aligned(32)));
+        float vis_real[nr_timesteps][NR_POLARIZATIONS][current_nr_channels] __attribute__((aligned(64)));
+        float vis_imag[nr_timesteps][NR_POLARIZATIONS][current_nr_channels] __attribute__((aligned(64)));
 
         for (int time = 0; time < nr_timesteps; time++) {
             for (int chan = 0; chan < current_nr_channels; chan++) {
@@ -74,7 +68,7 @@ void kernel_gridder_(
             for (int x = 0; x < SUBGRIDSIZE; x++) {
 
                 // Compute phase
-                float phase[nr_timesteps][current_nr_channels] __attribute__((aligned(32)));
+                float phase[nr_timesteps][current_nr_channels] __attribute__((aligned(64)));
 
                 // Compute l,m,n
                 const float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
@@ -104,13 +98,12 @@ void kernel_gridder_(
                 } // end time
 
                 // Compute phasor
-                float phasor_real[nr_timesteps][current_nr_channels] __attribute__((aligned(32)));
-                float phasor_imag[nr_timesteps][current_nr_channels] __attribute__((aligned(32)));
-                compute_sincos(
-                    nr_timesteps * current_nr_channels,
-                    (float *) phase,
-                    (float *) phasor_imag,
-                    (float *) phasor_real);
+                float phasor_real[nr_timesteps][current_nr_channels] __attribute__((aligned(64)));
+                float phasor_imag[nr_timesteps][current_nr_channels] __attribute__((aligned(64)));
+                for (int i = 0; i < nr_timesteps * current_nr_channels; i++) {
+                    phasor_real[0][i] = sinf(phase[0][i]);
+                    phasor_imag[0][i] = cosf(phase[0][i]);
+                }
 
                 // Multiply visibilities with phasor and reduce for all timesteps and channels
                 idg::float2 pixels[NR_POLARIZATIONS];
@@ -222,6 +215,12 @@ void kernel_gridder(
     )
 {
     int channel_offset = 0;
+    for (; (channel_offset + 16) <= nr_channels; channel_offset += 16) {
+        kernel_gridder_<16>(
+            nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+    }
+
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(
             nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
