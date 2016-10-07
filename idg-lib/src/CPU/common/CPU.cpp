@@ -170,7 +170,7 @@ namespace idg {
                     auxiliary::report("init", runtime);
                     #endif
 
-                    runtime -= omp_get_wtime();
+                    runtime = -omp_get_wtime();
 
                     // Run subroutines
                     for (int i = 0; i < nr_repetitions; i++) {
@@ -280,7 +280,7 @@ namespace idg {
                     auxiliary::report("init", runtime);
                     #endif
 
-                    runtime -= omp_get_wtime();
+                    runtime = -omp_get_wtime();
 
                     for (int i = 0; i < nr_repetitions; i++) {
                         // Run subroutines
