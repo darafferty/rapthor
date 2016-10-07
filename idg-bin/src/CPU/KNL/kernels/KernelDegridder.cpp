@@ -3,12 +3,6 @@
 #include <cstring>
 #include <omp.h>
 
-#if defined(__INTEL_COMPILER) || defined(HAVE_MKL)
-#define USE_VML
-#define VML_PRECISION VML_LA
-#include <mkl_vml.h>
-#endif
-
 #include "Types.h"
 #include "Math.h"
 
@@ -51,9 +45,9 @@ void kernel_degridder_(
         const int y_coordinate = m.coordinate.y;
 
         // Storage
-        idg::float2 pixels[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float pixels_real[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-        float pixels_imag[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+        idg::float2 pixels[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(64)));
+        float pixels_real[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(64)));
+        float pixels_imag[NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(64)));
 
         // Apply aterm to subgrid
         for (int y = 0; y < SUBGRIDSIZE; y++) {
@@ -146,9 +140,9 @@ void kernel_degridder_(
             // Iterate all channels
             for (int chan = 0; chan < current_nr_channels; chan++) {
                 // Compute phasor
-                float phase[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-                float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
-                float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(32)));
+                float phase[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(64)));
+                float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(64)));
+                float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE] __attribute__((aligned(64)));
 
                 #if defined(__INTEL_COMPILER)
                 #pragma nofusion
@@ -161,13 +155,12 @@ void kernel_degridder_(
                     }
                 }
 
-                // Compute phasor
-                compute_sincos(
-                    SUBGRIDSIZE * SUBGRIDSIZE,
-                    (float *) phase,
-                    (float *) phasor_imag,
-                    (float *) phasor_real);
-
+                for (int y = 0; y < SUBGRIDSIZE; y++) {
+                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                        phasor_real[y][x] = sinf(phase[y][x]);
+                        phasor_imag[y][x] = cosf(phase[y][x]);
+                    }
+                }
 
                 // Multiply phasor with pixels and reduce for all pixels
                 idg::float2 sums[NR_POLARIZATIONS];
@@ -250,6 +243,12 @@ void kernel_degridder(
     )
 {
     int channel_offset = 0;
+    for (; (channel_offset + 16) <= nr_channels; channel_offset += 16) {
+        kernel_degridder_<16>(
+            nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+    }
+
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_<8>(
             nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
