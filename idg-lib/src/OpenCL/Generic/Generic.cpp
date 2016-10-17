@@ -52,6 +52,13 @@ namespace idg {
                     h_grid_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid()));
                 }
 
+                // Initialize host PowerSensor
+                #if defined(HAVE_LIKWID)
+                hostPowerSensor = new LikwidPowerSensor();
+                #else
+                hostPowerSensor = new DummyPowerSensor();
+                #endif
+
                 // Setup benchmark
                 init_benchmark();
             }
@@ -131,8 +138,8 @@ namespace idg {
                 // Performance measurements
                 double total_runtime_gridding = 0;
                 double time_gridding_start = 0;
-                PowerSensor::State startStates[nr_devices];
-                PowerSensor::State stopStates[nr_devices];
+                PowerSensor::State startStates[nr_devices+1];
+                PowerSensor::State stopStates[nr_devices+1];
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
@@ -146,7 +153,7 @@ namespace idg {
 
                     // Load device
                     DeviceInstance *device    = devices[device_id];
-                    PowerSensor *power_sensor = device->get_powersensor();
+                    PowerSensor *devicePowerSensor = device->get_powersensor();
 
                     // Load kernels
                     unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
@@ -215,11 +222,12 @@ namespace idg {
                     // Performance measurement
                     vector<PerformanceCounter> counters(5);
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(power_sensor);
+                        counter.setPowerSensor(devicePowerSensor);
                     }
                     if (local_id == 0) {
-                        startStates[device_id] = power_sensor->read();
+                        startStates[device_id] = devicePowerSensor->read();
                     }
+                    startStates[nr_devices] = hostPowerSensor->read();
 
                     #pragma omp barrier
                     #pragma omp single
@@ -294,7 +302,8 @@ namespace idg {
 
                     // End power measurement
                     if (local_id == 0) {
-                        stopStates[device_id] = power_sensor->read();
+                        stopStates[device_id] = devicePowerSensor->read();
+                        stopStates[nr_devices] = hostPowerSensor->read();
                     }
                 } // end omp parallel
 
@@ -333,11 +342,16 @@ namespace idg {
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
                 auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
+
+                // Report host power consumption
+                auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
+
+                // Report device power consumption
                 for (int d = 0; d < devices.size(); d++) {
-                    PowerSensor *power_sensor = devices[d]->get_powersensor();
-                    double seconds = power_sensor->seconds(startStates[d], stopStates[d]);
-                    double watts   = power_sensor->Watt(startStates[d], stopStates[d]);
-                    auxiliary::report("|gridding", seconds, 0, 0, watts);
+                    PowerSensor *devicePowerSensor = devices[d]->get_powersensor();
+                    stringstream message;
+                    message << "|device" << d;
+                    auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
                 }
                 clog << endl;
                 #endif
@@ -408,8 +422,8 @@ namespace idg {
                 // Performance measurements
                 double total_runtime_degridding = 0;
                 double time_degridding_start = 0;
-                PowerSensor::State startStates[nr_devices];
-                PowerSensor::State stopStates[nr_devices];
+                PowerSensor::State startStates[nr_devices+1];
+                PowerSensor::State stopStates[nr_devices+1];
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
@@ -424,7 +438,7 @@ namespace idg {
 
                     // Load device
                     DeviceInstance *device    = devices[device_id];
-                    PowerSensor *power_sensor = device->get_powersensor();
+                    PowerSensor *devicePowerSensor = device->get_powersensor();
 
                     // Load kernels
                     unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
@@ -490,11 +504,12 @@ namespace idg {
                     // Performance measurement
                     vector<PerformanceCounter> counters(4);
                     for (PerformanceCounter& counter : counters) {
-                        counter.setPowerSensor(power_sensor);
+                        counter.setPowerSensor(devicePowerSensor);
                     }
                     if (local_id == 0) {
-                        startStates[device_id] = power_sensor->read();
+                        startStates[device_id] = devicePowerSensor->read();
                     }
+                    startStates[nr_devices] = hostPowerSensor->read();
 
                     #pragma omp barrier
                     #pragma omp single
@@ -577,7 +592,8 @@ namespace idg {
 
                     // End power measurement
                     if (local_id == 0) {
-                        stopStates[device_id] = power_sensor->read();
+                        stopStates[device_id] = devicePowerSensor->read();
+                        stopStates[nr_devices] = hostPowerSensor->read();
                     }
                 } // end omp parallel
 
@@ -623,11 +639,16 @@ namespace idg {
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
+
+                // Report host power consumption
+                auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
+
+                // Report device power consumption
                 for (int d = 0; d < devices.size(); d++) {
-                    PowerSensor *power_sensor = devices[d]->get_powersensor();
-                    double seconds = power_sensor->seconds(startStates[d], stopStates[d]);
-                    double watts   = power_sensor->Watt(startStates[d], stopStates[d]);
-                    auxiliary::report("|degridding", seconds, 0, 0, watts);
+                    PowerSensor *devicePowerSensor = devices[d]->get_powersensor();
+                    stringstream message;
+                    message << "|device" << d;
+                    auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
                 }
                 clog << endl;
                 #endif
@@ -644,7 +665,7 @@ namespace idg {
 
                 // Load device
                 DeviceInstance *device    = devices[0];
-                PowerSensor *power_sensor = device->get_powersensor();
+                PowerSensor *devicePowerSensor = device->get_powersensor();
 
                 // Constants
                 auto nr_polarizations = mParams.get_nr_polarizations();
@@ -660,7 +681,12 @@ namespace idg {
 
                 // Performance counter
                 PerformanceCounter counter;
-                counter.setPowerSensor(power_sensor);
+                counter.setPowerSensor(devicePowerSensor);
+
+                // Power measurement
+                PowerSensor::State powerStates[4];
+                powerStates[0] = hostPowerSensor->read();
+                powerStates[2] = devicePowerSensor->read();
 
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid());
@@ -709,6 +735,9 @@ namespace idg {
                 }
                 time_scale += omp_get_wtime();
 
+                powerStates[1] = hostPowerSensor->read();
+                powerStates[3] = devicePowerSensor->read();
+
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("    input",
                                   PerformanceCounter::get_runtime((cl_event) input[0](), (cl_event) input[1]()),
@@ -720,9 +749,11 @@ namespace idg {
                 if (direction == FourierDomainToImageDomain) {
                 auxiliary::report("grid-scale", time_scale, 0, sizeof_grid() * 2, 0);
                 }
+                auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
+                auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
+
                 clog << endl;
                 #endif
-
                 } // end for repetitions
             } // end transform
 

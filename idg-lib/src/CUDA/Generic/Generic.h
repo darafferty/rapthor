@@ -72,6 +72,8 @@ namespace idg {
                                            std::complex<float>* grid) override;
 
                 private:
+                    PowerSensor *hostPowerSensor;
+
                     #if REDUCE_HOST_MEMORY
                     std::vector<cu::HostMemory*> h_visibilities_;
                     std::vector<cu::HostMemory*> h_uvw_;

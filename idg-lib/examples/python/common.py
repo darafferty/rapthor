@@ -8,15 +8,15 @@ import random
 ############
 # paramaters
 ############
-_nr_stations      = 12
+_nr_stations      = 100
 _nr_baselines     = _nr_stations*(_nr_stations-1)/2
-_nr_channels      = 8
-_nr_time          = 4096           # samples per baseline
-_nr_timeslots     = 8              # A-term time slots
-_image_size       = 0.06
-_subgrid_size     = 32
-_grid_size        = 1024
-_integration_time = 10
+_nr_channels      = 16
+_nr_time          = 8192           # samples per baseline
+_nr_timeslots     = 16             # A-term time slots
+_image_size       = 0.05
+_subgrid_size     = 24
+_grid_size        = 2048
+_integration_time = 1
 _kernel_size      = (_subgrid_size / 2) + 1
 _nr_polarizations = 4
 

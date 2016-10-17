@@ -6,6 +6,7 @@
 #include <complex>
 
 #include "idg-common.h"
+#include "idg-powersensor.h"
 
 
 namespace idg {
