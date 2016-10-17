@@ -82,6 +82,9 @@ namespace idg {
 
                 // Performance measurements
                 PowerRecord powerRecords[5];
+                PowerSensor::State powerStates[4];
+                powerStates[0] = hostPowerSensor->read();
+                powerStates[2] = devicePowerSensor->read();
 
                 for (int i = 0; i < nr_repetitions; i++) {
 
@@ -125,28 +128,30 @@ namespace idg {
                 }
                 time_scale += omp_get_wtime();
 
+                // End measurements
+                stream.synchronize();
+                powerStates[1] = hostPowerSensor->read();
+                powerStates[3] = devicePowerSensor->read();
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("     input",
-                                  devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state),
                                   0, sizeof_grid(),
-                                  devicePowerSensor->Watt(powerRecords[0].state, powerRecords[1].state));
+                                  devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
                 auxiliary::report("  plan-fft",
                                   devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state),
                                   0, 0, 0);
                 auxiliary::report("  grid-fft",
-                                  devicePowerSensor->seconds(powerRecords[2].state, powerRecords[3].state),
-                                  kernel_fft->flops(gridsize, 1),
-                                  kernel_fft->bytes(gridsize, 1),
-                                  devicePowerSensor->Watt(powerRecords[2].state, powerRecords[3].state));
+                                  kernel_fft->flops(gridsize, 1), kernel_fft->bytes(gridsize, 1),
+                                  devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
                 auxiliary::report("    output",
-                                  devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state),
                                   0, sizeof_grid(),
-                                  devicePowerSensor->Watt(powerRecords[3].state, powerRecords[4].state));
+                                  devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
                 auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
                 auxiliary::report("grid-scale", time_scale/2, 0, sizeof_grid() * 2, 0);
                 }
+                auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
+                auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
                 std::cout << std::endl;
                 #endif
 
