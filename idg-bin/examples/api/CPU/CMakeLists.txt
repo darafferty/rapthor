@@ -2,8 +2,15 @@ project(cpu-api.x)
 
 # Set external header files
 include_directories(
-  ${CMAKE_SOURCE_DIR}/utility
- )
+    # Hack
+    if (BUILD_LIB_OPENCL)
+        include_directories(
+            ${OPENCL_INCLUDE_DIRS}
+            ${CLFFT_INCLUDE_DIRS}
+        )
+    endif()
+    ${CMAKE_SOURCE_DIR}/utility
+)
 
 set (${PROJECT_NAME}_sources 
   main.cpp
