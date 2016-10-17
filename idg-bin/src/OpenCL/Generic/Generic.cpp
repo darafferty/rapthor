@@ -683,6 +683,11 @@ namespace idg {
                 PerformanceCounter counter;
                 counter.setPowerSensor(devicePowerSensor);
 
+                // Power measurement
+                PowerSensor::State powerStates[4];
+                powerStates[0] = hostPowerSensor->read();
+                powerStates[2] = devicePowerSensor->read();
+
                 // Device memory
                 cl::Buffer d_grid = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid());
 
@@ -730,6 +735,9 @@ namespace idg {
                 }
                 time_scale += omp_get_wtime();
 
+                powerStates[1] = hostPowerSensor->read();
+                powerStates[3] = devicePowerSensor->read();
+
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("    input",
                                   PerformanceCounter::get_runtime((cl_event) input[0](), (cl_event) input[1]()),
@@ -741,9 +749,11 @@ namespace idg {
                 if (direction == FourierDomainToImageDomain) {
                 auxiliary::report("grid-scale", time_scale, 0, sizeof_grid() * 2, 0);
                 }
+                auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
+                auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
+
                 clog << endl;
                 #endif
-
                 } // end for repetitions
             } // end transform
 
