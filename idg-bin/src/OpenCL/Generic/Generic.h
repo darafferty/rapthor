@@ -70,6 +70,8 @@ namespace idg {
                                            std::complex<float>* grid);
 
                 private:
+                    PowerSensor *hostPowerSensor;
+
                     #if REDUCE_HOST_MEMORY
                     std::vector<cl::Buffer*> h_visibilities_;
                     std::vector<cl::Buffer*> h_uvw_;

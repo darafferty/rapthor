@@ -3,6 +3,7 @@ project(idg-api)
 # Hack
 if (BUILD_LIB_OPENCL)
     include_directories(
+        ${OPENCL_INCLUDE_DIRS}
         ${CLFFT_INCLUDE_DIRS}
     )
 endif()

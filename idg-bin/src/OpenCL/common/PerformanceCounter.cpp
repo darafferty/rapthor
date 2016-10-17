@@ -37,9 +37,8 @@ void PerformanceCounter::stopMeasurement(cl_event event, cl_int, void *user_data
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
     PowerSensor *powerSensor = descriptor->powerSensor;
     descriptor->stopState = descriptor->powerSensor->read();
-    double watts   = powerSensor->Watt(descriptor->startState, descriptor->stopState);
-    double runtime = get_runtime(event);
-    auxiliary::report(descriptor->name, runtime, descriptor->flops, descriptor->bytes, watts);
+    auxiliary::report(descriptor->name, descriptor->flops, descriptor->bytes,
+                      powerSensor, descriptor->startState, descriptor->stopState);
     delete descriptor;
 }
 
@@ -61,9 +60,8 @@ void PerformanceCounter::stopMeasurement2(cl_event event, cl_int, void *user_dat
     Descriptor *descriptor = static_cast<Descriptor *>(user_data);
     descriptor->stopState = descriptor->powerSensor->read();
     PowerSensor *powerSensor = descriptor->powerSensor;
-    double runtime = powerSensor->seconds(descriptor->startState, descriptor->stopState);
-    double watts   = powerSensor->Watt(descriptor->startState, descriptor->stopState);
-    auxiliary::report(descriptor->name, runtime, descriptor->flops, descriptor->bytes, watts);
+    auxiliary::report(descriptor->name, descriptor->flops, descriptor->bytes,
+                      powerSensor, descriptor->startState, descriptor->stopState);
     delete descriptor;
 }
 

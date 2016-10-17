@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "idg-config.h"
+#include "idg-powersensor.h"
 
 inline int min(int a, int b) {
     return a < b ? a : b;
@@ -29,6 +30,14 @@ namespace idg {
             uint64_t flops,
             uint64_t bytes,
             double watt=0);
+
+        void report(
+            const char *name,
+            uint64_t flops,
+            uint64_t bytes,
+            PowerSensor *powerSensor,
+            PowerSensor::State startState,
+            PowerSensor::State endState);
 
         void report_runtime(
             double runtime);
