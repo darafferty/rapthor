@@ -225,6 +225,10 @@ set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-hybrid-cuda)
 endif()
 if (BUILD_LIB_OPENCL)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-opencl)
+include_directories(
+    ${OPENCL_INCLUDE_DIRS}
+    ${CLFFT_INCLUDE_DIRS}
+)
 endif()
 if (BUILD_LIB_KNC)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-knc)
