@@ -362,10 +362,6 @@ namespace idg {
 
                         outputReady.synchronize();
 
-                        double runtime_gridder = devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_fft     = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_scaler  = devicePowerSensor->seconds(powerRecords[2].state, powerRecords[3].state);
-                        double runtime_adder   = devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
                         auxiliary::report("gridder", kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                      kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
@@ -383,10 +379,10 @@ namespace idg {
                         #if defined(REPORT_TOTAL)
                         #pragma omp critical
                         {
-                            total_runtime_gridder += runtime_gridder;
-                            total_runtime_fft     += runtime_fft;
-                            total_runtime_scaler  += runtime_scaler;
-                            total_runtime_adder   += runtime_adder;
+                            total_runtime_gridder += devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
+                            total_runtime_fft     += devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
+                            total_runtime_scaler  += devicePowerSensor->seconds(powerRecords[2].state, powerRecords[3].state);
+                            total_runtime_adder   += devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         }
                         #endif
                     } // end for bl
@@ -408,7 +404,7 @@ namespace idg {
                 } // end omp parallel
 
                 // End timing
-                stopStates[nr_devices] = hostPowerSensor->read();
+                stopStates[nr_devices]  = hostPowerSensor->read();
                 total_runtime_gridding += omp_get_wtime();
                 total_runtime_gridder  /= nr_repetitions;
                 total_runtime_fft      /= nr_repetitions;
@@ -527,8 +523,9 @@ namespace idg {
                 double total_runtime_fft        = 0;
                 double total_runtime_splitter   = 0;
                 double total_runtime_degridding = 0;
-                PowerSensor::State startStates[nr_devices];
-                PowerSensor::State stopStates[nr_devices];
+                PowerSensor::State startStates[nr_devices+1];
+                PowerSensor::State stopStates[nr_devices+1];
+                startStates[nr_devices] = hostPowerSensor->read();
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
@@ -675,23 +672,20 @@ namespace idg {
                         double runtime_fft       = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
                         double runtime_degridder = devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
-                        auxiliary::report(" splitter", runtime_splitter,
-                                                       kernel_splitter->flops(current_nr_subgrids),
+                        auxiliary::report(" splitter", kernel_splitter->flops(current_nr_subgrids),
                                                        kernel_splitter->bytes(current_nr_subgrids),
-                                                       devicePowerSensor->Watt(powerRecords[0].state, powerRecords[1].state));
-                        auxiliary::report("  sub-fft", runtime_fft,
-                                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
+                                                       devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
+                        auxiliary::report("  sub-fft", kernel_fft->flops(subgridsize, current_nr_subgrids),
                                                        kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                                       devicePowerSensor->Watt(powerRecords[1].state, powerRecords[2].state));
-                        auxiliary::report("degridder", runtime_degridder,
-                                                       kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
+                                                       devicePowerSensor, powerRecords[1].state, powerRecords[2].state);
+                        auxiliary::report("degridder", kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
                                                        kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
-                                                       devicePowerSensor->Watt(powerRecords[3].state, powerRecords[4].state));
+                                                       devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
                         #endif
                         #if defined(REPORT_TOTAL)
-                        total_runtime_splitter  += runtime_splitter;
-                        total_runtime_fft       += runtime_fft;
-                        total_runtime_degridder += runtime_degridder;
+                        total_runtime_splitter  += devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
+                        total_runtime_fft       += devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
+                        total_runtime_degridder += devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #endif
                     } // end for bl
                     } // end for repetitions
@@ -706,6 +700,7 @@ namespace idg {
                 } // end omp parallel
 
                 // End timing
+                stopStates[nr_devices]    = hostPowerSensor->read();
                 total_runtime_degridding += omp_get_wtime();
                 total_runtime_splitter   /= nr_repetitions;
                 total_runtime_fft        /= nr_repetitions;
@@ -732,11 +727,15 @@ namespace idg {
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
                 auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
+
+                // Report host power consumption
+                auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
+
                 for (int d = 0; d < devices.size(); d++) {
                     PowerSensor *devicePowerSensor = devices[d]->get_powersensor();
-                    double seconds = devicePowerSensor->seconds(startStates[d], stopStates[d]);
-                    double watts   = devicePowerSensor->Watt(startStates[d], stopStates[d]);
-                    auxiliary::report("|degridding", seconds, 0, 0, watts);
+                    stringstream message;
+                    message << "|device" << d;
+                    auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
                 }
                 clog << endl;
                 #endif
