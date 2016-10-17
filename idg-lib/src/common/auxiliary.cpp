@@ -11,8 +11,8 @@ using namespace std;
 namespace idg {
     namespace auxiliary {
 
-        #define FW1 14
-        #define FW2 10
+        #define FW1 12
+        #define FW2 8
 
         void report(
             const char *name,
@@ -64,6 +64,61 @@ namespace idg {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << (flops / runtime * 1e-9) / watt << " GFLOPS/W";
+                }
+            }
+            clog << endl;
+        }
+
+        void report(
+            const char *name,
+            uint64_t flops,
+            uint64_t bytes,
+            PowerSensor *powerSensor,
+            PowerSensor::State startState,
+            PowerSensor::State endState)
+        {
+            double seconds = powerSensor->seconds(startState, endState);
+            double watts   = powerSensor->Watt(startState, endState);
+            double joules  = powerSensor->Joules(startState, endState);
+            #pragma omp critical (clog)
+            {
+                clog << setw(FW1) << left << string(name) + ": "
+                     << setw(FW2) << right << scientific << setprecision(4)
+                     << seconds << " s";
+                #if defined(REPORT_OPS)
+                if (flops != 0) {
+                    clog << ", ";
+                    double gops = (flops / seconds) * 1e-9;
+                        clog << setw(FW2) << right << fixed << setprecision(2)
+                                          << gops << " GOPS";
+                }
+                #else
+                if (flops != 0) {
+                    clog << ", ";
+                    double gflops = (flops / seconds) * 1e-9;
+                        clog << setw(FW2) << right << fixed << setprecision(2)
+                                          << gflops << " GFLOPS";
+                }
+                #endif
+                if (bytes != 0) {
+                    clog << ", ";
+                    clog << setw(FW2) << right << fixed << setprecision(2)
+                                      << bytes / seconds * 1e-9 << " GB/s";
+                }
+                if (watts != 0) {
+                    clog << ", ";
+                    clog << setw(FW2) << right << fixed << setprecision(2)
+                                      << watts << " Watt";
+                }
+                if (flops != 0 && watts != 0) {
+                    clog << ", ";
+                    clog << setw(FW2) << right << fixed << setprecision(2)
+                                      << (flops / seconds * 1e-9) / watts << " GFLOPS/W";
+                }
+                if (joules != 0) {
+                    clog << ", ";
+                    clog << setw(FW2) << right  << fixed << setprecision(2)
+                                      << joules << " Joule";
                 }
             }
             clog << endl;
