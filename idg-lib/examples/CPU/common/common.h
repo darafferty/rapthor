@@ -27,11 +27,11 @@ void run()
     int nr_channels      = params.get_nr_channels();
     int gridsize         = params.get_grid_size();
     int subgridsize      = params.get_subgrid_size();
+    int kernel_size      = params.get_kernel_size();
     float imagesize      = params.get_imagesize();
     int nr_polarizations = params.get_nr_polarizations();
 
     float w_offset = 0;
-    int kernel_size = (subgridsize / 4) + 1;
 
     // Print configuration
     clog << params;

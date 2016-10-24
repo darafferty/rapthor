@@ -31,6 +31,7 @@ namespace idg {
       static const std::string ENV_IMAGESIZE;
       static const std::string ENV_GRIDSIZE;
       static const std::string ENV_SUBGRIDSIZE;
+      static const std::string ENV_KERNELSIZE;
       static const std::string ENV_JOBSIZE;
       static const std::string ENV_JOBSIZE_GRIDDING;
       static const std::string ENV_JOBSIZE_DEGRIDDING;
@@ -59,6 +60,7 @@ namespace idg {
       float get_imagesize() const { return imagesize; }
       unsigned int get_grid_size() const { return grid_size; }
       unsigned int get_subgrid_size() const { return subgrid_size; }
+      unsigned int get_kernel_size() const { return kernel_size; }
       unsigned int get_job_size() const { return job_size; }
       unsigned int get_job_size_gridding() const { return job_size_gridding; }
       unsigned int get_job_size_degridding() const { return job_size_degridding; }
@@ -103,6 +105,7 @@ namespace idg {
       float        imagesize;        // angular resolution in radians
       unsigned int grid_size;
       unsigned int subgrid_size;
+      unsigned int kernel_size;
       unsigned int job_size;
       unsigned int job_size_gridding;
       unsigned int job_size_degridding;
