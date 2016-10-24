@@ -228,6 +228,19 @@ def plot_uvw(uvw):
     plt.grid(True)
     plt.axes().set_aspect('equal')
 
+def output_uvw(uvw):
+    """Plot UVW data as (u,v)-plot to high-resolution png file
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
+    """
+    u = uvw['u'].flatten()
+    v = uvw['v'].flatten()
+    fig = plt.figure(figsize=(40,40), dpi=300)
+    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.', color='black', alpha=0.8, markersize=1.0)
+    plt.axes().set_aspect('equal')
+    plt.axis('off')
+    plt.savefig("uvw-coverage.png")
 
 def plot_wavenumbers(wavenumbers):
     """Plot wavenumbers
