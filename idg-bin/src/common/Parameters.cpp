@@ -22,6 +22,7 @@ namespace idg {
     const string Parameters::ENV_IMAGESIZE    = "IMAGESIZE";
     const string Parameters::ENV_GRIDSIZE     = "GRIDSIZE";
     const string Parameters::ENV_SUBGRIDSIZE  = "SUBGRIDSIZE";
+    const string Parameters::ENV_KERNELSIZE   = "KERNELSIZE";
     const string Parameters::ENV_JOBSIZE      = "JOBSIZE"; // to all routines
     const string Parameters::ENV_JOBSIZE_GRIDDING   = "JOBSIZE_GRIDDING";
     const string Parameters::ENV_JOBSIZE_DEGRIDDING = "JOBSIZE_DEGRIDDING";
@@ -149,6 +150,9 @@ namespace idg {
     os << setw(fw1) << left << "Subgrid size" << "== "
        << setw(fw2) << right << subgrid_size << endl;
 
+    os << setw(fw1) << left << "Kernel size" << "== "
+       << setw(fw2) << right << kernel_size << endl;
+
     os << setw(fw1) << left << "Job size" << "== "
        << setw(fw2) << right << job_size << endl;
 
@@ -222,6 +226,10 @@ namespace idg {
     // subgrid_size
     char *cstr_subgrid_size = getenv(ENV_SUBGRIDSIZE.c_str());
     subgrid_size = cstr_subgrid_size ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
+
+    // kernel size
+    char *cstr_kernel_size = getenv(ENV_KERNELSIZE.c_str());
+    kernel_size = cstr_kernel_size ? atoi(cstr_kernel_size) : (subgrid_size / 4) + 1;
 
     // job_size
     char *cstr_job_size = getenv(ENV_JOBSIZE.c_str());
