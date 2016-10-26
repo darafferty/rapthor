@@ -1,4 +1,5 @@
 #include "RaplPowerSensor.h"
+#include "rapl-read.h"
 
 RaplPowerSensor::RaplPowerSensor(const char *dumpFileName) :
     dumpFile(dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName)),
@@ -15,6 +16,9 @@ RaplPowerSensor::RaplPowerSensor(const char *dumpFileName) :
             exit(1);
         }
     }
+
+    // Initialize rapl
+    init_rapl();
 }
 
 RaplPowerSensor::~RaplPowerSensor() {
@@ -90,19 +94,17 @@ void RaplPowerSensor::mark(const State &startState, const State &stopState, cons
 RaplPowerSensor::State RaplPowerSensor::read() {
     State state;
 
-    state.timeAtRead = omp_get_wtime();
-    state.consumedEnergyPKG = 0;
-    state.consumedEnergyDRAM = 0;
+    #pragma omp critical (power)
+    {
+        state = rapl_sysfs();
+    }
 
-    // TODO: perform actual measurement
-    //#pragma omp critical (power)
-    //{
-    //}
     return state;
 }
 
 double RaplPowerSensor::Joules(const State &firstState, const State &secondState) {
-    return 0;
+    return ((secondState.consumedEnergyPKG  - firstState.consumedEnergyPKG)  * 1e-6) +
+            (secondState.consumedEnergyDRAM - firstState.consumedEnergyDRAM) * 1e-6;
 }
 
 

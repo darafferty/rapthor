@@ -6,6 +6,7 @@ set (${PROJECT_NAME}_headers
     DummyPowerSensor.h
     ArduinoPowerSensor.h
     LikwidPowerSensor.h
+    rapl-read.h
     RaplPowerSensor.h
 )
 
@@ -13,6 +14,7 @@ set (${PROJECT_NAME}_sources
     DummyPowerSensor.cpp
     ArduinoPowerSensor.cpp
     LikwidPowerSensor.cpp
+    rapl-read.cpp
     RaplPowerSensor.cpp
 )
 
