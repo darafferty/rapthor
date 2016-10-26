@@ -13,7 +13,7 @@
 LikwidPowerSensor::LikwidPowerSensor(const char *dumpFileName) :
     dumpFile(dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName)),
     stop(false)
-    {
+{
     #if defined(HAVE_NUMA)
     #if !defined __MIC__
     if (numa_init() != 0) {

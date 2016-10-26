@@ -1,5 +1,5 @@
-#ifndef POWER_SENSOR_H
-#define POWER_SENSOR_H
+#ifndef LIKWID_POWER_SENSOR_H
+#define LIKWID_POWER_SENSOR_H
 
 #include <fstream>
 #include <iostream>
@@ -32,8 +32,8 @@ class LikwidPowerSensor : public PowerSensor {
         void            unlock();
 
         // Dump
-        int		  fd;
-        std::ofstream *dumpFile;
+        int             fd;
+        std::ofstream   *dumpFile;
 };
 
 #endif
