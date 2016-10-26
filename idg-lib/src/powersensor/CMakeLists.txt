@@ -6,12 +6,14 @@ set (${PROJECT_NAME}_headers
     DummyPowerSensor.h
     ArduinoPowerSensor.h
     LikwidPowerSensor.h
+    RaplPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources
     DummyPowerSensor.cpp
     ArduinoPowerSensor.cpp
     LikwidPowerSensor.cpp
+    RaplPowerSensor.cpp
 )
 
 include_directories(
