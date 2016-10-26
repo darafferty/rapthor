@@ -105,6 +105,83 @@ namespace idg {
         return k;
     }
 
+    class Subgrid {
+        public:
+            Subgrid(
+                const int kernel_size,
+                const int subgrid_size,
+                const int grid_size) :
+                kernel_size(kernel_size),
+                subgrid_size(subgrid_size),
+                grid_size(grid_size)
+            {
+                reset();
+            }
+
+            void reset() {
+                u_min =  std::numeric_limits<float>::infinity();
+                u_max = -std::numeric_limits<float>::infinity();
+                v_min =  std::numeric_limits<float>::infinity();
+                v_max = -std::numeric_limits<float>::infinity();
+                uv_width = 0;
+            }
+
+            bool add_visibility(float u_pixels, float v_pixels) {
+                // Initialize candidate uv limits
+                float u_min_ = fmin(u_min, u_pixels);
+                float u_max_ = fmax(u_max, u_pixels);
+                float v_min_ = fmin(v_min, v_pixels);
+                float v_max_ = fmax(v_max, v_pixels);
+
+                // Compute candidate uv width
+                int u_width_  = u_max_ - u_min_ + 1;
+                int v_width_  = v_max_ - v_min_ + 1;
+                int uv_width_ = fmax(u_width_, v_width_);
+
+                // Return false if the visibility does not fit
+                //if (uv_width_ >= kernel_size) {
+                if ((uv_width + kernel_size) >= subgrid_size) {
+                    return false;
+                } else {
+                    u_min = u_min_;
+                    u_max = u_max_;
+                    v_min = v_min_;
+                    v_max = v_max_;
+                    uv_width = uv_width_;
+                    return true;
+                }
+            }
+
+            Coordinate get_coordinate() {
+                // Compute middle point in pixels
+                int u_pixels = roundf((u_max + u_min) / 2);
+                int v_pixels = roundf((v_max + v_min) / 2);
+
+                // Shift center from middle of grid to top left
+                u_pixels += (grid_size/2);
+                v_pixels += (grid_size/2);
+
+                // Shift from middle of subgrid to top left
+                u_pixels -= (subgrid_size/2);
+                v_pixels -= (subgrid_size/2);
+
+                return {u_pixels, v_pixels};
+            }
+
+            const int kernel_size;
+            const int subgrid_size;
+            const int grid_size;
+            float u_min;
+            float u_max;
+            float v_min;
+            float v_max;
+            float uv_width;
+    };
+
+
+    float uv_meters_to_pixels(float meters, float imagesize, float wavenumber) {
+        return meters * imagesize * wavenumber / (2 * M_PI);
+    }
 
     void Plan::init_metadata(
         const float *_uvw,
@@ -127,151 +204,112 @@ namespace idg {
         auto subgrid_size = mParams.get_subgrid_size();
         auto imagesize    = mParams.get_imagesize();
 
-        // Pointers to datastructures
-        UVW *uvw = (UVW *) _uvw;
-        Baseline *baselines = (Baseline *) _baselines;
+        // Allocate metadata
         metadata.reserve(nr_baselines * nr_time / nr_timeslots);
-        Baseline *bptr = (Baseline *) baselines;
-
-        // Get wavenumber for first and last frequency
-        float wavenumber_first = wavenumbers[0];
-        float wavenumber_last  = wavenumbers[nr_channels-1];
 
         // Iterate all baselines
         for (int bl = 0; bl < nr_baselines; bl++) {
-            Baseline baseline = baselines[bl];
+            // Get baseline
+            Baseline baseline = ((Baseline *) (_baselines))[bl];
+
+            // Compute baseline offset
+            const int baseline_offset = bl * nr_time;
+
+            // Set subgrid offset for current baseline
             subgrid_offset.push_back(metadata.size());
-            int timesteps_current_baseline = 0;
 
-            // Iterate all timesteps
-            int time = 0;
-            while (time < nr_time) {
-                // Find mininmum and maximum u and v for current set of
-                // measurements in pixels
-                float u_min =  std::numeric_limits<float>::infinity();
-                float u_max = -std::numeric_limits<float>::infinity();
-                float v_min =  std::numeric_limits<float>::infinity();
-                float v_max = -std::numeric_limits<float>::infinity();
+            // Iterate all time slots
+            for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
+                // Get aterm offset
+                const int current_aterm_offset = aterm_offsets[timeslot];
+                const int next_aterm_offset    = aterm_offsets[timeslot+1];
 
-                int nr_timesteps = 0;
-                int u_pixels_previous;
-                int v_pixels_previous;
-                int aterm_index_subgrid = find_aterm_index(time, aterm_offsets);
-                for (int t = time; t < nr_time; t++) {
-                    int baseline_offset = bl * nr_time;
-                    auto aterm_index = find_aterm_index(t, aterm_offsets);
-                    UVW current = uvw[baseline_offset + t];
+                // The aterm index is equal to the timeslot
+                const int aterm_index = timeslot;
 
-                    // U,V in meters
-                    float u_meters = current.u;
-                    float v_meters = current.v;
+                // Determine number of timesteps in current aterm
+                const int nr_timesteps = next_aterm_offset - current_aterm_offset;
 
-                    float uv_max_meters  = fmax(fabs(u_meters), fabs(v_meters));
-                    float uv_max_pixels  = uv_max_meters * imagesize * wavenumbers[0] /
-                                           (2 * M_PI);
-                    bool uv_in_range     = uv_max_pixels < grid_size/2;
+                // Get pointer to current uvw coordinates
+                UVW *uvw =  ((UVW *) _uvw) + (baseline_offset + current_aterm_offset);
 
-                    // Iterate all channels
-                    // TODO: split channels if they do not fit on a subgrid
-                    for (int chan = 0; chan < nr_channels; chan += nr_channels) {
-                        float wavenumber = wavenumbers[chan];
-                        float scaling = imagesize * wavenumber / (2 * M_PI);
+                // Compute uv coordinates in pixels
+                struct Visibility {
+                    int timestep;
+                    int channel;
+                    float u_pixels;
+                    float v_pixels;
+                };
 
-                        // U,V in pixels
-                        float u_pixels = u_meters * scaling;
-                        float v_pixels = v_meters * scaling;
+                Visibility visibilities[nr_timesteps][nr_channels];
 
-                        if (u_pixels < u_min) u_min = u_pixels;
-                        if (u_pixels > u_max) u_max = u_pixels;
-                        if (v_pixels < v_min) v_min = v_pixels;
-                        if (v_pixels > v_max) v_max = v_pixels;
-                    } // end for chan
+                for (int t = 0; t < nr_timesteps; t++) {
+                    for (int c = 0; c < nr_channels; c++) {
+                        // U,V in meters
+                        float u_meters = uvw[t].u;
+                        float v_meters = uvw[t].v;
 
-                    // Compute u,v width
-                    int u_width = u_max - u_min + 1;
-                    int v_width = v_max - v_min + 1;
-                    int uv_width = u_width < v_width ? v_width : u_width;
+                        float u_pixels = uv_meters_to_pixels(u_meters, imagesize, wavenumbers[c]);
+                        float v_pixels = uv_meters_to_pixels(v_meters, imagesize, wavenumbers[c]);
 
-                    // Compute middle point in pixels
-                    int u_pixels = roundf((u_max + u_min) / 2);
-                    int v_pixels = roundf((v_max + v_min) / 2);
-
-                    // Shift center from middle of grid to top left
-                    u_pixels += (grid_size/2);
-                    v_pixels += (grid_size/2);
-
-                    // Shift from middle of subgrid to top left
-                    u_pixels -= (subgrid_size/2);
-                    v_pixels -= (subgrid_size/2);
-
-                    // Stop conditions
-                    bool same_aterm = (aterm_index == aterm_index_subgrid);
-                    bool last_iteration = (t == nr_time - 1);
-                    bool timestep_fits = uv_in_range && (uv_width + kernel_size) < subgrid_size;
-
-                    // Check whether current set of measurements fit in subgrid
-                    if (timestep_fits && same_aterm && !last_iteration) {
-                        // Continue to next measurement
-                        nr_timesteps++;
-                    } else {
-                        // Measurement no longer fits, create new subgrid
-
-                        // Use current u,v pixels for last measurement
-                        if (timestep_fits && t == nr_time - 1) {
-                            u_pixels_previous = u_pixels;
-                            v_pixels_previous = v_pixels;
-                            nr_timesteps++;
-                        }
-
-                        // // TODO: split also on channels dynamically
-                        // if (nr_timesteps == 0) {
-                        //     printf("max_nr_timesteps=%d\n", max_nr_timesteps);
-                        //     throw runtime_error("Could not fit any timestep on subgrid,
-                        //                         nr_channels is probably too high");
-                        // }
-
-                        // Construct coordinate
-                        Coordinate coordinate = { u_pixels_previous,
-                                                  v_pixels_previous };
-
-                        if (nr_timesteps > 0) {
-                            // Split into subgrids with at most max_nr_timesteps
-                            for (int i = 0; i < nr_timesteps; i += max_nr_timesteps) {
-                                int current_nr_timesteps = i + max_nr_timesteps < nr_timesteps ? max_nr_timesteps : nr_timesteps - i;
-                                timesteps_current_baseline += current_nr_timesteps;
-
-                                // Set metadata
-                                Metadata m = { baseline_offset,
-                                               time + i,
-                                               current_nr_timesteps,
-                                               aterm_index_subgrid,
-                                               baseline,
-                                               coordinate };
-                                metadata.push_back(m);
-
-                                // cout << "New subgrid: " << endl
-                                //      << m << endl;
-                            }
-                        } else {
-                            // Skip timestep
-                            nr_timesteps++;
-                        }
-
-                        // Go to next subgrid
-                        time += nr_timesteps;
-                        break;
+                        visibilities[t][c] = {t, c, u_pixels, v_pixels};
                     }
+                } // end for time
 
-                    // Store current u,v pixels
-                    u_pixels_previous = u_pixels;
-                    v_pixels_previous = v_pixels;
-                }
-            } // end while
-            timesteps_per_baseline.push_back(timesteps_current_baseline);
+                // Initialize subgrid
+                Subgrid subgrid(kernel_size, subgrid_size, grid_size);
+
+                int time_offset = 0;
+                while (time_offset < nr_timesteps) {
+                    // Load first visibility
+                    Visibility first_visibility = visibilities[time_offset][0];
+                    const int first_timestep = first_visibility.timestep;
+
+                    // Create subgrid
+                    subgrid.reset();
+                    int current_nr_timesteps = 0;
+
+                    // Iterate all visibilities
+                    int time_limit = abs(time_offset + max_nr_timesteps);
+                    int time_max = time_limit > 0 ? min(time_limit, nr_timesteps) : nr_timesteps;
+                    for (; time_offset < time_max; time_offset++) {
+                        Visibility visibility = visibilities[time_offset][0];
+                        const int timestep = visibility.timestep;
+                        const float u_pixels = visibility.u_pixels;
+                        const float v_pixels = visibility.v_pixels;
+
+                        // Check whether visibility is in grid range
+                        const float uv_max_pixels = fmax(fabs(u_pixels), fabs(v_pixels));
+                        bool uv_in_range = uv_max_pixels < grid_size / 2;
+
+                        // Try to add visibility to subgrid
+                        if (uv_in_range && subgrid.add_visibility(u_pixels, v_pixels)) {
+                            current_nr_timesteps++;
+                        } else {
+                            time_offset--;
+                            break;
+                        }
+                    } // end for time
+
+                    if (current_nr_timesteps > 0) {
+                        Metadata m = {
+                            baseline_offset,                       // baseline offset
+                            current_aterm_offset + first_timestep, // time offset
+                            current_nr_timesteps,                  // nr of timesteps
+                            aterm_index,                           // aterm index
+                            baseline,                              // baselines
+                            subgrid.get_coordinate()               // coordinate
+                        };
+                        metadata.push_back(m);
+                    }
+                } // end while
+            } // end for timeslot
+
+            // The number of timesteps per baseline is always nr_time
+            timesteps_per_baseline.push_back(nr_time);
         } // end for bl
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
     } // end init_metadata
-
 } // namespace idg
