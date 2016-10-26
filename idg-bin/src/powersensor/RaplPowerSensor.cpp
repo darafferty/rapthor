@@ -25,7 +25,6 @@ RaplPowerSensor::~RaplPowerSensor() {
     if (dumpFile != 0) {
         stop = true;
 
-        #if defined(HAVE_LIKWID)
         if ((errno = pthread_join(thread, 0)) != 0) {
             perror("pthread_join");
         }
@@ -33,7 +32,6 @@ RaplPowerSensor::~RaplPowerSensor() {
         if ((errno = pthread_mutex_destroy(&mutex)) != 0) {
             perror("pthread_mutex_destroy");
         }
-        #endif
 
         delete dumpFile;
     }
