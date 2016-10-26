@@ -1,5 +1,5 @@
-#ifndef IDG_ARDUINO_POWER_SENSOR_H_
-#define IDG_ARDUINO_POWER_SENSOR_H_
+#ifndef ARDUINO_POWER_SENSOR_H_
+#define ARDUINO_POWER_SENSOR_H_
 
 #include <iostream>
 #include <fstream>

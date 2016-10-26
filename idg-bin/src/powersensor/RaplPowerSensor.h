@@ -1,5 +1,5 @@
-#ifndef LIKWID_POWER_SENSOR_H
-#define LIKWID_POWER_SENSOR_H
+#ifndef RAPL_POWER_SENSOR_H
+#define RAPL_POWER_SENSOR_H
 
 #include <fstream>
 #include <iostream>
@@ -8,10 +8,10 @@
 
 #include "PowerSensor.h"
 
-class LikwidPowerSensor : public PowerSensor {
+class RaplPowerSensor : public PowerSensor {
     public:
-        LikwidPowerSensor(const char *dumpFileName = 0);
-        ~LikwidPowerSensor();
+        RaplPowerSensor(const char *dumpFileName = 0);
+        ~RaplPowerSensor();
 
     State read();
     void mark(const State &, const char *name = 0, unsigned tag = 0);

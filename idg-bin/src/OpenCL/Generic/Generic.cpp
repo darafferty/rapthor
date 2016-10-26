@@ -53,10 +53,10 @@ namespace idg {
                 }
 
                 // Initialize host PowerSensor
-                #if defined(HAVE_LIKWID)
+                #if defined(HAVE_LIKWID) && 0
                 hostPowerSensor = new LikwidPowerSensor();
                 #else
-                hostPowerSensor = new DummyPowerSensor();
+                hostPowerSensor = new RaplPowerSensor();
                 #endif
 
                 // Setup benchmark
