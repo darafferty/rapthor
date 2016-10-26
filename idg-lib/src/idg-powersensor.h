@@ -6,5 +6,6 @@
 #include "powersensor/DummyPowerSensor.h"
 #include "powersensor/ArduinoPowerSensor.h"
 #include "powersensor/LikwidPowerSensor.h"
+#include "powersensor/RaplPowerSensor.h"
 
 #endif

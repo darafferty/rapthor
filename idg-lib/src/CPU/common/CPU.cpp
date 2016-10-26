@@ -28,10 +28,10 @@ namespace idg {
                 load_shared_objects();
                 find_kernel_functions();
 
-                #if defined(HAVE_LIKWID)
+                #if defined(HAVE_LIKWID) && 0
                 powerSensor = new LikwidPowerSensor();
                 #else
-                powerSensor = new DummyPowerSensor();
+                powerSensor = new RaplPowerSensor();
                 #endif
 
                 // Setup benchmark
@@ -382,12 +382,10 @@ namespace idg {
 
                     // Report performance
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    double runtime_fft = powerSensor->seconds(powerStates[0], powerStates[1]);
-                    double power_fft   = powerSensor->Watt(powerStates[0], powerStates[1]);
-                    auxiliary::report("grid-fft", runtime_fft,
+                    auxiliary::report("grid-fft",
                                       kernel_fft->flops(gridsize, 1),
                                       kernel_fft->bytes(gridsize, 1),
-                                      power_fft);
+                                      powerSensor, powerStates[0], powerStates[1]);
                     clog << endl;
                     #endif
 
@@ -490,23 +488,21 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
-                    double runtime_gridder = powerSensor->seconds(powerStates[0], powerStates[1]);
-                    double runtime_fft     = powerSensor->seconds(powerStates[2], powerStates[3]);
                     #if defined(REPORT_VERBOSE)
-                    double power_gridder   = powerSensor->Watt(powerStates[0], powerStates[1]);
-                    double power_fft       = powerSensor->Watt(powerStates[2], powerStates[3]);
-                    auxiliary::report("gridder", runtime_gridder,
+                    auxiliary::report("gridder",
                                       kernel_gridder->flops(current_nr_timesteps, current_nr_subgrids),
                                       kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
-                                      power_gridder);
-                    auxiliary::report("sub-fft", runtime_fft,
+                                      powerSensor, powerStates[0], powerStates[1]);
+                    auxiliary::report("sub-fft",
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                      power_fft);
+                                      powerSensor, powerStates[2], powerStates[3]);
                     #endif
                     #if defined(REPORT_TOTAL)
+                    double runtime_gridder = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    double runtime_fft     = powerSensor->seconds(powerStates[2], powerStates[3]);
                     total_runtime_gridder += runtime_gridder;
-                    total_runtime_fft += runtime_fft;
+                    total_runtime_fft     += runtime_fft;
                     #endif
                 } // end for bl
 
@@ -574,15 +570,14 @@ namespace idg {
                     kernel_adder->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
                     powerStates[1] = powerSensor->read();
 
-                    double runtime_adder = powerSensor->seconds(powerStates[0], powerStates[1]);
                     #if defined(REPORT_VERBOSE)
-                    double power_adder = powerSensor->Watt(powerStates[0], powerStates[1]);
-                    auxiliary::report("adder", runtime_adder,
+                    auxiliary::report("adder",
                                       kernel_adder->flops(nr_subgrids),
                                       kernel_adder->bytes(nr_subgrids),
-                                      power_adder);
+                                      powerSensor, powerStates[0], powerStates[1]);
                     #endif
                     #if defined(REPORT_TOTAL)
+                    double runtime_adder = powerSensor->seconds(powerStates[0], powerStates[1]);
                     total_runtime_adder += runtime_adder;
                     #endif
                 } // end for bl
@@ -646,15 +641,14 @@ namespace idg {
                     kernel_splitter->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
                     powerStates[1] = powerSensor->read();
 
-                    double runtime_splitter = powerSensor->seconds(powerStates[0], powerStates[1]);
                     #if defined(REPORT_VERBOSE)
-                    double power_splitter = powerSensor->Watt(powerStates[0], powerStates[1]);
-                    auxiliary::report("splitter", runtime_splitter,
+                    auxiliary::report("splitter",
                                       kernel_splitter->flops(nr_subgrids),
                                       kernel_splitter->bytes(nr_subgrids),
-                                      power_splitter);
+                                      powerSensor, powerStates[0], powerStates[1]);
                     #endif
                     #if defined(REPORT_TOTAL)
+                    double runtime_splitter = powerSensor->seconds(powerStates[0], powerStates[1]);
                     total_runtime_splitter += runtime_splitter;
                     #endif
                 } // end for bl
@@ -760,29 +754,20 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
-                    double runtime_fft       = powerSensor->seconds(powerStates[0],
-                                                                          powerStates[1]);
-                    double runtime_degridder = powerSensor->seconds(powerStates[2],
-                                                                          powerStates[3]);
                     #if defined(REPORT_VERBOSE)
-                    double power_fft         = powerSensor->Watt(powerStates[0],
-                                                                       powerStates[1]);
-                    double power_degridder   = powerSensor->Watt(powerStates[2],
-                                                                       powerStates[3]);
-
-                    auxiliary::report("degridder", runtime_degridder,
-                                      kernel_degridder->flops(current_nr_timesteps,
-                                                              current_nr_subgrids),
-                                      kernel_degridder->bytes(current_nr_timesteps,
-                                                              current_nr_subgrids),
-                                      power_degridder);
-                    auxiliary::report("sub-fft", runtime_fft,
+                    auxiliary::report("degridder",
+                                      kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
+                                      kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
+                                      powerSensor, powerStates[2], powerStates[3]);
+                    auxiliary::report("sub-fft",
                                       kernel_fft->flops(subgridsize, current_nr_subgrids),
                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
-                                      power_fft);
+                                      powerSensor, powerStates[0], powerStates[1]);
                     #endif
                     #if defined(REPORT_TOTAL)
-                    total_runtime_fft += runtime_fft;
+                    double runtime_fft       = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    double runtime_degridder = powerSensor->seconds(powerStates[2], powerStates[3]);
+                    total_runtime_fft       += runtime_fft;
                     total_runtime_degridder += runtime_degridder;
                     #endif
                 } // end for bl
