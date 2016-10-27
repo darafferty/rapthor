@@ -22,6 +22,19 @@
 */
 #define PREVENT_CODEXL_BUG 1
 
+/*
+    Toggle between two modes of cu::HostMemory allocation
+        REDUCE_HOST_MEMORY = 0:
+            visibilities and uvw will be completely mapped
+            into host memory shared by all threads
+            (this takes some time, especially for large buffers)
+        REDUCE_HOST_MEMORY = 1:
+            every thread allocates private host memory
+            to hold data for just one job
+            (throughput is lower, due to additional memory copies)
+*/
+#define REDUCE_HOST_MEMORY 0
+
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -30,20 +43,29 @@ using namespace idg::kernel::opencl;
 namespace idg {
     namespace proxy {
         namespace opencl {
+
+            #if REDUCE_HOST_MEMORY
+            std::vector<cl::Buffer*> h_visibilities_;
+            std::vector<cl::Buffer*> h_uvw_;
+            #else
+            cl::Buffer *h_visibilities;
+            cl::Buffer *h_uvw;
+            #endif
+            std::vector<cl::Buffer*> h_grid_;
+
             Generic::Generic(
                 Parameters params) :
                 OpenCL(params)
-                #if !REDUCE_HOST_MEMORY
-                ,
-                h_visibilities(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines())),
-                h_uvw(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines()))
-                #endif
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
                 #endif
 
                 // Allocate memory
+                #if !REDUCE_HOST_MEMORY
+                h_visibilities = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines()));
+                h_uvw = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines()));
+                #endif
                 for (DeviceInstance *device : devices) {
                     #if REDUCE_HOST_MEMORY
                     h_visibilities_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines())));
@@ -116,8 +138,8 @@ namespace idg {
                 // Copy input data to host memory
                 #if !REDUCE_HOST_MEMORY
                 cl::CommandQueue &queue = devices[0]->get_htod_queue();
-                writeBufferBatched(queue, h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
-                writeBufferBatched(queue, h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                writeBufferBatched(queue, *h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
+                writeBufferBatched(queue, *h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
                 #endif
 
                 // Device memory
@@ -210,8 +232,8 @@ namespace idg {
 
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize));
+                    htodqueue.enqueueCopyBuffer(*h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
+                    htodqueue.enqueueCopyBuffer(*h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize));
                     htodqueue.finish();
                     #if ENABLE_FFT
                     kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
@@ -268,8 +290,8 @@ namespace idg {
                         {
                             // Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
-                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(*h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(*h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
@@ -401,7 +423,7 @@ namespace idg {
                 cl::CommandQueue &queue = devices[0]->get_htod_queue();
                 queue.enqueueWriteBuffer(h_grid, CL_FALSE, 0, sizeof_grid(), grid);
                 #if !REDUCE_HOST_MEMORY
-                queue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
+                queue.enqueueWriteBuffer(*h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
                 #endif
 
                 // Device memory
@@ -491,7 +513,7 @@ namespace idg {
 
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
+                    htodqueue.enqueueCopyBuffer(*h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(0);
                     htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(max_nr_subgrids), metadata_ptr);
                     htodqueue.finish();
@@ -549,7 +571,7 @@ namespace idg {
                         {
                             // Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
+                            htodqueue.enqueueCopyBuffer(*h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
@@ -575,7 +597,7 @@ namespace idg {
 
                             // Copy visibilities to host
                             dtohqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputFree[0]);
+                            dtohqueue.enqueueCopyBuffer(d_visibilities, *h_visibilities, 0, visibilities_offset, sizeof_visibilities(current_nr_baselines), NULL, &outputFree[0]);
                         }
 
                         #if REDUCE_HOST_MEMORY
@@ -617,7 +639,7 @@ namespace idg {
                 for (int bl = 0; bl < nr_baselines; bl++) {
                     auto offset = bl * sizeof_visibilities(1);
                     void *visibilities_ptr = visibilities + (offset/sizeof(complex<float>));
-                    queue.enqueueReadBuffer(h_visibilities, CL_FALSE, offset, sizeof_visibilities(1), visibilities_ptr);
+                    queue.enqueueReadBuffer(*h_visibilities, CL_FALSE, offset, sizeof_visibilities(1), visibilities_ptr);
                 }
                 queue.finish(); // This line triggers a redundant synchronization warning in CodeXL
                 #else
