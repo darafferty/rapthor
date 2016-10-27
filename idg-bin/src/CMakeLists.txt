@@ -251,7 +251,7 @@ endif()
 
 ##################################################################
 # build libidg-hybrid-opencl: containing all for CPU/OpenCL code #
-##############################################################
+##################################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
 add_library(idg-hybrid-opencl
   $<TARGET_OBJECTS:cpu-common>

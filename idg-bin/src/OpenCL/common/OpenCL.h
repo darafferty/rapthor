@@ -6,13 +6,15 @@
 
 #include "idg-common.h"
 
-#include "Util.h"
-#include "DeviceInstance.h"
-#include "Kernels.h"
+namespace cl {
+    class Context;
+}
 
 namespace idg {
     namespace proxy {
         namespace opencl {
+            class DeviceInstance;
+
             class OpenCL : public Proxy {
                 public:
                     OpenCL(

@@ -1,11 +1,5 @@
 project(opencl-common)
 
-# external header files needed
-include_directories (
-    ${OPENCL_INCLUDE_DIRS}
-    ${CLFFT_INCLUDE_DIRS}
-)
-
 # sources and header files
 set (${PROJECT_NAME}_headers
     OpenCL.h
