@@ -1,5 +1,9 @@
 #include "OpenCL.h"
 
+#include "Util.h"
+#include "DeviceInstance.h"
+#include "Kernels.h"
+
 using namespace idg::kernel::opencl;
 
 namespace idg {

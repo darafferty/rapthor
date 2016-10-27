@@ -10,23 +10,7 @@
 #ifndef IDG_OPENCL_GENERIC_H_
 #define IDG_OPENCL_GENERIC_H_
 
-
-#include "idg-opencl.h"
-
-
-/*
-    Toggle between two modes of cu::HostMemory allocation
-        REDUCE_HOST_MEMORY = 0:
-            visibilities and uvw will be completely mapped
-            into host memory shared by all threads
-            (this takes some time, especially for large buffers)
-        REDUCE_HOST_MEMORY = 1:
-            every thread allocates private host memory
-            to hold data for just one job
-            (throughput is lower, due to additional memory copies)
-*/
-#define REDUCE_HOST_MEMORY 0
-
+#include "../common/OpenCL.h"
 
 namespace idg {
     namespace proxy {
@@ -71,15 +55,6 @@ namespace idg {
 
                 private:
                     PowerSensor *hostPowerSensor;
-
-                    #if REDUCE_HOST_MEMORY
-                    std::vector<cl::Buffer*> h_visibilities_;
-                    std::vector<cl::Buffer*> h_uvw_;
-                    #else
-                    cl::Buffer h_visibilities;
-                    cl::Buffer h_uvw;
-                    #endif
-                    std::vector<cl::Buffer*> h_grid_;
 
                     void init_benchmark();
                     bool enable_benchmark = false;
