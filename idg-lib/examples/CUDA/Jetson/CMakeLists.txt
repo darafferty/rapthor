@@ -1,10 +1,5 @@
 project(cuda-jetson.x)
 
-# Set headers
-include_directories (
-    ${CUDA_INCLUDE_DIRS}
-)
-
 # Set sources
 set (
     ${PROJECT_NAME}_sources
