@@ -10,7 +10,6 @@
 #ifndef IDG_OPENCL_GENERIC_H_
 #define IDG_OPENCL_GENERIC_H_
 
-
 #include "../common/OpenCL.h"
 
 namespace idg {

@@ -1,11 +1,5 @@
 project(opencl-generic)
 
-# Set external headers
-include_directories (
-    ${OPENCL_INCLUDE_DIRS}
-    ${CLFFT_INCLUDE_DIRS}
-)
-
 # Set headers
 set (
     ${PROJECT_NAME}_headers
