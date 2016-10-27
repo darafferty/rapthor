@@ -101,8 +101,8 @@ RaplPowerSensor::State RaplPowerSensor::read() {
 }
 
 double RaplPowerSensor::Joules(const State &firstState, const State &secondState) {
-    return ((secondState.consumedEnergyPKG  - firstState.consumedEnergyPKG)  * 1e-6) +
-            (secondState.consumedEnergyDRAM - firstState.consumedEnergyDRAM) * 1e-6;
+    return ((secondState.consumedEnergyPKG  - firstState.consumedEnergyPKG)) +
+            (secondState.consumedEnergyDRAM - firstState.consumedEnergyDRAM);
 }
 
 
