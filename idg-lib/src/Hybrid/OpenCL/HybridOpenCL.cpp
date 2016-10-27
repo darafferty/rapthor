@@ -1,16 +1,5 @@
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
-#include <complex>
-#include <sstream>
-#include <memory>
-#include <dlfcn.h> // dlsym()
-#include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
-
-#include "idg-config.h"
-
 #include "HybridOpenCL.h"
+#include "../../OpenCL/common/DeviceInstance.h"
 
 #define ENABLE_WARMUP 1
 

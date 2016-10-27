@@ -1,5 +1,8 @@
 #include "Generic.h"
 
+#include "../common/Kernels.h"
+#include "../common/DeviceInstance.h"
+
 /*
     Toggle warmup
         Copy some memory to device and execute an FFT
