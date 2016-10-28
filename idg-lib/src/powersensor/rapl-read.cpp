@@ -226,7 +226,7 @@ PowerSensor::State rapl_sysfs() {
 		for(i=0;i<NUM_RAPL_DOMAINS;i++) {
 			if (valid[j][i]) {
                 char *event_name = event_names[j][i];
-                long long value = measurements[j][i];
+                long long value = measurements[j][i] * 1e-6;
 
                 // RAPL_DOMAIN 0: package
                 if (i == 0) {
