@@ -54,7 +54,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     idg::Parameters params;
     params.set_nr_stations(12);
     params.set_nr_channels(9);
-    params.set_nr_time(4096);
+    params.set_nr_time(2048);
     params.set_nr_timeslots(7);
     params.set_imagesize(0.08);
     params.set_grid_size(1024);
@@ -69,10 +69,12 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     int subgridsize      = params.get_subgrid_size();
     float imagesize      = params.get_imagesize();
     int nr_polarizations = params.get_nr_polarizations();
-    tol = gridsize * std::numeric_limits<float>::epsilon();
+    float w_offset         = 0;
+    float integration_time = 1.0f;
+    int kernel_size        = (subgridsize / 2) + 1;
 
-    float w_offset = 0;
-    int kernel_size = (subgridsize / 4) + 1;
+    // error tolerance, which might need to be adjusted if parameters are changed
+    tol = gridsize * std::numeric_limits<float>::epsilon();
 
     // Print configuration
     std::clog << params;
@@ -103,7 +105,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     idg::init_example_visibilities(visibilities, nr_baselines, nr_time,
                                    nr_channels, nr_polarizations);
-    idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time);
+    idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time, integration_time);
     idg::init_example_wavenumbers(wavenumbers, nr_channels);
     idg::init_example_aterm(aterm, nr_timeslots, nr_stations,
                             subgridsize, nr_polarizations);
