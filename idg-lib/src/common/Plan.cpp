@@ -274,24 +274,24 @@ namespace idg {
                     int time_max = time_limit > 0 ? min(time_limit, nr_timesteps) : nr_timesteps;
                     for (; time_offset < time_max; time_offset++) {
                         Visibility visibility = visibilities[time_offset][0];
-                        const int timestep = visibility.timestep;
                         const float u_pixels = visibility.u_pixels;
                         const float v_pixels = visibility.v_pixels;
 
-                        // Check whether visibility is in grid range
-                        const float uv_max_pixels = fmax(fabs(u_pixels), fabs(v_pixels));
-                        bool uv_in_range = uv_max_pixels < grid_size / 2;
-
                         // Try to add visibility to subgrid
-                        if (uv_in_range && subgrid.add_visibility(u_pixels, v_pixels)) {
+                        if (subgrid.add_visibility(u_pixels, v_pixels)) {
                             current_nr_timesteps++;
                         } else {
-                            time_offset--;
                             break;
                         }
                     } // end for time
 
-                    if (current_nr_timesteps > 0) {
+                    // Check whether current subgrid is in grid range
+                    Coordinate coordinate = subgrid.get_coordinate();
+                    bool uv_max_pixels = max(coordinate.x, coordinate.y);
+                    bool uv_in_range = uv_max_pixels > 0 && uv_max_pixels < (grid_size - subgrid_size);
+
+                    // Add subgrid to metadata
+                    if (uv_in_range && current_nr_timesteps > 0) {
                         Metadata m = {
                             baseline_offset,                       // baseline offset
                             current_aterm_offset + first_timestep, // time offset
