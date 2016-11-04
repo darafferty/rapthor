@@ -207,16 +207,23 @@ namespace idg {
         // Allocate metadata
         metadata.reserve(nr_baselines * nr_time / nr_timeslots);
 
+        // Temporary metadata vector for individual baselines
+        std::vector<Metadata> metadata_[nr_baselines];
+        for (int i = 0; i < nr_baselines; i++) {
+            metadata_[i].reserve(nr_time / nr_timeslots);
+        }
+
         // Iterate all baselines
+        #pragma omp parallel for
         for (int bl = 0; bl < nr_baselines; bl++) {
+            // Get thread id
+            const int thread_id = omp_get_thread_num();
+
             // Get baseline
             Baseline baseline = ((Baseline *) (_baselines))[bl];
 
             // Compute baseline offset
             const int baseline_offset = bl * nr_time;
-
-            // Set subgrid offset for current baseline
-            subgrid_offset.push_back(metadata.size());
 
             // Iterate all time slots
             for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
@@ -300,10 +307,20 @@ namespace idg {
                             baseline,                              // baselines
                             subgrid.get_coordinate()               // coordinate
                         };
-                        metadata.push_back(m);
+                        metadata_[bl].push_back(m);
                     }
                 } // end while
             } // end for timeslot
+        } // end for bl
+
+        // Combine data structures
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            // The subgrid offset is the number of subgrids for all prior baselines
+            subgrid_offset.push_back(metadata.size());
+
+            for (int i = 0; i < metadata_[bl].size(); i++) {
+                metadata.push_back(metadata_[bl][i]);
+            }
 
             // The number of timesteps per baseline is always nr_time
             timesteps_per_baseline.push_back(nr_time);
