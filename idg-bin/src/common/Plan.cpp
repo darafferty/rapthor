@@ -207,16 +207,23 @@ namespace idg {
         // Allocate metadata
         metadata.reserve(nr_baselines * nr_time / nr_timeslots);
 
+        // Temporary metadata vector for individual baselines
+        std::vector<Metadata> metadata_[nr_baselines];
+        for (int i = 0; i < nr_baselines; i++) {
+            metadata_[i].reserve(nr_time / nr_timeslots);
+        }
+
         // Iterate all baselines
+        #pragma omp parallel for
         for (int bl = 0; bl < nr_baselines; bl++) {
+            // Get thread id
+            const int thread_id = omp_get_thread_num();
+
             // Get baseline
             Baseline baseline = ((Baseline *) (_baselines))[bl];
 
             // Compute baseline offset
             const int baseline_offset = bl * nr_time;
-
-            // Set subgrid offset for current baseline
-            subgrid_offset.push_back(metadata.size());
 
             // Iterate all time slots
             for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
@@ -274,24 +281,24 @@ namespace idg {
                     int time_max = time_limit > 0 ? min(time_limit, nr_timesteps) : nr_timesteps;
                     for (; time_offset < time_max; time_offset++) {
                         Visibility visibility = visibilities[time_offset][0];
-                        const int timestep = visibility.timestep;
                         const float u_pixels = visibility.u_pixels;
                         const float v_pixels = visibility.v_pixels;
 
-                        // Check whether visibility is in grid range
-                        const float uv_max_pixels = fmax(fabs(u_pixels), fabs(v_pixels));
-                        bool uv_in_range = uv_max_pixels < grid_size / 2;
-
                         // Try to add visibility to subgrid
-                        if (uv_in_range && subgrid.add_visibility(u_pixels, v_pixels)) {
+                        if (subgrid.add_visibility(u_pixels, v_pixels)) {
                             current_nr_timesteps++;
                         } else {
-                            time_offset--;
                             break;
                         }
                     } // end for time
 
-                    if (current_nr_timesteps > 0) {
+                    // Check whether current subgrid is in grid range
+                    Coordinate coordinate = subgrid.get_coordinate();
+                    bool uv_max_pixels = max(coordinate.x, coordinate.y);
+                    bool uv_in_range = uv_max_pixels > 0 && uv_max_pixels < (grid_size - subgrid_size);
+
+                    // Add subgrid to metadata
+                    if (uv_in_range && current_nr_timesteps > 0) {
                         Metadata m = {
                             baseline_offset,                       // baseline offset
                             current_aterm_offset + first_timestep, // time offset
@@ -300,10 +307,20 @@ namespace idg {
                             baseline,                              // baselines
                             subgrid.get_coordinate()               // coordinate
                         };
-                        metadata.push_back(m);
+                        metadata_[bl].push_back(m);
                     }
                 } // end while
             } // end for timeslot
+        } // end for bl
+
+        // Combine data structures
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            // The subgrid offset is the number of subgrids for all prior baselines
+            subgrid_offset.push_back(metadata.size());
+
+            for (int i = 0; i < metadata_[bl].size(); i++) {
+                metadata.push_back(metadata_[bl][i]);
+            }
 
             // The number of timesteps per baseline is always nr_time
             timesteps_per_baseline.push_back(nr_time);

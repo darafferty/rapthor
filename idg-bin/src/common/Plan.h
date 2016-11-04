@@ -7,6 +7,7 @@
 #include <cmath>
 #include <numeric>
 #include <iterator>
+#include <omp.h>
 
 #include "Types.h"
 #include "Parameters.h"
