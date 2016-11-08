@@ -20,7 +20,7 @@ __global__ void kernel_degridder(
 	const SpheroidalType	__restrict__ spheroidal,
 	const ATermType			__restrict__ aterm,
 	const MetadataType		__restrict__ metadata,
-	const SubGridType	    __restrict__ subgrid
+	SubGridType	            __restrict__ subgrid
 	) {
     int tidx       = threadIdx.x;
     int tidy       = threadIdx.y;
@@ -51,6 +51,50 @@ __global__ void kernel_degridder(
 
     __syncthreads();
 
+    // Prepare pixels
+    const int nr_pixels = SUBGRIDSIZE * SUBGRIDSIZE;
+    for (int i = tid; i < nr_pixels; i+= nr_threads) {
+        int y = i / SUBGRIDSIZE;
+        int x = i % SUBGRIDSIZE;
+
+        // Load aterm for station1
+        float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
+        float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
+        float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
+        float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
+
+        // Load aterm for station2
+        float2 aXX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][0]);
+        float2 aXY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][1]);
+        float2 aYX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][2]);
+        float2 aYY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][3]);
+
+        // Load spheroidal
+        float _spheroidal = spheroidal[y][x];
+
+        // Compute shifted position in subgrid
+        int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+        int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
+        // Load uv values
+        float2 pixelsXX = _spheroidal * subgrid[s][0][y_src][x_src];
+        float2 pixelsXY = _spheroidal * subgrid[s][1][y_src][x_src];
+        float2 pixelsYX = _spheroidal * subgrid[s][2][y_src][x_src];
+        float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
+
+        // Apply aterm
+        apply_aterm(
+            aXX1, aXY1, aYX1, aYY1,
+            aXX2, aXY2, aYX2, aYY2,
+            pixelsXX, pixelsXY, pixelsYX, pixelsYY);
+
+        // Store pixels
+        subgrid[s][0][y_src][x_src] = pixelsXX;
+        subgrid[s][1][y_src][x_src] = pixelsXY;
+        subgrid[s][2][y_src][x_src] = pixelsYX;
+        subgrid[s][3][y_src][x_src] = pixelsYY;
+    }
+
     // Iterate all visibilities
     for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
         int time = i / nr_channels;
@@ -76,7 +120,6 @@ __global__ void kernel_degridder(
         __syncthreads();
 
         // Iterate all pixels
-        const int nr_pixels   = SUBGRIDSIZE * SUBGRIDSIZE;
         int current_nr_pixels = BATCH_SIZE;
         for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += current_nr_pixels) {
             current_nr_pixels = nr_pixels - pixel_offset < BATCH_SIZE ?
@@ -89,36 +132,15 @@ __global__ void kernel_degridder(
                 int y = (pixel_offset + i) / SUBGRIDSIZE;
                 int x = (pixel_offset + i) % SUBGRIDSIZE;
 
-                // Load aterm for station1
-                float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
-                float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
-                float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
-                float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
-
-                // Load aterm for station2
-                float2 aXX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][0]);
-                float2 aXY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][1]);
-                float2 aYX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][2]);
-                float2 aYY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][3]);
-
-                // Load spheroidal
-                float _spheroidal = spheroidal[y][x];
-
                 // Compute shifted position in subgrid
                 int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                 int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-                // Load uv values
-                float2 pixelsXX = _spheroidal * subgrid[s][0][y_src][x_src];
-                float2 pixelsXY = _spheroidal * subgrid[s][1][y_src][x_src];
-                float2 pixelsYX = _spheroidal * subgrid[s][2][y_src][x_src];
-                float2 pixelsYY = _spheroidal * subgrid[s][3][y_src][x_src];
-
-                // Apply aterm
-                apply_aterm(
-                    aXX1, aXY1, aYX1, aYY1,
-                    aXX2, aXY2, aYX2, aYY2,
-                    pixelsXX, pixelsXY, pixelsYX, pixelsYY);
+                // Load pixels from device memory
+                float2 pixelsXX = subgrid[s][0][y_src][x_src];
+                float2 pixelsXY = subgrid[s][1][y_src][x_src];
+                float2 pixelsYX = subgrid[s][2][y_src][x_src];
+                float2 pixelsYY = subgrid[s][3][y_src][x_src];
 
                 // Store pixels
                 _pix[0][i] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
