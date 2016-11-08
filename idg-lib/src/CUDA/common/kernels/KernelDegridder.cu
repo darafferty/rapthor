@@ -4,7 +4,7 @@
 #include "math.cu"
 
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
-#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
+//#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 
 extern "C" {
@@ -22,10 +22,11 @@ __global__ void kernel_degridder(
 	const MetadataType		__restrict__ metadata,
 	const SubGridType	    __restrict__ subgrid
 	) {
-    int tidx       = threadIdx.x;
-	int s          = blockIdx.x;
-    int chan       = blockIdx.y;
-    int nr_threads = blockDim.x;
+    int tidx      = threadIdx.x;
+    int tidy      = threadIdx.y;
+    int tid       = tidx + tidy * blockDim.y;
+    int blockSize = blockDim.x * blockDim.y;
+	int s         = blockIdx.x;
 
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
@@ -49,12 +50,16 @@ __global__ void kernel_degridder(
 	__shared__ float4 _lmn_phaseoffset[BATCH_SIZE];
 
     // Iterate all visibilities
-    for (int time = tidx; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
+    //for (int time = tidx; time < ALIGN(nr_timesteps, blockSize); time += nr_threads) {
+    for (int i = tid; i < nr_timesteps * nr_channels; i += blockSize) {
+        int time = i / nr_channels;
+        int chan = i % nr_channels;
+
         float2 visXX, visXY, visYX, visYY;
         float  u, v, w;
         float  wavenumber;
 
-        if (time < nr_timesteps) {
+        //if (time < nr_timesteps) {
             visXX = make_float2(0, 0);
             visXY = make_float2(0, 0);
             visYX = make_float2(0, 0);
@@ -65,17 +70,21 @@ __global__ void kernel_degridder(
             w = uvw[time_offset_global + time].w;
 
             wavenumber = wavenumbers[chan];
-        }
+        //} else {
+        //    printf("time >= nr_timesteps: tid=%d, tidx=%d, tidy=%d, time=%d, chan=%d\n", tid, tidx, tidy, time, chan);
+        //}
 
         __syncthreads();
 
-        for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, nr_threads); j += nr_threads) {
+        //for (int j = tidx; j < ALIGN(SUBGRIDSIZE * SUBGRIDSIZE, blockSize); j += nr_threads) {
+        //for (int j = tid; j < SUBGRIDSIZE * SUBGRIDSIZE; j += blockSize) {
+        for (int j = 0; j < SUBGRIDSIZE * SUBGRIDSIZE; j++) {
             int y = j / SUBGRIDSIZE;
             int x = j % SUBGRIDSIZE;
 
             __syncthreads();
 
-            if (y < SUBGRIDSIZE) {
+            //if (y < SUBGRIDSIZE) {
                 float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
                 float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
                 float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
@@ -107,36 +116,36 @@ __global__ void kernel_degridder(
                     pixelsXX, pixelsXY, pixelsYX, pixelsYY);
 
                 // Store pixels
-                _pix[0][tidx] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][tidx] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                //_pix[0][tid] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
+                //_pix[1][tid] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
                 float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                 float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[tidx] = make_float4(l, m, n, phase_offset);
-            } // end if
+                //_lmn_phaseoffset[tid] = make_float4(l, m, n, phase_offset);
+            //} // end if
 
             __syncthreads();
 
-            if (time < nr_timesteps) {
-                int last_k = 0;
-                if (SUBGRIDSIZE * SUBGRIDSIZE % nr_threads == 0) {
-                    last_k = BATCH_SIZE;
-                } else {
-                    int first_j = (j / BATCH_SIZE) * BATCH_SIZE;
-                    last_k =  first_j + BATCH_SIZE < SUBGRIDSIZE * SUBGRIDSIZE ? BATCH_SIZE : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
-                }
+            //if (time < nr_timesteps) {
+                //int last_k = 0;
+                //if (SUBGRIDSIZE * SUBGRIDSIZE % blockSize == 0) {
+                //    last_k = BATCH_SIZE;
+                //} else {
+                //    int first_j = (j / BATCH_SIZE) * BATCH_SIZE;
+                //    last_k =  first_j + BATCH_SIZE < SUBGRIDSIZE * SUBGRIDSIZE ? BATCH_SIZE : SUBGRIDSIZE * SUBGRIDSIZE - first_j;
+                //}
 
-                for (int k = 0; k < last_k; k++) {
-                    // Load l,m,n
-                    float l = _lmn_phaseoffset[k].x;
-                    float m = _lmn_phaseoffset[k].y;
-                    float n = _lmn_phaseoffset[k].z;
+                //for (int k = 0; k < last_k; k++) {
+                //    // Load l,m,n
+                //    float l = _lmn_phaseoffset[k].x;
+                //    float m = _lmn_phaseoffset[k].y;
+                //    float n = _lmn_phaseoffset[k].z;
 
-                    // Load phase offset
-                    float phase_offset = _lmn_phaseoffset[k].w;
+                //    // Load phase offset
+                //    float phase_offset = _lmn_phaseoffset[k].w;
 
                     // Compute phase index
                     float phase_index = u * l + v * m + w * n;
@@ -146,10 +155,14 @@ __global__ void kernel_degridder(
                     float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                     // Load pixels from shared memory
-                    float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
-                    float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
-                    float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
-                    float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
+                    //float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
+                    //float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
+                    //float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
+                    //float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
+                    float2 apXX = pixelsXX;
+                    float2 apXY = pixelsXY;
+                    float2 apYX = pixelsYX;
+                    float2 apYY = pixelsYY;
 
                     // Multiply pixels by phasor
                     visXX.x += phasor.x * apXX.x;
@@ -172,8 +185,8 @@ __global__ void kernel_degridder(
                     visYY.x -= phasor.y * apYY.y;
                     visYY.y += phasor.y * apYY.x;
                 } // end for k
-            } // end if
-        } // end for p
+            //} // end if
+        //} // end for i
 
         __syncthreads();
 
