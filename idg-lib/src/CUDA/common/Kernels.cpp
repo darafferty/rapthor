@@ -67,7 +67,7 @@ namespace idg {
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
-                dim3 grid(nr_subgrids, nr_channels);
+                dim3 grid(nr_subgrids);
                 stream.launchKernel(function, grid, block, 0, parameters);
             }
 
