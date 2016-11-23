@@ -203,6 +203,9 @@ namespace idg {
 
         std::vector<std::string> split_string(char *string, const char *delimiter) {
             std::vector<std::string> splits;
+            if (!string) {
+                return splits;
+            }
             char *token = strtok(string, delimiter);
             if (token) splits.push_back(token);
             while (token) {
