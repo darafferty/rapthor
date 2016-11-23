@@ -121,7 +121,7 @@ namespace idg {
                 #if defined(HAVE_MKL)
                 flags << mkl_flags.str();
                 #else
-                flags << " -lfftw3f";
+                flags << " -I" << FFTW3_INCLUDE_DIR << " " << FFTW3F_LIB;
                 #endif
             #elif defined(CLANG_CXX_COMPILER)
                 flags << clang_flags.str();
