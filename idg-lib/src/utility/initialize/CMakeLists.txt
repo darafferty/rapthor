@@ -2,7 +2,8 @@ project(utility-initialize)
 
 # external header files needed
 include_directories (
-  ${CMAKE_SOURCE_DIR}/utility
+    ${CMAKE_SOURCE_DIR}/utility
+    ${FFTW3_INCLUDE_DIR}
 )
 
 # sources and header files
