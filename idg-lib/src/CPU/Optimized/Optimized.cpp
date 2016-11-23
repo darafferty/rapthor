@@ -10,6 +10,7 @@
 
 #include "idg-config.h"
 #include "Optimized.h"
+#include "arch.h"
 
 using namespace std;
 
@@ -93,7 +94,12 @@ namespace idg {
 
             // GNU compiler
             stringstream gnu_flags;
-            gnu_flags << " -std=c++11 -fopenmp -march=core-avx2 -ffast-math";
+            bool avx2_supported = check_4th_gen_intel_core_features();
+            printf("AVX2 support: %d\n", avx2_supported);
+            gnu_flags << " -std=c++11 -fopenmp -ffast-math";
+            if (avx2_supported) {
+                gnu_flags << " -march=core-avx2";
+            }
 
             // Clang compiler
             stringstream clang_flags;
