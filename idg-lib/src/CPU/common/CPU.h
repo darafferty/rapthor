@@ -23,7 +23,6 @@
 #include <omp.h> // omp_get_wtime
 #include <libgen.h> // dirname() and basename()
 #include <unistd.h> // rmdir()
-#include <fftw3.h> // FFTW_BACKWARD, FFTW_FORWARD
 
 #include "idg-config.h"
 #include "idg-common.h"
@@ -31,6 +30,9 @@
 
 #include "Kernels.h"
 
+// Forward declarations
+#define FFTW_FORWARD  (-1)
+#define FFTW_BACKWARD (+1)
 
 namespace idg {
     namespace proxy {

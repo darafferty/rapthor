@@ -10,6 +10,7 @@
 
 #include "idg-config.h"
 #include "Optimized.h"
+#include "arch.h"
 
 using namespace std;
 
@@ -93,7 +94,20 @@ namespace idg {
 
             // GNU compiler
             stringstream gnu_flags;
-            gnu_flags << " -std=c++11 -fopenmp -march=core-avx2 -ffast-math";
+            bool avx512_supported = has_intel_knl_features();
+            bool avx2_supported = check_4th_gen_intel_core_features();
+
+            #if defined(DEBUG)
+            printf("AVX512 support: %d\n", avx512_supported);
+            printf("AVX2 support: %d\n", avx2_supported);
+            #endif
+
+            gnu_flags << " -std=c++11 -fopenmp -ffast-math";
+            if (avx512_supported) {
+                gnu_flags << " -mavx512f -mavx512pf -mavx512er -mavx512cd";
+            } else if (avx2_supported) {
+                gnu_flags << " -march=core-avx2";
+            }
 
             // Clang compiler
             stringstream clang_flags;
@@ -115,7 +129,7 @@ namespace idg {
                 #if defined(HAVE_MKL)
                 flags << mkl_flags.str();
                 #else
-                flags << " -lfftw3f";
+                flags << " -I" << FFTW3_INCLUDE_DIR << " " << FFTW3F_LIB;
                 #endif
             #elif defined(CLANG_CXX_COMPILER)
                 flags << clang_flags.str();

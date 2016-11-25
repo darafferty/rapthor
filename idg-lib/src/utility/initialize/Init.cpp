@@ -209,6 +209,7 @@ namespace idg {
         double *ww = (double*) malloc(nr_coordinates * sizeof(double));
 
         // Evaluate baseline uvw coordinates.
+        #pragma omp parallel for
         for (int t = 0; t < nr_time; t++) {
             double time_mjd = start_time_mjd + t
                               * (obs_length_days/(double)nr_time);
@@ -219,6 +220,7 @@ namespace idg {
         }
 
         // Fill UVW datastructure
+        #pragma omp parallel for
         for (int bl = 0; bl < nr_baselines; bl++) {
             for (int t = 0; t < nr_time; t++) {
                 int i = t * nr_baselines + bl;
@@ -248,6 +250,7 @@ namespace idg {
         idg::float2 visibility = {1.0f, 0.0f};
 
         // Set all visibilities
+        #pragma omp parallel for collapse(4)
         for (int bl = 0; bl < nr_baselines; bl++) {
             for (int time = 0; time < nr_time; time++) {
                 for (int chan = 0; chan < nr_channels; chan++) {
