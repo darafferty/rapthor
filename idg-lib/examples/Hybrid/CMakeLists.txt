@@ -1,10 +1,5 @@
 project(examples-hybrid)
 
-# external header files
-include_directories(
-    ${FFTW3_INCLUDE_DIR}
-)
-
 # add subfolders
 if (BUILD_LIB_KNC)
    if (INTEL_CXX_COMPILER)

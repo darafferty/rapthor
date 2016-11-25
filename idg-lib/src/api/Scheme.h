@@ -13,7 +13,6 @@
 #include <stdexcept>
 #include <cmath>
 #include <limits>
-#include <fftw3.h>    // TODO: remove
 #include "idg-common.h"
 #include "idg-fft.h"
 #if defined(BUILD_LIB_CPU)

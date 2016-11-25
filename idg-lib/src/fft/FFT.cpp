@@ -1,5 +1,7 @@
 #include "FFT.h"
 
+#include <fftw3.h>
+
 using namespace std;
 
 namespace idg {
