@@ -34,29 +34,7 @@ include("${IDG_PREFIX_DIR}/lib/cmake/IDGTargets.cmake")
 
 set(IDG_LIB idg CACHE LOCATION "IDG library")
 
-#if (@BUILD_LIB_CPU@)
-#set(IDG_CPU_LIB idg-cpu CACHE LOCATION "IDG CPU library")
-#endif()
-
-#if (@BUILD_LIB_CUDA@)
-#set(IDG_CUDA_LIB idg-cuda CACHE LOCATION "IDG CUDA library")
-#endif()
-
-#if (@BUILD_LIB_OPENCL@)
-#set(IDG_OPENCL_LIB idg-opencl CACHE LOCATION "IDG OpenCL library")
-#endif()
-
-#if (@BUILD_LIB_CPU@ AND @BUILD_LIB_CUDA@)
-#set(IDG_HYBRID_CUDA_LIB idg-hybrid-cuda CACHE LOCATION "IDG hybrid CUDA library")
-#endif()
-
 if (@BUILD_WITH_PYTHON@)
 set(IDG_PYTHON_MODULE_PATH "${IDG_PREFIX_DIR}/lib/python2.7/dist-packages"
     CACHE PATH "IDG python module path")
-endif()
-
-if (@BUILD_WITH_EXAMPLES@ OR @BUILD_WITH_TESTS@)
-set(IDG_UTILITY_INCLUDE_DIR "${IDG_PREFIX_DIR}/include/utility"
-    CACHE PATH "IDG utility include directory")
-set(IDG_UTILITY_LIB idg-utility CACHE LOCATION "IDG utility library")
 endif()

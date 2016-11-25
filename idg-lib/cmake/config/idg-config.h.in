@@ -12,8 +12,6 @@
 #cmakedefine BUILD_LIB_CUDA
 #cmakedefine BUILD_LIB_OPENCL
 #cmakedefine BUILD_WITH_PYTHON
-#cmakedefine BUILD_WITH_EXAMPLES
-#cmakedefine BUILD_WITH_TESTS
 #cmakedefine REPORT_VERBOSE
 #cmakedefine REPORT_TOTAL
 #cmakedefine REPORT_OPS
