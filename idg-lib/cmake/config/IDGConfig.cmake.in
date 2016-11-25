@@ -6,7 +6,6 @@
 #  IDG_CUDA_LIB            - libraries to link against
 #  IDG_HYBRID_CUDA_LIB     - libraries to link against
 #  IDG_OPENCL_LIB          - libraries to link against
-#  IDG_KNC_LIB             - libraries to link against
 #  IDG_PYTHON_MODULE_PATH  - path to 'idg' python module
 #  IDG_UTILITY_INCLUDE_DIR - include directories
 #  IDG_UTILITY_LIB         - libraries to link against
@@ -49,10 +48,6 @@ set(IDG_LIB idg CACHE LOCATION "IDG library")
 
 #if (@BUILD_LIB_CPU@ AND @BUILD_LIB_CUDA@)
 #set(IDG_HYBRID_CUDA_LIB idg-hybrid-cuda CACHE LOCATION "IDG hybrid CUDA library")
-#endif()
-
-#if (@BUILD_LIB_KNC@)
-#set(IDG_KNC_LIB idg-knc CACHE LOCATION "IDG KNC library")
 #endif()
 
 if (@BUILD_WITH_PYTHON@)

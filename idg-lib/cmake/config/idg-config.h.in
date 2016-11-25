@@ -11,7 +11,6 @@
 #cmakedefine BUILD_LIB_CPU
 #cmakedefine BUILD_LIB_CUDA
 #cmakedefine BUILD_LIB_OPENCL
-#cmakedefine BUILD_LIB_KNC
 #cmakedefine BUILD_WITH_PYTHON
 #cmakedefine BUILD_WITH_EXAMPLES
 #cmakedefine BUILD_WITH_TESTS

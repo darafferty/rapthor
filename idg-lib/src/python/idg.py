@@ -27,11 +27,6 @@ except OSError as e:
     handle_error("Hybrid OpenCL", e)
 
 try:
-    import KNC
-except OSError as e:
-    handle_error("KNC", e)
-
-try:
     import CUDA
 except OSError as e:
     handle_error("CUDA", e)

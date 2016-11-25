@@ -1,9 +1,5 @@
 #include "Parameters.h"
 
-#if defined(BUILD_LIB_KNC)
-#pragma omp declare target
-#endif
-
 #include <cstdlib> // getenv, atoi
 #include <iostream> // ostream
 #include <iomanip> // setw
@@ -273,7 +269,3 @@ namespace idg {
   }
 
 } // namespace idg
-
-#if defined(BUILD_LIB_KNC)
-#pragma omp end declare target
-#endif

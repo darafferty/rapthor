@@ -15,7 +15,6 @@ make install
 * BUILD_LIB_CPU: build library 'libidg-cpu' for usage on CPU's      
 * BUILD_LIB_CUDA: build library 'libidg-cuda' for usage on Nvidia GPU's      
 * BUILD_LIB_OPENCL: build library 'libidg-opencl' for usage of OpenCL     
-* BUILD_LIB_KNC: build library 'libidg-knc' for usage of Intel Xeon Phi KNC      
 * BUILD_WITH_PYTHON: build Python module 'idg' to use IDG from Python       
 * BUILD_WITH_BOOST_PYTHON: ...       
 

@@ -314,39 +314,6 @@ endif(BUILD_LIB_OPENCL)
 
 
 ################################################
-# build libidg-knc, containing all common code #
-################################################
-if (BUILD_LIB_KNC)
-add_library(idg-knc
-  $<TARGET_OBJECTS:hybrid-knc>
-)
-
-set(LINK_LIRBRARIES idg-common mkl_avx2 mkl_def)
-
-target_link_libraries(
-    idg-knc
-    ${LINK_LIRBRARIES}
-)
-
-set_target_properties(idg-knc PROPERTIES
-                      PUBLIC_HEADER idg-knc.h)
-
-add_library(idg-knc-nocommon
-  $<TARGET_OBJECTS:hybrid-knc>
-)
-
-install(TARGETS idg-knc idg-knc-nocommon
-  EXPORT IDGTargets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
-)
-endif(BUILD_LIB_KNC)
-
-
-
-################################################
 # build libidg, containing all common code     #
 ################################################
 
