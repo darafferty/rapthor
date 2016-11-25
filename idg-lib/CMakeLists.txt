@@ -27,29 +27,10 @@ option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Have CUDA environment" OFF)
 option (BUILD_LIB_OPENCL "Have OpenCL environment" OFF)
 option (BUILD_WITH_PYTHON "Have Python environment" OFF)
-option (BUILD_WITH_POWER "Enable power measurement" OFF)
 option (BUILD_WITH_MKL "Build with MKL (if available)" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (REPORT_OPS "Report performance in ops (fma, sincos) instead of flops (add, mul)" OFF)
-
-
-# Likwid power sensor
-if (BUILD_WITH_POWER)
-find_package(Numa QUIET)
-find_package(Likwid QUIET)
-endif ()
-if (${NUMA_FOUND} AND ${LIKWID_FOUND})
-    set (HAVE_LIKWID TRUE)
-    set (HAVE_NUMA TRUE)
-else ()
-    # These values are not used when both libraries are not found
-    unset (LIKWID_INCLUDE_DIRS CACHE)
-    unset (LIKWID_LIBRARIES CACHE)
-    unset (NUMA_ROOT_DIR CACHE)
-    unset (NUMA_INCLUDE_DIR CACHE)
-    unset (NUMA_LIBRARY CACHE)
-endif ()
 
 
 # build shared or static libraries (default: shared)
