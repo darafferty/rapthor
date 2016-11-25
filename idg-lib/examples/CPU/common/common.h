@@ -50,14 +50,14 @@ void run()
     auto size_grid         = 1ULL * nr_polarizations*gridsize*gridsize;
     auto size_baselines    = 1ULL * nr_baselines*2;
 
-    auto visibilities  = new complex<float>[size_visibilities];
-    auto uvw           = new float[size_uvw];
-    auto wavenumbers   = new float[size_wavenumbers];
-    auto aterm         = new complex<float>[size_aterm];
-    auto aterm_offsets = new int[nr_timeslots+1];
-    auto spheroidal    = new float[size_spheroidal];
-    auto grid          = new complex<float>[size_grid];
-    auto baselines     = new int[size_baselines];
+    auto visibilities  = (complex<float> *) malloc(sizeof(complex<float>) * size_visibilities);
+    auto uvw           = (float *) malloc(sizeof(float) * size_uvw);
+    auto wavenumbers   = (float *) malloc(sizeof(float) * size_wavenumbers);
+    auto aterm         = (complex<float> *) malloc(sizeof(complex<float>) * size_aterm);
+    auto aterm_offsets = (int *) malloc(sizeof(int) * nr_timeslots+1);
+    auto spheroidal    = (float *) malloc(sizeof(float) * size_spheroidal);
+    auto grid          = (complex<float> *) malloc(sizeof(complex<float>) * size_grid);
+    auto baselines     = (int *) malloc(sizeof(int) * size_baselines);
 
     idg::init_example_visibilities(visibilities, nr_baselines,
                            nr_time,
@@ -91,12 +91,12 @@ void run()
                               spheroidal);
 
     // Free memory for data structures
-    delete[] visibilities;
-    delete[] uvw;
-    delete[] wavenumbers;
-    delete[] aterm;
-    delete[] aterm_offsets;
-    delete[] spheroidal;
-    delete[] grid;
-    delete[] baselines;
+    free(visibilities);
+    free(uvw);
+    free(wavenumbers);
+    free(aterm);
+    free(aterm_offsets);
+    free(spheroidal);
+    free(grid);
+    free(baselines);
 }
