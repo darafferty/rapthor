@@ -2,6 +2,5 @@
 #define IDG_CUDA_HEADER
 
 #include "CUDA/Generic/Generic.h"
-#include "CUDA/Jetson/Jetson.h"
 
 #endif

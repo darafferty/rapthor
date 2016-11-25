@@ -174,7 +174,6 @@ if (BUILD_LIB_CUDA)
 add_library (
     idg-cuda
     $<TARGET_OBJECTS:cuda-common>
-    $<TARGET_OBJECTS:cuda-jetson>
     $<TARGET_OBJECTS:cuda-generic>
 )
 
