@@ -1,5 +1,9 @@
 project(opencl)
 
+# resolve dependencies
+find_package(OpenCL)
+find_package(clFFT)
+
 # external header files needed
 include_directories (
     ${OPENCL_INCLUDE_DIRS}

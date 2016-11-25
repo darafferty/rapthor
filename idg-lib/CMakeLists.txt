@@ -92,19 +92,8 @@ else()
     endif()
 endif()
 
-
-# find OpenCL environment
-if (BUILD_LIB_OPENCL)
-    find_package(OpenCL)
-    find_package(clFFT)
-endif (BUILD_LIB_OPENCL)
-
-# write config file, included in all files of the project
-configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
-  "${PROJECT_BINARY_DIR}/src/idg-config.h"
-  )
 include_directories (${CMAKE_BINARY_DIR}/src)
+
 # Copy header files
 install(
     FILES
@@ -117,15 +106,21 @@ install(
 # add main include folder
 include_directories (${CMAKE_SOURCE_DIR}/src)
 
-# write file to initialize enoviroment
+# add subfolders, after specifying the targets to build
+add_subdirectory(src)
+
+# write file to initialize environment
 configure_file (
   "${PROJECT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
   "${PROJECT_BINARY_DIR}/init-environment.sh"
   )
 
+# write config file, included in all files of the project
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
+  "${PROJECT_BINARY_DIR}/src/idg-config.h"
+  )
 
-# add subfolders, after specifying the targets to build
-add_subdirectory(src)
 
 #####################################################
 # Create IDGConfig.cmake and IDGConfigVersion.cmake #
