@@ -2,14 +2,9 @@ project(idg)
 
 # add subfolders
 add_subdirectory(common)
-add_subdirectory(api)
 add_subdirectory(powersensor)
 
-if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
-add_subdirectory(utility)
-endif ()
-
-if (BUILD_LIB_CPU OR BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
+if (BUILD_LIB_CPU)
     add_subdirectory(fft)
 endif()
 
@@ -27,7 +22,6 @@ if (BUILD_LIB_OPENCL)
 endif()
 if (BUILD_WITH_PYTHON)
     add_subdirectory(python)
-    add_subdirectory(python-api)
 endif()
 
 
@@ -104,33 +98,6 @@ install(TARGETS idg-fft
   ARCHIVE DESTINATION lib/static
   PUBLIC_HEADER DESTINATION include
 )
-
-
-#########################################################
-# build libidg-utility: init example data, ...
-#########################################################
-if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
-add_library(idg-utility
-  $<TARGET_OBJECTS:utility-initialize>
-  $<TARGET_OBJECTS:utility-external>
-)
-
-target_link_libraries(
-  idg-utility
-  idg-fft
-  )
-
-set_target_properties(idg-utility PROPERTIES
-                      PUBLIC_HEADER idg-utility.h)
-
-install(TARGETS idg-utility
-  EXPORT IDGTargets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
-)
-endif()
 
 
 ########################################################
@@ -317,7 +284,7 @@ endif(BUILD_LIB_OPENCL)
 ################################################
 
 add_library(idg
-  $<TARGET_OBJECTS:idg-api>
+    idg.cpp
 )
 
 set(LINK_LIRBRARIES idg-fft ${CMAKE_DL_LIBS})
