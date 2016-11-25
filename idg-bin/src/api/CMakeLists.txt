@@ -1,10 +1,5 @@
 project(idg-api)
 
-# external header files
-include_directories(
-    ${FFTW3_INCLUDE_DIR}
-)
-
 # sources and header files
 set (${PROJECT_NAME}_headers
     Scheme.h
