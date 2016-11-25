@@ -2,11 +2,6 @@ project(api)
 
 find_package(OpenCV)
 
-# external header files
-include_directories(
-    ${FFTW3_INCLUDE_DIR}
-)
-
 # add subfolders
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)

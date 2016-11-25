@@ -6,7 +6,6 @@
 #define IDG_FFTW_H_
 
 #include "idg-config.h"
-#include <fftw3.h>
 #include <iostream>
 #include <complex>
 #include <stdexcept>
