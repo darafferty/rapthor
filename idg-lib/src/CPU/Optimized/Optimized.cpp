@@ -94,10 +94,18 @@ namespace idg {
 
             // GNU compiler
             stringstream gnu_flags;
+            bool avx512_supported = has_intel_knl_features();
             bool avx2_supported = check_4th_gen_intel_core_features();
+
+            #if defined(DEBUG)
+            printf("AVX512 support: %d\n", avx512_supported);
             printf("AVX2 support: %d\n", avx2_supported);
+            #endif
+
             gnu_flags << " -std=c++11 -fopenmp -ffast-math";
-            if (avx2_supported) {
+            if (avx512_supported) {
+                gnu_flags << " -mavx512f -mavx512pf -mavx512er -mavx512cd";
+            } else if (avx2_supported) {
                 gnu_flags << " -march=core-avx2";
             }
 
