@@ -28,9 +28,6 @@ option (BUILD_LIB_CUDA "Have CUDA environment" OFF)
 option (BUILD_LIB_OPENCL "Have OpenCL environment" OFF)
 option (BUILD_LIB_KNC "Have Xeon Phi environment" OFF)
 option (BUILD_WITH_PYTHON "Have Python environment" OFF)
-option (BUILD_WITH_EXAMPLES "Build example executables" OFF)
-option (BUILD_WITH_TESTS "Build test executables" OFF)
-option (BUILD_WITH_DEMO "Build LOFAR demo program" OFF)
 option (BUILD_WITH_POWER "Enable power measurement" OFF)
 option (BUILD_WITH_MKL "Build with MKL (if available)" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
@@ -61,11 +58,6 @@ if (BUILD_STATIC_LIBS)
 set (BUILD_SHARED_LIBS FALSE)
 else()
 set (BUILD_SHARED_LIBS TRUE)
-endif()
-
-# test
-if (BUILD_WITH_TESTS)
-enable_testing()
 endif()
 
 # Installation
@@ -192,19 +184,6 @@ configure_file (
 # add subfolders, after specifying the targets to build
 add_subdirectory(src)
 
-if (BUILD_WITH_EXAMPLES)
-add_subdirectory(examples)
-endif (BUILD_WITH_EXAMPLES)
-
-if (BUILD_WITH_TESTS)
-add_subdirectory(tests)
-endif (BUILD_WITH_TESTS)
-
-if (BUILD_WITH_DEMO)
-add_subdirectory(demo)
-endif (BUILD_WITH_DEMO)
-
-
 #####################################################
 # Create IDGConfig.cmake and IDGConfigVersion.cmake #
 # for other cmake projects to make use of IDG       #
@@ -230,13 +209,7 @@ include_directories(
     ${CLFFT_INCLUDE_DIRS}
 )
 endif()
-if (BUILD_LIB_KNC)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-knc)
-endif()
-if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-utility)
-endif()
-if (BUILD_LIB_CPU OR BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
+if (BUILD_LIB_CPU)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-fft)
 endif()
 export(TARGETS ${TARGETS_TO_BUILD}
@@ -257,5 +230,3 @@ install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake"
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
-
-
