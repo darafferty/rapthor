@@ -1,13 +1,8 @@
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 2.8.0)
 
-# set cmake policy
-if (
-    "${CMAKE_MAJOR_VERSION}" STREQUAL "2" AND
-    "${CMAKE_MINOR_VERSION}" STREQUAL "8" AND
-    "${CMAKE_PATCH_VERSION}" STREQUAL "12")
-    cmake_policy(SET CMP0022 NEW)
-endif()
-
+# set policies
+cmake_policy(SET CMP0003 NEW) # 2.6.0
+cmake_policy(SET CMP0012 NEW) # 2.8.0
 
 # the project
 project(ImageDomainGridder CXX)
