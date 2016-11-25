@@ -28,6 +28,11 @@
 #define MKL_INCLUDE_DIRS "@MKL_INCLUDE_DIRS@"
 #define MKL_LIB_DIR "@MKL_LIB_DIR@"
 
+#cmakedefine HAVE_FFTW
+#define FFTW3_INCLUDE_DIR "@FFTW3_INCLUDE_DIR@"
+#define FFTW3_LIB "@FFTW3_LIBRARY@"
+#define FFTW3F_LIB "@FFTW3F_LIBRARY@"
+
 #cmakedefine HAVE_LIKWID
 #cmakedefine HAVE_NUMA
 
