@@ -1,5 +1,8 @@
 project(cxx)
 
+# set common include directory
+include_directories(common)
+
 # add subfolders
 add_subdirectory(CPU)
 add_subdirectory(Hybrid)
