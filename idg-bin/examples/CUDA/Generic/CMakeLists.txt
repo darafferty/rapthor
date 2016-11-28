@@ -1,14 +1,12 @@
 project(cuda-generic.x)
 
 # Set sources
-set (
-    ${PROJECT_NAME}_sources
+set ( ${PROJECT_NAME}_sources
     main.cpp
 )
 
 # Set build target
-add_executable (
-    ${PROJECT_NAME} ${${PROJECT_NAME}_sources}
+add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources}
 )
 
 # Set libraries to link

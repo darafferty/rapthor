@@ -1,72 +1,16 @@
-cmake_minimum_required(VERSION 2.8.7)
-
-# set cmake policy
-if (
-    "${CMAKE_MAJOR_VERSION}" STREQUAL "2" AND
-    "${CMAKE_MINOR_VERSION}" STREQUAL "8" AND
-    "${CMAKE_PATCH_VERSION}" STREQUAL "12")
-    cmake_policy(SET CMP0022 NEW)
-endif()
-
+cmake_minimum_required(VERSION 2.8.0)
 
 # the project
 project(ImageDomainGridder CXX)
-set (VERSION_MAJOR 0)
-set (VERSION_MINOR 1)
-set (VERSION_PATCH 2)
-set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
-
 
 # set cmake module path
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 
-
 # options
-option (BUILD_STATIC_LIBS "Build static libraries" OFF)
 option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Have CUDA environment" OFF)
 option (BUILD_LIB_OPENCL "Have OpenCL environment" OFF)
-option (BUILD_LIB_KNC "Have Xeon Phi environment" OFF)
 option (BUILD_WITH_PYTHON "Have Python environment" OFF)
-option (BUILD_WITH_EXAMPLES "Build example executables" OFF)
-option (BUILD_WITH_TESTS "Build test executables" OFF)
-option (BUILD_WITH_DEMO "Build LOFAR demo program" OFF)
-option (BUILD_WITH_POWER "Enable power measurement" OFF)
-option (BUILD_WITH_MKL "Build with MKL (if available)" OFF)
-option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
-option (REPORT_TOTAL "Report total performance metrics" OFF)
-option (REPORT_OPS "Report performance in ops (fma, sincos) instead of flops (add, mul)" OFF)
-
-
-# Likwid power sensor
-if (BUILD_WITH_POWER)
-find_package(Numa QUIET)
-find_package(Likwid QUIET)
-endif ()
-if (${NUMA_FOUND} AND ${LIKWID_FOUND})
-    set (HAVE_LIKWID TRUE)
-    set (HAVE_NUMA TRUE)
-else ()
-    # These values are not used when both libraries are not found
-    unset (LIKWID_INCLUDE_DIRS CACHE)
-    unset (LIKWID_LIBRARIES CACHE)
-    unset (NUMA_ROOT_DIR CACHE)
-    unset (NUMA_INCLUDE_DIR CACHE)
-    unset (NUMA_LIBRARY CACHE)
-endif ()
-
-
-# build shared or static libraries (default: shared)
-if (BUILD_STATIC_LIBS)
-set (BUILD_SHARED_LIBS FALSE)
-else()
-set (BUILD_SHARED_LIBS TRUE)
-endif()
-
-# test
-if (BUILD_WITH_TESTS)
-enable_testing()
-endif()
 
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -74,11 +18,11 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     "IDG install prefix" FORCE)
 endif()
 
-
-# Compiler stettings:
+# Compiler settings:
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Default build type." FORCE)
 endif()
+
 # set debug print info
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
@@ -92,6 +36,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(MSVC_CXX_COMPILER TRUE)
 endif()
+
 
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
@@ -126,136 +71,22 @@ else()
 endif()
 
 
-# find MKL
-if (BUILD_WITH_MKL AND NOT INTEL_CXX_COMPILER)
-find_package(MKL QUIET)
-endif()
-if (${MKL_FOUND})
-    get_filename_component(MKL_LIB_DIR ${MKL_LIBRARIES} PATH)
-    set (HAVE_MKL TRUE)
-    set(FFTW3F_LIBRARY ${MKL_LIBRARIES})
-    set(FFTW3_LIBRARY ${MKL_LIBRARIES})
-else()
-    unset (MKL_INCLUDE_DIRS CACHE)
-    unset (MKL_LIBRARIES CACHE)
-    find_package(FFTW3 COMPONENTS single double)
-endif()
+# resolve idg library
+find_package(IDG NO_MODULE)
+include_directories (${IDG_INCLUDE_DIR})
 
-# find CUDA environment
-if (BUILD_LIB_CUDA)
-    find_package(CUDA)
-    find_package(CUDAdriver)
-    if (${CUDA_FOUND})
-    mark_as_advanced (CUDA_TOOLKIT_ROOT_DIR)
-    mark_as_advanced (CUDA_BUILD_CUBIN)
-    mark_as_advanced (CUDA_BUILD_EMULATION)
-    mark_as_advanced (CUDA_HOST_COMPILER)
-    mark_as_advanced (CUDA_SDK_ROOT_DIR)
-    mark_as_advanced (CUDA_SEPARABLE_COMPILATION)
-    mark_as_advanced (CUDA_VERBOSE_BUILD)
-    set (CUDA_INCLUDE_DIRS "${CUDA_TOOLKIT_INCLUDE}" CACHE PATH "CUDA include directories")
-    set (CUDA_FFT_LIBRARY "${CUDA_cufft_LIBRARY}" CACHE PATH "CUDA fft library")
-    endif ()
-endif (BUILD_LIB_CUDA)
-
-# find OpenCL environment
-if (BUILD_LIB_OPENCL)
-    find_package(OpenCL)
-    find_package(clFFT)
-endif (BUILD_LIB_OPENCL)
-
-# write config file, included in all files of the project
-configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
-  "${PROJECT_BINARY_DIR}/src/idg-config.h"
-  )
-include_directories (${CMAKE_BINARY_DIR}/src)
-# Copy header files
-install(
-    FILES
-    ${PROJECT_BINARY_DIR}/src/idg-config.h
-    DESTINATION
-    include
+# write config file
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/config/idg-examples-config.h.in"
+    "${PROJECT_BINARY_DIR}/idg-examples-config.h"
 )
 
+include_directories(${CMAKE_BINARY_DIR})
+# build utilities
+add_subdirectory(utility)
 
-# add main include folder
-include_directories (${CMAKE_SOURCE_DIR}/src)
-
-# write file to initialize enoviroment
-configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
-  "${PROJECT_BINARY_DIR}/init-environment.sh"
-  )
-
-
-# add subfolders, after specifying the targets to build
-add_subdirectory(src)
-
-if (BUILD_WITH_EXAMPLES)
+# build all examples
+include_directories (utility)
 add_subdirectory(examples)
-endif (BUILD_WITH_EXAMPLES)
-
-if (BUILD_WITH_TESTS)
-add_subdirectory(tests)
-endif (BUILD_WITH_TESTS)
-
-if (BUILD_WITH_DEMO)
-add_subdirectory(demo)
-endif (BUILD_WITH_DEMO)
-
-
-#####################################################
-# Create IDGConfig.cmake and IDGConfigVersion.cmake #
-# for other cmake projects to make use of IDG       #
-# See: https://cmake.org/Wiki/CMake/Tutorials/      #
-# How_to_create_a_ProjectConfig.cmake_file          #
-#####################################################
-set(TARGETS_TO_BUILD idg)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-common)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-powersensor)
-if (BUILD_LIB_CPU)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cpu)
-endif()
-if (BUILD_LIB_CUDA)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cuda)
-endif()
-if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-hybrid-cuda)
-endif()
-if (BUILD_LIB_OPENCL)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-opencl)
-include_directories(
-    ${OPENCL_INCLUDE_DIRS}
-    ${CLFFT_INCLUDE_DIRS}
-)
-endif()
-if (BUILD_LIB_KNC)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-knc)
-endif()
-if (BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-utility)
-endif()
-if (BUILD_LIB_CPU OR BUILD_WITH_EXAMPLES OR BUILD_WITH_TESTS)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-fft)
-endif()
-export(TARGETS ${TARGETS_TO_BUILD}
-       FILE "${PROJECT_BINARY_DIR}/CMakeFiles/IDGTargets.cmake")
-
-install(EXPORT IDGTargets
-        DESTINATION lib/cmake)
-
-configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfig.cmake.in"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake" @ONLY)
-
-configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfigVersion.cmake.in"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake" @ONLY)
-
-install(FILES
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake"
-    DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 
