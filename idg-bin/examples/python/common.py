@@ -11,7 +11,7 @@ import random
 _nr_stations      = 100
 _nr_baselines     = _nr_stations*(_nr_stations-1)/2
 _nr_channels      = 16
-_nr_time          = 8192           # samples per baseline
+_nr_time          = 1024           # samples per baseline
 _nr_timeslots     = 16             # A-term time slots
 _image_size       = 0.05
 _subgrid_size     = 24

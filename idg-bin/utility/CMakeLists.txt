@@ -9,6 +9,7 @@ add_subdirectory(external)
 # build libidg-utility: init example data, ...
 #########################################################
 add_library(idg-utility
+    SHARED
     $<TARGET_OBJECTS:utility-initialize>
     $<TARGET_OBJECTS:utility-external>
 )
@@ -27,4 +28,16 @@ install(TARGETS idg-utility
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
     PUBLIC_HEADER DESTINATION include
+)
+
+#########################################################
+# install python modules
+#########################################################
+set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python2.7/dist-packages)
+
+install(
+    FILES
+    utils.py
+    DESTINATION
+    ${PYTHON_INSTALL_DIR}
 )
