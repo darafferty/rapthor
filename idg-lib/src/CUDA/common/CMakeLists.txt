@@ -49,7 +49,7 @@ install(
     kernels/math.cu
     kernels/Types.h
     DESTINATION
-    lib/kernels/CUDA
+    lib/idg-cuda
 )
 
 install(
