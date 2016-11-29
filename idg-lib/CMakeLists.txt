@@ -115,6 +115,13 @@ configure_file (
   "${PROJECT_BINARY_DIR}/init-environment.sh"
   )
 
+install(
+    FILES
+    ${PROJECT_BINARY_DIR}/init-environment.sh
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}
+)
+
 # write config file, included in all files of the project
 configure_file (
   "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
