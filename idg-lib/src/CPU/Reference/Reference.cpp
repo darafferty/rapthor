@@ -1,8 +1,3 @@
-#include <complex>
-#include <sstream>
-#include <memory>
-#include <omp.h> // omp_get_wtime
-
 #include "Reference.h"
 
 using namespace std;
@@ -33,8 +28,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                string  srcdir = string(IDG_INSTALL_DIR)
-                    + "/lib/kernels/CPU/Reference";
+                string srcdir = auxiliary::get_lib_dir() + "/idg-cpu/Reference";
 
                 #if defined(DEBUG)
                 cout << "Searching for source files in: " << srcdir << endl;

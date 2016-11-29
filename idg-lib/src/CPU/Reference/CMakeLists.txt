@@ -28,7 +28,7 @@ install(
     kernels/KernelSplitter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/Types.h
     DESTINATION
-    lib/kernels/CPU/Reference
+    lib/idg-cpu/Reference
 )
 
 # Copy header files

@@ -90,7 +90,7 @@ namespace idg {
 
                     std::string source;
                     for (auto src : source_files) {
-                        source += info.get_path_to_src() + src + " ";
+                        source += info.get_path_to_src() + "/" + src + " ";
                     } // source = a.cpp b.cpp c.cpp ...
 
                     #if defined(DEBUG)

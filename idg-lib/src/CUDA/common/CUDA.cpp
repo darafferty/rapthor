@@ -83,8 +83,7 @@ namespace idg {
                 std::cout << "Generic::" << __func__ << std::endl;
                 #endif
 
-                std::string srcdir = std::string(IDG_INSTALL_DIR)
-                    + "/lib/kernels/CUDA/";
+                std::string srcdir = auxiliary::get_lib_dir() + "/idg-cuda";
 
                 #if defined(DEBUG)
                 std::cout << "Searching for source files in: " << srcdir << std::endl;
