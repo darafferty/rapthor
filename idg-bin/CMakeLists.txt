@@ -81,6 +81,19 @@ configure_file(
     "${PROJECT_BINARY_DIR}/idg-examples-config.h"
 )
 
+# write file to initialize environment
+configure_file (
+    "${PROJECT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
+    "${PROJECT_BINARY_DIR}/init-environment.sh"
+)
+
+install(
+    FILES
+    "${PROJECT_BINARY_DIR}/init-environment.sh"
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}
+)
+
 include_directories(${CMAKE_BINARY_DIR})
 # build utilities
 add_subdirectory(utility)
