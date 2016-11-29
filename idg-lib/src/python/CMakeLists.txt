@@ -10,7 +10,6 @@ install(FILES
         CUDA.py
         OpenCL.py
         Proxy.py
-        utils.py
         fft.py
         DESTINATION
         ${PYTHON_INSTALL_DIR})
