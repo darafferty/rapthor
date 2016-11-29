@@ -29,7 +29,7 @@ install(
     ${CMAKE_SOURCE_DIR}/src/common/Types.h
     kernels/Math.h
     DESTINATION
-    lib/kernels/CPU/KNL
+    lib/idg-cpu/KNL
 )
 
 # Copy header files
