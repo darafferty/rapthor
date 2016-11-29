@@ -5,6 +5,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <dlfcn.h> // dladdr()
+#include <libgen.h> // dirname()
 
 #include "idg-config.h"
 #include "idg-powersensor.h"
@@ -73,6 +75,7 @@ namespace idg {
         std::vector<int> split_int(char *string, const char *delimiter);
         std::vector<std::string> split_string(char *string, const char *delimiter);
 
+        std::string get_dir(const char *name);
     } // namespace auxiliary
 } // namespace idg
 

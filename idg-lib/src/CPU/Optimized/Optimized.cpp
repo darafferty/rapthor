@@ -1,13 +1,3 @@
-#include <cstdio> // remove()
-#include <cstdlib>  // rand()
-#include <ctime> // time() to init srand()
-#include <complex>
-#include <sstream>
-#include <memory>
-#include <dlfcn.h> // dlsym()
-#include <omp.h> // omp_get_wtime
-#include <libgen.h> // dirname() and basename()
-
 #include "idg-config.h"
 #include "Optimized.h"
 #include "arch.h"
@@ -40,8 +30,8 @@ namespace idg {
             cout << __func__ << endl;
             #endif
 
-            string  srcdir = string(IDG_INSTALL_DIR)
-                + "/lib/kernels/CPU/Optimized";
+            string srcdir = auxiliary::get_dir("idg-cpu.so") +
+                            "/kernels/CPU/Optimized";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;

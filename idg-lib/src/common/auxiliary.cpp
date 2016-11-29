@@ -215,5 +215,10 @@ namespace idg {
             return splits;
         }
 
+        std::string get_dir(const char *name) {
+            Dl_info info;
+            dladdr(name, &info);
+            return std::string(dirname((char *) info.dli_fname));
+        }
     } // namespace auxiliary
 } // namespace idg
