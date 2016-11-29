@@ -83,8 +83,7 @@ namespace idg {
                 std::cout << "Generic::" << __func__ << std::endl;
                 #endif
 
-                std::string srcdir = auxiliary::get_dir("idg-cuda.so") +
-                                     "/idg-cuda";
+                std::string srcdir = auxiliary::get_lib_dir() + "/idg-cuda";
 
                 #if defined(DEBUG)
                 std::cout << "Searching for source files in: " << srcdir << std::endl;

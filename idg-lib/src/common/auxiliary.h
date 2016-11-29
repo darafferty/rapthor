@@ -75,7 +75,7 @@ namespace idg {
         std::vector<int> split_int(char *string, const char *delimiter);
         std::vector<std::string> split_string(char *string, const char *delimiter);
 
-        std::string get_dir(const char *name);
+        std::string get_lib_dir();
     } // namespace auxiliary
 } // namespace idg
 

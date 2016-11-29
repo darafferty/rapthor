@@ -29,8 +29,7 @@ namespace idg {
             cout << __func__ << endl;
             #endif
 
-            string srcdir = auxiliary::get_dir("idg-cpu.so") +
-                            "/idg-cpu/KNL";
+            string srcdir = auxiliary::get_lib_dir() + "/idg-cpu/KNL";
 
             #if defined(DEBUG)
             cout << "Searching for source files in: " << srcdir << endl;
