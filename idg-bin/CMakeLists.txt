@@ -8,9 +8,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 
 # options
 option (BUILD_LIB_CPU "Build CPU libraries" ON)
-option (BUILD_LIB_CUDA "Have CUDA environment" OFF)
-option (BUILD_LIB_OPENCL "Have OpenCL environment" OFF)
-option (BUILD_WITH_PYTHON "Have Python environment" OFF)
+option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
+option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
+option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
 
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
