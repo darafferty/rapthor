@@ -105,5 +105,6 @@ add_subdirectory(examples)
 
 # build all tests
 if (BUILD_WITH_TESTS)
+    enable_testing()
     add_subdirectory(tests)
 endif()
