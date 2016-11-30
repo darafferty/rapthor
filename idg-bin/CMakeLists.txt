@@ -11,6 +11,7 @@ option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
 option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
 option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
+option (BUILD_WITH_TESTS "Build with tests" OFF)
 
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -102,4 +103,7 @@ add_subdirectory(utility)
 include_directories (utility)
 add_subdirectory(examples)
 
-
+# build all tests
+if (BUILD_WITH_TESTS)
+    add_subdirectory(tests)
+endif()
