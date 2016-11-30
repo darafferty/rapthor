@@ -150,10 +150,7 @@ namespace idg {
                 #endif
 
                 // Source directory
-                std::stringstream _srcdir;
-                _srcdir << std::string(IDG_INSTALL_DIR);
-                _srcdir << "/lib/kernels/OpenCL";
-                std::string srcdir = _srcdir.str();
+                std::string srcdir = auxiliary::get_lib_dir() + "/idg-opencl";
 
                 #if defined(DEBUG)
                 std::cout << "Searching for source files in: " << srcdir << std::endl;

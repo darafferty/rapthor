@@ -37,7 +37,7 @@ install(
     kernels/math.cl
     kernels/Types.cl
     DESTINATION
-    lib/kernels/OpenCL
+    lib/idg-opencl
 )
 
 # Copy header files
