@@ -216,16 +216,7 @@ namespace idg {
         }
 
         std::string get_lib_dir() {
-            // Try to resolve library dir
-            Dl_info info;
-            dladdr((void *) get_lib_dir, &info);
-            char *dir = dirname((char *) info.dli_fname);
-
-            if (!strstr(dir, "lib")) {
-                return std::string(IDG_INSTALL_DIR) + "/lib";
-            } else {
-                return std::string(dir);
-            }
+            return std::string(IDG_INSTALL_DIR) + "/lib";
         }
     } // namespace auxiliary
 } // namespace idg
