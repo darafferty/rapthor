@@ -5,8 +5,6 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <dlfcn.h> // dladdr()
-#include <libgen.h> // dirname()
 
 #include "idg-config.h"
 #include "idg-powersensor.h"
