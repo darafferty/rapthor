@@ -1,3 +1,6 @@
+# Introduction
+This library implements the image domain gridding method for gridding and degridding of visibilities from an aperture synthesis radio telescope.
+
 # Quick installation guide:      
 ```
 git clone --recursive -j4 https://gitlab.com/astron-idg/idg.git      
