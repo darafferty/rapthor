@@ -45,6 +45,7 @@ namespace idg {
             assert(visibilities_nr_baselines == uvw_nr_baselines);
             assert(visibilities_nr_baselines == baselines_nr_baselines);
             assert(visibilities_nr_timesteps == uvw_nr_timesteps);
+            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
             assert(visibilities_nr_correlations == grid_nr_correlations);
             assert(visibilities_nr_correlations == aterms_nr_correlations);
             assert(uvw_nr_coordinates == 3);
@@ -126,6 +127,7 @@ namespace idg {
             assert(visibilities_nr_baselines == uvw_nr_baselines);
             assert(visibilities_nr_baselines == baselines_nr_baselines);
             assert(visibilities_nr_timesteps == uvw_nr_timesteps);
+            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
             assert(visibilities_nr_correlations == grid_nr_correlations);
             assert(visibilities_nr_correlations == aterms_nr_correlations);
             assert(uvw_nr_coordinates == 3);
@@ -167,6 +169,21 @@ namespace idg {
                 spheroidal_);
         }
 
+        void Proxy2::transform(
+            DomainAtoDomainB direction,
+            std::complex<float>* grid,
+            unsigned int grid_nr_correlations,
+            unsigned int grid_height,
+            unsigned int grid_width)
+        {
+            assert(grid_height == grid_width); // TODO: remove restriction
+            assert(grid_nr_correlations == 1 || grid_nr_correlations == 4);
+
+            Array3D<std::complex<float>> grid_(
+                grid, grid_nr_correlations, grid_height, grid_width);
+
+            transform(direction, grid_);
+        }
 
     } // end namespace proxy
 } // end namespace idg

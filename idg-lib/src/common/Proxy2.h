@@ -131,7 +131,14 @@ namespace idg {
                 //! Applyies (inverse) Fourier transform to grid
                 virtual void transform(
                     DomainAtoDomainB direction,
-                    std::complex<float>* grid) = 0;
+                    const Array3D<std::complex<float>>& grid) = 0;
+
+                void transform(
+                    DomainAtoDomainB direction,
+                    std::complex<float>* grid,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width);
 
                 // Auxiliary: set and get methods
                 unsigned int get_nr_correlations() const {
