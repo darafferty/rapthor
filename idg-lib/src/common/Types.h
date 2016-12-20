@@ -102,7 +102,7 @@ namespace idg {
         public:
             Array1D(
                 size_t width) :
-                m_width(width),
+                m_x_dim(width),
                 m_delete_buffer(true),
                 m_buffer(new T[width])
             {}
@@ -110,7 +110,7 @@ namespace idg {
             Array1D(
                 T* data,
                 size_t width) :
-                m_width(width),
+                m_x_dim(width),
                 m_delete_buffer(false),
                 m_buffer(data)
             {}
@@ -129,7 +129,7 @@ namespace idg {
                 return &m_buffer[index];
             }
 
-            size_t get_width() const { return m_width; }
+            size_t get_x_dim() const { return m_x_dim; }
 
             const T& operator()(
                 size_t i) const
@@ -144,13 +144,13 @@ namespace idg {
             }
 
             void init(const T& a) {
-                for (unsigned int i = 0; i < get_width(); ++i) {
+                for (unsigned int i = 0; i < get_x_dim(); ++i) {
                     (*this)(i) = a;
                 }
             }
 
         private:
-            const size_t m_width;
+            const size_t m_x_dim;
             const bool   m_delete_buffer;
             T*           m_buffer;
     };
@@ -162,8 +162,8 @@ namespace idg {
             Array2D(
                 size_t height,
                 size_t width) :
-                m_width(width),
-                m_height(height),
+                m_x_dim(width),
+                m_y_dim(height),
                 m_delete_buffer(true),
                 m_buffer(new T[height*width])
             {}
@@ -172,8 +172,8 @@ namespace idg {
                 T* data,
                 size_t height,
                 size_t width) :
-                m_width(width),
-                m_height(height),
+                m_x_dim(width),
+                m_y_dim(height),
                 m_delete_buffer(false),
                 m_buffer(data)
             {}
@@ -190,37 +190,37 @@ namespace idg {
                 size_t row=0,
                 size_t column=0) const
             {
-                return &m_buffer[row*m_width + column];
+                return &m_buffer[row*m_x_dim + column];
             }
 
-            size_t get_width() const { return m_width; }
-            size_t get_height() const { return m_height; }
+            size_t get_x_dim() const { return m_x_dim; }
+            size_t get_y_dim() const { return m_y_dim; }
 
             const T& operator()(
                 size_t y,
                 size_t x) const
             {
-                return m_buffer[x + m_width*y];
+                return m_buffer[x + m_x_dim*y];
             }
 
             T& operator()(
                 size_t y,
                 size_t x)
             {
-                return m_buffer[x + m_width*y];
+                return m_buffer[x + m_x_dim*y];
             }
 
             void init(const T& a) {
-                for (unsigned int y = 0; y < get_height(); ++y) {
-                    for (unsigned int x = 0; x < get_width(); ++x) {
+                for (unsigned int y = 0; y < get_y_dim(); ++y) {
+                    for (unsigned int x = 0; x < get_x_dim(); ++x) {
                         (*this)(y, x) = a;
                     }
                 }
             }
 
         private:
-            const size_t m_width;
-            const size_t m_height;
+            const size_t m_x_dim;
+            const size_t m_y_dim;
             const bool   m_delete_buffer;
             T*           m_buffer;
     };
@@ -233,9 +233,9 @@ namespace idg {
                 size_t depth,
                 size_t height,
                 size_t width) :
-                m_width(width),
-                m_height(height),
-                m_depth(depth),
+                m_x_dim(width),
+                m_y_dim(height),
+                m_z_dim(depth),
                 m_delete_buffer(true),
                 m_buffer(new T[height*width*depth])
             {}
@@ -245,9 +245,9 @@ namespace idg {
                 size_t depth,
                 size_t height,
                 size_t width) :
-                m_width(width),
-                m_height(height),
-                m_depth(depth),
+                m_x_dim(width),
+                m_y_dim(height),
+                m_z_dim(depth),
                 m_delete_buffer(false),
                 m_buffer(data)
             {}
@@ -262,19 +262,19 @@ namespace idg {
                 size_t y=0,
                 size_t x=0) const
             {
-                return &m_buffer[x + m_width*y + m_width*m_height*z];
+                return &m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z];
             }
 
-            size_t get_width() const { return m_width; }
-            size_t get_height() const { return m_height; }
-            size_t get_depth() const { return m_depth; }
+            size_t get_x_dim() const { return m_x_dim; }
+            size_t get_y_dim() const { return m_y_dim; }
+            size_t get_z_dim() const { return m_z_dim; }
 
             const T& operator()(
                 size_t z,
                 size_t y,
                 size_t x) const
             {
-                return m_buffer[x + m_width*y + m_width*m_height*z];
+                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z];
             }
 
             T& operator()(
@@ -282,13 +282,13 @@ namespace idg {
                 size_t y,
                 size_t x)
             {
-                return m_buffer[x + m_width*y + m_width*m_height*z];
+                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z];
             }
 
             void init(const T& a) {
-                for (unsigned int z = 0; z < get_depth(); ++z) {
-                    for (unsigned int y = 0; y < get_height(); ++y) {
-                        for (unsigned int x = 0; x < get_width(); ++x) {
+                for (unsigned int z = 0; z < get_z_dim(); ++z) {
+                    for (unsigned int y = 0; y < get_y_dim(); ++y) {
+                        for (unsigned int x = 0; x < get_x_dim(); ++x) {
                             (*this)(z, y, x) = a;
                         }
                     }
@@ -297,9 +297,98 @@ namespace idg {
             }
 
         private:
-            const size_t m_width;
-            const size_t m_height;
-            const size_t m_depth;
+            const size_t m_x_dim;
+            const size_t m_y_dim;
+            const size_t m_z_dim;
+            const bool   m_delete_buffer;
+            T*           m_buffer;
+    };
+
+
+    template<class T>
+    class Array4D {
+        public:
+            Array4D(
+                size_t w_dim,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                m_w_dim(w_dim),
+                m_z_dim(z_dim),
+                m_y_dim(y_dim),
+                m_x_dim(x_dim),
+                m_delete_buffer(true),
+                m_buffer(new T[w_dim*z_dim*y_dim*x_dim])
+            {}
+
+            Array4D(
+                T* data,
+                size_t w_dim,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                m_w_dim(w_dim),
+                m_z_dim(z_dim),
+                m_y_dim(y_dim),
+                m_x_dim(x_dim),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {}
+
+            Array4D(const Array4D& other) = delete;
+            Array4D& operator=(const Array4D& rhs) = delete;
+
+            virtual ~Array4D() { if (m_delete_buffer) delete[] m_buffer; }
+
+            T* data(
+                size_t w=0,
+                size_t z=0,
+                size_t y=0,
+                size_t x=0) const
+            {
+                return &m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+            }
+
+            size_t get_x_dim() const { return m_x_dim; }
+            size_t get_y_dim() const { return m_y_dim; }
+            size_t get_z_dim() const { return m_z_dim; }
+            size_t get_w_dim() const { return m_w_dim; }
+
+            const T& operator()(
+                size_t w,
+                size_t z,
+                size_t y,
+                size_t x) const
+            {
+                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+            }
+
+            T& operator()(
+                size_t w,
+                size_t z,
+                size_t y,
+                size_t x)
+            {
+                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+            }
+
+            void init(const T& a) {
+                for (unsigned int w = 0; z < get_w_dim(); ++w) {
+                    for (unsigned int z = 0; z < get_z_dim(); ++z) {
+                        for (unsigned int y = 0; y < get_y_dim(); ++y) {
+                            for (unsigned int x = 0; x < get_x_dim(); ++x) {
+                                (*this)(w, z, y, x) = a;
+                            }
+                        }
+                    }
+                }
+            }
+
+        private:
+            const size_t m_x_dim;
+            const size_t m_y_dim;
+            const size_t m_z_dim;
+            const size_t m_w_dim;
             const bool   m_delete_buffer;
             T*           m_buffer;
     };

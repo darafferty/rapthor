@@ -10,6 +10,8 @@ set (${PROJECT_NAME}_headers
     Types.h
     Plan.h
     Kernels.h
+    Parameters2.h
+    Proxy2.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -21,6 +23,8 @@ set (${PROJECT_NAME}_sources
     Types.cpp
     Plan.cpp
     Kernels.cpp
+    Parameters2.cpp
+    Proxy2.cpp
 )
 
 add_library(
