@@ -7,7 +7,7 @@ namespace idg {
 
     /* Structures */
 
-    typedef struct { float u, v, w; } UVW;
+    typedef struct { float u, v, w; } UVW; // TODO: remove
 
     typedef struct { int x, y; } Coordinate;
 
@@ -24,6 +24,14 @@ namespace idg {
     typedef struct {float real; float imag; } float2;
     typedef struct {double real; double imag; } double2;
 
+    template<class T>
+    struct Matrix2x2 {T xx; T xy; T yx; T yy;};
+
+    template<class T>
+    using Visibility = Matrix2x2<T>;
+
+    template<class T>
+    struct UVWCoordinate {T u; T v; T w;};
 
     /* Inline operations */
 
@@ -88,6 +96,215 @@ namespace idg {
     }
 
 
+    /* Classes */
+    template<class T>
+    class Array1D {
+        public:
+            Array1D(
+                size_t width) :
+                m_width(width),
+                m_delete_buffer(true),
+                m_buffer(new T[width])
+            {}
+
+            Array1D(
+                T* data,
+                size_t width) :
+                m_width(width),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {}
+
+            Array1D(const Array1D& v) = delete;
+            Array1D& operator=(const Array1D& rhs) = delete;
+
+            virtual ~Array1D()
+            {
+                if (m_delete_buffer) delete[] m_buffer;
+            }
+
+            T* data(
+                size_t index=0) const
+            {
+                return &m_buffer[index];
+            }
+
+            size_t get_width() const { return m_width; }
+
+            const T& operator()(
+                size_t i) const
+            {
+                return m_buffer[i];
+            }
+
+            T& operator()(
+                size_t i)
+            {
+                return m_buffer[i];
+            }
+
+            void init(const T& a) {
+                for (unsigned int i = 0; i < get_width(); ++i) {
+                    (*this)(i) = a;
+                }
+            }
+
+        private:
+            const size_t m_width;
+            const bool   m_delete_buffer;
+            T*           m_buffer;
+    };
+
+
+    template<class T>
+    class Array2D {
+        public:
+            Array2D(
+                size_t height,
+                size_t width) :
+                m_width(width),
+                m_height(height),
+                m_delete_buffer(true),
+                m_buffer(new T[height*width])
+            {}
+
+            Array2D(
+                T* data,
+                size_t height,
+                size_t width) :
+                m_width(width),
+                m_height(height),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {}
+
+            Array2D(const Array2D& v) = delete;
+            Array2D& operator=(const Array2D& rhs) = delete;
+
+            virtual ~Array2D()
+            {
+                if (m_delete_buffer) delete[] m_buffer;
+            }
+
+            T* data(
+                size_t row=0,
+                size_t column=0) const
+            {
+                return &m_buffer[row*m_width + column];
+            }
+
+            size_t get_width() const { return m_width; }
+            size_t get_height() const { return m_height; }
+
+            const T& operator()(
+                size_t y,
+                size_t x) const
+            {
+                return m_buffer[x + m_width*y];
+            }
+
+            T& operator()(
+                size_t y,
+                size_t x)
+            {
+                return m_buffer[x + m_width*y];
+            }
+
+            void init(const T& a) {
+                for (unsigned int y = 0; y < get_height(); ++y) {
+                    for (unsigned int x = 0; x < get_width(); ++x) {
+                        (*this)(y, x) = a;
+                    }
+                }
+            }
+
+        private:
+            const size_t m_width;
+            const size_t m_height;
+            const bool   m_delete_buffer;
+            T*           m_buffer;
+    };
+
+
+    template<class T>
+    class Array3D {
+        public:
+            Array3D(
+                size_t depth,
+                size_t height,
+                size_t width) :
+                m_width(width),
+                m_height(height),
+                m_depth(depth),
+                m_delete_buffer(true),
+                m_buffer(new T[height*width*depth])
+            {}
+
+            Array3D(
+                T* data,
+                size_t depth,
+                size_t height,
+                size_t width) :
+                m_width(width),
+                m_height(height),
+                m_depth(depth),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {}
+
+            Array3D(const Array3D& other) = delete;
+            Array3D& operator=(const Array3D& rhs) = delete;
+
+            virtual ~Array3D() { if (m_delete_buffer) delete[] m_buffer; }
+
+            T* data(
+                size_t z=0,
+                size_t y=0,
+                size_t x=0) const
+            {
+                return &m_buffer[x + m_width*y + m_width*m_height*z];
+            }
+
+            size_t get_width() const { return m_width; }
+            size_t get_height() const { return m_height; }
+            size_t get_depth() const { return m_depth; }
+
+            const T& operator()(
+                size_t z,
+                size_t y,
+                size_t x) const
+            {
+                return m_buffer[x + m_width*y + m_width*m_height*z];
+            }
+
+            T& operator()(
+                size_t z,
+                size_t y,
+                size_t x)
+            {
+                return m_buffer[x + m_width*y + m_width*m_height*z];
+            }
+
+            void init(const T& a) {
+                for (unsigned int z = 0; z < get_depth(); ++z) {
+                    for (unsigned int y = 0; y < get_height(); ++y) {
+                        for (unsigned int x = 0; x < get_width(); ++x) {
+                            (*this)(z, y, x) = a;
+                        }
+                    }
+
+                }
+            }
+
+        private:
+            const size_t m_width;
+            const size_t m_height;
+            const size_t m_depth;
+            const bool   m_delete_buffer;
+            T*           m_buffer;
+    };
+
+
     /* Output */
 
     std::ostream& operator<<(std::ostream& os, Baseline& b);
@@ -97,7 +314,6 @@ namespace idg {
 
     std::ostream& operator<<(std::ostream& os, const float2& x);
     std::ostream& operator<<(std::ostream& os, const double2& x);
-
 }
 
 
