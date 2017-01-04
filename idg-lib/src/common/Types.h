@@ -104,7 +104,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_delete_buffer(true),
-                m_buffer(new T[width])
+                m_buffer((T*) malloc(width*sizeof(T)))
             {}
 
             Array1D(
@@ -118,9 +118,17 @@ namespace idg {
             Array1D(const Array1D& v) = delete;
             Array1D& operator=(const Array1D& rhs) = delete;
 
+            Array1D(Array1D&& other)
+                : m_x_dim(other.m_x_dim),
+                  m_delete_buffer(other.m_delete_buffer),
+                  m_buffer(other.m_buffer)
+            {
+                other.m_buffer = nullptr;
+            }
+
             virtual ~Array1D()
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
             }
 
             T* data(
@@ -165,7 +173,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_delete_buffer(true),
-                m_buffer(new T[height*width])
+                m_buffer((T*) malloc(height*width*sizeof(T)))
             {}
 
             Array2D(
@@ -181,9 +189,18 @@ namespace idg {
             Array2D(const Array2D& v) = delete;
             Array2D& operator=(const Array2D& rhs) = delete;
 
+            Array2D(Array2D&& other)
+                : m_x_dim(other.m_x_dim),
+                  m_y_dim(other.m_y_dim),
+                  m_delete_buffer(other.m_delete_buffer),
+                  m_buffer(other.m_buffer)
+            {
+                other.m_buffer = nullptr;
+            }
+
             virtual ~Array2D()
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
             }
 
             T* data(
@@ -237,7 +254,7 @@ namespace idg {
                 m_y_dim(height),
                 m_z_dim(depth),
                 m_delete_buffer(true),
-                m_buffer(new T[height*width*depth])
+                m_buffer((T*) malloc(height*width*depth*sizeof(T)))
             {}
 
             Array3D(
@@ -255,7 +272,17 @@ namespace idg {
             Array3D(const Array3D& other) = delete;
             Array3D& operator=(const Array3D& rhs) = delete;
 
-            virtual ~Array3D() { if (m_delete_buffer) delete[] m_buffer; }
+            Array3D(Array3D&& other)
+                : m_x_dim(other.m_x_dim),
+                  m_y_dim(other.m_y_dim),
+                  m_z_dim(other.m_z_dim),
+                  m_delete_buffer(other.m_delete_buffer),
+                  m_buffer(other.m_buffer)
+            {
+                other.m_buffer = nullptr;
+            }
+
+            virtual ~Array3D() { if (m_delete_buffer) free(m_buffer); }
 
             T* data(
                 size_t z=0,
@@ -318,7 +345,7 @@ namespace idg {
                 m_y_dim(y_dim),
                 m_x_dim(x_dim),
                 m_delete_buffer(true),
-                m_buffer(new T[w_dim*z_dim*y_dim*x_dim])
+                m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)))
             {}
 
             Array4D(
@@ -338,7 +365,18 @@ namespace idg {
             Array4D(const Array4D& other) = delete;
             Array4D& operator=(const Array4D& rhs) = delete;
 
-            virtual ~Array4D() { if (m_delete_buffer) delete[] m_buffer; }
+            Array4D(Array4D&& other)
+                : m_x_dim(other.m_x_dim),
+                  m_y_dim(other.m_y_dim),
+                  m_z_dim(other.m_z_dim),
+                  m_w_dim(other.m_w_dim),
+                  m_delete_buffer(other.m_delete_buffer),
+                  m_buffer(other.m_buffer)
+            {
+                other.m_buffer = nullptr;
+            }
+
+            virtual ~Array4D() { if (m_delete_buffer) free(m_buffer); }
 
             T* data(
                 size_t w=0,
@@ -373,7 +411,7 @@ namespace idg {
             }
 
             void init(const T& a) {
-                for (unsigned int w = 0; z < get_w_dim(); ++w) {
+                for (unsigned int w = 0; w < get_w_dim(); ++w) {
                     for (unsigned int z = 0; z < get_z_dim(); ++z) {
                         for (unsigned int y = 0; y < get_y_dim(); ++y) {
                             for (unsigned int x = 0; x < get_x_dim(); ++x) {
@@ -403,6 +441,82 @@ namespace idg {
 
     std::ostream& operator<<(std::ostream& os, const float2& x);
     std::ostream& operator<<(std::ostream& os, const double2& x);
+
+    template<class T>
+    std::ostream& operator<<(
+        std::ostream& os,
+        const Array1D<T>& a)
+    {
+        for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+            os << a(x);
+            if (x != a.get_x_dim()-1) {
+                os << ",";
+            }
+        }
+        os << std::endl;
+        return os;
+    }
+
+    template<class T>
+    std::ostream& operator<<(
+        std::ostream& os,
+        const Array2D<T>& a)
+    {
+        for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
+            for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+                os << a(y,x);
+                if (x != a.get_x_dim()-1) {
+                    os << ",";
+                }
+            }
+            os << std::endl;
+        }
+        return os;
+    }
+
+    template<class T>
+    std::ostream& operator<<(
+        std::ostream& os,
+        const Array3D<T>& a)
+    {
+        for (unsigned int z = 0; z < a.get_z_dim(); ++z) {
+            os << std::endl;
+            for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
+                for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+                    os << a(z,y,x);
+                    if (x != a.get_x_dim()-1) {
+                        os << ",";
+                    }
+                }
+                os << std::endl;
+            }
+        }
+        return os;
+    }
+
+    template<class T>
+    std::ostream& operator<<(
+        std::ostream& os,
+        const Array4D<T>& a)
+    {
+        for (unsigned int w = 0; w < a.get_w_dim(); ++w) {
+            os << std::endl;
+            for (unsigned int z = 0; z < a.get_z_dim(); ++z) {
+                os << std::endl;
+                for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
+                    for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+                        os << a(w, z,y,x);
+                        if (x != a.get_x_dim()-1) {
+                            os << ",";
+                        }
+                    }
+                    os << std::endl;
+                }
+            }
+        }
+        return os;
+    }
+
 }
 
 
