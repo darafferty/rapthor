@@ -96,6 +96,7 @@ void run()
 {
     // Constants
     unsigned int nr_correlations = 4;
+    unsigned int w_offset = 0;
     unsigned int nr_stations;
     unsigned int nr_channels;
     unsigned int nr_timesteps;
@@ -138,24 +139,25 @@ void run()
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     clog << endl;
 
-#if 0
     // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
-    ProxyType proxy(params);
+    ProxyType proxy;
     clog << endl;
 
     // Run
     clog << ">>> Run gridding" << endl;
-    proxy.grid_visibilities(visibilities, uvw, wavenumbers, baselines,
-                            grid, w_offset, kernel_size, aterm, aterm_offsets,
-                            spheroidal);
+    proxy.gridding(
+        w_offset, kernel_size, frequencies, visibilities, uvw,
+        baselines, grid, aterms, aterms_offsets, spheroidal);
+    clog << endl;
 
     clog << ">>> Run fft" << endl;
     proxy.transform(idg::FourierDomainToImageDomain, grid);
+    clog << endl;
 
-    clog << ">>> Run degridding" << endl;
-    proxy.degrid_visibilities(visibilities, uvw, wavenumbers, baselines,
-                              grid, w_offset, kernel_size, aterm, aterm_offsets,
-                              spheroidal);
-#endif
+    clog << ">>> Run gridding" << endl;
+    proxy.degridding(
+        w_offset, kernel_size, frequencies, visibilities, uvw,
+        baselines, grid, aterms, aterms_offsets, spheroidal);
+    clog << endl;
 }
