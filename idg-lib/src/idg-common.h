@@ -3,6 +3,7 @@
 
 #include "idg-config.h"
 #include "common/Proxy.h"
+#include "common/Proxy2.h"
 #include "common/ProxyInfo.h"
 #include "common/RuntimeWrapper.h"
 #include "common/Parameters.h"
