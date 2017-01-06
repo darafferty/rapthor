@@ -2,6 +2,13 @@
 #define IDG_CPU2_H_
 
 #include "idg-common.h"
+#include "idg-powersensor.h"
+
+#include "Kernels.h"
+
+// Forward declarations, TODO: remove
+#define FFTW_FORWARD  (-1)
+#define FFTW_BACKWARD (+1)
 
 namespace idg {
     namespace proxy {
@@ -27,8 +34,9 @@ namespace idg {
                     // Routines
                     virtual void gridding(
                         const float w_offset, // in lambda
+                        const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
-                        const Array1D<float>& frequencies, // TODO: convert from wavenumbers
+                        const Array1D<float>& frequencies,
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
@@ -39,8 +47,9 @@ namespace idg {
 
                     virtual void degridding(
                         const float w_offset, // in lambda
+                        const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
-                        const Array1D<float>& frequencies, // TODO: convert from wavenumbers
+                        const Array1D<float>& frequencies,
                         Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
@@ -52,6 +61,29 @@ namespace idg {
                     virtual void transform(
                         DomainAtoDomainB direction,
                         const Array3D<std::complex<float>>& grid) override;
+
+                    virtual std::unique_ptr<idg::kernel::cpu::Gridder> get_kernel_gridder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Degridder> get_kernel_degridder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Adder> get_kernel_adder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
+
+                private:
+                    void grid_onto_subgrids(
+                        const Plan2& plan,
+                        const float w_offset,
+                        const float *uvw,
+                        const float *wavenumbers,
+                        const std::complex<float> *visibilities,
+                        const float *spheroidal,
+                        const std::complex<float> *aterm,
+                        std::complex<float> *subgrids);
+
+                    virtual void add_subgrids_to_grid(
+                        const Plan2& plan,
+                        const std::complex<float> *subgrids,
+                        std::complex<float> *grid);
+
 
                 protected:
                     static std::string make_tempdir();
@@ -65,11 +97,13 @@ namespace idg {
                     Compiler mCompiler;
                     Compilerflags mFlags;
                     ProxyInfo mInfo;
+                    Parameters mParams; // TODO: remove
 
                     // store the ptr to Module, which each loads an .so-file
                     std::vector<runtime::Module*> modules;
                     std::map<std::string,int> which_module;
 
+                    PowerSensor *powerSensor;
             }; // end class CPU2
 
         } // end namespace cpu

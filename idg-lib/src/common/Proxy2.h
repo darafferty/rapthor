@@ -43,8 +43,9 @@ namespace idg {
                 //! Grid the visibilities onto a uniform grid
                 virtual void gridding(
                     const float w_offset, // in lambda
+                    const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
-                    const Array1D<float>& frequencies, // TODO: convert from wavenumbers
+                    const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
@@ -55,8 +56,9 @@ namespace idg {
 
                 void gridding(
                     float w_offset, // in lambda
+                    const float cell_size, // TODO: unit?
                     unsigned int kernel_size, // full width in pixels
-                    float* frequencies, // TODO: convert from wavenumbers
+                    float* frequencies,
                     unsigned int nr_channels,
                     std::complex<float>* visibilities,
                     unsigned int visibilities_nr_baselines,
@@ -89,8 +91,9 @@ namespace idg {
                 //! Degrid the visibilities from a uniform grid
                 virtual void degridding(
                     const float w_offset, // in lambda
+                    const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
-                    const Array1D<float>& frequencies, // TODO: convert from wavenumbers
+                    const Array1D<float>& frequencies,
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
@@ -101,8 +104,9 @@ namespace idg {
 
                 void degridding(
                     float w_offset, // in lambda
+                    float cell_size, // TODO: unit?
                     unsigned int kernel_size, // full width in pixels
-                    float* frequencies, // TODO: convert from wavenumbers
+                    float* frequencies,
                     unsigned int nr_channels,
                     std::complex<float>* visibilities,
                     unsigned int visibilities_nr_baselines,
@@ -151,6 +155,42 @@ namespace idg {
                     return mConstants.get_subgrid_size(); }
 
             protected:
+                void check_dimensions(
+                    unsigned int frequencies_nr_channels,
+                    unsigned int visibilities_nr_baselines,
+                    unsigned int visibilities_nr_timesteps,
+                    unsigned int visibilities_nr_channels,
+                    unsigned int visibilities_nr_correlations,
+                    unsigned int uvw_nr_baselines,
+                    unsigned int uvw_nr_timesteps,
+                    unsigned int uvw_nr_coordinates,
+                    unsigned int baselines_nr_baselines,
+                    unsigned int baselines_two,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width,
+                    unsigned int aterms_nr_timeslots,
+                    unsigned int aterms_nr_stations,
+                    unsigned int aterms_aterm_height,
+                    unsigned int aterms_aterm_width,
+                    unsigned int aterms_nr_correlations,
+                    unsigned int aterms_offsets_nr_timeslots_plus_one,
+                    unsigned int spheroidal_height,
+                    unsigned int spheroidal_width) const;
+
+                void check_dimensions(
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) const;
+
+                Array1D<float> compute_wavenumbers(
+                    const Array1D<float>& frequencies) const;
+
                 CompileConstants mConstants;
 
         }; // end class Proxy2

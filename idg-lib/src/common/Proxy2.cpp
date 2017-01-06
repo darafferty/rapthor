@@ -1,4 +1,5 @@
 #include <cassert> // assert
+#include <cmath> // M_PI
 
 #include "Proxy2.h"
 
@@ -8,9 +9,10 @@ namespace idg {
     namespace proxy {
         void Proxy2::gridding(
             float w_offset,
+            float cell_size,
             unsigned int kernel_size,
             float* frequencies,
-            unsigned int nr_channels,
+            unsigned int frequencies_nr_channels,
             std::complex<float>* visibilities,
             unsigned int visibilities_nr_baselines,
             unsigned int visibilities_nr_timesteps,
@@ -39,24 +41,31 @@ namespace idg {
             unsigned int spheroidal_height,
             unsigned int spheroidal_width)
         {
-            (kernel_size > 0);
-            assert(nr_channels > 0);
-            assert(nr_channels == visibilities_nr_channels);
-            assert(visibilities_nr_baselines == uvw_nr_baselines);
-            assert(visibilities_nr_baselines == baselines_nr_baselines);
-            assert(visibilities_nr_timesteps == uvw_nr_timesteps);
-            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
-            assert(visibilities_nr_correlations == grid_nr_correlations);
-            assert(visibilities_nr_correlations == aterms_nr_correlations);
-            assert(uvw_nr_coordinates == 3);
-            assert(baselines_two == 2);
-            assert(grid_height == grid_width); // TODO: remove restriction
-            assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one);
-            assert(aterms_aterm_height == aterms_aterm_width); // TODO: remove restriction
-            assert(spheroidal_height == spheroidal_width); // TODO: remove restriction
+            check_dimensions(
+                frequencies_nr_channels,
+                visibilities_nr_baselines,
+                visibilities_nr_timesteps,
+                visibilities_nr_channels,
+                visibilities_nr_correlations,
+                uvw_nr_baselines,
+                uvw_nr_timesteps,
+                uvw_nr_coordinates,
+                baselines_nr_baselines,
+                baselines_two,
+                grid_nr_correlations,
+                grid_height,
+                grid_width,
+                aterms_nr_timeslots,
+                aterms_nr_stations,
+                aterms_aterm_height,
+                aterms_aterm_width,
+                aterms_nr_correlations,
+                aterms_offsets_nr_timeslots_plus_one,
+                spheroidal_height,
+                spheroidal_width);
 
             Array1D<float> frequencies_(
-                frequencies, nr_channels);
+                frequencies, frequencies_nr_channels);
             Array3D<Visibility<std::complex<float>>> visibilities_(
                 (Visibility<std::complex<float>> *) visibilities, visibilities_nr_baselines,
                 visibilities_nr_timesteps, visibilities_nr_channels);
@@ -76,6 +85,7 @@ namespace idg {
 
             gridding(
                 w_offset,
+                cell_size,
                 kernel_size,
                 frequencies_,
                 visibilities_,
@@ -90,9 +100,10 @@ namespace idg {
 
         void Proxy2::degridding(
             float w_offset,
+            float cell_size,
             unsigned int kernel_size,
             float* frequencies,
-            unsigned int nr_channels,
+            unsigned int frequencies_nr_channels,
             std::complex<float>* visibilities,
             unsigned int visibilities_nr_baselines,
             unsigned int visibilities_nr_timesteps,
@@ -121,24 +132,31 @@ namespace idg {
             unsigned int spheroidal_height,
             unsigned int spheroidal_width)
         {
-            (kernel_size > 0);
-            assert(nr_channels > 0);
-            assert(nr_channels == visibilities_nr_channels);
-            assert(visibilities_nr_baselines == uvw_nr_baselines);
-            assert(visibilities_nr_baselines == baselines_nr_baselines);
-            assert(visibilities_nr_timesteps == uvw_nr_timesteps);
-            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
-            assert(visibilities_nr_correlations == grid_nr_correlations);
-            assert(visibilities_nr_correlations == aterms_nr_correlations);
-            assert(uvw_nr_coordinates == 3);
-            assert(baselines_two == 2);
-            assert(grid_height == grid_width); // TODO: remove restriction
-            assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one);
-            assert(aterms_aterm_height == aterms_aterm_width); // TODO: remove restriction
-            assert(spheroidal_height == spheroidal_width); // TODO: remove restriction
+            check_dimensions(
+                frequencies_nr_channels,
+                visibilities_nr_baselines,
+                visibilities_nr_timesteps,
+                visibilities_nr_channels,
+                visibilities_nr_correlations,
+                uvw_nr_baselines,
+                uvw_nr_timesteps,
+                uvw_nr_coordinates,
+                baselines_nr_baselines,
+                baselines_two,
+                grid_nr_correlations,
+                grid_height,
+                grid_width,
+                aterms_nr_timeslots,
+                aterms_nr_stations,
+                aterms_aterm_height,
+                aterms_aterm_width,
+                aterms_nr_correlations,
+                aterms_offsets_nr_timeslots_plus_one,
+                spheroidal_height,
+                spheroidal_width);
 
             Array1D<float> frequencies_(
-                frequencies, nr_channels);
+                frequencies, frequencies_nr_channels);
             Array3D<Visibility<std::complex<float>>> visibilities_(
                 (Visibility<std::complex<float>> *) visibilities, visibilities_nr_baselines,
                 visibilities_nr_timesteps, visibilities_nr_channels);
@@ -158,6 +176,7 @@ namespace idg {
 
             degridding(
                 w_offset,
+                cell_size,
                 kernel_size,
                 frequencies_,
                 visibilities_,
@@ -183,6 +202,94 @@ namespace idg {
                 grid, grid_nr_correlations, grid_height, grid_width);
 
             transform(direction, grid_);
+        }
+
+        void Proxy2::check_dimensions(
+            unsigned int frequencies_nr_channels,
+            unsigned int visibilities_nr_baselines,
+            unsigned int visibilities_nr_timesteps,
+            unsigned int visibilities_nr_channels,
+            unsigned int visibilities_nr_correlations,
+            unsigned int uvw_nr_baselines,
+            unsigned int uvw_nr_timesteps,
+            unsigned int uvw_nr_coordinates,
+            unsigned int baselines_nr_baselines,
+            unsigned int baselines_two,
+            unsigned int grid_nr_correlations,
+            unsigned int grid_height,
+            unsigned int grid_width,
+            unsigned int aterms_nr_timeslots,
+            unsigned int aterms_nr_stations,
+            unsigned int aterms_aterm_height,
+            unsigned int aterms_aterm_width,
+            unsigned int aterms_nr_correlations,
+            unsigned int aterms_offsets_nr_timeslots_plus_one,
+            unsigned int spheroidal_height,
+            unsigned int spheroidal_width) const
+        {
+            assert(frequencies_nr_channels > 0);
+            assert(frequencies_nr_channels == visibilities_nr_channels);
+            assert(visibilities_nr_baselines == uvw_nr_baselines);
+            assert(visibilities_nr_baselines == baselines_nr_baselines);
+            assert(visibilities_nr_timesteps == uvw_nr_timesteps);
+            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
+            assert(visibilities_nr_correlations == grid_nr_correlations);
+            assert(visibilities_nr_correlations == aterms_nr_correlations);
+            assert(uvw_nr_coordinates == 3);
+            assert(baselines_two == 2);
+            assert(grid_height == grid_width); // TODO: remove restriction
+            assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one);
+            assert(aterms_aterm_height == aterms_aterm_width); // TODO: remove restriction
+            assert(spheroidal_height == spheroidal_width); // TODO: remove restriction
+        }
+
+
+        void Proxy2::check_dimensions(
+            const Array1D<float>& frequencies,
+            const Array3D<Visibility<std::complex<float>>>& visibilities,
+            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+            const Array3D<std::complex<float>>& grid,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array1D<unsigned int>& aterms_offsets,
+            const Array2D<float>& spheroidal) const
+        {
+            check_dimensions(
+                frequencies.get_x_dim(),
+                visibilities.get_z_dim(),
+                visibilities.get_y_dim(),
+                visibilities.get_x_dim(),
+                4,
+                uvw.get_y_dim(),
+                uvw.get_x_dim(),
+                3,
+                baselines.get_x_dim(),
+                2,
+                grid.get_z_dim(),
+                grid.get_y_dim(),
+                grid.get_x_dim(),
+                aterms.get_w_dim(),
+                aterms.get_z_dim(),
+                aterms.get_y_dim(),
+                aterms.get_x_dim(),
+                4,
+                aterms_offsets.get_x_dim(),
+                spheroidal.get_y_dim(),
+                spheroidal.get_x_dim());
+        }
+
+        Array1D<float> Proxy2::compute_wavenumbers(
+            const Array1D<float>& frequencies) const
+        {
+            int nr_channels = frequencies.get_x_dim();
+            Array1D<float> wavenumbers(nr_channels);
+
+            const double speed_of_light = 299792458.0;
+            for (int i = 0; i < nr_channels; i++) {
+                wavenumbers(i) =  2 * M_PI * frequencies(i) / speed_of_light;
+            }
+
+            return wavenumbers;
         }
 
     } // end namespace proxy

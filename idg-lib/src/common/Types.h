@@ -11,7 +11,7 @@ namespace idg {
 
     typedef struct { int x, y; } Coordinate;
 
-    typedef struct { int station1, station2; } Baseline;
+    typedef struct { unsigned int station1, station2; } Baseline;
 
     typedef struct {
         int baseline_offset;
@@ -157,7 +157,7 @@ namespace idg {
                 }
             }
 
-            size_t size() {
+            size_t bytes() {
                 return get_x_dim() * sizeof(T);
             }
 
@@ -239,7 +239,7 @@ namespace idg {
                 }
             }
 
-            size_t size() {
+            size_t bytes() {
                 return get_y_dim() *
                        get_x_dim() * sizeof(T);
             }
@@ -332,7 +332,7 @@ namespace idg {
                 }
             }
 
-            size_t size() {
+            size_t bytes() {
                 return get_z_dim() * get_y_dim() *
                        get_x_dim() * sizeof(T);
             }
@@ -436,7 +436,7 @@ namespace idg {
                 }
             }
 
-            size_t size() {
+            size_t bytes() {
                 return get_w_dim() * get_z_dim() *
                        get_y_dim() * get_x_dim() * sizeof(T);
             }
