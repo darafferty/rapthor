@@ -31,8 +31,8 @@ std::tuple<int, int, int, int, float, int, int, int>read_parameters() {
     char *cstr_nr_timeslots = getenv("NR_TIMESLOTS");
     auto nr_timeslots = cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
-    char *cstr_imagesize = getenv("IMAGESIZE");
-    auto imagesize = cstr_imagesize ? atof(cstr_imagesize) : DEFAULT_IMAGESIZE;
+    char *cstr_image_size = getenv("IMAGESIZE");
+    auto image_size = cstr_image_size ? atof(cstr_image_size) : DEFAULT_IMAGESIZE;
 
     char *cstr_grid_size = getenv("GRIDSIZE");
     auto grid_size = cstr_grid_size ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
@@ -45,7 +45,7 @@ std::tuple<int, int, int, int, float, int, int, int>read_parameters() {
 
     return std::make_tuple(
         nr_stations, nr_channels, nr_time, nr_timeslots,
-        imagesize, grid_size, subgrid_size, kernel_size);
+        image_size, grid_size, subgrid_size, kernel_size);
 }
 
 void print_parameters(
@@ -53,7 +53,7 @@ void print_parameters(
     unsigned int nr_channels,
     unsigned int nr_timesteps,
     unsigned int nr_timeslots,
-    float imagesize,
+    float image_size,
     unsigned int grid_size,
     unsigned int subgrid_size,
     unsigned int kernel_size
@@ -78,7 +78,7 @@ void print_parameters(
        << setw(fw2) << right << nr_timeslots << endl;
     
     os << setw(fw1) << left << "Imagesize" << "== "
-       << setw(fw2) << right << imagesize  << endl;
+       << setw(fw2) << right << image_size  << endl;
     
     os << setw(fw1) << left << "Grid size" << "== "
        << setw(fw2) << right << grid_size << endl;
@@ -102,7 +102,7 @@ void run()
     unsigned int nr_channels;
     unsigned int nr_timesteps;
     unsigned int nr_timeslots;
-    float imagesize;
+    float image_size;
     unsigned int grid_size;
     unsigned int subgrid_size;
     unsigned int kernel_size;
@@ -110,22 +110,25 @@ void run()
     // Read parameters from environment
     std::tie(
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-        imagesize, grid_size, subgrid_size, kernel_size) = read_parameters();
+        image_size, grid_size, subgrid_size, kernel_size) = read_parameters();
     
     // Compute nr_baselines
     unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
+
+    // Compute cell_size
+    float cell_size = image_size / grid_size;
     
     // Print parameters
     print_parameters(
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-        imagesize, grid_size, subgrid_size, kernel_size);
+        image_size, grid_size, subgrid_size, kernel_size);
 
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
     idg::Array1D<float> frequencies =
         idg::get_example_frequencies(nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-        idg::get_example_visibilities(nr_stations, nr_timesteps, nr_channels);
+        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
         idg::get_example_baselines(nr_stations, nr_baselines);
     idg::Array2D<idg::UVWCoordinate<float>> uvw =
@@ -147,9 +150,15 @@ void run()
     clog << endl;
 
     // Run
+    clog << ">>> Create plan" << endl;
+    idg::Plan2 plan(
+        kernel_size, subgrid_size, grid_size, cell_size,
+        frequencies, uvw, baselines, aterms_offsets);
+    clog << endl;
+
     clog << ">>> Run gridding" << endl;
     proxy.gridding(
-        w_offset, kernel_size, frequencies, visibilities, uvw,
+        w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
         baselines, grid, aterms, aterms_offsets, spheroidal);
     clog << endl;
 
@@ -159,7 +168,7 @@ void run()
 
     clog << ">>> Run degridding" << endl;
     proxy.degridding(
-        w_offset, kernel_size, frequencies, visibilities, uvw,
+        w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
         baselines, grid, aterms, aterms_offsets, spheroidal);
     clog << endl;
 }
