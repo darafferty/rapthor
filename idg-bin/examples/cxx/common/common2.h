@@ -3,6 +3,7 @@
 #include <cstdlib> // size_t
 #include <complex>
 #include <tuple>
+#include <typeinfo>
 
 #include "idg-cpu.h"
 #include "idg-utility.h"  // Data init routines
@@ -141,7 +142,8 @@ void run()
 
     // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
-    ProxyType proxy;
+    idg::CompileConstants constants(nr_correlations, subgrid_size);
+    ProxyType proxy(constants);
     clog << endl;
 
     // Run
@@ -155,7 +157,7 @@ void run()
     proxy.transform(idg::FourierDomainToImageDomain, grid);
     clog << endl;
 
-    clog << ">>> Run gridding" << endl;
+    clog << ">>> Run degridding" << endl;
     proxy.degridding(
         w_offset, kernel_size, frequencies, visibilities, uvw,
         baselines, grid, aterms, aterms_offsets, spheroidal);
