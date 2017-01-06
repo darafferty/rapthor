@@ -740,7 +740,7 @@ namespace idg {
         unsigned int width
     ) {
         Array3D<std::complex<float>> grid(nr_correlations, height, width);
-        memset(grid.data(), 0, grid.size());
+        memset(grid.data(), 0, grid.bytes());
         return grid;
     }
 
