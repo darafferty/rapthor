@@ -12,6 +12,7 @@ namespace idg {
                 public:
                     // Constructor
                     CPU2(
+                        CompileConstants constants,
                         Compiler compiler,
                         Compilerflags flags,
                         ProxyInfo info);
@@ -57,6 +58,17 @@ namespace idg {
                     static ProxyInfo default_proxyinfo(
                         std::string srcdir,
                         std::string tmpdir);
+                    void compile();
+                    void load_shared_objects();
+                    void find_kernel_functions();
+
+                    Compiler mCompiler;
+                    Compilerflags mFlags;
+                    ProxyInfo mInfo;
+
+                    // store the ptr to Module, which each loads an .so-file
+                    std::vector<runtime::Module*> modules;
+                    std::map<std::string,int> which_module;
 
             }; // end class CPU2
 

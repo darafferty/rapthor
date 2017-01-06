@@ -157,6 +157,10 @@ namespace idg {
                 }
             }
 
+            size_t size() {
+                return get_x_dim() * sizeof(T);
+            }
+
         private:
             const size_t m_x_dim;
             const bool   m_delete_buffer;
@@ -233,6 +237,11 @@ namespace idg {
                         (*this)(y, x) = a;
                     }
                 }
+            }
+
+            size_t size() {
+                return get_y_dim() *
+                       get_x_dim() * sizeof(T);
             }
 
         private:
@@ -321,6 +330,11 @@ namespace idg {
                     }
 
                 }
+            }
+
+            size_t size() {
+                return get_z_dim() * get_y_dim() *
+                       get_x_dim() * sizeof(T);
             }
 
         private:
@@ -422,6 +436,11 @@ namespace idg {
                 }
             }
 
+            size_t size() {
+                return get_w_dim() * get_z_dim() *
+                       get_y_dim() * get_x_dim() * sizeof(T);
+            }
+
         private:
             const size_t m_x_dim;
             const size_t m_y_dim;
@@ -430,7 +449,6 @@ namespace idg {
             const bool   m_delete_buffer;
             T*           m_buffer;
     };
-
 
     /* Output */
 

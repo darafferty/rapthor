@@ -20,6 +20,7 @@ namespace idg {
                 public:
                     // Constructor
                     Reference2(
+                        CompileConstants constants,
                         Compiler compiler = default_compiler(),
                         Compilerflags flags = default_compiler_flags(),
                         ProxyInfo info = default_info());

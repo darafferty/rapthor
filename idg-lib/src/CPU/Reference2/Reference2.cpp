@@ -8,10 +8,11 @@ namespace idg {
 
             // Constructor
             Reference2::Reference2(
+                CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info)
-                : CPU2(compiler, flags, info)
+                : CPU2(constants, compiler, flags, info)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

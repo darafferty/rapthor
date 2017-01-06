@@ -31,7 +31,11 @@ namespace idg {
         class Proxy2
         {
             public:
-                virtual ~Proxy2() {};
+                Proxy2(
+                    CompileConstants c
+                ) : mConstants(c) {}
+
+                virtual ~Proxy2() {}
 
                 /*
                     High level routines
@@ -142,12 +146,12 @@ namespace idg {
 
                 // Auxiliary: set and get methods
                 unsigned int get_nr_correlations() const {
-                    return mParams.get_nr_correlations(); }
+                    return mConstants.get_nr_correlations(); }
                 unsigned int get_subgrid_size() const {
-                    return mParams.get_subgrid_size(); }
+                    return mConstants.get_subgrid_size(); }
 
             protected:
-                CompileConstants mParams;
+                CompileConstants mConstants;
 
         }; // end class Proxy2
 

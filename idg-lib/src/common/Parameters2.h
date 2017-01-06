@@ -7,48 +7,50 @@
 
 namespace idg {
 
-  class CompileConstants
-  {
-    public:
-      /// Define the environment names searched for
-      static const std::string ENV_NR_CORRELATIONS;
-      static const std::string ENV_SUBGRIDSIZE;
+    class CompileConstants
+    {
+        public:
+            /// Define the environment names searched for
+            static const std::string ENV_NR_CORRELATIONS;
+            static const std::string ENV_SUBGRIDSIZE;
 
-      /// Constructor: default reads values from ENV or sets default
-      CompileConstants()
-      {
-          set_from_env();
-      }
+            /// Constructor: default reads values from ENV or sets default
+            CompileConstants(
+                unsigned int nr_correlations,
+                unsigned int subgrid_size) :
+                nr_correlations(nr_correlations),
+                subgrid_size(subgrid_size) {}
 
-      // default copy constructor/assignment okay
+            CompileConstants()
+            {
+                set_from_env();
+            }
 
-      // default destructur
-      ~CompileConstants() = default;
+            // default copy constructor/assignment okay
 
-      // get methods
-      unsigned int get_nr_correlations() const { return nr_correlations; }
-      unsigned int get_subgrid_size() const { return subgrid_size; }
+            // default destructur
+            ~CompileConstants() = default;
 
-      // set methods
-      void set_nr_correlations(unsigned int nr_correlations);
-      void set_subgrid_size(unsigned int sgs);
+            // get methods
+            unsigned int get_nr_correlations() const { return nr_correlations; }
+            unsigned int get_subgrid_size() const { return subgrid_size; }
 
-      // auxiliary functions
-      void print() const;
-      void print(std::ostream& os) const;
-      void set_from_env();
+            // set methods
+            void set_nr_correlations(unsigned int nr_correlations);
+            void set_subgrid_size(unsigned int sgs);
 
-      static std::string definitions(
-        unsigned int nr_polarizations,
-        unsigned int subgrid_size);
+            // auxiliary functions
+            void print() const;
+            void print(std::ostream& os) const;
+            void set_from_env();
 
-      private:
-          unsigned int nr_correlations;
-          unsigned int subgrid_size;
-  };
+            private:
+                unsigned int nr_correlations;
+                unsigned int subgrid_size;
+    };
 
-  // helper functions
-  std::ostream& operator<<(std::ostream& os, const CompileConstants& c);
+    // helper functions
+    std::ostream& operator<<(std::ostream& os, const CompileConstants& c);
 
 } // namespace idg
 

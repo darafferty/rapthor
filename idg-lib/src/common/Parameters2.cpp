@@ -66,16 +66,6 @@ namespace idg {
         subgrid_size = cstr_subgrid_size ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
     } // read_parameters_from_env()
 
-    string CompileConstants::definitions(
-        unsigned int nr_correlations,
-        unsigned int subgrid_size)
-    {
-        stringstream parameters;
-        parameters << " -DNR_POLARIZATIONS=" << nr_correlations;
-        parameters << " -DSUBGRIDSIZE=" << subgrid_size;
-        return parameters.str();
-    }
-
     // helper functions
     ostream& operator<<(ostream& os, const CompileConstants& c)
     {
