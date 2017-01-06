@@ -734,6 +734,16 @@ namespace idg {
         return uvw;
     }
 
+    Array3D<std::complex<float>> get_zero_grid(
+        unsigned int nr_correlations,
+        unsigned int height,
+        unsigned int width
+    ) {
+        Array3D<std::complex<float>> grid(nr_correlations, height, width);
+        memset(grid.data(), 0, grid.size());
+        return grid;
+    }
+
     Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
         unsigned int nr_timeslots,
         unsigned int nr_stations,

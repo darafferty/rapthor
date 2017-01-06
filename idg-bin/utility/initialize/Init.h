@@ -201,10 +201,7 @@ Array2D<UVWCoordinate<float>> get_example_uvw(
 Array3D<std::complex<float>> get_zero_grid(
     unsigned int nr_correlations,
     unsigned int height,
-    unsigned int width
-) {
-    return Array3D<std::complex<float>>(nr_correlations, height, width);
-}
+    unsigned int width);
 
 idg::Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
     unsigned int nr_timeslots,
