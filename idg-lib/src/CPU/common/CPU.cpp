@@ -398,39 +398,34 @@ namespace idg {
             unique_ptr<kernel::cpu::Gridder> CPU::get_kernel_gridder() const {
                 return unique_ptr<kernel::cpu::Gridder>(
                     new kernel::cpu::Gridder(
-                        *(modules[which_module.at(kernel::cpu::name_gridder)]),
-                        mParams));
+                        *(modules[which_module.at(kernel::cpu::name_gridder)])));
             }
 
 
             unique_ptr<kernel::cpu::Degridder> CPU::get_kernel_degridder() const {
                 return unique_ptr<kernel::cpu::Degridder>(
                     new kernel::cpu::Degridder(
-                        *(modules[which_module.at(kernel::cpu::name_degridder)]),
-                        mParams));
+                        *(modules[which_module.at(kernel::cpu::name_degridder)])));
             }
 
 
             unique_ptr<kernel::cpu::Adder> CPU::get_kernel_adder() const {
                 return unique_ptr<kernel::cpu::Adder>(
                     new kernel::cpu::Adder(
-                        *(modules[which_module.at(kernel::cpu::name_adder)]),
-                        mParams));
+                        *(modules[which_module.at(kernel::cpu::name_adder)])));
             }
 
             unique_ptr<kernel::cpu::Splitter> CPU::get_kernel_splitter() const {
                 return unique_ptr<kernel::cpu::Splitter>(
                     new kernel::cpu::Splitter(
-                        *(modules[which_module.at(kernel::cpu::name_splitter)]),
-                        mParams));
+                        *(modules[which_module.at(kernel::cpu::name_splitter)])));
             }
 
 
             unique_ptr<kernel::cpu::GridFFT> CPU::get_kernel_fft() const {
                 return unique_ptr<kernel::cpu::GridFFT>(
                     new kernel::cpu::GridFFT(
-                        *(modules[which_module.at(kernel::cpu::name_fft)]),
-                        mParams));
+                        *(modules[which_module.at(kernel::cpu::name_fft)])));
             }
 
         } // namespace cpu

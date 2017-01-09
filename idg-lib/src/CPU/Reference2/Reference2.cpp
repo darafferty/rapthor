@@ -33,10 +33,10 @@ namespace idg {
                 #endif
 
                 // Create temp directory
-                string tmpdir = CPU2::make_tempdir();
+                string tmpdir = kernel::cpu::KernelsCPU::make_tempdir();
 
                 // Create proxy info
-                ProxyInfo p = CPU2::default_proxyinfo(srcdir, tmpdir);
+                ProxyInfo p = kernel::cpu::KernelsCPU::default_proxyinfo(srcdir, tmpdir);
 
                 return p;
             }

@@ -9,7 +9,7 @@ namespace idg {
         uint64_t Kernels::flops_gridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             uint64_t subgridsize = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
@@ -40,7 +40,7 @@ namespace idg {
         uint64_t Kernels::bytes_gridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             uint64_t subgridsize = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
@@ -79,7 +79,7 @@ namespace idg {
         uint64_t Kernels::flops_degridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             return flops_gridder(nr_channels, nr_timesteps, nr_subgrids);
         }
@@ -87,14 +87,14 @@ namespace idg {
         uint64_t Kernels::bytes_degridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             return bytes_gridder(nr_channels, nr_timesteps, nr_subgrids);
         }
 
         uint64_t Kernels::flops_fft(
             uint64_t size,
-            uint64_t batch)
+            uint64_t batch) const
         {
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             // Pseudo number of flops:
@@ -106,14 +106,14 @@ namespace idg {
 
         uint64_t Kernels::bytes_fft(
             uint64_t size,
-            uint64_t batch)
+            uint64_t batch) const
         {
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             return 1ULL * 2 * batch * nr_correlations * size * size * 2 * sizeof(float);
         }
 
         uint64_t Kernels::flops_adder(
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             uint64_t subgridsize = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
@@ -124,7 +124,7 @@ namespace idg {
         }
 
         uint64_t Kernels::bytes_adder(
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             uint64_t subgridsize = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
@@ -137,7 +137,7 @@ namespace idg {
         }
 
         uint64_t Kernels::flops_splitter(
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             uint64_t subgridsize = mConstants.get_subgrid_size();
             uint64_t flops = 0;
@@ -146,7 +146,7 @@ namespace idg {
         }
 
         uint64_t Kernels::bytes_splitter(
-            uint64_t nr_subgrids)
+            uint64_t nr_subgrids) const
         {
             uint64_t subgridsize = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();

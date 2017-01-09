@@ -5,9 +5,9 @@
 #include <ccomplex>
 #include <cmath>
 #include <string>
+#include <memory> // unique_ptr
 
-#include "../../common/RuntimeWrapper.h"
-#include "../../common/Parameters.h"
+#include "idg-common.h"
 
 namespace idg {
     namespace kernel {
@@ -27,22 +27,9 @@ namespace idg {
             #define sig_adder	  (void (*)(int,int,void*,void*,void*))
             #define sig_splitter  (void (*)(int,int,void*,void*,void*))
 
-            // define auxiliary function names
-            //static const std::string name_gridder_flops = "kernel_gridder_flops";
-            //static const std::string name_degridder_flops = "kernel_degridder_flops";
-            //static const std::string name_fft_flops = "kernel_fft_flops";
-            //static const std::string name_adder_flops = "kernel_adder_flops";
-            //static const std::string name_splitter_flops = "kernel_splitter_flops";
-
-            //static const std::string name_gridder_bytes = "kernel_gridder_bytes";
-            //static const std::string name_degridder_bytes = "kernel_degridder_bytes";
-            //static const std::string name_fft_bytes = "kernel_fft_bytes";
-            //static const std::string name_adder_bytes = "kernel_adder_bytes";
-            //static const std::string name_splitter_bytes = "kernel_splitter_bytes";
-
             class Gridder {
                 public:
-                    Gridder(runtime::Module &module, const Parameters &parameters);
+                    Gridder(runtime::Module &module);
                     void run(
                         int nr_subgrids,
                         int gridsize,
@@ -60,13 +47,12 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters parameters;
             };
 
 
             class Degridder {
                 public:
-                    Degridder(runtime::Module &module, const Parameters &parameters);
+                    Degridder(runtime::Module &module);
                     void run(
                         int nr_subgrids,
                         int gridsize,
@@ -84,13 +70,12 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters parameters;
             };
 
 
             class GridFFT {
                 public:
-                    GridFFT(runtime::Module &module, const Parameters &parameters);
+                    GridFFT(runtime::Module &module);
                     void run(
                         int gridsize,
                         int size,
@@ -100,13 +85,12 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters parameters;
             };
 
 
             class Adder {
                 public:
-                    Adder(runtime::Module &module, const Parameters &parameters);
+                    Adder(runtime::Module &module);
                     void run(
                         int nr_subgrids,
                         int gridsize,
@@ -116,13 +100,12 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters parameters;
             };
 
 
             class Splitter {
                 public:
-                    Splitter(runtime::Module &module, const Parameters &parameters);
+                    Splitter(runtime::Module &module);
                     void run(
                         int nr_subgrids,
                         int gridsize,
@@ -132,7 +115,44 @@ namespace idg {
 
                 private:
                     runtime::Function _run;
-                    Parameters parameters;
+            };
+
+
+            class KernelsCPU : public Kernels
+            {
+                public:
+                    KernelsCPU(
+                        CompileConstants constants,
+                        Compiler compiler,
+                        Compilerflags flags,
+                        ProxyInfo info);
+
+                    virtual ~KernelsCPU();
+
+                    virtual std::unique_ptr<idg::kernel::cpu::Gridder> get_kernel_gridder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Degridder> get_kernel_degridder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Adder> get_kernel_adder() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
+                    virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
+
+
+                    static std::string make_tempdir();
+                    static ProxyInfo default_proxyinfo(
+                        std::string srcdir,
+                        std::string tmpdir);
+
+                protected:
+                    void compile(
+                        Compiler compiler,
+                        Compilerflags flags);
+                    void load_shared_objects();
+                    void find_kernel_functions();
+
+                    ProxyInfo mInfo;
+
+                    // Data structures to find out in which .so-file a kernel is defined
+                    std::vector<runtime::Module*> modules;
+                    std::map<std::string,int> which_module;
             };
 
         } // namespace cpu

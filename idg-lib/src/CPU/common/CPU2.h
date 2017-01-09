@@ -4,7 +4,7 @@
 #include "idg-common.h"
 #include "idg-powersensor.h"
 
-#include "Kernels.h"
+#include "KernelsCPU.h"
 
 // Forward declarations, TODO: remove
 #define FFTW_FORWARD  (-1)
@@ -62,14 +62,6 @@ namespace idg {
                         DomainAtoDomainB direction,
                         const Array3D<std::complex<float>>& grid) override;
 
-                    // Kernels
-                    virtual std::unique_ptr<idg::kernel::cpu::Gridder> get_kernel_gridder() const;
-                    virtual std::unique_ptr<idg::kernel::cpu::Degridder> get_kernel_degridder() const;
-                    virtual std::unique_ptr<idg::kernel::cpu::Adder> get_kernel_adder() const;
-                    virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
-                    virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
-
-
                 private:
                     void grid_onto_subgrids(
                         const Plan2& plan,
@@ -103,23 +95,8 @@ namespace idg {
 
 
                 protected:
-                    static std::string make_tempdir();
-                    static ProxyInfo default_proxyinfo(
-                        std::string srcdir,
-                        std::string tmpdir);
-                    void compile();
-                    void load_shared_objects();
-                    void find_kernel_functions();
-
-                    Compiler mCompiler;
-                    Compilerflags mFlags;
-                    ProxyInfo mInfo;
                     Parameters mParams; // TODO: remove
-                    kernel::Kernels mKernels;
-
-                    // store the ptr to Module, which each loads an .so-file
-                    std::vector<runtime::Module*> modules;
-                    std::map<std::string,int> which_module;
+                    kernel::cpu::KernelsCPU mKernels;
 
                     PowerSensor *powerSensor;
             }; // end class CPU2

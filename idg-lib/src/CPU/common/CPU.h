@@ -28,7 +28,7 @@
 #include "idg-common.h"
 #include "idg-powersensor.h"
 
-#include "Kernels.h"
+#include "KernelsCPU.h"
 
 // Forward declarations
 #define FFTW_FORWARD  (-1)
