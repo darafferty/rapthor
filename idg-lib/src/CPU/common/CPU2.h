@@ -82,25 +82,26 @@ namespace idg {
 
                     virtual void split_grid_into_subgrids(
                         const Plan2& plan,
-                        std::complex<float> *subgrids,
-                        const std::complex<float> *grid);
+                        Array4D<std::complex<float>>& subgrids,
+                        const Array3D<std::complex<float>>& grid);
 
                     virtual void degrid_from_subgrids(
                         const Plan2& plan,
                         const float w_offset,
-                        const float *uvw,
-                        const float *wavenumbers,
-                        std::complex<float> *visibilities,
-                        const float *spheroidal,
-                        const std::complex<float> *aterm,
-                        const std::complex<float> *subgrids);
+                        const unsigned int grid_size,
+                        const float image_size,
+                        const Array1D<float>& wavenumbers,
+                        Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array2D<float>& spheroidal,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array4D<std::complex<float>>& subgrids);
 
 
                 protected:
-                    Parameters mParams; // TODO: remove
                     kernel::cpu::KernelsCPU mKernels;
-
                     PowerSensor *powerSensor;
+
             }; // end class CPU2
 
         } // end namespace cpu
