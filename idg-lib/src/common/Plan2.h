@@ -75,6 +75,11 @@ namespace idg {
             // number of timesteps for baselines b1 to b1+n-1
             int get_nr_timesteps(int baseline, int n) const;
 
+            // number of baselines
+            int get_nr_baselines() const {
+                return nr_baselines;
+            }
+
             const Metadata* get_metadata_ptr(int baseline = 0) const;
 
         private:
