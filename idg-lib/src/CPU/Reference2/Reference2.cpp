@@ -62,11 +62,11 @@ namespace idg {
                 #if defined(INTEL_CXX_COMPILER)
                 // Settings for the intel compiler
                 if (debug == IDG_BUILD_TYPE)
-                    return "-Wall -g -DDEBUG -qopenmp -mkl -lmkl_def";
+                    return "-std=c++11 -Wall -g -DDEBUG -qopenmp -mkl -lmkl_def";
                 else if (relwithdebinfo == IDG_BUILD_TYPE)
-                    return "-O3 -qopenmp -g -mkl -lmkl_def";
+                    return "-std=c++11 -O3 -qopenmp -g -mkl -lmkl_def";
                 else
-                    return "-Wall -O3 -qopenmp -mkl -lmkl_def";
+                    return "-std=c++11 -Wall -O3 -qopenmp -mkl -lmkl_def";
                 #else
                 // Settings (gcc or clang)
                 if (debug == IDG_BUILD_TYPE)
