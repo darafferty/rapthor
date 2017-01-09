@@ -4,25 +4,56 @@
 #include <cstdint>
 #include <cmath>
 
-#include "Parameters.h"
+#include "idg-common.h"
 
 
 namespace idg {
     namespace kernel {
 
-        /*
-            Flop and byte count
-        */
-        uint64_t flops_gridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
-        uint64_t bytes_gridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
-        uint64_t flops_degridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
-        uint64_t bytes_degridder(Parameters &parameters, uint64_t nr_timesteps, uint64_t nr_subgrids);
-        uint64_t flops_fft(Parameters &parameters, uint64_t size, uint64_t batch);
-        uint64_t bytes_fft(Parameters &parameters, uint64_t size, uint64_t batch);
-        uint64_t flops_adder(Parameters &parameters, uint64_t nr_subgrids);
-        uint64_t bytes_adder(Parameters &parameters, uint64_t nr_subgrids);
-        uint64_t flops_splitter(Parameters &parameters, uint64_t nr_subgrids);
-        uint64_t bytes_splitter(Parameters &parameters, uint64_t nr_subgrids);
+        class Kernels
+        {
+            public:
+                Kernels(
+                    CompileConstants constants,
+                    Compiler compiler,
+                    Compilerflags flags,
+                    ProxyInfo info) :
+                    mConstants(constants) {}
+
+                uint64_t flops_gridder(
+                    uint64_t nr_channels,
+                    uint64_t nr_timesteps,
+                    uint64_t nr_subgrids);
+                uint64_t bytes_gridder(
+                    uint64_t nr_channels,
+                    uint64_t nr_timesteps,
+                    uint64_t nr_subgrids);
+                uint64_t flops_degridder(
+                    uint64_t nr_channels,
+                    uint64_t nr_timesteps,
+                    uint64_t nr_subgrids);
+                uint64_t bytes_degridder(
+                    uint64_t nr_channels,
+                    uint64_t nr_timesteps,
+                    uint64_t nr_subgrids);
+                uint64_t flops_fft(
+                    uint64_t size,
+                    uint64_t batch);
+                uint64_t bytes_fft(
+                    uint64_t size,
+                    uint64_t batch);
+                uint64_t flops_adder(
+                    uint64_t nr_subgrids);
+                uint64_t bytes_adder(
+                    uint64_t nr_subgrids);
+                uint64_t flops_splitter(
+                    uint64_t nr_subgrids);
+                uint64_t bytes_splitter(
+                    uint64_t nr_subgrids);
+
+            protected:
+                CompileConstants mConstants;
+        };
 
     } // namespace kernel
 } // namespace idg

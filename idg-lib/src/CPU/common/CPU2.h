@@ -115,6 +115,7 @@ namespace idg {
                     Compilerflags mFlags;
                     ProxyInfo mInfo;
                     Parameters mParams; // TODO: remove
+                    kernel::Kernels mKernels;
 
                     // store the ptr to Module, which each loads an .so-file
                     std::vector<runtime::Module*> modules;
