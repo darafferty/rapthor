@@ -17,7 +17,6 @@ endif()
 
 # add subfolders
 add_subdirectory(common)
-add_subdirectory(Reference)
 add_subdirectory(Reference2)
-add_subdirectory(Optimized)
-add_subdirectory(KNL)
+#add_subdirectory(Optimized)
+#add_subdirectory(KNL)
