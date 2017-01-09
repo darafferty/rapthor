@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cassert> // assert
 
 #include "Plan2.h"

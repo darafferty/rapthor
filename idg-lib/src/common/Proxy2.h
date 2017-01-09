@@ -11,14 +11,12 @@
 #include "ProxyInfo.h"  // to be use in derived class
 #include "Parameters2.h" // to be use in derived class
 #include "Types.h"
-#include "Plan.h"
-#include "Proxy.h" // DomainAtoDomainB, TODO: remove this include
 
 namespace idg {
-    //enum DomainAtoDomainB {
-    //    FourierDomainToImageDomain,
-    //    ImageDomainToFourierDomain
-    //};
+    enum DomainAtoDomainB {
+        FourierDomainToImageDomain,
+        ImageDomainToFourierDomain
+    };
 
     typedef std::string Compiler;
     typedef std::string Compilerflags;

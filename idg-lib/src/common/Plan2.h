@@ -10,7 +10,6 @@
 #include <omp.h>
 
 #include "Types.h"
-#include "Parameters.h"
 
 
 namespace idg {
