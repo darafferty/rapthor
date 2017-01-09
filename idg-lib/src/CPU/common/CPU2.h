@@ -62,11 +62,13 @@ namespace idg {
                         DomainAtoDomainB direction,
                         const Array3D<std::complex<float>>& grid) override;
 
+                    // Kernels
                     virtual std::unique_ptr<idg::kernel::cpu::Gridder> get_kernel_gridder() const;
                     virtual std::unique_ptr<idg::kernel::cpu::Degridder> get_kernel_degridder() const;
                     virtual std::unique_ptr<idg::kernel::cpu::Adder> get_kernel_adder() const;
                     virtual std::unique_ptr<idg::kernel::cpu::Splitter> get_kernel_splitter() const;
                     virtual std::unique_ptr<idg::kernel::cpu::GridFFT> get_kernel_fft() const;
+
 
                 private:
                     void grid_onto_subgrids(
@@ -83,6 +85,21 @@ namespace idg {
                         const Plan2& plan,
                         const std::complex<float> *subgrids,
                         std::complex<float> *grid);
+
+                    virtual void split_grid_into_subgrids(
+                        const Plan2& plan,
+                        std::complex<float> *subgrids,
+                        const std::complex<float> *grid);
+
+                    virtual void degrid_from_subgrids(
+                        const Plan2& plan,
+                        const float w_offset,
+                        const float *uvw,
+                        const float *wavenumbers,
+                        std::complex<float> *visibilities,
+                        const float *spheroidal,
+                        const std::complex<float> *aterm,
+                        const std::complex<float> *subgrids);
 
 
                 protected:

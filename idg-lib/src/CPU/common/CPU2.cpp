@@ -139,25 +139,22 @@ namespace idg {
                     runtime = -omp_get_wtime();
 
                     // Run subroutines
-                    //for (int i = 0; i < nr_repetitions; i++) {
-                        grid_onto_subgrids(
-                            plan,
-                            w_offset,
-                            (const float*) uvw.data(),
-                            (const float*) wavenumbers.data(),
-                            (const complex<float>*) visibilities.data(),
-                            (const float*) spheroidal.data(),
-                            (const complex<float>*) aterms.data(),
-                            subgrids);
+                    grid_onto_subgrids(
+                        plan,
+                        w_offset,
+                        (const float*) uvw.data(),
+                        (const float*) wavenumbers.data(),
+                        (const complex<float>*) visibilities.data(),
+                        (const float*) spheroidal.data(),
+                        (const complex<float>*) aterms.data(),
+                        subgrids);
 
-                        add_subgrids_to_grid(
-                            plan,
-                            subgrids,
-                            (complex<float>*) grid.data());
-                    //}
+                    add_subgrids_to_grid(
+                        plan,
+                        subgrids,
+                        (complex<float>*) grid.data());
 
                     runtime += omp_get_wtime();
-                    //runtime /= nr_repetitions;
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     unique_ptr<kernel::cpu::Gridder> kernel_gridder = get_kernel_gridder();
@@ -196,7 +193,7 @@ namespace idg {
                     cerr << __func__ << ": caught unknown exception" << endl;
                     exit(3);
                 }
-            }
+            } // end gridding
 
             void CPU2::degridding(
                 const float w_offset,
@@ -214,7 +211,116 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-            }
+
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+                // Proxy constants
+                auto subgrid_size      = mConstants.get_subgrid_size();
+                auto nr_polarizations = mConstants.get_nr_correlations();
+
+                // Checks arguments
+                if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
+                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                }
+
+                check_dimensions(
+                    frequencies, visibilities, uvw, baselines,
+                    grid, aterms, aterms_offsets, spheroidal);
+
+                // Arguments
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = visibilities.get_x_dim();
+                auto grid_size    = grid.get_x_dim();
+
+                // TODO: remove parameters object from kernels
+                Parameters parameters;
+                parameters.set_nr_stations(aterms.get_z_dim());
+                parameters.set_nr_channels(nr_channels);
+                parameters.set_nr_time(nr_timesteps);
+                parameters.set_nr_timeslots(aterms.get_w_dim());
+                parameters.set_imagesize(cell_size * grid.get_x_dim());
+                parameters.set_subgrid_size(subgrid_size);
+                parameters.set_grid_size(grid.get_x_dim());
+                mParams = parameters;
+
+                try {
+                    double runtime = -omp_get_wtime();
+
+                    // Initialize plan
+                    Plan2 plan(
+                        kernel_size, subgrid_size, grid_size, cell_size,
+                        frequencies, uvw, baselines, aterms_offsets);
+
+                    auto total_nr_subgrids  = plan.get_nr_subgrids();
+                    auto total_nr_timesteps = plan.get_nr_timesteps();
+
+                    // Allocate memory for subgrids
+                    auto size_subgrids = 1ULL * total_nr_subgrids * nr_polarizations *
+                                                subgrid_size * subgrid_size;
+                    auto subgrids = new complex<float>[size_subgrids];
+
+                    runtime += omp_get_wtime();
+                    #if defined (REPORT_TOTAL)
+                    auxiliary::report("init", runtime);
+                    #endif
+
+                    runtime = -omp_get_wtime();
+
+                    // Run subroutines
+                    split_grid_into_subgrids(
+                         plan,
+                         subgrids,
+                         (complex<float>*) grid.data());
+
+                    degrid_from_subgrids(
+                        plan,
+                        w_offset,
+                        (const float*) uvw.data(),
+                        (const float*) wavenumbers.data(),
+                        (complex<float>*) visibilities.data(),
+                        (const float*) spheroidal.data(),
+                        (const complex<float>*) aterms.data(),
+                        (const complex<float>*) subgrids);
+
+                    runtime += omp_get_wtime();
+
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
+                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
+                    unique_ptr<kernel::cpu::Splitter> kernel_splitter = get_kernel_splitter();
+                    uint64_t flops_degridder  = kernel_degridder->flops(total_nr_timesteps,
+                                                                        total_nr_subgrids);
+                    uint64_t bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps,
+                                                                        total_nr_subgrids);
+                    uint64_t flops_fft        = kernel_fft->flops(subgrid_size, total_nr_subgrids);
+                    uint64_t bytes_fft        = kernel_fft->bytes(subgrid_size, total_nr_subgrids);
+                    uint64_t flops_splitter   = kernel_splitter->flops(total_nr_subgrids);
+                    uint64_t bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
+                    uint64_t flops_degridding = flops_degridder + flops_fft + flops_splitter;
+                    uint64_t bytes_degridding = bytes_degridder + bytes_fft + bytes_splitter;
+                    auxiliary::report("|degridding", runtime,
+                        flops_degridding, bytes_degridding);
+                    auxiliary::report_visibilities("|degridding",
+                        runtime, total_nr_timesteps, nr_channels);
+                    clog << endl;
+                    #endif
+
+                    delete[] subgrids;
+
+                } catch (const invalid_argument& e) {
+                    cerr << __func__ << ": invalid argument: "
+                         << e.what() << endl;
+                    exit(1);
+                } catch (const exception& e) {
+                    cerr << __func__ << ": caught exception: "
+                         << e.what() << endl;
+                    exit(2);
+                } catch (...) {
+                    cerr << __func__ << ": caught unknown exception" << endl;
+                    exit(3);
+                }
+            } // end degridding
 
             void CPU2::transform(
                 DomainAtoDomainB direction,
@@ -249,7 +355,7 @@ namespace idg {
                 auto nr_channels      = mParams.get_nr_channels();
                 auto nr_stations      = mParams.get_nr_stations();
                 auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize      = mParams.get_subgrid_size();
+                auto subgrid_size     = mParams.get_subgrid_size();
                 auto gridsize         = mParams.get_grid_size();
                 auto imagesize        = mParams.get_imagesize();
 
@@ -275,7 +381,7 @@ namespace idg {
                     // Number of subgrids for all baselines in job
                     auto current_nr_subgrids   = plan.get_nr_subgrids(bl, current_nr_baselines);
                     auto current_nr_timesteps  = plan.get_nr_timesteps(bl, current_nr_baselines);
-                    auto subgrid_elements      = subgridsize * subgridsize * nr_polarizations;
+                    auto subgrid_elements      = subgrid_size * subgrid_size * nr_polarizations;
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
@@ -310,7 +416,7 @@ namespace idg {
 
                     // FFT kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_fft->run(gridsize, subgridsize, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
+                    kernel_fft->run(gridsize, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
@@ -320,8 +426,8 @@ namespace idg {
                                       kernel_gridder->bytes(current_nr_timesteps, current_nr_subgrids),
                                       powerSensor, powerStates[0], powerStates[1]);
                     auxiliary::report("sub-fft",
-                                      kernel_fft->flops(subgridsize, current_nr_subgrids),
-                                      kernel_fft->bytes(subgridsize, current_nr_subgrids),
+                                      kernel_fft->flops(subgrid_size, current_nr_subgrids),
+                                      kernel_fft->bytes(subgrid_size, current_nr_subgrids),
                                       powerSensor, powerStates[2], powerStates[3]);
                     #endif
                     #if defined(REPORT_TOTAL)
@@ -340,15 +446,15 @@ namespace idg {
                                                                       total_nr_subgrids);
                 uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps,
                                                                       total_nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
+                uint64_t total_flops_fft      = kernel_fft->flops(subgrid_size, total_nr_subgrids);
+                uint64_t total_bytes_fft      = kernel_fft->bytes(subgrid_size, total_nr_subgrids);
                 auxiliary::report("|gridder", total_runtime_gridder,
                                   total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft,
                                   total_bytes_fft);
                 clog << endl;
                 #endif
-            }
+            } // end grid_onto_subgrids
 
             void CPU2::add_subgrids_to_grid(
                 const Plan2& plan,
@@ -363,7 +469,7 @@ namespace idg {
                 auto jobsize          = mParams.get_job_size_adder();
                 auto nr_baselines     = mParams.get_nr_baselines();
                 auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize      = mParams.get_subgrid_size();
+                auto subgrid_size     = mParams.get_subgrid_size();
                 auto gridsize         = mParams.get_grid_size();
 
                 // Load kernel function
@@ -382,7 +488,7 @@ namespace idg {
 
                     // Number of elements in batch
                     auto nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
-                    auto elems_per_subgrid = subgridsize * subgridsize *
+                    auto elems_per_subgrid = subgrid_size * subgrid_size *
                                              nr_polarizations;
 
                     // Pointers to the first element in processed batch
@@ -418,7 +524,203 @@ namespace idg {
                 auxiliary::report_subgrids("|adding", total_runtime_adding, nr_subgrids);
                 clog << endl;
                 #endif
-            }
+            } // end add_subgrids_to_grid
+
+            void CPU2::split_grid_into_subgrids(
+                const Plan2& plan,
+                complex<float> *subgrids,
+                const complex<float> *grid)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+                // Constants
+                auto jobsize          = mParams.get_job_size_splitter();
+                auto nr_baselines     = mParams.get_nr_baselines();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgrid_size     = mParams.get_subgrid_size();
+                auto gridsize         = mParams.get_grid_size();
+
+                // Load kernel function
+                unique_ptr<kernel::cpu::Splitter> kernel_splitter = get_kernel_splitter();
+
+                // Performance measurements
+                double total_runtime_splitting = 0;
+                double total_runtime_splitter = 0;
+                total_runtime_splitting = -omp_get_wtime();
+                PowerSensor::State powerStates[2];
+
+                // Run splitter
+                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                    // Number of baselines in job
+                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+
+                    // Number of elements in batch
+                    auto nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    auto elems_per_subgrid = subgrid_size * subgrid_size
+                                             * nr_polarizations;
+
+                    // Pointers to the first element in processed batch
+                    void *subgrid_ptr  = subgrids
+                                         + elems_per_subgrid*plan.get_subgrid_offset(bl);
+                    void *grid_ptr     = const_cast<complex<float>*>(grid);
+                    void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
+
+                    powerStates[0] = powerSensor->read();
+                    kernel_splitter->run(nr_subgrids, gridsize, metadata_ptr, subgrid_ptr, grid_ptr);
+                    powerStates[1] = powerSensor->read();
+
+                    #if defined(REPORT_VERBOSE)
+                    auxiliary::report("splitter",
+                                      kernel_splitter->flops(nr_subgrids),
+                                      kernel_splitter->bytes(nr_subgrids),
+                                      powerSensor, powerStates[0], powerStates[1]);
+                    #endif
+                    #if defined(REPORT_TOTAL)
+                    double runtime_splitter = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    total_runtime_splitter += runtime_splitter;
+                    #endif
+                } // end for bl
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                total_runtime_splitting += omp_get_wtime();
+                clog << endl;
+                auto nr_subgrids = plan.get_nr_subgrids();
+                uint64_t total_flops_splitter = kernel_splitter->flops(nr_subgrids);
+                uint64_t total_bytes_splitter = kernel_splitter->bytes(nr_subgrids);
+                auxiliary::report("|splitter", total_runtime_splitter,
+                                  total_flops_splitter, total_bytes_splitter);
+                auxiliary::report("|splitting", total_runtime_splitting,
+                                  total_flops_splitter, total_bytes_splitter);
+                auxiliary::report_subgrids("|splitting", total_runtime_splitting,
+                                           nr_subgrids);
+                clog << endl;
+                #endif
+            } // end split_grid_into_subgrids
+
+            void CPU2::degrid_from_subgrids(
+                const Plan2& plan,
+                const float w_offset,
+                const float *uvw,
+                const float *wavenumbers,
+                std::complex<float> *visibilities,
+                const float *spheroidal,
+                const std::complex<float> *aterm,
+                const std::complex<float> *subgrids)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+                // Constants
+                auto jobsize          = mParams.get_job_size_gridder();
+                auto nr_baselines     = mParams.get_nr_baselines();
+                auto nr_time          = mParams.get_nr_time();
+                auto nr_channels      = mParams.get_nr_channels();
+                auto nr_stations      = mParams.get_nr_stations();
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto subgrid_size     = mParams.get_subgrid_size();
+                auto gridsize         = mParams.get_grid_size();
+                auto imagesize        = mParams.get_imagesize();
+
+                // Load kernel functions
+                unique_ptr<kernel::cpu::Degridder> kernel_degridder = get_kernel_degridder();
+                unique_ptr<kernel::cpu::GridFFT> kernel_fft = get_kernel_fft();
+
+                // Performance measurements
+                double total_runtime_degridding = 0;
+                double total_runtime_degridder = 0;
+                double total_runtime_fft = 0;
+                PowerSensor::State powerStates[4];
+
+                // Start degridder
+                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                    // Number of elements per baseline
+                    auto uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
+                    auto visibilities_elements = nr_time * nr_channels * nr_polarizations;
+
+                    // Number of baselines in job
+                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+
+                    // Number of subgrids for all baselines in job
+                    auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
+                    auto subgrid_elements     = subgrid_size * subgrid_size * nr_polarizations;
+
+                    // Pointers to the first element in processed batch
+                    void *wavenumbers_ptr  = const_cast<float*>(wavenumbers);
+                    void *spheroidal_ptr   = const_cast<float*>(spheroidal);
+                    void *aterm_ptr        = const_cast<complex<float>*>(aterm);
+                    void *uvw_ptr          = const_cast<float*>(uvw + bl * uvw_elements);
+                    void *visibilities_ptr = visibilities
+                                             + bl * visibilities_elements;
+                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                    void *subgrids_ptr     = const_cast<complex<float>*>(subgrids
+                                             + subgrid_elements * plan.get_subgrid_offset(bl));
+
+                    // FFT kernel
+                    powerStates[0] = powerSensor->read();
+                    kernel_fft->run(gridsize, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
+                    powerStates[1] = powerSensor->read();
+
+                    // Degridder kernel
+                    powerStates[2] = powerSensor->read();
+                    kernel_degridder->run(
+                        current_nr_subgrids,
+                        gridsize,
+                        imagesize,
+                        w_offset,
+                        nr_channels,
+                        nr_stations,
+                        uvw_ptr,
+                        wavenumbers_ptr,
+                        visibilities_ptr,
+                        spheroidal_ptr,
+                        aterm_ptr,
+                        metadata_ptr,
+                        subgrids_ptr);
+                    powerStates[3] = powerSensor->read();
+
+                    // Performance reporting
+                    #if defined(REPORT_VERBOSE)
+                    auxiliary::report("degridder",
+                                      kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
+                                      kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
+                                      powerSensor, powerStates[2], powerStates[3]);
+                    auxiliary::report("sub-fft",
+                                      kernel_fft->flops(subgrid_size, current_nr_subgrids),
+                                      kernel_fft->bytes(subgrid_size, current_nr_subgrids),
+                                      powerSensor, powerStates[0], powerStates[1]);
+                    #endif
+                    #if defined(REPORT_TOTAL)
+                    double runtime_fft       = powerSensor->seconds(powerStates[0], powerStates[1]);
+                    double runtime_degridder = powerSensor->seconds(powerStates[2], powerStates[3]);
+                    total_runtime_fft       += runtime_fft;
+                    total_runtime_degridder += runtime_degridder;
+                    #endif
+                } // end for bl
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                clog << endl;
+                auto total_nr_subgrids  = plan.get_nr_subgrids();
+                auto total_nr_timesteps = plan.get_nr_timesteps();
+                uint64_t total_flops_degridder  = kernel_degridder->flops(total_nr_timesteps,
+                                                                          total_nr_subgrids);
+                uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps,
+                                                                          total_nr_subgrids);
+                uint64_t total_flops_fft        = kernel_fft->flops(subgrid_size,
+                                                                    total_nr_subgrids);
+                uint64_t total_bytes_fft        = kernel_fft->bytes(subgrid_size,
+                                                                    total_nr_subgrids);
+                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
+                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
+                auxiliary::report("|degridder", total_runtime_degridder,
+                                  total_flops_degridder, total_bytes_degridder);
+                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
+                clog << endl;
+                #endif
+            } // end degrid_from_subgrids
 
 
             /*
