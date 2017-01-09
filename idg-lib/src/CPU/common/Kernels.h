@@ -28,17 +28,17 @@ namespace idg {
             #define sig_splitter  (void (*)(int,int,void*,void*,void*))
 
             // define auxiliary function names
-            static const std::string name_gridder_flops = "kernel_gridder_flops";
-            static const std::string name_degridder_flops = "kernel_degridder_flops";
-            static const std::string name_fft_flops = "kernel_fft_flops";
-            static const std::string name_adder_flops = "kernel_adder_flops";
-            static const std::string name_splitter_flops = "kernel_splitter_flops";
+            //static const std::string name_gridder_flops = "kernel_gridder_flops";
+            //static const std::string name_degridder_flops = "kernel_degridder_flops";
+            //static const std::string name_fft_flops = "kernel_fft_flops";
+            //static const std::string name_adder_flops = "kernel_adder_flops";
+            //static const std::string name_splitter_flops = "kernel_splitter_flops";
 
-            static const std::string name_gridder_bytes = "kernel_gridder_bytes";
-            static const std::string name_degridder_bytes = "kernel_degridder_bytes";
-            static const std::string name_fft_bytes = "kernel_fft_bytes";
-            static const std::string name_adder_bytes = "kernel_adder_bytes";
-            static const std::string name_splitter_bytes = "kernel_splitter_bytes";
+            //static const std::string name_gridder_bytes = "kernel_gridder_bytes";
+            //static const std::string name_degridder_bytes = "kernel_degridder_bytes";
+            //static const std::string name_fft_bytes = "kernel_fft_bytes";
+            //static const std::string name_adder_bytes = "kernel_adder_bytes";
+            //static const std::string name_splitter_bytes = "kernel_splitter_bytes";
 
             class Gridder {
                 public:
@@ -57,8 +57,6 @@ namespace idg {
                         void *aterm,
                         void *metadata,
                         void *subgrid);
-                    uint64_t flops(int nr_baselines, int nr_subgrids);
-                    uint64_t bytes(int nr_baselines, int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -83,8 +81,6 @@ namespace idg {
                         void *aterm,
                         void *metadata,
                         void *subgrid);
-                    uint64_t flops(int nr_baselines, int nr_subgrids);
-                    uint64_t bytes(int nr_baselines, int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -101,8 +97,6 @@ namespace idg {
                         int batch,
                         void *data,
                         int direction);
-                    uint64_t flops(int size, int batch);
-                    uint64_t bytes(int size, int batch);
 
                 private:
                     runtime::Function _run;
@@ -119,8 +113,6 @@ namespace idg {
                         void *metadata,
                         void *subgrid,
                         void *grid);
-                    uint64_t flops(int nr_subgrids);
-                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     runtime::Function _run;
@@ -137,8 +129,6 @@ namespace idg {
                         void *metadata,
                         void *subgrid,
                         void *grid);
-                    uint64_t flops(int nr_subgrids);
-                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     runtime::Function _run;
