@@ -46,6 +46,7 @@ namespace idg {
                 High level routines
             */
             void CPU2::gridding(
+                const Plan2& plan,
                 const float w_offset,
                 const float cell_size,
                 const unsigned int kernel_size,
@@ -85,12 +86,7 @@ namespace idg {
                 auto image_size   = cell_size * grid_size;
 
                 try {
-                   double runtime = -omp_get_wtime();
-
-                    // Initialize plan
-                    Plan2 plan(
-                        kernel_size, subgrid_size, grid_size, cell_size,
-                        frequencies, uvw, baselines, aterms_offsets);
+                    double runtime = -omp_get_wtime();
 
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
@@ -159,6 +155,7 @@ namespace idg {
             } // end gridding
 
             void CPU2::degridding(
+                const Plan2& plan,
                 const float w_offset,
                 const float cell_size,
                 const unsigned int kernel_size,
@@ -199,11 +196,6 @@ namespace idg {
 
                 try {
                     double runtime = -omp_get_wtime();
-
-                    // Initialize plan
-                    Plan2 plan(
-                        kernel_size, subgrid_size, grid_size, cell_size,
-                        frequencies, uvw, baselines, aterms_offsets);
 
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();

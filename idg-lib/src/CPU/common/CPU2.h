@@ -33,6 +33,7 @@ namespace idg {
 
                     // Routines
                     virtual void gridding(
+                        const Plan2& plan,
                         const float w_offset, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
@@ -45,7 +46,10 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
+                    using Proxy2::gridding;
+
                     virtual void degridding(
+                        const Plan2& plan,
                         const float w_offset, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
@@ -57,6 +61,8 @@ namespace idg {
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
+
+                    using Proxy2::degridding;
 
                     virtual void transform(
                         DomainAtoDomainB direction,

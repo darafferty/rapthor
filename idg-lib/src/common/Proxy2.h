@@ -8,9 +8,10 @@
 #include <utility> // pair
 
 #include "RuntimeWrapper.h"
-#include "ProxyInfo.h"  // to be use in derived class
-#include "Parameters2.h" // to be use in derived class
+#include "ProxyInfo.h"
+#include "Parameters2.h"
 #include "Types.h"
+#include "Plan2.h"
 
 namespace idg {
     enum DomainAtoDomainB {
@@ -40,6 +41,7 @@ namespace idg {
                 */
                 //! Grid the visibilities onto a uniform grid
                 virtual void gridding(
+                    const Plan2& plan,
                     const float w_offset, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
@@ -53,9 +55,22 @@ namespace idg {
                     const Array2D<float>& spheroidal) = 0;
 
                 void gridding(
-                    float w_offset, // in lambda
-                    const float cell_size, // TODO: unit?
-                    unsigned int kernel_size, // full width in pixels
+                    const float w_offset,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
+
+                virtual void gridding(
+                    float w_offset,
+                    const float cell_size,
+                    unsigned int kernel_size,
                     float* frequencies,
                     unsigned int nr_channels,
                     std::complex<float>* visibilities,
@@ -88,6 +103,7 @@ namespace idg {
 
                 //! Degrid the visibilities from a uniform grid
                 virtual void degridding(
+                    const Plan2& plan,
                     const float w_offset, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
@@ -101,9 +117,22 @@ namespace idg {
                     const Array2D<float>& spheroidal) = 0;
 
                 void degridding(
-                    float w_offset, // in lambda
-                    float cell_size, // TODO: unit?
-                    unsigned int kernel_size, // full width in pixels
+                    const float w_offset,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
+
+                void degridding(
+                    float w_offset,
+                    float cell_size,
+                    unsigned int kernel_size,
                     float* frequencies,
                     unsigned int nr_channels,
                     std::complex<float>* visibilities,

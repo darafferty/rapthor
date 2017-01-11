@@ -8,6 +8,48 @@ using namespace std;
 namespace idg {
     namespace proxy {
         void Proxy2::gridding(
+            const float w_offset,
+            const float cell_size,
+            const unsigned int kernel_size,
+            const Array1D<float>& frequencies,
+            const Array3D<Visibility<std::complex<float>>>& visibilities,
+            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+            Array3D<std::complex<float>>& grid,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array1D<unsigned int>& aterms_offsets,
+            const Array2D<float>& spheroidal)
+        {
+            auto subgrid_size     = mConstants.get_subgrid_size();
+            auto nr_polarizations = mConstants.get_nr_correlations();
+            auto grid_size        = grid.get_x_dim();
+
+            Plan2 plan(
+                kernel_size,
+                subgrid_size,
+                grid_size,
+                cell_size,
+                frequencies,
+                uvw,
+                baselines,
+                aterms_offsets);
+
+            gridding(
+                plan,
+                w_offset,
+                cell_size,
+                kernel_size,
+                frequencies,
+                visibilities,
+                uvw,
+                baselines,
+                grid,
+                aterms,
+                aterms_offsets,
+                spheroidal);
+        }
+
+        void Proxy2::gridding(
             float w_offset,
             float cell_size,
             unsigned int kernel_size,
@@ -95,6 +137,43 @@ namespace idg {
                 aterms_,
                 aterms_offsets_,
                 spheroidal_);
+        }
+
+
+        void Proxy2::degridding(
+            const float w_offset,
+            const float cell_size,
+            const unsigned int kernel_size,
+            const Array1D<float>& frequencies,
+            Array3D<Visibility<std::complex<float>>>& visibilities,
+            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+            const Array3D<std::complex<float>>& grid,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array1D<unsigned int>& aterms_offsets,
+            const Array2D<float>& spheroidal)
+        {
+            auto subgrid_size     = mConstants.get_subgrid_size();
+            auto nr_polarizations = mConstants.get_nr_correlations();
+            auto grid_size        = grid.get_x_dim();
+
+            Plan2 plan(
+                kernel_size, subgrid_size, grid_size, cell_size,
+                frequencies, uvw, baselines, aterms_offsets);
+
+            degridding(
+                plan,
+                w_offset,
+                cell_size,
+                kernel_size,
+                frequencies,
+                visibilities,
+                uvw,
+                baselines,
+                grid,
+                aterms,
+                aterms_offsets,
+                spheroidal);
         }
 
 
