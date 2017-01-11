@@ -97,7 +97,7 @@ void run()
 {
     // Constants
     unsigned int nr_correlations = 4;
-    unsigned int w_offset = 0;
+    float w_offset = 0;
     unsigned int nr_stations;
     unsigned int nr_channels;
     unsigned int nr_timesteps;
@@ -158,7 +158,7 @@ void run()
 
     clog << ">>> Run gridding" << endl;
     proxy.gridding(
-        w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
+        plan, w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
         baselines, grid, aterms, aterms_offsets, spheroidal);
     clog << endl;
 
@@ -168,7 +168,7 @@ void run()
 
     clog << ">>> Run degridding" << endl;
     proxy.degridding(
-        w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
+        plan, w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
         baselines, grid, aterms, aterms_offsets, spheroidal);
     clog << endl;
 }
