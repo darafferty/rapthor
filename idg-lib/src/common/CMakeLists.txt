@@ -7,7 +7,7 @@ set (${PROJECT_NAME}_headers
     auxiliary.h
     Types.h
     Kernels.h
-    Parameters2.h
+    CompileConstants.h
     Proxy2.h
 	Plan.h
 )
@@ -18,7 +18,7 @@ set (${PROJECT_NAME}_sources
     auxiliary.cpp
     Types.cpp
     Kernels.cpp
-    Parameters2.cpp
+    CompileConstants.cpp
     Proxy2.cpp
 	Plan.cpp
 )
