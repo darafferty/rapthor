@@ -14,7 +14,7 @@ namespace idg {
     namespace proxy {
         namespace cpu {
 
-            class CPU2 : public Proxy2
+            class CPU2 : public Proxy
             {
                 public:
                     // Constructor
@@ -46,7 +46,7 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    using Proxy2::gridding;
+                    using Proxy::gridding;
 
                     virtual void degridding(
                         const Plan& plan,
@@ -62,7 +62,7 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    using Proxy2::degridding;
+                    using Proxy::degridding;
 
                     virtual void transform(
                         DomainAtoDomainB direction,

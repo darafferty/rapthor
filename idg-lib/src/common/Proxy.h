@@ -27,14 +27,14 @@ namespace idg {
 namespace idg {
     namespace proxy {
 
-        class Proxy2
+        class Proxy
         {
             public:
-                Proxy2(
+                Proxy(
                     CompileConstants c
                 ) : mConstants(c) {}
 
-                virtual ~Proxy2() {}
+                virtual ~Proxy() {}
 
                 /*
                     High level routines
@@ -220,7 +220,7 @@ namespace idg {
 
                 CompileConstants mConstants;
 
-        }; // end class Proxy2
+        }; // end class Proxy
 
     } // namespace proxy
 } // namespace idg

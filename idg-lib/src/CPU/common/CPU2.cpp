@@ -17,7 +17,7 @@ namespace idg {
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info) :
-                Proxy2(constants),
+                Proxy(constants),
                 mKernels(constants, compiler, flags, info)
             {
                 #if defined(DEBUG)

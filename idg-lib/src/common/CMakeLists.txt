@@ -8,7 +8,7 @@ set (${PROJECT_NAME}_headers
     Types.h
     Kernels.h
     CompileConstants.h
-    Proxy2.h
+    Proxy.h
 	Plan.h
 )
 
@@ -19,7 +19,7 @@ set (${PROJECT_NAME}_sources
     Types.cpp
     Kernels.cpp
     CompileConstants.cpp
-    Proxy2.cpp
+    Proxy.cpp
 	Plan.cpp
 )
 

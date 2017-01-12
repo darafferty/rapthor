@@ -1,13 +1,13 @@
 #include <cassert> // assert
 #include <cmath> // M_PI
 
-#include "Proxy2.h"
+#include "Proxy.h"
 
 using namespace std;
 
 namespace idg {
     namespace proxy {
-        void Proxy2::gridding(
+        void Proxy::gridding(
             const float w_offset,
             const float cell_size,
             const unsigned int kernel_size,
@@ -49,7 +49,7 @@ namespace idg {
                 spheroidal);
         }
 
-        void Proxy2::gridding(
+        void Proxy::gridding(
             float w_offset,
             float cell_size,
             unsigned int kernel_size,
@@ -140,7 +140,7 @@ namespace idg {
         }
 
 
-        void Proxy2::degridding(
+        void Proxy::degridding(
             const float w_offset,
             const float cell_size,
             const unsigned int kernel_size,
@@ -177,7 +177,7 @@ namespace idg {
         }
 
 
-        void Proxy2::degridding(
+        void Proxy::degridding(
             float w_offset,
             float cell_size,
             unsigned int kernel_size,
@@ -267,7 +267,7 @@ namespace idg {
                 spheroidal_);
         }
 
-        void Proxy2::transform(
+        void Proxy::transform(
             DomainAtoDomainB direction,
             std::complex<float>* grid,
             unsigned int grid_nr_correlations,
@@ -283,7 +283,7 @@ namespace idg {
             transform(direction, grid_);
         }
 
-        void Proxy2::check_dimensions(
+        void Proxy::check_dimensions(
             unsigned int frequencies_nr_channels,
             unsigned int visibilities_nr_baselines,
             unsigned int visibilities_nr_timesteps,
@@ -323,7 +323,7 @@ namespace idg {
         }
 
 
-        void Proxy2::check_dimensions(
+        void Proxy::check_dimensions(
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -357,7 +357,7 @@ namespace idg {
                 spheroidal.get_x_dim());
         }
 
-        Array1D<float> Proxy2::compute_wavenumbers(
+        Array1D<float> Proxy::compute_wavenumbers(
             const Array1D<float>& frequencies) const
         {
             int nr_channels = frequencies.get_x_dim();
@@ -379,14 +379,14 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
-    typedef idg::proxy::Proxy2 Proxy2_t;
+    typedef idg::proxy::Proxy Proxy_t;
 
-    int Proxy2_get_nr_correlations(Proxy2_t* p)
+    int Proxy_get_nr_correlations(Proxy_t* p)
     {
         return p->get_nr_correlations();
     }
 
-    int Proxy2_get_subgrid_size(Proxy2_t* p)
+    int Proxy_get_subgrid_size(Proxy_t* p)
     {
         return p->get_subgrid_size();
     }

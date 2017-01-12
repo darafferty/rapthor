@@ -2,7 +2,7 @@
 #define IDG_COMMON_HEADER
 
 #include "idg-config.h"
-#include "common/Proxy2.h"
+#include "common/Proxy.h"
 #include "common/ProxyInfo.h"
 #include "common/RuntimeWrapper.h"
 #include "common/auxiliary.h"
