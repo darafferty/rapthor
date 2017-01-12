@@ -1,4 +1,4 @@
-#include "Reference2.h"
+#include "Reference.h"
 
 using namespace std;
 
@@ -7,7 +7,7 @@ namespace idg {
         namespace cpu {
 
             // Constructor
-            Reference2::Reference2(
+            Reference::Reference(
                 CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
@@ -20,7 +20,7 @@ namespace idg {
             }
 
             // Runtime compilation
-            ProxyInfo Reference2::default_info()
+            ProxyInfo Reference::default_info()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -42,7 +42,7 @@ namespace idg {
             }
 
 
-            string Reference2::default_compiler()
+            string Reference::default_compiler()
             {
                 #if defined(INTEL_CXX_COMPILER)
                 return "icpc";
@@ -54,7 +54,7 @@ namespace idg {
             }
 
 
-            string Reference2::default_compiler_flags()
+            string Reference::default_compiler_flags()
             {
                 string debug = "Debug";
                 string relwithdebinfo = "RelWithDebInfo";

@@ -2,11 +2,11 @@ project(cpu-reference2)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-  Reference2.h
+  Reference.h
 )
 
 set (${PROJECT_NAME}_sources
-  Reference2.cpp
+  Reference.cpp
 )
 
 # create library
@@ -28,7 +28,7 @@ install(
     kernels/KernelSplitter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/Types.h
     DESTINATION
-    lib/idg-cpu/Reference2
+    lib/idg-cpu/Reference
 )
 
 # Copy header files
@@ -36,5 +36,5 @@ install(
     FILES
     ${${PROJECT_NAME}_headers}
     DESTINATION
-    include/CPU/Reference2
+    include/CPU/Reference
 )

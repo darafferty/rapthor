@@ -7,10 +7,10 @@ namespace idg {
     namespace proxy {
         namespace cpu {
 
-            class Reference2 : public CPU {
+            class Reference : public CPU {
                 public:
                     // Constructor
-                    Reference2(
+                    Reference(
                         CompileConstants constants,
                         Compiler compiler = default_compiler(),
                         Compilerflags flags = default_compiler_flags(),
@@ -21,7 +21,7 @@ namespace idg {
                     static std::string default_compiler();
                     static std::string default_compiler_flags();
 
-            }; // class Reference2
+            }; // class Reference
 
         } // namespace cpu
     } // namespace proxy
