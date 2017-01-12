@@ -8,8 +8,8 @@
 
 #include "CU.h"
 #include "CUFFT.h"
-#include "../../common/Parameters.h"
-#include "../../common/Kernels.h"
+
+#include "idg-common.h"
 
 namespace idg {
     namespace kernel {
@@ -27,7 +27,6 @@ namespace idg {
                 public:
                     Gridder(
                         cu::Module &module,
-                        const Parameters &params,
                         const dim3 block);
 
                     void launch(
@@ -46,17 +45,8 @@ namespace idg {
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid);
 
-                   uint64_t flops(int nr_timesteps, int nr_subgrids) {
-                        return idg::kernel::flops_gridder(parameters, nr_timesteps, nr_subgrids);
-                    }
-
-                    uint64_t bytes(int nr_timesteps, int nr_subgrids) {
-                        return idg::kernel::bytes_gridder(parameters, nr_timesteps, nr_subgrids);
-                    }
-
                 private:
                     cu::Function function;
-                    Parameters parameters;
                     dim3 block;
             };
 
@@ -65,7 +55,6 @@ namespace idg {
                 public:
                     Degridder(
                         cu::Module &module,
-                        const Parameters &params,
                         const dim3 block);
 
                     void launch(
@@ -84,17 +73,8 @@ namespace idg {
                         cu::DeviceMemory &d_metadata,
                         cu::DeviceMemory &d_subgrid);
 
-                    uint64_t flops(int nr_timesteps, int nr_subgrids) {
-                        return idg::kernel::flops_degridder(parameters, nr_timesteps, nr_subgrids);
-                    }
-
-                    uint64_t bytes(int nr_timesteps, int nr_subgrids) {
-                        return idg::kernel::bytes_degridder(parameters, nr_timesteps, nr_subgrids);
-                    }
-
                 private:
                     cu::Function function;
-                    Parameters parameters;
                     dim3 block;
             };
 
@@ -102,12 +82,14 @@ namespace idg {
             class GridFFT {
                 public:
                     GridFFT(
-                        cu::Module &module,
-                        const Parameters &params);
+                        unsigned int nr_correlations,
+                        unsigned int size,
+                        cu::Module &module);
 
                     ~GridFFT();
 
-                    void plan(int size, int batch);
+                    void plan(
+                        unsigned int batch);
 
                     void launch(cu::Stream &stream, cu::DeviceMemory &data, int direction);
 
@@ -115,23 +97,15 @@ namespace idg {
 
                     void scale(std::complex<float> *data, std::complex<float> scale);
 
-                    uint64_t flops(int size, int batch) {
-                        return idg::kernel::flops_fft(parameters, size, batch);
-                    }
-
-                    uint64_t bytes(int size, int batch) {
-                        return idg::kernel::bytes_fft(parameters, size, batch);
-                    }
-
                 private:
                     void plan_bulk();
 
                 private:
                     cu::Function function;
-                    Parameters parameters;
-                    int planned_size;
-                    int planned_batch;
-                    const int bulk_size = 1024;
+                    unsigned int nr_correlations;
+                    unsigned int size;
+                    unsigned int planned_batch;
+                    const unsigned int bulk_size = 1024;
                     cufft::C2C_2D *fft_bulk;
                     cufft::C2C_2D *fft_remainder;
             };
@@ -141,7 +115,6 @@ namespace idg {
                 public:
                     Adder(
                         cu::Module &module,
-                        const Parameters &params,
                         const dim3 block);
 
                     void launch(
@@ -152,17 +125,8 @@ namespace idg {
                         cu::DeviceMemory &d_subgrid,
                         cu::DeviceMemory &d_grid);
 
-                    uint64_t flops(int nr_subgrids) {
-                        return idg::kernel::flops_adder(parameters, nr_subgrids);
-                    }
-
-                    uint64_t bytes(int nr_subgrids) {
-                        return idg::kernel::bytes_adder(parameters, nr_subgrids);
-                    }
-
                 private:
                     cu::Function function;
-                    Parameters parameters;
                     dim3 block;
             };
 
@@ -174,7 +138,6 @@ namespace idg {
                 public:
                     Splitter(
                         cu::Module &module,
-                        const Parameters &params,
                         const dim3 block);
 
                     void launch(
@@ -185,17 +148,8 @@ namespace idg {
                         cu::DeviceMemory &d_subgrid,
                         cu::DeviceMemory &d_grid);
 
-                    uint64_t flops(int nr_subgrids) {
-                        return idg::kernel::flops_splitter(parameters, nr_subgrids);
-                    }
-
-                    uint64_t bytes(int nr_subgrids) {
-                        return idg::kernel::bytes_splitter(parameters, nr_subgrids);
-                    }
-
                 private:
                     cu::Function function;
-                    Parameters parameters;
                     dim3 block;
             };
 
@@ -207,7 +161,6 @@ namespace idg {
                 public:
                     Scaler(
                         cu::Module &module,
-                        const Parameters &params,
                         const dim3 block);
 
                     void launch(
@@ -216,24 +169,25 @@ namespace idg {
                         cu::DeviceMemory &d_subgrid);
 
                     uint64_t flops(int nr_subgrids) {
-                        int subgridsize = parameters.get_subgrid_size();
-                        int nr_polarizations = parameters.get_nr_polarizations();
-                        uint64_t flops = 0;
-                        flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
-                        return flops;
+                        //int subgridsize = parameters.get_subgrid_size();
+                        //int nr_polarizations = parameters.get_nr_polarizations();
+                        //uint64_t flops = 0;
+                        //flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
+                        //return flops;
+                        return 0;
                     }
 
                     uint64_t bytes(int nr_subgrids) {
-                        int subgridsize = parameters.get_subgrid_size();
-                        int nr_polarizations = parameters.get_nr_polarizations();
-                        uint64_t bytes = 0;
-                        bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
-                        return bytes;
+                        //int subgridsize = parameters.get_subgrid_size();
+                        //int nr_polarizations = parameters.get_nr_polarizations();
+                        //uint64_t bytes = 0;
+                        //bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
+                        //return bytes;
+                        return 0;
                     }
 
                 private:
                     cu::Function function;
-                    Parameters parameters;
                     dim3 block;
             };
         } // namespace cuda

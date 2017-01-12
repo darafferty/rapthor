@@ -2,7 +2,6 @@
 #define IDG_CUDA_H_
 
 #include <vector>
-#include <string>
 #include <complex>
 
 #include "idg-common.h"
@@ -17,8 +16,9 @@ namespace idg {
             class CUDA : public Proxy {
                 public:
                     CUDA(
-                        Parameters params,
-                        ProxyInfo info = default_info());
+                        CompileConstants constants,
+                        ProxyInfo info);
+
                     ~CUDA();
 
                 public:
@@ -32,7 +32,7 @@ namespace idg {
                     static ProxyInfo default_info();
 
                 protected:
-                    ProxyInfo &info;
+                    ProxyInfo &mInfo;
                     std::vector<DeviceInstance*> devices;
 
                 public:

@@ -6,13 +6,13 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             DeviceInstance::DeviceInstance(
-                Parameters &parameters,
+                CompileConstants &constants,
                 ProxyInfo &info,
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
-                parameters(parameters),
-                info(info)
+                mConstants(constants),
+                mInfo(info)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -40,10 +40,10 @@ namespace idg {
             }
 
             std::string DeviceInstance::get_compiler_flags() {
-                // Parameter flags
-                std::string flags_parameters = Parameters::definitions(
-                    parameters.get_nr_polarizations(),
-                    parameters.get_subgrid_size());
+                // Constants
+                std::stringstream flags_constants;
+                flags_constants << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
+                flags_constants << " -DSUBGRIDSIZE=" << mConstants.get_subgrid_size();
 
                 // CUDA specific flags
                 std::stringstream flags_cuda;
@@ -61,7 +61,7 @@ namespace idg {
                 // Combine flags
                 std::string flags = " " + flags_cuda.str() +
                                     " " + flags_device.str() +
-                                    " " + flags_parameters;
+                                    " " + flags_constants.str();
                 return flags;
             }
 
@@ -74,7 +74,7 @@ namespace idg {
                 std::string flags = get_compiler_flags();
 
                 // Compile all libraries (ptx files)
-                std::vector<std::string> v = info.get_lib_names();
+                std::vector<std::string> v = mInfo.get_lib_names();
                 #if !defined(DEBUG)
                 #pragma omp parallel for
                 #endif
@@ -83,14 +83,14 @@ namespace idg {
 
                     // Create a string with the full path to the ptx file "libname.ptx"
                     std::string libname = v[i];
-                    std::string lib = info.get_path_to_lib() + "/" + libname;
+                    std::string lib = mInfo.get_path_to_lib() + "/" + libname;
 
                     // Create a string for all sources that are combined
-                    std::vector<std::string> source_files = info.get_source_files(libname);
+                    std::vector<std::string> source_files = mInfo.get_source_files(libname);
 
                     std::string source;
                     for (auto src : source_files) {
-                        source += info.get_path_to_src() + "/" + src + " ";
+                        source += mInfo.get_path_to_src() + "/" + src + " ";
                     } // source = a.cpp b.cpp c.cpp ...
 
                     #if defined(DEBUG)
@@ -208,32 +208,34 @@ namespace idg {
 
             std::unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
                 return std::unique_ptr<Gridder>(new Gridder(
-                    *(modules[which_module.at(name_gridder)]), parameters, block_gridder));
+                    *(modules[which_module.at(name_gridder)]), block_gridder));
             }
 
             std::unique_ptr<Degridder> DeviceInstance::get_kernel_degridder() const {
                 return std::unique_ptr<Degridder>(new Degridder(
-                    *(modules[which_module.at(name_degridder)]), parameters, block_degridder));
+                    *(modules[which_module.at(name_degridder)]), block_degridder));
             }
 
-            std::unique_ptr<GridFFT> DeviceInstance::get_kernel_fft() const {
+            std::unique_ptr<GridFFT> DeviceInstance::get_kernel_fft(unsigned int size) const {
                 return std::unique_ptr<GridFFT>(new GridFFT(
-                    *(modules[which_module.at(name_fft)]), parameters));
+                    mConstants.get_nr_correlations(),
+                    size,
+                    *(modules[which_module.at(name_fft)])));
             }
 
             std::unique_ptr<Adder> DeviceInstance::get_kernel_adder() const {
                 return std::unique_ptr<Adder>(new Adder(
-                    *(modules[which_module.at(name_adder)]), parameters, block_adder));
+                    *(modules[which_module.at(name_adder)]), block_adder));
             }
 
             std::unique_ptr<Splitter> DeviceInstance::get_kernel_splitter() const {
                 return std::unique_ptr<Splitter>(new Splitter(
-                    *(modules[which_module.at(name_splitter)]), parameters, block_splitter));
+                    *(modules[which_module.at(name_splitter)]), block_splitter));
             }
 
             std::unique_ptr<Scaler> DeviceInstance::get_kernel_scaler() const {
                 return std::unique_ptr<Scaler>(new Scaler(
-                    *(modules[which_module.at(name_scaler)]), parameters, block_scaler));
+                    *(modules[which_module.at(name_scaler)]), block_scaler));
             }
 
             void DeviceInstance::init_powersensor(

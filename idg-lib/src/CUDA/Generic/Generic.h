@@ -10,7 +10,7 @@
 #ifndef IDG_CUDA_GENERIC_H_
 #define IDG_CUDA_GENERIC_H_
 
-#include "../common/CUDA.h"
+#include "../common/CUDA.h" // TODO: cleanup
 
 /*
     Toggle between two modes of cu::HostMemory allocation
@@ -36,40 +36,48 @@ namespace idg {
                 public:
                     /// Constructor
                     Generic(
-                        Parameters params,
+                        CompileConstants constants,
                         ProxyInfo info = default_info());
 
                     /// Destructor
                     ~Generic() = default;
 
                 public:
-                    // High level interface, inherited from Proxy
-                    virtual void grid_visibilities(
-                        const std::complex<float> *visibilities,
-                        const float *uvw,
-                        const float *wavenumbers,
-                        const int *baselines,
-                        std::complex<float> *grid,
-                        const float w_offset,
-                        const int kernel_size,
-                        const std::complex<float> *aterm,
-                        const int *aterm_offsets,
-                        const float *spheroidal) override;
+                    virtual void gridding(
+                        const Plan& plan,
+                        const float w_offset, // in lambda
+                        const float cell_size,
+                        const unsigned int kernel_size, // full width in pixels
+                        const Array1D<float>& frequencies,
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        Array3D<std::complex<float>>& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
 
-                    virtual void degrid_visibilities(
-                        std::complex<float> *visibilities,
-                        const float *uvw,
-                        const float *wavenumbers,
-                        const int *baselines,
-                        const std::complex<float> *grid,
-                        const float w_offset,
-                        const int kernel_size,
-                        const std::complex<float> *aterm,
-                        const int *aterm_offsets,
-                        const float *spheroidal) override;
+                    using Proxy::gridding;
 
-                    virtual void transform(DomainAtoDomainB direction,
-                                           std::complex<float>* grid) override;
+                    virtual void degridding(
+                        const Plan& plan,
+                        const float w_offset, // in lambda
+                        const float cell_size,
+                        const unsigned int kernel_size, // full width in pixels
+                        const Array1D<float>& frequencies,
+                        Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Array3D<std::complex<float>>& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
+
+                    using Proxy::degridding;
+
+                    virtual void transform(
+                        DomainAtoDomainB direction,
+                        const Array3D<std::complex<float>>& grid) override;
 
                 private:
                     PowerSensor *hostPowerSensor;

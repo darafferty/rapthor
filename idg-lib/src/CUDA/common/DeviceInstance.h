@@ -18,7 +18,7 @@ namespace idg {
             class DeviceInstance {
                 public:
                     DeviceInstance(
-                        Parameters &params,
+                        CompileConstants &constants,
                         ProxyInfo &info,
                         int device_number,
                         const char *power_sensor = NULL,
@@ -32,7 +32,7 @@ namespace idg {
 
                     std::unique_ptr<kernel::cuda::Gridder>   get_kernel_gridder() const;
                     std::unique_ptr<kernel::cuda::Degridder> get_kernel_degridder() const;
-                    std::unique_ptr<kernel::cuda::GridFFT>   get_kernel_fft() const;
+                    std::unique_ptr<kernel::cuda::GridFFT>   get_kernel_fft(unsigned int size) const;
                     std::unique_ptr<kernel::cuda::Adder>     get_kernel_adder() const;
                     std::unique_ptr<kernel::cuda::Splitter>  get_kernel_splitter() const;
                     std::unique_ptr<kernel::cuda::Scaler>    get_kernel_scaler() const;
@@ -55,9 +55,9 @@ namespace idg {
                         const char *str_power_file);
 
                 protected:
-                    // Arguments shared by all DeviceInstance instances
-                    Parameters  &parameters;
-                    ProxyInfo   &info;
+                    // Variables shared by all DeviceInstance instances
+                    CompileConstants &mConstants;
+                    ProxyInfo        &mInfo;
 
                 private:
                     // CUDA objects private to this DeviceInstance

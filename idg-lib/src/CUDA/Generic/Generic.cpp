@@ -10,9 +10,9 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             Generic::Generic(
-                Parameters params,
+                CompileConstants constants,
                 ProxyInfo info) :
-                CUDA(params, info)
+                CUDA(constants, info)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
@@ -21,18 +21,18 @@ namespace idg {
                 // Allocate memory
                 for (DeviceInstance *device : devices) {
                     #if REDUCE_HOST_MEMORY
-                    h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines())));
-                    h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(params.get_nr_baselines())));
+                    //h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines())));
+                    //h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(params.get_nr_baselines())));
                     #endif
-                    h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
+                    //h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
                 }
                 #if !REDUCE_HOST_MEMORY
-                h_visibilities_ = new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines()));
-                h_uvw_ = new cu::HostMemory(sizeof_uvw(params.get_nr_baselines()));
+                //h_visibilities_ = new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines()));
+                //h_uvw_ = new cu::HostMemory(sizeof_uvw(params.get_nr_baselines()));
                 #endif
 
                 // Initialize host PowerSensor
-                #if defined(HAVE_LIKWID) && 0
+                #if defined(HAVE_LIKWID)
                 hostPowerSensor = new LikwidPowerSensor();
                 #else
                 hostPowerSensor = new RaplPowerSensor();
@@ -45,8 +45,9 @@ namespace idg {
             /* High level routines */
             void Generic::transform(
                 DomainAtoDomainB direction,
-                complex<float>* grid)
+                const Array3D<std::complex<float>>& grid)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
@@ -156,20 +157,24 @@ namespace idg {
                 #endif
 
                 } // end for repetitions
+#endif
             }
 
-            void Generic::grid_visibilities(
-                const complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal)
+            void gridding(
+                const Plan& plan,
+                const float w_offset, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                Array3D<std::complex<float>>& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -460,20 +465,24 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
+#endif
             }
 
-           void Generic::degrid_visibilities(
-                std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                const std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal)
+            void degridding(
+                const Plan& plan,
+                const float w_offset, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const Array1D<float>& frequencies,
+                Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array3D<std::complex<float>>& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
             {
+#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -744,6 +753,7 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
+#endif
             }
 
             void Generic::init_benchmark() {
@@ -766,6 +776,7 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
+#if 0
     typedef idg::proxy::cuda::Generic CUDA_Generic;
 
     CUDA_Generic* CUDA_Generic_init(
@@ -854,5 +865,5 @@ extern "C" {
     void CUDA_Generic_destroy(CUDA_Generic* p) {
        delete p;
     }
-
+#endif
 } // end extern "C"

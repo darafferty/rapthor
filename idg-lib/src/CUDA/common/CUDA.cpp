@@ -1,3 +1,5 @@
+#include <string>
+
 #include <cuda.h>
 #include <cudaProfiler.h>
 
@@ -8,16 +10,16 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             CUDA::CUDA(
-                Parameters params,
+                CompileConstants constants,
                 ProxyInfo info) :
-                info(info) {
+                Proxy(constants),
+                mInfo(info) {
 
                 #if defined(DEBUG)
                 std::cout << "CUDA::" << __func__ << std::endl;
                 std::cout << params;
                 #endif
 
-                mParams = params;
                 cu::init();
                 init_devices();
                 print_devices();
@@ -53,7 +55,7 @@ namespace idg {
                     const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
                     const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
                     DeviceInstance *device = new DeviceInstance(
-                        mParams, info, device_numbers[i], power_sensor, power_file);
+                        mConstants, mInfo, device_numbers[i], power_sensor, power_file);
                     devices.push_back(device);
                 }
             }
@@ -160,49 +162,49 @@ namespace idg {
 
             /* Sizeof routines */
             uint64_t CUDA::sizeof_subgrids(int nr_subgrids) {
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(std::complex<float>);
+                //auto nr_polarizations = mParams.get_nr_polarizations();
+                //auto subgridsize = mParams.get_subgrid_size();
+                //return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(std::complex<float>);
             }
 
             uint64_t CUDA::sizeof_uvw(int nr_baselines) {
-                auto nr_time = mParams.get_nr_time();
-                return 1ULL * nr_baselines * nr_time * sizeof(UVW);
+                //auto nr_time = mParams.get_nr_time();
+                //return 1ULL * nr_baselines * nr_time * sizeof(UVW);
             }
 
             uint64_t CUDA::sizeof_visibilities(int nr_baselines) {
-                auto nr_time = mParams.get_nr_time();
-                auto nr_channels = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>);
+                //auto nr_time = mParams.get_nr_time();
+                //auto nr_channels = mParams.get_nr_channels();
+                //auto nr_polarizations = mParams.get_nr_polarizations();
+                //return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>);
             }
 
             uint64_t CUDA::sizeof_metadata(int nr_subgrids) {
-                return 1ULL * nr_subgrids * sizeof(Metadata);
+                //return 1ULL * nr_subgrids * sizeof(Metadata);
             }
 
             uint64_t CUDA::sizeof_grid() {
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(std::complex<float>);
+                //auto nr_polarizations = mParams.get_nr_polarizations();
+                //auto gridsize = mParams.get_grid_size();
+                //return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(std::complex<float>);
             }
 
             uint64_t CUDA::sizeof_wavenumbers() {
-                auto nr_channels = mParams.get_nr_channels();
-                return 1ULL * nr_channels * sizeof(float);
+                //auto nr_channels = mParams.get_nr_channels();
+                //return 1ULL * nr_channels * sizeof(float);
             }
 
             uint64_t CUDA::sizeof_aterm() {
-                auto nr_stations = mParams.get_nr_stations();
-                auto nr_timeslots = mParams.get_nr_timeslots();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(std::complex<float>);
+                //auto nr_stations = mParams.get_nr_stations();
+                //auto nr_timeslots = mParams.get_nr_timeslots();
+                //auto nr_polarizations = mParams.get_nr_polarizations();
+                //auto subgridsize = mParams.get_subgrid_size();
+                //return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(std::complex<float>);
             }
 
             uint64_t CUDA::sizeof_spheroidal() {
-                auto subgridsize = mParams.get_subgrid_size();
-                return 1ULL * subgridsize * subgridsize * sizeof(float);
+                //auto subgridsize = mParams.get_subgrid_size();
+                //return 1ULL * subgridsize * subgridsize * sizeof(float);
             }
 
         } // end namespace cuda

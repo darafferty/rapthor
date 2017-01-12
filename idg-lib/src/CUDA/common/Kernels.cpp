@@ -10,9 +10,9 @@ namespace idg {
             // Gridder class
             Gridder::Gridder(
                 cu::Module &module,
-                const Parameters &params,
                 const dim3 block) :
-                function(module, name_gridder.c_str()), parameters(params), block(block) { }
+                function(module, name_gridder.c_str()),
+                block(block) {}
 
             void Gridder::launch(
                 cu::Stream &stream,
@@ -42,9 +42,9 @@ namespace idg {
             // Degridder class
             Degridder::Degridder(
                 cu::Module &module,
-                const Parameters &params,
                 const dim3 block) :
-                function(module, name_degridder.c_str()), parameters(params), block(block) { }
+                function(module, name_degridder.c_str()),
+                block(block) {}
 
             void Degridder::launch(
                 cu::Stream &stream,
@@ -72,18 +72,21 @@ namespace idg {
             }
 
 
-
             // GridFFT class
             GridFFT::GridFFT(
-                cu::Module &module,
-                const Parameters &params) :
-                function(module, name_fft.c_str()), parameters(params)
+                unsigned int nr_correlations,
+                unsigned int size,
+                cu::Module &module) :
+                nr_correlations(nr_correlations),
+                size(size),
+                function(module, name_fft.c_str())
             {
                 plan_bulk();
                 fft_remainder = NULL;
             }
 
-            GridFFT::~GridFFT() {
+            GridFFT::~GridFFT()
+            {
                 if (fft_bulk) {
                     delete fft_bulk;
                 }
@@ -92,34 +95,36 @@ namespace idg {
                 }
             }
 
-            void GridFFT::plan_bulk() {
+            void GridFFT::plan_bulk()
+            {
                 // Parameters
-                int size = parameters.get_subgrid_size();
                 int stride = 1;
                 int dist = size * size;
-                int nr_polarizations = parameters.get_nr_polarizations();
 
                 // Plan bulk fft
-                fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_polarizations);
+                fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_correlations);
             }
 
-            void GridFFT::plan(int size, int batch) {
+            void GridFFT::plan(
+                unsigned int batch)
+            {
                 // Parameters
                 int stride = 1;
                 int dist = size * size;
-                int nr_polarizations = parameters.get_nr_polarizations();
 
                 // Plan remainder fft
-                if (fft_remainder == NULL || size != planned_size || batch != planned_batch)
+                if (fft_remainder == NULL || batch != planned_batch)
                 {
                     int remainder = batch % bulk_size;
+                    if (fft_remainder) {
+                        delete fft_remainder;
+                    }
                     if (remainder > 0) {
-                        fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_polarizations);
+                        fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_correlations);
                     }
                 }
 
-                // Set parameters
-                planned_size = size;
+                // Store batch size
                 planned_batch = batch;
             }
 
@@ -131,7 +136,6 @@ namespace idg {
                 // Initialize
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
                 int s = 0;
-                int nr_polarizations = parameters.get_nr_polarizations();
 
                 // Execute bulk ffts (if any)
                 if (planned_batch >= bulk_size) {
@@ -139,7 +143,7 @@ namespace idg {
                     for (; s < (planned_batch - bulk_size); s += bulk_size) {
                         if (planned_batch - s >= bulk_size) {
                             (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                            data_ptr += bulk_size * planned_size * planned_size * nr_polarizations;
+                            data_ptr += bulk_size * size * size * nr_correlations;
                         }
                     }
                 }
@@ -160,8 +164,9 @@ namespace idg {
 
 
             void GridFFT::shift(std::complex<float> *data) {
-                int gridsize = parameters.get_grid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
+                // TODO
+                int gridsize = 0;
+                int nr_polarizations = 0;
 
                 std::complex<float> tmp13, tmp24;
 
@@ -191,8 +196,9 @@ namespace idg {
             }
 
             void GridFFT::scale(std::complex<float> *data, std::complex<float> scale) {
-                int gridsize = parameters.get_grid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
+                // TODO
+                int gridsize = 0;
+                int nr_polarizations = 0;
 
                 // Pointer
                 typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
@@ -209,12 +215,13 @@ namespace idg {
                 }
             }
 
+
             // Adder class
             Adder::Adder(
                 cu::Module &module,
-                const Parameters &params,
                 const dim3 block) :
-                function(module, name_adder.c_str()), parameters(params), block(block) {}
+                function(module, name_adder.c_str()),
+                block(block) {}
 
             void Adder::launch(
                 cu::Stream &stream,
@@ -232,9 +239,9 @@ namespace idg {
             // Splitter class
             Splitter::Splitter(
                 cu::Module &module,
-                const Parameters &params,
                 const dim3 block) :
-                function(module, name_splitter.c_str()), parameters(params), block(block) {}
+                function(module, name_splitter.c_str()),
+                block(block) {}
 
             void Splitter::launch(
                 cu::Stream &stream,
@@ -252,9 +259,9 @@ namespace idg {
             // Scaler class
             Scaler::Scaler(
                 cu::Module &module,
-                const Parameters &params,
                 const dim3 block) :
-                function(module, name_scaler.c_str()), parameters(params), block(block) {}
+                function(module, name_scaler.c_str()),
+                block(block) {}
 
             void Scaler::launch(
                 cu::Stream &stream,

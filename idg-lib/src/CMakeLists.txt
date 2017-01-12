@@ -12,7 +12,7 @@ if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
 
-add_subdirectory(Hybrid)
+#add_subdirectory(Hybrid)
 
 if (BUILD_LIB_CUDA)
     add_subdirectory(CUDA)
@@ -177,40 +177,40 @@ endif (BUILD_LIB_CUDA)
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
-add_library (
-    idg-hybrid-cuda
-    $<TARGET_OBJECTS:cpu-common>
-    $<TARGET_OBJECTS:cpu-reference>
-    $<TARGET_OBJECTS:cpu-optimized>
-    $<TARGET_OBJECTS:cuda-common>
-    $<TARGET_OBJECTS:cuda-generic>
-    $<TARGET_OBJECTS:hybrid-cuda>
-)
-
-set (
-    LINK_LIRBRARIES
-    idg-common idg-powersensor
-    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
-)
-
-target_link_libraries (
-    idg-hybrid-cuda
-    ${LINK_LIRBRARIES}
-)
-
-set_target_properties (
-    idg-hybrid-cuda PROPERTIES
-    PUBLIC_HEADER idg-hybrid-cuda.h
-)
-
-install(
-    TARGETS idg-hybrid-cuda
-    EXPORT IDGTargets
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib/static
-    PUBLIC_HEADER DESTINATION include
-)
+#add_library (
+#    idg-hybrid-cuda
+#    $<TARGET_OBJECTS:cpu-common>
+#    $<TARGET_OBJECTS:cpu-reference>
+#    $<TARGET_OBJECTS:cpu-optimized>
+#    $<TARGET_OBJECTS:cuda-common>
+#    $<TARGET_OBJECTS:cuda-generic>
+#    $<TARGET_OBJECTS:hybrid-cuda>
+#)
+#
+#set (
+#    LINK_LIRBRARIES
+#    idg-common idg-powersensor
+#    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
+#)
+#
+#target_link_libraries (
+#    idg-hybrid-cuda
+#    ${LINK_LIRBRARIES}
+#)
+#
+#set_target_properties (
+#    idg-hybrid-cuda PROPERTIES
+#    PUBLIC_HEADER idg-hybrid-cuda.h
+#)
+#
+#install(
+#    TARGETS idg-hybrid-cuda
+#    EXPORT IDGTargets
+#    RUNTIME DESTINATION bin
+#    LIBRARY DESTINATION lib
+#    ARCHIVE DESTINATION lib/static
+#    PUBLIC_HEADER DESTINATION include
+#)
 
 endif()
 
