@@ -322,10 +322,10 @@ namespace idg {
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *uvw_ptr          = (void *) &uvw(bl, 0);
-                    void *visibilities_ptr = (void *) &visibilities(bl, 0, 0);
+                    void *uvw_ptr          = uvw.data(bl, 0);
+                    void *visibilities_ptr = visibilities.data(bl, 0, 0);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr     = &subgrids(plan.get_subgrid_offset(bl), 0, 0, 0);
+                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
 
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
@@ -418,7 +418,7 @@ namespace idg {
 
                     // Pointers to the first element in processed batch
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr = (void *) &subgrids(plan.get_subgrid_offset(bl), 0, 0, 0);
+                    void *subgrids_ptr = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
@@ -482,7 +482,7 @@ namespace idg {
 
                     // Pointers to the first element in processed batch
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr = (void *) &subgrids(plan.get_subgrid_offset(bl), 0, 0, 0);
+                    void *subgrids_ptr = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
@@ -561,10 +561,10 @@ namespace idg {
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *uvw_ptr          = (void *) &uvw(bl, 0);
-                    void *visibilities_ptr = (void *) &visibilities(bl, 0, 0);
+                    void *uvw_ptr          = uvw.data(bl, 0);
+                    void *visibilities_ptr = visibilities.data(bl, 0, 0);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr     = (void *) &subgrids(plan.get_subgrid_offset(bl), 0, 0, 0);
+                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
 
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
