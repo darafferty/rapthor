@@ -92,6 +92,21 @@ else()
     endif()
 endif()
 
+# Find dependencies for Likwid power sensor
+find_package(Numa QUIET)
+find_package(Likwid QUIET)
+if (${NUMA_FOUND} AND ${LIKWID_FOUND})
+    set (HAVE_LIKWID TRUE)
+    set (HAVE_NUMA TRUE)
+else ()
+    # These values are not used when both libraries are not found
+    unset (LIKWID_INCLUDE_DIRS CACHE)
+    unset (LIKWID_LIBRARIES CACHE)
+    unset (NUMA_ROOT_DIR CACHE)
+    unset (NUMA_INCLUDE_DIR CACHE)
+    unset (NUMA_LIBRARY CACHE)
+endif ()
+
 include_directories (${CMAKE_BINARY_DIR}/src)
 
 # Copy header files
@@ -124,9 +139,9 @@ install(
 
 # write config file, included in all files of the project
 configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
-  "${PROJECT_BINARY_DIR}/src/idg-config.h"
-  )
+    "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
+    "${PROJECT_BINARY_DIR}/src/idg-config.h"
+)
 
 
 #####################################################

@@ -26,7 +26,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                #if defined(HAVE_LIKWID) && 0
+                #if defined(HAVE_LIKWID)
                 powerSensor = new LikwidPowerSensor();
                 #else
                 powerSensor = new RaplPowerSensor();
