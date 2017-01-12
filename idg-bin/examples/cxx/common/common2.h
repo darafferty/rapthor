@@ -151,7 +151,7 @@ void run()
 
     // Run
     clog << ">>> Create plan" << endl;
-    idg::Plan2 plan(
+    idg::Plan plan(
         kernel_size, subgrid_size, grid_size, cell_size,
         frequencies, uvw, baselines, aterms_offsets);
     clog << endl;
