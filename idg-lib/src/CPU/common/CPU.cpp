@@ -1,6 +1,8 @@
 #include <vector>
 #include <memory>
 
+#include "fftw3.h"
+
 #include "CPU.h"
 
 using namespace std;

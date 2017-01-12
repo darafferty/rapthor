@@ -6,10 +6,6 @@
 
 #include "KernelsCPU.h"
 
-// Forward declarations, TODO: remove
-#define FFTW_FORWARD  (-1)
-#define FFTW_BACKWARD (+1)
-
 namespace idg {
     namespace proxy {
         namespace cpu {
