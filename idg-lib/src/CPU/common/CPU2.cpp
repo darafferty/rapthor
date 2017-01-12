@@ -46,7 +46,7 @@ namespace idg {
                 High level routines
             */
             void CPU2::gridding(
-                const Plan2& plan,
+                const Plan& plan,
                 const float w_offset,
                 const float cell_size,
                 const unsigned int kernel_size,
@@ -155,7 +155,7 @@ namespace idg {
             } // end gridding
 
             void CPU2::degridding(
-                const Plan2& plan,
+                const Plan& plan,
                 const float w_offset,
                 const float cell_size,
                 const unsigned int kernel_size,
@@ -274,7 +274,7 @@ namespace idg {
                 Low level routines
             */
             void CPU2::grid_onto_subgrids(
-                const Plan2& plan,
+                const Plan& plan,
                 const float w_offset,
                 const unsigned int grid_size,
                 const float image_size,
@@ -385,7 +385,7 @@ namespace idg {
             } // end grid_onto_subgrids
 
             void CPU2::add_subgrids_to_grid(
-                const Plan2& plan,
+                const Plan& plan,
                 const Array4D<std::complex<float>>& subgrids,
                 Array3D<std::complex<float>>& grid)
             {
@@ -449,7 +449,7 @@ namespace idg {
             } // end add_subgrids_to_grid
 
             void CPU2::split_grid_into_subgrids(
-                const Plan2& plan,
+                const Plan& plan,
                 Array4D<std::complex<float>>& subgrids,
                 const Array3D<std::complex<float>>& grid)
             {
@@ -513,7 +513,7 @@ namespace idg {
             } // end split_grid_into_subgrids
 
             void CPU2::degrid_from_subgrids(
-                const Plan2& plan,
+                const Plan& plan,
                 const float w_offset,
                 const unsigned int grid_size,
                 const float image_size,

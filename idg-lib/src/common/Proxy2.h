@@ -11,7 +11,7 @@
 #include "ProxyInfo.h"
 #include "Parameters2.h"
 #include "Types.h"
-#include "Plan2.h"
+#include "Plan.h"
 
 namespace idg {
     enum DomainAtoDomainB {
@@ -41,7 +41,7 @@ namespace idg {
                 */
                 //! Grid the visibilities onto a uniform grid
                 virtual void gridding(
-                    const Plan2& plan,
+                    const Plan& plan,
                     const float w_offset, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
@@ -103,7 +103,7 @@ namespace idg {
 
                 //! Degrid the visibilities from a uniform grid
                 virtual void degridding(
-                    const Plan2& plan,
+                    const Plan& plan,
                     const float w_offset, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels

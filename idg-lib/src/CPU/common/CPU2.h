@@ -33,7 +33,7 @@ namespace idg {
 
                     // Routines
                     virtual void gridding(
-                        const Plan2& plan,
+                        const Plan& plan,
                         const float w_offset, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
@@ -49,7 +49,7 @@ namespace idg {
                     using Proxy2::gridding;
 
                     virtual void degridding(
-                        const Plan2& plan,
+                        const Plan& plan,
                         const float w_offset, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
@@ -70,7 +70,7 @@ namespace idg {
 
                 private:
                     void grid_onto_subgrids(
-                        const Plan2& plan,
+                        const Plan& plan,
                         const float w_offset,
                         const unsigned int grid_size,
                         const float image_size,
@@ -82,17 +82,17 @@ namespace idg {
                         Array4D<std::complex<float>>& subgrids);
 
                     virtual void add_subgrids_to_grid(
-                        const Plan2& plan,
+                        const Plan& plan,
                         const Array4D<std::complex<float>>& subgrids,
                         Array3D<std::complex<float>>& grid);
 
                     virtual void split_grid_into_subgrids(
-                        const Plan2& plan,
+                        const Plan& plan,
                         Array4D<std::complex<float>>& subgrids,
                         const Array3D<std::complex<float>>& grid);
 
                     virtual void degrid_from_subgrids(
-                        const Plan2& plan,
+                        const Plan& plan,
                         const float w_offset,
                         const unsigned int grid_size,
                         const float image_size,

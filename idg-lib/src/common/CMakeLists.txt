@@ -9,7 +9,7 @@ set (${PROJECT_NAME}_headers
     Kernels.h
     Parameters2.h
     Proxy2.h
-	Plan2.h
+	Plan.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -20,7 +20,7 @@ set (${PROJECT_NAME}_sources
     Kernels.cpp
     Parameters2.cpp
     Proxy2.cpp
-	Plan2.cpp
+	Plan.cpp
 )
 
 add_library(

@@ -14,13 +14,13 @@
 
 namespace idg {
 
-        class Plan2 {
+        class Plan {
 
         public:
             // Constructors
-            Plan2() {};
+            Plan() {};
 
-            Plan2(
+            Plan(
                 const int kernel_size,
                 const int subgrid_size,
                 const int grid_size,
@@ -32,8 +32,8 @@ namespace idg {
                 const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
 
             // Destructor
-            virtual ~Plan2() = default;
-            
+            virtual ~Plan() = default;
+
             void initialize(
                 const int kernel_size,
                 const int subgrid_size,
@@ -87,7 +87,7 @@ namespace idg {
             std::vector<int> timesteps_per_baseline;
             int nr_baselines;
 
-        }; // class Plan2
+        }; // class Plan
 
 } // namespace idg
 

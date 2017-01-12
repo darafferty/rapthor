@@ -24,7 +24,7 @@ namespace idg {
             auto nr_polarizations = mConstants.get_nr_correlations();
             auto grid_size        = grid.get_x_dim();
 
-            Plan2 plan(
+            Plan plan(
                 kernel_size,
                 subgrid_size,
                 grid_size,
@@ -157,7 +157,7 @@ namespace idg {
             auto nr_polarizations = mConstants.get_nr_correlations();
             auto grid_size        = grid.get_x_dim();
 
-            Plan2 plan(
+            Plan plan(
                 kernel_size, subgrid_size, grid_size, cell_size,
                 frequencies, uvw, baselines, aterms_offsets);
 

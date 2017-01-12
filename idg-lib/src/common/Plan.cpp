@@ -1,13 +1,13 @@
 #include <iostream>
 #include <cassert> // assert
 
-#include "Plan2.h"
+#include "Plan.h"
 
 using namespace std;
 
 namespace idg {
 
-    Plan2::Plan2(
+    Plan::Plan(
         const int kernel_size,
         const int subgrid_size,
         const int grid_size,
@@ -107,7 +107,7 @@ namespace idg {
     }
 
 
-    void Plan2::initialize(
+    void Plan::initialize(
         const int kernel_size,
         const int subgrid_size,
         const int grid_size,
@@ -256,28 +256,28 @@ namespace idg {
     } // end initialize
 
 
-    int Plan2::get_nr_subgrids() const {
+    int Plan::get_nr_subgrids() const {
         return metadata.size();
     }
 
 
-    int Plan2::get_nr_subgrids(int bl) const {
+    int Plan::get_nr_subgrids(int bl) const {
         return get_nr_subgrids(bl,1);
     }
 
 
-    int Plan2::get_nr_subgrids(int bl, int n) const {
+    int Plan::get_nr_subgrids(int bl, int n) const {
         if (n < 1) {
             throw invalid_argument("n should be at least one.");
         }
         return get_subgrid_offset(bl+n) - get_subgrid_offset(bl);
     }
 
-    int Plan2::get_subgrid_offset(int bl) const {
+    int Plan::get_subgrid_offset(int bl) const {
         return subgrid_offset[bl];
     }
 
-    int Plan2::get_max_nr_subgrids(int bl1, int bl2, int n) {
+    int Plan::get_max_nr_subgrids(int bl1, int bl2, int n) {
         int nr_baselines = bl1 + n > bl2 ? bl2 - bl1 : n;
         int max_nr_subgrids = get_nr_subgrids(bl1, nr_baselines);
         for (int bl = bl1 + n; bl <  bl2; bl += n) {
@@ -290,25 +290,25 @@ namespace idg {
         return max_nr_subgrids;
     }
 
-    int Plan2::get_max_nr_subgrids() {
+    int Plan::get_max_nr_subgrids() {
         return get_max_nr_subgrids(0, nr_baselines, 1);
     }
 
-    int Plan2::get_nr_timesteps() const {
+    int Plan::get_nr_timesteps() const {
         return accumulate(timesteps_per_baseline.begin(), timesteps_per_baseline.end(), 0);
     }
 
-    int Plan2::get_nr_timesteps(int baseline) const {
+    int Plan::get_nr_timesteps(int baseline) const {
         return timesteps_per_baseline[baseline];
     }
 
-    int Plan2::get_nr_timesteps(int baseline, int n) const {
+    int Plan::get_nr_timesteps(int baseline, int n) const {
         auto begin = next(timesteps_per_baseline.begin(), baseline);
         auto end   = next(begin, n);
         return accumulate(begin, end, 0);
     }
 
-    const Metadata* Plan2::get_metadata_ptr(int bl) const {
+    const Metadata* Plan::get_metadata_ptr(int bl) const {
         auto offset = get_subgrid_offset(bl);
         return &(metadata[offset]);
     }
