@@ -1,7 +1,7 @@
 #include <vector>
 #include <memory>
 
-#include "CPU2.h"
+#include "CPU.h"
 
 using namespace std;
 using namespace idg;
@@ -12,7 +12,7 @@ namespace idg {
         namespace cpu {
 
             // Constructor
-            CPU2::CPU2(
+            CPU::CPU(
                 CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
@@ -32,7 +32,7 @@ namespace idg {
             }
 
             // Destructor
-            CPU2::~CPU2()
+            CPU::~CPU()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -45,7 +45,7 @@ namespace idg {
             /*
                 High level routines
             */
-            void CPU2::gridding(
+            void CPU::gridding(
                 const Plan& plan,
                 const float w_offset,
                 const float cell_size,
@@ -154,7 +154,7 @@ namespace idg {
                 }
             } // end gridding
 
-            void CPU2::degridding(
+            void CPU::degridding(
                 const Plan& plan,
                 const float w_offset,
                 const float cell_size,
@@ -261,7 +261,7 @@ namespace idg {
                 }
             } // end degridding
 
-            void CPU2::transform(
+            void CPU::transform(
                 DomainAtoDomainB direction,
                 const Array3D<std::complex<float>>& grid)
             {
@@ -273,7 +273,7 @@ namespace idg {
             /*
                 Low level routines
             */
-            void CPU2::grid_onto_subgrids(
+            void CPU::grid_onto_subgrids(
                 const Plan& plan,
                 const float w_offset,
                 const unsigned int grid_size,
@@ -384,7 +384,7 @@ namespace idg {
                 #endif
             } // end grid_onto_subgrids
 
-            void CPU2::add_subgrids_to_grid(
+            void CPU::add_subgrids_to_grid(
                 const Plan& plan,
                 const Array4D<std::complex<float>>& subgrids,
                 Array3D<std::complex<float>>& grid)
@@ -448,7 +448,7 @@ namespace idg {
                 #endif
             } // end add_subgrids_to_grid
 
-            void CPU2::split_grid_into_subgrids(
+            void CPU::split_grid_into_subgrids(
                 const Plan& plan,
                 Array4D<std::complex<float>>& subgrids,
                 const Array3D<std::complex<float>>& grid)
@@ -512,7 +512,7 @@ namespace idg {
                 #endif
             } // end split_grid_into_subgrids
 
-            void CPU2::degrid_from_subgrids(
+            void CPU::degrid_from_subgrids(
                 const Plan& plan,
                 const float w_offset,
                 const unsigned int grid_size,

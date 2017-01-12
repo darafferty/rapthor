@@ -2,12 +2,12 @@ project(cpu-common)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-	CPU2.h
+	CPU.h
 	KernelsCPU.h
 )
 
 set (${PROJECT_NAME}_sources
-	CPU2.cpp
+	CPU.cpp
 	KernelsCPU.cpp
 )
 

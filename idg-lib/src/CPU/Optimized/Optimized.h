@@ -7,7 +7,7 @@ namespace idg {
     namespace proxy {
         namespace cpu {
 
-            class Optimized : public CPU2 {
+            class Optimized : public CPU {
                 public:
                     // Constructor
                     Optimized(

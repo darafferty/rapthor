@@ -14,7 +14,7 @@ namespace idg {
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info)
-                : CPU2(constants, compiler, flags, info)
+                : CPU(constants, compiler, flags, info)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

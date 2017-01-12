@@ -7,7 +7,7 @@ namespace idg {
     namespace proxy {
         namespace cpu {
 
-            class Reference2 : public CPU2 {
+            class Reference2 : public CPU {
                 public:
                     // Constructor
                     Reference2(

@@ -1,5 +1,5 @@
-#ifndef IDG_CPU2_H_
-#define IDG_CPU2_H_
+#ifndef IDG_CPU_H_
+#define IDG_CPU_H_
 
 #include "idg-common.h"
 #include "idg-powersensor.h"
@@ -14,22 +14,22 @@ namespace idg {
     namespace proxy {
         namespace cpu {
 
-            class CPU2 : public Proxy
+            class CPU : public Proxy
             {
                 public:
                     // Constructor
-                    CPU2(
+                    CPU(
                         CompileConstants constants,
                         Compiler compiler,
                         Compilerflags flags,
                         ProxyInfo info);
 
                     // Disallow assignment and pass-by-value
-                    CPU2& operator=(const CPU2& rhs) = delete;
-                    CPU2(const CPU2& v) = delete;
+                    CPU& operator=(const CPU& rhs) = delete;
+                    CPU(const CPU& v) = delete;
 
                     // Destructor
-                    virtual ~CPU2();
+                    virtual ~CPU();
 
                     // Routines
                     virtual void gridding(
@@ -108,7 +108,7 @@ namespace idg {
                     kernel::cpu::KernelsCPU mKernels;
                     PowerSensor *powerSensor;
 
-            }; // end class CPU2
+            }; // end class CPU
 
         } // end namespace cpu
     } // end namespace proxy
