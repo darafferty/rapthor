@@ -21,6 +21,9 @@ namespace idg {
             static const std::string name_fft       = "kernel_fft";
             static const std::string name_scaler    = "kernel_scaler";
 
+            /*
+                Kernel classes
+            */
             class Gridder {
                 public:
                     Gridder(
@@ -125,9 +128,6 @@ namespace idg {
             };
 
 
-            /*
-                Splitter
-            */
             class Splitter {
                 public:
                     Splitter(
@@ -148,9 +148,6 @@ namespace idg {
             };
 
 
-            /*
-                Scaler
-            */
             class Scaler {
                 public:
                     Scaler(
@@ -168,14 +165,21 @@ namespace idg {
             };
 
 
-            class DeviceInstance {
+            /*
+                DeviceInstance
+            */
+            class DeviceInstance : public Kernels {
                 public:
+                    // Constructor
                     DeviceInstance(
                         CompileConstants &constants,
                         ProxyInfo &info,
                         int device_number,
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);
+
+                    // Destructor
+                    ~DeviceInstance();
 
                     std::unique_ptr<Gridder> get_kernel_gridder() const {
                         return std::unique_ptr<Gridder>(new Gridder(
@@ -222,6 +226,9 @@ namespace idg {
                     void measure(
                         idg::kernel::cuda::PowerRecord &record, cu::Stream &stream);
 
+                    void allocate_host_grid(unsigned int grid_size);
+                    void allocate_device_grid(unsigned int grid_size);
+
                 protected:
                     void compile_kernels();
                     void load_modules();
@@ -235,7 +242,6 @@ namespace idg {
 
                 protected:
                     // Variables shared by all DeviceInstance instances
-                    CompileConstants &mConstants;
                     ProxyInfo        &mInfo;
 
                 private:
@@ -245,6 +251,12 @@ namespace idg {
                     cu::Stream  *executestream;
                     cu::Stream  *htodstream;
                     cu::Stream  *dtohstream;
+                    cu::HostMemory *h_visibilities;
+                    cu::HostMemory *h_uvw;
+                    cu::HostMemory *h_grid;
+                    cu::DeviceMemory *d_visibilities;
+                    cu::DeviceMemory *d_uvw;
+                    cu::DeviceMemory *d_grid;
 
                     // All CUDA modules private to this DeviceInstance
                     std::vector<cu::Module*> modules;

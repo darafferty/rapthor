@@ -178,7 +178,7 @@ namespace idg {
         }
 
         template<typename T>
-        void shift(
+        void Kernels::shift(
             Array3D<T>& data)
         {
             int nr_polarizations = data.get_z_dim();
@@ -210,7 +210,7 @@ namespace idg {
         }
 
         template<typename T>
-        void scale(
+        void Kernels::scale(
             Array3D<std::complex<T>>& data,
             std::complex<T> scale)
         {
@@ -229,6 +229,14 @@ namespace idg {
                     }
                 }
             }
+        }
+
+        uint64_t Kernels::sizeof_grid(
+            uint64_t grid_size)
+        {
+            // TODO: also support double precision
+            uint64_t nr_correlations = mConstants.get_nr_correlations();
+            return nr_correlations * grid_size * grid_size * sizeof(std::complex<float>);
         }
 
     } // namespace kernel

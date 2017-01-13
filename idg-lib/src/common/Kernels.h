@@ -58,10 +58,15 @@ namespace idg {
 
                 template<typename T>
                 void scale(
-                    Array3D<T>& data);
+                    Array3D<std::complex<T>>& data,
+                    std::complex<T> scale);
+
+                uint64_t sizeof_grid(
+                    uint64_t grid_size);
+
             protected:
                 CompileConstants mConstants;
-        };
+        }; // end class Kernels
 
     } // namespace kernel
 } // namespace idg

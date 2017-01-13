@@ -3,16 +3,20 @@
 #include "DeviceInstance.h"
 #include "PowerRecord.h"
 
+using namespace idg::kernel;
+
 namespace idg {
     namespace kernel {
         namespace cuda {
+
+            // Constructor
             DeviceInstance::DeviceInstance(
                 CompileConstants &constants,
                 ProxyInfo &info,
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
-                mConstants(constants),
+                Kernels(constants),
                 mInfo(info)
             {
                 #if defined(DEBUG)
@@ -38,6 +42,17 @@ namespace idg {
 
                 // Initialize power sensor
                 init_powersensor(str_power_sensor, str_power_file);
+            }
+
+            // Destructor
+            DeviceInstance::~DeviceInstance() {
+                delete device;
+                delete context;
+                delete executestream;
+                delete htodstream;
+                delete dtohstream;
+                if (h_grid) { delete h_grid; }
+                if (d_grid) { delete d_grid; }
             }
 
             // Gridder class
@@ -447,6 +462,32 @@ namespace idg {
                 stream.record(record.event);
                 record.sensor = powerSensor;
                 stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
+            }
+
+            void DeviceInstance::allocate_host_grid(
+                unsigned int grid_size)
+            {
+                auto nr_correlations = mConstants.get_nr_correlations();
+                auto size = sizeof_grid(grid_size);
+                if (h_grid && size != h_grid->size()) {
+                    delete h_grid;
+                    h_grid = new cu::HostMemory(size);
+                } else if(!h_grid) {
+                    h_grid = new cu::HostMemory(size);
+                }
+            }
+
+            void DeviceInstance::allocate_device_grid(
+                unsigned int grid_size)
+            {
+                auto nr_correlations = mConstants.get_nr_correlations();
+                auto size = sizeof_grid(grid_size);
+                if (d_grid && size != d_grid->size()) {
+                    delete d_grid;
+                    d_grid = new cu::DeviceMemory(size);
+                } else if(!h_grid) {
+                    d_grid = new cu::DeviceMemory(size);
+                }
             }
 
         } // end namespace cuda

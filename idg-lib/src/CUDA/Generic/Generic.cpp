@@ -1,4 +1,5 @@
 #include "Generic.h"
+#include "DeviceInstance.h"
 
 using namespace std;
 using namespace idg::kernel::cuda;
@@ -17,6 +18,7 @@ namespace idg {
 
                 // Allocate memory
                 for (DeviceInstance *device : devices) {
+                    device->allocate_device_grid(1);
                     #if REDUCE_HOST_MEMORY
                     //h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines())));
                     //h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(params.get_nr_baselines())));
@@ -36,11 +38,19 @@ namespace idg {
                 #endif
 
                 // Setup benchmark
-                init_benchmark();
+                //init_benchmark();
             }
 
             Generic::~Generic() {
                 // TODO
+            }
+
+            void Generic::allocate_memory(
+                unsigned int grid_size)
+            {
+                for (DeviceInstance *device : devices) {
+                    device->allocate_device_grid(grid_size);
+                }
             }
 
             /* High level routines */
@@ -757,16 +767,16 @@ namespace idg {
 #endif
             }
 
-            void Generic::init_benchmark() {
-                char *char_nr_repetitions = getenv("NR_REPETITIONS");
-                if (char_nr_repetitions) {
-                    nr_repetitions = atoi(char_nr_repetitions);
-                    enable_benchmark = nr_repetitions > 1;
-                }
-                if (enable_benchmark) {
-                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
-                }
-            }
+            //void Generic::init_benchmark() {
+            //    char *char_nr_repetitions = getenv("NR_REPETITIONS");
+            //    if (char_nr_repetitions) {
+            //        nr_repetitions = atoi(char_nr_repetitions);
+            //        enable_benchmark = nr_repetitions > 1;
+            //    }
+            //    if (enable_benchmark) {
+            //        std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
+            //    }
+            //}
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
