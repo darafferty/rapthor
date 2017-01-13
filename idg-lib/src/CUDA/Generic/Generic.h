@@ -25,13 +25,13 @@ namespace idg {
         namespace cuda {
             class Generic : public CUDA {
                 public:
-                    /// Constructor
+                    // Constructor
                     Generic(
                         CompileConstants constants,
                         ProxyInfo info = default_info());
 
-                    /// Destructor
-                    ~Generic() = default;
+                    // Destructor
+                    ~Generic();
 
                 public:
                     virtual void gridding(

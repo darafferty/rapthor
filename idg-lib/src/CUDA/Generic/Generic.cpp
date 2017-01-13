@@ -39,6 +39,10 @@ namespace idg {
                 init_benchmark();
             }
 
+            Generic::~Generic() {
+                // TODO
+            }
+
             /* High level routines */
             void Generic::transform(
                 DomainAtoDomainB direction,
@@ -157,7 +161,7 @@ namespace idg {
 #endif
             }
 
-            void gridding(
+            void Generic::gridding(
                 const Plan& plan,
                 const float w_offset, // in lambda
                 const float cell_size,
@@ -465,7 +469,7 @@ namespace idg {
 #endif
             }
 
-            void degridding(
+            void Generic::degridding(
                 const Plan& plan,
                 const float w_offset, // in lambda
                 const float cell_size,
