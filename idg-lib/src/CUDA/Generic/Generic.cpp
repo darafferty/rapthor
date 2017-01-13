@@ -18,7 +18,6 @@ namespace idg {
 
                 // Allocate memory
                 for (DeviceInstance *device : devices) {
-                    device->allocate_device_grid(1);
                     #if REDUCE_HOST_MEMORY
                     //h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines())));
                     //h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(params.get_nr_baselines())));

@@ -63,6 +63,13 @@ namespace idg {
 
                 uint64_t sizeof_grid(
                     uint64_t grid_size);
+                uint64_t sizeof_visibilities(
+                    uint64_t nr_baselines,
+                    uint64_t nr_timesteps,
+                    uint64_t nr_channels);
+                uint64_t sizeof_uvw(
+                    uint64_t nr_baselines,
+                    uint64_t nr_timesteps);
 
             protected:
                 CompileConstants mConstants;

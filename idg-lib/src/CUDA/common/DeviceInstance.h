@@ -226,8 +226,31 @@ namespace idg {
                     void measure(
                         idg::kernel::cuda::PowerRecord &record, cu::Stream &stream);
 
-                    void allocate_host_grid(unsigned int grid_size);
-                    void allocate_device_grid(unsigned int grid_size);
+                    cu::HostMemory& allocate_host_grid(
+                        unsigned int grid_size);
+
+                    cu::DeviceMemory& allocate_device_grid(
+                        unsigned int grid_size);
+
+                    cu::HostMemory& allocate_host_visibilities(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels);
+
+                    cu::DeviceMemory& allocate_device_visibilities(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels);
+
+                    cu::HostMemory& allocate_host_uvw(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels);
+
+                    cu::DeviceMemory& allocate_device_uvw(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels);
 
                 protected:
                     void compile_kernels();
@@ -242,7 +265,7 @@ namespace idg {
 
                 protected:
                     // Variables shared by all DeviceInstance instances
-                    ProxyInfo        &mInfo;
+                    ProxyInfo &mInfo;
 
                 private:
                     // CUDA objects private to this DeviceInstance

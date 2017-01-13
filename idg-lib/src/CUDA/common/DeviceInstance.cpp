@@ -53,6 +53,10 @@ namespace idg {
                 delete dtohstream;
                 if (h_grid) { delete h_grid; }
                 if (d_grid) { delete d_grid; }
+                if (h_visibilities) { delete h_visibilities; }
+                if (d_visibilities) { delete d_visibilities; }
+                if (h_uvw) { delete h_uvw; }
+                if (d_uvw) { delete d_uvw; }
             }
 
             // Gridder class
@@ -464,30 +468,72 @@ namespace idg {
                 stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
             }
 
-            void DeviceInstance::allocate_host_grid(
-                unsigned int grid_size)
-            {
-                auto nr_correlations = mConstants.get_nr_correlations();
-                auto size = sizeof_grid(grid_size);
-                if (h_grid && size != h_grid->size()) {
-                    delete h_grid;
-                    h_grid = new cu::HostMemory(size);
-                } else if(!h_grid) {
-                    h_grid = new cu::HostMemory(size);
+            template<typename T>
+            void allocate_memory(
+                uint64_t size,
+                T** ptr) {
+                if (ptr && size != (**ptr).size()) {
+                    ((T&) **ptr).~T();
+                    *ptr = new T(size);
+                } else if(!ptr) {
+                    *ptr = new T(size);
                 }
             }
 
-            void DeviceInstance::allocate_device_grid(
+           cu::HostMemory& DeviceInstance::allocate_host_grid(
                 unsigned int grid_size)
             {
-                auto nr_correlations = mConstants.get_nr_correlations();
                 auto size = sizeof_grid(grid_size);
-                if (d_grid && size != d_grid->size()) {
-                    delete d_grid;
-                    d_grid = new cu::DeviceMemory(size);
-                } else if(!h_grid) {
-                    d_grid = new cu::DeviceMemory(size);
-                }
+                allocate_memory(size, &h_grid);
+                return *h_grid;
+            }
+
+           cu::DeviceMemory& DeviceInstance::allocate_device_grid(
+                unsigned int grid_size)
+            {
+                auto size = sizeof_grid(grid_size);
+                allocate_memory(size, &d_grid);
+                return *d_grid;
+            }
+
+           cu::HostMemory& DeviceInstance::allocate_host_visibilities(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                allocate_memory(size, &h_visibilities);
+                return *h_visibilities;
+            }
+
+           cu::DeviceMemory& DeviceInstance::allocate_device_visibilities(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                allocate_memory(size, &d_visibilities);
+                return *d_visibilities;
+            }
+
+           cu::HostMemory& DeviceInstance::allocate_host_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto size = sizeof_uvw(nr_baselines, nr_timesteps);
+                allocate_memory(size, &h_uvw);
+                return *h_uvw;
+            }
+
+           cu::DeviceMemory& DeviceInstance::allocate_device_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto size = sizeof_uvw(nr_baselines, nr_timesteps);
+                allocate_memory(size, &d_uvw);
+                return *d_uvw;
             }
 
         } // end namespace cuda

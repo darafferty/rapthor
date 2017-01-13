@@ -236,7 +236,23 @@ namespace idg {
         {
             // TODO: also support double precision
             uint64_t nr_correlations = mConstants.get_nr_correlations();
-            return nr_correlations * grid_size * grid_size * sizeof(std::complex<float>);
+            return 1ULL * nr_correlations * grid_size * grid_size * sizeof(std::complex<float>);
+        }
+
+        uint64_t Kernels::sizeof_visibilities(
+            uint64_t nr_baselines,
+            uint64_t nr_timesteps,
+            uint64_t nr_channels)
+        {
+            uint64_t nr_correlations = mConstants.get_nr_correlations();
+            return 1ULL * nr_baselines * nr_timesteps * nr_channels * nr_correlations * sizeof(Visibility<std::complex<float>>);
+        }
+
+        uint64_t Kernels::sizeof_uvw(
+            uint64_t nr_baselines,
+            uint64_t nr_timesteps)
+        {
+            return 1ULL * nr_baselines * nr_timesteps * sizeof(UVW);
         }
 
     } // namespace kernel
