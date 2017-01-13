@@ -2,7 +2,6 @@
 #define IDG_CUDA_DEVICEINSTANCE_H_
 
 #include <memory> // unique_ptr
-#include <vector_types.h> // dim3
 
 #include "idg-common.h"
 
@@ -13,6 +12,7 @@
 namespace idg {
     namespace kernel {
         namespace cuda {
+
             // Kernel names
             static const std::string name_gridder   = "kernel_gridder";
             static const std::string name_degridder = "kernel_degridder";

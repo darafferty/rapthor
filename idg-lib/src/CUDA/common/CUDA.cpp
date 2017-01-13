@@ -5,6 +5,8 @@
 
 #include "CUDA.h"
 
+#include "DeviceInstance.h"
+
 using namespace idg::kernel::cuda;
 
 namespace idg {

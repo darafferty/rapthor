@@ -7,9 +7,13 @@
 #include "idg-common.h"
 #include "idg-powersensor.h"
 
-#include "DeviceInstance.h"
-
 namespace idg {
+    namespace kernel {
+        namespace cuda {
+            class DeviceInstance;
+        }
+    }
+
     namespace proxy {
         namespace cuda {
             class CUDA : public Proxy {
