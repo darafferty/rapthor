@@ -1,3 +1,5 @@
+#include <iomanip> // setprecision
+
 #include "DeviceInstance.h"
 
 using namespace idg::kernel::cuda;

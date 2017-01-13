@@ -1,15 +1,12 @@
 #ifndef IDG_CUDA_DEVICEINSTANCE_H_
 #define IDG_CUDA_DEVICEINSTANCE_H_
 
-#include <cstring>
-#include <sstream>
-#include <memory>
-#include <iomanip>
+#include <memory> // unique_ptr
 
 #include "idg-common.h"
 
 #include "CU.h"
-#include "Kernels.h"
+#include "KernelsCUDA.h"
 #include "PowerRecord.h"
 
 namespace idg {

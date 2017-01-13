@@ -1,16 +1,7 @@
-/**
- *  \class Generic
- *
- *  \brief Class for ...
- *
- *  Have a more detailed description here
- *  This will be included by a user, so detail usage...
- */
-
 #ifndef IDG_CUDA_GENERIC_H_
 #define IDG_CUDA_GENERIC_H_
 
-#include "../common/CUDA.h" // TODO: cleanup
+#include "idg-cuda.h"
 
 /*
     Toggle between two modes of cu::HostMemory allocation

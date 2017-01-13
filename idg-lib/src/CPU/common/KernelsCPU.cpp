@@ -24,7 +24,7 @@ namespace idg {
                 cout << "Compiler: " << compiler << endl;
                 cout << "Compiler flags: " << flags << endl;
                 #endif
-            
+
                 compile(compiler, flags);
                 load_shared_objects();
                 find_kernel_functions();

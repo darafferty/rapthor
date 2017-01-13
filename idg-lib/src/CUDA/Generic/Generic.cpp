@@ -1,8 +1,5 @@
 #include "Generic.h"
 
-#include "../common/CU.h"
-#include "../common/DeviceInstance.h"
-
 using namespace std;
 using namespace idg::kernel::cuda;
 
