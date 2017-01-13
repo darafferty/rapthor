@@ -1,6 +1,7 @@
 #ifndef IDG_CUDA_DEVICEINSTANCE_H_
 #define IDG_CUDA_DEVICEINSTANCE_H_
 
+#include <memory> // unique_ptr
 #include <vector_types.h> // dim3
 
 #include "idg-common.h"
@@ -179,6 +180,38 @@ namespace idg {
                         int device_number,
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);
+
+                    std::unique_ptr<Gridder> get_kernel_gridder() const {
+                        return std::unique_ptr<Gridder>(new Gridder(
+                            *(modules[which_module.at(name_gridder)]), block_gridder));
+                    }
+
+                    std::unique_ptr<Degridder> get_kernel_degridder() const {
+                        return std::unique_ptr<Degridder>(new Degridder(
+                            *(modules[which_module.at(name_degridder)]), block_degridder));
+                    }
+
+                    std::unique_ptr<GridFFT> get_kernel_fft(unsigned int size) const {
+                        return std::unique_ptr<GridFFT>(new GridFFT(
+                            mConstants.get_nr_correlations(),
+                            size,
+                            *(modules[which_module.at(name_fft)])));
+                    }
+
+                    std::unique_ptr<Adder> get_kernel_adder() const {
+                        return std::unique_ptr<Adder>(new Adder(
+                            *(modules[which_module.at(name_adder)]), block_adder));
+                    }
+
+                    std::unique_ptr<Splitter> get_kernel_splitter() const {
+                        return std::unique_ptr<Splitter>(new Splitter(
+                            *(modules[which_module.at(name_splitter)]), block_splitter));
+                    }
+
+                    std::unique_ptr<Scaler> get_kernel_scaler() const {
+                        return std::unique_ptr<Scaler>(new Scaler(
+                            *(modules[which_module.at(name_scaler)]), block_scaler));
+                    }
 
                     cu::Context& get_context() const { return *context; }
                     cu::Device&  get_device()  const { return *device; }
