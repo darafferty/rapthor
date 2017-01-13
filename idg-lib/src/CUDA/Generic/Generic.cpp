@@ -16,61 +16,35 @@ namespace idg {
                 cout << "Generic::" << __func__ << endl;
                 #endif
 
-                // Allocate memory
-                for (DeviceInstance *device : devices) {
-                    #if REDUCE_HOST_MEMORY
-                    //h_visibilities_.push_back(new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines())));
-                    //h_uvw_.push_back(new cu::HostMemory(sizeof_uvw(params.get_nr_baselines())));
-                    #endif
-                    //h_grid_.push_back(new cu::HostMemory(sizeof_grid()));
-                }
-                #if !REDUCE_HOST_MEMORY
-                //h_visibilities_ = new cu::HostMemory(sizeof_visibilities(params.get_nr_baselines()));
-                //h_uvw_ = new cu::HostMemory(sizeof_uvw(params.get_nr_baselines()));
-                #endif
-
                 // Initialize host PowerSensor
                 #if defined(HAVE_LIKWID)
                 hostPowerSensor = new LikwidPowerSensor();
                 #else
                 hostPowerSensor = new RaplPowerSensor();
                 #endif
-
-                // Setup benchmark
-                //init_benchmark();
             }
 
             Generic::~Generic() {
-                // TODO
-            }
-
-            void Generic::allocate_memory(
-                unsigned int grid_size)
-            {
-                for (DeviceInstance *device : devices) {
-                    device->allocate_device_grid(grid_size);
-                }
+                delete hostPowerSensor;
             }
 
             /* High level routines */
             void Generic::transform(
                 DomainAtoDomainB direction,
-                const Array3D<std::complex<float>>& grid)
+                Array3D<std::complex<float>>& grid)
             {
-#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
 
+                // Constants
+                auto grid_size = grid.get_x_dim();
+                auto nr_correlations = mConstants.get_nr_correlations();
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
                 // Load device
                 DeviceInstance *device = devices[0];
                 PowerSensor *devicePowerSensor = device->get_powersensor();
-
-                // Constants
-                auto gridsize = mParams.get_grid_size();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
                 // Initialize
                 cu::Context &context = device->get_context();
@@ -78,14 +52,14 @@ namespace idg {
 
                 // Host memory
                 #if REDUCE_HOST_MEMORY
-                cu::HostMemory h_grid(grid, sizeof_grid());
+                cu::HostMemory& h_grid device->reuse_host_grid(grid_size, grid);
                 #else
-                cu::HostMemory h_grid(sizeof_grid());
-                h_grid.set(grid);
+                cu::HostMemory& h_grid = device->allocate_host_grid(grid_size);
+                h_grid.set(grid.data());
                 #endif
 
                 // Load kernels
-                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft(grid_size);
 
                 // Initialize
                 cu::Stream stream;
@@ -97,45 +71,45 @@ namespace idg {
                 powerStates[0] = hostPowerSensor->read();
                 powerStates[2] = devicePowerSensor->read();
 
-                for (int i = 0; i < nr_repetitions; i++) {
-
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-                kernel_fft->shift(h_grid);
+                device->shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Copy grid to device
-                cu::DeviceMemory d_grid(sizeof_grid());
+                cu::DeviceMemory d_grid = device->allocate_device_grid(grid_size);
+                auto sizeof_grid = device->sizeof_grid(grid_size);
                 device->measure(powerRecords[0], stream);
-                stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid());
+                stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid);
                 device->measure(powerRecords[1], stream);
 
+
                 // Execute fft
-                kernel_fft->plan(gridsize, 1);
+                kernel_fft->plan(1);
                 device->measure(powerRecords[2], stream);
                 kernel_fft->launch(stream, d_grid, sign);
                 device->measure(powerRecords[3], stream);
 
                 // Copy grid to host
-                stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid());
+                stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid);
                 device->measure(powerRecords[4], stream);
                 stream.synchronize();
 
                 // Perform fft shift
                 time_shift = -omp_get_wtime();
-                kernel_fft->shift(h_grid);
+                device->shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Copy grid from h_grid to grid
                 #if !REDUCE_HOST_MEMORY
-                memcpy(grid, h_grid, sizeof_grid());
+                memcpy(grid.data(), h_grid, sizeof_grid);
                 #endif
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
-                complex<float> scale = complex<float>(2.0/(gridsize*gridsize), 0);
+                complex<float> scale = complex<float>(2.0/(grid_size*grid_size), 0);
                 if (direction == FourierDomainToImageDomain) {
-                    kernel_fft->scale(grid, scale);
+                    device->scale(grid, scale);
                 }
                 time_scale += omp_get_wtime();
 
@@ -146,29 +120,26 @@ namespace idg {
 
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("     input",
-                                  0, sizeof_grid(),
+                                  0, sizeof_grid,
                                   devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
                 auxiliary::report("  plan-fft",
                                   devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state),
                                   0, 0, 0);
                 auxiliary::report("  grid-fft",
-                                  kernel_fft->flops(gridsize, 1), kernel_fft->bytes(gridsize, 1),
+                                  device->flops_fft(grid_size, 1), device->bytes_fft(grid_size, 1),
                                   devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
                 auxiliary::report("    output",
-                                  0, sizeof_grid(),
+                                  0, sizeof_grid,
                                   devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
-                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                auxiliary::report("grid-scale", time_scale/2, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("grid-scale", time_scale/2, 0, sizeof_grid * 2, 0);
                 }
                 auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
                 auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
                 std::cout << std::endl;
                 #endif
-
-                } // end for repetitions
-#endif
-            }
+            } // end transform
 
             void Generic::gridding(
                 const Plan& plan,

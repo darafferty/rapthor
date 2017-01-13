@@ -166,7 +166,7 @@ namespace idg {
                 //! Applyies (inverse) Fourier transform to grid
                 virtual void transform(
                     DomainAtoDomainB direction,
-                    const Array3D<std::complex<float>>& grid) = 0;
+                    Array3D<std::complex<float>>& grid) = 0;
 
                 void transform(
                     DomainAtoDomainB direction,

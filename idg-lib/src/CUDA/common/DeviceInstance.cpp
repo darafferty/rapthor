@@ -133,7 +133,7 @@ namespace idg {
                 size(size),
                 function(module, name_fft.c_str())
             {
-                plan_bulk();
+                fft_bulk = NULL;
                 fft_remainder = NULL;
             }
 
@@ -147,22 +147,19 @@ namespace idg {
                 }
             }
 
-            void GridFFT::plan_bulk()
-            {
-                // Parameters
-                int stride = 1;
-                int dist = size * size;
-
-                // Plan bulk fft
-                fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_correlations);
-            }
-
             void GridFFT::plan(
                 unsigned int batch)
             {
                 // Parameters
                 int stride = 1;
                 int dist = size * size;
+
+
+                // Plan bulk fft
+                if (fft_bulk == NULL && batch > bulk_size)
+                {
+                    fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_correlations);
+                }
 
                 // Plan remainder fft
                 if (fft_remainder == NULL || batch != planned_batch)
@@ -469,22 +466,24 @@ namespace idg {
             }
 
             template<typename T>
-            void allocate_memory(
+            T* allocate_memory(
                 uint64_t size,
-                T** ptr) {
-                if (ptr && size != (**ptr).size()) {
-                    ((T&) **ptr).~T();
-                    *ptr = new T(size);
+                T* ptr)
+            {
+                if (ptr && size != ptr->size()) {
+                    ((T&) *ptr).~T();
+                    ptr = new T(size);
                 } else if(!ptr) {
-                    *ptr = new T(size);
+                    ptr = new T(size);
                 }
+                return ptr;
             }
 
            cu::HostMemory& DeviceInstance::allocate_host_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
-                allocate_memory(size, &h_grid);
+                h_grid = allocate_memory(size, h_grid);
                 return *h_grid;
             }
 
@@ -492,7 +491,7 @@ namespace idg {
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
-                allocate_memory(size, &d_grid);
+                d_grid = allocate_memory(size, d_grid);
                 return *d_grid;
             }
 
@@ -502,7 +501,7 @@ namespace idg {
                 unsigned int nr_channels)
             {
                 auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                allocate_memory(size, &h_visibilities);
+                h_visibilities = allocate_memory(size, h_visibilities);
                 return *h_visibilities;
             }
 
@@ -512,28 +511,36 @@ namespace idg {
                 unsigned int nr_channels)
             {
                 auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                allocate_memory(size, &d_visibilities);
+                d_visibilities = allocate_memory(size, d_visibilities);
                 return *d_visibilities;
             }
 
            cu::HostMemory& DeviceInstance::allocate_host_uvw(
                 unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                unsigned int nr_channels)
+                unsigned int nr_timesteps)
             {
                 auto size = sizeof_uvw(nr_baselines, nr_timesteps);
-                allocate_memory(size, &h_uvw);
+                h_uvw = allocate_memory(size, h_uvw);
                 return *h_uvw;
             }
 
            cu::DeviceMemory& DeviceInstance::allocate_device_uvw(
                 unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                unsigned int nr_channels)
+                unsigned int nr_timesteps)
             {
                 auto size = sizeof_uvw(nr_baselines, nr_timesteps);
-                allocate_memory(size, &d_uvw);
+                d_uvw = allocate_memory(size, d_uvw);
                 return *d_uvw;
+            }
+
+            cu::HostMemory DeviceInstance::reuse_host_grid(
+                unsigned int grid_size,
+                void *ptr)
+            {
+                if (h_grid) { delete h_grid; }
+                auto size = sizeof_grid(grid_size);
+                h_grid = new cu::HostMemory(ptr, size);
+                return *h_grid;
             }
 
         } // end namespace cuda

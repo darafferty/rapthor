@@ -20,7 +20,6 @@ namespace idg {
 
                 #if defined(DEBUG)
                 std::cout << "CUDA::" << __func__ << std::endl;
-                std::cout << params;
                 #endif
 
                 cu::init();

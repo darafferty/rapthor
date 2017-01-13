@@ -95,9 +95,6 @@ namespace idg {
                     void launch(cu::Stream &stream, cu::DeviceMemory &data, int direction);
 
                 private:
-                    void plan_bulk();
-
-                private:
                     cu::Function function;
                     unsigned int nr_correlations;
                     unsigned int size;
@@ -244,13 +241,15 @@ namespace idg {
 
                     cu::HostMemory& allocate_host_uvw(
                         unsigned int nr_baselines,
-                        unsigned int nr_timesteps,
-                        unsigned int nr_channels);
+                        unsigned int nr_timesteps);
 
                     cu::DeviceMemory& allocate_device_uvw(
                         unsigned int nr_baselines,
-                        unsigned int nr_timesteps,
-                        unsigned int nr_channels);
+                        unsigned int nr_timesteps);
+
+                    cu::HostMemory reuse_host_grid(
+                        unsigned int grid_size,
+                        void *ptr);
 
                 protected:
                     void compile_kernels();

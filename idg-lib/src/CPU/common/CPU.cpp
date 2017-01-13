@@ -265,11 +265,12 @@ namespace idg {
 
             void CPU::transform(
                 DomainAtoDomainB direction,
-                const Array3D<std::complex<float>>& grid)
+                Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+                // TODO
             }
 
             /*

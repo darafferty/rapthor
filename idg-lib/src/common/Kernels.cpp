@@ -177,16 +177,15 @@ namespace idg {
             return bytes;
         }
 
-        template<typename T>
         void Kernels::shift(
-            Array3D<T>& data)
+            Array3D<std::complex<float>>& data)
         {
             int nr_polarizations = data.get_z_dim();
             int height = data.get_y_dim();
             int width = data.get_x_dim();
             assert(height == width);
 
-            T tmp13, tmp24;
+            std::complex<float> tmp13, tmp24;
 
             // Dimensions
             int n = height;
@@ -197,22 +196,21 @@ namespace idg {
             for (int pol = 0; pol < nr_polarizations; pol++) {
                 for (int i = 0; i < n2; i++) {
                     for (int k = 0; k < n2; k++) {
-                        tmp13              = x(pol, i, k);
-                        x(pol, i, k)       = x(pol, i+n2, k+n2);
-                        x(pol, i+n2, k+n2) = tmp13;
+                        tmp13                 = data(pol, i, k);
+                        data(pol, i, k)       = data(pol, i+n2, k+n2);
+                        data(pol, i+n2, k+n2) = tmp13;
 
-                        tmp24              = x(pol, i+n2, k);
-                        x(pol, i+n2, k)    = x(pol, i, k+n2);
-                        x(pol, i, k+n2)    = tmp24;
+                        tmp24                 = data(pol, i+n2, k);
+                        data(pol, i+n2, k)    = data(pol, i, k+n2);
+                        data(pol, i, k+n2)    = tmp24;
                      }
                 }
             }
         }
 
-        template<typename T>
         void Kernels::scale(
-            Array3D<std::complex<T>>& data,
-            std::complex<T> scale)
+            Array3D<std::complex<float>>& data,
+            std::complex<float> scale)
         {
             int nr_polarizations = data.get_z_dim();
             int height = data.get_y_dim();
@@ -222,8 +220,8 @@ namespace idg {
             for (int pol = 0; pol < nr_polarizations; pol++) {
                 for (int y = 0; y < height; y++) {
                     for (int x = 0; x < width; x++) {
-                        std::complex<T> value = x(pol, y, x);
-                        x(pol, y, x) = T(
+                        std::complex<float> value = data(pol, y, x);
+                        data(pol, y, x) = std::complex<float>(
                             value.real() * scale.real(),
                             value.imag() * scale.imag());
                     }
@@ -234,7 +232,6 @@ namespace idg {
         uint64_t Kernels::sizeof_grid(
             uint64_t grid_size)
         {
-            // TODO: also support double precision
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             return 1ULL * nr_correlations * grid_size * grid_size * sizeof(std::complex<float>);
         }

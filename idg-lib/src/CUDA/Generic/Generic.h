@@ -68,25 +68,10 @@ namespace idg {
 
                     virtual void transform(
                         DomainAtoDomainB direction,
-                        const Array3D<std::complex<float>>& grid) override;
+                        Array3D<std::complex<float>>& grid) override;
 
                 private:
                     PowerSensor *hostPowerSensor;
-
-                    void allocate_memory(
-                        unsigned int grid_size);
-                    //#if REDUCE_HOST_MEMORY
-                    //std::vector<cu::HostMemory*> h_visibilities_;
-                    //std::vector<cu::HostMemory*> h_uvw_;
-                    //#else
-                    //cu::HostMemory *h_visibilities_;
-                    //cu::HostMemory *h_uvw_;
-                    //#endif
-                    //std::vector<cu::HostMemory*> h_grid_;
-
-                    //void init_benchmark();
-                    //bool enable_benchmark = false;
-                    //int nr_repetitions = 1;
             }; // class Generic
 
         } // namespace cuda

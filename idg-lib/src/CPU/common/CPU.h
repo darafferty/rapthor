@@ -62,7 +62,7 @@ namespace idg {
 
                     virtual void transform(
                         DomainAtoDomainB direction,
-                        const Array3D<std::complex<float>>& grid) override;
+                        Array3D<std::complex<float>>& grid) override;
 
                 private:
                     void grid_onto_subgrids(

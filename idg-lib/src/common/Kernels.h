@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cmath>
+#include <cassert>
 
 #include "idg-common.h"
 
@@ -52,14 +53,12 @@ namespace idg {
                 uint64_t bytes_scaler(
                     uint64_t nr_subgrids) const;
 
-                template<typename T>
                 void shift(
-                    Array3D<T>& data);
+                    Array3D<std::complex<float>>& data);
 
-                template<typename T>
                 void scale(
-                    Array3D<std::complex<T>>& data,
-                    std::complex<T> scale);
+                    Array3D<std::complex<float>>& data,
+                    std::complex<float> scale);
 
                 uint64_t sizeof_grid(
                     uint64_t grid_size);
