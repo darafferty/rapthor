@@ -8,7 +8,7 @@
 #include "CU.h"
 
 namespace idg {
-    namespace proxy {
+    namespace kernel {
         namespace cuda {
 
             class PowerRecord {
@@ -21,7 +21,7 @@ namespace idg {
             };
 
         } // end namespace cuda
-    } // end namespace proxy
+    } // end namespace kernel
 } // end namespace idg
 
 #endif

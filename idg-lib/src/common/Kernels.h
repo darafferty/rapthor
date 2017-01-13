@@ -47,6 +47,10 @@ namespace idg {
                     uint64_t nr_subgrids) const;
                 uint64_t bytes_splitter(
                     uint64_t nr_subgrids) const;
+                uint64_t flops_scaler(
+                    uint64_t nr_subgrids) const;
+                uint64_t bytes_scaler(
+                    uint64_t nr_subgrids) const;
 
             protected:
                 CompileConstants mConstants;

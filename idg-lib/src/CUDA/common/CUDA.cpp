@@ -4,7 +4,8 @@
 #include <cudaProfiler.h>
 
 #include "CUDA.h"
-#include "DeviceInstance.h"
+
+using namespace idg::kernel::cuda;
 
 namespace idg {
     namespace proxy {
@@ -160,7 +161,9 @@ namespace idg {
                 return jobsize;
             }
 
-            /* Sizeof routines */
+            /*
+                Sizeof routines, TODO
+            */
             uint64_t CUDA::sizeof_subgrids(int nr_subgrids) {
                 //auto nr_polarizations = mParams.get_nr_polarizations();
                 //auto subgridsize = mParams.get_subgrid_size();

@@ -7,12 +7,11 @@
 #include "idg-common.h"
 #include "idg-powersensor.h"
 
+#include "DeviceInstance.h"
 
 namespace idg {
     namespace proxy {
         namespace cuda {
-            class DeviceInstance;
-
             class CUDA : public Proxy {
                 public:
                     CUDA(
@@ -24,7 +23,7 @@ namespace idg {
                 public:
                     void print_compiler_flags();
                     void print_devices();
-                    std::vector<DeviceInstance*> get_devices();
+                    std::vector<idg::kernel::cuda::DeviceInstance*> get_devices();
                     std::vector<int> compute_jobsize(Plan &plan, int nr_streams);
 
                 protected:
@@ -33,7 +32,7 @@ namespace idg {
 
                 protected:
                     ProxyInfo &mInfo;
-                    std::vector<DeviceInstance*> devices;
+                    std::vector<idg::kernel::cuda::DeviceInstance*> devices;
 
                 public:
                     uint64_t sizeof_subgrids(int nr_subgrids);

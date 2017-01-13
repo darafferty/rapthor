@@ -1,7 +1,7 @@
 #include "PowerRecord.h"
 
 namespace idg {
-    namespace proxy {
+    namespace kernel {
         namespace cuda {
 
             void PowerRecord::enqueue(cu::Stream &stream) {
@@ -15,5 +15,5 @@ namespace idg {
             }
 
         } // end namespace cuda
-    } // end namespace proxy
+    } // end namespace kernel
 } // end namespace idg

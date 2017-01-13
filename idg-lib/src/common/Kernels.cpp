@@ -11,7 +11,7 @@ namespace idg {
             uint64_t nr_timesteps,
             uint64_t nr_subgrids) const
         {
-            uint64_t subgridsize = mConstants.get_subgrid_size();
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
 
             // Number of flops per visibility
@@ -32,8 +32,8 @@ namespace idg {
 
             // Total number of flops
             uint64_t flops_total = 0;
-            flops_total += nr_timesteps * subgridsize * subgridsize * flops_per_visibility;
-            flops_total += nr_subgrids  * subgridsize * subgridsize * flops_per_subgrid;
+            flops_total += nr_timesteps * subgrid_size * subgrid_size * flops_per_visibility;
+            flops_total += nr_subgrids  * subgrid_size * subgrid_size * flops_per_subgrid;
             return flops_total;
         }
 
@@ -42,7 +42,7 @@ namespace idg {
             uint64_t nr_timesteps,
             uint64_t nr_subgrids) const
         {
-            uint64_t subgridsize = mConstants.get_subgrid_size();
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
 
             // Number of bytes per uvw coordinate
@@ -70,9 +70,9 @@ namespace idg {
             uint64_t bytes_total = 0;
             bytes_total += 1ULL * nr_timesteps * bytes_per_uvw;
             bytes_total += 1ULL * nr_timesteps * bytes_per_vis;
-            bytes_total += 1ULL * nr_subgrids * subgridsize * subgridsize * bytes_per_pix;
-            bytes_total += 1ULL * nr_subgrids * subgridsize * subgridsize * bytes_per_aterm;
-            bytes_total += 1ULL * nr_subgrids * subgridsize * subgridsize * bytes_per_spheroidal;
+            bytes_total += 1ULL * nr_subgrids * subgrid_size * subgrid_size * bytes_per_pix;
+            bytes_total += 1ULL * nr_subgrids * subgrid_size * subgrid_size * bytes_per_aterm;
+            bytes_total += 1ULL * nr_subgrids * subgrid_size * subgrid_size * bytes_per_spheroidal;
             return bytes_total;
         }
 
@@ -115,45 +115,65 @@ namespace idg {
         uint64_t Kernels::flops_adder(
             uint64_t nr_subgrids) const
         {
-            uint64_t subgridsize = mConstants.get_subgrid_size();
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             uint64_t flops = 0;
-            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
-            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_correlations * 2; // add
+            flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 8; // shift
+            flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_correlations * 2; // add
             return flops;
         }
 
         uint64_t Kernels::bytes_adder(
             uint64_t nr_subgrids) const
         {
-            uint64_t subgridsize = mConstants.get_subgrid_size();
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             uint64_t bytes = 0;
             bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
-            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
-            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid in
-            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+            bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 * sizeof(float); // grid in
+            bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 * sizeof(float); // subgrid in
+            bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 * sizeof(float); // subgrid out
             return bytes;
         }
 
         uint64_t Kernels::flops_splitter(
             uint64_t nr_subgrids) const
         {
-            uint64_t subgridsize = mConstants.get_subgrid_size();
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
             uint64_t flops = 0;
-            flops += 1ULL * nr_subgrids * subgridsize * subgridsize * 8; // shift
+            flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 8; // shift
             return flops;
         }
 
         uint64_t Kernels::bytes_splitter(
             uint64_t nr_subgrids) const
         {
-            uint64_t subgridsize = mConstants.get_subgrid_size();
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             uint64_t bytes = 0;
             bytes += 1ULL * nr_subgrids * 2 * sizeof(int); // coordinate
-            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // grid in
-            bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * 2 * sizeof(float); // subgrid out
+            bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 * sizeof(float); // grid in
+            bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 * sizeof(float); // subgrid out
+            return bytes;
+        }
+
+        uint64_t Kernels::flops_scaler(
+            uint64_t nr_subgrids) const
+        {
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
+            uint64_t nr_correlations = mConstants.get_nr_correlations();
+            uint64_t flops = 0;
+            flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_correlations * 2; // scale
+            return flops;
+        }
+
+        uint64_t Kernels::bytes_scaler(
+            uint64_t nr_subgrids) const
+        {
+            uint64_t subgrid_size = mConstants.get_subgrid_size();
+            uint64_t nr_correlations = mConstants.get_nr_correlations();
+            uint64_t bytes = 0;
+            bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_correlations * 2 * sizeof(float); // scale
             return bytes;
         }
 
