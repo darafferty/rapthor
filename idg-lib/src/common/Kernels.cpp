@@ -177,5 +177,59 @@ namespace idg {
             return bytes;
         }
 
+        template<typename T>
+        void shift(
+            Array3D<T>& data)
+        {
+            int nr_polarizations = data.get_z_dim();
+            int height = data.get_y_dim();
+            int width = data.get_x_dim();
+            assert(height == width);
+
+            T tmp13, tmp24;
+
+            // Dimensions
+            int n = height;
+            int n2 = n / 2;
+
+            // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
+            #pragma omp parallel for private(tmp13, tmp24)
+            for (int pol = 0; pol < nr_polarizations; pol++) {
+                for (int i = 0; i < n2; i++) {
+                    for (int k = 0; k < n2; k++) {
+                        tmp13              = x(pol, i, k);
+                        x(pol, i, k)       = x(pol, i+n2, k+n2);
+                        x(pol, i+n2, k+n2) = tmp13;
+
+                        tmp24              = x(pol, i+n2, k);
+                        x(pol, i+n2, k)    = x(pol, i, k+n2);
+                        x(pol, i, k+n2)    = tmp24;
+                     }
+                }
+            }
+        }
+
+        template<typename T>
+        void scale(
+            Array3D<std::complex<T>>& data,
+            std::complex<T> scale)
+        {
+            int nr_polarizations = data.get_z_dim();
+            int height = data.get_y_dim();
+            int width = data.get_x_dim();
+
+            #pragma omp parallel for collapse(2)
+            for (int pol = 0; pol < nr_polarizations; pol++) {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        std::complex<T> value = x(pol, y, x);
+                        x(pol, y, x) = T(
+                            value.real() * scale.real(),
+                            value.imag() * scale.imag());
+                    }
+                }
+            }
+        }
+
     } // namespace kernel
 } // namespace idg

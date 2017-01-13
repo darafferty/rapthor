@@ -91,10 +91,6 @@ namespace idg {
 
                     void launch(cu::Stream &stream, cu::DeviceMemory &data, int direction);
 
-                    void shift(std::complex<float> *data);
-
-                    void scale(std::complex<float> *data, std::complex<float> scale);
-
                 private:
                     void plan_bulk();
 

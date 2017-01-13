@@ -52,6 +52,13 @@ namespace idg {
                 uint64_t bytes_scaler(
                     uint64_t nr_subgrids) const;
 
+                template<typename T>
+                void shift(
+                    Array3D<T>& data);
+
+                template<typename T>
+                void scale(
+                    Array3D<T>& data);
             protected:
                 CompileConstants mConstants;
         };
