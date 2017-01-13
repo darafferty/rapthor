@@ -269,9 +269,54 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
+                cout << "FFT (direction: " << direction << ")" << endl;
                 #endif
-                // TODO
-            }
+
+                try {
+                    int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+
+                    // Constants
+                    auto grid_size = grid.get_x_dim();
+                    auto nr_correlations = mConstants.get_nr_correlations();
+
+                    // Load kernel function
+                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = mKernels.get_kernel_fft();
+
+                    // FFT shift
+                    if (direction == FourierDomainToImageDomain) {
+                        mKernels.shift(grid); // TODO: integrate into adder?
+                    } else {
+                        mKernels.shift(grid); // TODO: remove
+                    }
+
+                    // Run FFT
+                    PowerSensor::State powerStates[2];
+                    powerStates[0] = powerSensor->read();
+                    kernel_fft->run(grid_size, grid_size, 1, grid.data(), sign);
+                    powerStates[1] = powerSensor->read();
+
+                    // FFT shift
+                    if (direction == FourierDomainToImageDomain)
+                        mKernels.shift(grid); // TODO: remove
+                    else
+                        mKernels.shift(grid); // TODO: integrate into splitter?
+
+                    // Report performance
+                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    auxiliary::report("grid-fft",
+                                      mKernels.flops_fft(grid_size, 1),
+                                      mKernels.bytes_fft(grid_size, 1),
+                                      powerSensor, powerStates[0], powerStates[1]);
+                    clog << endl;
+                    #endif
+                } catch (const exception& e) {
+                    cerr << __func__ << " caught exception: "
+                         << e.what() << endl;
+                } catch (...) {
+                    cerr << __func__ << " caught unknown exception" << endl;
+                }
+            } // end transform
+
 
             /*
                 Low level routines
