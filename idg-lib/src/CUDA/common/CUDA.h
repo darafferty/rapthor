@@ -26,27 +26,28 @@ namespace idg {
 
                 public:
                     void print_compiler_flags();
+
                     void print_devices();
-                    std::vector<idg::kernel::cuda::DeviceInstance*> get_devices();
-                    std::vector<int> compute_jobsize(Plan &plan, int nr_streams);
+
+                    unsigned int get_num_devices() const;
+                    idg::kernel::cuda::DeviceInstance& get_device(unsigned int i) const;
+
+                    std::vector<int> compute_jobsize(
+                        const Plan &plan,
+                        const unsigned int nr_timesteps,
+                        const unsigned int nr_channels,
+                        const unsigned int subgrid_size,
+                        const unsigned int nr_streams);
 
                 protected:
                     void init_devices();
+                    void free_devices();
                     static ProxyInfo default_info();
 
-                protected:
+                private:
                     ProxyInfo &mInfo;
                     std::vector<idg::kernel::cuda::DeviceInstance*> devices;
 
-                public:
-                    uint64_t sizeof_subgrids(int nr_subgrids);
-                    uint64_t sizeof_uvw(int nr_baselines);
-                    uint64_t sizeof_visibilities(int nr_baselines);
-                    uint64_t sizeof_metadata(int nr_subgrids);
-                    uint64_t sizeof_grid();
-                    uint64_t sizeof_wavenumbers();
-                    uint64_t sizeof_aterm();
-                    uint64_t sizeof_spheroidal();
             };
         } // end namespace idg
     } // end namespace proxy

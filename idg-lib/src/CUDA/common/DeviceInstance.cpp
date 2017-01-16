@@ -46,17 +46,18 @@ namespace idg {
 
             // Destructor
             DeviceInstance::~DeviceInstance() {
-                delete device;
-                delete context;
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
-                if (h_grid) { delete h_grid; }
-                if (d_grid) { delete d_grid; }
-                if (h_visibilities) { delete h_visibilities; }
-                if (d_visibilities) { delete d_visibilities; }
-                if (h_uvw) { delete h_uvw; }
-                if (d_uvw) { delete d_uvw; }
+                if (h_grid) { h_grid->~HostMemory(); }
+                if (h_visibilities) { h_visibilities->~HostMemory(); }
+                if (h_uvw) { h_uvw->~HostMemory(); }
+                if (d_grid) { d_grid->~DeviceMemory(); }
+                if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
+                if (d_aterms) { d_aterms->~DeviceMemory(); }
+                if (d_spheroidal) { d_spheroidal->~DeviceMemory(); }
+                delete device;
+                delete context;
             }
 
             // Gridder class
@@ -471,7 +472,7 @@ namespace idg {
                 T* ptr)
             {
                 if (ptr && size != ptr->size()) {
-                    ((T&) *ptr).~T();
+                    ptr->~T();
                     ptr = new T(size);
                 } else if(!ptr) {
                     ptr = new T(size);
@@ -479,58 +480,72 @@ namespace idg {
                 return ptr;
             }
 
-           cu::HostMemory& DeviceInstance::allocate_host_grid(
+           cu::HostMemory& DeviceInstance::get_host_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
+                #pragma omp critical(device)
                 h_grid = allocate_memory(size, h_grid);
                 return *h_grid;
             }
 
-           cu::DeviceMemory& DeviceInstance::allocate_device_grid(
+           cu::DeviceMemory& DeviceInstance::get_device_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
+                #pragma omp critical(device)
                 d_grid = allocate_memory(size, d_grid);
                 return *d_grid;
             }
 
-           cu::HostMemory& DeviceInstance::allocate_host_visibilities(
+           cu::HostMemory& DeviceInstance::get_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 unsigned int nr_channels)
             {
                 auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                #pragma omp critical(device)
                 h_visibilities = allocate_memory(size, h_visibilities);
                 return *h_visibilities;
             }
 
-           cu::DeviceMemory& DeviceInstance::allocate_device_visibilities(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                unsigned int nr_channels)
-            {
-                auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                d_visibilities = allocate_memory(size, d_visibilities);
-                return *d_visibilities;
-            }
-
-           cu::HostMemory& DeviceInstance::allocate_host_uvw(
+           cu::HostMemory& DeviceInstance::get_host_uvw(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps)
             {
                 auto size = sizeof_uvw(nr_baselines, nr_timesteps);
+                #pragma omp critical(device)
                 h_uvw = allocate_memory(size, h_uvw);
                 return *h_uvw;
             }
 
-           cu::DeviceMemory& DeviceInstance::allocate_device_uvw(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps)
+            cu::DeviceMemory& DeviceInstance::get_device_wavenumbers(
+                unsigned int nr_channels)
             {
-                auto size = sizeof_uvw(nr_baselines, nr_timesteps);
-                d_uvw = allocate_memory(size, d_uvw);
-                return *d_uvw;
+                auto size = sizeof_wavenumbers(nr_channels);
+                #pragma omp critical(device)
+                d_wavenumbers = allocate_memory(size, d_wavenumbers);
+                return *d_wavenumbers;
+            }
+
+            cu::DeviceMemory& DeviceInstance::get_device_aterms(
+                unsigned int nr_stations,
+                unsigned int nr_timeslots,
+                unsigned int subgrid_size)
+            {
+                auto size = sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                #pragma omp critical(device)
+                d_aterms = allocate_memory(size, d_aterms);
+                return *d_aterms;
+            }
+
+            cu::DeviceMemory& DeviceInstance::get_device_spheroidal(
+                unsigned int subgrid_size)
+            {
+                auto size = sizeof_spheroidal(subgrid_size);
+                #pragma omp critical(device)
+                d_spheroidal = allocate_memory(size, d_spheroidal);
+                return *d_spheroidal;
             }
 
             cu::HostMemory DeviceInstance::reuse_host_grid(
@@ -539,6 +554,7 @@ namespace idg {
             {
                 if (h_grid) { delete h_grid; }
                 auto size = sizeof_grid(grid_size);
+                #pragma omp critical(device)
                 h_grid = new cu::HostMemory(ptr, size);
                 return *h_grid;
             }

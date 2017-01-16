@@ -157,7 +157,7 @@ namespace idg {
                 }
             }
 
-            size_t bytes() {
+            size_t bytes() const {
                 return get_x_dim() * sizeof(T);
             }
 
@@ -239,7 +239,7 @@ namespace idg {
                 }
             }
 
-            size_t bytes() {
+            size_t bytes() const {
                 return get_y_dim() *
                        get_x_dim() * sizeof(T);
             }
@@ -332,7 +332,7 @@ namespace idg {
                 }
             }
 
-            size_t bytes() {
+            size_t bytes() const {
                 return get_z_dim() * get_y_dim() *
                        get_x_dim() * sizeof(T);
             }
@@ -436,7 +436,7 @@ namespace idg {
                 }
             }
 
-            size_t bytes() {
+            size_t bytes() const {
                 return get_w_dim() * get_z_dim() *
                        get_y_dim() * get_x_dim() * sizeof(T);
             }

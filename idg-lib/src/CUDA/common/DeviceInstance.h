@@ -216,6 +216,10 @@ namespace idg {
                     cu::Stream&  get_htod_stream() const { return *htodstream; };
                     cu::Stream&  get_dtoh_stream() const { return *dtohstream; };
 
+                    void set_context() const {
+                        context->setCurrent();
+                    }
+
                     std::string get_compiler_flags();
 
                     PowerSensor* get_powersensor() { return powerSensor; };
@@ -223,33 +227,39 @@ namespace idg {
                     void measure(
                         idg::kernel::cuda::PowerRecord &record, cu::Stream &stream);
 
-                    cu::HostMemory& allocate_host_grid(
+                    cu::HostMemory& get_host_grid(
                         unsigned int grid_size);
 
-                    cu::DeviceMemory& allocate_device_grid(
+                    cu::DeviceMemory& get_device_grid(
                         unsigned int grid_size);
 
-                    cu::HostMemory& allocate_host_visibilities(
+                    cu::HostMemory& get_host_visibilities(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps,
                         unsigned int nr_channels);
 
-                    cu::DeviceMemory& allocate_device_visibilities(
+                    cu::HostMemory& get_host_uvw(
                         unsigned int nr_baselines,
-                        unsigned int nr_timesteps,
+                        unsigned int nr_timesteps);
+
+                    cu::DeviceMemory& get_device_wavenumbers(
                         unsigned int nr_channels);
 
-                    cu::HostMemory& allocate_host_uvw(
-                        unsigned int nr_baselines,
-                        unsigned int nr_timesteps);
+                    cu::DeviceMemory& get_device_aterms(
+                        unsigned int nr_stations,
+                        unsigned int nr_timeslots,
+                        unsigned int subgrid_size);
 
-                    cu::DeviceMemory& allocate_device_uvw(
-                        unsigned int nr_baselines,
-                        unsigned int nr_timesteps);
+                    cu::DeviceMemory& get_device_spheroidal(
+                        unsigned int subgrid_size);
 
                     cu::HostMemory reuse_host_grid(
                         unsigned int grid_size,
                         void *ptr);
+
+                    cu::HostMemory& get_host_grid() {
+                        return *h_grid;
+                    }
 
                 protected:
                     void compile_kernels();
@@ -276,9 +286,10 @@ namespace idg {
                     cu::HostMemory *h_visibilities;
                     cu::HostMemory *h_uvw;
                     cu::HostMemory *h_grid;
-                    cu::DeviceMemory *d_visibilities;
-                    cu::DeviceMemory *d_uvw;
                     cu::DeviceMemory *d_grid;
+                    cu::DeviceMemory *d_wavenumbers;
+                    cu::DeviceMemory *d_aterms;
+                    cu::DeviceMemory *d_spheroidal;
 
                     // All CUDA modules private to this DeviceInstance
                     std::vector<cu::Module*> modules;

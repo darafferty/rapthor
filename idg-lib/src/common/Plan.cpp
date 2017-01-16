@@ -277,7 +277,7 @@ namespace idg {
         return subgrid_offset[bl];
     }
 
-    int Plan::get_max_nr_subgrids(int bl1, int bl2, int n) {
+    int Plan::get_max_nr_subgrids(int bl1, int bl2, int n) const {
         int nr_baselines = bl1 + n > bl2 ? bl2 - bl1 : n;
         int max_nr_subgrids = get_nr_subgrids(bl1, nr_baselines);
         for (int bl = bl1 + n; bl <  bl2; bl += n) {
@@ -290,7 +290,7 @@ namespace idg {
         return max_nr_subgrids;
     }
 
-    int Plan::get_max_nr_subgrids() {
+    int Plan::get_max_nr_subgrids() const {
         return get_max_nr_subgrids(0, nr_baselines, 1);
     }
 

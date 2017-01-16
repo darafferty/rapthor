@@ -31,6 +31,7 @@ namespace idg {
 
             CUDA::~CUDA() {
                 cuProfilerStop();
+                free_devices();
             }
 
             void CUDA::init_devices() {
@@ -62,6 +63,12 @@ namespace idg {
                 }
             }
 
+            void CUDA::free_devices() {
+                for (DeviceInstance *device : devices) {
+                    device->~DeviceInstance();
+                }
+            }
+
             void CUDA::print_devices() {
                 std::cout << "Devices: " << std::endl;
                 for (DeviceInstance *device : devices) {
@@ -78,8 +85,14 @@ namespace idg {
                 std::cout << std::endl;
             }
 
-            std::vector<DeviceInstance*> CUDA::get_devices() {
-                return devices;
+            unsigned int CUDA::get_num_devices() const
+            {
+                return devices.size();
+            }
+
+            DeviceInstance& CUDA::get_device(unsigned int i) const
+            {
+                return *(devices[i]);
             }
 
             ProxyInfo CUDA::default_info() {
@@ -129,18 +142,24 @@ namespace idg {
                 p.set_delete_shared_objects(true);
 
                 return p;
-            }
+            } // end default_info
 
-            std::vector<int> CUDA::compute_jobsize(Plan &plan, int nr_streams) {
+            std::vector<int> CUDA::compute_jobsize(
+                const Plan &plan,
+                const unsigned int nr_timesteps,
+                const unsigned int nr_channels,
+                const unsigned int subgrid_size,
+                const unsigned int nr_streams)
+            {
                 // Compute the maximum number of subgrids for any baseline
                 int max_nr_subgrids = plan.get_max_nr_subgrids();
 
                 // Compute the amount of bytes needed for that job
                 auto bytes_required = 0;
-                bytes_required += sizeof_visibilities(1);
-                bytes_required += sizeof_uvw(1);
-                bytes_required += sizeof_subgrids(max_nr_subgrids);
-                bytes_required += sizeof_metadata(max_nr_subgrids);
+                bytes_required += devices[0]->sizeof_visibilities(1, nr_timesteps, nr_channels);
+                bytes_required += devices[0]->sizeof_uvw(1, nr_timesteps);
+                bytes_required += devices[0]->sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                bytes_required += devices[0]->sizeof_metadata(max_nr_subgrids);
                 bytes_required *= nr_streams;
 
                 // Adjust jobsize to amount of available device memory
@@ -160,56 +179,7 @@ namespace idg {
                 }
 
                 return jobsize;
-            }
-
-            /*
-                Sizeof routines, TODO
-            */
-            uint64_t CUDA::sizeof_subgrids(int nr_subgrids) {
-                //auto nr_polarizations = mParams.get_nr_polarizations();
-                //auto subgridsize = mParams.get_subgrid_size();
-                //return 1ULL * nr_subgrids * nr_polarizations * subgridsize * subgridsize * sizeof(std::complex<float>);
-            }
-
-            uint64_t CUDA::sizeof_uvw(int nr_baselines) {
-                //auto nr_time = mParams.get_nr_time();
-                //return 1ULL * nr_baselines * nr_time * sizeof(UVW);
-            }
-
-            uint64_t CUDA::sizeof_visibilities(int nr_baselines) {
-                //auto nr_time = mParams.get_nr_time();
-                //auto nr_channels = mParams.get_nr_channels();
-                //auto nr_polarizations = mParams.get_nr_polarizations();
-                //return 1ULL * nr_baselines * nr_time * nr_channels * nr_polarizations * sizeof(std::complex<float>);
-            }
-
-            uint64_t CUDA::sizeof_metadata(int nr_subgrids) {
-                //return 1ULL * nr_subgrids * sizeof(Metadata);
-            }
-
-            uint64_t CUDA::sizeof_grid() {
-                //auto nr_polarizations = mParams.get_nr_polarizations();
-                //auto gridsize = mParams.get_grid_size();
-                //return 1ULL * nr_polarizations * gridsize * gridsize * sizeof(std::complex<float>);
-            }
-
-            uint64_t CUDA::sizeof_wavenumbers() {
-                //auto nr_channels = mParams.get_nr_channels();
-                //return 1ULL * nr_channels * sizeof(float);
-            }
-
-            uint64_t CUDA::sizeof_aterm() {
-                //auto nr_stations = mParams.get_nr_stations();
-                //auto nr_timeslots = mParams.get_nr_timeslots();
-                //auto nr_polarizations = mParams.get_nr_polarizations();
-                //auto subgridsize = mParams.get_subgrid_size();
-                //return 1ULL * nr_stations * nr_timeslots * nr_polarizations * subgridsize * subgridsize * sizeof(std::complex<float>);
-            }
-
-            uint64_t CUDA::sizeof_spheroidal() {
-                //auto subgridsize = mParams.get_subgrid_size();
-                //return 1ULL * subgridsize * subgridsize * sizeof(float);
-            }
+            } // end compute_jobsize
 
         } // end namespace cuda
     } // end namespace proxy

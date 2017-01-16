@@ -178,7 +178,7 @@ namespace idg {
         }
 
         void Kernels::shift(
-            Array3D<std::complex<float>>& data)
+            Array3D<std::complex<float>>& data) const
         {
             int nr_polarizations = data.get_z_dim();
             int height = data.get_y_dim();
@@ -210,7 +210,7 @@ namespace idg {
 
         void Kernels::scale(
             Array3D<std::complex<float>>& data,
-            std::complex<float> scale)
+            std::complex<float> scale) const
         {
             int nr_polarizations = data.get_z_dim();
             int height = data.get_y_dim();
@@ -229,27 +229,61 @@ namespace idg {
             }
         }
 
+        uint64_t Kernels::sizeof_visibilities(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps,
+            unsigned int nr_channels) const
+        {
+            return 1ULL * nr_baselines * nr_timesteps * nr_channels * sizeof(Visibility<std::complex<float>>);
+        }
+
+        uint64_t Kernels::sizeof_uvw(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps) const
+        {
+            return 1ULL * nr_baselines * nr_timesteps * sizeof(UVW);
+        }
+
+        uint64_t Kernels::sizeof_subgrids(
+            unsigned int nr_subgrids,
+            unsigned int subgrid_size) const
+        {
+            auto nr_correlations = mConstants.get_nr_correlations();
+            return 1ULL * nr_subgrids * nr_correlations * subgrid_size * subgrid_size* sizeof(std::complex<float>);
+        }
+
+        uint64_t Kernels::sizeof_metadata(
+            unsigned int nr_subgrids) const
+        {
+            return 1ULL * nr_subgrids * sizeof(Metadata);
+        }
+
         uint64_t Kernels::sizeof_grid(
-            uint64_t grid_size)
+            unsigned int grid_size) const
         {
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             return 1ULL * nr_correlations * grid_size * grid_size * sizeof(std::complex<float>);
         }
 
-        uint64_t Kernels::sizeof_visibilities(
-            uint64_t nr_baselines,
-            uint64_t nr_timesteps,
-            uint64_t nr_channels)
+        uint64_t Kernels::sizeof_wavenumbers(
+            unsigned int nr_channels) const
         {
-            uint64_t nr_correlations = mConstants.get_nr_correlations();
-            return 1ULL * nr_baselines * nr_timesteps * nr_channels * nr_correlations * sizeof(Visibility<std::complex<float>>);
+            return 1ULL * nr_channels * sizeof(float);
         }
 
-        uint64_t Kernels::sizeof_uvw(
-            uint64_t nr_baselines,
-            uint64_t nr_timesteps)
+        uint64_t Kernels::sizeof_aterms(
+            unsigned int nr_stations,
+            unsigned int nr_timeslots,
+            unsigned int subgrid_size) const
         {
-            return 1ULL * nr_baselines * nr_timesteps * sizeof(UVW);
+            uint64_t nr_correlations = mConstants.get_nr_correlations();
+            return 1ULL * nr_stations * nr_timeslots * nr_correlations * subgrid_size * subgrid_size * sizeof(std::complex<float>);
+        }
+
+        uint64_t Kernels::sizeof_spheroidal(
+            unsigned int subgrid_size) const
+        {
+            return 1ULL * subgrid_size * subgrid_size * sizeof(float);
         }
 
     } // namespace kernel
