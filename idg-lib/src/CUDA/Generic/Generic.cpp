@@ -139,6 +139,7 @@ namespace idg {
                 #endif
             } // end transform
 
+
             void Generic::gridding(
                 const Plan& plan,
                 const float w_offset, // in lambda
@@ -191,8 +192,8 @@ namespace idg {
 
                 // Host memory
                 #if !REDUCE_HOST_MEMORY
-                cu::HostMemory &h_visibilities = get_device(0).get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                cu::HostMemory &h_uvw          = get_device(0).get_host_uvw(nr_baselines, nr_timesteps);
+                cu::HostMemory& h_visibilities = get_device(0).get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                cu::HostMemory& h_uvw          = get_device(0).get_host_uvw(nr_baselines, nr_timesteps);
                 h_visibilities.set(visibilities.data());
                 h_uvw.set(uvw.data());
                 #endif
@@ -217,9 +218,6 @@ namespace idg {
                     // Initialize device
                     DeviceInstance& device = get_device(device_id);
                     device.set_context();
-                    cu::Event inputFree;
-                    cu::Event inputReady;
-                    cu::Event outputReady;
 
                     // Setup device memory
                     cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
@@ -234,12 +232,11 @@ namespace idg {
                     unique_ptr<GridFFT> kernel_fft     = device.get_kernel_fft(subgrid_size);
 
                     // Load CUDA objects
-                    cu::Stream &executestream = device.get_execute_stream();
-                    cu::Stream &htodstream    = device.get_htod_stream();
-                    cu::Stream &dtohstream    = device.get_dtoh_stream();
+                    cu::Stream& executestream = device.get_execute_stream();
+                    cu::Stream& htodstream    = device.get_htod_stream();
+                    cu::Stream& dtohstream    = device.get_dtoh_stream();
 
                     // Setup host memory
-                    device.set_context();
                     #if REDUCE_HOST_MEMORY
                     cu::HostMemory& h_visibilities = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
                     cu::HostMemory& h_uvw          = device.get_host_uvw(nr_baselines, nr_timesteps);
@@ -264,6 +261,11 @@ namespace idg {
 
                     // Create FFT plan
                     kernel_fft->plan(max_nr_subgrids);
+
+                    // Events
+                    cu::Event inputFree;
+                    cu::Event inputReady;
+                    cu::Event outputReady;
 
                     // Power measurement
                     PowerSensor *devicePowerSensor = device.get_powersensor();
@@ -430,7 +432,8 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
-            }
+            } //end gridding
+
 
             void Generic::degridding(
                 const Plan& plan,
@@ -446,55 +449,50 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
-#if 0
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
 
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+                // Proxy constants
+                auto subgrid_size     = mConstants.get_subgrid_size();
+                auto nr_polarizations = mConstants.get_nr_correlations();
+
+                // Checks arguments
+                if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
+                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                }
+
+                check_dimensions(
+                    frequencies, visibilities, uvw, baselines,
+                    grid, aterms, aterms_offsets, spheroidal);
+
+                // Arguments
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = visibilities.get_x_dim();
+                auto nr_stations  = aterms.get_z_dim();
+                auto nr_timeslots = aterms.get_w_dim();
+                auto grid_size    = grid.get_x_dim();
+                auto image_size   = cell_size * grid_size;
+
                 // Configuration
-                const int nr_devices = devices.size();
+                const int nr_devices = get_num_devices();
                 const int nr_streams = 3;
 
-                // Constants
-                auto nr_stations      = mParams.get_nr_stations();
-                auto nr_baselines     = mParams.get_nr_baselines();
-                auto nr_time          = mParams.get_nr_time();
-                auto nr_timeslots     = mParams.get_nr_timeslots();
-                auto nr_channels      = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize         = mParams.get_grid_size();
-                auto subgridsize      = mParams.get_subgrid_size();
-                auto imagesize        = mParams.get_imagesize();
-
                 // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Host memory
                 #if !REDUCE_HOST_MEMORY
-                cu::HostMemory   &h_visibilities = *h_visibilities_;
-                cu::HostMemory   &h_uvw          = *h_uvw_;
-                h_uvw.set(uvw);
+                cu::HostMemory& h_visibilities = get_device(0).get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                cu::HostMemory& h_uvw          = get_device(0).get_host_uvw(nr_baselines, nr_timesteps);
+                h_uvw.set(uvw.data());
                 #endif
-                cu::HostMemory &h_grid = *(h_grid_[0]);
-                h_grid.set(grid);
-
-                // Device memory
-                std::vector<cu::DeviceMemory*> d_wavenumbers_;
-                std::vector<cu::DeviceMemory*> d_spheroidal_;
-                std::vector<cu::DeviceMemory*> d_aterm_;
-                std::vector<cu::DeviceMemory*> d_grid_;
-                for (DeviceInstance *device : devices) {
-                    cu::Context &context = device->get_context();
-                    context.setCurrent();
-                    d_wavenumbers_.push_back(new cu::DeviceMemory(sizeof_wavenumbers()));
-                    d_spheroidal_.push_back(new cu::DeviceMemory(sizeof_spheroidal()));
-                    d_aterm_.push_back(new cu::DeviceMemory(sizeof_aterm()));
-                    d_grid_.push_back(new cu::DeviceMemory(sizeof_grid()));
-                }
+                cu::HostMemory& h_grid = get_device(0).get_host_grid(grid_size);
+                h_grid.set(grid.data());
 
                 // Performance measurements
                 double total_runtime_degridder  = 0;
@@ -512,40 +510,51 @@ namespace idg {
                     int local_id = global_id % nr_streams;
                     int jobsize = jobsize_[device_id];
 
-                    // Load device
-                    DeviceInstance *device = devices[device_id];
-                    PowerSensor *devicePowerSensor = device->get_powersensor();
+                    // Initialize device
+                    DeviceInstance& device = get_device(device_id);
+                    device.set_context();
+                    PowerSensor *devicePowerSensor = device.get_powersensor();
+
+                    // Setup device memory
+                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
+                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    cu::DeviceMemory& d_grid        = device.get_device_grid(grid_size);
 
                     // Load kernels
-                    unique_ptr<Degridder> kernel_degridder = device->get_kernel_degridder();
-                    unique_ptr<Splitter>  kernel_splitter  = device->get_kernel_splitter();
-                    unique_ptr<GridFFT>   kernel_fft       = device->get_kernel_fft();
+                    unique_ptr<Degridder> kernel_degridder = device.get_kernel_degridder();
+                    unique_ptr<Splitter>  kernel_splitter  = device.get_kernel_splitter();
+                    unique_ptr<GridFFT>   kernel_fft       = device.get_kernel_fft(subgrid_size);
 
                     // Load CUDA objects
-                    cu::Context &context      = device->get_context();
-                    cu::Stream &executestream = device->get_execute_stream();
-                    cu::Stream &htodstream    = device->get_htod_stream();
-                    cu::Stream &dtohstream    = device->get_dtoh_stream();
-                    context.setCurrent();
+                    cu::Stream &executestream = device.get_execute_stream();
+                    cu::Stream &htodstream    = device.get_htod_stream();
+                    cu::Stream &dtohstream    = device.get_dtoh_stream();
 
-                    // Load memory objects
+                    // Setup host memory
                     #if REDUCE_HOST_MEMORY
-                    cu::HostMemory   &h_visibilities = *(h_visibilities_[device_id]);
-                    cu::HostMemory   &h_uvw          = *(h_uvw_[device_id]);
+                    cu::HostMemory& h_visibilities = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                    cu::HostMemory& h_uvw          = device.get_host_uvw(nr_baselines, nr_timesteps);
                     #endif
-                    cu::DeviceMemory &d_wavenumbers  = *(d_wavenumbers_[device_id]);
-                    cu::DeviceMemory &d_spheroidal   = *(d_spheroidal_[device_id]);
-                    cu::DeviceMemory &d_aterm        = *(d_aterm_[device_id]);
-                    cu::DeviceMemory &d_grid         = *(d_grid_[device_id]);
 
                     // Copy read-only device memory
                     if (local_id == 0) {
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers);
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal);
-                        htodstream.memcpyHtoDAsync(d_aterm, aterm);
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                         htodstream.memcpyHtoDAsync(d_grid, h_grid);
                     }
                     htodstream.synchronize();
+
+                    // Private device memory
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    cu::DeviceMemory d_visibilities(device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels));
+                    cu::DeviceMemory d_uvw(device.sizeof_uvw(jobsize, nr_timesteps));
+                    cu::DeviceMemory d_subgrids(device.sizeof_subgrids(max_nr_subgrids, subgrid_size));
+                    cu::DeviceMemory d_metadata(device.sizeof_metadata(max_nr_subgrids));
+
+                    // Create FFT plan
+                    kernel_fft->plan(max_nr_subgrids);
 
                     // Events
                     cu::Event inputFree;
@@ -553,24 +562,12 @@ namespace idg {
                     cu::Event inputReady;
                     cu::Event outputReady;
 
-                    // Private device memory
-                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cu::DeviceMemory d_visibilities(sizeof_visibilities(jobsize));
-                    cu::DeviceMemory d_uvw(sizeof_uvw(jobsize));
-                    cu::DeviceMemory d_subgrids(sizeof_subgrids(max_nr_subgrids));
-                    cu::DeviceMemory d_metadata(sizeof_metadata(max_nr_subgrids));
-
-                    // Create FFT plan
-                    context.setCurrent();
-                    kernel_fft->plan(subgridsize, max_nr_subgrids);
-
                     // Power measurement
                     PowerRecord powerRecords[5];
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
                     }
 
-                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp barrier
                     #pragma omp single
                     total_runtime_degridding = -omp_get_wtime();
@@ -579,24 +576,20 @@ namespace idg {
                         // Compute the number of baselines to process in current iteration
                         int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
-                        // Number of elements in batch
-                        int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
-                        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-
                         // Number of subgrids for all baselines in batch
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
                         #if REDUCE_HOST_MEMORY
-                        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-                        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
-                        memcpy(h_uvw, uvw_ptr, sizeof_uvw(current_nr_baselines));
+                        void *uvw_ptr          = uvw.data(bl, 0);
+                        void *visibilities_ptr = visibilities.data(bl, 0, 0);
+                        memcpy(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                         uvw_ptr                = h_uvw;
                         visibilities_ptr       = h_visibilities;
                         #else
-                        void *uvw_ptr          = (float *) h_uvw + bl * uvw_elements;
-                        void *visibilities_ptr = (complex<float>*) h_visibilities + bl * visibilities_elements;
+                        void *uvw_ptr          = (void *) h_uvw + bl * device.sizeof_uvw(1, nr_timesteps);
+                        void *visibilities_ptr = (void *) h_visibilities + bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
                         #endif
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
@@ -607,15 +600,17 @@ namespace idg {
                         {
                             // Copy input data to device
                             htodstream.waitEvent(inputFree);
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw(current_nr_baselines));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata(current_nr_subgrids));
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
+                                device.sizeof_uvw(current_nr_baselines, nr_timesteps));
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
+                                device.sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
                             kernel_splitter->launch(
-                                executestream, current_nr_subgrids, gridsize,
+                                executestream, current_nr_subgrids, grid_size,
                                 d_metadata, d_subgrids, d_grid);
                             device.measure(powerRecords[1], executestream);
 
@@ -627,37 +622,37 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[3], executestream);
                             kernel_degridder->launch(
-                                executestream, current_nr_subgrids, gridsize, imagesize, w_offset, nr_channels, nr_stations,
-                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids);
+                                executestream, current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
                             executestream.record(inputFree);
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities(current_nr_baselines));
+                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
         					dtohstream.record(outputFree);
                         }
 
                         outputFree.synchronize();
 
                         #if REDUCE_HOST_MEMORY
-                        visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
-                        memcpy(visibilities_ptr, h_visibilities, sizeof_visibilities(current_nr_baselines));
+                        void *visibilities_ptr = visibilities.data(bl, 0, 0);
+                        memcpy(visibilities_ptr, h_visibilities, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                         #endif
 
                         double runtime_splitter  = devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft       = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
                         double runtime_degridder = devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
-                        auxiliary::report(" splitter", kernel_splitter->flops(current_nr_subgrids),
-                                                       kernel_splitter->bytes(current_nr_subgrids),
+                        auxiliary::report(" splitter", device.flops_adder(current_nr_subgrids),
+                                                       device.bytes_adder(current_nr_subgrids),
                                                        devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
-                        auxiliary::report("  sub-fft", kernel_fft->flops(subgridsize, current_nr_subgrids),
-                                                       kernel_fft->bytes(subgridsize, current_nr_subgrids),
+                        auxiliary::report("  sub-fft", device.flops_fft(subgrid_size, current_nr_subgrids),
+                                                       device.bytes_fft(subgrid_size, current_nr_subgrids),
                                                        devicePowerSensor, powerRecords[1].state, powerRecords[2].state);
-                        auxiliary::report("degridder", kernel_degridder->flops(current_nr_timesteps, current_nr_subgrids),
-                                                       kernel_degridder->bytes(current_nr_timesteps, current_nr_subgrids),
+                        auxiliary::report("degridder", device.flops_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids),
+                                                       device.bytes_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids),
                                                        devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -666,7 +661,6 @@ namespace idg {
                         total_runtime_degridder += devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #endif
                     } // end for bl
-                    } // end for repetitions
 
                     // Wait for all jobs to finish
                     dtohstream.synchronize();
@@ -680,45 +674,42 @@ namespace idg {
                 // End timing
                 stopStates[nr_devices]    = hostPowerSensor->read();
                 total_runtime_degridding += omp_get_wtime();
-                total_runtime_splitter   /= nr_repetitions;
-                total_runtime_fft        /= nr_repetitions;
-                total_runtime_degridder  /= nr_repetitions;
 
                 // Copy visibilities from cuda h_visibilities to visibilities
+                DeviceInstance& device = get_device(0);
                 #if !REDUCE_HOST_MEMORY
-                memcpy(visibilities, h_visibilities, sizeof_visibilities(nr_baselines));
+                memcpy(visibilities.data(), h_visibilities, device.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels));
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<Splitter>  kernel_splitter  = devices[0]->get_kernel_splitter();
-                unique_ptr<GridFFT>   kernel_fft       = devices[0]->get_kernel_fft();
-                unique_ptr<Degridder> kernel_degridder = devices[0]->get_kernel_degridder();
-                uint64_t total_flops_splitter   = kernel_splitter->flops(total_nr_subgrids);
-                uint64_t total_bytes_splitter   = kernel_splitter->bytes(total_nr_subgrids);
-                uint64_t total_flops_fft        = kernel_fft->flops(subgridsize, total_nr_subgrids);
-                uint64_t total_bytes_fft        = kernel_fft->bytes(subgridsize, total_nr_subgrids);
-                uint64_t total_flops_degridder  = kernel_degridder->flops(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_bytes_degridder  = kernel_degridder->bytes(total_nr_timesteps, total_nr_subgrids);
+                auto total_nr_subgrids   = plan.get_nr_subgrids();
+                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);
+                uint64_t total_bytes_splitter   = device.bytes_splitter(total_nr_subgrids);
+                uint64_t total_flops_fft        = device.flops_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_bytes_fft        = device.bytes_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_flops_degridder  = device.flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_bytes_degridder  = device.bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_time, nr_channels);
+                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps, nr_channels);
 
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
 
-                for (int d = 0; d < devices.size(); d++) {
-                    PowerSensor& devicePowerSensor = get_devices(d).get_powersensor();
+                for (int d = 0; d < get_num_devices(); d++) {
+                    PowerSensor* devicePowerSensor = get_device(d).get_powersensor();
                     stringstream message;
                     message << "|device" << d;
                     auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
                 }
                 clog << endl;
                 #endif
-#endif
-            }
+            } // end degridding
+
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
