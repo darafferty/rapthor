@@ -194,8 +194,9 @@ namespace idg {
                 #if !REDUCE_HOST_MEMORY
                 cu::HostMemory& h_visibilities = get_device(0).get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 cu::HostMemory& h_uvw          = get_device(0).get_host_uvw(nr_baselines, nr_timesteps);
-                h_visibilities.set(visibilities.data());
-                h_uvw.set(uvw.data());
+                cu::Stream& htodstream = get_device(0).get_htod_stream();
+                htodstream.memcpyHtoHAsync(h_visibilities, visibilities.data());
+                htodstream.memcpyHtoHAsync(h_uvw, uvw.data());
                 #endif
 
                 // Performance measurements
@@ -245,6 +246,7 @@ namespace idg {
 
                     // Copy read-only device memory
                     if (local_id == 0) {
+                        get_device(0).get_htod_stream().synchronize();
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
