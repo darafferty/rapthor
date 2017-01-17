@@ -514,6 +514,10 @@ namespace cu {
         checkCudaCall(cuMemcpyAsync((CUdeviceptr) (void *) dstPtr, (CUdeviceptr) srcPtr, dstPtr.size(), _stream));
     }
 
+    void Stream::memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr) {
+        checkCudaCall(cuMemcpyAsync((CUdeviceptr) dstPtr, (CUdeviceptr) (void *) srcPtr, srcPtr.size(), _stream));
+    }
+
     void Stream::launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters) {
         checkCudaCall(cuLaunchKernel(function, gridX, gridY, gridZ, blockX, blockY, blockZ, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
     }

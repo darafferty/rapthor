@@ -480,7 +480,7 @@ namespace idg {
                 return ptr;
             }
 
-           cu::HostMemory& DeviceInstance::get_host_grid(
+           cu::HostMemory& DeviceInstance::allocate_host_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
@@ -489,7 +489,7 @@ namespace idg {
                 return *h_grid;
             }
 
-           cu::DeviceMemory& DeviceInstance::get_device_grid(
+           cu::DeviceMemory& DeviceInstance::allocate_device_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
@@ -498,7 +498,7 @@ namespace idg {
                 return *d_grid;
             }
 
-           cu::HostMemory& DeviceInstance::get_host_visibilities(
+           cu::HostMemory& DeviceInstance::allocate_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 unsigned int nr_channels)
@@ -509,7 +509,7 @@ namespace idg {
                 return *h_visibilities;
             }
 
-           cu::HostMemory& DeviceInstance::get_host_uvw(
+           cu::HostMemory& DeviceInstance::allocate_host_uvw(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps)
             {
@@ -519,7 +519,7 @@ namespace idg {
                 return *h_uvw;
             }
 
-            cu::DeviceMemory& DeviceInstance::get_device_wavenumbers(
+            cu::DeviceMemory& DeviceInstance::allocate_device_wavenumbers(
                 unsigned int nr_channels)
             {
                 auto size = sizeof_wavenumbers(nr_channels);
@@ -528,7 +528,7 @@ namespace idg {
                 return *d_wavenumbers;
             }
 
-            cu::DeviceMemory& DeviceInstance::get_device_aterms(
+            cu::DeviceMemory& DeviceInstance::allocate_device_aterms(
                 unsigned int nr_stations,
                 unsigned int nr_timeslots,
                 unsigned int subgrid_size)
@@ -539,7 +539,7 @@ namespace idg {
                 return *d_aterms;
             }
 
-            cu::DeviceMemory& DeviceInstance::get_device_spheroidal(
+            cu::DeviceMemory& DeviceInstance::allocate_device_spheroidal(
                 unsigned int subgrid_size)
             {
                 auto size = sizeof_spheroidal(subgrid_size);

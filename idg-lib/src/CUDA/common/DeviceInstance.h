@@ -227,39 +227,49 @@ namespace idg {
                     void measure(
                         idg::kernel::cuda::PowerRecord &record, cu::Stream &stream);
 
-                    cu::HostMemory& get_host_grid(
+                    cu::HostMemory& allocate_host_grid(
                         unsigned int grid_size);
 
-                    cu::DeviceMemory& get_device_grid(
+                    cu::DeviceMemory& allocate_device_grid(
                         unsigned int grid_size);
 
-                    cu::HostMemory& get_host_visibilities(
+                    cu::HostMemory& allocate_host_visibilities(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps,
                         unsigned int nr_channels);
 
-                    cu::HostMemory& get_host_uvw(
+                    cu::HostMemory& allocate_host_uvw(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps);
 
-                    cu::DeviceMemory& get_device_wavenumbers(
+                    cu::DeviceMemory& allocate_device_wavenumbers(
                         unsigned int nr_channels);
 
-                    cu::DeviceMemory& get_device_aterms(
+                    cu::DeviceMemory& allocate_device_aterms(
                         unsigned int nr_stations,
                         unsigned int nr_timeslots,
                         unsigned int subgrid_size);
 
-                    cu::DeviceMemory& get_device_spheroidal(
+                    cu::DeviceMemory& allocate_device_spheroidal(
                         unsigned int subgrid_size);
 
                     cu::HostMemory reuse_host_grid(
                         unsigned int grid_size,
                         void *ptr);
 
-                    cu::HostMemory& get_host_grid() {
-                        return *h_grid;
-                    }
+                    cu::HostMemory& get_host_grid() { return *h_grid; }
+
+                    cu::DeviceMemory& get_device_grid() { return *d_grid; }
+
+                    cu::HostMemory& get_host_visibilities() { return *h_visibilities; }
+
+                    cu::HostMemory& get_host_uvw() { return *h_uvw; }
+
+                    cu::DeviceMemory& get_device_wavenumbers() { return *d_wavenumbers; }
+
+                    cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
+
+                    cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
 
                 protected:
                     void compile_kernels();

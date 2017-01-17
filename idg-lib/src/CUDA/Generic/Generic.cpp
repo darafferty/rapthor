@@ -52,13 +52,13 @@ namespace idg {
                 device.set_context();
 
                 // Device memory
-                cu::DeviceMemory& d_grid = device.get_device_grid(grid_size);
+                cu::DeviceMemory& d_grid = device.allocate_device_grid(grid_size);
 
                 // Host memory
                 #if REDUCE_HOST_MEMORY
                 cu::HostMemory& h_grid = device.reuse_host_grid(grid_size, grid);
                 #else
-                cu::HostMemory& h_grid = device.get_host_grid(grid_size);
+                cu::HostMemory& h_grid = device.allocate_host_grid(grid_size);
                 h_grid.set(grid.data());
                 #endif
 
@@ -190,14 +190,30 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Host memory
+                // Initialize memory for first device
                 #if !REDUCE_HOST_MEMORY
-                cu::HostMemory& h_visibilities = get_device(0).get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                cu::HostMemory& h_uvw          = get_device(0).get_host_uvw(nr_baselines, nr_timesteps);
-                cu::Stream& htodstream = get_device(0).get_htod_stream();
+                cu::HostMemory& h_visibilities = get_device(0).allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                cu::HostMemory& h_uvw          = get_device(0).allocate_host_uvw(nr_baselines, nr_timesteps);
+                cu::Stream& htodstream         = get_device(0).get_htod_stream();
                 htodstream.memcpyHtoHAsync(h_visibilities, visibilities.data());
                 htodstream.memcpyHtoHAsync(h_uvw, uvw.data());
                 #endif
+
+                // Initialize memory for all devices
+                for (int d = 0; d < get_num_devices(); d++) {
+                    DeviceInstance& device = get_device(d);
+                    device.set_context();
+                    cu::Stream&       htodstream    = get_device(0).get_htod_stream();
+                    cu::HostMemory&   h_grid        = device.allocate_host_grid(grid_size);
+                    cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
+                    cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    cu::DeviceMemory& d_grid        = device.allocate_device_grid(grid_size);
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                    d_grid.zero();
+                }
 
                 // Performance measurements
                 double total_runtime_gridder  = 0;
@@ -215,16 +231,20 @@ namespace idg {
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
                     DeviceInstance& device = get_device(device_id);
                     device.set_context();
 
-                    // Setup device memory
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_grid        = device.get_device_grid(grid_size);
+                    // Load memory objects
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities();
+                    cu::HostMemory&   h_uvw          = device.get_host_uvw();
+                    cu::HostMemory&   h_grid         = device.get_host_grid();
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                    cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
+                    cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_grid         = device.get_device_grid();
 
                     // Load kernels
                     unique_ptr<Gridder> kernel_gridder = device.get_kernel_gridder();
@@ -232,30 +252,12 @@ namespace idg {
                     unique_ptr<Adder>   kernel_adder   = device.get_kernel_adder();
                     unique_ptr<GridFFT> kernel_fft     = device.get_kernel_fft(subgrid_size);
 
-                    // Load CUDA objects
+                    // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    // Setup host memory
-                    #if REDUCE_HOST_MEMORY
-                    cu::HostMemory& h_visibilities = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                    cu::HostMemory& h_uvw          = device.get_host_uvw(nr_baselines, nr_timesteps);
-                    #endif
-                    cu::HostMemory& h_grid         = device.get_host_grid(grid_size);
-
-                    // Copy read-only device memory
-                    if (local_id == 0) {
-                        get_device(0).get_htod_stream().synchronize();
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        d_grid.zero();
-                    }
-                    htodstream.synchronize();
-
-                    // Private device memory
-                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    // Allocate private memory
                     cu::DeviceMemory d_visibilities(device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels));
                     cu::DeviceMemory d_uvw(device.sizeof_uvw(jobsize, nr_timesteps));
                     cu::DeviceMemory d_subgrids(device.sizeof_subgrids(max_nr_subgrids, subgrid_size));
@@ -487,14 +489,29 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Host memory
+                // Initialize memory for first device
                 #if !REDUCE_HOST_MEMORY
-                cu::HostMemory& h_visibilities = get_device(0).get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                cu::HostMemory& h_uvw          = get_device(0).get_host_uvw(nr_baselines, nr_timesteps);
-                h_uvw.set(uvw.data());
+                cu::HostMemory& h_visibilities = get_device(0).allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                cu::HostMemory& h_uvw          = get_device(0).allocate_host_uvw(nr_baselines, nr_timesteps);
+                cu::Stream& htodstream         = get_device(0).get_htod_stream();
+                htodstream.memcpyHtoHAsync(h_visibilities, visibilities.data());
+                htodstream.memcpyHtoHAsync(h_uvw, uvw.data());
                 #endif
-                cu::HostMemory& h_grid = get_device(0).get_host_grid(grid_size);
-                h_grid.set(grid.data());
+
+                // Initialize memory for all devices
+                for (int d = 0; d < get_num_devices(); d++) {
+                    DeviceInstance& device = get_device(d);
+                    device.set_context();
+                    cu::Stream&       htodstream    = get_device(0).get_htod_stream();
+                    cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
+                    cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    cu::DeviceMemory& d_grid        = device.allocate_device_grid(grid_size);
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                    htodstream.memcpyHtoDAsync(d_grid, grid.data());
+                }
 
                 // Performance measurements
                 double total_runtime_degridder  = 0;
@@ -509,47 +526,34 @@ namespace idg {
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
-                    int local_id = global_id % nr_streams;
-                    int jobsize = jobsize_[device_id];
+                    int local_id  = global_id % nr_streams;
+                    int jobsize   = jobsize_[device_id];
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
                     DeviceInstance& device = get_device(device_id);
                     device.set_context();
-                    PowerSensor *devicePowerSensor = device.get_powersensor();
 
-                    // Setup device memory
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_grid        = device.get_device_grid(grid_size);
+                    // Load memory objects
+                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers();
+                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal();
+                    cu::DeviceMemory& d_aterms      = device.get_device_aterms();
+                    cu::DeviceMemory& d_grid        = device.get_device_grid();
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities();
+                    cu::HostMemory&   h_uvw          = device.get_host_uvw();
+                    cu::HostMemory&   h_grid         = device.get_host_grid();
 
                     // Load kernels
                     unique_ptr<Degridder> kernel_degridder = device.get_kernel_degridder();
                     unique_ptr<Splitter>  kernel_splitter  = device.get_kernel_splitter();
                     unique_ptr<GridFFT>   kernel_fft       = device.get_kernel_fft(subgrid_size);
 
-                    // Load CUDA objects
+                    // Load streams
                     cu::Stream &executestream = device.get_execute_stream();
                     cu::Stream &htodstream    = device.get_htod_stream();
                     cu::Stream &dtohstream    = device.get_dtoh_stream();
 
-                    // Setup host memory
-                    #if REDUCE_HOST_MEMORY
-                    cu::HostMemory& h_visibilities = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                    cu::HostMemory& h_uvw          = device.get_host_uvw(nr_baselines, nr_timesteps);
-                    #endif
-
-                    // Copy read-only device memory
-                    if (local_id == 0) {
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        htodstream.memcpyHtoDAsync(d_grid, h_grid);
-                    }
-                    htodstream.synchronize();
-
-                    // Private device memory
-                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    // Allocate private memory
                     cu::DeviceMemory d_visibilities(device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels));
                     cu::DeviceMemory d_uvw(device.sizeof_uvw(jobsize, nr_timesteps));
                     cu::DeviceMemory d_subgrids(device.sizeof_subgrids(max_nr_subgrids, subgrid_size));
@@ -565,6 +569,7 @@ namespace idg {
                     cu::Event outputReady;
 
                     // Power measurement
+                    PowerSensor *devicePowerSensor = device.get_powersensor();
                     PowerRecord powerRecords[5];
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
@@ -678,12 +683,13 @@ namespace idg {
                 total_runtime_degridding += omp_get_wtime();
 
                 // Copy visibilities from cuda h_visibilities to visibilities
-                DeviceInstance& device = get_device(0);
                 #if !REDUCE_HOST_MEMORY
-                memcpy(visibilities.data(), h_visibilities, device.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels));
+                cu::Stream& dtohstream = get_device(0).get_htod_stream();
+                dtohstream.memcpyHtoHAsync(visibilities.data(), h_visibilities);
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                DeviceInstance& device = get_device(0);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);
