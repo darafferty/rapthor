@@ -203,7 +203,7 @@ namespace idg {
                 for (int d = 0; d < get_num_devices(); d++) {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
-                    cu::Stream&       htodstream    = get_device(0).get_htod_stream();
+                    cu::Stream&       htodstream    = get_device(d).get_htod_stream();
                     cu::HostMemory&   h_grid        = device.allocate_host_grid(grid_size);
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
@@ -234,13 +234,20 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
-                    DeviceInstance& device = get_device(device_id);
+                    DeviceInstance& device0 = get_device(0);
+                    DeviceInstance& device  = get_device(device_id);
                     device.set_context();
 
                     // Load memory objects
+                    #if !REDUCE_HOST_MEMORY
+                    cu::HostMemory&   h_visibilities = device0.get_host_visibilities();
+                    cu::HostMemory&   h_uvw          = device0.get_host_uvw();
+                    cu::HostMemory&   h_grid         = device0.get_host_grid();
+                    #else
                     cu::HostMemory&   h_visibilities = device.get_host_visibilities();
                     cu::HostMemory&   h_uvw          = device.get_host_uvw();
                     cu::HostMemory&   h_grid         = device.get_host_grid();
+                    #endif
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
@@ -531,17 +538,22 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
-                    DeviceInstance& device = get_device(device_id);
+                    DeviceInstance& device0 = get_device(0);
+                    DeviceInstance& device  = get_device(device_id);
                     device.set_context();
 
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers();
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal();
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms();
-                    cu::DeviceMemory& d_grid        = device.get_device_grid();
+                    #if !REDUCE_HOST_MEMORY
+                    cu::HostMemory&   h_visibilities = device0.get_host_visibilities();
+                    cu::HostMemory&   h_uvw          = device0.get_host_uvw();
+                    #else
                     cu::HostMemory&   h_visibilities = device.get_host_visibilities();
                     cu::HostMemory&   h_uvw          = device.get_host_uvw();
-                    cu::HostMemory&   h_grid         = device.get_host_grid();
+                    #endif
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                    cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
+                    cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_grid         = device.get_device_grid();
 
                     // Load kernels
                     unique_ptr<Degridder> kernel_degridder = device.get_kernel_degridder();
@@ -549,9 +561,9 @@ namespace idg {
                     unique_ptr<GridFFT>   kernel_fft       = device.get_kernel_fft(subgrid_size);
 
                     // Load streams
-                    cu::Stream &executestream = device.get_execute_stream();
-                    cu::Stream &htodstream    = device.get_htod_stream();
-                    cu::Stream &dtohstream    = device.get_dtoh_stream();
+                    cu::Stream& executestream = device.get_execute_stream();
+                    cu::Stream& htodstream    = device.get_htod_stream();
+                    cu::Stream& dtohstream    = device.get_dtoh_stream();
 
                     // Allocate private memory
                     cu::DeviceMemory d_visibilities(device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels));

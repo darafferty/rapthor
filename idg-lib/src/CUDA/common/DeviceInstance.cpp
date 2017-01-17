@@ -27,9 +27,16 @@ namespace idg {
                 device = new cu::Device(device_number);
                 context = new cu::Context(*device);
                 context->setCurrent();
-                executestream = new cu::Stream();
-                htodstream = new cu::Stream();
-                dtohstream = new cu::Stream();
+                executestream  = new cu::Stream();
+                htodstream     = new cu::Stream();
+                dtohstream     = new cu::Stream();
+                h_visibilities = NULL;
+                h_uvw          = NULL;
+                h_grid         = NULL;
+                d_grid         = NULL;
+                d_wavenumbers  = NULL;
+                d_aterms       = NULL;
+                d_spheroidal   = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -49,15 +56,15 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
-                if (h_grid) { h_grid->~HostMemory(); }
                 if (h_visibilities) { h_visibilities->~HostMemory(); }
                 if (h_uvw) { h_uvw->~HostMemory(); }
+                if (h_grid) { h_grid->~HostMemory(); }
                 if (d_grid) { d_grid->~DeviceMemory(); }
                 if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
                 if (d_spheroidal) { d_spheroidal->~DeviceMemory(); }
                 delete device;
-                delete context;
+                //delete context;
             }
 
             // Gridder class
@@ -484,7 +491,6 @@ namespace idg {
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
-                #pragma omp critical(device)
                 h_grid = allocate_memory(size, h_grid);
                 return *h_grid;
             }
@@ -493,7 +499,6 @@ namespace idg {
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
-                #pragma omp critical(device)
                 d_grid = allocate_memory(size, d_grid);
                 return *d_grid;
             }
@@ -504,7 +509,6 @@ namespace idg {
                 unsigned int nr_channels)
             {
                 auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                #pragma omp critical(device)
                 h_visibilities = allocate_memory(size, h_visibilities);
                 return *h_visibilities;
             }
@@ -514,7 +518,6 @@ namespace idg {
                 unsigned int nr_timesteps)
             {
                 auto size = sizeof_uvw(nr_baselines, nr_timesteps);
-                #pragma omp critical(device)
                 h_uvw = allocate_memory(size, h_uvw);
                 return *h_uvw;
             }
@@ -523,7 +526,6 @@ namespace idg {
                 unsigned int nr_channels)
             {
                 auto size = sizeof_wavenumbers(nr_channels);
-                #pragma omp critical(device)
                 d_wavenumbers = allocate_memory(size, d_wavenumbers);
                 return *d_wavenumbers;
             }
@@ -534,7 +536,6 @@ namespace idg {
                 unsigned int subgrid_size)
             {
                 auto size = sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
-                #pragma omp critical(device)
                 d_aterms = allocate_memory(size, d_aterms);
                 return *d_aterms;
             }
@@ -543,7 +544,6 @@ namespace idg {
                 unsigned int subgrid_size)
             {
                 auto size = sizeof_spheroidal(subgrid_size);
-                #pragma omp critical(device)
                 d_spheroidal = allocate_memory(size, d_spheroidal);
                 return *d_spheroidal;
             }
@@ -554,7 +554,6 @@ namespace idg {
             {
                 if (h_grid) { delete h_grid; }
                 auto size = sizeof_grid(grid_size);
-                #pragma omp critical(device)
                 h_grid = new cu::HostMemory(ptr, size);
                 return *h_grid;
             }
