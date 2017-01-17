@@ -510,12 +510,20 @@ namespace cu {
         checkCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
     }
 
-    void Stream::memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr) {
+    void Stream::memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr, size_t size) {
         checkCudaCall(cuMemcpyAsync((CUdeviceptr) (void *) dstPtr, (CUdeviceptr) srcPtr, dstPtr.size(), _stream));
     }
 
-    void Stream::memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr) {
+    void Stream::memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr) {
+        memcpyHtoHAsync(dstPtr, srcPtr, dstPtr.size());
+    }
+
+    void Stream::memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr, size_t size) {
         checkCudaCall(cuMemcpyAsync((CUdeviceptr) dstPtr, (CUdeviceptr) (void *) srcPtr, srcPtr.size(), _stream));
+    }
+
+    void Stream::memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr) {
+        memcpyHtoHAsync(dstPtr, srcPtr, srcPtr.size());
     }
 
     void Stream::launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters) {

@@ -211,7 +211,9 @@ namespace cu {
             void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
             void memcpyDtoHAsync(void *hostPtr, DeviceMemory &devPtr);
             void memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size);
+            void memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr, size_t size);
             void memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr);
+            void memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr, size_t size);
             void memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr);
             void launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters);
             void launchKernel(Function &function, dim3 grid, dim3 block, unsigned sharedMemBytes, const void **parameters);

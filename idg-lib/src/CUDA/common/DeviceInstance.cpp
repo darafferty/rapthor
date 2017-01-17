@@ -548,7 +548,7 @@ namespace idg {
                 return *d_spheroidal;
             }
 
-            cu::HostMemory DeviceInstance::reuse_host_grid(
+            cu::HostMemory& DeviceInstance::reuse_host_grid(
                 unsigned int grid_size,
                 void *ptr)
             {

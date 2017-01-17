@@ -56,7 +56,7 @@ namespace idg {
 
                 // Host memory
                 #if REDUCE_HOST_MEMORY
-                cu::HostMemory& h_grid = device.reuse_host_grid(grid_size, grid);
+                cu::HostMemory& h_grid = device.reuse_host_grid(grid_size, grid.data());
                 #else
                 cu::HostMemory& h_grid = device.allocate_host_grid(grid_size);
                 h_grid.set(grid.data());
@@ -197,6 +197,8 @@ namespace idg {
                 cu::Stream& htodstream         = get_device(0).get_htod_stream();
                 htodstream.memcpyHtoHAsync(h_visibilities, visibilities.data());
                 htodstream.memcpyHtoHAsync(h_uvw, uvw.data());
+                #else
+                get_device(0).reuse_host_grid(grid_size, grid.data());
                 #endif
 
                 // Initialize memory for all devices
@@ -204,7 +206,13 @@ namespace idg {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = get_device(d).get_htod_stream();
+                    #if !REDUCE_HOST_MEMORY
                     cu::HostMemory&   h_grid        = device.allocate_host_grid(grid_size);
+                    #else
+                    int jobsize   = jobsize_[d];
+                    device.allocate_host_visibilities(jobsize, nr_timesteps, nr_channels);
+                    device.allocate_host_uvw(jobsize, nr_timesteps);
+                    #endif
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
@@ -239,14 +247,13 @@ namespace idg {
                     device.set_context();
 
                     // Load memory objects
+                    cu::HostMemory&   h_grid         = device0.get_host_grid();
                     #if !REDUCE_HOST_MEMORY
                     cu::HostMemory&   h_visibilities = device0.get_host_visibilities();
                     cu::HostMemory&   h_uvw          = device0.get_host_uvw();
-                    cu::HostMemory&   h_grid         = device0.get_host_grid();
                     #else
                     cu::HostMemory&   h_visibilities = device.get_host_visibilities();
                     cu::HostMemory&   h_uvw          = device.get_host_uvw();
-                    cu::HostMemory&   h_grid         = device.get_host_grid();
                     #endif
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
@@ -301,8 +308,8 @@ namespace idg {
                         #if REDUCE_HOST_MEMORY
                         void *uvw_ptr          = uvw.data(bl, 0);
                         void *visibilities_ptr = visibilities.data(bl, 0, 0);
-                        memcpy(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
-                        memcpy(h_uvw, uvw_ptr, device.sizeof_uvw(current_nr_baselines, nr_timesteps));
+                        htodstream.memcpyHtoHAsync(h_uvw, uvw_ptr, device.sizeof_uvw(current_nr_baselines, nr_timesteps));
+                        htodstream.memcpyHtoHAsync(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                         uvw_ptr                = h_uvw;
                         visibilities_ptr       = h_visibilities;
                         #else
@@ -510,6 +517,11 @@ namespace idg {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = get_device(0).get_htod_stream();
+                    #if REDUCE_HOST_MEMORY
+                    int jobsize   = jobsize_[d];
+                    device.allocate_host_visibilities(jobsize, nr_timesteps, nr_channels);
+                    device.allocate_host_uvw(jobsize, nr_timesteps);
+                    #endif
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
@@ -603,7 +615,8 @@ namespace idg {
                         #if REDUCE_HOST_MEMORY
                         void *uvw_ptr          = uvw.data(bl, 0);
                         void *visibilities_ptr = visibilities.data(bl, 0, 0);
-                        memcpy(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                        htodstream.memcpyHtoHAsync(h_uvw, uvw_ptr, device.sizeof_uvw(current_nr_baselines, nr_timesteps));
+                        htodstream.memcpyHtoHAsync(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                         uvw_ptr                = h_uvw;
                         visibilities_ptr       = h_visibilities;
                         #else
@@ -656,8 +669,8 @@ namespace idg {
                         outputFree.synchronize();
 
                         #if REDUCE_HOST_MEMORY
-                        void *visibilities_ptr = visibilities.data(bl, 0, 0);
-                        memcpy(visibilities_ptr, h_visibilities, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                        visibilities_ptr = visibilities.data(bl, 0, 0);
+                        dtohstream.memcpyHtoHAsync(visibilities_ptr, h_visibilities, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                         #endif
 
                         double runtime_splitter  = devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);

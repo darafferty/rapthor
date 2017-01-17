@@ -253,7 +253,7 @@ namespace idg {
                     cu::DeviceMemory& allocate_device_spheroidal(
                         unsigned int subgrid_size);
 
-                    cu::HostMemory reuse_host_grid(
+                    cu::HostMemory& reuse_host_grid(
                         unsigned int grid_size,
                         void *ptr);
 
