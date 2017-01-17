@@ -151,6 +151,10 @@ namespace idg {
                 const unsigned int subgrid_size,
                 const unsigned int nr_streams)
             {
+                // Read maximum jobsize from environment
+                char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
+                auto max_jobsize = cstr_max_jobsize ? atoi(cstr_max_jobsize) : 0;
+
                 // Compute the maximum number of subgrids for any baseline
                 int max_nr_subgrids = plan.get_max_nr_subgrids();
 
@@ -171,6 +175,7 @@ namespace idg {
                     context.setCurrent();
                     auto bytes_free = device->get_device().get_free_memory();
                     jobsize[i] = (bytes_free * 0.9) /  bytes_required;
+                    jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     #if defined(DEBUG)
                     printf("Bytes required: %lu\n", bytes_required);
                     printf("Bytes free:     %lu\n", bytes_free);
