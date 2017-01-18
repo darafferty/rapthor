@@ -73,8 +73,10 @@ namespace cu {
     class HostMemory {
         public:
             HostMemory(size_t size, int flags = 0);
-            HostMemory(void *ptr, size_t size, int flags= 0);
+            HostMemory(void *ptr, size_t size, int flags = 0);
             ~HostMemory();
+
+            void update(void *ptr, size_t size);
 
             size_t size();
             void set(const void *in);
@@ -93,6 +95,7 @@ namespace cu {
             bool unregister = false;
     };
 
+
     class DeviceMemory  {
         public:
             DeviceMemory(size_t size);
@@ -104,8 +107,13 @@ namespace cu {
             void* get(size_t offset);
             void zero();
 
-            operator CUdeviceptr();
-            operator const void*();
+            template <typename T> operator T *() {
+                return static_cast<T *>(&_ptr);
+            }
+
+            template <typename T> operator T () {
+                return static_cast<T>(_ptr);
+            }
 
         private:
             CUdeviceptr _ptr;
@@ -211,10 +219,6 @@ namespace cu {
             void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
             void memcpyDtoHAsync(void *hostPtr, DeviceMemory &devPtr);
             void memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size);
-            void memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr, size_t size);
-            void memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr);
-            void memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr, size_t size);
-            void memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr);
             void launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters);
             void launchKernel(Function &function, dim3 grid, dim3 block, unsigned sharedMemBytes, const void **parameters);
             void query();

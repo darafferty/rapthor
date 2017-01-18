@@ -238,6 +238,14 @@ namespace cu {
         }
     }
 
+    void HostMemory::update(void *ptr, size_t size) {
+        if (_size != size || _ptr != ptr) {
+            checkCudaCall(cuMemFreeHost(_ptr));
+            _size = size;
+            _ptr = ptr;
+        }
+    }
+
     size_t HostMemory::size() {
         return _size;
     }
@@ -276,14 +284,6 @@ namespace cu {
         if (free) {
             checkCudaCall(cuMemFree(_ptr));
         }
-    }
-
-    DeviceMemory::operator CUdeviceptr() {
-        return _ptr;
-    }
-
-    DeviceMemory::operator const void*() {
-        return &_ptr;
     }
 
     size_t DeviceMemory::size() {
@@ -508,22 +508,6 @@ namespace cu {
 
     void Stream::memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size) {
         checkCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
-    }
-
-    void Stream::memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr, size_t size) {
-        checkCudaCall(cuMemcpyAsync((CUdeviceptr) (void *) dstPtr, (CUdeviceptr) srcPtr, dstPtr.size(), _stream));
-    }
-
-    void Stream::memcpyHtoHAsync(HostMemory &dstPtr, const void *srcPtr) {
-        memcpyHtoHAsync(dstPtr, srcPtr, dstPtr.size());
-    }
-
-    void Stream::memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr, size_t size) {
-        checkCudaCall(cuMemcpyAsync((CUdeviceptr) dstPtr, (CUdeviceptr) (void *) srcPtr, srcPtr.size(), _stream));
-    }
-
-    void Stream::memcpyHtoHAsync(void *dstPtr, HostMemory &srcPtr) {
-        memcpyHtoHAsync(dstPtr, srcPtr, srcPtr.size());
     }
 
     void Stream::launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters) {

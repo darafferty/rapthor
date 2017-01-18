@@ -3,19 +3,6 @@
 
 #include "idg-cuda.h"
 
-/*
-    Toggle between two modes of cu::HostMemory allocation
-        REDUCE_HOST_MEMORY = 0:
-            visibilities and uvw will be completely mapped
-            into host memory shared by all threads
-            (this takes some time, especially for large buffers)
-        REDUCE_HOST_MEMORY = 1:
-            every thread allocates private host memory
-            to hold data for just one job
-            (throughput is lower, due to additional memory copies)
-*/
-#define REDUCE_HOST_MEMORY 0
-
 namespace cu {
     class HostMemory;
 }

@@ -257,6 +257,17 @@ namespace idg {
                         unsigned int grid_size,
                         void *ptr);
 
+                    cu::HostMemory& reuse_host_visibilities(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels,
+                        void *ptr);
+
+                    cu::HostMemory& reuse_host_uvw(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps,
+                        void *ptr);
+
                     cu::HostMemory& get_host_grid() { return *h_grid; }
 
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }

@@ -55,12 +55,7 @@ namespace idg {
                 cu::DeviceMemory& d_grid = device.allocate_device_grid(grid_size);
 
                 // Host memory
-                #if REDUCE_HOST_MEMORY
                 cu::HostMemory& h_grid = device.reuse_host_grid(grid_size, grid.data());
-                #else
-                cu::HostMemory& h_grid = device.allocate_host_grid(grid_size);
-                h_grid.set(grid.data());
-                #endif
 
                 // Load kernels
                 unique_ptr<GridFFT> kernel_fft = device.get_kernel_fft(grid_size);
@@ -97,11 +92,6 @@ namespace idg {
                 time_shift = -omp_get_wtime();
                 device.shift(grid);
                 time_shift += omp_get_wtime();
-
-                // Copy grid from h_grid to grid
-                #if !REDUCE_HOST_MEMORY
-                memcpy(grid.data(), h_grid, sizeof_grid);
-                #endif
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
@@ -191,28 +181,18 @@ namespace idg {
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize memory for first device
-                #if !REDUCE_HOST_MEMORY
-                cu::HostMemory& h_visibilities = get_device(0).allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                cu::HostMemory& h_uvw          = get_device(0).allocate_host_uvw(nr_baselines, nr_timesteps);
-                cu::Stream& htodstream         = get_device(0).get_htod_stream();
-                htodstream.memcpyHtoHAsync(h_visibilities, visibilities.data());
-                htodstream.memcpyHtoHAsync(h_uvw, uvw.data());
-                #else
                 get_device(0).reuse_host_grid(grid_size, grid.data());
-                #endif
+                get_device(0).reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                get_device(0).reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
                 // Initialize memory for all devices
                 for (int d = 0; d < get_num_devices(); d++) {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = get_device(d).get_htod_stream();
-                    #if !REDUCE_HOST_MEMORY
-                    cu::HostMemory&   h_grid        = device.allocate_host_grid(grid_size);
-                    #else
-                    int jobsize   = jobsize_[d];
-                    device.allocate_host_visibilities(jobsize, nr_timesteps, nr_channels);
-                    device.allocate_host_uvw(jobsize, nr_timesteps);
-                    #endif
+                    if (d > 0) {
+                        cu::HostMemory& h_grid      = device.allocate_host_grid(grid_size);
+                    }
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
@@ -247,14 +227,9 @@ namespace idg {
                     device.set_context();
 
                     // Load memory objects
-                    cu::HostMemory&   h_grid         = device0.get_host_grid();
-                    #if !REDUCE_HOST_MEMORY
+                    cu::HostMemory&   h_grid         = device.get_host_grid();
                     cu::HostMemory&   h_visibilities = device0.get_host_visibilities();
                     cu::HostMemory&   h_uvw          = device0.get_host_uvw();
-                    #else
-                    cu::HostMemory&   h_visibilities = device.get_host_visibilities();
-                    cu::HostMemory&   h_uvw          = device.get_host_uvw();
-                    #endif
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
@@ -305,17 +280,8 @@ namespace idg {
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
-                        #if REDUCE_HOST_MEMORY
-                        void *uvw_ptr          = uvw.data(bl, 0);
-                        void *visibilities_ptr = visibilities.data(bl, 0, 0);
-                        htodstream.memcpyHtoHAsync(h_uvw, uvw_ptr, device.sizeof_uvw(current_nr_baselines, nr_timesteps));
-                        htodstream.memcpyHtoHAsync(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
-                        uvw_ptr                = h_uvw;
-                        visibilities_ptr       = h_visibilities;
-                        #else
                         void *uvw_ptr          = (void *) h_uvw + bl * device.sizeof_uvw(1, nr_timesteps);
                         void *visibilities_ptr = (void *) h_visibilities + bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        #endif
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
@@ -407,8 +373,8 @@ namespace idg {
                 stopStates[nr_devices]  = hostPowerSensor->read();
                 total_runtime_gridding += omp_get_wtime();
 
-                // Add new grids to existing grid
-                for (int d = 0; d < get_num_devices(); d++) {
+                // Add grids
+                for (int d = 1; d < get_num_devices(); d++) {
                     float2 *grid_src = (float2 *) get_device(d).get_host_grid();
                     float2 *grid_dst = (float2 *) grid.data();
 
@@ -504,24 +470,15 @@ namespace idg {
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize memory for first device
-                #if !REDUCE_HOST_MEMORY
-                cu::HostMemory& h_visibilities = get_device(0).allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                cu::HostMemory& h_uvw          = get_device(0).allocate_host_uvw(nr_baselines, nr_timesteps);
-                cu::Stream& htodstream         = get_device(0).get_htod_stream();
-                htodstream.memcpyHtoHAsync(h_visibilities, visibilities.data());
-                htodstream.memcpyHtoHAsync(h_uvw, uvw.data());
-                #endif
+                get_device(0).reuse_host_grid(grid_size, grid.data());
+                get_device(0).reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                get_device(0).reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
                 // Initialize memory for all devices
                 for (int d = 0; d < get_num_devices(); d++) {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = get_device(0).get_htod_stream();
-                    #if REDUCE_HOST_MEMORY
-                    int jobsize   = jobsize_[d];
-                    device.allocate_host_visibilities(jobsize, nr_timesteps, nr_channels);
-                    device.allocate_host_uvw(jobsize, nr_timesteps);
-                    #endif
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
@@ -555,13 +512,8 @@ namespace idg {
                     device.set_context();
 
                     // Load memory objects
-                    #if !REDUCE_HOST_MEMORY
                     cu::HostMemory&   h_visibilities = device0.get_host_visibilities();
                     cu::HostMemory&   h_uvw          = device0.get_host_uvw();
-                    #else
-                    cu::HostMemory&   h_visibilities = device.get_host_visibilities();
-                    cu::HostMemory&   h_uvw          = device.get_host_uvw();
-                    #endif
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
@@ -612,17 +564,8 @@ namespace idg {
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
-                        #if REDUCE_HOST_MEMORY
-                        void *uvw_ptr          = uvw.data(bl, 0);
-                        void *visibilities_ptr = visibilities.data(bl, 0, 0);
-                        htodstream.memcpyHtoHAsync(h_uvw, uvw_ptr, device.sizeof_uvw(current_nr_baselines, nr_timesteps));
-                        htodstream.memcpyHtoHAsync(h_visibilities, visibilities_ptr, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
-                        uvw_ptr                = h_uvw;
-                        visibilities_ptr       = h_visibilities;
-                        #else
                         void *uvw_ptr          = (void *) h_uvw + bl * device.sizeof_uvw(1, nr_timesteps);
                         void *visibilities_ptr = (void *) h_visibilities + bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        #endif
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
@@ -668,11 +611,6 @@ namespace idg {
 
                         outputFree.synchronize();
 
-                        #if REDUCE_HOST_MEMORY
-                        visibilities_ptr = visibilities.data(bl, 0, 0);
-                        dtohstream.memcpyHtoHAsync(visibilities_ptr, h_visibilities, device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
-                        #endif
-
                         double runtime_splitter  = devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
                         double runtime_fft       = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
                         double runtime_degridder = devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
@@ -706,12 +644,6 @@ namespace idg {
                 // End timing
                 stopStates[nr_devices]    = hostPowerSensor->read();
                 total_runtime_degridding += omp_get_wtime();
-
-                // Copy visibilities from cuda h_visibilities to visibilities
-                #if !REDUCE_HOST_MEMORY
-                cu::Stream& dtohstream = get_device(0).get_htod_stream();
-                dtohstream.memcpyHtoHAsync(visibilities.data(), h_visibilities);
-                #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 DeviceInstance& device = get_device(0);

@@ -197,7 +197,7 @@ namespace idg {
                 // Execute bulk ffts (if any)
                 if (planned_batch >= bulk_size) {
                     (*fft_bulk).setStream(stream);
-                    for (; s < (planned_batch - bulk_size); s += bulk_size) {
+                    for (; s < (planned_batch - bulk_size)+1; s += bulk_size) {
                         if (planned_batch - s >= bulk_size) {
                             (*fft_bulk).execute(data_ptr, data_ptr, direction);
                             data_ptr += bulk_size * size * size * nr_correlations;
@@ -548,14 +548,48 @@ namespace idg {
                 return *d_spheroidal;
             }
 
+            template<typename T>
+            T* reuse_memory(
+                uint64_t size,
+                T* memory,
+                void *ptr)
+            {
+                if (memory) {
+                    memory->update(ptr, size);
+                } else {
+                    memory = new T(ptr, size);
+                }
+                return memory;
+            }
+
             cu::HostMemory& DeviceInstance::reuse_host_grid(
                 unsigned int grid_size,
                 void *ptr)
             {
-                if (h_grid) { delete h_grid; }
                 auto size = sizeof_grid(grid_size);
-                h_grid = new cu::HostMemory(ptr, size);
+                h_grid = reuse_memory(size, h_grid, ptr);
                 return *h_grid;
+            }
+
+            cu::HostMemory& DeviceInstance::reuse_host_visibilities(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels,
+                void *ptr)
+            {
+                auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                h_visibilities = reuse_memory(size, h_visibilities, ptr);
+                return *h_visibilities;
+            }
+
+            cu::HostMemory& DeviceInstance::reuse_host_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                void *ptr)
+            {
+                auto size = sizeof_uvw(nr_baselines, nr_timesteps);
+                h_uvw = reuse_memory(size, h_uvw, ptr);
+                return *h_uvw;
             }
 
         } // end namespace cuda
