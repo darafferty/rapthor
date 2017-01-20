@@ -262,6 +262,10 @@ namespace cu {
         memcpy(_ptr, in, bytes);
     }
 
+    void* HostMemory::get(size_t offset) {
+        return (void *) (_ptr + offset);
+    }
+
     void HostMemory::zero() {
         memset(_ptr, 0, _size);
     }

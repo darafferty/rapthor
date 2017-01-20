@@ -280,8 +280,8 @@ namespace idg {
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
-                        void *uvw_ptr          = (void *) h_uvw + bl * device.sizeof_uvw(1, nr_timesteps);
-                        void *visibilities_ptr = (void *) h_visibilities + bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
+                        void *uvw_ptr          = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
+                        void *visibilities_ptr = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
@@ -564,8 +564,8 @@ namespace idg {
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                         // Pointers to data for current batch
-                        void *uvw_ptr          = (void *) h_uvw + bl * device.sizeof_uvw(1, nr_timesteps);
-                        void *visibilities_ptr = (void *) h_visibilities + bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
+                        void *uvw_ptr          = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
+                        void *visibilities_ptr = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
