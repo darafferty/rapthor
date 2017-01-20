@@ -1,6 +1,10 @@
 project(cpu-common)
 
 # sources and header files
+include_directories(
+    ${FFTW3_INCLUDE_DIR}
+)
+
 set (${PROJECT_NAME}_headers
 	CPU.h
 	KernelsCPU.h
