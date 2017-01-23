@@ -1,11 +1,11 @@
+#include <clFFT.h>
+
 #include "OpenCL.h"
 
 #include "Util.h"
 #include "DeviceInstance.h"
 
 using namespace idg::kernel::opencl;
-
-void clfftTeardown();
 
 namespace idg {
     namespace proxy {
@@ -32,10 +32,8 @@ namespace idg {
                 #endif
 
                 free_devices();
-
-                delete context;
-
 				clfftTeardown();
+                delete context;
             }
 
             std::vector<int> OpenCL::compute_jobsize(

@@ -192,7 +192,7 @@ namespace idg {
                     try {
                         // Build the program
                         mPrograms[i]->build(devices, options.c_str());
-                    } catch (cl::Error &error) {
+                    } catch (cl::Error error) {
                         std::cerr << "Compilation failed: " << error.what() << std::endl;
                         std::string msg;
                         mPrograms[i]->getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);
@@ -204,11 +204,16 @@ namespace idg {
 
 
             void DeviceInstance::load_kernels() {
-                kernel_gridder   = new cl::Kernel(*(mPrograms[0]), name_gridder.c_str());
-                kernel_degridder = new cl::Kernel(*(mPrograms[0]), name_degridder.c_str());
-                kernel_adder     = new cl::Kernel(*(mPrograms[0]), name_adder.c_str());
-                kernel_splitter  = new cl::Kernel(*(mPrograms[0]), name_splitter.c_str());
-                kernel_scaler    = new cl::Kernel(*(mPrograms[0]), name_scaler.c_str());
+                try {
+                    kernel_gridder   = new cl::Kernel(*(mPrograms[0]), name_gridder.c_str());
+                    kernel_degridder = new cl::Kernel(*(mPrograms[1]), name_degridder.c_str());
+                    kernel_adder     = new cl::Kernel(*(mPrograms[2]), name_adder.c_str());
+                    kernel_splitter  = new cl::Kernel(*(mPrograms[3]), name_splitter.c_str());
+                    kernel_scaler    = new cl::Kernel(*(mPrograms[4]), name_scaler.c_str());
+                } catch (cl::Error& error) {
+                    std::cerr << "Loading kernels failed: " << error.what() << std::endl;
+                    exit(EXIT_FAILURE);
+                }
             } // end load_kernels
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &di) {
