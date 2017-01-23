@@ -10,171 +10,12 @@
 
 #include "Util.h"
 
+class PerformanceCounter;
+
 namespace idg {
     namespace kernel {
         namespace opencl {
-            class PerformanceCounter;
             typedef size_t clfftPlanHandle;
-
-			// Kernel names
-			static const std::string name_gridder   = "kernel_gridder";
-			static const std::string name_degridder = "kernel_degridder";
-			static const std::string name_adder     = "kernel_adder";
-			static const std::string name_splitter  = "kernel_splitter";
-			static const std::string name_scaler    = "kernel_scaler";
-
-            /*
-                Kernel classes
-            */
-            class Gridder {
-                public:
-                    Gridder(
-						cl::Program &program,
-						const cl::NDRange &local_size);
-                     void launchAsync(
-                        cl::CommandQueue &queue,
-                        int nr_baselines,
-                        int nr_subgrids,
-                        int gridsize,
-                        float imagesize,
-                        float w_offset,
-                        int nr_channels,
-                        int nr_stations,
-                        cl::Buffer &d_uvw,
-                        cl::Buffer &d_wavenumbers,
-                        cl::Buffer &d_visibilities,
-                        cl::Buffer &d_spheroidal,
-                        cl::Buffer &d_aterm,
-                        cl::Buffer &d_metadata,
-                        cl::Buffer &d_subgrid,
-                        PerformanceCounter &counter);
-
-                private:
-                    cl::Event event;
-                    cl::Kernel kernel;
-					cl::NDRange local_size;
-            };
-
-
-            class Degridder {
-                public:
-                    Degridder(
-						cl::Program &program,
-						const cl::NDRange &local_size);
-                    void launchAsync(
-                        cl::CommandQueue &queue,
-                        int nr_baselines,
-                        int nr_subgrids,
-                        int gridsize,
-                        float imagesize,
-                        float w_offset,
-                        int nr_channels,
-                        int nr_stations,
-                        cl::Buffer &d_uvw,
-                        cl::Buffer &d_wavenumbers,
-                        cl::Buffer &d_visibilities,
-                        cl::Buffer &d_spheroidal,
-                        cl::Buffer &d_aterm,
-                        cl::Buffer &d_metadata,
-                        cl::Buffer &d_subgrid,
-                        PerformanceCounter &counter);
-
-                private:
-                    cl::Event event;
-                    cl::Kernel kernel;
-					cl::NDRange local_size;
-            };
-
-
-            class GridFFT {
-                public:
-                    GridFFT(
-                        unsigned int nr_correlations);
-                    ~GridFFT();
-                    void plan(
-                        cl::Context &context, cl::CommandQueue &queue,
-                        int size, int batch);
-                    void launchAsync(
-                        cl::CommandQueue &queue,
-                        cl::Buffer &d_data,
-                        DomainAtoDomainB direction);
-                    void launchAsync(
-                        cl::CommandQueue &queue,
-                        cl::Buffer &d_data,
-                        DomainAtoDomainB direction,
-                        PerformanceCounter &counter,
-                        const char *name);
-                    void shift(std::complex<float> *data);
-                    void scale(std::complex<float> *data, std::complex<float> scale);
-
-                private:
-                    bool uninitialized;
-                    unsigned int nr_correlations;
-                    int planned_size;
-                    int planned_batch;
-                    clfftPlanHandle fft;
-                    cl::Event start;
-                    cl::Event end;
-            };
-
-            class Adder {
-                public:
-                    Adder(
-						cl::Program &program,
-						const cl::NDRange &local_size);
-                    void launchAsync(
-                        cl::CommandQueue &queue,
-                        int nr_subgrids,
-                        int gridsize,
-                        cl::Buffer d_metadata,
-                        cl::Buffer d_subgrid,
-                        cl::Buffer d_grid,
-                        PerformanceCounter &counter);
-
-                private:
-                    cl::Event event;
-                    cl::Kernel kernel;
-					cl::NDRange local_size;
-            };
-
-            class Splitter {
-                public:
-                    Splitter(
-						cl::Program &program,
-						const cl::NDRange &local_size);
-                    void launchAsync(
-                        cl::CommandQueue &queue,
-                        int nr_subgrids,
-                        int gridsize,
-                        cl::Buffer d_metadata,
-                        cl::Buffer d_subgrid,
-                        cl::Buffer d_grid,
-                        PerformanceCounter &counter);
-
-                private:
-                    cl::Event event;
-                    cl::Kernel kernel;
-					cl::NDRange local_size;
-            };
-
-            class Scaler {
-                public:
-                    Scaler(
-						cl::Program &program,
-						const cl::NDRange &local_size);
-                    void launchAsync(
-                        cl::CommandQueue &queue,
-                        int nr_subgrids,
-                        cl::Buffer d_subgrid,
-                        PerformanceCounter &counter);
-
-                private:
-                    cl::Event event;
-                    cl::Kernel kernel;
-					cl::NDRange local_size;
-            };
-
-
 
             class DeviceInstance : public Kernels {
                 public:
@@ -192,20 +33,81 @@ namespace idg {
                     cl::CommandQueue&  get_htod_queue() const { return *htodqueue; };
                     cl::CommandQueue&  get_dtoh_queue() const { return *dtohqueue; };
 
-                    std::unique_ptr<Gridder>   get_kernel_gridder() const;
-                    std::unique_ptr<Degridder> get_kernel_degridder() const;
-                    std::unique_ptr<GridFFT>   get_kernel_fft() const;
-                    std::unique_ptr<Adder>     get_kernel_adder() const;
-                    std::unique_ptr<Splitter>  get_kernel_splitter() const;
-                    std::unique_ptr<Scaler>    get_kernel_scaler() const;
-
                     std::string get_compiler_flags();
 
                     PowerSensor* get_powersensor() { return powerSensor; };
 
+                void launch_gridder(
+                    int nr_timesteps,
+                    int nr_subgrids,
+                    int grid_size,
+                    float image_size,
+                    float w_offset,
+                    int nr_channels,
+                    int nr_stations,
+                    cl::Buffer& d_uvw,
+                    cl::Buffer& d_wavenumbers,
+                    cl::Buffer& d_visibilities,
+                    cl::Buffer& d_spheroidal,
+                    cl::Buffer& d_aterm,
+                    cl::Buffer& d_metadata,
+                    cl::Buffer& d_subgrid,
+                    PerformanceCounter& counter);
+
+                void launch_degridder(
+                    int nr_timesteps,
+                    int nr_subgrids,
+                    int grid_size,
+                    float image_size,
+                    float w_offset,
+                    int nr_channels,
+                    int nr_stations,
+                    cl::Buffer& d_uvw,
+                    cl::Buffer& d_wavenumbers,
+                    cl::Buffer& d_visibilities,
+                    cl::Buffer& d_spheroidal,
+                    cl::Buffer& d_aterm,
+                    cl::Buffer& d_metadata,
+                    cl::Buffer& d_subgrid,
+                    PerformanceCounter& counter);
+
+                void plan(
+                    int size, int batch);
+
+                void launch_fft(
+                    cl::Buffer &d_data,
+                    DomainAtoDomainB direction);
+
+                void launch_fft(
+                    cl::Buffer &d_data,
+                    DomainAtoDomainB direction,
+                    PerformanceCounter &counter,
+                    const char *name);
+
+                void launch_adder(
+                    int nr_subgrids,
+                    int grid_size,
+                    cl::Buffer& d_metadata,
+                    cl::Buffer& d_subgrid,
+                    cl::Buffer& d_grid,
+                    PerformanceCounter& counter);
+
+                void launch_splitter(
+                    int nr_subgrids,
+                    int grid_size,
+                    cl::Buffer& d_metadata,
+                    cl::Buffer& d_subgrid,
+                    cl::Buffer& d_grid,
+                    PerformanceCounter& counter);
+
+                void launch_scaler(
+                    int nr_subgrids,
+                    cl::Buffer& d_subgrid,
+                    PerformanceCounter& counter);
+
                 protected:
-                    void compile_kernels(cl::Context &context);
-                    void load_modules();
+                    void compile_kernels();
+                    void load_kernels();
                     void set_parameters();
                     void set_parameters_default();
                     void set_parameters_fiji();
@@ -217,14 +119,25 @@ namespace idg {
 
                 private:
                     // OpenCL objects private to this DeviceInstance
+                    cl::Context& mContext;
                     cl::Device *device;
                     cl::CommandQueue  *executequeue;
                     cl::CommandQueue  *htodqueue;
                     cl::CommandQueue  *dtohqueue;
-
-                    // All OpenCL programs private to this DeviceInstance
-                    std::vector<cl::Program*> programs;
-                    std::map<std::string,int> which_program;
+                    cl::Kernel *kernel_gridder;
+                    cl::Kernel *kernel_degridder;
+                    cl::Kernel *kernel_fft;
+                    cl::Kernel *kernel_adder;
+                    cl::Kernel *kernel_splitter;
+                    cl::Kernel *kernel_scaler;
+                    cl::Event event_gridder;
+                    cl::Event event_degridder;
+                    cl::Event event_adder;
+                    cl::Event event_splitter;
+                    cl::Event event_scaler;
+                    cl::Event event_fft_start;
+                    cl::Event event_fft_end;
+                    std::vector<cl::Program*> mPrograms;
 
                     // Power sensor private to this DeviceInstance
                     PowerSensor *powerSensor;
@@ -235,11 +148,28 @@ namespace idg {
                     cl::NDRange block_adder;
                     cl::NDRange block_splitter;
                     cl::NDRange block_scaler;
+
+                    // (De)gridder kernel
                     int batch_gridder;
                     int batch_degridder;
+
+                    // FFT kernel
+                    bool fft_planned;
+                    unsigned int fft_planned_size;
+                    unsigned int fft_planned_batch;
+                    clfftPlanHandle fft_plan;
+
             };
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d);
+
+			// Kernel names
+			static const std::string name_gridder   = "kernel_gridder";
+			static const std::string name_degridder = "kernel_degridder";
+			static const std::string name_adder     = "kernel_adder";
+			static const std::string name_splitter  = "kernel_splitter";
+			static const std::string name_scaler    = "kernel_scaler";
+
         } // end namespace opencl
     } // end namespace kernel
 } // end namespace idg

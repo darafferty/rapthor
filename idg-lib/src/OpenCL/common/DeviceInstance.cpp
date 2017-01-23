@@ -3,8 +3,9 @@
 #include "DeviceInstance.h"
 #include "PerformanceCounter.h"
 
-using namespace idg::kernel::opencl;
+#define ENABLE_PERFORMANCE_COUNTERS 1
 
+using namespace idg::kernel::opencl;
 
 namespace idg {
     namespace kernel {
@@ -17,7 +18,9 @@ namespace idg {
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
-                Kernels(constants)
+                Kernels(constants),
+                mContext(context),
+                mPrograms(5)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -33,10 +36,16 @@ namespace idg {
                 set_parameters();
 
                 // Compile kernels
-                compile_kernels(context);
+                compile_kernels();
+
+                // Load kernels
+                load_kernels();
 
                 // Initialize power sensor
                 init_powersensor(str_power_sensor, str_power_file);
+
+                // Kernel specific initialization
+                fft_planned = false;
             }
 
             // Destructor
@@ -45,33 +54,13 @@ namespace idg {
                 delete executequeue;
                 delete htodqueue;
                 delete dtohqueue;
-                for (cl::Program *program : programs) {
-                    delete program;
-                }
-            }
-
-            unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
-                return unique_ptr<Gridder>(new Gridder(*(programs[which_program.at(name_gridder)]), block_gridder));
-            }
-
-            unique_ptr<Degridder> DeviceInstance::get_kernel_degridder() const {
-                return unique_ptr<Degridder>(new Degridder(*(programs[which_program.at(name_degridder)]), block_degridder));
-            }
-
-            unique_ptr<GridFFT> DeviceInstance::get_kernel_fft() const {
-                return unique_ptr<GridFFT>(new GridFFT(mConstants.get_nr_correlations()));
-            }
-
-            unique_ptr<Scaler> DeviceInstance::get_kernel_scaler() const {
-                return unique_ptr<Scaler>(new Scaler(*(programs[which_program.at(name_scaler)]), block_scaler));
-            }
-
-            unique_ptr<Adder> DeviceInstance::get_kernel_adder() const {
-                return unique_ptr<Adder>(new Adder(*(programs[which_program.at(name_adder)]), block_adder));
-            }
-
-            unique_ptr<Splitter> DeviceInstance::get_kernel_splitter() const {
-                return unique_ptr<Splitter>(new Splitter(*(programs[which_program.at(name_splitter)]), block_splitter));
+                if (fft_planned) { clfftDestroyPlan(&fft_plan); }
+                for (cl::Program *program : mPrograms) { delete program; }
+                delete kernel_gridder;
+                delete kernel_degridder;
+                delete kernel_adder;
+                delete kernel_splitter;
+                delete kernel_scaler;
             }
 
             void DeviceInstance::set_parameters_default() {
@@ -148,7 +137,8 @@ namespace idg {
             }
 
 
-            void DeviceInstance::compile_kernels(cl::Context &context) {
+            void DeviceInstance::compile_kernels()
+            {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
@@ -198,27 +188,28 @@ namespace idg {
 					#endif
 
                     // Create OpenCL program
-                    cl::Program *program = new cl::Program(context, source);
+                    mPrograms[i] = new cl::Program(mContext, source);
                     try {
                         // Build the program
-                        (*program).build(devices, options.c_str());
-                        programs.push_back(program);
+                        mPrograms[i]->build(devices, options.c_str());
                     } catch (cl::Error &error) {
                         std::cerr << "Compilation failed: " << error.what() << std::endl;
                         std::string msg;
-                        (*program).getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);
+                        mPrograms[i]->getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);
                         std::cout << msg << std::endl;
                         exit(EXIT_FAILURE);
                     }
                 } // for each library
+            } // end compile_kernels
 
-                // Fill which_program structure
-                which_program[name_gridder]   = 0;
-                which_program[name_degridder] = 1;
-                which_program[name_adder]     = 2;
-                which_program[name_splitter]  = 3;
-                which_program[name_scaler]    = 4;
-            }
+
+            void DeviceInstance::load_kernels() {
+                kernel_gridder   = new cl::Kernel(*(mPrograms[0]), name_gridder.c_str());
+                kernel_degridder = new cl::Kernel(*(mPrograms[0]), name_degridder.c_str());
+                kernel_adder     = new cl::Kernel(*(mPrograms[0]), name_adder.c_str());
+                kernel_splitter  = new cl::Kernel(*(mPrograms[0]), name_splitter.c_str());
+                kernel_scaler    = new cl::Kernel(*(mPrograms[0]), name_scaler.c_str());
+            } // end load_kernels
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &di) {
 				cl::Device d = di.get_device();
@@ -256,50 +247,48 @@ namespace idg {
             }
 
             /*
-                Kernel classes
+                Kernels
             */
-            Gridder::Gridder(
-                cl::Program &program,
-                const cl::NDRange &local_size) :
-                kernel(program, name_gridder.c_str()),
-                local_size(local_size) {}
-
-            void Gridder::launchAsync(
-                cl::CommandQueue &queue,
+            void DeviceInstance::launch_gridder(
                 int nr_timesteps,
                 int nr_subgrids,
-                int gridsize,
-                float imagesize,
+                int grid_size,
+                float image_size,
                 float w_offset,
                 int nr_channels,
                 int nr_stations,
-                cl::Buffer &d_uvw,
-                cl::Buffer &d_wavenumbers,
-                cl::Buffer &d_visibilities,
-                cl::Buffer &d_spheroidal,
-                cl::Buffer &d_aterm,
-                cl::Buffer &d_metadata,
-                cl::Buffer &d_subgrid,
-                PerformanceCounter &counter) {
-                int local_size_x = local_size[0];
-                int local_size_y = local_size[1];
+                cl::Buffer& d_uvw,
+                cl::Buffer& d_wavenumbers,
+                cl::Buffer& d_visibilities,
+                cl::Buffer& d_spheroidal,
+                cl::Buffer& d_aterm,
+                cl::Buffer& d_metadata,
+                cl::Buffer& d_subgrid,
+                PerformanceCounter& counter)
+            {
+                int local_size_x = block_gridder[0];
+                int local_size_y = block_gridder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0,  gridsize);
-                kernel.setArg(1,  imagesize);
-                kernel.setArg(2,  w_offset);
-                kernel.setArg(3,  nr_channels);
-                kernel.setArg(4,  nr_stations);
-                kernel.setArg(5,  d_uvw);
-                kernel.setArg(6,  d_wavenumbers);
-                kernel.setArg(7,  d_visibilities);
-                kernel.setArg(8,  d_spheroidal);
-                kernel.setArg(9,  d_aterm);
-                kernel.setArg(10, d_metadata);
-                kernel.setArg(11, d_subgrid);
+                kernel_gridder->setArg(0,  grid_size);
+                kernel_gridder->setArg(1,  image_size);
+                kernel_gridder->setArg(2,  w_offset);
+                kernel_gridder->setArg(3,  nr_channels);
+                kernel_gridder->setArg(4,  nr_stations);
+                kernel_gridder->setArg(5,  d_uvw);
+                kernel_gridder->setArg(6,  d_wavenumbers);
+                kernel_gridder->setArg(7,  d_visibilities);
+                kernel_gridder->setArg(8,  d_spheroidal);
+                kernel_gridder->setArg(9,  d_aterm);
+                kernel_gridder->setArg(10, d_metadata);
+                kernel_gridder->setArg(11, d_subgrid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
+                    executequeue->enqueueNDRangeKernel(
+                        *kernel_gridder, cl::NullRange, global_size, block_gridder, NULL, &event_gridder);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    //counter.doOperation(event, "gridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
+                    counter.doOperation(
+                        event_gridder, "gridder",
+                        flops_gridder(nr_channels, nr_timesteps, nr_subgrids),
+                        bytes_gridder(nr_channels, nr_timesteps, nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
@@ -307,49 +296,46 @@ namespace idg {
                 }
             }
 
-
-            Degridder::Degridder(
-                cl::Program &program,
-                const cl::NDRange &local_size) :
-                kernel(program, name_degridder.c_str()),
-                local_size(local_size) {}
-
-            void Degridder::launchAsync(
-                cl::CommandQueue &queue,
+            void DeviceInstance::launch_degridder(
                 int nr_timesteps,
                 int nr_subgrids,
-                int gridsize,
-                float imagesize,
+                int grid_size,
+                float image_size,
                 float w_offset,
                 int nr_channels,
                 int nr_stations,
-                cl::Buffer &d_uvw,
-                cl::Buffer &d_wavenumbers,
-                cl::Buffer &d_visibilities,
-                cl::Buffer &d_spheroidal,
-                cl::Buffer &d_aterm,
-                cl::Buffer &d_metadata,
-                cl::Buffer &d_subgrid,
-                PerformanceCounter &counter) {
-                int local_size_x = local_size[0];
-                int local_size_y = local_size[1];
+                cl::Buffer& d_uvw,
+                cl::Buffer& d_wavenumbers,
+                cl::Buffer& d_visibilities,
+                cl::Buffer& d_spheroidal,
+                cl::Buffer& d_aterm,
+                cl::Buffer& d_metadata,
+                cl::Buffer& d_subgrid,
+                PerformanceCounter& counter)
+            {
+                int local_size_x = block_degridder[0];
+                int local_size_y = block_degridder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0,  gridsize);
-                kernel.setArg(1,  imagesize);
-                kernel.setArg(2,  w_offset);
-                kernel.setArg(3,  nr_channels);
-                kernel.setArg(4,  nr_stations);
-                kernel.setArg(5,  d_uvw);
-                kernel.setArg(6,  d_wavenumbers);
-                kernel.setArg(7,  d_visibilities);
-                kernel.setArg(8,  d_spheroidal);
-                kernel.setArg(9,  d_aterm);
-                kernel.setArg(10, d_metadata);
-                kernel.setArg(11, d_subgrid);
+                kernel_degridder->setArg(0,  grid_size);
+                kernel_degridder->setArg(1,  image_size);
+                kernel_degridder->setArg(2,  w_offset);
+                kernel_degridder->setArg(3,  nr_channels);
+                kernel_degridder->setArg(4,  nr_stations);
+                kernel_degridder->setArg(5,  d_uvw);
+                kernel_degridder->setArg(6,  d_wavenumbers);
+                kernel_degridder->setArg(7,  d_visibilities);
+                kernel_degridder->setArg(8,  d_spheroidal);
+                kernel_degridder->setArg(9,  d_aterm);
+                kernel_degridder->setArg(10, d_metadata);
+                kernel_degridder->setArg(11, d_subgrid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
+                    executequeue->enqueueNDRangeKernel(
+                        *kernel_degridder, cl::NullRange, global_size, block_degridder, NULL, &event_degridder);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    //counter.doOperation(event, "degridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
+                    counter.doOperation(
+                        event_degridder, "degridder",
+                        flops_degridder(nr_channels, nr_timesteps, nr_subgrids),
+                        bytes_degridder(nr_channels, nr_timesteps, nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
@@ -357,115 +343,107 @@ namespace idg {
                 }
             }
 
-
-            GridFFT::GridFFT(
-                unsigned int nr_correlations) :
-                nr_correlations(nr_correlations)
-            {
-                uninitialized = true;
-            }
-
-            GridFFT::~GridFFT() {
-                clfftDestroyPlan(&fft);
-            }
-
-            void GridFFT::plan(
-                cl::Context &context,
-                cl::CommandQueue &queue,
+            void DeviceInstance::plan(
                 int size, int batch)
             {
                 // Check wheter a new plan has to be created
-                if (uninitialized ||
-                    size  != planned_size ||
-                    batch != planned_batch) {
+                if (!fft_planned ||
+                    size  != fft_planned_size ||
+                    batch != fft_planned_batch) {
                     // Destroy old plan (if any)
-                    if (!uninitialized) {
-                        clfftDestroyPlan(&fft);
+                    if (fft_planned) {
+                        clfftDestroyPlan(&fft_plan);
                     }
 
                     // Create new plan
                     size_t lengths[2] = {(size_t) size, (size_t) size};
-                    clfftCreateDefaultPlan(&fft, context(), CLFFT_2D, lengths);
+                    clfftCreateDefaultPlan(&fft_plan, mContext(), CLFFT_2D, lengths);
 
                     // Set plan parameters
-                    clfftSetPlanPrecision(fft, CLFFT_SINGLE);
-                    clfftSetLayout(fft, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
-                    clfftSetResultLocation(fft, CLFFT_INPLACE);
+                    clfftSetPlanPrecision(fft_plan, CLFFT_SINGLE);
+                    clfftSetLayout(fft_plan, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
+                    clfftSetResultLocation(fft_plan, CLFFT_INPLACE);
                     int distance = size*size;
-                    clfftSetPlanDistance(fft, distance, distance);
-                    clfftSetPlanBatchSize(fft, batch * nr_correlations);
+                    clfftSetPlanDistance(fft_plan, distance, distance);
+                    clfftSetPlanBatchSize(fft_plan, batch * mConstants.get_nr_correlations());
 
                     // Update parameters
-                    planned_size = size;
-                    planned_batch = batch;
+                    fft_planned_size = size;
+                    fft_planned_batch = batch;
 
                     // Bake plan
-                    clfftStatus status = clfftBakePlan(fft, 1, &queue(), NULL, NULL);
+                    cl_command_queue *queue = &(*executequeue)();
+                    clfftStatus status = clfftBakePlan(fft_plan, 1, queue, NULL, NULL);
                     if (status != CL_SUCCESS) {
                         std::cerr << "Error baking fft plan" << std::endl;
                         exit(EXIT_FAILURE);
                     }
                 }
-                uninitialized = false;
+                fft_planned = true;
             }
 
-            void GridFFT::launchAsync(
-                cl::CommandQueue &queue,
+
+            void DeviceInstance::launch_fft(
                 cl::Buffer &d_data,
                 DomainAtoDomainB direction)
             {
                 clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
-                clfftStatus status = clfftEnqueueTransform(fft, sign, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
+                cl_command_queue *queue = &(*executequeue)();
+                clfftStatus status = clfftEnqueueTransform(
+                    fft_plan, sign, 1, queue, 0, NULL, NULL, &d_data(), NULL, NULL);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
 
-            void GridFFT::launchAsync(
-                cl::CommandQueue &queue,
+            void DeviceInstance::launch_fft(
                 cl::Buffer &d_data,
                 DomainAtoDomainB direction,
                 PerformanceCounter &counter,
                 const char *name)
             {
-                queue.enqueueMarkerWithWaitList(NULL, &start);
+                executequeue->enqueueMarkerWithWaitList(NULL, &event_fft_start);
                 clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
-                clfftStatus status = clfftEnqueueTransform(fft, sign, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
-                queue.enqueueMarkerWithWaitList(NULL, &end);
-                //counter.doOperation(start, end, name, flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+                cl_command_queue *queue = &(*executequeue)();
+                clfftStatus status = clfftEnqueueTransform(
+                    fft_plan, sign, 1, queue, 0, NULL, NULL, &d_data(), NULL, NULL);
+                executequeue->enqueueMarkerWithWaitList(NULL, &event_fft_end);
+                #if ENABLE_PERFORMANCE_COUNTERS
+                counter.doOperation(
+                    event_fft_start, event_fft_end, name,
+                    flops_fft(fft_planned_size, fft_planned_batch),
+                    bytes_fft(fft_planned_size, fft_planned_batch));
+                #endif
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
 
-
-            Adder::Adder(
-                cl::Program &program,
-                const cl::NDRange &local_size) :
-                kernel(program, name_adder.c_str()),
-                local_size(local_size) {}
-
-            void Adder::launchAsync(
-                cl::CommandQueue &queue,
+            void DeviceInstance::launch_adder(
                 int nr_subgrids,
-                int gridsize,
-                cl::Buffer d_metadata,
-                cl::Buffer d_subgrid,
-                cl::Buffer d_grid,
-                PerformanceCounter &counter) {
-                int local_size_x = local_size[0];
-                int local_size_y = local_size[1];
+                int grid_size,
+                cl::Buffer& d_metadata,
+                cl::Buffer& d_subgrid,
+                cl::Buffer& d_grid,
+                PerformanceCounter& counter)
+            {
+                int local_size_x = block_adder[0];
+                int local_size_y = block_adder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, gridsize);
-                kernel.setArg(1, d_metadata);
-                kernel.setArg(2, d_subgrid);
-                kernel.setArg(3, d_grid);
+                kernel_adder->setArg(0, grid_size);
+                kernel_adder->setArg(1, d_metadata);
+                kernel_adder->setArg(2, d_subgrid);
+                kernel_adder->setArg(3, d_grid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
+                    executequeue->enqueueNDRangeKernel(
+                        *kernel_adder, cl::NullRange, global_size, block_adder, NULL, &event_adder);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    //counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
+                    counter.doOperation(
+                        event_adder, "adder",
+                        flops_adder(nr_subgrids),
+                        bytes_adder(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching adder: " << error.what() << std::endl;
@@ -473,32 +451,29 @@ namespace idg {
                 }
             }
 
-
-            Splitter::Splitter(
-                cl::Program &program,
-                const cl::NDRange &local_size):
-                kernel(program, name_splitter.c_str()),
-                local_size(local_size) {}
-
-            void Splitter::launchAsync(
-                cl::CommandQueue &queue,
+            void DeviceInstance::launch_splitter(
                 int nr_subgrids,
-                int gridsize,
-                cl::Buffer d_metadata,
-                cl::Buffer d_subgrid,
-                cl::Buffer d_grid,
-                PerformanceCounter &counter) {
-                int local_size_x = local_size[0];
-                int local_size_y = local_size[1];
+                int grid_size,
+                cl::Buffer& d_metadata,
+                cl::Buffer& d_subgrid,
+                cl::Buffer& d_grid,
+                PerformanceCounter& counter)
+            {
+                int local_size_x = block_splitter[0];
+                int local_size_y = block_splitter[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, gridsize);
-                kernel.setArg(1, d_metadata);
-                kernel.setArg(2, d_subgrid);
-                kernel.setArg(3, d_grid);
+                kernel_splitter->setArg(0, grid_size);
+                kernel_splitter->setArg(1, d_metadata);
+                kernel_splitter->setArg(2, d_subgrid);
+                kernel_splitter->setArg(3, d_grid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
+                    executequeue->enqueueNDRangeKernel(
+                        *kernel_splitter, cl::NullRange, global_size, block_splitter, NULL, &event_splitter);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    //counter.doOperation(event, "splitter", flops(nr_subgrids), bytes(nr_subgrids));
+                    counter.doOperation(
+                        event_splitter, "splitter",
+                        flops_splitter(nr_subgrids),
+                        bytes_splitter(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching splitter: " << error.what() << std::endl;
@@ -506,33 +481,29 @@ namespace idg {
                 }
             }
 
-
-            Scaler::Scaler(
-                cl::Program &program,
-                const cl::NDRange &local_size) :
-                kernel(program, name_scaler.c_str()),
-                local_size(local_size) {}
-
-            void Scaler::launchAsync(
-                cl::CommandQueue &queue,
+            void DeviceInstance::launch_scaler(
                 int nr_subgrids,
-                cl::Buffer d_subgrid,
-                PerformanceCounter &counter) {
-                int local_size_x = local_size[0];
-                int local_size_y = local_size[1];
+                cl::Buffer& d_subgrid,
+                PerformanceCounter& counter)
+            {
+                int local_size_x = block_scaler[0];
+                int local_size_y = block_scaler[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel.setArg(0, d_subgrid);
+                kernel_scaler->setArg(0, d_subgrid);
                 try {
-                    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
+                    executequeue->enqueueNDRangeKernel(
+                        *kernel_scaler, cl::NullRange, global_size, block_scaler, NULL, &event_scaler);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    //counter.doOperation(event, "scaler", flops(nr_subgrids), bytes(nr_subgrids));
+                    counter.doOperation(
+                        event_scaler, "scaler",
+                        flops_scaler(nr_subgrids),
+                        bytes_scaler(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching scaler: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
-
 
         } // end namespace opencl
     } // end namespace kernel
