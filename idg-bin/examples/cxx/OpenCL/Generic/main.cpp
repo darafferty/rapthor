@@ -1,6 +1,6 @@
 #include "idg-opencl.h"
 
-#include "common.h"
+#include "common2.h"
 
 int main(int argc, char **argv) {
     run<idg::proxy::opencl::Generic>();
