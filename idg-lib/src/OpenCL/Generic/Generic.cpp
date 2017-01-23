@@ -1,6 +1,9 @@
+#include <clFFT.h>
+
 #include "Generic.h"
 
 #include "DeviceInstance.h"
+#include "PerformanceCounter.h"
 
 /*
     Toggle warmup
@@ -55,6 +58,7 @@ namespace idg {
             #endif
             std::vector<cl::Buffer*> h_grid_;
 
+            // Constructor
             Generic::Generic(
                 CompileConstants constants) :
                 OpenCL(constants)
@@ -84,6 +88,7 @@ namespace idg {
                 #endif
             }
 
+            // Destructor
             Generic::~Generic() {
                 //for (int i = 0; i < devices.size(); i++) {
                 //    #if REDUCE_HOST_MEMORY
@@ -103,18 +108,18 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-#if 0
-                // Load device
-                DeviceInstance *device    = devices[0];
-                PowerSensor *devicePowerSensor = device->get_powersensor();
 
                 // Constants
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
+                auto grid_size = grid.get_x_dim();
+                auto nr_correlations = mConstants.get_nr_correlations();
+
+                // Load device
+                DeviceInstance& device = get_device(0);
+                cl::Context& context = get_context();
+                PowerSensor *devicePowerSensor = device.get_powersensor();
 
                 // Command queue
-                cl::CommandQueue &queue = device->get_execute_queue();
+                cl::CommandQueue &queue = device.get_execute_queue();
 
                 // Events
                 vector<cl::Event> input(2);
@@ -130,49 +135,45 @@ namespace idg {
                 powerStates[2] = devicePowerSensor->read();
 
                 // Device memory
-                cl::Buffer d_grid = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid());
-
-                // Load kernel function
-                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
-
-                for (int i = 0; i < nr_repetitions; i++) {
+                auto sizeof_grid = device.sizeof_grid(grid_size);
+                cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid);
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
+                device.shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Copy grid to device
                 queue.enqueueMarkerWithWaitList(NULL, &input[0]);
-                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid, grid.data());
                 queue.enqueueMarkerWithWaitList(NULL, &input[1]);
 
                 // Create FFT plan
                 #if ENABLE_FFT
-                kernel_fft->plan(*context, queue, gridsize, 1);
+                device.plan_fft(grid_size, 1);
                 #endif
 
 				// Launch FFT
                 #if ENABLE_FFT
-                kernel_fft->launchAsync(queue, d_grid, sign, counter, "  grid-fft");
+                device.launch_fft(d_grid, direction, counter, "  grid-fft");
                 #endif
 
                 // Copy grid to host
                 queue.enqueueMarkerWithWaitList(NULL, &output[0]);
-                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid, grid.data());
                 queue.enqueueMarkerWithWaitList(NULL, &output[1]);
                 output[1].wait();
 
                 // Perform fft shift
                 time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
+                device.shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Perform fft scaling
                 double time_scale = -omp_get_wtime();
                 complex<float> scale = complex<float>(2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                    kernel_fft->scale(grid, scale);
+                    device.scale(grid, scale);
                 }
                 time_scale += omp_get_wtime();
 
@@ -182,23 +183,20 @@ namespace idg {
                 #if defined(REPORT_TOTAL)
                 auxiliary::report("    input",
                                   PerformanceCounter::get_runtime((cl_event) input[0](), (cl_event) input[1]()),
-                                  0, sizeof_grid(), 0);
+                                  0, sizeof_grid, 0);
                 auxiliary::report("   output",
                                   PerformanceCounter::get_runtime((cl_event) output[0](), (cl_event) output[1]()),
-                                  0, sizeof_grid(), 0);
-                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
+                                  0, sizeof_grid, 0);
+                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid * 2, 0);
                 if (direction == FourierDomainToImageDomain) {
-                auxiliary::report("grid-scale", time_scale, 0, sizeof_grid() * 2, 0);
+                auxiliary::report("grid-scale", time_scale, 0, sizeof_grid * 2, 0);
                 }
                 auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
                 auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
 
                 clog << endl;
                 #endif
-                } // end for repetitions
-#endif
             } // end transform
-
 
 
             void Generic::gridding(

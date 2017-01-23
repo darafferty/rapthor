@@ -54,6 +54,7 @@ namespace idg {
 
                 private:
                     PowerSensor *hostPowerSensor;
+
             }; // class Generic
 
         } // namespace opencl

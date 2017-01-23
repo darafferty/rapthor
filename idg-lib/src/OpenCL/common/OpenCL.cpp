@@ -10,6 +10,8 @@ using namespace idg::kernel::opencl;
 namespace idg {
     namespace proxy {
         namespace opencl {
+
+            // Constructor
             OpenCL::OpenCL(
                 CompileConstants& constants) :
                 Proxy(constants)
@@ -25,6 +27,7 @@ namespace idg {
             }
 
 
+            // Destructor
             OpenCL::~OpenCL()
             {
                 #if defined(DEBUG)
@@ -34,6 +37,16 @@ namespace idg {
                 free_devices();
 				clfftTeardown();
                 delete context;
+            }
+
+            unsigned int OpenCL::get_num_devices() const
+            {
+                return devices.size();
+            }
+
+            DeviceInstance& OpenCL::get_device(unsigned int i) const
+            {
+                return *(devices[i]);
             }
 
             std::vector<int> OpenCL::compute_jobsize(

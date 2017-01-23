@@ -348,7 +348,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::plan(
+            void DeviceInstance::plan_fft(
                 int size, int batch)
             {
                 // Check wheter a new plan has to be created

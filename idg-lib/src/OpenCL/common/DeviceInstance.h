@@ -71,7 +71,7 @@ namespace idg {
                     cl::Buffer& d_subgrid,
                     PerformanceCounter& counter);
 
-                void plan(
+                void plan_fft(
                     int size, int batch);
 
                 void launch_fft(

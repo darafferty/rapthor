@@ -31,8 +31,10 @@ namespace idg {
 
                     void print_devices();
 
+                    cl::Context &get_context() { return *context; }
+
                     unsigned int get_num_devices() const;
-                    std::vector<idg::kernel::opencl::DeviceInstance>& get_device(unsigned int i) const ;
+                    idg::kernel::opencl::DeviceInstance& get_device(unsigned int i) const;
 
                     std::vector<int> compute_jobsize(
                         const Plan &plan,
@@ -45,7 +47,7 @@ namespace idg {
                     void init_devices();
                     void free_devices();
 
-                protected:
+                private:
                     cl::Context *context;
                     std::vector<idg::kernel::opencl::DeviceInstance*> devices;
             };
