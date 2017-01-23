@@ -57,35 +57,32 @@ namespace idg {
             std::vector<cl::Buffer*> h_grid_;
 
             Generic::Generic(
-                Parameters params) :
-                OpenCL(params)
+                CompileConstants constants) :
+                OpenCL(constants)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
                 #endif
 
                 // Allocate memory
-                #if !REDUCE_HOST_MEMORY
-                h_visibilities = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines()));
-                h_uvw = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines()));
-                #endif
-                for (DeviceInstance *device : devices) {
-                    #if REDUCE_HOST_MEMORY
-                    h_visibilities_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines())));
-                    h_uvw_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines())));
-                    #endif
-                    h_grid_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid()));
-                }
+                //#if !REDUCE_HOST_MEMORY
+                //h_visibilities = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines()));
+                //h_uvw = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines()));
+                //#endif
+                //for (DeviceInstance *device : devices) {
+                //    #if REDUCE_HOST_MEMORY
+                //    h_visibilities_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines())));
+                //    h_uvw_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines())));
+                //    #endif
+                //    h_grid_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid()));
+                //}
 
                 // Initialize host PowerSensor
-                #if defined(HAVE_LIKWID) && 0
+                #if defined(HAVE_LIKWID)
                 hostPowerSensor = new LikwidPowerSensor();
                 #else
                 hostPowerSensor = new RaplPowerSensor();
                 #endif
-
-                // Setup benchmark
-                init_benchmark();
             }
 
             Generic::~Generic() {
@@ -100,22 +97,129 @@ namespace idg {
 
 
             /* High level routines */
-            void Generic::grid_visibilities(
-                const complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal)
+            void Generic::transform(
+                DomainAtoDomainB direction,
+                Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
+#if 0
+                // Load device
+                DeviceInstance *device    = devices[0];
+                PowerSensor *devicePowerSensor = device->get_powersensor();
 
+                // Constants
+                auto nr_polarizations = mParams.get_nr_polarizations();
+                auto gridsize = mParams.get_grid_size();
+                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
+
+                // Command queue
+                cl::CommandQueue &queue = device->get_execute_queue();
+
+                // Events
+                vector<cl::Event> input(2);
+                vector<cl::Event> output(2);
+
+                // Performance counter
+                PerformanceCounter counter;
+                counter.setPowerSensor(devicePowerSensor);
+
+                // Power measurement
+                PowerSensor::State powerStates[4];
+                powerStates[0] = hostPowerSensor->read();
+                powerStates[2] = devicePowerSensor->read();
+
+                // Device memory
+                cl::Buffer d_grid = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid());
+
+                // Load kernel function
+                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
+
+                for (int i = 0; i < nr_repetitions; i++) {
+
+                // Perform fft shift
+                double time_shift = -omp_get_wtime();
+                kernel_fft->shift(grid);
+                time_shift += omp_get_wtime();
+
+                // Copy grid to device
+                queue.enqueueMarkerWithWaitList(NULL, &input[0]);
+                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueMarkerWithWaitList(NULL, &input[1]);
+
+                // Create FFT plan
+                #if ENABLE_FFT
+                kernel_fft->plan(*context, queue, gridsize, 1);
+                #endif
+
+				// Launch FFT
+                #if ENABLE_FFT
+                kernel_fft->launchAsync(queue, d_grid, sign, counter, "  grid-fft");
+                #endif
+
+                // Copy grid to host
+                queue.enqueueMarkerWithWaitList(NULL, &output[0]);
+                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
+                queue.enqueueMarkerWithWaitList(NULL, &output[1]);
+                output[1].wait();
+
+                // Perform fft shift
+                time_shift = -omp_get_wtime();
+                kernel_fft->shift(grid);
+                time_shift += omp_get_wtime();
+
+                // Perform fft scaling
+                double time_scale = -omp_get_wtime();
+                complex<float> scale = complex<float>(2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                    kernel_fft->scale(grid, scale);
+                }
+                time_scale += omp_get_wtime();
+
+                powerStates[1] = hostPowerSensor->read();
+                powerStates[3] = devicePowerSensor->read();
+
+                #if defined(REPORT_TOTAL)
+                auxiliary::report("    input",
+                                  PerformanceCounter::get_runtime((cl_event) input[0](), (cl_event) input[1]()),
+                                  0, sizeof_grid(), 0);
+                auxiliary::report("   output",
+                                  PerformanceCounter::get_runtime((cl_event) output[0](), (cl_event) output[1]()),
+                                  0, sizeof_grid(), 0);
+                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
+                if (direction == FourierDomainToImageDomain) {
+                auxiliary::report("grid-scale", time_scale, 0, sizeof_grid() * 2, 0);
+                }
+                auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
+                auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
+
+                clog << endl;
+                #endif
+                } // end for repetitions
+#endif
+            } // end transform
+
+
+
+            void Generic::gridding(
+                const Plan& plan,
+                const float w_offset, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                Array3D<std::complex<float>>& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+#if 0
                 // Configuration
                 const int nr_devices = devices.size();
                 const int nr_streams = 2;
@@ -380,25 +484,28 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
-            } // end grid_visibilities
+#endif
+            } // end gridding
 
 
-            void Generic::degrid_visibilities(
-                std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                const std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal)
+            void Generic::degridding(
+                const Plan& plan,
+                const float w_offset, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const Array1D<float>& frequencies,
+                Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array3D<std::complex<float>>& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-
+#if 0
                 // Configuration
                 const int nr_devices = devices.size();
                 const int nr_streams = 3;
@@ -677,218 +784,9 @@ namespace idg {
                 }
                 clog << endl;
                 #endif
-            } // end degrid_visibilities
+#endif
+            } // end degridding
 
-
-            void Generic::transform(
-                DomainAtoDomainB direction,
-                complex<float>* grid)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Load device
-                DeviceInstance *device    = devices[0];
-                PowerSensor *devicePowerSensor = device->get_powersensor();
-
-                // Constants
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize = mParams.get_grid_size();
-                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
-
-                // Command queue
-                cl::CommandQueue &queue = device->get_execute_queue();
-
-                // Events
-                vector<cl::Event> input(2);
-                vector<cl::Event> output(2);
-
-                // Performance counter
-                PerformanceCounter counter;
-                counter.setPowerSensor(devicePowerSensor);
-
-                // Power measurement
-                PowerSensor::State powerStates[4];
-                powerStates[0] = hostPowerSensor->read();
-                powerStates[2] = devicePowerSensor->read();
-
-                // Device memory
-                cl::Buffer d_grid = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid());
-
-                // Load kernel function
-                unique_ptr<GridFFT> kernel_fft = device->get_kernel_fft();
-
-                for (int i = 0; i < nr_repetitions; i++) {
-
-                // Perform fft shift
-                double time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
-                time_shift += omp_get_wtime();
-
-                // Copy grid to device
-                queue.enqueueMarkerWithWaitList(NULL, &input[0]);
-                queue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
-                queue.enqueueMarkerWithWaitList(NULL, &input[1]);
-
-                // Create FFT plan
-                #if ENABLE_FFT
-                kernel_fft->plan(*context, queue, gridsize, 1);
-                #endif
-
-				// Launch FFT
-                #if ENABLE_FFT
-                kernel_fft->launchAsync(queue, d_grid, sign, counter, "  grid-fft");
-                #endif
-
-                // Copy grid to host
-                queue.enqueueMarkerWithWaitList(NULL, &output[0]);
-                queue.enqueueReadBuffer(d_grid, CL_FALSE, 0, sizeof_grid(), grid);
-                queue.enqueueMarkerWithWaitList(NULL, &output[1]);
-                output[1].wait();
-
-                // Perform fft shift
-                time_shift = -omp_get_wtime();
-                kernel_fft->shift(grid);
-                time_shift += omp_get_wtime();
-
-                // Perform fft scaling
-                double time_scale = -omp_get_wtime();
-                complex<float> scale = complex<float>(2, 0);
-                if (direction == FourierDomainToImageDomain) {
-                    kernel_fft->scale(grid, scale);
-                }
-                time_scale += omp_get_wtime();
-
-                powerStates[1] = hostPowerSensor->read();
-                powerStates[3] = devicePowerSensor->read();
-
-                #if defined(REPORT_TOTAL)
-                auxiliary::report("    input",
-                                  PerformanceCounter::get_runtime((cl_event) input[0](), (cl_event) input[1]()),
-                                  0, sizeof_grid(), 0);
-                auxiliary::report("   output",
-                                  PerformanceCounter::get_runtime((cl_event) output[0](), (cl_event) output[1]()),
-                                  0, sizeof_grid(), 0);
-                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid() * 2, 0);
-                if (direction == FourierDomainToImageDomain) {
-                auxiliary::report("grid-scale", time_scale, 0, sizeof_grid() * 2, 0);
-                }
-                auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
-                auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
-
-                clog << endl;
-                #endif
-                } // end for repetitions
-            } // end transform
-
-            void Generic::init_benchmark() {
-                char *char_nr_repetitions = getenv("NR_REPETITIONS");
-                if (char_nr_repetitions) {
-                    nr_repetitions = atoi(char_nr_repetitions);
-                    enable_benchmark = nr_repetitions > 1;
-                }
-                if (enable_benchmark) {
-                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
-                }
-            }
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
-
-
-// C interface:
-// Rationale: calling the code from C code and Fortran easier,
-// and bases to create interface to scripting languages such as
-// Python, Julia, Matlab, ...
-extern "C" {
-    typedef idg::proxy::opencl::Generic OpenCL_Generic;
-
-    OpenCL_Generic* OpenCL_Generic_init(
-                unsigned int nr_stations,
-                unsigned int nr_channels,
-                unsigned int nr_time,
-                unsigned int nr_timeslots,
-                float        imagesize,
-                unsigned int grid_size,
-                unsigned int subgrid_size)
-    {
-        idg::Parameters P;
-        P.set_nr_stations(nr_stations);
-        P.set_nr_channels(nr_channels);
-        P.set_nr_time(nr_time);
-        P.set_nr_timeslots(nr_timeslots);
-        P.set_imagesize(imagesize);
-        P.set_subgrid_size(subgrid_size);
-        P.set_grid_size(grid_size);
-
-        return new OpenCL_Generic(P);
-    }
-
-    void OpenCL_Generic_grid(OpenCL_Generic* p,
-                            void *visibilities,
-                            void *uvw,
-                            void *wavenumbers,
-                            void *metadata,
-                            void *grid,
-                            float w_offset,
-                            int   kernel_size,
-                            void *aterm,
-                            void *aterm_offsets,
-                            void *spheroidal)
-    {
-         p->grid_visibilities(
-                (const std::complex<float>*) visibilities,
-                (const float*) uvw,
-                (const float*) wavenumbers,
-                (const int*) metadata,
-                (std::complex<float>*) grid,
-                w_offset,
-                kernel_size,
-                (const std::complex<float>*) aterm,
-                (const int*) aterm_offsets,
-                (const float*) spheroidal);
-    }
-
-    void OpenCL_Generic_degrid(OpenCL_Generic* p,
-                            void *visibilities,
-                            void *uvw,
-                            void *wavenumbers,
-                            void *metadata,
-                            void *grid,
-                            float w_offset,
-                            int   kernel_size,
-                            void *aterm,
-                            void *aterm_offsets,
-                            void *spheroidal)
-    {
-         p->degrid_visibilities(
-                (std::complex<float>*) visibilities,
-                    (const float*) uvw,
-                    (const float*) wavenumbers,
-                    (const int*) metadata,
-                    (const std::complex<float>*) grid,
-                    w_offset,
-                    kernel_size,
-                    (const std::complex<float>*) aterm,
-                    (const int*) aterm_offsets,
-                    (const float*) spheroidal);
-     }
-
-    void OpenCL_Generic_transform(OpenCL_Generic* p,
-                    int direction,
-                    void *grid)
-    {
-       if (direction!=0)
-           p->transform(idg::ImageDomainToFourierDomain,
-                    (std::complex<float>*) grid);
-       else
-           p->transform(idg::FourierDomainToImageDomain,
-                    (std::complex<float>*) grid);
-    }
-
-    void OpenCL_Generic_destroy(OpenCL_Generic* p) {
-       delete p;
-    }
-
-} // end extern "C"

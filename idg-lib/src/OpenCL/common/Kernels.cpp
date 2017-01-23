@@ -11,10 +11,8 @@ namespace idg {
             // Gridder class
             Gridder::Gridder(
                 cl::Program &program,
-                const Parameters &parameters,
                 const cl::NDRange &local_size) :
                 kernel(program, name_gridder.c_str()),
-                parameters(parameters),
                 local_size(local_size) {}
 
             void Gridder::launchAsync(
@@ -34,7 +32,6 @@ namespace idg {
                 cl::Buffer &d_metadata,
                 cl::Buffer &d_subgrid,
                 PerformanceCounter &counter) {
-                int subgridsize = parameters.get_subgrid_size();
                 int local_size_x = local_size[0];
                 int local_size_y = local_size[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
@@ -53,7 +50,7 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "gridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
+                    //counter.doOperation(event, "gridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
@@ -61,22 +58,12 @@ namespace idg {
                 }
             }
 
-            uint64_t Gridder::flops(int nr_timesteps, int nr_subgrids) {
-                return idg::kernel::flops_gridder(parameters, nr_timesteps, nr_subgrids);
-            }
-
-            uint64_t Gridder::bytes(int nr_timesteps, int nr_subgrids) {
-                return idg::kernel::bytes_gridder(parameters, nr_timesteps, nr_subgrids);
-            }
-
 
             // Degridder class
             Degridder::Degridder(
                 cl::Program &program,
-                const Parameters &parameters,
                 const cl::NDRange &local_size) :
                 kernel(program, name_degridder.c_str()),
-                parameters(parameters),
                 local_size(local_size) {}
 
             void Degridder::launchAsync(
@@ -114,7 +101,7 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "degridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
+                    //counter.doOperation(event, "degridder", flops(nr_timesteps, nr_subgrids), bytes(nr_timesteps, nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
@@ -122,17 +109,12 @@ namespace idg {
                 }
             }
 
-            uint64_t Degridder::flops(int nr_timesteps, int nr_subgrids) {
-                return idg::kernel::flops_degridder(parameters, nr_timesteps, nr_subgrids);
-            }
-
-            uint64_t Degridder::bytes(int nr_timesteps, int nr_subgrids) {
-                return idg::kernel::bytes_degridder(parameters, nr_timesteps, nr_subgrids);
-            }
-
 
             // GridFFT class
-            GridFFT::GridFFT(const Parameters &parameters) : parameters(parameters) {
+            GridFFT::GridFFT(
+                unsigned int nr_correlations) :
+                nr_correlations(nr_correlations)
+            {
                 uninitialized = true;
             }
 
@@ -164,8 +146,7 @@ namespace idg {
                     clfftSetResultLocation(fft, CLFFT_INPLACE);
                     int distance = size*size;
                     clfftSetPlanDistance(fft, distance, distance);
-                    int nr_polarizations = parameters.get_nr_polarizations();
-                    clfftSetPlanBatchSize(fft, batch * nr_polarizations);
+                    clfftSetPlanBatchSize(fft, batch * nr_correlations);
 
                     // Update parameters
                     planned_size = size;
@@ -203,78 +184,19 @@ namespace idg {
                 queue.enqueueMarkerWithWaitList(NULL, &start);
                 clfftStatus status = clfftEnqueueTransform(fft, direction, 1, &queue(), 0, NULL, NULL, &d_data(), NULL, NULL);
                 queue.enqueueMarkerWithWaitList(NULL, &end);
-                counter.doOperation(start, end, name, flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
+                //counter.doOperation(start, end, name, flops(planned_size, planned_batch), bytes(planned_size, planned_batch));
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
 
-            void GridFFT::shift(std::complex<float> *data) {
-                int gridsize = parameters.get_grid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-
-                std::complex<float> tmp13, tmp24;
-
-                // Dimensions
-                int n = gridsize;
-                int n2 = n / 2;
-
-                // Pointer
-                typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
-                GridType *x = (GridType *) data;
-
-                // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
-                #pragma omp parallel for private(tmp13, tmp24)
-                for (int pol = 0; pol < nr_polarizations; pol++) {
-                    for (int i = 0; i < n2; i++) {
-                        for (int k = 0; k < n2; k++) {
-                            tmp13                 = (*x)[pol][i][k];
-                            (*x)[pol][i][k]       = (*x)[pol][i+n2][k+n2];
-                            (*x)[pol][i+n2][k+n2] = tmp13;
-
-                            tmp24              = (*x)[pol][i+n2][k];
-                            (*x)[pol][i+n2][k] = (*x)[pol][i][k+n2];
-                            (*x)[pol][i][k+n2] = tmp24;
-                         }
-                    }
-                }
-            }
-
-            void GridFFT::scale(std::complex<float> *data, std::complex<float> scale) {
-                int gridsize = parameters.get_grid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-
-                // Pointer
-                typedef std::complex<float> GridType[nr_polarizations][gridsize][gridsize];
-                GridType *x = (GridType *) data;
-
-                #pragma omp parallel for collapse(2)
-                for (int pol = 0; pol < nr_polarizations; pol++) {
-                    for (int i = 0; i < gridsize * gridsize; i++) {
-                        std::complex<float> value = (*x)[pol][0][i];
-                        (*x)[pol][0][i] = std::complex<float>(
-                            value.real() * scale.real(),
-                            value.imag() * scale.imag());
-                    }
-                }
-            }
-
-            uint64_t GridFFT::flops(int size, int batch) {
-                return idg::kernel::flops_fft(parameters, size, batch);
-            }
-
-            uint64_t GridFFT::bytes(int size, int batch) {
-                return idg::kernel::bytes_fft(parameters, size, batch);
-            }
 
             // Adder class
             Adder::Adder(
                 cl::Program &program,
-                const Parameters &parameters,
                 const cl::NDRange &local_size) :
                 kernel(program, name_adder.c_str()),
-                parameters(parameters),
                 local_size(local_size) {}
 
             void Adder::launchAsync(
@@ -295,7 +217,7 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
+                    //counter.doOperation(event, "adder", flops(nr_subgrids), bytes(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching adder: " << error.what() << std::endl;
@@ -303,21 +225,12 @@ namespace idg {
                 }
             }
 
-            uint64_t Adder::flops(int nr_subgrids) {
-                return idg::kernel::flops_adder(parameters, nr_subgrids);
-            }
-
-            uint64_t Adder::bytes(int nr_subgrids) {
-                return idg::kernel::bytes_adder(parameters, nr_subgrids);
-            }
 
             // Splitter class
             Splitter::Splitter(
                 cl::Program &program,
-                const Parameters &parameters,
                 const cl::NDRange &local_size):
                 kernel(program, name_splitter.c_str()),
-                parameters(parameters),
                 local_size(local_size) {}
 
             void Splitter::launchAsync(
@@ -338,7 +251,7 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "splitter", flops(nr_subgrids), bytes(nr_subgrids));
+                    //counter.doOperation(event, "splitter", flops(nr_subgrids), bytes(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching splitter: " << error.what() << std::endl;
@@ -346,21 +259,12 @@ namespace idg {
                 }
             }
 
-            uint64_t Splitter::flops(int nr_subgrids) {
-                return idg::kernel::flops_splitter(parameters, nr_subgrids);
-            }
-
-            uint64_t Splitter::bytes(int nr_subgrids) {
-                return idg::kernel::bytes_splitter(parameters, nr_subgrids);
-            }
 
             // Scaler class
             Scaler::Scaler(
                 cl::Program &program,
-                const Parameters &parameters,
                 const cl::NDRange &local_size) :
                 kernel(program, name_scaler.c_str()),
-                parameters(parameters),
                 local_size(local_size) {}
 
             void Scaler::launchAsync(
@@ -375,29 +279,12 @@ namespace idg {
                 try {
                     queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_size, local_size, NULL, &event);
                     #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(event, "scaler", flops(nr_subgrids), bytes(nr_subgrids));
+                    //counter.doOperation(event, "scaler", flops(nr_subgrids), bytes(nr_subgrids));
                     #endif
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching scaler: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-            }
-
-            uint64_t Scaler::flops(int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t flops = 0;
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2; // scale
-                flops += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 6; // shift
-                return flops;
-            }
-
-            uint64_t Scaler::bytes(int nr_subgrids) {
-                int subgridsize = parameters.get_subgrid_size();
-                int nr_polarizations = parameters.get_nr_polarizations();
-                uint64_t bytes = 0;
-                bytes += 1ULL * nr_subgrids * subgridsize * subgridsize * nr_polarizations * 2 * sizeof(float); // scale
-                return bytes;
             }
 
         } // namespace opencl

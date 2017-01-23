@@ -31,7 +31,6 @@ namespace idg {
                 public:
                     Gridder(
 						cl::Program &program,
-						const Parameters &parameters,
 						const cl::NDRange &local_size);
                      void launchAsync(
                         cl::CommandQueue &queue,
@@ -50,13 +49,10 @@ namespace idg {
                         cl::Buffer &d_metadata,
                         cl::Buffer &d_subgrid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_timesteps, int nr_subgrids);
-                    uint64_t bytes(int nr_timesteps, int nr_subgrids);
 
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    Parameters parameters;
 					cl::NDRange local_size;
             };
 
@@ -65,7 +61,6 @@ namespace idg {
                 public:
                     Degridder(
 						cl::Program &program,
-						const Parameters &parameters,
 						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
@@ -84,20 +79,18 @@ namespace idg {
                         cl::Buffer &d_metadata,
                         cl::Buffer &d_subgrid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_timesteps, int nr_subgrids);
-                    uint64_t bytes(int nr_timesteps, int nr_subgrids);
 
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    Parameters parameters;
 					cl::NDRange local_size;
             };
 
 
             class GridFFT {
                 public:
-                    GridFFT(const Parameters &parameters);
+                    GridFFT(
+                        unsigned int nr_correlations);
                     ~GridFFT();
                     void plan(
                         cl::Context &context, cl::CommandQueue &queue,
@@ -114,12 +107,10 @@ namespace idg {
                         const char *name);
                     void shift(std::complex<float> *data);
                     void scale(std::complex<float> *data, std::complex<float> scale);
-                    uint64_t flops(int size, int batch);
-                    uint64_t bytes(int size, int batch);
 
                 private:
                     bool uninitialized;
-                    Parameters parameters;
+                    unsigned int nr_correlations;
                     int planned_size;
                     int planned_batch;
                     clfftPlanHandle fft;
@@ -131,7 +122,6 @@ namespace idg {
                 public:
                     Adder(
 						cl::Program &program,
-						const Parameters &parameters,
 						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
@@ -141,13 +131,10 @@ namespace idg {
                         cl::Buffer d_subgrid,
                         cl::Buffer d_grid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_subgrids);
-                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    Parameters parameters;
 					cl::NDRange local_size;
             };
 
@@ -155,7 +142,6 @@ namespace idg {
                 public:
                     Splitter(
 						cl::Program &program,
-						const Parameters &parameters,
 						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
@@ -165,13 +151,10 @@ namespace idg {
                         cl::Buffer d_subgrid,
                         cl::Buffer d_grid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_subgrids);
-                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    Parameters parameters;
 					cl::NDRange local_size;
             };
 
@@ -179,20 +162,16 @@ namespace idg {
                 public:
                     Scaler(
 						cl::Program &program,
-						const Parameters &parameters,
 						const cl::NDRange &local_size);
                     void launchAsync(
                         cl::CommandQueue &queue,
                         int nr_subgrids,
                         cl::Buffer d_subgrid,
                         PerformanceCounter &counter);
-                    uint64_t flops(int nr_subgrids);
-                    uint64_t bytes(int nr_subgrids);
 
                 private:
                     cl::Event event;
                     cl::Kernel kernel;
-                    Parameters parameters;
 					cl::NDRange local_size;
             };
 

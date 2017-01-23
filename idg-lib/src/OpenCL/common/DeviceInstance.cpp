@@ -6,14 +6,15 @@ using namespace idg::kernel::opencl;
 namespace idg {
     namespace proxy {
         namespace opencl {
+
+            // Constructor
             DeviceInstance::DeviceInstance(
-                Parameters &parameters,
+                CompileConstants &constants,
                 cl::Context &context,
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
-                parameters(parameters),
-                info(info)
+                Kernels(constants)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -35,6 +36,7 @@ namespace idg {
                 init_powersensor(str_power_sensor, str_power_file);
             }
 
+            // Destructor
             DeviceInstance::~DeviceInstance() {
                 delete device;
                 delete executequeue;
@@ -46,27 +48,27 @@ namespace idg {
             }
 
             unique_ptr<Gridder> DeviceInstance::get_kernel_gridder() const {
-                return unique_ptr<Gridder>(new Gridder(*(programs[which_program.at(name_gridder)]), parameters, block_gridder));
+                return unique_ptr<Gridder>(new Gridder(*(programs[which_program.at(name_gridder)]), block_gridder));
             }
 
             unique_ptr<Degridder> DeviceInstance::get_kernel_degridder() const {
-                return unique_ptr<Degridder>(new Degridder(*(programs[which_program.at(name_degridder)]), parameters, block_degridder));
+                return unique_ptr<Degridder>(new Degridder(*(programs[which_program.at(name_degridder)]), block_degridder));
             }
 
             unique_ptr<GridFFT> DeviceInstance::get_kernel_fft() const {
-                return unique_ptr<GridFFT>(new GridFFT(parameters));
+                return unique_ptr<GridFFT>(new GridFFT(mConstants.get_nr_correlations()));
             }
 
             unique_ptr<Scaler> DeviceInstance::get_kernel_scaler() const {
-                return unique_ptr<Scaler>(new Scaler(*(programs[which_program.at(name_scaler)]), parameters, block_scaler));
+                return unique_ptr<Scaler>(new Scaler(*(programs[which_program.at(name_scaler)]), block_scaler));
             }
 
             unique_ptr<Adder> DeviceInstance::get_kernel_adder() const {
-                return unique_ptr<Adder>(new Adder(*(programs[which_program.at(name_adder)]), parameters, block_adder));
+                return unique_ptr<Adder>(new Adder(*(programs[which_program.at(name_adder)]), block_adder));
             }
 
             unique_ptr<Splitter> DeviceInstance::get_kernel_splitter() const {
-                return unique_ptr<Splitter>(new Splitter(*(programs[which_program.at(name_splitter)]), parameters, block_splitter));
+                return unique_ptr<Splitter>(new Splitter(*(programs[which_program.at(name_splitter)]), block_splitter));
             }
 
             void DeviceInstance::set_parameters_default() {
@@ -114,10 +116,9 @@ namespace idg {
 
             std::string DeviceInstance::get_compiler_flags() {
                 // Parameter flags
-                std::string flags_parameters = Parameters::definitions(
-                    parameters.get_nr_polarizations(),
-                    parameters.get_subgrid_size());
-
+                std::stringstream flags_constants;
+                flags_constants << " -DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
+                flags_constants << " -DSUBGRIDSIZE=" << mConstants.get_subgrid_size();
 
 				// OpenCL specific flags
                 std::stringstream flags_opencl;
@@ -138,7 +139,7 @@ namespace idg {
                 // Combine flags
                 std::string flags = flags_opencl.str() +
                                     flags_device.str() +
-                                    flags_parameters;
+                                    flags_constants.str();
 
                 return flags;
             }

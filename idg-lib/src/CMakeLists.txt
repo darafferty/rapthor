@@ -219,34 +219,33 @@ endif()
 # build libidg-hybrid-opencl: containing all for CPU/OpenCL code #
 ##################################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
-add_library(idg-hybrid-opencl
-  $<TARGET_OBJECTS:cpu-common>
-  $<TARGET_OBJECTS:cpu-reference>
-  $<TARGET_OBJECTS:cpu-optimized>
-  $<TARGET_OBJECTS:opencl-common>
-  $<TARGET_OBJECTS:opencl-generic>
-  $<TARGET_OBJECTS:hybrid-opencl>
-)
-
-set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
-
-target_link_libraries (
-  idg-hybrid-opencl
-  ${LINK_LIRBRARIES}
-)
-
-set_target_properties(idg-hybrid-opencl PROPERTIES
-                      PUBLIC_HEADER idg-hybrid-opencl.h)
-
-install(TARGETS idg-hybrid-opencl
-  EXPORT IDGTargets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
-)
+#add_library(idg-hybrid-opencl
+#  $<TARGET_OBJECTS:cpu-common>
+#  $<TARGET_OBJECTS:cpu-reference>
+#  $<TARGET_OBJECTS:cpu-optimized>
+#  $<TARGET_OBJECTS:opencl-common>
+#  $<TARGET_OBJECTS:opencl-generic>
+#  $<TARGET_OBJECTS:hybrid-opencl>
+#)
+#
+#set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+#
+#target_link_libraries (
+#  idg-hybrid-opencl
+#  ${LINK_LIRBRARIES}
+#)
+#
+#set_target_properties(idg-hybrid-opencl PROPERTIES
+#                      PUBLIC_HEADER idg-hybrid-opencl.h)
+#
+#install(TARGETS idg-hybrid-opencl
+#  EXPORT IDGTargets
+#  RUNTIME DESTINATION bin
+#  LIBRARY DESTINATION lib
+#  ARCHIVE DESTINATION lib/static
+#  PUBLIC_HEADER DESTINATION include
+#)
 endif()
-
 
 
 ###################################################

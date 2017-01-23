@@ -12,12 +12,12 @@
 #include "Kernels.h"
 
 namespace idg {
-    namespace proxy {
+    namespace kernel {
         namespace opencl {
-            class DeviceInstance {
+            class DeviceInstance : public Kernels {
                 public:
                     DeviceInstance(
-                        Parameters &params,
+                        CompileConstants &constants,
                         cl::Context &context,
                         int device_number,
                         const char *power_sensor = NULL,
@@ -53,11 +53,6 @@ namespace idg {
                         const char *str_power_sensor,
                         const char *str_power_file);
 
-                protected:
-                    // Arguments shared by all DeviceInstance instances
-                    Parameters  &parameters;
-                    ProxyInfo   &info;
-
                 private:
                     // OpenCL objects private to this DeviceInstance
                     cl::Device *device;
@@ -84,7 +79,7 @@ namespace idg {
 
             std::ostream& operator<<(std::ostream& os, DeviceInstance &d);
         } // end namespace opencl
-    } // end namespace proxy
+    } // end namespace kernel
 } // end namespace idg
 
 #endif
