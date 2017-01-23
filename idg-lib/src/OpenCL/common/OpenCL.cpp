@@ -2,9 +2,10 @@
 
 #include "Util.h"
 #include "DeviceInstance.h"
-#include "Kernels.h"
 
 using namespace idg::kernel::opencl;
+
+void clfftTeardown();
 
 namespace idg {
     namespace proxy {

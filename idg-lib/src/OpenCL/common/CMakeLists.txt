@@ -3,7 +3,6 @@ project(opencl-common)
 # sources and header files
 set (${PROJECT_NAME}_headers
     OpenCL.h
-    Kernels.h
     PerformanceCounter.h
     Util.h
     DeviceInstance.h
@@ -11,7 +10,6 @@ set (${PROJECT_NAME}_headers
 
 set (${PROJECT_NAME}_sources
     OpenCL.cpp
-    Kernels.cpp
     PerformanceCounter.cpp
     Util.cpp
     DeviceInstance.cpp

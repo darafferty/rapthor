@@ -1,6 +1,10 @@
 project(opencl-generic)
 
 # Set headers
+include_directories (
+	${CMAKE_SOURCE_DIR}/src/OpenCL/common
+)
+
 set (
     ${PROJECT_NAME}_headers
     Generic.h

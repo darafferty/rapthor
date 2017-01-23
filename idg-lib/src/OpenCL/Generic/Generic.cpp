@@ -1,7 +1,6 @@
 #include "Generic.h"
 
-#include "../common/Kernels.h"
-#include "../common/DeviceInstance.h"
+#include "DeviceInstance.h"
 
 /*
     Toggle warmup
