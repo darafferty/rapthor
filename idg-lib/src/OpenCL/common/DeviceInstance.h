@@ -20,8 +20,8 @@ namespace idg {
             class DeviceInstance : public Kernels {
                 public:
                     DeviceInstance(
-                        CompileConstants &constants,
-                        cl::Context &context,
+                        CompileConstants& constants,
+                        cl::Context& context,
                         int device_number,
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);

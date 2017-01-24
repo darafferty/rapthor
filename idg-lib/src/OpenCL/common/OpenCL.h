@@ -31,7 +31,7 @@ namespace idg {
 
                     void print_devices();
 
-                    cl::Context &get_context() { return *context; }
+                    cl::Context& get_context() { return *context; }
 
                     unsigned int get_num_devices() const;
                     idg::kernel::opencl::DeviceInstance& get_device(unsigned int i) const;

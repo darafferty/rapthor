@@ -10,7 +10,7 @@ namespace idg {
                 public:
                     // Constructor
                     Generic(
-                        CompileConstants constants);
+                        CompileConstants& constants);
 
                     // Destructor
                     ~Generic();

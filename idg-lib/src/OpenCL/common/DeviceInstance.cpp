@@ -13,8 +13,8 @@ namespace idg {
 
             // Constructor
             DeviceInstance::DeviceInstance(
-                CompileConstants &constants,
-                cl::Context &context,
+                CompileConstants& constants,
+                cl::Context& context,
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :

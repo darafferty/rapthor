@@ -1,3 +1,5 @@
+#include <array>
+
 #include "Util.h"
 
 float get_opencl_version(cl::Device &device) {
@@ -45,4 +47,10 @@ void writeBufferBatched(cl::CommandQueue &queue, cl::Buffer &dst, cl_bool blocki
         const void *ptr_ = (const char *) ptr + offset_;
         queue.enqueueWriteBuffer(dst, blocking_write, offset_, size_, ptr_);
     }
+}
+
+void enqueueZeroBuffer(cl::CommandQueue& queue, cl::Buffer& buffer, size_t offset, size_t size) {
+    array<float, 1> pattern;
+    pattern[0] = 0.;
+    queue.enqueueFillBuffer(buffer, pattern, offset, size);
 }

@@ -79,6 +79,7 @@ namespace idg {
 				    cl::Device &d = di->get_device();
                     auto bytes_total = d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
                     jobsize[i] = (bytes_total * 0.8) /  bytes_required;
+                    jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     #if defined(DEBUG)
                     printf("Bytes required: %lu\n", bytes_required);
                     printf("Bytes total:    %lu\n", bytes_total);

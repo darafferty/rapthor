@@ -27,19 +27,6 @@
 */
 #define PREVENT_CODEXL_BUG 1
 
-/*
-    Toggle between two modes of cu::HostMemory allocation
-        REDUCE_HOST_MEMORY = 0:
-            visibilities and uvw will be completely mapped
-            into host memory shared by all threads
-            (this takes some time, especially for large buffers)
-        REDUCE_HOST_MEMORY = 1:
-            every thread allocates private host memory
-            to hold data for just one job
-            (throughput is lower, due to additional memory copies)
-*/
-#define REDUCE_HOST_MEMORY 0
-
 
 using namespace std;
 using namespace idg::kernel::opencl;
@@ -49,36 +36,14 @@ namespace idg {
     namespace proxy {
         namespace opencl {
 
-            #if REDUCE_HOST_MEMORY
-            std::vector<cl::Buffer*> h_visibilities_;
-            std::vector<cl::Buffer*> h_uvw_;
-            #else
-            cl::Buffer *h_visibilities;
-            cl::Buffer *h_uvw;
-            #endif
-            std::vector<cl::Buffer*> h_grid_;
-
             // Constructor
             Generic::Generic(
-                CompileConstants constants) :
+                CompileConstants& constants) :
                 OpenCL(constants)
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
                 #endif
-
-                // Allocate memory
-                //#if !REDUCE_HOST_MEMORY
-                //h_visibilities = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines()));
-                //h_uvw = new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines()));
-                //#endif
-                //for (DeviceInstance *device : devices) {
-                //    #if REDUCE_HOST_MEMORY
-                //    h_visibilities_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities(params.get_nr_baselines())));
-                //    h_uvw_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw(params.get_nr_baselines())));
-                //    #endif
-                //    h_grid_.push_back(new cl::Buffer(*context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid()));
-                //}
 
                 // Initialize host PowerSensor
                 #if defined(HAVE_LIKWID)
@@ -90,13 +55,7 @@ namespace idg {
 
             // Destructor
             Generic::~Generic() {
-                //for (int i = 0; i < devices.size(); i++) {
-                //    #if REDUCE_HOST_MEMORY
-                //    delete h_visibilities_[i];
-                //    delete h_uvw_[i];
-                //    #endif
-                //    delete h_grid_[i];
-                //}
+                delete hostPowerSensor;
             }
 
 
@@ -216,46 +175,78 @@ namespace idg {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
-#if 0
+
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+                // Proxy constants
+                auto subgrid_size    = mConstants.get_subgrid_size();
+                auto nr_correlations = mConstants.get_nr_correlations();
+
+                // Checks arguments
+                if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
+                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                }
+
+                check_dimensions(
+                    frequencies, visibilities, uvw, baselines,
+                    grid, aterms, aterms_offsets, spheroidal);
+
+                // Arguments
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = visibilities.get_x_dim();
+                auto nr_stations  = aterms.get_z_dim();
+                auto nr_timeslots = aterms.get_w_dim();
+                auto grid_size    = grid.get_x_dim();
+                auto image_size   = cell_size * grid_size;
+
                 // Configuration
-                const int nr_devices = devices.size();
+                const int nr_devices = get_num_devices();
                 const int nr_streams = 2;
 
-                // Constants
-                auto nr_stations      = mParams.get_nr_stations();
-                auto nr_baselines     = mParams.get_nr_baselines();
-                auto nr_time          = mParams.get_nr_time();
-                auto nr_timeslots     = mParams.get_nr_timeslots();
-                auto nr_channels      = mParams.get_nr_channels();
-                auto nr_polarizations = mParams.get_nr_polarizations();
-                auto gridsize         = mParams.get_grid_size();
-                auto subgridsize      = mParams.get_subgrid_size();
-                auto imagesize        = mParams.get_imagesize();
-
                 // Initialize metadata
-                auto plan = create_plan(uvw, wavenumbers, baselines, aterm_offsets, kernel_size);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Copy input data to host memory
-                #if !REDUCE_HOST_MEMORY
-                cl::CommandQueue &queue = devices[0]->get_htod_queue();
-                writeBufferBatched(queue, *h_visibilities, CL_FALSE, 0, sizeof_visibilities(nr_baselines), visibilities);
-                writeBufferBatched(queue, *h_uvw, CL_FALSE, 0, sizeof_uvw(nr_baselines), uvw);
-                #endif
+                // Initialize memory for first device
+                cl::Context& context = get_context();
+                DeviceInstance& device0 = get_device(0);
+                cl::CommandQueue& htodqueue = device0.get_htod_queue();
+                auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
+                cl::Buffer h_visibilities   = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities);
+                cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
+                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities, visibilities.data());
+                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
 
-                // Device memory
-                std::vector<cl::Buffer*> d_wavenumbers_;
-                std::vector<cl::Buffer*> d_spheroidal_;
-                std::vector<cl::Buffer*> d_aterm_;
-                std::vector<cl::Buffer*> d_grid_;
-                for (DeviceInstance *device : devices) {
-                    d_wavenumbers_.push_back(new cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_wavenumbers()));
-                    d_spheroidal_.push_back(new cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_spheroidal()));
-                    d_aterm_.push_back(new cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_aterm()));
-                    d_grid_.push_back(new cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_grid()));
+                // Initialize memory for all devices
+                std::vector<cl::Buffer> h_grid_(nr_devices);
+                std::vector<cl::Buffer> d_grid_(nr_devices);
+                std::vector<cl::Buffer> d_wavenumbers_(nr_devices);
+                std::vector<cl::Buffer> d_spheroidal_(nr_devices);
+                std::vector<cl::Buffer> d_aterms_(nr_devices);
+                for (int d = 0; d < nr_devices; d++) {
+                    vector<cl::Event> input(2);
+                    DeviceInstance& device      = get_device(d);
+                    cl::CommandQueue& htodqueue = device.get_htod_queue();
+                    auto sizeof_grid         = device.sizeof_grid(grid_size);
+                    auto sizeof_wavenumbers  = device.sizeof_wavenumbers(nr_channels);
+                    auto sizeof_spheroidal   = device.sizeof_spheroidal(subgrid_size);
+                    auto sizeof_aterms       = device.sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    cl::Buffer h_grid        = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_grid);
+                    cl::Buffer d_grid        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid);
+                    cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers);
+                    cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal);
+                    cl::Buffer d_aterms      = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_aterms);
+                    htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers, wavenumbers.data());
+                    htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal, spheroidal.data());
+                    htodqueue.enqueueWriteBuffer(d_aterms, CL_FALSE, 0, sizeof_aterms, aterms.data());
+                    enqueueZeroBuffer(htodqueue, d_grid, 0, sizeof_grid);
+                    h_grid_[d]        = h_grid;
+                    d_grid_[d]        = d_grid;
+                    d_wavenumbers_[d] = d_wavenumbers;
+                    d_spheroidal_[d]  = d_spheroidal;
+                    d_aterms_[d]      = d_aterms;
                 }
 
                 // Locks
@@ -263,7 +254,6 @@ namespace idg {
 
                 // Performance measurements
                 double total_runtime_gridding = 0;
-                double time_gridding_start = 0;
                 PowerSensor::State startStates[nr_devices+1];
                 PowerSensor::State stopStates[nr_devices+1];
 
@@ -271,82 +261,65 @@ namespace idg {
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
-                    int local_id = global_id % nr_streams;
-                    int jobsize = jobsize_[device_id];
+                    int local_id  = global_id % nr_streams;
+                    int jobsize   = jobsize_[device_id];
+                    int lock      = locks[device_id];
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Limit jobsize
                     jobsize = min(jobsize, nr_baselines); // Jobs can't be larger than number of baselines
 
                     // Load device
-                    DeviceInstance *device    = devices[device_id];
-                    PowerSensor *devicePowerSensor = device->get_powersensor();
-
-                    // Load kernels
-                    unique_ptr<Gridder> kernel_gridder = device->get_kernel_gridder();
-                    unique_ptr<Adder>   kernel_adder   = device->get_kernel_adder();
-                    unique_ptr<Scaler>  kernel_scaler  = device->get_kernel_scaler();
-                    unique_ptr<GridFFT> kernel_fft     = device->get_kernel_fft();
-
+                    DeviceInstance& device  = get_device(device_id);
 
                     // Load OpenCL objects
-                    cl::CommandQueue &executequeue = device->get_execute_queue();
-                    cl::CommandQueue &htodqueue    = device->get_htod_queue();
-                    cl::CommandQueue &dtohqueue    = device->get_dtoh_queue();
+                    cl::CommandQueue& executequeue = device.get_execute_queue();
+                    cl::CommandQueue& htodqueue    = device.get_htod_queue();
+                    cl::CommandQueue& dtohqueue    = device.get_dtoh_queue();
 
                     // Load memory objects
-                    #if REDUCE_HOST_MEMORY
-                    cl::Buffer &h_visibilities = *(h_visibilities_[device_id]);
-                    cl::Buffer &h_uvw          = *(h_uvw_[device_id]);
-                    #endif
-                    cl::Buffer &d_wavenumbers  = *(d_wavenumbers_[device_id]);
-                    cl::Buffer &d_spheroidal   = *(d_spheroidal_[device_id]);
-                    cl::Buffer &d_aterm        = *(d_aterm_[device_id]);
-                    cl::Buffer &d_grid         = *(d_grid_[device_id]);
-
-                    // Copy read-only device memory
-                    if (local_id == 0) {
-                        htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers(), wavenumbers);
-                        htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal(), spheroidal);
-                        htodqueue.enqueueWriteBuffer(d_aterm, CL_FALSE, 0, sizeof_aterm(), aterm);
-                    }
-                    array<float, 1> pattern;
-                    pattern[0] = 0.;
-                    htodqueue.enqueueFillBuffer(d_grid, pattern, 0, sizeof_grid());
-                    htodqueue.finish();
+                    cl::Buffer& h_grid        = h_grid_[device_id];
+                    cl::Buffer& d_grid        = d_grid_[device_id];
+                    cl::Buffer& d_wavenumbers = d_wavenumbers_[device_id];
+                    cl::Buffer& d_spheroidal  = d_spheroidal_[device_id];
+                    cl::Buffer& d_aterms      = d_aterms_[device_id];
 
                     // Events
                     vector<cl::Event> inputFree(1), outputFree(1), inputReady(1);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &inputFree[0]);
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
 
-                    // Private device memory
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-                    cl::Buffer d_visibilities = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_visibilities(jobsize));
-                    cl::Buffer d_uvw          = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_uvw(jobsize));
-                    cl::Buffer d_subgrids     = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_subgrids(max_nr_subgrids));
-                    cl::Buffer d_metadata     = cl::Buffer(*context, CL_MEM_READ_WRITE, sizeof_metadata(max_nr_subgrids));
+                    // Allocate private device memory
+                    auto sizeof_visibilities = device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                    auto sizeof_uvw          = device.sizeof_uvw(jobsize, nr_timesteps);
+                    auto sizeof_subgrids     = device.sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                    auto sizeof_metadata     = device.sizeof_metadata(max_nr_subgrids);
+                    cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities);
+                    cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw);
+                    cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids);
+                    cl::Buffer d_metadata     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_metadata);
 
                     // Create FFT plan
                     #if ENABLE_FFT
-                    kernel_fft->plan(*context, executequeue, subgridsize, max_nr_subgrids);
+                    if (local_id == 0) {
+                        device.plan_fft(subgrid_size, max_nr_subgrids);
+                    }
                     #endif
-
-                    // Lock
-                    int lock = locks[device_id];
 
                     // Warmup
                     #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(*h_uvw, d_uvw, 0, 0, sizeof_uvw(jobsize));
-                    htodqueue.enqueueCopyBuffer(*h_visibilities, d_visibilities, 0, 0, sizeof_visibilities(jobsize));
+                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities);
+                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw);
                     htodqueue.finish();
                     #if ENABLE_FFT
-                    kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD);
-                    #endif
+                    device.launch_fft(d_subgrids, FourierDomainToImageDomain);
                     executequeue.finish();
+                    #endif
                     #endif
 
                     // Performance measurement
-                    vector<PerformanceCounter> counters(5);
+                    PowerSensor *devicePowerSensor = device.get_powersensor();
+                    std::vector<PerformanceCounter> counters(5);
                     for (PerformanceCounter& counter : counters) {
                         counter.setPowerSensor(devicePowerSensor);
                     }
@@ -357,71 +330,54 @@ namespace idg {
 
                     #pragma omp barrier
                     #pragma omp single
-                    time_gridding_start = omp_get_wtime();
+                    total_runtime_gridding = -omp_get_wtime();
 
-                    for (int i = 0; i < nr_repetitions; i++) {
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Compute the number of baselines to process in current iteration
-                        int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
-                        // Number of elements in batch
-                        int uvw_elements          = nr_time * sizeof(UVW)/sizeof(float);
-                        int visibilities_elements = nr_time * nr_channels * nr_polarizations;
-
-                        // Number of subgrids for all baselines in job
+                        // Initialize iteration
+                        auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
                         auto subgrid_offset       = plan.get_subgrid_offset(bl);
-
-                        // Offsets
-                        size_t uvw_offset          = bl * sizeof_uvw(1);
-                        size_t visibilities_offset = bl * sizeof_visibilities(1);
-                        size_t metadata_offset     = subgrid_offset * sizeof_metadata(1);
-
-                        // Pointers to data for current batch
-                        #if REDUCE_HOST_MEMORY
-                        void *uvw_ptr          = (float *) uvw + bl * uvw_elements;
-                        void *visibilities_ptr = (complex<float>*) visibilities + bl * visibilities_elements;
-                        htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw(current_nr_baselines), uvw_ptr);
-                        htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities(current_nr_baselines), visibilities_ptr);
-                        uvw_offset = 0;
-                        visibilities_offset = 0;
-                        #endif
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        auto uvw_offset           = bl * device.sizeof_uvw(1, nr_timesteps);
+                        auto visibilities_offset  = bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
+                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
 
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodqueue.enqueueMarkerWithWaitList(&inputFree, NULL);
-                            htodqueue.enqueueCopyBuffer(*h_uvw, d_uvw, uvw_offset, 0, sizeof_uvw(current_nr_baselines));
-                            htodqueue.enqueueCopyBuffer(*h_visibilities, d_visibilities, visibilities_offset, 0, sizeof_visibilities(current_nr_baselines));
-                            htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0, sizeof_metadata(current_nr_subgrids), metadata_ptr);
+                            htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0,
+                                device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
+                                device.sizeof_uvw(current_nr_baselines, nr_timesteps));
+                            htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
+                                device.sizeof_metadata(current_nr_subgrids), metadata_ptr);
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
 							// Launch gridder kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             executequeue.enqueueMarkerWithWaitList(&outputFree, NULL);
-                            kernel_gridder->launchAsync(
-                                executequeue, current_nr_timesteps, current_nr_subgrids,
-                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
-                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
+                            device.launch_gridder(
+                                current_nr_timesteps, current_nr_subgrids,
+                                grid_size, image_size, w_offset, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+                                d_aterms, d_metadata, d_subgrids, counters[0]);
 
 							// Launch FFT
                             #if ENABLE_FFT
-                            kernel_fft->launchAsync(executequeue, d_subgrids, CLFFT_BACKWARD, counters[4], "sub-fft");
+                            device.launch_fft(d_subgrids, FourierDomainToImageDomain, counters[4], "sub-fft");
                             #endif
 
                             // Launch adder kernel
-                            kernel_adder->launchAsync(
-                                executequeue, current_nr_subgrids, gridsize,
+                            device.launch_adder(
+                                current_nr_subgrids, grid_size,
                                 d_metadata, d_subgrids, d_grid, counters[3]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
 
                         inputReady[0].wait();
                     } // end for bl
-                    } // end for repetitions
 
                     // Wait for all jobs to finish
                     executequeue.finish();
@@ -431,57 +387,60 @@ namespace idg {
                         stopStates[device_id] = devicePowerSensor->read();
                         stopStates[nr_devices] = hostPowerSensor->read();
                     }
+
+                    // Copy grid to host
+                    if (local_id == 0) {
+                        dtohqueue.enqueueCopyBuffer(d_grid, h_grid, 0, 0, device.sizeof_grid(grid_size));
+                    }
+                    dtohqueue.finish();
                 } // end omp parallel
 
-                // End gridding timing
-                #pragma omp critical
-                {
-                    total_runtime_gridding = (omp_get_wtime() - time_gridding_start) / nr_repetitions;
-                }
+                // End timing
+                total_runtime_gridding += omp_get_wtime();
 
-                // Add new grids to existing grid
-                for (int d = 0; d < devices.size(); d++) {
-                    cl::Buffer &d_grid = *(d_grid_[d]);
-                    float2 grid_src[gridsize * gridsize * nr_polarizations];
-                    queue.enqueueReadBuffer(d_grid, CL_TRUE, 0, sizeof_grid(), grid_src);
-                    float2 *grid_dst = (float2 *) grid;
+                // Add grids
+                float2 grid_src[nr_correlations * grid_size * grid_size];
+                for (int d = 0; d < nr_devices; d++) {
+                    DeviceInstance& device = get_device(d);
+                    cl::CommandQueue dtohqueue = device.get_dtoh_queue();
+                    dtohqueue.enqueueReadBuffer(h_grid_[d], CL_TRUE, 0, device.sizeof_grid(grid_size), grid_src);
+                    float2 *grid_dst = (float2 *) grid.data();
+
                     #pragma omp parallel for
-                    for (int i = 0; i < gridsize * gridsize * nr_polarizations; i++) {
+                    for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
                         grid_dst[i] += grid_src[i];
                     }
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                unique_ptr<GridFFT> kernel_fft     = devices[0]->get_kernel_fft();
-                unique_ptr<Gridder> kernel_gridder = devices[0]->get_kernel_gridder();
-                unique_ptr<Scaler>  kernel_scaler  = devices[0]->get_kernel_scaler();
-                unique_ptr<Adder>   kernel_adder   = devices[0]->get_kernel_adder();
-                uint64_t total_flops_gridder  = kernel_gridder->flops(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_bytes_gridder  = kernel_gridder->bytes(total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_flops_fft      = kernel_fft->flops(subgridsize, total_nr_subgrids);
-                uint64_t total_bytes_fft      = kernel_fft->bytes(subgridsize, total_nr_subgrids);
-                uint64_t total_flops_scaler   = kernel_scaler->flops(total_nr_subgrids);
-                uint64_t total_bytes_scaler   = kernel_scaler->bytes(total_nr_subgrids);
-                uint64_t total_flops_adder    = kernel_adder->flops(total_nr_subgrids);
-                uint64_t total_bytes_adder    = kernel_adder->bytes(total_nr_subgrids);
+                DeviceInstance& device = get_device(0);
+                auto total_nr_subgrids   = plan.get_nr_subgrids();
+                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                uint64_t total_flops_gridder  = device.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_bytes_gridder  = device.bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_flops_fft      = device.flops_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_bytes_fft      = device.bytes_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_flops_scaler   = device.flops_scaler(total_nr_subgrids);
+                uint64_t total_bytes_scaler   = device.bytes_scaler(total_nr_subgrids);
+                uint64_t total_flops_adder    = device.flops_adder(total_nr_subgrids);
+                uint64_t total_bytes_adder    = device.bytes_adder(total_nr_subgrids);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_time, nr_channels);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps, nr_channels);
 
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
 
                 // Report device power consumption
-                for (int d = 0; d < devices.size(); d++) {
-                    PowerSensor *devicePowerSensor = devices[d]->get_powersensor();
+                for (int d = 0; d < get_num_devices(); d++) {
+                    PowerSensor* devicePowerSensor = get_device(d).get_powersensor();
                     stringstream message;
                     message << "|device" << d;
                     auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
                 }
                 clog << endl;
                 #endif
-#endif
             } // end gridding
 
 
