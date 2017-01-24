@@ -2,7 +2,7 @@
 
 #include "Generic.h"
 
-#include "DeviceInstance.h"
+#include "InstanceOpenCL.h"
 #include "PerformanceCounter.h"
 
 /*
@@ -66,8 +66,8 @@ namespace idg {
                 auto nr_correlations = mConstants.get_nr_correlations();
 
                 // Load device
-                DeviceInstance& device = get_device(0);
-                cl::Context& context = get_context();
+                InstanceOpenCL& device = get_device(0);
+                cl::Context& context   = get_context();
                 PowerSensor *devicePowerSensor = device.get_powersensor();
 
                 // Command queue
@@ -203,7 +203,7 @@ namespace idg {
 
                 // Initialize memory for first device
                 cl::Context& context        = get_context();
-                DeviceInstance& device0     = get_device(0);
+                InstanceOpenCL& device0     = get_device(0);
                 cl::CommandQueue& htodqueue = device0.get_htod_queue();
                 auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
@@ -220,7 +220,7 @@ namespace idg {
                 std::vector<cl::Buffer> d_aterms_(nr_devices);
                 for (int d = 0; d < nr_devices; d++) {
                     vector<cl::Event> input(2);
-                    DeviceInstance& device      = get_device(d);
+                    InstanceOpenCL& device      = get_device(d);
                     cl::CommandQueue& htodqueue = device.get_htod_queue();
                     auto sizeof_grid         = device.sizeof_grid(grid_size);
                     auto sizeof_wavenumbers  = device.sizeof_wavenumbers(nr_channels);
@@ -263,7 +263,7 @@ namespace idg {
                     jobsize = min(jobsize, nr_baselines);
 
                     // Load device
-                    DeviceInstance& device = get_device(device_id);
+                    InstanceOpenCL& device = get_device(device_id);
 
                     // Load OpenCL objects
                     cl::CommandQueue& executequeue = device.get_execute_queue();
@@ -390,7 +390,7 @@ namespace idg {
                 // Add grids
                 float2 grid_src[nr_correlations * grid_size * grid_size];
                 for (int d = 0; d < nr_devices; d++) {
-                    DeviceInstance& device = get_device(d);
+                    InstanceOpenCL& device     = get_device(d);
                     cl::CommandQueue dtohqueue = device.get_dtoh_queue();
                     dtohqueue.enqueueReadBuffer(h_grid_[d], CL_TRUE, 0, device.sizeof_grid(grid_size), grid_src);
                     float2 *grid_dst = (float2 *) grid.data();
@@ -402,7 +402,7 @@ namespace idg {
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                DeviceInstance& device = get_device(0);
+                InstanceOpenCL& device   = get_device(0);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 uint64_t total_flops_gridder  = device.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
@@ -485,7 +485,7 @@ namespace idg {
 
                 // Initialize memory for first device
                 cl::Context& context        = get_context();
-                DeviceInstance& device0     = get_device(0);
+                InstanceOpenCL& device0     = get_device(0);
                 cl::CommandQueue& htodqueue = device0.get_htod_queue();
                 auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
@@ -500,7 +500,7 @@ namespace idg {
                 std::vector<cl::Buffer> d_aterms_(nr_devices);
                 for (int d = 0; d < nr_devices; d++) {
                     vector<cl::Event> input(2);
-                    DeviceInstance& device      = get_device(d);
+                    InstanceOpenCL& device      = get_device(d);
                     cl::CommandQueue& htodqueue = device.get_htod_queue();
                     auto sizeof_grid         = device.sizeof_grid(grid_size);
                     auto sizeof_wavenumbers  = device.sizeof_wavenumbers(nr_channels);
@@ -541,7 +541,7 @@ namespace idg {
                     jobsize = min(jobsize, nr_baselines);
 
                     // Load device
-                    DeviceInstance& device = get_device(device_id);
+                    InstanceOpenCL& device = get_device(device_id);
 
                     // Load OpenCL objects
                     cl::CommandQueue& executequeue = device.get_execute_queue();
@@ -670,7 +670,7 @@ namespace idg {
                     device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels), visibilities.data());
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                DeviceInstance& device = get_device(0);
+                InstanceOpenCL& device   = get_device(0);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);

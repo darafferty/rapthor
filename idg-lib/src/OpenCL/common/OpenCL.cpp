@@ -3,7 +3,7 @@
 #include "OpenCL.h"
 
 #include "Util.h"
-#include "DeviceInstance.h"
+#include "InstanceOpenCL.h"
 
 using namespace idg::kernel::opencl;
 
@@ -44,7 +44,7 @@ namespace idg {
                 return devices.size();
             }
 
-            DeviceInstance& OpenCL::get_device(unsigned int i) const
+            InstanceOpenCL& OpenCL::get_device(unsigned int i) const
             {
                 return *(devices[i]);
             }
@@ -75,7 +75,7 @@ namespace idg {
                 int nr_devices = devices.size();
                 std::vector<int> jobsize(nr_devices);
                 for (int i = 0; i < nr_devices; i++) {
-                    DeviceInstance *di = devices[i];
+                    InstanceOpenCL *di = devices[i];
 				    cl::Device &d = di->get_device();
                     auto bytes_total = d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
                     jobsize[i] = (bytes_total * 0.8) /  bytes_required;
@@ -116,21 +116,21 @@ namespace idg {
                 for (int i = 0; i < device_numbers.size(); i++) {
                     const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
                     const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
-                    DeviceInstance *device = new DeviceInstance(
+                    InstanceOpenCL *device = new InstanceOpenCL(
                         mConstants, *context, device_numbers[i], power_sensor, power_file);
                     devices.push_back(device);
                 }
             }
 
             void OpenCL::free_devices() {
-                for (DeviceInstance *device : devices) {
-                    device->~DeviceInstance();
+                for (InstanceOpenCL *device : devices) {
+                    device->~InstanceOpenCL();
                 }
             }
 
             void OpenCL::print_devices() {
                 std::cout << "Devices: " << std::endl;
-                for (DeviceInstance *device : devices) {
+                for (InstanceOpenCL *device : devices) {
                     std::cout << *device;
                 }
                 std::cout << std::endl;
@@ -138,7 +138,7 @@ namespace idg {
 
             void OpenCL::print_compiler_flags() {
                 std::cout << "Compiler flags: " << std::endl;
-                for (DeviceInstance *device : devices) {
+                for (InstanceOpenCL *device : devices) {
                     std::cout << device->get_compiler_flags() << std::endl;
                 }
                 std::cout << std::endl;

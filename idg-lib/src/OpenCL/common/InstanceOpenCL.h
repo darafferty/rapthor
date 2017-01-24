@@ -1,5 +1,5 @@
-#ifndef IDG_OPENCL_DEVICEINSTANCE_H_
-#define IDG_OPENCL_DEVICEINSTANCE_H_
+#ifndef IDG_OPENCL_INSTANCE_H_
+#define IDG_OPENCL_INSTANCE_H_
 
 #include <cstring>
 #include <sstream>
@@ -17,16 +17,16 @@ namespace idg {
         namespace opencl {
             typedef size_t clfftPlanHandle;
 
-            class DeviceInstance : public Kernels {
+            class InstanceOpenCL : public Kernels {
                 public:
-                    DeviceInstance(
+                    InstanceOpenCL(
                         CompileConstants& constants,
                         cl::Context& context,
                         int device_number,
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);
 
-                    ~DeviceInstance();
+                    ~InstanceOpenCL();
 
                     cl::Device&  get_device()  const { return *device; }
                     cl::CommandQueue&  get_execute_queue() const { return *executequeue; };
@@ -118,7 +118,6 @@ namespace idg {
                         const char *str_power_file);
 
                 private:
-                    // OpenCL objects private to this DeviceInstance
                     cl::Context& mContext;
                     cl::Device *device;
                     cl::CommandQueue  *executequeue;
@@ -138,8 +137,6 @@ namespace idg {
                     cl::Event event_fft_start;
                     cl::Event event_fft_end;
                     std::vector<cl::Program*> mPrograms;
-
-                    // Power sensor private to this DeviceInstance
                     PowerSensor *powerSensor;
 
                 protected:
@@ -161,7 +158,7 @@ namespace idg {
 
             };
 
-            std::ostream& operator<<(std::ostream& os, DeviceInstance &d);
+            std::ostream& operator<<(std::ostream& os, InstanceOpenCL &d);
 
 			// Kernel names
 			static const std::string name_gridder   = "kernel_gridder";

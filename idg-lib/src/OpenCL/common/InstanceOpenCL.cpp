@@ -1,6 +1,6 @@
 #include <clFFT.h>
 
-#include "DeviceInstance.h"
+#include "InstanceOpenCL.h"
 #include "PerformanceCounter.h"
 
 #define ENABLE_PERFORMANCE_COUNTERS 1
@@ -12,7 +12,7 @@ namespace idg {
         namespace opencl {
 
             // Constructor
-            DeviceInstance::DeviceInstance(
+            InstanceOpenCL::InstanceOpenCL(
                 CompileConstants& constants,
                 cl::Context& context,
                 int device_number,
@@ -49,7 +49,7 @@ namespace idg {
             }
 
             // Destructor
-            DeviceInstance::~DeviceInstance() {
+            InstanceOpenCL::~InstanceOpenCL() {
                 delete device;
                 delete executequeue;
                 delete htodqueue;
@@ -63,7 +63,7 @@ namespace idg {
                 delete kernel_scaler;
             }
 
-            void DeviceInstance::set_parameters_default() {
+            void InstanceOpenCL::set_parameters_default() {
                 batch_gridder   = 32;
                 batch_degridder = 256;
                 block_gridder   = cl::NDRange(256, 1);
@@ -73,19 +73,19 @@ namespace idg {
                 block_scaler    = cl::NDRange(128, 1);
             }
 
-            void DeviceInstance::set_parameters_fiji() {
+            void InstanceOpenCL::set_parameters_fiji() {
 				// Fiji parameters are default
             }
 
-			void DeviceInstance::set_parameters_hawaii() {
+			void InstanceOpenCL::set_parameters_hawaii() {
 				// TODO
 			}
 
-            void DeviceInstance::set_parameters_tahiti() {
+            void InstanceOpenCL::set_parameters_tahiti() {
 				// TODO
             }
 
-            void DeviceInstance::set_parameters() {
+            void InstanceOpenCL::set_parameters() {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
@@ -106,7 +106,7 @@ namespace idg {
             }
 
 
-            std::string DeviceInstance::get_compiler_flags() {
+            std::string InstanceOpenCL::get_compiler_flags() {
                 // Parameter flags
                 std::stringstream flags_constants;
                 flags_constants << " -DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
@@ -137,7 +137,7 @@ namespace idg {
             }
 
 
-            void DeviceInstance::compile_kernels()
+            void InstanceOpenCL::compile_kernels()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -203,7 +203,7 @@ namespace idg {
             } // end compile_kernels
 
 
-            void DeviceInstance::load_kernels() {
+            void InstanceOpenCL::load_kernels() {
                 try {
                     kernel_gridder   = new cl::Kernel(*(mPrograms[0]), name_gridder.c_str());
                     kernel_degridder = new cl::Kernel(*(mPrograms[1]), name_degridder.c_str());
@@ -216,7 +216,7 @@ namespace idg {
                 }
             } // end load_kernels
 
-            std::ostream& operator<<(std::ostream& os, DeviceInstance &di) {
+            std::ostream& operator<<(std::ostream& os, InstanceOpenCL &di) {
 				cl::Device d = di.get_device();
 
 				os << "Device: "		   << d.getInfo<CL_DEVICE_NAME>()    << std::endl;
@@ -231,7 +231,7 @@ namespace idg {
                 return os;
             }
 
-            void DeviceInstance::init_powersensor(
+            void InstanceOpenCL::init_powersensor(
                 const char *str_power_sensor,
                 const char *str_power_file)
             {
@@ -254,7 +254,7 @@ namespace idg {
             /*
                 Kernels
             */
-            void DeviceInstance::launch_gridder(
+            void InstanceOpenCL::launch_gridder(
                 int nr_timesteps,
                 int nr_subgrids,
                 int grid_size,
@@ -301,7 +301,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::launch_degridder(
+            void InstanceOpenCL::launch_degridder(
                 int nr_timesteps,
                 int nr_subgrids,
                 int grid_size,
@@ -348,7 +348,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::plan_fft(
+            void InstanceOpenCL::plan_fft(
                 int size, int batch)
             {
                 // Check wheter a new plan has to be created
@@ -388,7 +388,7 @@ namespace idg {
             }
 
 
-            void DeviceInstance::launch_fft(
+            void InstanceOpenCL::launch_fft(
                 cl::Buffer &d_data,
                 DomainAtoDomainB direction)
             {
@@ -402,7 +402,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::launch_fft(
+            void InstanceOpenCL::launch_fft(
                 cl::Buffer &d_data,
                 DomainAtoDomainB direction,
                 PerformanceCounter &counter,
@@ -426,7 +426,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::launch_adder(
+            void InstanceOpenCL::launch_adder(
                 int nr_subgrids,
                 int grid_size,
                 cl::Buffer& d_metadata,
@@ -456,7 +456,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::launch_splitter(
+            void InstanceOpenCL::launch_splitter(
                 int nr_subgrids,
                 int grid_size,
                 cl::Buffer& d_metadata,
@@ -486,7 +486,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::launch_scaler(
+            void InstanceOpenCL::launch_scaler(
                 int nr_subgrids,
                 cl::Buffer& d_subgrid,
                 PerformanceCounter& counter)

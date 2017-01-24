@@ -5,14 +5,14 @@ set (${PROJECT_NAME}_headers
     OpenCL.h
     PerformanceCounter.h
     Util.h
-    DeviceInstance.h
+    InstanceOpenCL.h
 )
 
 set (${PROJECT_NAME}_sources
     OpenCL.cpp
     PerformanceCounter.cpp
     Util.cpp
-    DeviceInstance.cpp
+    InstanceOpenCL.cpp
 )
 
 # create library

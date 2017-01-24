@@ -13,7 +13,7 @@ namespace cl {
 namespace idg {
     namespace kernel {
         namespace opencl {
-            class DeviceInstance;
+            class InstanceOpenCL;
         }
     }
 
@@ -34,7 +34,7 @@ namespace idg {
                     cl::Context& get_context() { return *context; }
 
                     unsigned int get_num_devices() const;
-                    idg::kernel::opencl::DeviceInstance& get_device(unsigned int i) const;
+                    idg::kernel::opencl::InstanceOpenCL& get_device(unsigned int i) const;
 
                     std::vector<int> compute_jobsize(
                         const Plan &plan,
@@ -49,7 +49,7 @@ namespace idg {
 
                 private:
                     cl::Context *context;
-                    std::vector<idg::kernel::opencl::DeviceInstance*> devices;
+                    std::vector<idg::kernel::opencl::InstanceOpenCL*> devices;
             };
         } // end namespace idg
     } // end namespace proxy
