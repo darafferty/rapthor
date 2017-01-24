@@ -2,7 +2,7 @@
 
 #include "idg-config.h"
 
-#include "KernelsCPU.h"
+#include "InstanceCPU.h"
 
 using namespace std;
 
@@ -10,8 +10,8 @@ namespace idg {
     namespace kernel {
         namespace cpu {
 
-            // KernelsCPU class
-            KernelsCPU::KernelsCPU(
+            // InstanceCPU class
+            InstanceCPU::InstanceCPU(
                 CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
@@ -30,7 +30,7 @@ namespace idg {
                 find_kernel_functions();
             }
 
-            KernelsCPU::~KernelsCPU()
+            InstanceCPU::~InstanceCPU()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -51,40 +51,40 @@ namespace idg {
                 }
             }
 
-            unique_ptr<kernel::cpu::Gridder> KernelsCPU::get_kernel_gridder() const {
+            unique_ptr<kernel::cpu::Gridder> InstanceCPU::get_kernel_gridder() const {
                 return unique_ptr<kernel::cpu::Gridder>(
                     new kernel::cpu::Gridder(
                         *(modules[which_module.at(kernel::cpu::name_gridder)])));
             }
 
 
-            unique_ptr<kernel::cpu::Degridder> KernelsCPU::get_kernel_degridder() const {
+            unique_ptr<kernel::cpu::Degridder> InstanceCPU::get_kernel_degridder() const {
                 return unique_ptr<kernel::cpu::Degridder>(
                     new kernel::cpu::Degridder(
                         *(modules[which_module.at(kernel::cpu::name_degridder)])));
             }
 
 
-            unique_ptr<kernel::cpu::Adder> KernelsCPU::get_kernel_adder() const {
+            unique_ptr<kernel::cpu::Adder> InstanceCPU::get_kernel_adder() const {
                 return unique_ptr<kernel::cpu::Adder>(
                     new kernel::cpu::Adder(
                         *(modules[which_module.at(kernel::cpu::name_adder)])));
             }
 
-            unique_ptr<kernel::cpu::Splitter> KernelsCPU::get_kernel_splitter() const {
+            unique_ptr<kernel::cpu::Splitter> InstanceCPU::get_kernel_splitter() const {
                 return unique_ptr<kernel::cpu::Splitter>(
                     new kernel::cpu::Splitter(
                         *(modules[which_module.at(kernel::cpu::name_splitter)])));
             }
 
 
-            unique_ptr<kernel::cpu::GridFFT> KernelsCPU::get_kernel_fft() const {
+            unique_ptr<kernel::cpu::GridFFT> InstanceCPU::get_kernel_fft() const {
                 return unique_ptr<kernel::cpu::GridFFT>(
                     new kernel::cpu::GridFFT(
                         *(modules[which_module.at(kernel::cpu::name_fft)])));
             }
 
-            string KernelsCPU::make_tempdir()
+            string InstanceCPU::make_tempdir()
             {
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
                 char *tmpdir = mkdtemp(_tmpdir);
@@ -99,7 +99,7 @@ namespace idg {
                 return tmpdir;
             }
 
-            ProxyInfo KernelsCPU::default_proxyinfo(
+            ProxyInfo InstanceCPU::default_proxyinfo(
                 string srcdir,
                 string tmpdir)
             {
@@ -134,7 +134,7 @@ namespace idg {
                 return p;
             }
 
-            void KernelsCPU::compile(
+            void InstanceCPU::compile(
                 Compiler compiler,
                 Compilerflags flags)
             {
@@ -181,7 +181,7 @@ namespace idg {
                 } // end for each library
             } // end compile
 
-            void KernelsCPU::load_shared_objects()
+            void InstanceCPU::load_shared_objects()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -199,7 +199,7 @@ namespace idg {
             } // end load_shared_objects
 
             // maps name -> index in modules that contain that symbol
-            void KernelsCPU::find_kernel_functions()
+            void InstanceCPU::find_kernel_functions()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

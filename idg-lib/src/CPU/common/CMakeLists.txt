@@ -7,12 +7,12 @@ include_directories(
 
 set (${PROJECT_NAME}_headers
 	CPU.h
-	KernelsCPU.h
+	InstanceCPU.h
 )
 
 set (${PROJECT_NAME}_sources
 	CPU.cpp
-	KernelsCPU.cpp
+	InstanceCPU.cpp
 )
 
 # create library

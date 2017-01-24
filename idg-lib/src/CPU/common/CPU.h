@@ -4,7 +4,7 @@
 #include "idg-common.h"
 #include "idg-powersensor.h"
 
-#include "KernelsCPU.h"
+#include "InstanceCPU.h"
 
 namespace idg {
     namespace proxy {
@@ -101,7 +101,7 @@ namespace idg {
 
 
                 protected:
-                    kernel::cpu::KernelsCPU mKernels;
+                    kernel::cpu::InstanceCPU mKernels;
                     PowerSensor *powerSensor;
 
             }; // end class CPU
