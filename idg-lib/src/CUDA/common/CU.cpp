@@ -263,7 +263,7 @@ namespace cu {
     }
 
     void* HostMemory::get(size_t offset) {
-        return (void *) (_ptr + offset);
+        return (void *) ((size_t) _ptr + offset);
     }
 
     void HostMemory::zero() {

@@ -7,6 +7,8 @@ using namespace idg::kernel::cuda;
 namespace idg {
     namespace proxy {
         namespace cuda {
+
+            // Constructor
             Generic::Generic(
                 CompileConstants constants,
                 ProxyInfo info) :
@@ -24,6 +26,7 @@ namespace idg {
                 #endif
             }
 
+            // Destructor
             Generic::~Generic() {
                 delete hostPowerSensor;
             }
@@ -151,8 +154,8 @@ namespace idg {
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Proxy constants
-                auto subgrid_size     = mConstants.get_subgrid_size();
-                auto nr_polarizations = mConstants.get_nr_correlations();
+                auto subgrid_size    = mConstants.get_subgrid_size();
+                auto nr_correlations = mConstants.get_nr_correlations();
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
@@ -189,7 +192,7 @@ namespace idg {
                 for (int d = 0; d < get_num_devices(); d++) {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
-                    cu::Stream&       htodstream    = get_device(d).get_htod_stream();
+                    cu::Stream&       htodstream    = device.get_htod_stream();
                     if (d > 0) {
                         cu::HostMemory& h_grid      = device.allocate_host_grid(grid_size);
                     }
@@ -213,12 +216,16 @@ namespace idg {
                 PowerSensor::State stopStates[nr_devices+1];
                 startStates[nr_devices] = hostPowerSensor->read();
 
+                // Locks
+                int locks[nr_devices];
+
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
+                    int lock      = locks[device_id];
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
@@ -272,22 +279,18 @@ namespace idg {
                     total_runtime_gridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Compute the number of baselines to process in current iteration
-                        int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
-                        // Number of subgrids for all baselines in batch
+                        // Initialize iteration
+                        auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-
-                        // Pointers to data for current batch
-                        void *uvw_ptr          = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
-                        void *visibilities_ptr = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        void *uvw_ptr             = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
+                        void *visibilities_ptr    = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
+                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
                         PowerRecord powerRecords[5];
 
-                        #pragma omp critical (GPU)
+                        #pragma omp critical (lock)
                         {
                             // Copy input data to device memory
                             htodstream.waitEvent(inputFree);
@@ -379,7 +382,7 @@ namespace idg {
                     float2 *grid_dst = (float2 *) grid.data();
 
                     #pragma omp parallel for
-                    for (int i = 0; i < grid_size * grid_size * nr_polarizations; i++) {
+                    for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
                         grid_dst[i] += grid_src[i];
                     }
                 }
@@ -440,8 +443,8 @@ namespace idg {
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Proxy constants
-                auto subgrid_size     = mConstants.get_subgrid_size();
-                auto nr_polarizations = mConstants.get_nr_correlations();
+                auto subgrid_size    = mConstants.get_subgrid_size();
+                auto nr_correlations = mConstants.get_nr_correlations();
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
@@ -478,7 +481,7 @@ namespace idg {
                 for (int d = 0; d < get_num_devices(); d++) {
                     DeviceInstance& device = get_device(d);
                     device.set_context();
-                    cu::Stream&       htodstream    = get_device(0).get_htod_stream();
+                    cu::Stream&       htodstream    = device.get_htod_stream();
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
@@ -498,12 +501,16 @@ namespace idg {
                 PowerSensor::State stopStates[nr_devices+1];
                 startStates[nr_devices] = hostPowerSensor->read();
 
+                // Locks
+                int locks[nr_devices];
+
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
+                    int lock      = locks[device_id];
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
@@ -556,22 +563,18 @@ namespace idg {
                     total_runtime_degridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Compute the number of baselines to process in current iteration
-                        int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-
-                        // Number of subgrids for all baselines in batch
+                        // Initialize iteration
+                        auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-
-                        // Pointers to data for current batch
-                        void *uvw_ptr          = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
-                        void *visibilities_ptr = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
-                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                        void *uvw_ptr             = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
+                        void *visibilities_ptr    = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
+                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
 
                         // Power measurement
                         PowerRecord powerRecords[5];
 
-                        #pragma omp critical (GPU)
+                        #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodstream.waitEvent(inputFree);
@@ -665,6 +668,7 @@ namespace idg {
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
 
+                // Report device power consumption
                 for (int d = 0; d < get_num_devices(); d++) {
                     PowerSensor* devicePowerSensor = get_device(d).get_powersensor();
                     stringstream message;
