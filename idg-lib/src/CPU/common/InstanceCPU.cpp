@@ -10,13 +10,13 @@ namespace idg {
     namespace kernel {
         namespace cpu {
 
-            // InstanceCPU class
+            // Constructor
             InstanceCPU::InstanceCPU(
                 CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info) :
-                Kernels(constants),
+                KernelsInstance(constants),
                 mInfo(info)
             {
                 #if defined(DEBUG)
@@ -30,6 +30,7 @@ namespace idg {
                 find_kernel_functions();
             }
 
+            // Destructor
             InstanceCPU::~InstanceCPU()
             {
                 #if defined(DEBUG)

@@ -118,15 +118,17 @@ namespace idg {
             };
 
 
-            class InstanceCPU : public Kernels
+            class InstanceCPU : public KernelsInstance
             {
                 public:
+                    // Constructor
                     InstanceCPU(
                         CompileConstants constants,
                         Compiler compiler,
                         Compilerflags flags,
                         ProxyInfo info);
 
+                    // Destructor
                     virtual ~InstanceCPU();
 
                     virtual std::unique_ptr<idg::kernel::cpu::Gridder> get_kernel_gridder() const;

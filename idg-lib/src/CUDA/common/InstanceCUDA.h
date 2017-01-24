@@ -165,7 +165,7 @@ namespace idg {
             /*
                 InstanceCUDA
             */
-            class InstanceCUDA : public Kernels {
+            class InstanceCUDA : public KernelsInstance {
                 public:
                     // Constructor
                     InstanceCUDA(

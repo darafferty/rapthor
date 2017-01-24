@@ -1,4 +1,4 @@
-#include "Kernels.h"
+#include "KernelsInstance.h"
 
 namespace idg {
     namespace kernel {
@@ -6,7 +6,7 @@ namespace idg {
         /*
             Flop and byte count
         */
-        uint64_t Kernels::flops_gridder(
+        uint64_t KernelsInstance::flops_gridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
             uint64_t nr_subgrids) const
@@ -37,7 +37,7 @@ namespace idg {
             return flops_total;
         }
 
-        uint64_t Kernels::bytes_gridder(
+        uint64_t KernelsInstance::bytes_gridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
             uint64_t nr_subgrids) const
@@ -76,7 +76,7 @@ namespace idg {
             return bytes_total;
         }
 
-        uint64_t Kernels::flops_degridder(
+        uint64_t KernelsInstance::flops_degridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
             uint64_t nr_subgrids) const
@@ -84,7 +84,7 @@ namespace idg {
             return flops_gridder(nr_channels, nr_timesteps, nr_subgrids);
         }
 
-        uint64_t Kernels::bytes_degridder(
+        uint64_t KernelsInstance::bytes_degridder(
             uint64_t nr_channels,
             uint64_t nr_timesteps,
             uint64_t nr_subgrids) const
@@ -92,7 +92,7 @@ namespace idg {
             return bytes_gridder(nr_channels, nr_timesteps, nr_subgrids);
         }
 
-        uint64_t Kernels::flops_fft(
+        uint64_t KernelsInstance::flops_fft(
             uint64_t size,
             uint64_t batch) const
         {
@@ -104,7 +104,7 @@ namespace idg {
             return 1ULL * 4 * batch * nr_correlations * size * size * log2(size * size);
         }
 
-        uint64_t Kernels::bytes_fft(
+        uint64_t KernelsInstance::bytes_fft(
             uint64_t size,
             uint64_t batch) const
         {
@@ -112,7 +112,7 @@ namespace idg {
             return 1ULL * 2 * batch * nr_correlations * size * size * 2 * sizeof(float);
         }
 
-        uint64_t Kernels::flops_adder(
+        uint64_t KernelsInstance::flops_adder(
             uint64_t nr_subgrids) const
         {
             uint64_t subgrid_size = mConstants.get_subgrid_size();
@@ -123,7 +123,7 @@ namespace idg {
             return flops;
         }
 
-        uint64_t Kernels::bytes_adder(
+        uint64_t KernelsInstance::bytes_adder(
             uint64_t nr_subgrids) const
         {
             uint64_t subgrid_size = mConstants.get_subgrid_size();
@@ -136,7 +136,7 @@ namespace idg {
             return bytes;
         }
 
-        uint64_t Kernels::flops_splitter(
+        uint64_t KernelsInstance::flops_splitter(
             uint64_t nr_subgrids) const
         {
             uint64_t subgrid_size = mConstants.get_subgrid_size();
@@ -145,7 +145,7 @@ namespace idg {
             return flops;
         }
 
-        uint64_t Kernels::bytes_splitter(
+        uint64_t KernelsInstance::bytes_splitter(
             uint64_t nr_subgrids) const
         {
             uint64_t subgrid_size = mConstants.get_subgrid_size();
@@ -157,7 +157,7 @@ namespace idg {
             return bytes;
         }
 
-        uint64_t Kernels::flops_scaler(
+        uint64_t KernelsInstance::flops_scaler(
             uint64_t nr_subgrids) const
         {
             uint64_t subgrid_size = mConstants.get_subgrid_size();
@@ -167,7 +167,7 @@ namespace idg {
             return flops;
         }
 
-        uint64_t Kernels::bytes_scaler(
+        uint64_t KernelsInstance::bytes_scaler(
             uint64_t nr_subgrids) const
         {
             uint64_t subgrid_size = mConstants.get_subgrid_size();
@@ -177,7 +177,7 @@ namespace idg {
             return bytes;
         }
 
-        void Kernels::shift(
+        void KernelsInstance::shift(
             Array3D<std::complex<float>>& data) const
         {
             int nr_polarizations = data.get_z_dim();
@@ -208,7 +208,7 @@ namespace idg {
             }
         }
 
-        void Kernels::scale(
+        void KernelsInstance::scale(
             Array3D<std::complex<float>>& data,
             std::complex<float> scale) const
         {
@@ -229,7 +229,7 @@ namespace idg {
             }
         }
 
-        uint64_t Kernels::sizeof_visibilities(
+        uint64_t KernelsInstance::sizeof_visibilities(
             unsigned int nr_baselines,
             unsigned int nr_timesteps,
             unsigned int nr_channels) const
@@ -237,14 +237,14 @@ namespace idg {
             return 1ULL * nr_baselines * nr_timesteps * nr_channels * sizeof(Visibility<std::complex<float>>);
         }
 
-        uint64_t Kernels::sizeof_uvw(
+        uint64_t KernelsInstance::sizeof_uvw(
             unsigned int nr_baselines,
             unsigned int nr_timesteps) const
         {
             return 1ULL * nr_baselines * nr_timesteps * sizeof(UVW);
         }
 
-        uint64_t Kernels::sizeof_subgrids(
+        uint64_t KernelsInstance::sizeof_subgrids(
             unsigned int nr_subgrids,
             unsigned int subgrid_size) const
         {
@@ -252,26 +252,26 @@ namespace idg {
             return 1ULL * nr_subgrids * nr_correlations * subgrid_size * subgrid_size* sizeof(std::complex<float>);
         }
 
-        uint64_t Kernels::sizeof_metadata(
+        uint64_t KernelsInstance::sizeof_metadata(
             unsigned int nr_subgrids) const
         {
             return 1ULL * nr_subgrids * sizeof(Metadata);
         }
 
-        uint64_t Kernels::sizeof_grid(
+        uint64_t KernelsInstance::sizeof_grid(
             unsigned int grid_size) const
         {
             uint64_t nr_correlations = mConstants.get_nr_correlations();
             return 1ULL * nr_correlations * grid_size * grid_size * sizeof(std::complex<float>);
         }
 
-        uint64_t Kernels::sizeof_wavenumbers(
+        uint64_t KernelsInstance::sizeof_wavenumbers(
             unsigned int nr_channels) const
         {
             return 1ULL * nr_channels * sizeof(float);
         }
 
-        uint64_t Kernels::sizeof_aterms(
+        uint64_t KernelsInstance::sizeof_aterms(
             unsigned int nr_stations,
             unsigned int nr_timeslots,
             unsigned int subgrid_size) const
@@ -280,7 +280,7 @@ namespace idg {
             return 1ULL * nr_stations * nr_timeslots * nr_correlations * subgrid_size * subgrid_size * sizeof(std::complex<float>);
         }
 
-        uint64_t Kernels::sizeof_spheroidal(
+        uint64_t KernelsInstance::sizeof_spheroidal(
             unsigned int subgrid_size) const
         {
             return 1ULL * subgrid_size * subgrid_size * sizeof(float);

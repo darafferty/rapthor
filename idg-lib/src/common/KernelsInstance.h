@@ -11,10 +11,10 @@
 namespace idg {
     namespace kernel {
 
-        class Kernels
+        class KernelsInstance
         {
             public:
-                Kernels(
+                KernelsInstance(
                     CompileConstants& constants) :
                     mConstants(constants) {}
 
@@ -101,7 +101,8 @@ namespace idg {
 
             protected:
                 CompileConstants mConstants;
-        }; // end class Kernels
+
+        }; // end class KernelsInstance
 
     } // namespace kernel
 } // namespace idg

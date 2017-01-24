@@ -6,7 +6,7 @@ set (${PROJECT_NAME}_headers
     RuntimeWrapper.h
     auxiliary.h
     Types.h
-    Kernels.h
+    KernelsInstance.h
     CompileConstants.h
     Proxy.h
 	Plan.h
@@ -17,7 +17,7 @@ set (${PROJECT_NAME}_sources
     RuntimeWrapper.cpp
     auxiliary.cpp
     Types.cpp
-    Kernels.cpp
+    KernelsInstance.cpp
     CompileConstants.cpp
     Proxy.cpp
 	Plan.cpp

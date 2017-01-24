@@ -17,8 +17,9 @@ namespace idg {
         namespace opencl {
             typedef size_t clfftPlanHandle;
 
-            class InstanceOpenCL : public Kernels {
+            class InstanceOpenCL : public KernelsInstance {
                 public:
+                    // Constructor
                     InstanceOpenCL(
                         CompileConstants& constants,
                         cl::Context& context,
@@ -26,6 +27,7 @@ namespace idg {
                         const char *power_sensor = NULL,
                         const char *power_file = NULL);
 
+                    // Destructor
                     ~InstanceOpenCL();
 
                     cl::Device&  get_device()  const { return *device; }

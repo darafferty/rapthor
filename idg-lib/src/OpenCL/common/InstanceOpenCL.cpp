@@ -18,7 +18,7 @@ namespace idg {
                 int device_number,
                 const char *str_power_sensor,
                 const char *str_power_file) :
-                Kernels(constants),
+                KernelsInstance(constants),
                 mContext(context),
                 mPrograms(5)
             {
