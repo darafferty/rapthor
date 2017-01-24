@@ -1,5 +1,5 @@
 #include "Generic.h"
-#include "DeviceInstance.h"
+#include "InstanceCUDA.h"
 
 using namespace std;
 using namespace idg::kernel::cuda;
@@ -47,7 +47,7 @@ namespace idg {
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
                 // Load device
-                DeviceInstance &device = get_device(0);
+                InstanceCUDA &device = get_device(0);
                 PowerSensor *devicePowerSensor = device.get_powersensor();
 
                 // Initialize
@@ -190,7 +190,7 @@ namespace idg {
 
                 // Initialize memory for all devices
                 for (int d = 0; d < get_num_devices(); d++) {
-                    DeviceInstance& device = get_device(d);
+                    InstanceCUDA& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = device.get_htod_stream();
                     if (d > 0) {
@@ -229,8 +229,8 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
-                    DeviceInstance& device0 = get_device(0);
-                    DeviceInstance& device  = get_device(device_id);
+                    InstanceCUDA& device0 = get_device(0);
+                    InstanceCUDA& device  = get_device(device_id);
                     device.set_context();
 
                     // Load memory objects
@@ -388,7 +388,7 @@ namespace idg {
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                DeviceInstance& device = get_device(0);
+                InstanceCUDA& device     = get_device(0);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 uint64_t total_flops_gridder  = device.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
@@ -479,7 +479,7 @@ namespace idg {
 
                 // Initialize memory for all devices
                 for (int d = 0; d < get_num_devices(); d++) {
-                    DeviceInstance& device = get_device(d);
+                    InstanceCUDA& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = device.get_htod_stream();
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
@@ -514,8 +514,8 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
-                    DeviceInstance& device0 = get_device(0);
-                    DeviceInstance& device  = get_device(device_id);
+                    InstanceCUDA& device0 = get_device(0);
+                    InstanceCUDA& device  = get_device(device_id);
                     device.set_context();
 
                     // Load memory objects
@@ -649,7 +649,7 @@ namespace idg {
                 total_runtime_degridding += omp_get_wtime();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                DeviceInstance& device = get_device(0);
+                InstanceCUDA& device     = get_device(0);
                 auto total_nr_subgrids   = plan.get_nr_subgrids();
                 auto total_nr_timesteps  = plan.get_nr_timesteps();
                 uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);

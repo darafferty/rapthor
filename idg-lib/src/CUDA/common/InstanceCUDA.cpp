@@ -1,6 +1,6 @@
 #include <iomanip> // setprecision
 
-#include "DeviceInstance.h"
+#include "InstanceCUDA.h"
 #include "PowerRecord.h"
 
 using namespace idg::kernel;
@@ -10,7 +10,7 @@ namespace idg {
         namespace cuda {
 
             // Constructor
-            DeviceInstance::DeviceInstance(
+            InstanceCUDA::InstanceCUDA(
                 CompileConstants &constants,
                 ProxyInfo &info,
                 int device_number,
@@ -52,7 +52,7 @@ namespace idg {
             }
 
             // Destructor
-            DeviceInstance::~DeviceInstance() {
+            InstanceCUDA::~InstanceCUDA() {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
@@ -280,7 +280,7 @@ namespace idg {
             /*
                 Compilation
             */
-            std::string DeviceInstance::get_compiler_flags() {
+            std::string InstanceCUDA::get_compiler_flags() {
                 // Constants
                 std::stringstream flags_constants;
                 flags_constants << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
@@ -306,7 +306,7 @@ namespace idg {
                 return flags;
             }
 
-            void DeviceInstance::compile_kernels() {
+            void InstanceCUDA::compile_kernels() {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
@@ -347,7 +347,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::load_modules() {
+            void InstanceCUDA::load_modules() {
                 CUfunction function;
                 int found = 0;
                 for (int i = 0; i < modules.size(); i++) {
@@ -376,7 +376,7 @@ namespace idg {
                 }
             }
 
-            void DeviceInstance::set_parameters_kepler() {
+            void InstanceCUDA::set_parameters_kepler() {
                 block_gridder    = dim3(16, 16);
                 block_degridder  = dim3(128);
                 block_adder      = dim3(128);
@@ -386,7 +386,7 @@ namespace idg {
                 batch_degridder  = block_degridder.x;
             }
 
-            void DeviceInstance::set_parameters_maxwell() {
+            void InstanceCUDA::set_parameters_maxwell() {
                 block_gridder    = dim3(128);
                 block_degridder  = dim3(128);
                 block_adder      = dim3(128);
@@ -396,7 +396,7 @@ namespace idg {
                 batch_degridder  = 64;
             }
 
-            void DeviceInstance::set_parameters_pascal() {
+            void InstanceCUDA::set_parameters_pascal() {
                 block_gridder    = dim3(192);
                 block_degridder  = dim3(256);
                 block_adder      = dim3(128);
@@ -406,7 +406,7 @@ namespace idg {
                 batch_degridder  = 64;
             }
 
-            void DeviceInstance::set_parameters() {
+            void InstanceCUDA::set_parameters() {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
@@ -425,7 +425,7 @@ namespace idg {
                 }
             }
 
-            std::ostream& operator<<(std::ostream& os, DeviceInstance &d) {
+            std::ostream& operator<<(std::ostream& os, InstanceCUDA &d) {
                 os << d.get_device().get_name() << std::endl;
                 os << std::setprecision(2);
                 d.get_context().setCurrent();
@@ -447,7 +447,7 @@ namespace idg {
                 return os;
             }
 
-            void DeviceInstance::init_powersensor(
+            void InstanceCUDA::init_powersensor(
                 const char *str_power_sensor,
                 const char *str_power_file)
             {
@@ -462,11 +462,11 @@ namespace idg {
                 }
             }
 
-            PowerSensor::State DeviceInstance::measure() {
+            PowerSensor::State InstanceCUDA::measure() {
                 return powerSensor->read();
             }
 
-            void DeviceInstance::measure(
+            void InstanceCUDA::measure(
                 PowerRecord &record, cu::Stream &stream) {
                 stream.record(record.event);
                 record.sensor = powerSensor;
@@ -487,7 +487,7 @@ namespace idg {
                 return ptr;
             }
 
-           cu::HostMemory& DeviceInstance::allocate_host_grid(
+           cu::HostMemory& InstanceCUDA::allocate_host_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
@@ -495,7 +495,7 @@ namespace idg {
                 return *h_grid;
             }
 
-           cu::DeviceMemory& DeviceInstance::allocate_device_grid(
+           cu::DeviceMemory& InstanceCUDA::allocate_device_grid(
                 unsigned int grid_size)
             {
                 auto size = sizeof_grid(grid_size);
@@ -503,7 +503,7 @@ namespace idg {
                 return *d_grid;
             }
 
-           cu::HostMemory& DeviceInstance::allocate_host_visibilities(
+           cu::HostMemory& InstanceCUDA::allocate_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 unsigned int nr_channels)
@@ -513,7 +513,7 @@ namespace idg {
                 return *h_visibilities;
             }
 
-           cu::HostMemory& DeviceInstance::allocate_host_uvw(
+           cu::HostMemory& InstanceCUDA::allocate_host_uvw(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps)
             {
@@ -522,7 +522,7 @@ namespace idg {
                 return *h_uvw;
             }
 
-            cu::DeviceMemory& DeviceInstance::allocate_device_wavenumbers(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(
                 unsigned int nr_channels)
             {
                 auto size = sizeof_wavenumbers(nr_channels);
@@ -530,7 +530,7 @@ namespace idg {
                 return *d_wavenumbers;
             }
 
-            cu::DeviceMemory& DeviceInstance::allocate_device_aterms(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(
                 unsigned int nr_stations,
                 unsigned int nr_timeslots,
                 unsigned int subgrid_size)
@@ -540,7 +540,7 @@ namespace idg {
                 return *d_aterms;
             }
 
-            cu::DeviceMemory& DeviceInstance::allocate_device_spheroidal(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(
                 unsigned int subgrid_size)
             {
                 auto size = sizeof_spheroidal(subgrid_size);
@@ -562,7 +562,7 @@ namespace idg {
                 return memory;
             }
 
-            cu::HostMemory& DeviceInstance::reuse_host_grid(
+            cu::HostMemory& InstanceCUDA::reuse_host_grid(
                 unsigned int grid_size,
                 void *ptr)
             {
@@ -571,7 +571,7 @@ namespace idg {
                 return *h_grid;
             }
 
-            cu::HostMemory& DeviceInstance::reuse_host_visibilities(
+            cu::HostMemory& InstanceCUDA::reuse_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 unsigned int nr_channels,
@@ -582,7 +582,7 @@ namespace idg {
                 return *h_visibilities;
             }
 
-            cu::HostMemory& DeviceInstance::reuse_host_uvw(
+            cu::HostMemory& InstanceCUDA::reuse_host_uvw(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 void *ptr)

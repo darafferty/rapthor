@@ -5,7 +5,7 @@
 
 #include "CUDA.h"
 
-#include "DeviceInstance.h"
+#include "InstanceCUDA.h"
 
 using namespace idg::kernel::cuda;
 
@@ -57,21 +57,21 @@ namespace idg {
                 for (int i = 0; i < device_numbers.size(); i++) {
                     const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
                     const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
-                    DeviceInstance *device = new DeviceInstance(
+                    InstanceCUDA *device = new InstanceCUDA(
                         mConstants, mInfo, device_numbers[i], power_sensor, power_file);
                     devices.push_back(device);
                 }
             }
 
             void CUDA::free_devices() {
-                for (DeviceInstance *device : devices) {
-                    device->~DeviceInstance();
+                for (InstanceCUDA *device : devices) {
+                    device->~InstanceCUDA();
                 }
             }
 
             void CUDA::print_devices() {
                 std::cout << "Devices: " << std::endl;
-                for (DeviceInstance *device : devices) {
+                for (InstanceCUDA *device : devices) {
                     std::cout << *device;
                 }
                 std::cout << std::endl;
@@ -79,7 +79,7 @@ namespace idg {
 
             void CUDA::print_compiler_flags() {
                 std::cout << "Compiler flags: " << std::endl;
-                for (DeviceInstance *device : devices) {
+                for (InstanceCUDA *device : devices) {
                     std::cout << device->get_compiler_flags() << std::endl;
                 }
                 std::cout << std::endl;
@@ -90,7 +90,7 @@ namespace idg {
                 return devices.size();
             }
 
-            DeviceInstance& CUDA::get_device(unsigned int i) const
+            InstanceCUDA& CUDA::get_device(unsigned int i) const
             {
                 return *(devices[i]);
             }
@@ -170,7 +170,7 @@ namespace idg {
                 int nr_devices = devices.size();
                 std::vector<int> jobsize(nr_devices);
                 for (int i = 0; i < nr_devices; i++) {
-                    DeviceInstance *device = devices[i];
+                    InstanceCUDA *device = devices[i];
                     cu::Context &context = device->get_context();
                     context.setCurrent();
                     auto bytes_free = device->get_device().get_free_memory();

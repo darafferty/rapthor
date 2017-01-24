@@ -10,7 +10,7 @@
 namespace idg {
     namespace kernel {
         namespace cuda {
-            class DeviceInstance;
+            class InstanceCUDA;
         }
     }
 
@@ -30,7 +30,7 @@ namespace idg {
                     void print_devices();
 
                     unsigned int get_num_devices() const;
-                    idg::kernel::cuda::DeviceInstance& get_device(unsigned int i) const;
+                    idg::kernel::cuda::InstanceCUDA& get_device(unsigned int i) const;
 
                     std::vector<int> compute_jobsize(
                         const Plan &plan,
@@ -46,7 +46,7 @@ namespace idg {
 
                 private:
                     ProxyInfo &mInfo;
-                    std::vector<idg::kernel::cuda::DeviceInstance*> devices;
+                    std::vector<idg::kernel::cuda::InstanceCUDA*> devices;
 
             };
         } // end namespace idg

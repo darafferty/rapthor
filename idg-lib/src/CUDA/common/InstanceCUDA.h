@@ -1,5 +1,5 @@
-#ifndef IDG_CUDA_DEVICEINSTANCE_H_
-#define IDG_CUDA_DEVICEINSTANCE_H_
+#ifndef IDG_CUDA_INSTANCE_H_
+#define IDG_CUDA_INSTANCE_H_
 
 #include <memory> // unique_ptr
 
@@ -163,12 +163,12 @@ namespace idg {
 
 
             /*
-                DeviceInstance
+                InstanceCUDA
             */
-            class DeviceInstance : public Kernels {
+            class InstanceCUDA : public Kernels {
                 public:
                     // Constructor
-                    DeviceInstance(
+                    InstanceCUDA(
                         CompileConstants &constants,
                         ProxyInfo &info,
                         int device_number,
@@ -176,7 +176,7 @@ namespace idg {
                         const char *power_file = NULL);
 
                     // Destructor
-                    ~DeviceInstance();
+                    ~InstanceCUDA();
 
                     std::unique_ptr<Gridder> get_kernel_gridder() const {
                         return std::unique_ptr<Gridder>(new Gridder(
@@ -294,11 +294,11 @@ namespace idg {
                         const char *str_power_file);
 
                 protected:
-                    // Variables shared by all DeviceInstance instances
+                    // Variables shared by all InstanceCUDA instances
                     ProxyInfo &mInfo;
 
                 private:
-                    // CUDA objects private to this DeviceInstance
+                    // CUDA objects private to this InstanceCUDA
                     cu::Context *context;
                     cu::Device  *device;
                     cu::Stream  *executestream;
@@ -312,11 +312,11 @@ namespace idg {
                     cu::DeviceMemory *d_aterms;
                     cu::DeviceMemory *d_spheroidal;
 
-                    // All CUDA modules private to this DeviceInstance
+                    // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> modules;
                     std::map<std::string,int> which_module;
 
-                    // Power sensor private to this DeviceInstance
+                    // Power sensor private to this InstanceCUDA
                     PowerSensor *powerSensor;
 
                 protected:
@@ -329,7 +329,7 @@ namespace idg {
                     int batch_degridder;
             };
 
-            std::ostream& operator<<(std::ostream& os, DeviceInstance &d);
+            std::ostream& operator<<(std::ostream& os, InstanceCUDA &d);
         } // end namespace cuda
     } // end namespace kernel
 } // end namespace idg
