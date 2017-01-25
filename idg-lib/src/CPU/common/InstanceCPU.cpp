@@ -27,7 +27,7 @@ namespace idg {
 
                 compile(compiler, flags);
                 load_shared_objects();
-                find_kernel_functions();
+                load_kernel_funcions();
             }
 
             // Destructor
@@ -42,6 +42,13 @@ namespace idg {
                     delete modules[i];
                 }
 
+                // Unload functions
+                delete function_gridder;
+                delete function_degridder;
+                delete function_fft;
+                delete function_adder;
+                delete function_splitter;
+
                 // Delete .so files
                 if (mInfo.delete_shared_objects()) {
                     for (auto libname : mInfo.get_lib_names()) {
@@ -50,39 +57,6 @@ namespace idg {
                     }
                     rmdir(mInfo.get_path_to_lib().c_str());
                 }
-            }
-
-            unique_ptr<kernel::cpu::Gridder> InstanceCPU::get_kernel_gridder() const {
-                return unique_ptr<kernel::cpu::Gridder>(
-                    new kernel::cpu::Gridder(
-                        *(modules[which_module.at(kernel::cpu::name_gridder)])));
-            }
-
-
-            unique_ptr<kernel::cpu::Degridder> InstanceCPU::get_kernel_degridder() const {
-                return unique_ptr<kernel::cpu::Degridder>(
-                    new kernel::cpu::Degridder(
-                        *(modules[which_module.at(kernel::cpu::name_degridder)])));
-            }
-
-
-            unique_ptr<kernel::cpu::Adder> InstanceCPU::get_kernel_adder() const {
-                return unique_ptr<kernel::cpu::Adder>(
-                    new kernel::cpu::Adder(
-                        *(modules[which_module.at(kernel::cpu::name_adder)])));
-            }
-
-            unique_ptr<kernel::cpu::Splitter> InstanceCPU::get_kernel_splitter() const {
-                return unique_ptr<kernel::cpu::Splitter>(
-                    new kernel::cpu::Splitter(
-                        *(modules[which_module.at(kernel::cpu::name_splitter)])));
-            }
-
-
-            unique_ptr<kernel::cpu::GridFFT> InstanceCPU::get_kernel_fft() const {
-                return unique_ptr<kernel::cpu::GridFFT>(
-                    new kernel::cpu::GridFFT(
-                        *(modules[which_module.at(kernel::cpu::name_fft)])));
             }
 
             string InstanceCPU::make_tempdir()
@@ -200,7 +174,7 @@ namespace idg {
             } // end load_shared_objects
 
             // maps name -> index in modules that contain that symbol
-            void InstanceCPU::find_kernel_functions()
+            void InstanceCPU::load_kernel_funcions()
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -208,84 +182,100 @@ namespace idg {
 
                 for (unsigned int i=0; i<modules.size(); i++) {
                     if (dlsym(*modules[i], kernel::cpu::name_gridder.c_str())) {
-                      // found gridder kernel in module i
-                      which_module[kernel::cpu::name_gridder] = i;
+                        function_gridder = new runtime::Function(*modules[i], name_gridder.c_str());
                     }
                     if (dlsym(*modules[i], kernel::cpu::name_degridder.c_str())) {
-                      // found degridder kernel in module i
-                      which_module[kernel::cpu::name_degridder] = i;
+                        function_degridder = new runtime::Function(*modules[i], name_degridder.c_str());
                     }
                     if (dlsym(*modules[i], kernel::cpu::name_fft.c_str())) {
-                      // found fft kernel in module i
-                      which_module[kernel::cpu::name_fft] = i;
+                        function_fft = new runtime::Function(*modules[i], name_fft.c_str());
                     }
                     if (dlsym(*modules[i], kernel::cpu::name_adder.c_str())) {
-                      // found adder kernel in module i
-                      which_module[kernel::cpu::name_adder] = i;
+                        function_adder = new runtime::Function(*modules[i], name_adder.c_str());
                     }
                     if (dlsym(*modules[i], kernel::cpu::name_splitter.c_str())) {
-                      // found gridder kernel in module i
-                      which_module[kernel::cpu::name_splitter] = i;
+                        function_splitter = new runtime::Function(*modules[i], name_splitter.c_str());
                     }
                 } // end for
-            } // end find_kernel_functions
+            } // end load_kernel_funcions
 
 
-            // Gridder class
-            Gridder::Gridder(runtime::Module &module) :
-                _run(module, name_gridder.c_str()) {}
+            // Function signatures
+            #define sig_gridder   (void (*)(int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder (void (*)(int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_fft		  (void (*)(int,int,int,void*,int))
+            #define sig_adder	  (void (*)(int,int,void*,void*,void*))
+            #define sig_splitter  (void (*)(int,int,void*,void*,void*))
 
-            void Gridder::run(
-                    int nr_subgrids, int gridsize, float image_size,
-                    float w_offset, int nr_channels, int nr_stations,
-                    void *uvw, void *wavenumbers, void *visibilities,
-                    void *spheroidal, void *aterm, void *metadata, void *subgrid) {
-                  (sig_gridder (void *) _run)(
+
+            void InstanceCPU::run_gridder(
+                int nr_subgrids,
+                int gridsize,
+                float image_size,
+                float w_offset,
+                int nr_channels,
+                int nr_stations,
+                void *uvw,
+                void *wavenumbers,
+                void *visibilities,
+                void *spheroidal,
+                void *aterm,
+                void *metadata,
+                void *subgrid)
+            {
+                  (sig_gridder (void *) *function_gridder)(
                   nr_subgrids, gridsize, image_size, w_offset, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
-
-            // Degridder class
-            Degridder::Degridder(runtime::Module &module) :
-                _run(module, name_degridder.c_str()) {}
-
-            void Degridder::run(
-                    int nr_subgrids, int gridsize, float image_size,
-                    float w_offset, int nr_channels, int nr_stations,
-                    void *uvw, void *wavenumbers,
-                    void *visibilities, void *spheroidal, void *aterm,
-                    void *metadata, void *subgrid) {
-                  (sig_degridder (void *) _run)(
+            void InstanceCPU::run_degridder(
+                int nr_subgrids,
+                int gridsize,
+                float image_size,
+                float w_offset,
+                int nr_channels,
+                int nr_stations,
+                void *uvw,
+                void *wavenumbers,
+                void *visibilities,
+                void *spheroidal,
+                void *aterm,
+                void *metadata,
+                void *subgrid)
+            {
+                  (sig_degridder (void *) *function_degridder)(
                   nr_subgrids, gridsize, image_size, w_offset, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
-
-            // GridFFT class
-            GridFFT::GridFFT(runtime::Module &module) :
-                _run(module, name_fft.c_str()) {}
-
-            void GridFFT::run(int gridsize, int size, int batch, void *data, int direction) {
-                (sig_fft (void *) _run)(gridsize, size, batch, data, direction);
+            void InstanceCPU::run_fft(
+                int gridsize,
+                int size,
+                int batch,
+                void *data,
+                int direction)
+            {
+                (sig_fft (void *) *function_fft)(gridsize, size, batch, data, direction);
             }
 
-
-            // Adder class
-            Adder::Adder(runtime::Module &module) :
-                _run(module, name_adder.c_str()) {}
-
-            void Adder::run(int nr_subgrids, int gridsize, void *metadata, void *subgrid, void *grid) {
-                (sig_adder (void *) _run)(nr_subgrids, gridsize, metadata, subgrid, grid);
+            void InstanceCPU::run_adder(
+                int nr_subgrids,
+                int gridsize,
+                void *metadata,
+                void *subgrid,
+                void *grid)
+            {
+                (sig_adder (void *) *function_adder)(nr_subgrids, gridsize, metadata, subgrid, grid);
             }
 
-
-            // Splitter class
-            Splitter::Splitter(runtime::Module &module) :
-                _run(module, name_splitter.c_str()) {}
-
-            void Splitter::run(int nr_subgrids, int gridsize, void *metadata, void *subgrid, void *grid) {
-                (sig_splitter (void *) _run)(nr_subgrids, gridsize, metadata, subgrid, grid);
+            void InstanceCPU::run_splitter(
+                int nr_subgrids,
+                int gridsize,
+                void *metadata,
+                void *subgrid,
+                void *grid)
+            {
+                (sig_splitter (void *) *function_splitter)(nr_subgrids, gridsize, metadata, subgrid, grid);
             }
 
         } // namespace cpu

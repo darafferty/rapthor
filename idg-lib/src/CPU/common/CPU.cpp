@@ -124,9 +124,6 @@ namespace idg {
                     runtime += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    unique_ptr<kernel::cpu::Gridder> kernel_gridder = mKernels.get_kernel_gridder();
-                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = mKernels.get_kernel_fft();
-                    unique_ptr<kernel::cpu::Adder> kernel_adder = mKernels.get_kernel_adder();
                     uint64_t flops_gridder  = mKernels.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                     uint64_t bytes_gridder  = mKernels.bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                     uint64_t flops_fft      = mKernels.flops_fft(subgrid_size, total_nr_subgrids);
@@ -233,9 +230,6 @@ namespace idg {
                     runtime += omp_get_wtime();
 
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    unique_ptr<kernel::cpu::Degridder> kernel_degridder = mKernels.get_kernel_degridder();
-                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = mKernels.get_kernel_fft();
-                    unique_ptr<kernel::cpu::Splitter> kernel_splitter = mKernels.get_kernel_splitter();
                     uint64_t flops_degridder  = mKernels.flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                     uint64_t bytes_degridder  = mKernels.bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                     uint64_t flops_fft        = mKernels.flops_fft(subgrid_size, total_nr_subgrids);
@@ -279,9 +273,6 @@ namespace idg {
                     auto grid_size = grid.get_x_dim();
                     auto nr_correlations = mConstants.get_nr_correlations();
 
-                    // Load kernel function
-                    unique_ptr<kernel::cpu::GridFFT> kernel_fft = mKernels.get_kernel_fft();
-
                     // FFT shift
                     if (direction == FourierDomainToImageDomain) {
                         mKernels.shift(grid); // TODO: integrate into adder?
@@ -292,7 +283,7 @@ namespace idg {
                     // Run FFT
                     PowerSensor::State powerStates[2];
                     powerStates[0] = powerSensor->read();
-                    kernel_fft->run(grid_size, grid_size, 1, grid.data(), sign);
+                    mKernels.run_fft(grid_size, grid_size, 1, grid.data(), sign);
                     powerStates[1] = powerSensor->read();
 
                     // FFT shift
@@ -345,10 +336,6 @@ namespace idg {
                 auto subgrid_size = subgrids.get_y_dim();
                 auto nr_stations  = aterms.get_z_dim();
 
-                // Load kernel functions
-                unique_ptr<kernel::cpu::Gridder> kernel_gridder = mKernels.get_kernel_gridder();
-                unique_ptr<kernel::cpu::GridFFT> kernel_fft = mKernels.get_kernel_fft();
-
                 // Performance measurements
                 double total_runtime_gridding = 0;
                 double total_runtime_gridder  = 0;
@@ -376,7 +363,7 @@ namespace idg {
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
 
-                    kernel_gridder->run(
+                    mKernels.run_gridder(
                         current_nr_subgrids,
                         grid_size,
                         image_size,
@@ -396,7 +383,7 @@ namespace idg {
 
                     // FFT kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_fft->run(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
+                    mKernels.run_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
                     powerStates[3] = powerSensor->read();
 
                     // Performance reporting
@@ -447,9 +434,6 @@ namespace idg {
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
 
-                // Load kernel function
-                unique_ptr<kernel::cpu::Adder> kernel_adder = mKernels.get_kernel_adder();
-
                 // Performance measurements
                 double total_runtime_adding = 0;
                 double total_runtime_adder  = 0;
@@ -468,7 +452,7 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-                    kernel_adder->run(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    mKernels.run_adder(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -511,9 +495,6 @@ namespace idg {
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
 
-                // Load kernel function
-                unique_ptr<kernel::cpu::Splitter> kernel_splitter = mKernels.get_kernel_splitter();
-
                 // Performance measurements
                 double total_runtime_splitting = 0;
                 double total_runtime_splitter  = 0;
@@ -532,7 +513,7 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-                    kernel_splitter->run(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    mKernels.run_splitter(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -584,10 +565,6 @@ namespace idg {
                 auto subgrid_size = subgrids.get_y_dim();
                 auto nr_stations  = aterms.get_z_dim();
 
-                // Load kernel functions
-                unique_ptr<kernel::cpu::Degridder> kernel_degridder = mKernels.get_kernel_degridder();
-                unique_ptr<kernel::cpu::GridFFT> kernel_fft = mKernels.get_kernel_fft();
-
                 // Performance measurements
                 double total_runtime_degridding = 0;
                 double total_runtime_degridder  = 0;
@@ -614,12 +591,12 @@ namespace idg {
 
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
-                    kernel_fft->run(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
+                    mKernels.run_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
                     powerStates[1] = powerSensor->read();
 
                     // Degridder kernel
                     powerStates[2] = powerSensor->read();
-                    kernel_degridder->run(
+                    mKernels.run_degridder(
                         current_nr_subgrids,
                         grid_size,
                         image_size,
