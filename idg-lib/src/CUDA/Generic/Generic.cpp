@@ -44,7 +44,6 @@ namespace idg {
                 // Constants
                 auto grid_size = grid.get_x_dim();
                 auto nr_correlations = mConstants.get_nr_correlations();
-                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
                 // Load device
                 InstanceCUDA &device = get_device(0);
@@ -59,9 +58,6 @@ namespace idg {
 
                 // Host memory
                 cu::HostMemory& h_grid = device.reuse_host_grid(grid_size, grid.data());
-
-                // Load kernels
-                unique_ptr<GridFFT> kernel_fft = device.get_kernel_fft(grid_size);
 
                 // Performance measurements
                 PowerRecord powerRecords[5];
@@ -81,9 +77,9 @@ namespace idg {
                 device.measure(powerRecords[1], stream);
 
                 // Execute fft
-                kernel_fft->plan(1);
+                device.plan_fft(grid_size, 1);
                 device.measure(powerRecords[2], stream);
-                kernel_fft->launch(stream, d_grid, sign);
+                device.launch_fft(d_grid, direction);
                 device.measure(powerRecords[3], stream);
 
                 // Copy grid to host
@@ -242,12 +238,6 @@ namespace idg {
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
 
-                    // Load kernels
-                    unique_ptr<Gridder> kernel_gridder = device.get_kernel_gridder();
-                    unique_ptr<Scaler>  kernel_scaler  = device.get_kernel_scaler();
-                    unique_ptr<Adder>   kernel_adder   = device.get_kernel_adder();
-                    unique_ptr<GridFFT> kernel_fft     = device.get_kernel_fft(subgrid_size);
-
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
@@ -260,7 +250,9 @@ namespace idg {
                     cu::DeviceMemory d_metadata(device.sizeof_metadata(max_nr_subgrids));
 
                     // Create FFT plan
-                    kernel_fft->plan(max_nr_subgrids);
+                    if (local_id == 0) {
+                        device.plan_fft(subgrid_size, max_nr_subgrids);
+                    }
 
                     // Events
                     cu::Event inputFree;
@@ -305,25 +297,25 @@ namespace idg {
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
-                            kernel_gridder->launch(
-                                executestream, current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
+                            device.launch_gridder(
+                                current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
-                            kernel_fft->launch(executestream, d_subgrids, CUFFT_INVERSE);
+                            device.launch_fft(d_subgrids, FourierDomainToImageDomain);
                             device.measure(powerRecords[2], executestream);
 
                             // Launch scaler kernel
-                            kernel_scaler->launch(
-                                executestream, current_nr_subgrids, d_subgrids);
+                            device.launch_scaler(
+                                current_nr_subgrids, d_subgrids);
                             device.measure(powerRecords[3], executestream);
                             executestream.record(outputReady);
                             executestream.record(inputFree);
 
                             // Launch adder kernel
-                            kernel_adder->launch(
-                                executestream, current_nr_subgrids, grid_size,
+                            device.launch_adder(
+                                current_nr_subgrids, grid_size,
                                 d_metadata, d_subgrids, d_grid);
 
                             device.measure(powerRecords[4], executestream);
@@ -526,11 +518,6 @@ namespace idg {
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
 
-                    // Load kernels
-                    unique_ptr<Degridder> kernel_degridder = device.get_kernel_degridder();
-                    unique_ptr<Splitter>  kernel_splitter  = device.get_kernel_splitter();
-                    unique_ptr<GridFFT>   kernel_fft       = device.get_kernel_fft(subgrid_size);
-
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
@@ -543,7 +530,9 @@ namespace idg {
                     cu::DeviceMemory d_metadata(device.sizeof_metadata(max_nr_subgrids));
 
                     // Create FFT plan
-                    kernel_fft->plan(max_nr_subgrids);
+                    if (local_id == 0) {
+                        device.plan_fft(subgrid_size, max_nr_subgrids);
+                    }
 
                     // Events
                     cu::Event inputFree;
@@ -587,20 +576,20 @@ namespace idg {
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
-                            kernel_splitter->launch(
-                                executestream, current_nr_subgrids, grid_size,
+                            device.launch_splitter(
+                                current_nr_subgrids, grid_size,
                                 d_metadata, d_subgrids, d_grid);
                             device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
-                            kernel_fft->launch(executestream, d_subgrids, CUFFT_FORWARD);
+                            device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
                             device.measure(powerRecords[2], executestream);
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[3], executestream);
-                            kernel_degridder->launch(
-                                executestream, current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
+                            device.launch_degridder(
+                                current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);

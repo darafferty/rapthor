@@ -17,7 +17,8 @@ namespace idg {
                 const char *str_power_sensor,
                 const char *str_power_file) :
                 KernelsInstance(constants),
-                mInfo(info)
+                mInfo(info),
+                mModules(5)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -44,8 +45,8 @@ namespace idg {
                 // Compile kernels
                 compile_kernels();
 
-                // Load modules
-                load_modules();
+                // Load kernels
+                load_kernels();
 
                 // Initialize power sensor
                 init_powersensor(str_power_sensor, str_power_file);
@@ -63,217 +64,14 @@ namespace idg {
                 if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
                 if (d_spheroidal) { d_spheroidal->~DeviceMemory(); }
+                for (cu::Module *module : mModules) { delete module; }
+                delete function_gridder;
+                delete function_degridder;
+                delete function_scaler;
+                delete function_adder;
+                delete function_splitter;
                 delete device;
                 //delete context;
-            }
-
-            // Gridder class
-            Gridder::Gridder(
-                cu::Module &module,
-                const dim3 block) :
-                function(module, name_gridder.c_str()),
-                block(block) {}
-
-            void Gridder::launch(
-                cu::Stream &stream,
-                int nr_subgrids,
-                int gridsize,
-                float imagesize,
-                float w_offset,
-                int nr_channels,
-                int nr_stations,
-                cu::DeviceMemory &d_uvw,
-                cu::DeviceMemory &d_wavenumbers,
-                cu::DeviceMemory &d_visibilities,
-                cu::DeviceMemory &d_spheroidal,
-                cu::DeviceMemory &d_aterm,
-                cu::DeviceMemory &d_metadata,
-                cu::DeviceMemory &d_subgrid) {
-
-                const void *parameters[] = {
-                    &gridsize, &imagesize, &w_offset, &nr_channels, &nr_stations,
-                    d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
-
-                dim3 grid(nr_subgrids);
-                stream.launchKernel(function, grid, block, 0, parameters);
-            }
-
-            // Degridder class
-            Degridder::Degridder(
-                cu::Module &module,
-                const dim3 block) :
-                function(module, name_degridder.c_str()),
-                block(block) {}
-
-            void Degridder::launch(
-                cu::Stream &stream,
-                int nr_subgrids,
-                int gridsize,
-                float imagesize,
-                float w_offset,
-                int nr_channels,
-                int nr_stations,
-                cu::DeviceMemory &d_uvw,
-                cu::DeviceMemory &d_wavenumbers,
-                cu::DeviceMemory &d_visibilities,
-                cu::DeviceMemory &d_spheroidal,
-                cu::DeviceMemory &d_aterm,
-                cu::DeviceMemory &d_metadata,
-                cu::DeviceMemory &d_subgrid) {
-
-                const void *parameters[] = {
-                    &gridsize, &imagesize, &w_offset, &nr_channels, &nr_stations,
-                    d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
-
-                dim3 grid(nr_subgrids);
-                stream.launchKernel(function, grid, block, 0, parameters);
-            }
-
-
-            // GridFFT class
-            GridFFT::GridFFT(
-                unsigned int nr_correlations,
-                unsigned int size,
-                cu::Module &module) :
-                nr_correlations(nr_correlations),
-                size(size),
-                function(module, name_fft.c_str())
-            {
-                fft_bulk = NULL;
-                fft_remainder = NULL;
-            }
-
-            GridFFT::~GridFFT()
-            {
-                if (fft_bulk) {
-                    delete fft_bulk;
-                }
-                if (fft_remainder) {
-                    delete fft_remainder;
-                }
-            }
-
-            void GridFFT::plan(
-                unsigned int batch)
-            {
-                // Parameters
-                int stride = 1;
-                int dist = size * size;
-
-
-                // Plan bulk fft
-                if (fft_bulk == NULL && batch > bulk_size)
-                {
-                    fft_bulk = new cufft::C2C_2D(size, size, stride, dist, bulk_size * nr_correlations);
-                }
-
-                // Plan remainder fft
-                if (fft_remainder == NULL || batch != planned_batch)
-                {
-                    int remainder = batch % bulk_size;
-                    if (fft_remainder) {
-                        delete fft_remainder;
-                    }
-                    if (remainder > 0) {
-                        fft_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_correlations);
-                    }
-                }
-
-                // Store batch size
-                planned_batch = batch;
-            }
-
-            void GridFFT::launch(
-                cu::Stream &stream,
-                cu::DeviceMemory &data,
-                int direction)
-            {
-                // Initialize
-                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(data));
-                int s = 0;
-
-                // Execute bulk ffts (if any)
-                if (planned_batch >= bulk_size) {
-                    (*fft_bulk).setStream(stream);
-                    for (; s < (planned_batch - bulk_size)+1; s += bulk_size) {
-                        if (planned_batch - s >= bulk_size) {
-                            (*fft_bulk).execute(data_ptr, data_ptr, direction);
-                            data_ptr += bulk_size * size * size * nr_correlations;
-                        }
-                    }
-                }
-
-                // Execute remainder ffts
-                if (s < planned_batch) {
-                    (*fft_remainder).setStream(stream);
-                    (*fft_remainder).execute(data_ptr, data_ptr, direction);
-                }
-
-                // Custom FFT kernel is disabled
-                //cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
-                //int nr_polarizations = parameters.get_nr_polarizations();
-                //const void *parameters[] = { &data_ptr, &data_ptr, &direction};
-                //stream.launchKernel(function, planned_batch * nr_polarizations, 1, 1,
-                //                    blockX, blockY, blockZ, 0, parameters);
-            }
-
-
-            // Adder class
-            Adder::Adder(
-                cu::Module &module,
-                const dim3 block) :
-                function(module, name_adder.c_str()),
-                block(block) {}
-
-            void Adder::launch(
-                cu::Stream &stream,
-                int nr_subgrids,
-                int gridsize,
-                cu::DeviceMemory &d_metadata,
-                cu::DeviceMemory &d_subgrid,
-                cu::DeviceMemory &d_grid) {
-                const void *parameters[] = { &gridsize, d_metadata, d_subgrid, d_grid };
-                dim3 grid(nr_subgrids);
-                stream.launchKernel(function, grid, block, 0, parameters);
-            }
-
-
-            // Splitter class
-            Splitter::Splitter(
-                cu::Module &module,
-                const dim3 block) :
-                function(module, name_splitter.c_str()),
-                block(block) {}
-
-            void Splitter::launch(
-                cu::Stream &stream,
-                int nr_subgrids,
-                int gridsize,
-                cu::DeviceMemory &d_metadata,
-                cu::DeviceMemory &d_subgrid,
-                cu::DeviceMemory &d_grid) {
-                const void *parameters[] = { &gridsize, d_metadata, d_subgrid, d_grid };
-                dim3 grid(nr_subgrids);
-                stream.launchKernel(function, grid, block, 0, parameters);
-            }
-
-
-            // Scaler class
-            Scaler::Scaler(
-                cu::Module &module,
-                const dim3 block) :
-                function(module, name_scaler.c_str()),
-                block(block) {}
-
-            void Scaler::launch(
-                cu::Stream &stream,
-                int nr_subgrids,
-                cu::DeviceMemory &d_subgrid) {
-                const void *parameters[] = { d_subgrid };
-                dim3 grid(nr_subgrids);
-                stream.launchKernel(function, grid, block, 0, parameters);
             }
 
 
@@ -343,36 +141,37 @@ namespace idg {
                     cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
 
                     // Set module
-                    modules.push_back(new cu::Module(lib.c_str()));
+                    mModules[i] = new cu::Module(lib.c_str());
                 }
             }
 
-            void InstanceCUDA::load_modules() {
+            void InstanceCUDA::load_kernels() {
                 CUfunction function;
                 int found = 0;
-                for (int i = 0; i < modules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *modules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
-                        which_module[name_gridder] = i; found++;
+                for (int i = 0; i < mModules.size(); i++) {
+                    if (cuModuleGetFunction(&function, *mModules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
+                        function_gridder = new cu::Function(function); found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
-                        which_module[name_degridder] = i; found++;
+                    if (cuModuleGetFunction(&function, *mModules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
+                        function_degridder = new cu::Function(function); found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], name_fft.c_str()) == CUDA_SUCCESS) {
-                        which_module[name_fft] = i; found++;
+                    if (cuModuleGetFunction(&function, *mModules[i], name_fft.c_str()) == CUDA_SUCCESS) {
+                        function_fft = new cu::Function(function); found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
-                        which_module[name_scaler] = i; found++;
+                    if (cuModuleGetFunction(&function, *mModules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
+                        function_scaler = new cu::Function(function); found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], name_adder.c_str()) == CUDA_SUCCESS) {
-                        which_module[name_adder] = i; found++;
+                    if (cuModuleGetFunction(&function, *mModules[i], name_adder.c_str()) == CUDA_SUCCESS) {
+                        function_adder = new cu::Function(function); found++;
                     }
-                    if (cuModuleGetFunction(&function, *modules[i], name_splitter.c_str()) == CUDA_SUCCESS) {
-                        which_module[name_splitter] = i; found++;
+                    if (cuModuleGetFunction(&function, *mModules[i], name_splitter.c_str()) == CUDA_SUCCESS) {
+                        function_splitter = new cu::Function(function); found++;
                     }
                 }
 
-                if (found != modules.size()) {
-                    std::cerr << "Incorrect number of modules found: " << found << " != " << modules.size() << std::endl;
+                if (found != mModules.size()) {
+                    std::cerr << "Incorrect number of functions found: " << found << " != " << mModules.size() << std::endl;
+                    exit(EXIT_FAILURE);
                 }
             }
 
@@ -471,6 +270,152 @@ namespace idg {
                 stream.record(record.event);
                 record.sensor = powerSensor;
                 stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
+            }
+
+            void InstanceCUDA::launch_gridder(
+                int nr_subgrids,
+                int grid_size,
+                float image_size,
+                float w_offset,
+                int nr_channels,
+                int nr_stations,
+                cu::DeviceMemory& d_uvw,
+                cu::DeviceMemory& d_wavenumbers,
+                cu::DeviceMemory& d_visibilities,
+                cu::DeviceMemory& d_spheroidal,
+                cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid)
+            {
+                const void *parameters[] = {
+                    &grid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
+                    d_uvw, d_wavenumbers, d_visibilities,
+                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_gridder, grid, block_gridder, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_degridder(
+                int nr_subgrids,
+                int grid_size,
+                float image_size,
+                float w_offset,
+                int nr_channels,
+                int nr_stations,
+                cu::DeviceMemory& d_uvw,
+                cu::DeviceMemory& d_wavenumbers,
+                cu::DeviceMemory& d_visibilities,
+                cu::DeviceMemory& d_spheroidal,
+                cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid)
+            {
+                const void *parameters[] = {
+                    &grid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
+                    d_uvw, d_wavenumbers, d_visibilities,
+                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_degridder, grid, block_degridder, 0, parameters);
+            }
+
+            void InstanceCUDA::plan_fft(
+                int size, int batch)
+            {
+                // Parameters
+                int stride = 1;
+                int dist = size * size;
+                int nr_correlations = mConstants.get_nr_correlations();
+
+                // Plan bulk fft
+                if (fft_plan_bulk == NULL && batch > fft_bulk_size)
+                {
+                    fft_plan_bulk = new cufft::C2C_2D(size, size, stride, dist, fft_bulk_size * nr_correlations);
+                }
+
+                // Plan remainder fft
+                if (fft_plan_remainder == NULL || size != fft_planned_size || batch != fft_planned_batch)
+                {
+                    int remainder = batch % fft_bulk_size;
+                    if (fft_plan_remainder) {
+                        delete fft_plan_remainder;
+                    }
+                    if (remainder > 0) {
+                        fft_plan_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_correlations);
+                    }
+                }
+
+                // Store batch size
+                fft_planned_batch = batch;
+            }
+
+            void InstanceCUDA::launch_fft(
+                cu::DeviceMemory& d_data,
+                DomainAtoDomainB direction)
+            {
+                // Initialize
+                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
+                int s = 0;
+                int nr_correlations = mConstants.get_nr_correlations();
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                // Execute bulk ffts (if any)
+                if (fft_planned_batch >= fft_bulk_size) {
+                    (*fft_plan_bulk).setStream(*executestream);
+                    for (; s < (fft_planned_batch - fft_bulk_size)+1; s += fft_bulk_size) {
+                        if (fft_planned_batch - s >= fft_bulk_size) {
+                            (*fft_plan_bulk).execute(data_ptr, data_ptr, sign);
+                            data_ptr += fft_bulk_size * fft_planned_size * fft_planned_size * nr_correlations;
+                        }
+                    }
+                }
+
+                // Execute remainder ffts
+                if (s < fft_planned_batch) {
+                    (*fft_plan_remainder).setStream(*executestream);
+                    (*fft_plan_remainder).execute(data_ptr, data_ptr, sign);
+                }
+
+                // Custom FFT kernel is disabled
+                //cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
+                //int nr_polarizations = parameters.get_nr_polarizations();
+                //const void *parameters[] = { &data_ptr, &data_ptr, &sign};
+                //executestream->launchKernel(function, fft_planned_batch * nr_polarizations, 1, 1,
+                //                    blockX, blockY, blockZ, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_adder(
+                int nr_subgrids,
+                int grid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                cu::DeviceMemory& d_grid)
+            {
+                const void *parameters[] = { &grid_size, d_metadata, d_subgrid, d_grid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_splitter(
+                int nr_subgrids,
+                int grid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                cu::DeviceMemory& d_grid)
+            {
+                const void *parameters[] = { &grid_size, d_metadata, d_subgrid, d_grid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_scaler(
+                int nr_subgrids,
+                cu::DeviceMemory& d_subgrid)
+            {
+                const void *parameters[] = { d_subgrid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_scaler, grid, block_scaler, 0, parameters);
             }
 
             template<typename T>

@@ -184,6 +184,7 @@ namespace cu {
     class Function {
         public:
             Function(Module &module, const char *name);
+            Function(CUfunction function);
 
             int getAttribute(CUfunction_attribute attribute);
             void setCacheConfig(CUfunc_cache config);

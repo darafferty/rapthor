@@ -442,6 +442,10 @@ namespace cu {
         checkCudaCall(cuModuleGetFunction(&_function, module, name));
     }
 
+    Function::Function(CUfunction function) {
+        _function = function;
+    }
+
     int Function::getAttribute(CUfunction_attribute attribute) {
         int value;
         checkCudaCall(cuFuncGetAttribute(&value, attribute, _function));
