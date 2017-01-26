@@ -6,7 +6,7 @@ from idgtypes import *
 
 def handle_error(library, e):
     if "libidg" in e.message:
-        # cannot load idg library (probably because it is not build
+        # cannot load idg library (probably because it is not build)
         pass
     else:
         print("Error importing %s: %s" % (library, e.message))
@@ -17,16 +17,6 @@ except OSError as e:
     handle_error("CPU", e)
 
 try:
-    import HybridCUDA
-except OSError as e:
-    handle_error("Hybrid CUDA", e)
-
-try:
-    import HybridOpenCL
-except OSError as e:
-    handle_error("Hybrid OpenCL", e)
-
-try:
     import CUDA
 except OSError as e:
     handle_error("CUDA", e)
@@ -35,11 +25,6 @@ try:
     import OpenCL
 except OSError as e:
     handle_error("OpenCL", e)
-
-try:
-    import utils
-except OSError:
-    handle_error("utils", e)
 
 try:
     import fft

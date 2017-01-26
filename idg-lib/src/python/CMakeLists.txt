@@ -5,10 +5,10 @@ install(FILES
         idg.py
         idgtypes.py
         CPU.py
-        HybridCUDA.py
-        HybridOpenCL.py
         CUDA.py
         OpenCL.py
+        #HybridCUDA.py
+        #HybridOpenCL.py
         Proxy.py
         fft.py
         DESTINATION
