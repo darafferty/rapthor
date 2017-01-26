@@ -73,13 +73,16 @@ namespace cu {
     class HostMemory {
         public:
             HostMemory(size_t size, int flags = 0);
-            HostMemory(void *ptr, size_t size, int flags= 0);
+            HostMemory(void *ptr, size_t size, int flags = 0);
             ~HostMemory();
+
+            void update(void *ptr, size_t size);
 
             size_t size();
             void set(const void *in);
             void set(void *in);
             void set(void *in, size_t bytes);
+            void* get(size_t offset);
             void zero();
 
             template <typename T> operator T *() {
@@ -93,6 +96,7 @@ namespace cu {
             bool unregister = false;
     };
 
+
     class DeviceMemory  {
         public:
             DeviceMemory(size_t size);
@@ -104,8 +108,13 @@ namespace cu {
             void* get(size_t offset);
             void zero();
 
-            operator CUdeviceptr();
-            operator const void*();
+            template <typename T> operator T *() {
+                return static_cast<T *>(&_ptr);
+            }
+
+            template <typename T> operator T () {
+                return static_cast<T>(_ptr);
+            }
 
         private:
             CUdeviceptr _ptr;
@@ -175,6 +184,7 @@ namespace cu {
     class Function {
         public:
             Function(Module &module, const char *name);
+            Function(CUfunction function);
 
             int getAttribute(CUfunction_attribute attribute);
             void setCacheConfig(CUfunc_cache config);

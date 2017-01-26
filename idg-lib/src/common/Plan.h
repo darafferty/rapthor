@@ -1,5 +1,5 @@
-#ifndef IDG_PLAN_H_
-#define IDG_PLAN_H_
+#ifndef IDG_PLAN2_H_
+#define IDG_PLAN2_H_
 
 #include <vector>
 #include <limits>
@@ -10,7 +10,6 @@
 #include <omp.h>
 
 #include "Types.h"
-#include "Parameters.h"
 
 
 namespace idg {
@@ -18,25 +17,35 @@ namespace idg {
         class Plan {
 
         public:
+            // Constructors
+            Plan() {};
+
             Plan(
-                 const Parameters& params,
-                 const float *uvw,
-                 const float *wavenumbers,
-                 const int *baselines,
-                 const int *aterm_offsets,
-                 const int kernel_size,
-                 const int max_nr_timesteps = std::numeric_limits<int>::max());
-
-            void init_metadata(
-                const float *_uvw,
-                const float *wavenumbers,
-                const int *_baselines,
-                const int *aterm_offsets,
                 const int kernel_size,
-                const int max_nr_timesteps = std::numeric_limits<int>::max());
+                const int subgrid_size,
+                const int grid_size,
+                const float cell_size,
+                const Array1D<float>& frequencies,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array1D<unsigned int>& aterms_offsets,
+                const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
 
-            // returns index of first index of baseline
-            int get_subgrid_offset(int baseline) const;
+            // Destructor
+            virtual ~Plan() = default;
+
+            void initialize(
+                const int kernel_size,
+                const int subgrid_size,
+                const int grid_size,
+                const float cell_size,
+                const Array1D<float>& frequencies,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array1D<unsigned int>& aterms_offsets,
+                const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
+
+            //void reset();
 
             // total number of subgrids
             int get_nr_subgrids() const;
@@ -47,13 +56,14 @@ namespace idg {
             // number of subgrids for baselines b1 to b1+n-1
             int get_nr_subgrids(int baseline, int n) const;
 
+            // returns index of first index of baseline
+            int get_subgrid_offset(int baseline) const;
+
             // max number of subgrids for n baselines between bl1 and bl2+n
-            int get_max_nr_subgrids(int bl1, int bl2, int n);
+            int get_max_nr_subgrids(int bl1, int bl2, int n) const;
+
             // max number of subgrids for 1 baseline
-
-            int get_max_nr_subgrids();
-
-            void print_subgrid_offset() const;
+            int get_max_nr_subgrids() const;
 
             // total number of timesteps
             int get_nr_timesteps() const;
@@ -64,11 +74,14 @@ namespace idg {
             // number of timesteps for baselines b1 to b1+n-1
             int get_nr_timesteps(int baseline, int n) const;
 
+            // number of baselines
+            int get_nr_baselines() const {
+                return nr_baselines;
+            }
+
             const Metadata* get_metadata_ptr(int baseline = 0) const;
-            std::vector<Metadata> copy_metadata() const;
 
         private:
-            const Parameters mParams;
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;
             std::vector<int> timesteps_per_baseline;

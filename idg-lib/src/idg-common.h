@@ -5,10 +5,10 @@
 #include "common/Proxy.h"
 #include "common/ProxyInfo.h"
 #include "common/RuntimeWrapper.h"
-#include "common/Parameters.h"
 #include "common/auxiliary.h"
 #include "common/Types.h"
 #include "common/Plan.h"
-#include "common/Kernels.h"
+#include "common/KernelsInstance.h"
+#include "common/CompileConstants.h"
 
 #endif

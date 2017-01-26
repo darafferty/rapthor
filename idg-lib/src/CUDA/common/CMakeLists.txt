@@ -11,7 +11,7 @@ set (
     CUDA.h
     CU.h
     CUFFT.h
-    DeviceInstance.h
+    InstanceCUDA.h
     PowerRecord.h
 )
 
@@ -21,8 +21,7 @@ set (
     CUDA.cpp
     CU.cpp
     CUFFT.cpp
-    Kernels.cpp
-    DeviceInstance.cpp
+    InstanceCUDA.cpp
     PowerRecord.cpp
 )
 

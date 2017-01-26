@@ -1,27 +1,15 @@
-/**
- *  \class Proxy
- *
- *  \brief Abstract base class for all "proxy clases"
- *
- *  All classes inherited from Proxy will adhere to a common
- *  inteface. All instances P have the common functionality of:
- *  P.grid_visibilities(arguments)
- *  P.degrid_visibilities(arguments)
- *  P.transform(arguments)
- *  as well as a set of getter and setter routines for parameters.
- */
-
-#ifndef IDG_PROXY_H_
-#define IDG_PROXY_H_
+#ifndef IDG_PROXY2_H_
+#define IDG_PROXY2_H_
 
 #include <complex>
 #include <vector>
 #include <limits>
 #include <cstring>
+#include <utility> // pair
 
 #include "RuntimeWrapper.h"
-#include "ProxyInfo.h"  // to be use in derived class
-#include "Parameters.h" // to be use in derived class
+#include "ProxyInfo.h"
+#include "CompileConstants.h"
 #include "Types.h"
 #include "Plan.h"
 
@@ -31,7 +19,6 @@ namespace idg {
         ImageDomainToFourierDomain
     };
 
-    /// typedefs
     typedef std::string Compiler;
     typedef std::string Compilerflags;
 }
@@ -42,143 +29,198 @@ namespace idg {
 
         class Proxy
         {
-        public:
-            virtual ~Proxy() {};
+            public:
+                Proxy(
+                    CompileConstants c
+                ) : mConstants(c) {}
 
-            /*
-                High level routines
-            */
-            //! Grid the visibilities onto a uniform grid
-            /** Using in the following:
-             * ST = NR_STATIONS,
-             * BL = NR_BASELINES,
-             * CH = NR_CHANNELS,
-             * TS = NR_TIMESLOTS,
-             * TI = NR_TIMESTEPS*NR_TIMESLOTS,
-             * PL = NR_POLARIZATIONS,
-             * GS = GRIDSIZE,
-             * SB = SUBGRIDSIZE
-             * \param visibilities [in] complex<float>[BL][TI][CH][PL]
-             * \param uvw [in] float[BL][TI][3]
-             * \param wavenumbers [in] float[CH]
-             * \param baselines [in] int[BL][2]
-             * \param grid [out] complex<float>[PL][GS][GS]
-             * \param w_offset [in] float
-             * \param kernel_size [in] int
-             * \param aterm_offsets [in] int[TS]
-             * \param aterm [in] complex<float>[TI][ST][SB][SB][PL]
-             * \param spheroidal [in] float[SB][SB]
-             */
-            virtual void grid_visibilities(
-                const std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal) = 0;
+                virtual ~Proxy() {}
 
-            //! Degrid the visibilities onto a uniform grid
-            /** Using in the following:
-             * ST = NR_STATIONS,
-             * BL = NR_BASELINES,
-             * CH = NR_CHANNELS,
-             * TS = NR_TIMESLOTS,
-             * TI = NR_TIMESTEPS*NR_TIMESLOTS,
-             * PL = NR_POLARIZATIONS,
-             * GS = GRIDSIZE,
-             * SB = SUBGRIDSIZE
-             * \param visibilities [out] complex<float>[BL][TI][CH][PL]
-             * \param uvw [in] float[BL][TI][3]
-             * \param wavenumbers [in] float[CH]
-             * \param baselines [in] int[BL][2]
-             * \param grid [in] complex<float>[PL][GS][GS]
-             * \param w_offset [in] float
-             * \param kernel_size [in] int
-             * \param aterm [in] complex<float>[TI][ST][SB][SB][PL]
-             * \param aterm_offsets [in] int[TS]
-             * \param spheroidal [in] float[SB][SB]
-             */
-            virtual void degrid_visibilities(
-                std::complex<float> *visibilities,
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                const std::complex<float> *grid,
-                const float w_offset,
-                const int kernel_size,
-                const std::complex<float> *aterm,
-                const int *aterm_offsets,
-                const float *spheroidal) = 0;
+                /*
+                    High level routines
+                */
+                //! Grid the visibilities onto a uniform grid
+                virtual void gridding(
+                    const Plan& plan,
+                    const float w_offset, // in lambda
+                    const float cell_size, // TODO: unit?
+                    const unsigned int kernel_size, // full width in pixels
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) = 0;
 
-            /** \brief Applyies (inverse) Fourier transform to grid
-             *  (grid -> grid)
-             *  \param direction [in] idg::FourierDomainToImageDomain
-             *                     or idg::ImageDomainToFourierDomain
-             *  \param grid [in/out] complex<float>[PL][GS][GS]
-             */
-            virtual void transform(
-                DomainAtoDomainB direction,
-                std::complex<float>* grid) = 0;
+                void gridding(
+                    const float w_offset,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
 
-            // Auxiliary: set and get methods
-            unsigned int get_nr_stations() const {
-                return mParams.get_nr_stations(); }
-            unsigned int get_nr_baselines() const {
-                return mParams.get_nr_baselines(); }
-            unsigned int get_nr_channels() const {
-                return mParams.get_nr_channels(); }
-            unsigned int get_nr_time() const {
-                return mParams.get_nr_time(); }
-            unsigned int get_nr_timeslots() const {
-                return mParams.get_nr_timeslots(); }
-            float get_imagesize() const {
-                return mParams.get_imagesize(); }
-            unsigned int get_grid_size() const {
-                return mParams.get_grid_size(); }
-            unsigned int get_subgrid_size() const {
-                return mParams.get_subgrid_size(); }
-            unsigned int get_job_size() const {
-                return mParams.get_job_size(); }
-            unsigned int get_job_size_gridding() const {
-                return mParams.get_job_size_gridding(); }
-            unsigned int get_job_size_degridding() const {
-                return mParams.get_job_size_degridding(); }
-            unsigned int get_job_size_gridder() const {
-                return mParams.get_job_size_gridder(); }
-            unsigned int get_job_size_adder() const {
-                return mParams.get_job_size_adder(); }
-            unsigned int get_job_size_splitter() const {
-                return mParams.get_job_size_splitter(); }
-            unsigned int get_job_size_degridder() const {
-                return mParams.get_job_size_degridder(); }
-            unsigned int get_nr_polarizations() const {
-                return mParams.get_nr_polarizations(); }
+                virtual void gridding(
+                    float w_offset,
+                    const float cell_size,
+                    unsigned int kernel_size,
+                    float* frequencies,
+                    unsigned int nr_channels,
+                    std::complex<float>* visibilities,
+                    unsigned int visibilities_nr_baselines,
+                    unsigned int visibilities_nr_timesteps,
+                    unsigned int visibilities_nr_channels,
+                    unsigned int visibilities_nr_correlations,
+                    float* uvw,
+                    unsigned int uvw_nr_baselines,
+                    unsigned int uvw_nr_timesteps,
+                    unsigned int uvw_nr_coordinates, // 3 (u, v, w)
+                    unsigned int* baselines,
+                    unsigned int baselines_nr_baselines,
+                    unsigned int baselines_two, // antenna1, antenna2
+                    std::complex<float>* grid,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width,
+                    std::complex<float>* aterms,
+                    unsigned int aterms_nr_timeslots,
+                    unsigned int aterms_nr_stations,
+                    unsigned int aterms_aterm_height,
+                    unsigned int aterms_aterm_width,
+                    unsigned int aterms_nr_correlations,
+                    unsigned int* aterms_offsets,
+                    unsigned int aterms_offsets_nr_timeslots_plus_one,
+                    float* spheroidal,
+                    unsigned int spheroidal_height,
+                    unsigned int spheroidal_width);
 
-            void set_job_size(unsigned int js) {
-                mParams.set_job_size(js); }
-            void set_job_size_gridding(unsigned int js) {
-                mParams.set_job_size_gridding(js); }
-            void set_job_size_degridding(unsigned int js) {
-                mParams.set_job_size_degridding(js); }
+                //! Degrid the visibilities from a uniform grid
+                virtual void degridding(
+                    const Plan& plan,
+                    const float w_offset, // in lambda
+                    const float cell_size, // TODO: unit?
+                    const unsigned int kernel_size, // full width in pixels
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) = 0;
 
-        public:
-            // creates and execution plan given the data and
-            // the proxy's parameters
-            Plan create_plan(
-                const float *uvw,
-                const float *wavenumbers,
-                const int *baselines,
-                const int *aterm_offsets,
-                const int kernel_size,
-                const int max_nr_timesteps = std::numeric_limits<int>::max());
+                void degridding(
+                    const float w_offset,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
 
-        protected:
-            Parameters mParams;  // store parameters passed on creation
-        };
+                void degridding(
+                    float w_offset,
+                    float cell_size,
+                    unsigned int kernel_size,
+                    float* frequencies,
+                    unsigned int nr_channels,
+                    std::complex<float>* visibilities,
+                    unsigned int visibilities_nr_baselines,
+                    unsigned int visibilities_nr_timesteps,
+                    unsigned int visibilities_nr_channels,
+                    unsigned int visibilities_nr_correlations,
+                    float* uvw,
+                    unsigned int uvw_nr_baselines,
+                    unsigned int uvw_nr_timesteps,
+                    unsigned int uvw_nr_coordinates, // 3 (u, v, w)
+                    unsigned int* baselines,
+                    unsigned int baselines_nr_baselines,
+                    unsigned int baselines_two, // antenna1, antenna2
+                    std::complex<float>* grid,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width,
+                    std::complex<float>* aterms,
+                    unsigned int aterms_nr_timeslots,
+                    unsigned int aterms_nr_stations,
+                    unsigned int aterms_aterm_height,
+                    unsigned int aterms_aterm_width,
+                    unsigned int aterms_nr_correlations,
+                    unsigned int* aterms_offsets,
+                    unsigned int aterms_offsets_nr_timeslots_plus_one,
+                    float* spheroidal,
+                    unsigned int spheroidal_height,
+                    unsigned int spheroidal_width);
+
+                //! Applyies (inverse) Fourier transform to grid
+                virtual void transform(
+                    DomainAtoDomainB direction,
+                    Array3D<std::complex<float>>& grid) = 0;
+
+                void transform(
+                    DomainAtoDomainB direction,
+                    std::complex<float>* grid,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width);
+
+                // Auxiliary: set and get methods
+                unsigned int get_nr_correlations() const {
+                    return mConstants.get_nr_correlations(); }
+                unsigned int get_subgrid_size() const {
+                    return mConstants.get_subgrid_size(); }
+
+            protected:
+                void check_dimensions(
+                    unsigned int frequencies_nr_channels,
+                    unsigned int visibilities_nr_baselines,
+                    unsigned int visibilities_nr_timesteps,
+                    unsigned int visibilities_nr_channels,
+                    unsigned int visibilities_nr_correlations,
+                    unsigned int uvw_nr_baselines,
+                    unsigned int uvw_nr_timesteps,
+                    unsigned int uvw_nr_coordinates,
+                    unsigned int baselines_nr_baselines,
+                    unsigned int baselines_two,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width,
+                    unsigned int aterms_nr_timeslots,
+                    unsigned int aterms_nr_stations,
+                    unsigned int aterms_aterm_height,
+                    unsigned int aterms_aterm_width,
+                    unsigned int aterms_nr_correlations,
+                    unsigned int aterms_offsets_nr_timeslots_plus_one,
+                    unsigned int spheroidal_height,
+                    unsigned int spheroidal_width) const;
+
+                void check_dimensions(
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array3D<std::complex<float>>& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) const;
+
+                Array1D<float> compute_wavenumbers(
+                    const Array1D<float>& frequencies) const;
+
+                CompileConstants mConstants;
+
+        }; // end class Proxy
 
     } // namespace proxy
 } // namespace idg

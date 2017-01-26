@@ -6,8 +6,8 @@ cmake_policy(SET CMP0012 NEW) # 2.8.0
 
 # the project
 project(ImageDomainGridder CXX)
-set (VERSION_MAJOR 2016)
-set (VERSION_MINOR 11)
+set (VERSION_MAJOR 2017)
+set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
@@ -92,6 +92,21 @@ else()
     endif()
 endif()
 
+# Find dependencies for Likwid power sensor
+find_package(Numa QUIET)
+find_package(Likwid QUIET)
+if (${NUMA_FOUND} AND ${LIKWID_FOUND})
+    set (HAVE_LIKWID TRUE)
+    set (HAVE_NUMA TRUE)
+else ()
+    # These values are not used when both libraries are not found
+    unset (LIKWID_INCLUDE_DIRS CACHE)
+    unset (LIKWID_LIBRARIES CACHE)
+    unset (NUMA_ROOT_DIR CACHE)
+    unset (NUMA_INCLUDE_DIR CACHE)
+    unset (NUMA_LIBRARY CACHE)
+endif ()
+
 include_directories (${CMAKE_BINARY_DIR}/src)
 
 # Copy header files
@@ -124,9 +139,9 @@ install(
 
 # write config file, included in all files of the project
 configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
-  "${PROJECT_BINARY_DIR}/src/idg-config.h"
-  )
+    "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
+    "${PROJECT_BINARY_DIR}/src/idg-config.h"
+)
 
 
 #####################################################
@@ -145,7 +160,7 @@ if (BUILD_LIB_CUDA)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cuda)
 endif()
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-hybrid-cuda)
+#set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-hybrid-cuda)
 endif()
 if (BUILD_LIB_OPENCL)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-opencl)

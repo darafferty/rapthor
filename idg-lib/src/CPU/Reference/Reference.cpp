@@ -6,22 +6,20 @@ namespace idg {
     namespace proxy {
         namespace cpu {
 
+            // Constructor
             Reference::Reference(
-                Parameters params,
+                CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info)
-                : CPU(params, compiler, flags, info)
+                : CPU(constants, compiler, flags, info)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
-                cout << "Compiler: " << compiler << endl;
-                cout << "Compiler flags: " << flags << endl;
-                cout << params;
                 #endif
             }
 
-
+            // Runtime compilation
             ProxyInfo Reference::default_info()
             {
                 #if defined(DEBUG)
@@ -35,10 +33,10 @@ namespace idg {
                 #endif
 
                 // Create temp directory
-                string tmpdir = CPU::make_tempdir();
+                string tmpdir = kernel::cpu::InstanceCPU::make_tempdir();
 
                 // Create proxy info
-                ProxyInfo p = CPU::default_proxyinfo(srcdir, tmpdir);
+                ProxyInfo p = kernel::cpu::InstanceCPU::default_proxyinfo(srcdir, tmpdir);
 
                 return p;
             }
@@ -64,11 +62,11 @@ namespace idg {
                 #if defined(INTEL_CXX_COMPILER)
                 // Settings for the intel compiler
                 if (debug == IDG_BUILD_TYPE)
-                    return "-Wall -g -DDEBUG -qopenmp -mkl -lmkl_def";
+                    return "-std=c++11 -Wall -g -DDEBUG -qopenmp -mkl -lmkl_def";
                 else if (relwithdebinfo == IDG_BUILD_TYPE)
-                    return "-O3 -qopenmp -g -mkl -lmkl_def";
+                    return "-std=c++11 -O3 -qopenmp -g -mkl -lmkl_def";
                 else
-                    return "-Wall -O3 -qopenmp -mkl -lmkl_def";
+                    return "-std=c++11 -Wall -O3 -qopenmp -mkl -lmkl_def";
                 #else
                 // Settings (gcc or clang)
                 if (debug == IDG_BUILD_TYPE)
@@ -79,7 +77,6 @@ namespace idg {
                     return "-std=c++11 -Wall -O3 -fopenmp -lfftw3f";
                 #endif
             }
-
 
         } // namespace cpu
     } // namespace proxy
@@ -94,6 +91,7 @@ namespace idg {
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
 extern "C" {
+#if 0
     typedef idg::proxy::cpu::Reference CPU_Reference;
 
     CPU_Reference* CPU_Reference_init(
@@ -183,4 +181,5 @@ extern "C" {
        delete p;
     }
 
+#endif
 }  // end extern "C"

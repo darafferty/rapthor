@@ -238,6 +238,14 @@ namespace cu {
         }
     }
 
+    void HostMemory::update(void *ptr, size_t size) {
+        if (_size != size || _ptr != ptr) {
+            checkCudaCall(cuMemFreeHost(_ptr));
+            _size = size;
+            _ptr = ptr;
+        }
+    }
+
     size_t HostMemory::size() {
         return _size;
     }
@@ -252,6 +260,10 @@ namespace cu {
 
     void HostMemory::set(void *in, size_t bytes) {
         memcpy(_ptr, in, bytes);
+    }
+
+    void* HostMemory::get(size_t offset) {
+        return (void *) ((size_t) _ptr + offset);
     }
 
     void HostMemory::zero() {
@@ -276,14 +288,6 @@ namespace cu {
         if (free) {
             checkCudaCall(cuMemFree(_ptr));
         }
-    }
-
-    DeviceMemory::operator CUdeviceptr() {
-        return _ptr;
-    }
-
-    DeviceMemory::operator const void*() {
-        return &_ptr;
     }
 
     size_t DeviceMemory::size() {
@@ -436,6 +440,10 @@ namespace cu {
     */
     Function::Function(Module &module, const char *name) {
         checkCudaCall(cuModuleGetFunction(&_function, module, name));
+    }
+
+    Function::Function(CUfunction function) {
+        _function = function;
     }
 
     int Function::getAttribute(CUfunction_attribute attribute) {

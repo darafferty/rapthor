@@ -132,20 +132,6 @@ namespace idg {
         }
 
         void report_visibilities(
-            double runtime,
-            uint64_t nr_baselines,
-            uint64_t nr_time,
-            uint64_t nr_channels)
-        {
-            uint64_t nr_visibilities = nr_baselines * nr_time * nr_channels;
-
-            clog << setw(FW1) << left << "throughput: "
-                 << setw(FW2) << right << scientific << setprecision(4)
-                 << 1e-6 * nr_visibilities / runtime
-                 << " Mvisibilities/s" << endl;
-        }
-
-        void report_visibilities(
             const char *name,
             double runtime,
             uint64_t nr_baselines,
@@ -154,23 +140,19 @@ namespace idg {
         {
             uint64_t nr_visibilities = nr_baselines * nr_time * nr_channels;
             clog << setw(FW1) << left << string(name) + ": "
+                 << fixed << setprecision(2)
                  << 1e-6 * nr_visibilities / runtime
                  << " Mvisibilities/s" << endl;
         }
-
 
         void report_visibilities(
             const char *name,
             double runtime,
-            uint64_t total_nr_time,
+            uint64_t nr_time,
             uint64_t nr_channels)
         {
-            uint64_t nr_visibilities = total_nr_time * nr_channels;
-            clog << setw(FW1) << left << string(name) + ": "
-                 << 1e-6 * nr_visibilities / runtime
-                 << " Mvisibilities/s" << endl;
+            report_visibilities(name, runtime, 1, nr_time, nr_channels);
         }
-
 
         void report_subgrids(
             double runtime,

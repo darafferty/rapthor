@@ -2,37 +2,37 @@ project(common)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    Proxy.h
-    Parameters.h
     ProxyInfo.h
     RuntimeWrapper.h
     auxiliary.h
     Types.h
-    Plan.h
-    Kernels.h
+    KernelsInstance.h
+    CompileConstants.h
+    Proxy.h
+	Plan.h
 )
 
 set (${PROJECT_NAME}_sources
-    Proxy.cpp
-    Parameters.cpp
     ProxyInfo.cpp
     RuntimeWrapper.cpp
     auxiliary.cpp
     Types.cpp
-    Plan.cpp
-    Kernels.cpp
+    KernelsInstance.cpp
+    CompileConstants.cpp
+    Proxy.cpp
+	Plan.cpp
 )
 
 add_library(
-  ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
-                         ${${PROJECT_NAME}_sources}
+	${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
+	                       ${${PROJECT_NAME}_sources}
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 
 # Copy header files
 install(
-    FILES
-    ${${PROJECT_NAME}_headers}
-    DESTINATION
-    include/common
+	FILES
+	${${PROJECT_NAME}_headers}
+	DESTINATION
+	include/common
 )

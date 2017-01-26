@@ -1,29 +1,7 @@
-/**
- *  \class Generic
- *
- *  \brief Class for ...
- *
- *  Have a more detailed description here
- *  This will be included by a user, so detail usage...
- */
-
 #ifndef IDG_CUDA_GENERIC_H_
 #define IDG_CUDA_GENERIC_H_
 
-#include "../common/CUDA.h"
-
-/*
-    Toggle between two modes of cu::HostMemory allocation
-        REDUCE_HOST_MEMORY = 0:
-            visibilities and uvw will be completely mapped
-            into host memory shared by all threads
-            (this takes some time, especially for large buffers)
-        REDUCE_HOST_MEMORY = 1:
-            every thread allocates private host memory
-            to hold data for just one job
-            (throughput is lower, due to additional memory copies)
-*/
-#define REDUCE_HOST_MEMORY 0
+#include "idg-cuda.h"
 
 namespace cu {
     class HostMemory;
@@ -34,58 +12,53 @@ namespace idg {
         namespace cuda {
             class Generic : public CUDA {
                 public:
-                    /// Constructor
+                    // Constructor
                     Generic(
-                        Parameters params,
+                        CompileConstants constants,
                         ProxyInfo info = default_info());
 
-                    /// Destructor
-                    ~Generic() = default;
+                    // Destructor
+                    ~Generic();
 
                 public:
-                    // High level interface, inherited from Proxy
-                    virtual void grid_visibilities(
-                        const std::complex<float> *visibilities,
-                        const float *uvw,
-                        const float *wavenumbers,
-                        const int *baselines,
-                        std::complex<float> *grid,
-                        const float w_offset,
-                        const int kernel_size,
-                        const std::complex<float> *aterm,
-                        const int *aterm_offsets,
-                        const float *spheroidal) override;
+                    virtual void gridding(
+                        const Plan& plan,
+                        const float w_offset, // in lambda
+                        const float cell_size,
+                        const unsigned int kernel_size, // full width in pixels
+                        const Array1D<float>& frequencies,
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        Array3D<std::complex<float>>& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
 
-                    virtual void degrid_visibilities(
-                        std::complex<float> *visibilities,
-                        const float *uvw,
-                        const float *wavenumbers,
-                        const int *baselines,
-                        const std::complex<float> *grid,
-                        const float w_offset,
-                        const int kernel_size,
-                        const std::complex<float> *aterm,
-                        const int *aterm_offsets,
-                        const float *spheroidal) override;
+                    using Proxy::gridding;
 
-                    virtual void transform(DomainAtoDomainB direction,
-                                           std::complex<float>* grid) override;
+                    virtual void degridding(
+                        const Plan& plan,
+                        const float w_offset, // in lambda
+                        const float cell_size,
+                        const unsigned int kernel_size, // full width in pixels
+                        const Array1D<float>& frequencies,
+                        Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Array3D<std::complex<float>>& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
+
+                    using Proxy::degridding;
+
+                    virtual void transform(
+                        DomainAtoDomainB direction,
+                        Array3D<std::complex<float>>& grid) override;
 
                 private:
                     PowerSensor *hostPowerSensor;
-
-                    #if REDUCE_HOST_MEMORY
-                    std::vector<cu::HostMemory*> h_visibilities_;
-                    std::vector<cu::HostMemory*> h_uvw_;
-                    #else
-                    cu::HostMemory *h_visibilities_;
-                    cu::HostMemory *h_uvw_;
-                    #endif
-                    std::vector<cu::HostMemory*> h_grid_;
-
-                    void init_benchmark();
-                    bool enable_benchmark = false;
-                    int nr_repetitions = 1;
             }; // class Generic
 
         } // namespace cuda

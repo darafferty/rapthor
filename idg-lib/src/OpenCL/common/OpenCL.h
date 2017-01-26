@@ -11,42 +11,45 @@ namespace cl {
 }
 
 namespace idg {
+    namespace kernel {
+        namespace opencl {
+            class InstanceOpenCL;
+        }
+    }
+
     namespace proxy {
         namespace opencl {
-            class DeviceInstance;
-
             class OpenCL : public Proxy {
                 public:
                     OpenCL(
-                        Parameters params);
+                        CompileConstants& constants);
 
                     ~OpenCL();
 
                 public:
                     void print_compiler_flags();
+
                     void print_devices();
-                    cl::Context&  get_context()  const { return *context; }
-                    std::vector<DeviceInstance*> get_devices();
+
+                    cl::Context& get_context() { return *context; }
+
+                    unsigned int get_num_devices() const;
+                    idg::kernel::opencl::InstanceOpenCL& get_device(unsigned int i) const;
+
+                    std::vector<int> compute_jobsize(
+                        const Plan &plan,
+                        const unsigned int nr_timesteps,
+                        const unsigned int nr_channels,
+                        const unsigned int subgrid_size,
+                        const unsigned int nr_streams);
 
                 protected:
                     void init_devices();
+                    void free_devices();
 
-                protected:
+                private:
                     cl::Context *context;
-                    std::vector<DeviceInstance*> devices;
-
-                public:
-                    uint64_t sizeof_subgrids(int nr_subgrids);
-                    uint64_t sizeof_uvw(int nr_baselines);
-                    uint64_t sizeof_visibilities(int nr_baselines);
-                    uint64_t sizeof_metadata(int nr_subgrids);
-                    uint64_t sizeof_grid();
-                    uint64_t sizeof_wavenumbers();
-                    uint64_t sizeof_aterm();
-                    uint64_t sizeof_spheroidal();
-
-                protected:
-                    std::vector<int> compute_jobsize(Plan &plan, int nr_streams);
+                    std::vector<idg::kernel::opencl::InstanceOpenCL*> devices;
             };
         } // end namespace idg
     } // end namespace proxy
