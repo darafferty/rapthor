@@ -6,8 +6,8 @@ cmake_policy(SET CMP0012 NEW) # 2.8.0
 
 # the project
 project(ImageDomainGridder CXX)
-set (VERSION_MAJOR 2016)
-set (VERSION_MINOR 11)
+set (VERSION_MAJOR 2017)
+set (VERSION_MINOR 1)
 set (VERSION_PATCH 0)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
