@@ -676,6 +676,13 @@ def init_example_wavenumbers(wavenumbers):
     lib.utils_init_example_wavenumbers(wavenumbers.ctypes.data_as(ctypes.c_void_p),
                                        ctypes.c_int(nr_channels) )
 
+def init_example_frequencies(frequencies):
+    """Initialize frequencies for test case defined in utility/initialize"""
+    nr_channels = frequencies.shape[0]
+    lib.utils_init_example_frequencies.argtypes = [ctypes.c_void_p,
+                                                   ctypes.c_int]
+    lib.utils_init_example_frequencies(frequencies.ctypes.data_as(ctypes.c_void_p),
+                                       ctypes.c_int(nr_channels) )
 
 def init_example_visibilities(visibilities):
     """Initialize visibilities for test case defined in utility/initialize"""
@@ -771,6 +778,16 @@ def get_example_wavenumbers(nr_channels,
                                           "dtype = " + str(dtype) + ")"
     return wavenumbers.astype(dtype=dtype)
 
+def get_example_frequencies(nr_channels,
+                            dtype=frequenciestype, info=False):
+    """Initialize and returns example frequencies array"""
+    frequencies = numpy.ones(nr_channels,
+                             dtype=frequenciestype)
+    init_example_wavenumbers(frequencies)
+    if info==True:
+        print "frequencies: numpy.ndarray(shape = (nr_channels), " + \
+                                          "dtype = " + str(dtype) + ")"
+    return frequencies.astype(dtype=dtype)
 
 def get_example_baselines(nr_baselines,
                           dtype=baselinetype, info=False):
