@@ -1,6 +1,6 @@
 #include "idg-cpu.h"
 
-#include "common2.h"
+#include "common.h"
 
 
 int main(int argc, char *argv[])
