@@ -671,3 +671,5 @@ namespace idg {
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
+
+#include "GenericC.h"

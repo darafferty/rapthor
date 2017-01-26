@@ -69,7 +69,7 @@ namespace idg {
 
                 virtual void gridding(
                     float w_offset,
-                    const float cell_size,
+                    float cell_size,
                     unsigned int kernel_size,
                     float* frequencies,
                     unsigned int nr_channels,

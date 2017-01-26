@@ -701,3 +701,5 @@ namespace idg {
         } // namespace opencl
     } // namespace proxy
 } // namespace idg
+
+#include "GenericC.h"
