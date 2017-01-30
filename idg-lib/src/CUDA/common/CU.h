@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+
 #include <cuda.h>
 
 struct dim3;
@@ -13,11 +14,14 @@ namespace cu {
 
     class Error : public std::exception {
         public:
-            Error(CUresult result);
+            Error(CUresult result):
+            _result(result) {}
 
-            const char *what() const throw();
+            virtual const char *what() const throw();
 
-            operator CUresult() const;
+            operator CUresult() const {
+                return _result;
+            }
 
         private:
             CUresult _result;
@@ -34,7 +38,6 @@ namespace cu {
             int get_capability() const;
             size_t get_free_memory() const;
             size_t get_total_memory() const;
-            //template <CUdevice_attribute attribute> int getAttribute() const;
 
             template <CUdevice_attribute attribute>
             int getAttribute() const {
