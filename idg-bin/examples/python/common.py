@@ -19,7 +19,7 @@ _subgrid_size     = 24
 _grid_size        = 2048
 _integration_time = 1
 _kernel_size      = (_subgrid_size / 2) + 1
-_nr_correlations = 4
+_nr_correlations  = 4
 
 def get_nr_stations():
     return _nr_stations
@@ -164,7 +164,6 @@ def main(proxyname):
     aterms_offsets = utils.get_example_aterms_offset(
                         nr_timeslots, nr_timesteps)
     spheroidal     = utils.get_identity_spheroidal(subgrid_size)
-    #visibilities   = init_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels)
     visibilities   = utils.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, wavenumbers)
@@ -187,8 +186,8 @@ def main(proxyname):
         p, w_offset, cell_size, kernel_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
-    #degridding(
-    #    p, w_offset, cell_size, kernel_size, frequencies, visibilities,
-    #    uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+    degridding(
+        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     plt.show()
