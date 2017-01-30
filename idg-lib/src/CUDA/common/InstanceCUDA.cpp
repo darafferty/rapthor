@@ -38,6 +38,7 @@ namespace idg {
                 d_wavenumbers  = NULL;
                 d_aterms       = NULL;
                 d_spheroidal   = NULL;
+                fft_plan       = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -65,13 +66,14 @@ namespace idg {
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
                 if (d_spheroidal) { d_spheroidal->~DeviceMemory(); }
                 for (cu::Module *module : mModules) { delete module; }
+                if (fft_plan) { delete fft_plan; }
                 delete function_gridder;
                 delete function_degridder;
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
                 delete device;
-                //delete context;
+                delete context;
             }
 
 
@@ -323,66 +325,28 @@ namespace idg {
             void InstanceCUDA::plan_fft(
                 int size, int batch)
             {
-                // Parameters
+                int nr_correlations = mConstants.get_nr_correlations();
                 int stride = 1;
                 int dist = size * size;
-                int nr_correlations = mConstants.get_nr_correlations();
 
-                // Plan bulk fft
-                if (fft_plan_bulk == NULL && batch > fft_bulk_size)
-                {
-                    fft_plan_bulk = new cufft::C2C_2D(size, size, stride, dist, fft_bulk_size * nr_correlations);
+                if (fft_plan) {
+                    delete fft_plan;
                 }
 
-                // Plan remainder fft
-                if (fft_plan_remainder == NULL || size != fft_planned_size || batch != fft_planned_batch)
-                {
-                    int remainder = batch % fft_bulk_size;
-                    if (fft_plan_remainder) {
-                        delete fft_plan_remainder;
-                    }
-                    if (remainder > 0) {
-                        fft_plan_remainder = new cufft::C2C_2D(size, size, stride, dist, remainder * nr_correlations);
-                    }
-                }
-
-                // Store batch size
-                fft_planned_batch = batch;
+                fft_plan = new cufft::C2C_2D(size, size, stride, dist, batch * nr_correlations);
             }
 
             void InstanceCUDA::launch_fft(
                 cu::DeviceMemory& d_data,
                 DomainAtoDomainB direction)
             {
-                // Initialize
+                int nr_correlations = mConstants.get_nr_correlations();
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
                 int s = 0;
-                int nr_correlations = mConstants.get_nr_correlations();
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
-                // Execute bulk ffts (if any)
-                if (fft_planned_batch >= fft_bulk_size) {
-                    (*fft_plan_bulk).setStream(*executestream);
-                    for (; s < (fft_planned_batch - fft_bulk_size)+1; s += fft_bulk_size) {
-                        if (fft_planned_batch - s >= fft_bulk_size) {
-                            (*fft_plan_bulk).execute(data_ptr, data_ptr, sign);
-                            data_ptr += fft_bulk_size * fft_planned_size * fft_planned_size * nr_correlations;
-                        }
-                    }
-                }
-
-                // Execute remainder ffts
-                if (s < fft_planned_batch) {
-                    (*fft_plan_remainder).setStream(*executestream);
-                    (*fft_plan_remainder).execute(data_ptr, data_ptr, sign);
-                }
-
-                // Custom FFT kernel is disabled
-                //cuFloatComplex *data_ptr = reinterpret_cast<cuFloatComplex *>(static_cast<CUdeviceptr>(data));
-                //int nr_polarizations = parameters.get_nr_polarizations();
-                //const void *parameters[] = { &data_ptr, &data_ptr, &sign};
-                //executestream->launchKernel(function, fft_planned_batch * nr_polarizations, 1, 1,
-                //                    blockX, blockY, blockZ, 0, parameters);
+                fft_plan->setStream(*executestream);
+                fft_plan->execute(data_ptr, data_ptr, sign);
             }
 
             void InstanceCUDA::launch_adder(
