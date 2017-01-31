@@ -71,13 +71,17 @@ def init_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels):
 ###########
 # debugging
 ###########
-#def plot_metadata(
-#        p, uvw, wavenumbers, baselines, aterms_offset,
-#        kernel_size, grid_size, subgrid_size, image_size):
-#    nr_subgrids = p._get_nr_subgrids(uvw, wavenumbers, baselines, aterms_offset, kernel_size)
-#    metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
-#    p._init_metadata(metadata, uvw, wavenumbers, baselines, aterms_offset, kernel_size)
-#    utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
+def plot_metadata(
+        kernel_size, subgrid_size, grid_size, cell_size, image_size,
+        frequencies, uvw, baselines, aterms_offsets, wavenumbers,
+        max_nr_timesteps = numpy.iinfo(numpy.int32).max):
+    plan = idg.Plan(
+        kernel_size, subgrid_size, grid_size, cell_size,
+        frequencies, uvw, baselines, aterms_offsets, max_nr_timesteps)
+    nr_subgrids = plan.get_nr_subgrids()
+    metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
+    plan.copy_metadata(metadata)
+    utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
 
 
 ##########
@@ -176,8 +180,8 @@ def main(proxyname):
     # utils.plot_spheroidal(spheroidal)
     # utils.plot_visibilities(visibilities)
     # plot_metadata(
-    #    p, uvw, wavenumbers, baselines, aterms_offset,
-    #    kernel_size, grid_size, subgrid_size, image_size)
+    #     kernel_size, subgrid_size, grid_size, cell_size, image_size,
+    #     frequencies, uvw, baselines, aterms_offsets, wavenumbers)
 
     ######################################################################
     # routines
