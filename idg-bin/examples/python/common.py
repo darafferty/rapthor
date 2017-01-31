@@ -1,6 +1,7 @@
 # after INSTALLING the library, and sourcing init-enviroment.sh
 # (or setting the PYTHONPATH manually), you can import the idg module
 import idg
+import utils
 import numpy
 import matplotlib.pyplot as plt
 import random
@@ -8,17 +9,17 @@ import random
 ############
 # paramaters
 ############
-_nr_stations      = 100
+_nr_stations      = 50
 _nr_baselines     = _nr_stations*(_nr_stations-1)/2
 _nr_channels      = 16
-_nr_time          = 1024           # samples per baseline
+_nr_timesteps     = 1024           # samples per baseline
 _nr_timeslots     = 16             # A-term time slots
 _image_size       = 0.05
 _subgrid_size     = 24
 _grid_size        = 2048
 _integration_time = 1
 _kernel_size      = (_subgrid_size / 2) + 1
-_nr_polarizations = 4
+_nr_correlations  = 4
 
 def get_nr_stations():
     return _nr_stations
@@ -29,8 +30,8 @@ def get_nr_baselines():
 def get_nr_channels():
     return _nr_channels
 
-def get_nr_time():
-    return _nr_time
+def get_nr_timesteps():
+    return _nr_timesteps
 
 def get_nr_timeslots():
     return _nr_timeslots
@@ -41,6 +42,9 @@ def get_image_size():
 def get_subgrid_size():
     return _subgrid_size
 
+def get_cell_size():
+    return _image_size / _grid_size
+
 def get_grid_size():
     return _grid_size
 
@@ -50,18 +54,17 @@ def get_integration_time():
 def get_kernel_size():
     return _kernel_size
 
-def get_nr_polarizations():
-    return _nr_polarizations
+def get_nr_correlations():
+    return _nr_correlations
 
 #################
 # initialize data
 #################
-def init_visibilities_dummy(nr_baselines, nr_time, nr_channels):
+def init_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels):
     visibilities =  numpy.ones(
-        (nr_baselines, nr_time, nr_channels, _nr_polarizations),
+        (nr_baselines, nr_timesteps, nr_channels, _nr_correlations),
         dtype = idg.visibilitiestype)
-    idg.utils.init_visibilities(visibilities)
-    #idg.utils.plot_visibilities(visibilities)
+    #utils.plot_visibilities(visibilities)
     return visibilities
 
 
@@ -69,42 +72,46 @@ def init_visibilities_dummy(nr_baselines, nr_time, nr_channels):
 # debugging
 ###########
 def plot_metadata(
-        p, uvw, wavenumbers, baselines, aterms_offset,
-        kernel_size, grid_size, subgrid_size, image_size):
-    nr_subgrids = p._get_nr_subgrids(uvw, wavenumbers, baselines, aterms_offset, kernel_size)
+        kernel_size, subgrid_size, grid_size, cell_size, image_size,
+        frequencies, uvw, baselines, aterms_offsets, wavenumbers,
+        max_nr_timesteps = numpy.iinfo(numpy.int32).max):
+    plan = idg.Plan(
+        kernel_size, subgrid_size, grid_size, cell_size,
+        frequencies, uvw, baselines, aterms_offsets, max_nr_timesteps)
+    nr_subgrids = plan.get_nr_subgrids()
     metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
-    p._init_metadata(metadata, uvw, wavenumbers, baselines, aterms_offset, kernel_size)
-    idg.utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
+    plan.copy_metadata(metadata)
+    utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
 
 
 ##########
 # gridding
 ##########
 def gridding(
-        p, visibilities, uvw, wavenumbers, baselines, grid,
-        kernel_size, aterms, aterms_offset, spheroidal):
-    w_offset = 0.0
-    p.grid_visibilities(
-        visibilities, uvw, wavenumbers, baselines, grid,
-        w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    idg.utils.plot_grid(grid, scaling='log')
+        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
+    p.gridding(
+        w_offset, cell_size, kernel_size,
+        frequencies, visibilities, uvw, baselines,
+        grid, aterms, aterms_offsets, spheroidal)
+    utils.plot_grid(grid, scaling='log')
     p.transform(idg.FourierDomainToImageDomain, grid)
-    idg.utils.plot_grid(grid)
-    #idg.utils.plot_grid(grid, pol=0)
+    utils.plot_grid(grid)
+    #utils.plot_grid(grid, pol=0)
 
 
 ############
 # degridding
 ############
 def degridding(
-        p, visibilities, uvw, wavenumbers, baselines, grid,
-        kernel_size, aterms, aterms_offset, spheroidal):
-    w_offset = 0.0
+        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.transform(idg.ImageDomainToFourierDomain, grid)
-    p.degrid_visibilities(
-        visibilities, uvw, wavenumbers, baselines, grid,
-        w_offset, kernel_size, aterms, aterms_offset, spheroidal)
-    #idg.utils.plot_visibilities(visibilities)
+    p.degridding(
+        w_offset, cell_size, kernel_size,
+        frequencies, visibilities, uvw, baselines,
+        grid, aterms, aterms_offsets, spheroidal)
+    #utils.plot_visibilities(visibilities)
 
 
 def main(proxyname):
@@ -113,86 +120,78 @@ def main(proxyname):
     ######################################################################
     # Set parameters
     ######################################################################
-    nr_stations = get_nr_stations()
-    nr_baselines = get_nr_baselines()
-    nr_channels = get_nr_channels()
-    nr_time = get_nr_time()
-    nr_timeslots = get_nr_timeslots()
-    image_size = get_image_size()
-    subgrid_size = get_subgrid_size()
-    grid_size = get_grid_size()
+    nr_stations      = get_nr_stations()
+    nr_baselines     = get_nr_baselines()
+    nr_channels      = get_nr_channels()
+    nr_timesteps     = get_nr_timesteps()
+    nr_timeslots     = get_nr_timeslots()
+    image_size       = get_image_size()
+    cell_size        = get_cell_size()
+    subgrid_size     = get_subgrid_size()
+    grid_size        = get_grid_size()
     integration_time = get_integration_time()
-    kernel_size = get_kernel_size()
-    nr_polarizations = get_nr_polarizations()
+    kernel_size      = get_kernel_size()
+    nr_correlations  = get_nr_correlations()
+    w_offset         = 0.0
 
     ######################################################################
     # initialize proxy
     ######################################################################
-    p = proxyname(nr_stations, nr_channels,
-                  nr_time, nr_timeslots,
-                  image_size, grid_size,
-                  subgrid_size)
+    p = proxyname(nr_correlations, subgrid_size)
 
     ######################################################################
     # print parameters
     ######################################################################
-    print "nr_stations           = ", p.get_nr_stations()
-    print "nr_baselines          = ", p.get_nr_baselines()
-    print "nr_channels           = ", p.get_nr_channels()
-    print "nr_timesteps          = ", p.get_nr_time()
-    print "nr_timeslots          = ", p.get_nr_timeslots()
-    print "nr_polarizations      = ", p.get_nr_polarizations()
-    print "subgrid_size          = ", p.get_subgrid_size()
-    print "grid_size             = ", p.get_grid_size()
-    print "image_size            = ", p.get_image_size()
+    print "nr_stations           = ", nr_stations
+    print "nr_baselines          = ", nr_baselines
+    print "nr_channels           = ", nr_channels
+    print "nr_timesteps          = ", nr_timesteps
+    print "nr_timeslots          = ", nr_timeslots
+    print "nr_correlations       = ", nr_correlations
+    print "subgrid_size          = ", subgrid_size
+    print "grid_size             = ", grid_size
+    print "image_size            = ", image_size
     print "kernel_size           = ", kernel_size
-    print "job size (gridding)   = ", p.get_job_size_gridding()
-    print "job size (degridding) = ", p.get_job_size_degridding()
 
     ######################################################################
     # initialize data
     ######################################################################
-    uvw           = idg.utils.get_example_uvw(nr_baselines, nr_time,
-                                              integration_time)
-    wavenumbers   = idg.utils.get_example_wavenumbers(nr_channels)
-    baselines     = idg.utils.get_example_baselines(nr_baselines)
-    grid          = idg.utils.get_example_grid(nr_polarizations,
-                                               grid_size)
-    aterms        = idg.utils.get_example_aterms(nr_timeslots, nr_stations,
-                                                 subgrid_size,
-                                                 nr_polarizations)
-    aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots,
-                                                        nr_time)
-    spheroidal    = idg.utils.get_identity_spheroidal(subgrid_size)
-    visibilities  = idg.utils.get_example_visibilities(nr_baselines,
-                                                       nr_time,
-                                                       nr_channels,
-                                                       nr_polarizations,
-                                                       image_size,
-                                                       grid_size,
-                                                       uvw,
-                                                       wavenumbers)
+    uvw            = utils.get_example_uvw(
+                        nr_baselines, nr_timesteps, integration_time)
+    wavenumbers    = utils.get_example_wavenumbers(nr_channels)
+    frequencies    = utils.get_example_frequencies(nr_channels)
+    baselines      = utils.get_example_baselines(nr_baselines)
+    grid           = utils.get_example_grid(
+                        nr_correlations, grid_size)
+    aterms         = utils.get_example_aterms(
+                        nr_timeslots, nr_stations, subgrid_size, nr_correlations)
+    aterms_offsets = utils.get_example_aterms_offset(
+                        nr_timeslots, nr_timesteps)
+    spheroidal     = utils.get_identity_spheroidal(subgrid_size)
+    visibilities   = utils.get_example_visibilities(
+                        nr_baselines, nr_timesteps, nr_channels, nr_correlations,
+                        image_size, grid_size, uvw, wavenumbers)
 
     ######################################################################
     # plot data
     ######################################################################
-    # idg.utils.plot_uvw(uvw)
-    # idg.utils.plot_wavenumbers(wavenumbers)
-    # idg.utils.plot_spheroidal(spheroidal)
-    # idg.utils.plot_visibilities(visibilities)
+    # utils.plot_uvw(uvw)
+    # utils.plot_wavenumbers(wavenumbers)
+    # utils.plot_spheroidal(spheroidal)
+    # utils.plot_visibilities(visibilities)
     # plot_metadata(
-    #    p, uvw, wavenumbers, baselines, aterms_offset,
-    #    kernel_size, grid_size, subgrid_size, image_size)
+    #     kernel_size, subgrid_size, grid_size, cell_size, image_size,
+    #     frequencies, uvw, baselines, aterms_offsets, wavenumbers)
 
     ######################################################################
     # routines
     ######################################################################
     gridding(
-        p, visibilities, uvw, wavenumbers, baselines, grid,
-        kernel_size, aterms, aterms_offset, spheroidal)
+        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        p, visibilities, uvw, wavenumbers, baselines, grid,
-        kernel_size, aterms, aterms_offset, spheroidal)
+        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     plt.show()
