@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert> // assert
+#include <memory.h> // memcpy
 
 #include "Plan.h"
 
@@ -175,8 +176,8 @@ namespace idg {
                 for (int t = 0; t < nr_timesteps_per_aterm; t++) {
                     for (int c = 0; c < nr_channels; c++) {
                         // U,V in meters
-                        float u_meters = uvw(bl, t).u;
-                        float v_meters = uvw(bl, t).v;
+                        float u_meters = uvw(bl, timeslot * nr_timesteps_per_aterm + t).u;
+                        float v_meters = uvw(bl, timeslot * nr_timesteps_per_aterm + t).v;
 
                         float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(c));
                         float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(c));
@@ -313,4 +314,10 @@ namespace idg {
         return &(metadata[offset]);
     }
 
+    void Plan::copy_metadata(void *ptr) const {
+        memcpy(ptr, get_metadata_ptr(), get_nr_subgrids() * sizeof(Metadata));
+    }
+
 } // namespace idg
+
+#include "PlanC.h"

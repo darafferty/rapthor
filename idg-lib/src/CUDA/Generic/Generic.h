@@ -35,8 +35,6 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    using Proxy::gridding;
-
                     virtual void degridding(
                         const Plan& plan,
                         const float w_offset, // in lambda
@@ -51,11 +49,13 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    using Proxy::degridding;
-
                     virtual void transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
+
+                    using Proxy::gridding;
+                    using Proxy::degridding;
+                    using Proxy::transform;
 
                 private:
                     PowerSensor *hostPowerSensor;

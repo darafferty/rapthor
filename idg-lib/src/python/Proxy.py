@@ -13,239 +13,306 @@ lib = ctypes.cdll.LoadLibrary(libpath)
 
 class Proxy(object):
 
-    def grid_visibilities(self,
-                          visibilities,
-                          uvw,
-                          wavenumbers,
-                          baselines,
-                          grid,
-                          w_offset,
-                          kernel_size,
-                          aterms,
-                          aterms_offset,
-                          spheroidal):
+    def gridding(
+        self,
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        visibilities,
+        uvw,
+        baselines,
+        grid,
+        aterms,
+        aterms_offsets,
+        spheroidal):
         """
         Grid visibilities onto grid.
 
-        :param visibilities: numpy.ndarray(shape=(nr_baselines, nr_time,
-                             nr_channels, nr_polarizations),
-                             dtype=idg.visibilitiestype)
-        :param uvw: numpy.ndarray(shape=(nr_baselines, nr_time),
-                    dtype = idg.uvwtype)
-        :param wavenumbers: numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        :param baselines: numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
-        :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                     dtype = idg.gridtype)
-        :param aterms: numpy.ndarray(shape=(nr_timeslots, nr_stations,
-                       subgrid_size, subgrid_size, nr_polarizations),
-                       dtype = idg.atermtype)
-        :param aterms_offset: numpy.ndarray(shape=(nr_timeslots+1),
-                              dtype = idg.atermoffsettype)
-        :param spheroidal: numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                           dtype = idg.spheroidaltype)
+        :param frequencies: numpy.ndarray(
+                shapenr_channels,
+                dtype = idg.frequenciestype)
+        :param visibilities: numpy.ndarray(
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                dtype=idg.visibilitiestype)
+        :param uvw: numpy.ndarray(
+                shape=(nr_baselines, nr_timesteps),
+                dtype = idg.uvwtype)
+        :param baselines: numpy.ndarray(
+                shape=(nr_baselines),
+                dtype=idg.baselinetype)
+        :param grid: numpy.ndarray(
+                shape=(nr_correlations, height, width),
+                dtype = idg.gridtype)
+        :param aterms: numpy.ndarray(
+                shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
+                dtype = idg.atermtype)
+        :param aterms_offsets: numpy.ndarray(
+                shape=(nr_timeslots+1),
+                dtype = idg.atermoffsettype)
+        :param spheroidal: numpy.ndarray(
+                shape=(height, width),
+                dtype = idg.spheroidaltype)
         """
-        # check dimensions
-        if visibilities.shape != (self.get_nr_baselines(),
-                                  self.get_nr_time(),
-                                  self.get_nr_channels(),
-                                  self.get_nr_polarizations()):
-            raise ValueError('Visibilities dimension missmatch.')
-        if uvw.shape != (self.get_nr_baselines(),
-                         self.get_nr_time()):
-            raise ValueError('UVW dimension missmatch.')
-        if wavenumbers.shape != (self.get_nr_channels(), ):
-            raise ValueError('Wavenumbers dimension missmatch.')
-        if baselines.shape != (self.get_nr_baselines(), ):
-            raise ValueError('Baseline dimension missmatch.')
-        if grid.shape != (self.get_nr_polarizations(),
-                          self.get_grid_size(),
-                          self.get_grid_size()):
-            raise ValueError('Grid dimension missmatch.')
-        if aterms.shape != (self.get_nr_timeslots(),
-                            self.get_nr_stations(),
-                            self.get_subgrid_size(),
-                            self.get_subgrid_size(),
-                            self.get_nr_polarizations()):
-            raise ValueError('Aterms dimension missmatch.')
-        if aterms_offset.shape != (self.get_nr_timeslots() + 1, ):
-            raise ValueError('Aterms_offset dimension missmatch.')
-        if spheroidal.shape != (self.get_subgrid_size(),
-                                self.get_subgrid_size()):
-            raise ValueError('Spheroidal dimension missmatch.')
+        # extract dimensions
+        nr_channels = frequencies.shape[0]
+        visibilities_nr_baselines    = visibilities.shape[0]
+        visibilities_nr_timesteps    = visibilities.shape[1]
+        visibilities_nr_channels     = visibilities.shape[2]
+        visibilities_nr_correlations = visibilities.shape[3]
+        uvw_nr_baselines             = uvw.shape[0]
+        uvw_nr_timesteps             = uvw.shape[1]
+        uvw_nr_coordinates           = 3
+        baselines_nr_baselines       = baselines.shape[0]
+        baselines_two                = 2
+        grid_nr_correlations         = grid.shape[0]
+        grid_height                  = grid.shape[1]
+        grid_width                   = grid.shape[2]
+        aterms_nr_timeslots          = aterms.shape[0]
+        aterms_nr_stations           = aterms.shape[1]
+        aterms_aterm_height          = aterms.shape[2]
+        aterms_aterm_width           = aterms.shape[3]
+        aterms_nr_correlations       = aterms.shape[4]
+        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
+        spheroidal_height            = spheroidal.shape[0]
+        spheroidal_width             = spheroidal.shape[1]
 
         # call C function to do the work
-        self._cwrap_grid_visibilities(visibilities, uvw, wavenumbers,
-                                      baselines, grid, w_offset, kernel_size,
-                                      aterms, aterms_offset, spheroidal)
+        self._cwrap_griddding(
+            w_offset,
+            cell_size,
+            kernel_size,
+            frequencies,
+            nr_channels,
+            visibilities,
+            visibilities_nr_baselines,
+            visibilities_nr_timesteps,
+            visibilities_nr_channels,
+            visibilities_nr_correlations,
+            uvw,
+            uvw_nr_baselines,
+            uvw_nr_timesteps,
+            uvw_nr_coordinates,
+            baselines,
+            baselines_nr_baselines,
+            baselines_two,
+            grid,
+            grid_nr_correlations,
+            grid_height,
+            grid_width,
+            aterms,
+            aterms_nr_timeslots,
+            aterms_nr_stations,
+            aterms_aterm_height,
+            aterms_aterm_width,
+            aterms_nr_correlations,
+            aterms_offsets,
+            aterms_offsets_nr_timeslots, # plus one
+            spheroidal,
+            spheroidal_height,
+            spheroidal_width)
 
 
-    def degrid_visibilities(self,
-                            visibilities,
-                            uvw,
-                            wavenumbers,
-                            baselines,
-                            grid,
-                            w_offset,
-                            kernel_size,
-                            aterms,
-                            aterms_offset,
-                            spheroidal):
+    def degridding(
+        self,
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        visibilities,
+        uvw,
+        baselines,
+        grid,
+        aterms,
+        aterms_offsets,
+        spheroidal):
         """
-        Degrid visibilities onto grid.
+        Degrid visibilities from grid.
 
-        :param visibilities: numpy.ndarray(shape=(nr_baselines, nr_time,
-                             nr_channels, nr_polarizations),
-                             dtype=idg.visibilitiestype)
-        :param uvw: numpy.ndarray(shape=(nr_baselines,nr_time),
-                    dtype = idg.uvwtype)
-        :param wavenumbers: numpy.ndarray(nr_channels, dtype = idg.wavenumberstype)
-        :param baselines: numpy.ndarray(nr_baselines, dtype=idg.baselinetype)
-        :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                     dtype = idg.gridtype)
-        :param aterms: numpy.ndarray(shape=(nr_timeslots, nr_stations,
-                       subgrid_size, subgrid_size, nr_polarizations),
-                       dtype = idg.atermtype)
-        :param aterms_offset: numpy.ndarray(shape=(nr_timeslots+1),
-                              dtype = idg.atermoffsettype)
-        :param spheroidal: numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                           dtype = idg.spheroidaltype)
+        :param frequencies: numpy.ndarray(
+                shapenr_channels,
+                dtype = idg.frequenciestype)
+        :param visibilities: numpy.ndarray(
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                dtype=idg.visibilitiestype)
+        :param uvw: numpy.ndarray(
+                shape=(nr_baselines, nr_timesteps),
+                dtype = idg.uvwtype)
+        :param baselines: numpy.ndarray(
+                shape=(nr_baselines),
+                dtype=idg.baselinetype)
+        :param grid: numpy.ndarray(
+                shape=(nr_correlations, height, width),
+                dtype = idg.gridtype)
+        :param aterms: numpy.ndarray(
+                shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
+                dtype = idg.atermtype)
+        :param aterms_offsets: numpy.ndarray(
+                shape=(nr_timeslots+1),
+                dtype = idg.atermoffsettype)
+        :param spheroidal: numpy.ndarray(
+                shape=(height, width),
+                dtype = idg.spheroidaltype)
         """
-        # check dimensions
-        if visibilities.shape != (self.get_nr_baselines(),
-                                  self.get_nr_time(),
-                                  self.get_nr_channels(),
-                                  self.get_nr_polarizations()):
-            raise ValueError('Visibilities dimension missmatch.')
-        if uvw.shape != (self.get_nr_baselines(),
-                         self.get_nr_time()):
-            raise ValueError('UVW dimension missmatch.')
-        if wavenumbers.shape != (self.get_nr_channels(), ):
-            raise ValueError('Wavenumbers dimension missmatch.')
-        if baselines.shape != (self.get_nr_baselines(), ):
-            raise ValueError('Baseline dimension missmatch.')
-        if grid.shape != (self.get_nr_polarizations(),
-                          self.get_grid_size(),
-                          self.get_grid_size()):
-            raise ValueError('Grid dimension missmatch.')
-        if aterms.shape != (self.get_nr_timeslots(),
-                            self.get_nr_stations(),
-                            self.get_subgrid_size(),
-                            self.get_subgrid_size(),
-                            self.get_nr_polarizations()):
-            raise ValueError('Aterms dimension missmatch.')
-        if aterms_offset.shape != (self.get_nr_timeslots() + 1, ):
-            raise ValueError('Aterms_offset dimension missmatch.')
-        if spheroidal.shape != (self.get_subgrid_size(),
-                                self.get_subgrid_size()):
-            raise ValueError('Spheroidal dimension missmatch.')
+        # extract dimensions
+        nr_channels = frequencies.shape[0]
+        visibilities_nr_baselines    = visibilities.shape[0]
+        visibilities_nr_timesteps    = visibilities.shape[1]
+        visibilities_nr_channels     = visibilities.shape[2]
+        visibilities_nr_correlations = visibilities.shape[3]
+        uvw_nr_baselines             = uvw.shape[0]
+        uvw_nr_timesteps             = uvw.shape[1]
+        uvw_nr_coordinates           = 3
+        baselines_nr_baselines       = baselines.shape[0]
+        baselines_two                = 2
+        grid_nr_correlations         = grid.shape[0]
+        grid_height                  = grid.shape[1]
+        grid_width                   = grid.shape[2]
+        aterms_nr_timeslots          = aterms.shape[0]
+        aterms_nr_stations           = aterms.shape[1]
+        aterms_aterm_height          = aterms.shape[2]
+        aterms_aterm_width           = aterms.shape[3]
+        aterms_nr_correlations       = aterms.shape[4]
+        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
+        spheroidal_height            = spheroidal.shape[0]
+        spheroidal_width             = spheroidal.shape[1]
 
         # call C function to do the work
-        self._cwrap_degrid_visibilities(visibilities, uvw, wavenumbers,
-                                        baselines, grid, w_offset, kernel_size,
-                                        aterms, aterms_offset, spheroidal)
+        self._cwrap_degridding(
+            w_offset,
+            cell_size,
+            kernel_size,
+            frequencies,
+            nr_channels,
+            visibilities,
+            visibilities_nr_baselines,
+            visibilities_nr_timesteps,
+            visibilities_nr_channels,
+            visibilities_nr_correlations,
+            uvw,
+            uvw_nr_baselines,
+            uvw_nr_timesteps,
+            uvw_nr_coordinates,
+            baselines,
+            baselines_nr_baselines,
+            baselines_two,
+            grid,
+            grid_nr_correlations,
+            grid_height,
+            grid_width,
+            aterms,
+            aterms_nr_timeslots,
+            aterms_nr_stations,
+            aterms_aterm_height,
+            aterms_aterm_width,
+            aterms_nr_correlations,
+            aterms_offsets,
+            aterms_offsets_nr_timeslots, # plus one
+            spheroidal,
+            spheroidal_height,
+            spheroidal_width)
 
 
-
-    def transform(self,
-                  direction,
-                  grid):
+    def transform(
+        self,
+        direction,
+        grid):
         """
         Transform Fourier Domain<->Image Domain.
 
         :param direction: idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
-        :param grid: numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
-                     dtype = idg.gridtype)
+        :param grid: numpy.ndarray(
+                shape=(nr_correlations, height, width),
+                dtype = idg.gridtype)
         """
-        # check argument dimesions
-        if grid.shape != (self.get_nr_polarizations(),
-                          self.get_grid_size(),
-                          self.get_grid_size()):
-            raise ValueError('Grid dimension missmatch.')
+        # extract dimesions
+        nr_correlations = grid.shape[0]
+        height          = grid.shape[1]
+        width           = grid.shape[2]
 
         # call C function to do the work
-        self._cwrap_transform(direction, grid)
-
-
-
-    def get_nr_stations(self):
-        return lib.Proxy_get_nr_stations(self.obj)
-
-    def get_nr_baselines(self):
-        return lib.Proxy_get_nr_baselines(self.obj)
-
-    def get_nr_channels(self):
-        return lib.Proxy_get_nr_channels(self.obj)
-
-    def get_nr_time(self):
-        return lib.Proxy_get_nr_time(self.obj)
-
-    def get_nr_timeslots(self):
-        return lib.Proxy_get_nr_timeslots(self.obj)
-
-    def get_nr_polarizations(self):
-        return lib.Proxy_get_nr_polarizations(self.obj)
-
-    def get_image_size(self):
-        lib.Proxy_get_imagesize.restype = ctypes.c_float
-        return lib.Proxy_get_imagesize(self.obj)
-
-    def get_grid_size(self):
-        return lib.Proxy_get_grid_size(self.obj)
-
-    def get_subgrid_size(self):
-        return lib.Proxy_get_subgrid_size(self.obj)
-
-    def get_job_size(self):
-        return lib.Proxy_get_job_size(self.obj)
-
-    def get_job_size_gridding(self):
-        return lib.Proxy_get_job_size_gridding(self.obj)
-
-    def get_job_size_degridding(self):
-        return lib.Proxy_get_job_size_degridding(self.obj)
-
-    def set_job_size(self, n = 8192):
-        lib.Proxy_set_job_size(self.obj, ctypes.c_int(n))
-
-    def set_job_size_gridding(self, n = 8192):
-        lib.Proxy_set_job_size_gridding(self.obj, ctypes.c_int(n))
-
-    def set_job_size_degridding(self, n = 8192):
-        lib.Proxy_set_job_size_degridding(self.obj, ctypes.c_int(n))
-
-    def _get_nr_subgrids(self, uvw, wavenumbers, baselines, aterms_offset,
-                         kernel_size, max_nr_timesteps=1024*1024):
-        return lib.Proxy_get_nr_subgrids(self.obj,
-            uvw.ctypes.data_as(ctypes.c_void_p),
-            wavenumbers.ctypes.data_as(ctypes.c_void_p),
-            baselines.ctypes.data_as(ctypes.c_void_p),
-            aterms_offset.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(kernel_size),
-            ctypes.c_int(max_nr_timesteps))
-
-    def _init_metadata(self, metadata, uvw, wavenumbers, baselines, aterms_offset,
-                       kernel_size, max_nr_timesteps=1024*1024):
-        lib.Proxy_init_metadata(self.obj,
-            metadata.ctypes.data_as(ctypes.c_void_p),
-            uvw.ctypes.data_as(ctypes.c_void_p),
-            wavenumbers.ctypes.data_as(ctypes.c_void_p),
-            baselines.ctypes.data_as(ctypes.c_void_p),
-            aterms_offset.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(kernel_size),
-            ctypes.c_int(max_nr_timesteps))
+        self._cwrap_transform(
+            direction,
+            grid,
+            nr_correlations,
+            height,
+            width)
 
     # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_grid_visibilities(self, visibilities, uvw, wavenumbers,
-                                baselines, grid, w_offset, kernel_size,
-                                aterms, aterms_offset, spheroidal):
+    def _cwrap_gridding(
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        nr_channels,
+        visibilities,
+        visibilities_nr_baselines,
+        visibilities_nr_timesteps,
+        visibilities_nr_channels,
+        visibilities_nr_correlations,
+        uvw,
+        uvw_nr_baselines,
+        uvw_nr_timesteps,
+        uvw_nr_coordinates,
+        baselines,
+        baselines_nr_baselines,
+        baselines_two,
+        grid,
+        grid_nr_correlations,
+        grid_height,
+        grid_width,
+        aterms,
+        aterms_nr_timeslots,
+        aterms_nr_stations,
+        aterms_aterm_height,
+        aterms_aterm_width,
+        aterms_nr_correlations,
+        aterms_offsets,
+        aterms_offsets_nr_timeslots, # plus one
+        spheroidal,
+        spheroidal_height,
+        spheroidal_width):
         pass
 
     # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_degrid_visibilities(self, visibilities, uvw, wavenumbers,
-                                   baselines, grid, w_offset, kernel_size,
-                                   aterms, aterms_offset, spheroidal):
+    def _cwrap_degridding(
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        nr_channels,
+        visibilities,
+        visibilities_nr_baselines,
+        visibilities_nr_timesteps,
+        visibilities_nr_channels,
+        visibilities_nr_correlations,
+        uvw,
+        uvw_nr_baselines,
+        uvw_nr_timesteps,
+        uvw_nr_coordinates,
+        baselines,
+        baselines_nr_baselines,
+        baselines_two,
+        grid,
+        grid_nr_correlations,
+        grid_height,
+        grid_width,
+        aterms,
+        aterms_nr_timeslots,
+        aterms_nr_stations,
+        aterms_aterm_height,
+        aterms_aterm_width,
+        aterms_nr_correlations,
+        aterms_offsets,
+        aterms_offsets_nr_timeslots,
+        spheroidal,
+        spheroidal_height,
+        spheroidal_width):
         pass
 
     # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_transform(self, direction, grid):
+    def _cwrap_transform(
+        self,
+        direction,
+        grid):
         pass

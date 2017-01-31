@@ -2,32 +2,27 @@
 
 #include <sstream>
 #include <cstring>
+#include <stdexcept>
 
-#include <cuda.h>
 #include <vector_types.h>
 
 #define checkCudaCall(val)  __checkCudaCall((val), #val, __FILE__, __LINE__)
 
 namespace cu {
-    /*
-        Error
-    */
-    Error::Error(CUresult result) :
-        _result(result) {};
 
-    Error::operator CUresult() const {
-        return _result;
-    }
-
-
-    inline void __checkCudaCall(CUresult result, char const *const func, const char *const file, int const line) {
+    inline void __checkCudaCall(
+        CUresult result,
+        char const *const func,
+        const char *const file,
+        int const line)
+    {
         if (result != CUDA_SUCCESS) {
             std::cerr << "CUDA Error at " << file;
             std::cerr << ":" << line;
             std::cerr << " in function " << func;
             std::cerr << ": " << Error(result).what();
             std::cerr << std::endl;
-            exit(EXIT_FAILURE);
+            throw Error(result);
         }
     }
 

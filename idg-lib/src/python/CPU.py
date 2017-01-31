@@ -3,7 +3,6 @@ import ctypes
 import numpy.ctypeslib
 from Proxy import *
 
-
 # A bit ugly, but ctypes.util's find_library does not look in
 # the LD_LIBRARY_PATH, but only PATH. Howver, we can also provide
 # the full path of the shared object file
@@ -14,207 +13,352 @@ libpath = os.path.join(path, 'libidg-cpu.so')
 lib = ctypes.cdll.LoadLibrary(libpath)
 
 
-
 class Reference(Proxy):
 
-    def __init__(self, nr_stations,
-                       nr_channels,
-                       nr_time,
-                       nr_timeslots,
-                       imagesize,
-                       grid_size,
-                       subgrid_size):
+    def __init__(
+        self,
+        nr_correlations,
+        subgrid_size):
         """Reference CPU implementation"""
         try:
             lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_float, \
-                                               ctypes.c_uint, \
                                                ctypes.c_uint]
             self.obj = lib.CPU_Reference_init(
-                ctypes.c_uint(nr_stations),
-                ctypes.c_uint(nr_channels),
-                ctypes.c_uint(nr_time),
-                ctypes.c_uint(nr_timeslots),
-                ctypes.c_float(imagesize),
-                ctypes.c_uint(grid_size),
+                ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
             print "The chosen proxy was not built into the library"
+
 
     def __del__(self):
         """Destroy"""
         lib.CPU_Reference_destroy(self.obj)
 
-    @classmethod
-    def from_parameters(cls,p):
-        """Another constructor form an instance of the Parameters class."""
-        return cls(p.nr_stations, p.nr_channels, p.nr_time, \
-                   p.nr_timeslots, p.imagesize, p.grid_size, \
-                   p.subgrid_size)
 
-    def get_job_size_gridder(self):
-        return lib.CPU_get_job_size_gridder(self.obj)
-
-    def get_job_size_adder(self):
-        return lib.CPU_get_job_size_adder(self.obj)
-
-    def get_job_size_splitter(self):
-        return lib.CPU_get_job_size_splitter(self.obj)
-
-    def get_job_size_degridder(self):
-        return lib.CPU_get_job_size_degridder(self.obj)
-
-    def set_job_size_gridder(self, n = 8192):
-        lib.CPU_set_job_size_gridder(self.obj, ctypes.c_int(n))
-
-    def set_job_size_adder(self, n = 8192):
-        lib.CPU_set_job_size_adder(self.obj, ctypes.c_int(n))
-
-    def set_job_size_splitter(self, n = 8192):
-        lib.CPU_set_job_size_splitter(self.obj, ctypes.c_int(n))
-
-    def set_job_size_degridder(self, n = 8192):
-        lib.CPU_set_job_size_degridder(self.obj, ctypes.c_int(n))
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_grid_visibilities(self,
-                                 visibilities,
-                                 uvw,
-                                 wavenumbers,
-                                 baselines,
-                                 grid,
-                                 w_offset,
-                                 kernel_size,
-                                 aterms,
-                                 aterms_offset,
-                                 spheroidal):
-        lib.CPU_Reference_grid(self.obj,
-                               visibilities.ctypes.data_as(ctypes.c_void_p),
-                               uvw.ctypes.data_as(ctypes.c_void_p),
-                               wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                               baselines.ctypes.data_as(ctypes.c_void_p),
-                               grid.ctypes.data_as(ctypes.c_void_p),
-                               ctypes.c_float(w_offset),
-                               ctypes.c_int(kernel_size),
-                               aterms.ctypes.data_as(ctypes.c_void_p),
-                               aterms_offset.ctypes.data_as(ctypes.c_void_p),
-                               spheroidal.ctypes.data_as(ctypes.c_void_p))
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_degrid_visibilities(self,
-                                   visibilities,
-                                   uvw,
-                                   wavenumbers,
-                                   baselines,
-                                   grid,
-                                   w_offset,
-                                   kernel_size,
-                                   aterms,
-                                   aterms_offset,
-                                   spheroidal):
-        lib.CPU_Reference_degrid(self.obj,
-                                 visibilities.ctypes.data_as(ctypes.c_void_p),
-                                 uvw.ctypes.data_as(ctypes.c_void_p),
-                                 wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                                 baselines.ctypes.data_as(ctypes.c_void_p),
-                                 grid.ctypes.data_as(ctypes.c_void_p),
-                                 ctypes.c_float(w_offset),
-                                 ctypes.c_int(kernel_size),
-                                 aterms.ctypes.data_as(ctypes.c_void_p),
-                                 aterms_offset.ctypes.data_as(ctypes.c_void_p),
-                                 spheroidal.ctypes.data_as(ctypes.c_void_p))
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_transform(self, direction, grid):
-        lib.CPU_Reference_transform(self.obj,
-                                    ctypes.c_int(direction),
-                                    grid.ctypes.data_as(ctypes.c_void_p))
+    def _cwrap_griddding(
+        self,
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        nr_channels,
+        visibilities,
+        visibilities_nr_baselines,
+        visibilities_nr_timesteps,
+        visibilities_nr_channels,
+        visibilities_nr_correlations,
+        uvw,
+        uvw_nr_baselines,
+        uvw_nr_timesteps,
+        uvw_nr_coordinates,
+        baselines,
+        baselines_nr_baselines,
+        baselines_two,
+        grid,
+        grid_nr_correlations,
+        grid_height, grid_width, aterms, aterms_nr_timeslots,
+        aterms_nr_stations,
+        aterms_aterm_height,
+        aterms_aterm_width,
+        aterms_nr_correlations,
+        aterms_offsets,
+        aterms_offsets_nr_timeslots,
+        spheroidal,
+        spheroidal_height,
+        spheroidal_width):
+        lib.CPU_Reference_gridding(
+            self.obj,
+            ctypes.c_float(w_offset),
+            ctypes.c_float(cell_size),
+            ctypes.c_int(kernel_size),
+            frequencies.ctypes.data_as(ctypes.c_void_p),
+            nr_channels,
+            visibilities.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(visibilities_nr_baselines),
+            ctypes.c_int(visibilities_nr_timesteps),
+            ctypes.c_int(visibilities_nr_channels),
+            ctypes.c_int(visibilities_nr_correlations),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(uvw_nr_baselines),
+            ctypes.c_int(uvw_nr_timesteps),
+            ctypes.c_int(uvw_nr_coordinates),
+            baselines.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(baselines_nr_baselines),
+            ctypes.c_int(baselines_two),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(grid_nr_correlations),
+            ctypes.c_int(grid_height),
+            ctypes.c_int(grid_width),
+            aterms.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_nr_timeslots),
+            ctypes.c_int(aterms_nr_stations),
+            ctypes.c_int(aterms_aterm_height),
+            ctypes.c_int(aterms_aterm_width),
+            ctypes.c_int(aterms_nr_correlations),
+            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_offsets_nr_timeslots),
+            spheroidal.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(spheroidal_height),
+            ctypes.c_int(spheroidal_width))
 
 
-class Optimized(Reference):
+    def _cwrap_degridding(
+        self,
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        nr_channels,
+        visibilities,
+        visibilities_nr_baselines,
+        visibilities_nr_timesteps,
+        visibilities_nr_channels,
+        visibilities_nr_correlations,
+        uvw,
+        uvw_nr_baselines,
+        uvw_nr_timesteps,
+        uvw_nr_coordinates,
+        baselines,
+        baselines_nr_baselines,
+        baselines_two,
+        grid,
+        grid_nr_correlations,
+        grid_height,
+        grid_width,
+        aterms,
+        aterms_nr_timeslots,
+        aterms_nr_stations,
+        aterms_aterm_height,
+        aterms_aterm_width,
+        aterms_nr_correlations,
+        aterms_offsets,
+        aterms_offsets_nr_timeslots,
+        spheroidal,
+        spheroidal_height,
+        spheroidal_width):
+        lib.CPU_Reference_degridding(
+            self.obj,
+            ctypes.c_float(w_offset),
+            ctypes.c_float(cell_size),
+            ctypes.c_int(kernel_size),
+            frequencies.ctypes.data_as(ctypes.c_void_p),
+            nr_channels,
+            visibilities.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(visibilities_nr_baselines),
+            ctypes.c_int(visibilities_nr_timesteps),
+            ctypes.c_int(visibilities_nr_channels),
+            ctypes.c_int(visibilities_nr_correlations),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(uvw_nr_baselines),
+            ctypes.c_int(uvw_nr_timesteps),
+            ctypes.c_int(uvw_nr_coordinates),
+            baselines.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(baselines_nr_baselines),
+            ctypes.c_int(baselines_two),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(grid_nr_correlations),
+            ctypes.c_int(grid_height),
+            ctypes.c_int(grid_width),
+            aterms.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_nr_timeslots),
+            ctypes.c_int(aterms_nr_stations),
+            ctypes.c_int(aterms_aterm_height),
+            ctypes.c_int(aterms_aterm_width),
+            ctypes.c_int(aterms_nr_correlations),
+            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_offsets_nr_timeslots),
+            spheroidal.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(spheroidal_height),
+            ctypes.c_int(spheroidal_width))
 
-    def __init__(self, nr_stations,
-                       nr_channels,
-                       nr_time,
-                       nr_timeslots,
-                       imagesize,
-                       grid_size,
-                       subgrid_size = 32):
-        """CPU implementation optimized for Intel Optimized"""
+
+    def _cwrap_transform(
+        self,
+        direction,
+        grid,
+        nr_correlations,
+        height,
+        width):
+        lib.CPU_Reference_transform(
+            self.obj,
+            ctypes.c_int(direction),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(nr_correlations),
+            ctypes.c_int(height),
+            ctypes.c_int(width))
+
+
+
+class Optimized(Proxy):
+
+    def __init__(
+        self,
+        nr_correlations,
+        subgrid_size):
+        """Optimized CPU implementation"""
         try:
             lib.CPU_Optimized_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_uint, \
-                                               ctypes.c_float, \
-                                               ctypes.c_uint, \
                                                ctypes.c_uint]
             self.obj = lib.CPU_Optimized_init(
-                ctypes.c_uint(nr_stations),
-                ctypes.c_uint(nr_channels),
-                ctypes.c_uint(nr_time),
-                ctypes.c_uint(nr_timeslots),
-                ctypes.c_float(imagesize),
-                ctypes.c_uint(grid_size),
+                ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
             print "The chosen proxy was not built into the library"
 
+
     def __del__(self):
-        """CPU implementation optimized for Intel Optimized"""
+        """Destroy"""
         lib.CPU_Optimized_destroy(self.obj)
 
-    def _cwrap_grid_visibilities(self,
-                                 visibilities,
-                                 uvw,
-                                 wavenumbers,
-                                 baselines,
-                                 grid,
-                                 w_offset,
-                                 kernel_size,
-                                 aterms,
-                                 aterms_offset,
-                                 spheroidal):
-            lib.CPU_Optimized_grid(self.obj,
-                               visibilities.ctypes.data_as(ctypes.c_void_p),
-                               uvw.ctypes.data_as(ctypes.c_void_p),
-                               wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                               baselines.ctypes.data_as(ctypes.c_void_p),
-                               grid.ctypes.data_as(ctypes.c_void_p),
-                               ctypes.c_float(w_offset),
-                               ctypes.c_int(kernel_size),
-                               aterms.ctypes.data_as(ctypes.c_void_p),
-                               aterms_offset.ctypes.data_as(ctypes.c_void_p),
-                               spheroidal.ctypes.data_as(ctypes.c_void_p))
 
-    def _cwrap_degrid_visibilities(self,
-                                   visibilities,
-                                   uvw,
-                                   wavenumbers,
-                                   baselines,
-                                   grid,
-                                   w_offset,
-                                   kernel_size,
-                                   aterms,
-                                   aterms_offset,
-                                   spheroidal):
-        lib.CPU_Optimized_degrid(self.obj,
-                                 visibilities.ctypes.data_as(ctypes.c_void_p),
-                                 uvw.ctypes.data_as(ctypes.c_void_p),
-                                 wavenumbers.ctypes.data_as(ctypes.c_void_p),
-                                 baselines.ctypes.data_as(ctypes.c_void_p),
-                                 grid.ctypes.data_as(ctypes.c_void_p),
-                                 ctypes.c_float(w_offset),
-                                 ctypes.c_int(kernel_size),
-                                 aterms.ctypes.data_as(ctypes.c_void_p),
-                                 aterms_offset.ctypes.data_as(ctypes.c_void_p),
-                                 spheroidal.ctypes.data_as(ctypes.c_void_p))
+    def _cwrap_griddding(
+        self,
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        nr_channels,
+        visibilities,
+        visibilities_nr_baselines,
+        visibilities_nr_timesteps,
+        visibilities_nr_channels,
+        visibilities_nr_correlations,
+        uvw,
+        uvw_nr_baselines,
+        uvw_nr_timesteps,
+        uvw_nr_coordinates,
+        baselines,
+        baselines_nr_baselines,
+        baselines_two,
+        grid,
+        grid_nr_correlations,
+        grid_height, grid_width, aterms, aterms_nr_timeslots,
+        aterms_nr_stations,
+        aterms_aterm_height,
+        aterms_aterm_width,
+        aterms_nr_correlations,
+        aterms_offsets,
+        aterms_offsets_nr_timeslots,
+        spheroidal,
+        spheroidal_height,
+        spheroidal_width):
+        lib.CPU_Optimized_gridding(
+            self.obj,
+            ctypes.c_float(w_offset),
+            ctypes.c_float(cell_size),
+            ctypes.c_int(kernel_size),
+            frequencies.ctypes.data_as(ctypes.c_void_p),
+            nr_channels,
+            visibilities.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(visibilities_nr_baselines),
+            ctypes.c_int(visibilities_nr_timesteps),
+            ctypes.c_int(visibilities_nr_channels),
+            ctypes.c_int(visibilities_nr_correlations),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(uvw_nr_baselines),
+            ctypes.c_int(uvw_nr_timesteps),
+            ctypes.c_int(uvw_nr_coordinates),
+            baselines.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(baselines_nr_baselines),
+            ctypes.c_int(baselines_two),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(grid_nr_correlations),
+            ctypes.c_int(grid_height),
+            ctypes.c_int(grid_width),
+            aterms.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_nr_timeslots),
+            ctypes.c_int(aterms_nr_stations),
+            ctypes.c_int(aterms_aterm_height),
+            ctypes.c_int(aterms_aterm_width),
+            ctypes.c_int(aterms_nr_correlations),
+            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_offsets_nr_timeslots),
+            spheroidal.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(spheroidal_height),
+            ctypes.c_int(spheroidal_width))
 
 
-    def _cwrap_transform(self, direction, grid):
-        lib.CPU_Optimized_transform(self.obj,
-                                    ctypes.c_int(direction),
-                                    grid.ctypes.data_as(ctypes.c_void_p))
+    def _cwrap_degridding(
+        self,
+        w_offset,
+        cell_size,
+        kernel_size,
+        frequencies,
+        nr_channels,
+        visibilities,
+        visibilities_nr_baselines,
+        visibilities_nr_timesteps,
+        visibilities_nr_channels,
+        visibilities_nr_correlations,
+        uvw,
+        uvw_nr_baselines,
+        uvw_nr_timesteps,
+        uvw_nr_coordinates,
+        baselines,
+        baselines_nr_baselines,
+        baselines_two,
+        grid,
+        grid_nr_correlations,
+        grid_height,
+        grid_width,
+        aterms,
+        aterms_nr_timeslots,
+        aterms_nr_stations,
+        aterms_aterm_height,
+        aterms_aterm_width,
+        aterms_nr_correlations,
+        aterms_offsets,
+        aterms_offsets_nr_timeslots,
+        spheroidal,
+        spheroidal_height,
+        spheroidal_width):
+        lib.CPU_Optimized_degridding(
+            self.obj,
+            ctypes.c_float(w_offset),
+            ctypes.c_float(cell_size),
+            ctypes.c_int(kernel_size),
+            frequencies.ctypes.data_as(ctypes.c_void_p),
+            nr_channels,
+            visibilities.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(visibilities_nr_baselines),
+            ctypes.c_int(visibilities_nr_timesteps),
+            ctypes.c_int(visibilities_nr_channels),
+            ctypes.c_int(visibilities_nr_correlations),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(uvw_nr_baselines),
+            ctypes.c_int(uvw_nr_timesteps),
+            ctypes.c_int(uvw_nr_coordinates),
+            baselines.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(baselines_nr_baselines),
+            ctypes.c_int(baselines_two),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(grid_nr_correlations),
+            ctypes.c_int(grid_height),
+            ctypes.c_int(grid_width),
+            aterms.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_nr_timeslots),
+            ctypes.c_int(aterms_nr_stations),
+            ctypes.c_int(aterms_aterm_height),
+            ctypes.c_int(aterms_aterm_width),
+            ctypes.c_int(aterms_nr_correlations),
+            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_offsets_nr_timeslots),
+            spheroidal.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(spheroidal_height),
+            ctypes.c_int(spheroidal_width))
+
+
+    def _cwrap_transform(
+        self,
+        direction,
+        grid,
+        nr_correlations,
+        height,
+        width):
+        lib.CPU_Optimized_transform(
+            self.obj,
+            ctypes.c_int(direction),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(nr_correlations),
+            ctypes.c_int(height),
+            ctypes.c_int(width))

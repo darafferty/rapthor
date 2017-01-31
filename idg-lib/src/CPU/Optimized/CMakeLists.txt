@@ -2,11 +2,11 @@ project(cpu-optimized)
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-	Optimized.h
+    Optimized.h
 )
 
 set (${PROJECT_NAME}_sources
-	  Optimized.cpp
+    Optimized.cpp
 )
 
 # create library

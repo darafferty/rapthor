@@ -10,6 +10,7 @@ set (${PROJECT_NAME}_headers
     CompileConstants.h
     Proxy.h
 	Plan.h
+    PlanC.h
 )
 
 set (${PROJECT_NAME}_sources

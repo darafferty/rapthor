@@ -45,8 +45,6 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
 
-            //void reset();
-
             // total number of subgrids
             int get_nr_subgrids() const;
 
@@ -80,6 +78,8 @@ namespace idg {
             }
 
             const Metadata* get_metadata_ptr(int baseline = 0) const;
+
+            void copy_metadata(void *ptr) const;
 
         private:
             std::vector<Metadata> metadata;
