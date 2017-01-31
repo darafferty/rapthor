@@ -28,5 +28,6 @@ except OSError as e:
 
 try:
     import fft
-except OSError:
+    from Plan import *
+except OSError as e:
     handle_error("utils", e)

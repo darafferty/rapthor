@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert> // assert
+#include <memory.h> // memcpy
 
 #include "Plan.h"
 
@@ -313,4 +314,10 @@ namespace idg {
         return &(metadata[offset]);
     }
 
+    void Plan::copy_metadata(void *ptr) const {
+        memcpy(ptr, get_metadata_ptr(), get_nr_subgrids() * sizeof(Metadata));
+    }
+
 } // namespace idg
+
+#include "PlanC.h"

@@ -11,5 +11,6 @@ install(FILES
         #HybridOpenCL.py
         Proxy.py
         fft.py
+        Plan.py
         DESTINATION
         ${PYTHON_INSTALL_DIR})

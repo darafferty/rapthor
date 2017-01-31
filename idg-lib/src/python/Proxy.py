@@ -238,9 +238,6 @@ class Proxy(object):
             height,
             width)
 
- 
-    # TODO: create plan
-
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_gridding(
         w_offset,
