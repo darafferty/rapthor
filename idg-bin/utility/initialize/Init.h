@@ -213,6 +213,10 @@ Array1D<unsigned int> get_example_aterms_offsets(
     unsigned int nr_timeslots,
     unsigned int nr_timesteps);
 
+Array2D<float> get_identity_spheroidal(
+    unsigned int height,
+    unsigned int width);
+
 idg::Array2D<float> get_example_spheroidal(
     unsigned int height,
     unsigned int width);

@@ -781,6 +781,23 @@ Array1D<unsigned int> get_example_aterms_offsets(
     return aterms_offsets;
 }
 
+Array2D<float> get_identity_spheroidal(
+    unsigned int height,
+    unsigned int width)
+{
+    Array2D<float> spheroidal(height, width);
+
+    float value = 1.0;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+             spheroidal(y, x) = value;
+        }
+    }
+
+    return spheroidal;
+}
+
 Array2D<float> get_example_spheroidal(
     unsigned int height,
     unsigned int width)
@@ -793,14 +810,14 @@ Array2D<float> get_example_spheroidal(
         float tmp = fabs(-1 + i*2.0f/float(height));
         y[i] = evaluate_spheroidal(tmp);
     }
- 
+
     // Evaluate columns
     float x[width];
     for (int i = 0; i < width; i++) {
         float tmp = fabs(-1 + i*2.0f/float(width));
         x[i] = evaluate_spheroidal(tmp);
     }
-    
+
     // Set values
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
