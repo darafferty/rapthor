@@ -1,5 +1,5 @@
 #include "idg-cuda.h"
-#include "../../CPU/common/common.h"
+#include "common.h"
 
 using namespace std;
 
