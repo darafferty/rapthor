@@ -113,9 +113,6 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         image_size, grid_size, subgrid_size, kernel_size);
 
-    // error tolerance, which might need to be adjusted if parameters are changed
-    tol = grid_size * std::numeric_limits<float>::epsilon();
-
     // Initialize proxies
     std::clog << ">>> Initialize proxy" << std::endl;
     idg::CompileConstants constants(nr_correlations, subgrid_size);
@@ -191,6 +188,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
 
     // Report results
+    tol = grid_size * std::numeric_limits<float>::epsilon();
     if (grid_error < tol) {
         std::cout << "Gridding test PASSED!" << std::endl;
     } else {
@@ -198,6 +196,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         info = 1;
     }
 
+    tol = nr_baselines * nr_timesteps * nr_channels * std::numeric_limits<float>::epsilon();
     if (degrid_error < tol) {
         std::cout << "Degridding test PASSED!" << std::endl;
     } else {
