@@ -1,4 +1,4 @@
-#include "../common/common.h"
+#include "common.h"
 
 // Basic idea: write a bunch of test here on the reference code,
 // and then make sure that all other implementation conform with
@@ -17,28 +17,28 @@ void add_analytic_point_source(
     float          amplitude,
     float          image_size,
     int            nr_baselines,
-    int            nr_time,
+    int            nr_timesteps,
     int            nr_channels,
-    int            nr_polarizations,
+    int            nr_correlations,
     int            grid_size,
-    float          *uvw,
-    float          *wavenumbers,
-    complex<float> *true_visibilities)
+    idg::Array2D<idg::UVWCoordinate<float>>& uvw,
+    idg::Array1D<float>& frequencies,
+    idg::Array3D<idg::Visibility<std::complex<float>>>& visibilities_ref)
 {
     float l = offset_x * image_size / grid_size;
     float m = offset_y * image_size / grid_size;
 
-    for (auto b=0; b<nr_baselines; ++b) {
-        for (auto t=0; t<nr_time; ++t) {
-            for (auto c=0; c<nr_channels; ++c) {
-                float u = wavenumbers[c]*uvw[b*nr_time*3 + t*3 + 0]/(2*M_PI);
-                float v = wavenumbers[c]*uvw[b*nr_time*3 + t*3 + 1]/(2*M_PI);
+    for (auto bl = 0; bl < nr_baselines; bl++) {
+        for (auto t = 0; t <nr_timesteps; t++) {
+            for (auto c = 0; c < nr_channels; c++) {
+                const double speed_of_light = 299792458.0;
+                float u = (frequencies(c) / speed_of_light) * uvw(bl, t).u;
+                float v = (frequencies(c) / speed_of_light) * uvw(bl, t).v;
                 complex<float> value = amplitude*exp(complex<float>(0,-2*M_PI*(u*l + v*m)));
-                for (auto p=0; p<nr_polarizations; ++p) {
-                    true_visibilities[b*nr_time*nr_channels*nr_polarizations +
-                                      t*nr_channels*nr_polarizations +
-                                      c*nr_polarizations + p] = value;
-                 }
+                visibilities_ref(bl, t, c).xx = value;
+                visibilities_ref(bl, t, c).xy = value;
+                visibilities_ref(bl, t, c).yx = value;
+                visibilities_ref(bl, t, c).yy = value;
             }
         }
     }
@@ -49,118 +49,98 @@ int test01()
 {
     int info = 0;
 
-    // Set constants explicitly in the parameters parameter
-    clog << ">>> Configuration"  << endl;
-    idg::Parameters params;
-    params.set_nr_stations(8);
-    params.set_nr_channels(8);
-    params.set_nr_time(4800);
-    params.set_nr_timeslots(1);
-    params.set_imagesize(0.08);
-    params.set_grid_size(512);
-    params.set_subgrid_size(24);
+    // Parameters
+    unsigned int nr_correlations = 4;
+    float w_offset               = 0;
+    unsigned int nr_stations     = 8;
+    unsigned int nr_channels     = 9;
+    unsigned int nr_timesteps    = 2048;
+    unsigned int nr_timeslots    = 1;
+    float image_size             = 0.08;
+    unsigned int grid_size       = 512;
+    unsigned int subgrid_size    = 24;
+    float cell_size              = image_size / grid_size;
+    unsigned int kernel_size     = (subgrid_size / 2) + 1;
+    unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
 
-    // retrieve constants for memory allocation
-    int nr_stations        = params.get_nr_stations();
-    int nr_baselines       = params.get_nr_baselines();
-    int nr_time            = params.get_nr_time();
-    int nr_timeslots       = params.get_nr_timeslots();
-    int nr_channels        = params.get_nr_channels();
-    int gridsize           = params.get_grid_size();
-    int subgridsize        = params.get_subgrid_size();
-    float imagesize        = params.get_imagesize();
-    int nr_polarizations   = params.get_nr_polarizations();
-    float w_offset         = 0.0f;
-    float integration_time = 2.0f;
-    int kernel_size        = (subgridsize / 2) + 1;
+    // Print parameters
+    print_parameters(
+        nr_stations, nr_channels, nr_timesteps, nr_timeslots,
+        image_size, grid_size, subgrid_size, kernel_size);
+
 
     // error tolerance, which might need to be adjusted if parameters are changed
     float tol = 0.1f;
 
-    // Print configuration
-    clog << params;
-    clog << endl;
-
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
-
-    auto size_visibilities = 1ULL * nr_baselines*nr_time*nr_channels*nr_polarizations;
-    auto size_uvw          = 1ULL * nr_baselines*nr_time*3;
-    auto size_wavenumbers  = 1ULL * nr_channels;
-    auto size_aterm        = 1ULL * nr_timeslots*nr_stations*subgridsize*subgridsize*
-                                    nr_polarizations;
-    auto size_spheroidal   = 1ULL * subgridsize*subgridsize;
-    auto size_grid         = 1ULL * nr_polarizations*gridsize*gridsize;
-    auto size_baselines    = 1ULL * nr_baselines*2;
-
-    auto visibilities      = new complex<float>[size_visibilities];
-    auto true_visibilities = new complex<float>[size_visibilities];
-    auto uvw               = new float[size_uvw];
-    auto wavenumbers       = new float[size_wavenumbers];
-    auto aterm             = new complex<float>[size_aterm];
-    auto aterm_offsets     = new int[nr_timeslots+1];
-    auto spheroidal        = new float[size_spheroidal];
-    auto grid              = new complex<float>[size_grid];
-    auto baselines         = new int[size_baselines];
-
-    idg::init_example_uvw(uvw, nr_stations, nr_baselines, nr_time, integration_time);
-    idg::init_example_wavenumbers(wavenumbers, nr_channels);
-    idg::init_identity_aterm(aterm, nr_timeslots, nr_stations, subgridsize, nr_polarizations);
-    idg::init_example_aterm_offsets(aterm_offsets, nr_timeslots, nr_time);
-    idg::init_identity_spheroidal(spheroidal, subgridsize);
-    idg::init_zero_grid(grid, gridsize, nr_polarizations);
-    idg::init_example_baselines(baselines, nr_stations, nr_baselines);
+    idg::Array1D<float> frequencies =
+        idg::get_example_frequencies(nr_channels);
+    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
+        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
+        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+    idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
+        idg::get_example_baselines(nr_stations, nr_baselines);
+    idg::Array2D<idg::UVWCoordinate<float>> uvw =
+        idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
+    idg::Array3D<std::complex<float>> grid =
+        idg::get_zero_grid(nr_correlations, grid_size, grid_size);
+    idg::Array3D<std::complex<float>> grid_ref =
+        idg::get_zero_grid(nr_correlations, grid_size, grid_size);
+    idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
+        idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+    idg::Array1D<unsigned int> aterms_offsets =
+        idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+    idg::Array2D<float> spheroidal =
+        idg::get_identity_spheroidal(subgrid_size, subgrid_size);
+    clog << endl;
 
     // Set w-terms to zero
-    for (auto i=0; i<size_uvw; i++) {
-        if ((i+1)%3 == 0) uvw[i] = 0.0f;
+    for (int bl = 0; bl < nr_baselines; bl++) {
+        for (int t = 0; t < nr_timesteps; t++) {
+            uvw(bl, t).w = 0.0f;
+        }
     }
 
     // Initialize of center point source
     int   offset_x   = 80;
     int   offset_y   = 50;
-    int   location_x = gridsize/2 + offset_x;
-    int   location_y = gridsize/2 + offset_y;
+    int   location_x = grid_size/2 + offset_x;
+    int   location_y = grid_size/2 + offset_y;
     float amplitude  = 1.0f;
-    grid[0*gridsize*gridsize + location_y*gridsize + location_x] = amplitude;
-    grid[1*gridsize*gridsize + location_y*gridsize + location_x] = amplitude;
-    grid[2*gridsize*gridsize + location_y*gridsize + location_x] = amplitude;
-    grid[3*gridsize*gridsize + location_y*gridsize + location_x] = amplitude;
+    grid(0, location_y, location_x) = amplitude;
+    grid(1, location_y, location_x) = amplitude;
+    grid(2, location_y, location_x) = amplitude;
+    grid(3, location_y, location_x) = amplitude;
 
     add_analytic_point_source(
         offset_x, offset_y, amplitude,
-        imagesize, nr_baselines, nr_time,
-        nr_channels, nr_polarizations, gridsize,
-        uvw, wavenumbers, true_visibilities);
+        image_size, nr_baselines, nr_timesteps,
+        nr_channels, nr_correlations, grid_size,
+        uvw, frequencies, visibilities_ref);
     clog << endl;
 
-
+    // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
+    idg::CompileConstants constants(nr_correlations, subgrid_size);
+    idg::proxy::cpu::Reference proxy(constants);
 
-    idg::proxy::cpu::Reference proxy(params);
-
-
+    // Predict visibilities
     clog << ">>> Predict visibilities" << endl;
 
     proxy.transform(idg::ImageDomainToFourierDomain, grid);
 
-    proxy.degrid_visibilities(
-        visibilities,
-        uvw,
-        wavenumbers,
-        baselines,
-        grid,
-        w_offset,
-        kernel_size,
-        aterm,
-        aterm_offsets,
-        spheroidal);
+    proxy.degridding(
+        w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
+        baselines, grid, aterms, aterms_offsets, spheroidal);
 
     clog << endl;
 
-    float error = get_accucary(size_visibilities,
-                               visibilities,
-                               true_visibilities);
+    float error = get_accucary(
+        nr_baselines*nr_timesteps*nr_channels*nr_correlations,
+        (std::complex<float> *) visibilities.data(),
+        (std::complex<float> *) visibilities_ref.data());
 
     cout << "Error = " << error << endl;
 
@@ -171,16 +151,6 @@ int test01()
         cout << "Prediction test FAILED!" << endl;
         info = 1;
     }
-
-    // Free memory for data structures
-    delete[] visibilities;
-    delete[] true_visibilities;
-    delete[] uvw;
-    delete[] wavenumbers;
-    delete[] aterm;
-    delete[] aterm_offsets;
-    delete[] spheroidal;
-    delete[] grid;
 
     return info;
 }
