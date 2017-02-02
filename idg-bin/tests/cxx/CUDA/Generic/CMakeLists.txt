@@ -32,5 +32,5 @@ install (
 # Set test
 add_test(
     NAME ${PROJECT_NAME}
-    COMMAND ${CMAKE_BINARY_DIR}/bin/tests/cxx/${PROJECT_NAME}
+    COMMAND ${CMAKE_BINARY_DIR}/tests/cxx/CUDA/Generic/${PROJECT_NAME}
 )
