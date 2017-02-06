@@ -32,10 +32,14 @@ void kernel_splitter(
                 if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
                     grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
 
+                    // Compute phasor
+                    float phase  = -M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+                    idg::float2 phasor = {cosf(phase), sinf(phase)};
+
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
 						int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
-                        subgrid[s][pol][y_dst][x_dst] = grid[grid_idx];
+                        subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
                     }
                 }
             }
