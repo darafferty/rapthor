@@ -132,10 +132,10 @@ namespace idg {
                     uint64_t bytes_adder    = mKernels.bytes_adder(total_nr_subgrids);
                     uint64_t flops_gridding = flops_gridder + flops_fft + flops_adder;
                     uint64_t bytes_gridding = bytes_gridder + bytes_fft + bytes_adder;
-                    auxiliary::report("|gridding", runtime,
-                        flops_gridding, bytes_gridding);
-                    auxiliary::report_visibilities("|gridding",
-                        runtime, total_nr_timesteps, nr_channels);
+                    auxiliary::report("|gridding", runtime, flops_gridding, bytes_gridding);
+
+                    auto total_nr_visibilities = plan.get_nr_visibilities();
+                    auxiliary::report_visibilities("|gridding", runtime, total_nr_visibilities);
                     clog << endl;
                     #endif
 
@@ -239,7 +239,9 @@ namespace idg {
                     uint64_t flops_degridding = flops_degridder + flops_fft + flops_splitter;
                     uint64_t bytes_degridding = bytes_degridder + bytes_fft + bytes_splitter;
                     auxiliary::report("|degridding", runtime, flops_degridding, bytes_degridding);
-                    auxiliary::report_visibilities("|degridding", runtime, total_nr_timesteps, nr_channels);
+
+                    auto total_nr_visibilities = plan.get_nr_visibilities();
+                    auxiliary::report_visibilities("|degridding", runtime, total_nr_visibilities);
                     clog << endl;
                     #endif
 
@@ -348,8 +350,8 @@ namespace idg {
                     int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
 
                     // Number of subgrids for all baselines in job
-                    auto current_nr_subgrids   = plan.get_nr_subgrids(bl, current_nr_baselines);
-                    auto current_nr_timesteps  = plan.get_nr_timesteps(bl, current_nr_baselines);
+                    auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = wavenumbers.data();

@@ -45,15 +45,7 @@ namespace idg {
         void report_visibilities(
             const char *name,
             double runtime,
-    		uint64_t nr_baselines,
-    		uint64_t nr_time,
-    		uint64_t nr_channels);
-
-        void report_visibilities(
-            const char *name,
-            double runtime,
-    		uint64_t nr_time,
-    		uint64_t nr_channels);
+    		uint64_t nr_visibilities);
 
         void report_subgrids(
             const char *name,

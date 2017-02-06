@@ -380,9 +380,10 @@ namespace idg {
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceCUDA& device     = get_device(0);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                InstanceCUDA& device          = get_device(0);
+                auto total_nr_subgrids        = plan.get_nr_subgrids();
+                auto total_nr_timesteps       = plan.get_nr_timesteps();
+                auto total_nr_visibilities    = plan.get_nr_visibilities();
                 uint64_t total_flops_gridder  = device.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = device.bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_fft      = device.flops_fft(subgrid_size, total_nr_subgrids);
@@ -397,7 +398,7 @@ namespace idg {
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps, nr_channels);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding, total_nr_visibilities);
 
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
@@ -638,9 +639,10 @@ namespace idg {
                 total_runtime_degridding += omp_get_wtime();
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceCUDA& device     = get_device(0);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                InstanceCUDA& device            = get_device(0);
+                auto total_nr_subgrids          = plan.get_nr_subgrids();
+                auto total_nr_timesteps         = plan.get_nr_timesteps();
+                auto total_nr_visibilities      = plan.get_nr_visibilities();
                 uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);
                 uint64_t total_bytes_splitter   = device.bytes_splitter(total_nr_subgrids);
                 uint64_t total_flops_fft        = device.flops_fft(subgrid_size, total_nr_subgrids);
@@ -652,7 +654,7 @@ namespace idg {
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps, nr_channels);
+                auxiliary::report_visibilities("|degridding", total_runtime_degridding, total_nr_visibilities);
 
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);

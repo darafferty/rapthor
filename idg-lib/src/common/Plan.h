@@ -72,9 +72,18 @@ namespace idg {
             // number of timesteps for baselines b1 to b1+n-1
             int get_nr_timesteps(int baseline, int n) const;
 
+            // total number of visibilities
+            int get_nr_visibilities() const;
+
+            // number of visibilities one baseline
+            int get_nr_visibilities(int baseline) const;
+
+            // number of visibilities for baselines b1 to b1+n-1
+            int get_nr_visibilities(int baseline, int n) const;
+
             // number of baselines
             int get_nr_baselines() const {
-                return nr_baselines;
+                return total_nr_timesteps_per_baseline.size();
             }
 
             const Metadata* get_metadata_ptr(int baseline = 0) const;
@@ -84,8 +93,8 @@ namespace idg {
         private:
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;
-            std::vector<int> timesteps_per_baseline;
-            int nr_baselines;
+            std::vector<int> total_nr_timesteps_per_baseline;
+            std::vector<int> total_nr_visibilities_per_baseline;
 
         }; // class Plan
 

@@ -132,7 +132,7 @@ namespace idg {
         assert(baselines.get_x_dim() == uvw.get_y_dim());
 
         // Initialize arguments
-        nr_baselines      = uvw.get_y_dim();
+        auto nr_baselines = uvw.get_y_dim();
         auto nr_timesteps = uvw.get_x_dim();
         auto nr_timeslots = aterms_offsets.get_x_dim() - 1;
         auto nr_channels  = frequencies.get_x_dim();
@@ -143,8 +143,8 @@ namespace idg {
 
         // Temporary metadata vector for individual baselines
         std::vector<Metadata> metadata_[nr_baselines];
-        for (int i = 0; i < nr_baselines; i++) {
-            metadata_[i].reserve(nr_timesteps / nr_timeslots);
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            metadata_[bl].reserve(nr_timesteps / nr_timeslots);
         }
 
         // Iterate all baselines
@@ -238,8 +238,7 @@ namespace idg {
                             baseline,                               // baselines
                             coordinate                              // coordinate
                         };
-                        //cout << "new metadata: " << endl;
-                        //cout << m;
+
                         metadata_[bl].push_back(m);
                     }
                 } // end while
@@ -251,17 +250,30 @@ namespace idg {
             // The subgrid offset is the number of subgrids for all prior baselines
             subgrid_offset.push_back(metadata.size());
 
+            // Count total number of timesteps for baseline
+            int total_nr_timesteps = 0;
+
             for (int i = 0; i < metadata_[bl].size(); i++) {
+                Metadata& m = metadata_[bl][i];
+
+                // Append subgrid
                 metadata.push_back(metadata_[bl][i]);
+
+                // Accumulate timesteps
+                total_nr_timesteps += m.nr_timesteps;
             }
 
-            // The number of timesteps per baseline is always nr_timesteps
-            timesteps_per_baseline.push_back(nr_timesteps);
+            // Set total total number of timesteps for baseline
+            total_nr_timesteps_per_baseline.push_back(total_nr_timesteps);
+
+            // Either all or no channels of a timestep are gridded
+            // onto a subgrid, hence total_nr_timesteps * nr_channels
+            int total_nr_visibilities = total_nr_timesteps * nr_channels;
+            total_nr_visibilities_per_baseline.push_back(total_nr_visibilities);
         } // end for bl
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
-
     } // end initialize
 
 
@@ -300,19 +312,41 @@ namespace idg {
     }
 
     int Plan::get_max_nr_subgrids() const {
-        return get_max_nr_subgrids(0, nr_baselines, 1);
+        return get_max_nr_subgrids(0, get_nr_baselines(), 1);
     }
 
     int Plan::get_nr_timesteps() const {
-        return accumulate(timesteps_per_baseline.begin(), timesteps_per_baseline.end(), 0);
+        return accumulate(
+            total_nr_timesteps_per_baseline.begin(),
+            total_nr_timesteps_per_baseline.end(), 0);
     }
 
     int Plan::get_nr_timesteps(int baseline) const {
-        return timesteps_per_baseline[baseline];
+        return total_nr_timesteps_per_baseline[baseline];
     }
 
     int Plan::get_nr_timesteps(int baseline, int n) const {
-        auto begin = next(timesteps_per_baseline.begin(), baseline);
+        auto begin = next(
+            total_nr_timesteps_per_baseline.begin(),
+            baseline);
+        auto end   = next(begin, n);
+        return accumulate(begin, end, 0);
+    }
+
+    int Plan::get_nr_visibilities() const {
+        return accumulate(
+            total_nr_visibilities_per_baseline.begin(),
+            total_nr_visibilities_per_baseline.end(), 0);
+    }
+
+    int Plan::get_nr_visibilities(int baseline) const {
+        return total_nr_visibilities_per_baseline[baseline];
+    }
+
+    int Plan::get_nr_visibilities(int baseline, int n) const {
+        auto begin = next(
+            total_nr_visibilities_per_baseline.begin(),
+            baseline);
         auto end   = next(begin, n);
         return accumulate(begin, end, 0);
     }
