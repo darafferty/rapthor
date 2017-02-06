@@ -213,14 +213,8 @@ namespace idg {
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
 
-                        // Visibility for last channel
-                        DataPoint visibility1 = datapoints[time_offset][nr_channels-1];
-                        const float u_pixels1 = visibility1.u_pixels;
-                        const float v_pixels1 = visibility1.v_pixels;
-
                         // Try to add visibilities to subgrid
-                        if (subgrid.add_visibility(u_pixels0, v_pixels0) &&
-                            subgrid.add_visibility(u_pixels1, v_pixels1))
+                        if (subgrid.add_visibility(u_pixels0, v_pixels0))
                         {
                             nr_timesteps_subgrid++;
                         } else {
