@@ -51,6 +51,11 @@ namespace idg {
             }
 
             bool add_visibility(float u_pixels, float v_pixels) {
+                // Return false for invalid visibilities
+                if (isinf(u_pixels) || isinf(v_pixels)) {
+                    return false;
+                }
+
                 // Initialize candidate uv limits
                 float u_min_ = fmin(u_min, u_pixels);
                 float u_max_ = fmax(u_max, u_pixels);
@@ -203,12 +208,20 @@ namespace idg {
                     int time_limit = abs(time_offset + max_nr_timesteps_per_subgrid);
                     int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) : nr_timesteps_per_aterm;
                     for (; time_offset < time_max; time_offset++) {
-                        DataPoint visibility = datapoints[time_offset][0];
-                        const float u_pixels = visibility.u_pixels;
-                        const float v_pixels = visibility.v_pixels;
+                        // Visibility for first channel
+                        DataPoint visibility0 = datapoints[time_offset][0];
+                        const float u_pixels0 = visibility0.u_pixels;
+                        const float v_pixels0 = visibility0.v_pixels;
 
-                        // Try to add visibility to subgrid
-                        if (subgrid.add_visibility(u_pixels, v_pixels)) {
+                        // Visibility for last channel
+                        DataPoint visibility1 = datapoints[time_offset][nr_channels-1];
+                        const float u_pixels1 = visibility1.u_pixels;
+                        const float v_pixels1 = visibility1.v_pixels;
+
+                        // Try to add visibilities to subgrid
+                        if (subgrid.add_visibility(u_pixels0, v_pixels0) &&
+                            subgrid.add_visibility(u_pixels1, v_pixels1))
+                        {
                             nr_timesteps_subgrid++;
                         } else {
                             break;
@@ -218,7 +231,8 @@ namespace idg {
                     // Check whether current subgrid is in grid range
                     Coordinate coordinate = subgrid.get_coordinate();
                     bool uv_max_pixels = max(coordinate.x, coordinate.y);
-                    bool uv_in_range = uv_max_pixels > 0 && uv_max_pixels < (grid_size - subgrid_size);
+                    bool uv_min_pixels = min(coordinate.x, coordinate.y);
+                    bool uv_in_range = uv_min_pixels >= 0 && uv_max_pixels < (grid_size - subgrid_size);
 
                     // Add subgrid to metadata
                     if (uv_in_range && nr_timesteps_subgrid > 0) {
