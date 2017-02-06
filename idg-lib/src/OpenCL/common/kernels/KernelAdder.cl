@@ -26,6 +26,8 @@ __kernel void kernel_adder(
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
         int y = i / SUBGRIDSIZE;
         int x = i % SUBGRIDSIZE;
+        float phase = -M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+        float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
         // Check wheter subgrid fits in grid
         if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
@@ -38,7 +40,7 @@ __kernel void kernel_adder(
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                 int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
-                atomicAdd(&(grid[grid_idx]), subgrid[s][pol][y_src][x_src]);
+                atomicAdd(&(grid[grid_idx]), cmul(phasor, subgrid[s][pol][y_src][x_src]));
             }
         }
     }
