@@ -53,33 +53,34 @@ void kernel_fft_subgrid(
     fftwf_complex *_data,
 	int sign
 	) {
-
-    // 2D FFT
-    int rank = 2;
-
-    // For grids of size*size elements
-    int n[] = {size, size};
-
-    // Set stride
-    int istride = 1;
-    int ostride = istride;
-
-    // Set dist
-    int idist = n[0] * n[1];
-    int odist = idist;
-
-    // Planner flags
-    int flags = FFTW_ESTIMATE;
-    fftwf_plan plan;
-    plan = fftwf_plan_many_dft(
-        rank, n, NR_POLARIZATIONS, _data, n,
-        istride, idist, _data, n,
-        ostride, odist, sign, flags);
-
     #pragma omp parallel for
     for (int i = 0; i < batch; i++) {
-        // Execute FFTs
         fftwf_complex *data = (fftwf_complex *) _data + i * (NR_POLARIZATIONS * size * size);
+        // 2D FFT
+        int rank = 2;
+
+        // For grids of size*size elements
+        int n[] = {size, size};
+
+        // Set stride
+        int istride = 1;
+        int ostride = istride;
+
+        // Set dist
+        int idist = n[0] * n[1];
+        int odist = idist;
+
+        // Planner flags
+        int flags = FFTW_ESTIMATE;
+        fftwf_plan plan;
+
+        #pragma omp critical
+        plan = fftwf_plan_many_dft(
+            rank, n, NR_POLARIZATIONS, _data, n,
+            istride, idist, _data, n,
+            ostride, odist, sign, flags);
+
+        // Execute FFTs
         fftwf_execute_dft(plan, data, data);
 
         // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
@@ -90,9 +91,11 @@ void kernel_fft_subgrid(
                 data[i][1] *= scale;
             }
         }
-    }
 
-    fftwf_destroy_plan(plan);
+        #pragma omp critical
+        fftwf_destroy_plan(plan);
+
+    } // end for batch
 }
 
 void kernel_fft(

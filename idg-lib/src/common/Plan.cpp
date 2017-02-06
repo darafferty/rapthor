@@ -51,6 +51,11 @@ namespace idg {
             }
 
             bool add_visibility(float u_pixels, float v_pixels) {
+                // Return false for invalid visibilities
+                if (isinf(u_pixels) || isinf(v_pixels)) {
+                    return false;
+                }
+
                 // Initialize candidate uv limits
                 float u_min_ = fmin(u_min, u_pixels);
                 float u_max_ = fmax(u_max, u_pixels);
@@ -127,7 +132,7 @@ namespace idg {
         assert(baselines.get_x_dim() == uvw.get_y_dim());
 
         // Initialize arguments
-        nr_baselines      = uvw.get_y_dim();
+        auto nr_baselines = uvw.get_y_dim();
         auto nr_timesteps = uvw.get_x_dim();
         auto nr_timeslots = aterms_offsets.get_x_dim() - 1;
         auto nr_channels  = frequencies.get_x_dim();
@@ -138,8 +143,8 @@ namespace idg {
 
         // Temporary metadata vector for individual baselines
         std::vector<Metadata> metadata_[nr_baselines];
-        for (int i = 0; i < nr_baselines; i++) {
-            metadata_[i].reserve(nr_timesteps / nr_timeslots);
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            metadata_[bl].reserve(nr_timesteps / nr_timeslots);
         }
 
         // Iterate all baselines
@@ -203,12 +208,14 @@ namespace idg {
                     int time_limit = abs(time_offset + max_nr_timesteps_per_subgrid);
                     int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) : nr_timesteps_per_aterm;
                     for (; time_offset < time_max; time_offset++) {
-                        DataPoint visibility = datapoints[time_offset][0];
-                        const float u_pixels = visibility.u_pixels;
-                        const float v_pixels = visibility.v_pixels;
+                        // Visibility for first channel
+                        DataPoint visibility0 = datapoints[time_offset][0];
+                        const float u_pixels0 = visibility0.u_pixels;
+                        const float v_pixels0 = visibility0.v_pixels;
 
-                        // Try to add visibility to subgrid
-                        if (subgrid.add_visibility(u_pixels, v_pixels)) {
+                        // Try to add visibilities to subgrid
+                        if (subgrid.add_visibility(u_pixels0, v_pixels0))
+                        {
                             nr_timesteps_subgrid++;
                         } else {
                             break;
@@ -218,7 +225,8 @@ namespace idg {
                     // Check whether current subgrid is in grid range
                     Coordinate coordinate = subgrid.get_coordinate();
                     bool uv_max_pixels = max(coordinate.x, coordinate.y);
-                    bool uv_in_range = uv_max_pixels > 0 && uv_max_pixels < (grid_size - subgrid_size);
+                    bool uv_min_pixels = min(coordinate.x, coordinate.y);
+                    bool uv_in_range = uv_min_pixels >= 0 && uv_max_pixels < (grid_size - subgrid_size);
 
                     // Add subgrid to metadata
                     if (uv_in_range && nr_timesteps_subgrid > 0) {
@@ -230,8 +238,7 @@ namespace idg {
                             baseline,                               // baselines
                             coordinate                              // coordinate
                         };
-                        //cout << "new metadata: " << endl;
-                        //cout << m;
+
                         metadata_[bl].push_back(m);
                     }
                 } // end while
@@ -243,17 +250,30 @@ namespace idg {
             // The subgrid offset is the number of subgrids for all prior baselines
             subgrid_offset.push_back(metadata.size());
 
+            // Count total number of timesteps for baseline
+            int total_nr_timesteps = 0;
+
             for (int i = 0; i < metadata_[bl].size(); i++) {
+                Metadata& m = metadata_[bl][i];
+
+                // Append subgrid
                 metadata.push_back(metadata_[bl][i]);
+
+                // Accumulate timesteps
+                total_nr_timesteps += m.nr_timesteps;
             }
 
-            // The number of timesteps per baseline is always nr_timesteps
-            timesteps_per_baseline.push_back(nr_timesteps);
+            // Set total total number of timesteps for baseline
+            total_nr_timesteps_per_baseline.push_back(total_nr_timesteps);
+
+            // Either all or no channels of a timestep are gridded
+            // onto a subgrid, hence total_nr_timesteps * nr_channels
+            int total_nr_visibilities = total_nr_timesteps * nr_channels;
+            total_nr_visibilities_per_baseline.push_back(total_nr_visibilities);
         } // end for bl
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
-
     } // end initialize
 
 
@@ -292,19 +312,41 @@ namespace idg {
     }
 
     int Plan::get_max_nr_subgrids() const {
-        return get_max_nr_subgrids(0, nr_baselines, 1);
+        return get_max_nr_subgrids(0, get_nr_baselines(), 1);
     }
 
     int Plan::get_nr_timesteps() const {
-        return accumulate(timesteps_per_baseline.begin(), timesteps_per_baseline.end(), 0);
+        return accumulate(
+            total_nr_timesteps_per_baseline.begin(),
+            total_nr_timesteps_per_baseline.end(), 0);
     }
 
     int Plan::get_nr_timesteps(int baseline) const {
-        return timesteps_per_baseline[baseline];
+        return total_nr_timesteps_per_baseline[baseline];
     }
 
     int Plan::get_nr_timesteps(int baseline, int n) const {
-        auto begin = next(timesteps_per_baseline.begin(), baseline);
+        auto begin = next(
+            total_nr_timesteps_per_baseline.begin(),
+            baseline);
+        auto end   = next(begin, n);
+        return accumulate(begin, end, 0);
+    }
+
+    int Plan::get_nr_visibilities() const {
+        return accumulate(
+            total_nr_visibilities_per_baseline.begin(),
+            total_nr_visibilities_per_baseline.end(), 0);
+    }
+
+    int Plan::get_nr_visibilities(int baseline) const {
+        return total_nr_visibilities_per_baseline[baseline];
+    }
+
+    int Plan::get_nr_visibilities(int baseline, int n) const {
+        auto begin = next(
+            total_nr_visibilities_per_baseline.begin(),
+            baseline);
         auto end   = next(begin, n);
         return accumulate(begin, end, 0);
     }

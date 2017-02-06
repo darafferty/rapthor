@@ -33,9 +33,13 @@ void kernel_adder(
                         int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                         int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
+                        // Compute phasor
+                        float phase  = -M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+                        idg::float2 phasor = {cosf(phase), sinf(phase)};
+
                         // Add subgrid value to grid
-                        int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
-                        grid[grid_idx] += subgrid[s][pol][y_src][x_src];
+						int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+                        grid[grid_idx] += phasor * subgrid[s][pol][y_src][x_src];
                     }
                 }
             }

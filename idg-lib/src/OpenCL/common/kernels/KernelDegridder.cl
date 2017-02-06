@@ -102,8 +102,8 @@ __kernel void kernel_degridder_1(
                 _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
-                float m = (y-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
+                float l = (x+0.5-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
+                float m = (y+0.5-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);
@@ -272,8 +272,8 @@ __kernel void kernel_degridder_8(
                 _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
-                float m = (y-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
+                float l = (x+0.5-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
+                float m = (y+0.5-(SUBGRIDSIZE / 2)) * imagesize/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);

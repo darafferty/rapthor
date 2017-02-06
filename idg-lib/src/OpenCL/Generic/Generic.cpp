@@ -10,7 +10,7 @@
         Copy some memory to device prior to
         starting the actual computation
 */
-#define ENABLE_WARMUP 1
+#define ENABLE_WARMUP 0
 
 /*
     Toggle planning and execution of Fourier transformations on and off
@@ -234,7 +234,7 @@ namespace idg {
                     htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers, wavenumbers.data());
                     htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal, spheroidal.data());
                     htodqueue.enqueueWriteBuffer(d_aterms, CL_FALSE, 0, sizeof_aterms, aterms.data());
-                    enqueueZeroBuffer(htodqueue, d_grid, 0, sizeof_grid);
+                    htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid, grid.data());
                     h_grid_[d]        = h_grid;
                     d_grid_[d]        = d_grid;
                     d_wavenumbers_[d] = d_wavenumbers;
@@ -402,9 +402,10 @@ namespace idg {
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceOpenCL& device   = get_device(0);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                InstanceOpenCL& device        = get_device(0);
+                auto total_nr_subgrids        = plan.get_nr_subgrids();
+                auto total_nr_timesteps       = plan.get_nr_timesteps();
+                auto total_nr_visibilities    = plan.get_nr_visibilities();
                 uint64_t total_flops_gridder  = device.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_bytes_gridder  = device.bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
                 uint64_t total_flops_fft      = device.flops_fft(subgrid_size, total_nr_subgrids);
@@ -416,7 +417,7 @@ namespace idg {
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 auxiliary::report("|gridding", total_runtime_gridding, total_flops_gridding, total_bytes_gridding);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, nr_baselines, nr_timesteps, nr_channels);
+                auxiliary::report_visibilities("|gridding", total_runtime_gridding, total_nr_visibilities);
 
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
@@ -670,9 +671,10 @@ namespace idg {
                     device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels), visibilities.data());
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceOpenCL& device   = get_device(0);
-                auto total_nr_subgrids   = plan.get_nr_subgrids();
-                auto total_nr_timesteps  = plan.get_nr_timesteps();
+                InstanceOpenCL& device          = get_device(0);
+                auto total_nr_subgrids          = plan.get_nr_subgrids();
+                auto total_nr_timesteps         = plan.get_nr_timesteps();
+                auto total_nr_visibilities      = plan.get_nr_visibilities();
                 uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);
                 uint64_t total_bytes_splitter   = device.bytes_splitter(total_nr_subgrids);
                 uint64_t total_flops_fft        = device.flops_fft(subgrid_size, total_nr_subgrids);
@@ -682,7 +684,7 @@ namespace idg {
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 auxiliary::report("|degridding", total_runtime_degridding, total_flops_degridding, total_bytes_degridding);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, nr_baselines, nr_timesteps, nr_channels);
+                auxiliary::report_visibilities("|degridding", total_runtime_degridding, total_nr_visibilities);
 
                 // Report host power consumption
                 auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
