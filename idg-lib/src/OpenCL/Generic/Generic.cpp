@@ -234,7 +234,7 @@ namespace idg {
                     htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers, wavenumbers.data());
                     htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal, spheroidal.data());
                     htodqueue.enqueueWriteBuffer(d_aterms, CL_FALSE, 0, sizeof_aterms, aterms.data());
-                    enqueueZeroBuffer(htodqueue, d_grid, 0, sizeof_grid);
+                    htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid, grid.data());
                     h_grid_[d]        = h_grid;
                     d_grid_[d]        = d_grid;
                     d_wavenumbers_[d] = d_wavenumbers;
