@@ -110,8 +110,8 @@ __device__ void kernel_gridder_(
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-            float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
             float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
             // Iterate all timesteps
