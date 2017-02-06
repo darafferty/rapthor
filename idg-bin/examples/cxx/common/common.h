@@ -210,6 +210,7 @@ void run()
     }
 
     // Report throughput
-    idg::auxiliary::report_visibilities("gridding", runtime_gridding, nr_baselines, nr_timesteps, nr_channels);
-    idg::auxiliary::report_visibilities("degridding", runtime_degridding, nr_baselines, nr_timesteps, nr_channels);
+    auto nr_visibilities = nr_baselines * nr_timesteps * nr_channels;
+    idg::auxiliary::report_visibilities("gridding", runtime_gridding, nr_visibilities);
+    idg::auxiliary::report_visibilities("degridding", runtime_degridding, nr_visibilities);
 }
