@@ -1,5 +1,5 @@
-#ifndef IDG_PLAN2_H_
-#define IDG_PLAN2_H_
+#ifndef IDG_PLAN_H_
+#define IDG_PLAN_H_
 
 #include <vector>
 #include <limits>

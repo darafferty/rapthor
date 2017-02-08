@@ -30,7 +30,8 @@ namespace idg {
         return out;
     }
 
-    ostream& operator<<(ostream &out, UVW &uvw) {
+    template<class T>
+    ostream& operator<<(ostream &out, UVWCoordinate<T> &uvw) {
         out << "("
             << uvw.u << ","
             << uvw.v << ","
