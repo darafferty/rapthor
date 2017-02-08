@@ -113,7 +113,7 @@ void kernel_degridder_(
                                * (2*M_PI / imagesize);
         const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2)
                                * (2*M_PI / imagesize);
-        const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
+        const float w_offset = 2*M_PI * w_offset_in_lambda;
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {

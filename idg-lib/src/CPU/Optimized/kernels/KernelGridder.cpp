@@ -53,7 +53,7 @@ void kernel_gridder_(
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);
         const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);
-        const float w_offset = 2*M_PI * w_offset_in_lambda; // TODO: check!
+        const float w_offset = 2*M_PI * w_offset_in_lambda;
 
         // Preload visibilities
         float vis_real[nr_timesteps][NR_POLARIZATIONS][current_nr_channels] __attribute__((aligned(32)));
