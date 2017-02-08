@@ -7,8 +7,6 @@ namespace idg {
 
     /* Structures */
 
-    typedef struct { float u, v, w; } UVW; // TODO: remove
-
     typedef struct { int x, y; } Coordinate;
 
     typedef struct { unsigned int station1, station2; } Baseline;
@@ -455,7 +453,9 @@ namespace idg {
     std::ostream& operator<<(std::ostream& os, Baseline& b);
     std::ostream& operator<<(std::ostream& os, Coordinate& c);
     std::ostream& operator<<(std::ostream& os, Metadata& m);
-    std::ostream& operator<<(std::ostream& os, UVW& uvw);
+
+    template<class T>
+    std::ostream& operator<<(std::ostream& os, UVWCoordinate<T>& uvw);
 
     std::ostream& operator<<(std::ostream& os, const float2& x);
     std::ostream& operator<<(std::ostream& os, const double2& x);

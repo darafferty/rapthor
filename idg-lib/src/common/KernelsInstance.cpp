@@ -241,7 +241,7 @@ namespace idg {
             unsigned int nr_baselines,
             unsigned int nr_timesteps) const
         {
-            return 1ULL * nr_baselines * nr_timesteps * sizeof(UVW);
+            return 1ULL * nr_baselines * nr_timesteps * sizeof(UVWCoordinate<float>);
         }
 
         uint64_t KernelsInstance::sizeof_subgrids(
