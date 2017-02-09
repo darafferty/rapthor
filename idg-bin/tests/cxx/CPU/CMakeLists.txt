@@ -3,3 +3,4 @@ project(tests-cpu)
 # add subfolders
 add_subdirectory(Reference)
 add_subdirectory(Optimized)
+add_subdirectory(KNL)
