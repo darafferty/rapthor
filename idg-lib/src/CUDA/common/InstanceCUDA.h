@@ -186,6 +186,7 @@ namespace idg {
                     cu::DeviceMemory *d_wavenumbers;
                     cu::DeviceMemory *d_aterms;
                     cu::DeviceMemory *d_spheroidal;
+                    std::vector<cu::HostMemory*> mHostMemories;
 
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;

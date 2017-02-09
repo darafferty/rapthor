@@ -229,15 +229,7 @@ namespace cu {
             checkCudaCall(cuMemFreeHost(_ptr));
         }
         if (unregister) {
-            cuMemHostUnregister(_ptr);
-        }
-    }
-
-    void HostMemory::update(void *ptr, size_t size) {
-        if (_size != size || _ptr != ptr) {
-            checkCudaCall(cuMemFreeHost(_ptr));
-            _size = size;
-            _ptr = ptr;
+            checkCudaCall(cuMemHostUnregister(_ptr));
         }
     }
 
@@ -263,6 +255,10 @@ namespace cu {
 
     void HostMemory::zero() {
         memset(_ptr, 0, _size);
+    }
+
+    bool HostMemory::equals(void *ptr, size_t size) {
+        return ptr == _ptr && size == _size;
     }
 
 

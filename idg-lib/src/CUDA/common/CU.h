@@ -79,14 +79,13 @@ namespace cu {
             HostMemory(void *ptr, size_t size, int flags = 0);
             ~HostMemory();
 
-            void update(void *ptr, size_t size);
-
             size_t size();
             void set(const void *in);
             void set(void *in);
             void set(void *in, size_t bytes);
-            void* get(size_t offset);
+            void* get(size_t offset = 0);
             void zero();
+            bool equals(void *ptr, size_t size);
 
             template <typename T> operator T *() {
                 return static_cast<T *>(_ptr);
