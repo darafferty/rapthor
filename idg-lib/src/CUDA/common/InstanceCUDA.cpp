@@ -18,7 +18,8 @@ namespace idg {
                 const char *str_power_file) :
                 KernelsInstance(constants),
                 mInfo(info),
-                mModules(5)
+                mModules(5),
+                mHostMemories()
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -58,9 +59,7 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
-                if (h_visibilities) { h_visibilities->~HostMemory(); }
-                if (h_uvw) { h_uvw->~HostMemory(); }
-                if (h_grid) { h_grid->~HostMemory(); }
+                for (cu::HostMemory* h : mHostMemories) { delete h; }
                 if (d_grid) { d_grid->~DeviceMemory(); }
                 if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
@@ -457,18 +456,26 @@ namespace idg {
                 return *d_spheroidal;
             }
 
+
             template<typename T>
             T* reuse_memory(
+                std::vector<T*>& memories,
                 uint64_t size,
                 T* memory,
                 void *ptr)
             {
-                if (memory) {
-                    memory->update(ptr, size);
+                if (memory && memory->equals(ptr, size)) {
+                    return memory;
                 } else {
+                    for (T* m : memories) {
+                        if (m->equals(ptr, size)) {
+                            return m;
+                        }
+                    }
                     memory = new T(ptr, size);
+                    memories.push_back(memory);
+                    return memory;
                 }
-                return memory;
             }
 
             cu::HostMemory& InstanceCUDA::reuse_host_grid(
@@ -476,7 +483,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = sizeof_grid(grid_size);
-                h_grid = reuse_memory(size, h_grid, ptr);
+                h_grid = reuse_memory(mHostMemories, size, h_grid, ptr);
                 return *h_grid;
             }
 
@@ -487,7 +494,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(size, h_visibilities, ptr);
+                h_visibilities = reuse_memory(mHostMemories, size, h_visibilities, ptr);
                 return *h_visibilities;
             }
 
@@ -497,7 +504,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(size, h_uvw, ptr);
+                h_uvw = reuse_memory(mHostMemories, size, h_uvw, ptr);
                 return *h_uvw;
             }
 

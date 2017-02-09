@@ -17,13 +17,13 @@ void kernel_gridder_(
     const int           nr_channels,
     const int           channel_offset,
     const int           nr_stations,
-    const idg::UVW		uvw[],
-    const float         wavenumbers[],
-    const idg::float2   visibilities[][NR_POLARIZATIONS],
-    const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
-    const idg::Metadata metadata[],
-          idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
+    const idg::UVWCoordinate<float>	uvw[],
+    const float                     wavenumbers[],
+    const idg::float2               visibilities[][NR_POLARIZATIONS],
+    const float                     spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2               aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+    const idg::Metadata             metadata[],
+          idg::float2               subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
 {
     // Find offset of first subgrid
     const idg::Metadata m       = metadata[0];
@@ -71,8 +71,8 @@ void kernel_gridder_(
                 float phase[nr_timesteps][current_nr_channels] __attribute__((aligned(64)));
 
                 // Compute l,m,n
-                const float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-                const float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                const float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                const float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                 // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                 // accurately for small values of l and m
                 const float tmp = (l * l) + (m * m);
@@ -205,13 +205,13 @@ void kernel_gridder(
     const float         w_offset,
     const int           nr_channels,
     const int           nr_stations,
-    const idg::UVW		uvw[],
-    const float         wavenumbers[],
-    const idg::float2   visibilities[][NR_POLARIZATIONS],
-    const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
-    const idg::Metadata metadata[],
-          idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
+    const idg::UVWCoordinate<float>	uvw[],
+    const float                     wavenumbers[],
+    const idg::float2               visibilities[][NR_POLARIZATIONS],
+    const float                     spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2               aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+    const idg::Metadata             metadata[],
+          idg::float2               subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
 {
     int channel_offset = 0;
