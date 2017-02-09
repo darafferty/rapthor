@@ -209,7 +209,7 @@ namespace idg {
                     int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) : nr_timesteps_per_aterm;
                     for (; time_offset < time_max; time_offset++) {
                         // Visibility for first channel
-                        DataPoint visibility0 = datapoints[time_offset][0];
+                        DataPoint visibility0 = datapoints[time_offset][nr_channels/2];
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
 
@@ -222,6 +222,14 @@ namespace idg {
                         }
                     } // end for time
 
+                    // Skip empty subgrid
+                    // Subgrid is empty when first visibility can not be added to subgrid,
+                    // next attempt will fail as well, so advance to next timestep.
+                    if (nr_timesteps_subgrid == 0) {
+                        time_offset++;
+                        continue;
+                    }
+
                     // Check whether current subgrid is in grid range
                     Coordinate coordinate = subgrid.get_coordinate();
                     bool uv_max_pixels = max(coordinate.x, coordinate.y);
@@ -229,7 +237,7 @@ namespace idg {
                     bool uv_in_range = uv_min_pixels >= 0 && uv_max_pixels < (grid_size - subgrid_size);
 
                     // Add subgrid to metadata
-                    if (uv_in_range && nr_timesteps_subgrid > 0) {
+                    if (uv_in_range) {
                         Metadata m = {
                             bl * (int) nr_timesteps,                // baseline offset, TODO: store bl index
                             current_aterms_offset + first_timestep, // time offset, TODO: store time index

@@ -101,7 +101,7 @@ namespace idg {
             Array1D(
                 size_t width) :
                 m_x_dim(width),
-                m_delete_buffer(true),
+                m_delete_buffer(width > 0),
                 m_buffer((T*) malloc(width*sizeof(T)))
             {}
 
@@ -121,6 +121,15 @@ namespace idg {
                   m_delete_buffer(other.m_delete_buffer),
                   m_buffer(other.m_buffer)
             {
+                other.m_buffer = nullptr;
+            }
+
+            Array1D& operator=(Array1D&& other)
+            {
+                if (m_delete_buffer) free(m_buffer);
+                m_x_dim = other.m_x_dim;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
             }
 
@@ -160,8 +169,8 @@ namespace idg {
             }
 
         private:
-            const size_t m_x_dim;
-            const bool   m_delete_buffer;
+            size_t m_x_dim;
+            bool   m_delete_buffer;
             T*           m_buffer;
     };
 
@@ -174,7 +183,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_y_dim(height),
-                m_delete_buffer(true),
+                m_delete_buffer((height*width) > 0),
                 m_buffer((T*) malloc(height*width*sizeof(T)))
             {}
 
@@ -200,9 +209,22 @@ namespace idg {
                 other.m_buffer = nullptr;
             }
 
-            virtual ~Array2D()
+            // move assignment operator
+            Array2D& operator=(Array2D&& other)
             {
                 if (m_delete_buffer) free(m_buffer);
+                m_x_dim = other.m_x_dim;
+                m_y_dim = other.m_y_dim;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer = other.m_buffer;
+                other.m_buffer = nullptr;
+            }
+
+            virtual ~Array2D()
+            {
+                if (m_delete_buffer) {
+                    free(m_buffer);
+                }
             }
 
             T* data(
@@ -243,9 +265,9 @@ namespace idg {
             }
 
         private:
-            const size_t m_x_dim;
-            const size_t m_y_dim;
-            const bool   m_delete_buffer;
+            size_t m_x_dim;
+            size_t m_y_dim;
+            bool   m_delete_buffer;
             T*           m_buffer;
     };
 
@@ -260,7 +282,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_z_dim(depth),
-                m_delete_buffer(true),
+                m_delete_buffer((width*height*depth) > 0),
                 m_buffer((T*) malloc(height*width*depth*sizeof(T)))
             {}
 
@@ -286,6 +308,18 @@ namespace idg {
                   m_delete_buffer(other.m_delete_buffer),
                   m_buffer(other.m_buffer)
             {
+                other.m_buffer = nullptr;
+            }
+
+            // move assignment operator
+            Array3D& operator=(Array3D&& other)
+            {
+                if (m_delete_buffer) free(m_buffer);
+                m_x_dim = other.m_x_dim;
+                m_y_dim = other.m_y_dim;
+                m_z_dim = other.m_z_dim;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
             }
 
@@ -336,10 +370,10 @@ namespace idg {
             }
 
         private:
-            const size_t m_x_dim;
-            const size_t m_y_dim;
-            const size_t m_z_dim;
-            const bool   m_delete_buffer;
+            size_t m_x_dim;
+            size_t m_y_dim;
+            size_t m_z_dim;
+            bool   m_delete_buffer;
             T*           m_buffer;
     };
 
@@ -356,7 +390,7 @@ namespace idg {
                 m_z_dim(z_dim),
                 m_y_dim(y_dim),
                 m_x_dim(x_dim),
-                m_delete_buffer(true),
+                m_delete_buffer((w_dim*x_dim*y_dim*z_dim) > 0),
                 m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)))
             {}
 
@@ -385,6 +419,19 @@ namespace idg {
                   m_delete_buffer(other.m_delete_buffer),
                   m_buffer(other.m_buffer)
             {
+                other.m_buffer = nullptr;
+            }
+
+            // move assignment operator
+            Array4D& operator=(Array4D&& other)
+            {
+                if (m_delete_buffer) free(m_buffer);
+                m_w_dim = other.m_w_dim;
+                m_x_dim = other.m_x_dim;
+                m_y_dim = other.m_y_dim;
+                m_z_dim = other.m_z_dim;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
             }
 
@@ -440,11 +487,11 @@ namespace idg {
             }
 
         private:
-            const size_t m_x_dim;
-            const size_t m_y_dim;
-            const size_t m_z_dim;
-            const size_t m_w_dim;
-            const bool   m_delete_buffer;
+            size_t m_x_dim;
+            size_t m_y_dim;
+            size_t m_z_dim;
+            size_t m_w_dim;
+            bool   m_delete_buffer;
             T*           m_buffer;
     };
 
