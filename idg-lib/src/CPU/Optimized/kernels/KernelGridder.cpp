@@ -23,13 +23,13 @@ void kernel_gridder_(
     const int           nr_channels,
     const int           channel_offset,
     const int           nr_stations,
-    const idg::UVW		uvw[],
-    const float         wavenumbers[],
-    const idg::float2   visibilities[][NR_POLARIZATIONS],
-    const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
-    const idg::Metadata metadata[],
-          idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
+    const idg::UVWCoordinate<float>	uvw[],
+    const float                     wavenumbers[],
+    const idg::float2               visibilities[][NR_POLARIZATIONS],
+    const float                     spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2               aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+    const idg::Metadata             metadata[],
+          idg::float2               subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE])
 {
     // Find offset of first subgrid
     const idg::Metadata m       = metadata[0];
@@ -212,13 +212,13 @@ void kernel_gridder(
     const float         w_offset,
     const int           nr_channels,
     const int           nr_stations,
-    const idg::UVW		uvw[],
-    const float         wavenumbers[],
-    const idg::float2   visibilities[][NR_POLARIZATIONS],
-    const float         spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
-    const idg::float2   aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
-    const idg::Metadata metadata[],
-          idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
+    const idg::UVWCoordinate<float>	uvw[],
+    const float                     wavenumbers[],
+    const idg::float2               visibilities[][NR_POLARIZATIONS],
+    const float                     spheroidal[SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2               aterm[][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS],
+    const idg::Metadata             metadata[],
+          idg::float2               subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE]
     )
 {
     int channel_offset = 0;
