@@ -122,8 +122,8 @@ void kernel_degridder_(
             for (int y = 0; y < SUBGRIDSIZE; y++) {
                 for (int x = 0; x < SUBGRIDSIZE; x++) {
                     // Compute l,m,n
-                    const float l = (x-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-                    const float m = (y-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                    const float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                    const float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);

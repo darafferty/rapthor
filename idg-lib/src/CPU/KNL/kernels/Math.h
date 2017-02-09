@@ -1,4 +1,3 @@
-
 inline void apply_aterm(
     const idg::float2 aXX1, const idg::float2 aXY1,
     const idg::float2 aYX1, const idg::float2 aYY1,

@@ -16,6 +16,19 @@ void kernel_adder(
     const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
           idg::float2   grid[]
     ) {
+    // Precompute phaosr
+    float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE];
+    float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE];
+
+    #pragma omp parallel for collapse(2)
+    for (int y = 0; y < SUBGRIDSIZE; y++) {
+        for (int x = 0; x < SUBGRIDSIZE; x++) {
+            float phase  = M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+            phasor_real[y][x] = cosf(phase);
+            phasor_imag[y][x] = sinf(phase);
+        }
+    }
+
     // Iterate all colums of grid
     #pragma omp parallel for schedule(guided)
     for (int row = 0; row < gridsize; row++) {
@@ -38,10 +51,13 @@ void kernel_adder(
                     int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
                     int y_src = (offset_y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
+                    // Load phasor
+                    idg::float2 phasor = {phasor_real[offset_y][x], phasor_imag[offset_y][x]};
+
                     // Add subgrid value to grid
 					for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
 						int grid_idx = (pol * gridsize * gridsize) + (row * gridsize) + (subgrid_x + x);
-						grid[grid_idx] += subgrid[s][pol][y_src][x_src];
+						grid[grid_idx] += phasor * subgrid[s][pol][y_src][x_src];
 					}
                 }
             }

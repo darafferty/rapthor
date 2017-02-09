@@ -6,7 +6,6 @@
 #include <omp.h>
 
 #include "Types.h"
-#include "Math.h"
 
 
 extern "C" {
@@ -20,7 +19,15 @@ void kernel_adder(
     // Precompute phaosr
     float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE];
     float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE];
-    compute_phasor(phasor_real, phasor_imag);
+
+    #pragma omp parallel for collapse(2)
+    for (int y = 0; y < SUBGRIDSIZE; y++) {
+        for (int x = 0; x < SUBGRIDSIZE; x++) {
+            float phase  = M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+            phasor_real[y][x] = cosf(phase);
+            phasor_imag[y][x] = sinf(phase);
+        }
+    }
 
     // Iterate all colums of grid
     #pragma omp parallel for schedule(guided)

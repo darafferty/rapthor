@@ -1,4 +1,3 @@
-
 inline void compute_sincos(
     const int n,
     const float *x,
@@ -54,18 +53,4 @@ inline void apply_aterm(
     pixels[2] += (pixelsYX * aYY2);
     pixels[3]  = (pixelsXY * aXY2);
     pixels[3] += (pixelsYY * aYY2);
-}
-
-inline void compute_phasor(
-    float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE],
-    float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE]
-) {
-    #pragma omp parallel for collapse(2)
-    for (int y = 0; y < SUBGRIDSIZE; y++) {
-        for (int x = 0; x < SUBGRIDSIZE; x++) {
-            float phase  = -M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
-            phasor_real[y][x] = cosf(phase);
-            phasor_imag[y][x] = sinf(phase);
-        }
-    }
 }
