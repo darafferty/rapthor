@@ -28,7 +28,7 @@ __global__ void kernel_adder(
     for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
         int y = i / SUBGRIDSIZE;
         int x = i % SUBGRIDSIZE;
-        float phase = -M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+        float phase = M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
         float2 phasor = make_float2(cos(phase), sin(phase));
 
         // Check wheter subgrid fits in grid
