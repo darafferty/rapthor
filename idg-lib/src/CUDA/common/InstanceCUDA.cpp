@@ -19,7 +19,9 @@ namespace idg {
                 KernelsInstance(constants),
                 mInfo(info),
                 mModules(5),
-                mHostMemories()
+                h_visibilities_(),
+                h_uvw_(),
+                h_grid_()
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -59,7 +61,9 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
-                for (cu::HostMemory* h : mHostMemories) { delete h; }
+                for (cu::HostMemory* h : h_visibilities_) { delete h; }
+                for (cu::HostMemory* h : h_uvw_) { delete h; }
+                for (cu::HostMemory* h : h_grid_) { delete h; }
                 if (d_grid) { d_grid->~DeviceMemory(); }
                 if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
@@ -461,21 +465,23 @@ namespace idg {
             T* reuse_memory(
                 std::vector<T*>& memories,
                 uint64_t size,
-                T* memory,
-                void *ptr)
+                void* ptr,
+                int max_memories)
             {
-                if (memory && memory->equals(ptr, size)) {
-                    return memory;
-                } else {
-                    for (T* m : memories) {
-                        if (m->equals(ptr, size)) {
-                            return m;
-                        }
+                for (T* m : memories) {
+                    if (m->equals(ptr, size)) {
+                        return m;
                     }
-                    memory = new T(ptr, size);
-                    memories.push_back(memory);
-                    return memory;
                 }
+
+                if (memories.size() >= max_memories) {
+                    delete memories[0];
+                    memories.erase(memories.begin());
+                }
+
+                cu::HostMemory* m = new T(ptr, size);
+                memories.push_back(m);
+                return m;
             }
 
             cu::HostMemory& InstanceCUDA::reuse_host_grid(
@@ -483,7 +489,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = sizeof_grid(grid_size);
-                h_grid = reuse_memory(mHostMemories, size, h_grid, ptr);
+                h_grid = reuse_memory(h_grid_, size, ptr, 2);
                 return *h_grid;
             }
 
@@ -494,7 +500,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(mHostMemories, size, h_visibilities, ptr);
+                h_visibilities = reuse_memory(h_visibilities_, size, ptr, 2);
                 return *h_visibilities;
             }
 
@@ -504,7 +510,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(mHostMemories, size, h_uvw, ptr);
+                h_uvw = reuse_memory(h_uvw_, size, ptr, 2);
                 return *h_uvw;
             }
 
