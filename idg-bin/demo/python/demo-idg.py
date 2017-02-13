@@ -250,4 +250,4 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     plt.show()
 
 # Do not close window at the end?
-# plt.show()
+plt.show(block=True)
