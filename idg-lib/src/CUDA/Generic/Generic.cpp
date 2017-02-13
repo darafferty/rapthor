@@ -179,27 +179,30 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Initialize memory for first device
-                get_device(0).reuse_host_grid(grid_size, grid.data());
-                get_device(0).reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                get_device(0).reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-
-                // Initialize memory for all devices
+                // Initialize memory
                 for (int d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = device.get_htod_stream();
-                    if (d > 0) {
-                        cu::HostMemory& h_grid      = device.allocate_host_grid(grid_size);
-                    }
+
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                     cu::DeviceMemory& d_grid        = device.allocate_device_grid(grid_size);
+
                     htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                     htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                     htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                    d_grid.zero();
+
+                    if (d == 0) {
+                        device.reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                        device.reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                        cu::HostMemory& h_grid = device.reuse_host_grid(grid_size, grid.data());
+                        htodstream.memcpyHtoDAsync(d_grid, h_grid);
+                    } else {
+                        cu::HostMemory& h_grid = device.allocate_host_grid(grid_size);
+                        d_grid.zero();
+                    }
                 }
 
                 // Performance measurements
@@ -465,24 +468,27 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Initialize memory for first device
-                get_device(0).reuse_host_grid(grid_size, grid.data());
-                get_device(0).reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                get_device(0).reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-
-                // Initialize memory for all devices
+                // Initialize memory
                 for (int d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.set_context();
                     cu::Stream&       htodstream    = device.get_htod_stream();
+
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                     cu::DeviceMemory& d_grid        = device.allocate_device_grid(grid_size);
+
                     htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                     htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                     htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                     htodstream.memcpyHtoDAsync(d_grid, grid.data());
+
+                    if (d == 0) {
+                        device.reuse_host_grid(grid_size, grid.data());
+                        device.reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                        device.reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                    }
                 }
 
                 // Performance measurements
