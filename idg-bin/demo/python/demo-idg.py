@@ -36,11 +36,15 @@ parser.add_argument('-c', '--column',
 parser.add_argument('--imagesize',
                     help='Image size (cell size / grid size)',
                     required=False, type=float, default=0.1)
+parser.add_argument('--use-cuda',
+                    help='Use CUDA proxy',
+                    required=False, action='store_true')
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
 image_size = args.imagesize
 datacolumn = args.column
+use_cuda   = args.use_cuda
 
 
 ######################################################################
@@ -85,7 +89,10 @@ spheroidal_grid = utils.get_identity_spheroidal(grid_size)
 ######################################################################
 # Initialize proxy
 ######################################################################
-proxy = idg.CPU.Optimized(nr_correlations, subgrid_size)
+if use_cuda:
+    proxy = idg.CUDA.Generic(nr_correlations, subgrid_size)
+else:
+    proxy = idg.CPU.Optimized(nr_correlations, subgrid_size)
 
 
 ######################################################################
