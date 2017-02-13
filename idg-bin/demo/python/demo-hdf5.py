@@ -32,10 +32,14 @@ parser.add_argument(dest='percentage',
 parser.add_argument('--imagesize',
                     help='Image size (cell size / grid size)',
                     required=False, type=float, default=0.1)
+parser.add_argument('--use-cuda',
+                    help='Use CUDA proxy',
+                    required=False, action='store_true')
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
 image_size = args.imagesize
+use_cuda   = args.use_cuda
 
 
 ######################################################################
@@ -59,36 +63,29 @@ buffered_timesteps = 256
 grid_size          = 1024
 subgrid_size       = 32
 kernel_size        = 16
+cell_size          = image_size / grid_size
 
 ######################################################################
 # Initialize data
 ######################################################################
-grid = idg.utils.get_zero_grid(nr_correlations, grid_size,
-                               dtype=np.complex64)
-aterms = idg.utils.get_identity_aterms(nr_timeslots, nr_antennas,
-                                       subgrid_size, nr_correlations)
-aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, buffered_timesteps)
-
+grid           = utils.get_example_grid(nr_correlations, grid_size)
+aterms         = utils.get_example_aterms(
+                    nr_timeslots, nr_stations, subgrid_size, nr_correlations)
+aterms_offsets = utils.get_example_aterms_offset(
+                    nr_timeslots, nr_timesteps)
 # Initialize spheroidal
-# spheroidal = idg.utils.get_example_spheroidal(subgrid_size, dtype=np.float64)
-# spheroidal_grid = idg.fft.resize2f_r2r(spheroidal, grid_size, grid_size)
-
-# Dummy spheroidal
-spheroidal = np.ones(shape=(subgrid_size, subgrid_size), dtype=np.float32)
-spheroidal_grid = np.ones(shape=(grid_size, grid_size), dtype=np.float32)
-
-# Inialize wavenumbers
-wavelengths = np.array(sc.speed_of_light / frequencies, dtype=np.float32)
-wavenumbers = np.array(2*np.pi / wavelengths, dtype=np.float32)
+spheroidal = utils.get_example_spheroidal(subgrid_size)
+spheroidal_grid = utils.get_identity_spheroidal(grid_size)
 
 
 ######################################################################
 # Initialize proxy
 ######################################################################
-proxy = idg.CPU.Optimized(
-    nr_antennas, nr_channels,
-    buffered_timesteps, nr_timeslots,
-    image_size, grid_size, subgrid_size)
+if use_cuda:
+    proxy = idg.CUDA.Generic(nr_correlations, subgrid_size)
+else:
+    proxy = idg.CPU.Optimized(nr_correlations, subgrid_size)
+
 
 ######################################################################
 # Process entire measurementset
@@ -156,17 +153,9 @@ for iteration in np.arange(num_iter):
 
     w_offset = 0.0
 
-    proxy.grid_visibilities(
-        visibilities,
-        uvw,
-        wavenumbers,
-        baselines,
-        grid,
-        w_offset,
-        kernel_size,
-        aterms,
-        aterms_offset,
-        spheroidal)
+    proxy.gridding(
+        w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     time_gridding += time.time()
 
@@ -223,10 +212,8 @@ for iteration in np.arange(num_iter):
     print ""
     iteration += 1
 
-# TODO: need to process the remaining visibilities
-
 # Do not close window at the end?
-# plt.show()
+plt.show(block=True)
 
 ######################################################################
 # Clean up

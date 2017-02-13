@@ -419,7 +419,7 @@ namespace idg {
 
         float x[subgridsize];
         for (int i = 0; i < subgridsize; i++) {
-            float tmp = fabs(-1 + i*2.0f/float(subgridsize));
+            float tmp = fabs(-1 + (i+0.5)*2.0f/float(subgridsize));
             x[i] = evaluate_spheroidal(tmp);
         }
 

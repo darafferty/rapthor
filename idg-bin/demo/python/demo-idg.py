@@ -8,6 +8,7 @@ import signal
 import argparse
 import time
 import idg
+import utils
 
 # Enable interactive plotting and create figure to plot into
 plt.ion()
@@ -35,11 +36,15 @@ parser.add_argument('-c', '--column',
 parser.add_argument('--imagesize',
                     help='Image size (cell size / grid size)',
                     required=False, type=float, default=0.1)
+parser.add_argument('--use-cuda',
+                    help='Use CUDA proxy',
+                    required=False, action='store_true')
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
 image_size = args.imagesize
 datacolumn = args.column
+use_cuda   = args.use_cuda
 
 
 ######################################################################
@@ -50,7 +55,7 @@ table = pyrap.tables.table(msin)
 # Read parameters from measurementset
 t_ant = pyrap.tables.table(table.getkeyword("ANTENNA"))
 t_spw = pyrap.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
-frequencies = t_spw[0]['CHAN_FREQ']
+frequencies = np.asarray(t_spw[0]['CHAN_FREQ'], dtype=np.float32)
 
 
 ######################################################################
@@ -59,43 +64,35 @@ frequencies = t_spw[0]['CHAN_FREQ']
 nr_stations      = len(t_ant)
 nr_baselines     = (nr_stations * (nr_stations - 1)) / 2
 nr_channels      = table[0][datacolumn].shape[0]
-nr_time          = 256
+nr_timesteps     = 256
 nr_timeslots     = 1
-nr_polarizations = 4
+nr_correlations  = 4
 grid_size        = 1024
 subgrid_size     = 32
 kernel_size      = 16
+cell_size        = image_size / grid_size
 
 
 ######################################################################
 # Initialize data
 ######################################################################
-grid = idg.utils.get_zero_grid(nr_polarizations, grid_size,
-                               dtype=np.complex64)
-aterms = idg.utils.get_identity_aterms(nr_timeslots, nr_stations,
-                                       subgrid_size, nr_polarizations)
-aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
+grid           = utils.get_example_grid(nr_correlations, grid_size)
+aterms         = utils.get_example_aterms(
+                    nr_timeslots, nr_stations, subgrid_size, nr_correlations)
+aterms_offsets = utils.get_example_aterms_offset(
+                    nr_timeslots, nr_timesteps)
 
 # Initialize spheroidal
-# spheroidal = idg.utils.get_example_spheroidal(subgrid_size, dtype=np.float64)
-# spheroidal_grid = idg.fft.resize2f_r2r(spheroidal, grid_size, grid_size)
-
-# Dummy spheroidal
-spheroidal = np.ones(shape=(subgrid_size, subgrid_size), dtype=np.float32)
-spheroidal_grid = np.ones(shape=(grid_size, grid_size), dtype=np.float32)
-
-# Inialize wavenumbers
-wavelengths = np.array(sc.speed_of_light / frequencies, dtype=np.float32)
-wavenumbers = np.array(2*np.pi / wavelengths, dtype=np.float32)
-
+spheroidal = utils.get_example_spheroidal(subgrid_size)
+spheroidal_grid = utils.get_identity_spheroidal(grid_size)
 
 ######################################################################
 # Initialize proxy
 ######################################################################
-proxy = idg.CPU.Optimized(
-    nr_stations, nr_channels,
-    nr_time, nr_timeslots,
-    image_size, grid_size, subgrid_size)
+if use_cuda:
+    proxy = idg.CUDA.Generic(nr_correlations, subgrid_size)
+else:
+    proxy = idg.CPU.Optimized(nr_correlations, subgrid_size)
 
 
 ######################################################################
@@ -103,25 +100,32 @@ proxy = idg.CPU.Optimized(
 ######################################################################
 nr_rows = table.nrows()
 nr_rows_read = 0
-nr_rows_per_batch = (nr_baselines + nr_stations) * nr_time
+nr_rows_per_batch = (nr_baselines + nr_stations) * nr_timesteps
 nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
+
+# Initialize empty buffers
+uvw          = np.zeros(shape=(nr_baselines, nr_timesteps),
+                        dtype=idg.uvwtype)
+visibilities = np.zeros(shape=(nr_baselines, nr_timesteps, nr_channels,
+                               nr_correlations),
+                        dtype=idg.visibilitiestype)
+baselines    = np.zeros(shape=(nr_baselines),
+                        dtype=idg.baselinetype)
+img          = np.zeros(shape=(nr_correlations, grid_size, grid_size),
+                        dtype=idg.gridtype)
 
 iteration = 0
 while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
+    # Reset buffers
+    uvw.fill(0)
+    visibilities.fill(0)
+    baselines.fill(0)
+
+    # Start timing
     time_total = -time.time()
-
-    # Initialize empty buffers
-    uvw          = np.zeros(shape=(nr_baselines, nr_time),
-                            dtype=idg.uvwtype)
-    visibilities = np.zeros(shape=(nr_baselines, nr_time, nr_channels,
-                                   nr_polarizations),
-                            dtype=idg.visibilitiestype)
-    baselines    = np.zeros(shape=(nr_baselines),
-                            dtype=idg.baselinetype)
-
     time_read = -time.time()
 
-    # Read nr_time samples for all baselines including auto correlations
+    # Read nr_timesteps samples for all baselines including auto correlations
     timestamp_block = table.getcol('TIME',
                                    startrow = nr_rows_read,
                                    nrow = nr_rows_per_batch)
@@ -161,17 +165,17 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
 
     # Reshape data
     antenna1_block = np.reshape(antenna1_block,
-                                newshape=(nr_time, nr_baselines))
+                                newshape=(nr_timesteps, nr_baselines))
     antenna2_block = np.reshape(antenna2_block,
-                                newshape=(nr_time, nr_baselines))
+                                newshape=(nr_timesteps, nr_baselines))
     uvw_block = np.reshape(uvw_block,
-                           newshape=(nr_time, nr_baselines, 3))
+                           newshape=(nr_timesteps, nr_baselines, 3))
     vis_block = np.reshape(vis_block,
-                           newshape=(nr_time, nr_baselines,
-                                     nr_channels, nr_polarizations))
+                           newshape=(nr_timesteps, nr_baselines,
+                                     nr_channels, nr_correlations))
 
     # Transpose data
-    for t in range(nr_time):
+    for t in range(nr_timesteps):
         for bl in range(nr_baselines):
             # Set baselines
             antenna1 = antenna1_block[t][bl]
@@ -186,22 +190,14 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
             # Set visibilities
             visibilities[bl][t] = vis_block[t][bl]
     time_transpose += time.time()
-                    
+
     # Grid visibilities
     w_offset = 0.0
     time_gridding = -time.time()
 
-    proxy.grid_visibilities(
-        visibilities,
-        uvw,
-        wavenumbers,
-        baselines,
-        grid,
-        w_offset,
-        kernel_size,
-        aterms,
-        aterms_offset,
-        spheroidal)
+    proxy.gridding(
+        w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     time_gridding += time.time()
 
@@ -209,18 +205,18 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     time_fft = -time.time()
 
     # Using fft from library
-    img = grid.copy()
+    np.copyto(img, grid)
     proxy.transform(idg.FourierDomainToImageDomain, img)
-    img = np.real(img[0,:,:])
+    img_real = np.real(img[0,:,:])
     time_fft += time.time()
 
     time_plot = -time.time()
 
     # Remove spheroidal from grid
-    img = img/spheroidal_grid
+    img_real = img_real/spheroidal_grid
 
     # Crop image
-    # img = img[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
+    img_crop = img_real[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
 
     # Set plot properties
     colormap=plt.get_cmap("hot")
@@ -236,13 +232,13 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
 
     # Make second plot (processed grid)
     m = np.amax(img)
-    ax2.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+    ax2.imshow(img_crop, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
     ax2.set_title("Sky image\n", fontsize=font_size)
     ax2.set_xticks([])
     ax2.set_yticks([])
 
     # Draw figure
-    plt.pause(0.05)
+    plt.pause(0.01)
 
     time_plot += time.time()
 
@@ -258,7 +254,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     print ""
     iteration += 1
 
-# TODO: need to process the remaining visibilities
+    plt.show()
 
 # Do not close window at the end?
-# plt.show()
+plt.show(block=True)
