@@ -103,19 +103,26 @@ nr_rows_read = 0
 nr_rows_per_batch = (nr_baselines + nr_stations) * nr_timesteps
 nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
 
+# Initialize empty buffers
+uvw          = np.zeros(shape=(nr_baselines, nr_timesteps),
+                        dtype=idg.uvwtype)
+visibilities = np.zeros(shape=(nr_baselines, nr_timesteps, nr_channels,
+                               nr_correlations),
+                        dtype=idg.visibilitiestype)
+baselines    = np.zeros(shape=(nr_baselines),
+                        dtype=idg.baselinetype)
+img          = np.zeros(shape=(nr_correlations, grid_size, grid_size),
+                        dtype=idg.gridtype)
+
 iteration = 0
 while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
+    # Reset buffers
+    uvw.fill(0)
+    visibilities.fill(0)
+    baselines.fill(0)
+
+    # Start timing
     time_total = -time.time()
-
-    # Initialize empty buffers
-    uvw          = np.zeros(shape=(nr_baselines, nr_timesteps),
-                            dtype=idg.uvwtype)
-    visibilities = np.zeros(shape=(nr_baselines, nr_timesteps, nr_channels,
-                                   nr_correlations),
-                            dtype=idg.visibilitiestype)
-    baselines    = np.zeros(shape=(nr_baselines),
-                            dtype=idg.baselinetype)
-
     time_read = -time.time()
 
     # Read nr_timesteps samples for all baselines including auto correlations
@@ -198,18 +205,18 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     time_fft = -time.time()
 
     # Using fft from library
-    img = grid.copy()
+    np.copyto(img, grid)
     proxy.transform(idg.FourierDomainToImageDomain, img)
-    img = np.real(img[0,:,:])
+    img_real = np.real(img[0,:,:])
     time_fft += time.time()
 
     time_plot = -time.time()
 
     # Remove spheroidal from grid
-    img = img/spheroidal_grid
+    img_real = img_real/spheroidal_grid
 
     # Crop image
-    img = img[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
+    img_crop = img_real[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
 
     # Set plot properties
     colormap=plt.get_cmap("hot")
@@ -225,7 +232,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
 
     # Make second plot (processed grid)
     m = np.amax(img)
-    ax2.imshow(img, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+    ax2.imshow(img_crop, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
     ax2.set_title("Sky image\n", fontsize=font_size)
     ax2.set_xticks([])
     ax2.set_yticks([])
