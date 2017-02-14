@@ -53,7 +53,7 @@ namespace idg {
                 load_kernels();
 
                 // Initialize power sensor
-                init_powersensor(str_power_sensor, str_power_file);
+                init_powersensor(str_power_sensor, str_power_file, device_number);
             }
 
             // Destructor
@@ -253,7 +253,8 @@ namespace idg {
 
             void InstanceCUDA::init_powersensor(
                 const char *str_power_sensor,
-                const char *str_power_file)
+                const char *str_power_file,
+                int device_number)
             {
                 if (str_power_sensor) {
                     std::cout << "Power sensor: " << str_power_sensor << std::endl;
@@ -262,7 +263,7 @@ namespace idg {
                     }
                     powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
                 } else {
-                    powerSensor = new DummyPowerSensor();
+                    powerSensor = new NVMLPowerSensor(device_number, str_power_file);
                 }
             }
 
