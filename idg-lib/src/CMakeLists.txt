@@ -106,7 +106,7 @@ install(TARGETS idg-fft
 if (BUILD_LIB_CPU)
 add_library(idg-cpu
   $<TARGET_OBJECTS:cpu-common>
-  $<TARGET_OBJECTS:cpu-reference2>
+  $<TARGET_OBJECTS:cpu-reference>
   $<TARGET_OBJECTS:cpu-optimized>
   $<TARGET_OBJECTS:cpu-knl>
 )
