@@ -31,6 +31,10 @@ class PowerSensor {
                 // Synchronous measurement (Likwid)
                 int32_t consumedEnergyPKG    = 0;
                 int32_t consumedEnergyDRAM   = 0;
+
+                // Synchronous measurement (NVML)
+                unsigned int instantaneousPower   = 0;
+                unsigned int consumedEnergyDevice = 0;
         };
 
         virtual State read() = 0;

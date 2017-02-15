@@ -1,5 +1,9 @@
 project(powersensor)
 
+if(BUILD_LIB_CUDA)
+    find_package(NvidiaML)
+endif()
+
 # sources and header files
 set (${PROJECT_NAME}_headers
     PowerSensor.h
@@ -8,6 +12,7 @@ set (${PROJECT_NAME}_headers
     LikwidPowerSensor.h
     rapl-read.h
     RaplPowerSensor.h
+    NVMLPowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -16,6 +21,7 @@ set (${PROJECT_NAME}_sources
     LikwidPowerSensor.cpp
     rapl-read.cpp
     RaplPowerSensor.cpp
+    NVMLPowerSensor.cpp
 )
 
 include_directories(
@@ -26,6 +32,7 @@ add_library(
   ${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                          ${${PROJECT_NAME}_sources}
 )
+
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 
 # Copy header files
