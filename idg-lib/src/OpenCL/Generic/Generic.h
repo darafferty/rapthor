@@ -18,7 +18,7 @@ namespace idg {
                 public:
                     virtual void gridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
@@ -32,7 +32,7 @@ namespace idg {
 
                     virtual void degridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,

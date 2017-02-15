@@ -37,7 +37,7 @@ namespace idg {
                 const float *wavenumbers,
                 const int *baselines,
                 std::complex<float> *grid,
-                const float w_offset,
+                const float w_step,
                 const int kernel_size,
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
@@ -188,7 +188,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&inputReady);
                             kernel_gridder->launchAsync(
                                 executequeue, current_nr_timesteps, current_nr_subgrids,
-                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
+                                gridsize, imagesize, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[0]);
 
                             // Launch fft kernel
@@ -245,7 +245,7 @@ namespace idg {
                 const float *wavenumbers,
                 const int *baselines,
                 const std::complex<float> *grid,
-                const float w_offset,
+                const float w_step,
                 const int kernel_size,
                 const std::complex<float> *aterm,
                 const int *aterm_offsets,
@@ -406,7 +406,7 @@ namespace idg {
                             // Launch degridder kernel
                             kernel_degridder->launchAsync(
                                 executequeue, current_nr_timesteps, current_nr_subgrids,
-                                gridsize, imagesize, w_offset, nr_channels, nr_stations,
+                                gridsize, imagesize, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterm, d_metadata, d_subgrids, counters[1]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &computeReady[0]);
 
@@ -496,7 +496,7 @@ extern "C" {
                             void *wavenumbers,
                             void *metadata,
                             void *grid,
-                            float w_offset,
+                            float w_step,
                             int   kernel_size,
                             void *aterm,
                             void *aterm_offsets,
@@ -508,7 +508,7 @@ extern "C" {
                 (const float*) wavenumbers,
                 (const int*) metadata,
                 (std::complex<float>*) grid,
-                w_offset,
+                w_step,
                 kernel_size,
                 (const std::complex<float>*) aterm,
                 (const int*) aterm_offsets,
@@ -521,7 +521,7 @@ extern "C" {
                             void *wavenumbers,
                             void *metadata,
                             void *grid,
-                            float w_offset,
+                            float w_step,
                             int   kernel_size,
                             void *aterm,
                             void *aterm_offsets,
@@ -533,7 +533,7 @@ extern "C" {
                     (const float*) wavenumbers,
                     (const int*) metadata,
                     (const std::complex<float>*) grid,
-                    w_offset,
+                    w_step,
                     kernel_size,
                     (const std::complex<float>*) aterm,
                     (const int*) aterm_offsets,

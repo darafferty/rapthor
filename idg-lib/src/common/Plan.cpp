@@ -235,6 +235,8 @@ namespace idg {
                     bool uv_max_pixels = max(coordinate.x, coordinate.y);
                     bool uv_min_pixels = min(coordinate.x, coordinate.y);
                     bool uv_in_range = uv_min_pixels >= 0 && uv_max_pixels < (grid_size - subgrid_size);
+                    
+                    int w_index = 0;
 
                     // Add subgrid to metadata
                     if (uv_in_range) {
@@ -243,6 +245,7 @@ namespace idg {
                             current_aterms_offset + first_timestep, // time offset, TODO: store time index
                             nr_timesteps_subgrid,                   // nr of timesteps
                             aterm_index,                            // aterm index
+                            w_index,
                             baseline,                               // baselines
                             coordinate                              // coordinate
                         };

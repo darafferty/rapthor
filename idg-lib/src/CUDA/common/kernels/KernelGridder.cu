@@ -18,7 +18,7 @@ __device__ void kernel_gridder_(
     const int                    grid_size,
     const int                    subgrid_size,
     const float                  image_size,
-    const float                  w_offset,
+    const float                  w_step,
     const int                    nr_channels,
     const int                    channel_offset,
     const int                    nr_stations,
@@ -64,6 +64,7 @@ __device__ void kernel_gridder_(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
+    const float w_offset = w_step * m.w_index;
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += blockSize) {
@@ -220,7 +221,7 @@ __device__ void kernel_gridder_(
 #define KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE_, NR_CHANNELS) \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
         kernel_gridder_<BATCH_SIZE_, NR_CHANNELS>( \
-            grid_size, subgrid_size, image_size, w_offset, nr_channels, channel_offset, nr_stations, \
+            grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
     }
 
@@ -229,7 +230,7 @@ __global__ void kernel_gridder(
     const int                           grid_size,
     const int                           subgrid_size,
     const float                         image_size,
-    const float                         w_offset,
+    const float                         w_step,
     const int                           nr_channels,
     const int                           nr_stations,
     const UVW*             __restrict__ uvw,

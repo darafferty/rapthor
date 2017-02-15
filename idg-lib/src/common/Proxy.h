@@ -42,7 +42,7 @@ namespace idg {
                 //! Grid the visibilities onto a uniform grid
                 virtual void gridding(
                     const Plan& plan,
-                    const float w_offset, // in lambda
+                    const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const Array1D<float>& frequencies,
@@ -55,7 +55,7 @@ namespace idg {
                     const Array2D<float>& spheroidal) = 0;
 
                 void gridding(
-                    const float w_offset,
+                    const float w_step,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const Array1D<float>& frequencies,
@@ -68,7 +68,7 @@ namespace idg {
                     const Array2D<float>& spheroidal);
 
                 virtual void gridding(
-                    float w_offset,
+                    float w_step,
                     float cell_size,
                     unsigned int kernel_size,
                     float* frequencies,
@@ -104,7 +104,7 @@ namespace idg {
                 //! Degrid the visibilities from a uniform grid
                 virtual void degridding(
                     const Plan& plan,
-                    const float w_offset, // in lambda
+                    const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const Array1D<float>& frequencies,
@@ -117,7 +117,7 @@ namespace idg {
                     const Array2D<float>& spheroidal) = 0;
 
                 void degridding(
-                    const float w_offset,
+                    const float w_step,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const Array1D<float>& frequencies,
@@ -130,7 +130,7 @@ namespace idg {
                     const Array2D<float>& spheroidal);
 
                 void degridding(
-                    float w_offset,
+                    float w_step,
                     float cell_size,
                     unsigned int kernel_size,
                     float* frequencies,

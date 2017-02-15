@@ -153,7 +153,7 @@ namespace idg {
 
             void Generic::gridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
@@ -349,7 +349,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&outputFree, NULL);
                             device.launch_gridder(
                                 current_nr_timesteps, current_nr_subgrids,
-                                grid_size, image_size, w_offset, nr_channels, nr_stations,
+                                grid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                                 d_aterms, d_metadata, d_subgrids, counters[0]);
 
@@ -436,7 +436,7 @@ namespace idg {
 
             void Generic::degridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
@@ -635,7 +635,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&outputFree, NULL);
                             device.launch_degridder(
                                 current_nr_timesteps, current_nr_subgrids,
-                                grid_size, image_size, w_offset, nr_channels, nr_stations,
+                                grid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                                 d_aterms, d_metadata, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);

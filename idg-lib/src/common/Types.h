@@ -16,6 +16,7 @@ namespace idg {
         int time_offset;
         int nr_timesteps;
         int aterm_index;
+        int w_index;
         Baseline baseline;
         Coordinate coordinate; } Metadata;
 

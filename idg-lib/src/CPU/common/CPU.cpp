@@ -49,7 +49,7 @@ namespace idg {
             */
             void CPU::gridding(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const Array1D<float>& frequencies,
@@ -106,7 +106,7 @@ namespace idg {
                     // Run subroutines
                     grid_onto_subgrids(
                         plan,
-                        w_offset,
+                        w_step,
                         grid_size,
                         image_size,
                         wavenumbers,
@@ -155,7 +155,7 @@ namespace idg {
 
             void CPU::degridding(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const Array1D<float>& frequencies,
@@ -217,7 +217,7 @@ namespace idg {
 
                     degrid_from_subgrids(
                         plan,
-                        w_offset,
+                        w_step,
                         grid_size,
                         image_size,
                         wavenumbers,
@@ -316,7 +316,7 @@ namespace idg {
             */
             void CPU::grid_onto_subgrids(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const unsigned int grid_size,
                 const float image_size,
                 const Array1D<float>& wavenumbers,
@@ -370,7 +370,7 @@ namespace idg {
                         grid_size,
                         subgrid_size,
                         image_size,
-                        w_offset,
+                        w_step,
                         nr_channels,
                         nr_stations,
                         uvw_ptr,
@@ -546,7 +546,7 @@ namespace idg {
 
             void CPU::degrid_from_subgrids(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const unsigned int grid_size,
                 const float image_size,
                 const Array1D<float>& wavenumbers,
@@ -604,7 +604,7 @@ namespace idg {
                         grid_size,
                         subgrid_size,
                         image_size,
-                        w_offset,
+                        w_step,
                         nr_channels,
                         nr_stations,
                         uvw_ptr,

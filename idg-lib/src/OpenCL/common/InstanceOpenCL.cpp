@@ -254,7 +254,7 @@ namespace idg {
                 int nr_subgrids,
                 int grid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 cl::Buffer& d_uvw,
@@ -271,7 +271,7 @@ namespace idg {
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel_gridder->setArg(0,  grid_size);
                 kernel_gridder->setArg(1,  image_size);
-                kernel_gridder->setArg(2,  w_offset);
+                kernel_gridder->setArg(2,  w_step);
                 kernel_gridder->setArg(3,  nr_channels);
                 kernel_gridder->setArg(4,  nr_stations);
                 kernel_gridder->setArg(5,  d_uvw);
@@ -301,7 +301,7 @@ namespace idg {
                 int nr_subgrids,
                 int grid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 cl::Buffer& d_uvw,
@@ -318,7 +318,7 @@ namespace idg {
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel_degridder->setArg(0,  grid_size);
                 kernel_degridder->setArg(1,  image_size);
-                kernel_degridder->setArg(2,  w_offset);
+                kernel_degridder->setArg(2,  w_step);
                 kernel_degridder->setArg(3,  nr_channels);
                 kernel_degridder->setArg(4,  nr_stations);
                 kernel_degridder->setArg(5,  d_uvw);

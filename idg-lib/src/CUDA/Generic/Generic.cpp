@@ -131,7 +131,7 @@ namespace idg {
 
             void Generic::gridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
@@ -301,7 +301,7 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
@@ -420,7 +420,7 @@ namespace idg {
 
             void Generic::degridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
@@ -596,7 +596,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);

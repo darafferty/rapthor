@@ -13,7 +13,7 @@
 __kernel void kernel_degridder_1(
     const int gridsize,
     const float imagesize,
-    const float w_offset,
+    const float w_step,
     const int nr_channels,
     const int channel_offset,
     const int nr_stations,
@@ -42,6 +42,7 @@ __kernel void kernel_degridder_1(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
+    const float w_offset = w_step * m.w_index;
 
 	// Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
@@ -180,7 +181,7 @@ __kernel void kernel_degridder_1(
 __kernel void kernel_degridder_8(
     const int gridsize,
     const float imagesize,
-    const float w_offset,
+    const float w_step,
     const int nr_channels,
     const int channel_offset,
     const int nr_stations,
@@ -209,6 +210,7 @@ __kernel void kernel_degridder_8(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
+    const float w_offset = w_step * m.w_index;
 
 	// Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
@@ -350,7 +352,7 @@ __kernel void kernel_degridder_8(
 __kernel void kernel_degridder(
     const int gridsize,
     const float imagesize,
-    const float w_offset,
+    const float w_step,
     const int nr_channels,
     const int nr_stations,
     __global const UVWType			uvw,
@@ -368,14 +370,14 @@ __kernel void kernel_degridder(
 
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_8(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_step, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid,
             _pix, _lmn_phaseoffset);
     }
 
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_degridder_1(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_step, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid,
             _pix, _lmn_phaseoffset);
     }

@@ -8,7 +8,7 @@ using namespace std;
 namespace idg {
     namespace proxy {
         void Proxy::gridding(
-            const float w_offset,
+            const float w_step,
             const float cell_size,
             const unsigned int kernel_size,
             const Array1D<float>& frequencies,
@@ -36,7 +36,7 @@ namespace idg {
 
             gridding(
                 plan,
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies,
@@ -50,7 +50,7 @@ namespace idg {
         }
 
         void Proxy::gridding(
-            float w_offset,
+            float w_step,
             float cell_size,
             unsigned int kernel_size,
             float* frequencies,
@@ -126,7 +126,7 @@ namespace idg {
                 spheroidal, spheroidal_height, spheroidal_width);
 
             gridding(
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies_,
@@ -141,7 +141,7 @@ namespace idg {
 
 
         void Proxy::degridding(
-            const float w_offset,
+            const float w_step,
             const float cell_size,
             const unsigned int kernel_size,
             const Array1D<float>& frequencies,
@@ -163,7 +163,7 @@ namespace idg {
 
             degridding(
                 plan,
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies,
@@ -178,7 +178,7 @@ namespace idg {
 
 
         void Proxy::degridding(
-            float w_offset,
+            float w_step,
             float cell_size,
             unsigned int kernel_size,
             float* frequencies,
@@ -254,7 +254,7 @@ namespace idg {
                 spheroidal, spheroidal_height, spheroidal_width);
 
             degridding(
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies_,

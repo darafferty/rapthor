@@ -30,7 +30,7 @@ namespace idg {
                     // Routines
                     virtual void gridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
@@ -44,7 +44,7 @@ namespace idg {
 
                     virtual void degridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
@@ -69,7 +69,7 @@ namespace idg {
                 private:
                     void grid_onto_subgrids(
                         const Plan& plan,
-                        const float w_offset,
+                        const float w_step,
                         const unsigned int grid_size,
                         const float image_size,
                         const Array1D<float>& wavenumbers,
@@ -91,7 +91,7 @@ namespace idg {
 
                     virtual void degrid_from_subgrids(
                         const Plan& plan,
-                        const float w_offset,
+                        const float w_step,
                         const unsigned int grid_size,
                         const float image_size,
                         const Array1D<float>& wavenumbers,

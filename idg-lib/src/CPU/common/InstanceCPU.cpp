@@ -208,7 +208,7 @@ namespace idg {
                 int grid_size,
                 int subgrid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 void *uvw,
@@ -220,7 +220,7 @@ namespace idg {
                 void *subgrid)
             {
                   (sig_gridder (void *) *function_gridder)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                  nr_subgrids, gridsize, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
@@ -229,7 +229,7 @@ namespace idg {
                 int grid_size,
                 int subgrid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 void *uvw,
@@ -241,7 +241,7 @@ namespace idg {
                 void *subgrid)
             {
                   (sig_degridder (void *) *function_degridder)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
