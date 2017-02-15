@@ -98,7 +98,7 @@ namespace idg {
 
             ProxyInfo CUDA::default_info() {
                 #if defined(DEBUG)
-                std::cout << "Generic::" << __func__ << std::endl;
+                std::cout << "CUDA::" << __func__ << std::endl;
                 #endif
 
                 std::string srcdir = auxiliary::get_lib_dir() + "/idg-cuda";

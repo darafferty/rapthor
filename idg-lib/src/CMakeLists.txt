@@ -12,7 +12,7 @@ if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
 
-#add_subdirectory(Hybrid)
+add_subdirectory(Hybrid)
 
 if (BUILD_LIB_CUDA)
     add_subdirectory(CUDA)
@@ -177,15 +177,14 @@ endif (BUILD_LIB_CUDA)
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
-#add_library (
-#    idg-hybrid-cuda
-#    $<TARGET_OBJECTS:cpu-common>
-#    $<TARGET_OBJECTS:cpu-reference>
-#    $<TARGET_OBJECTS:cpu-optimized>
-#    $<TARGET_OBJECTS:cuda-common>
-#    $<TARGET_OBJECTS:cuda-generic>
-#    $<TARGET_OBJECTS:hybrid-cuda>
-#)
+add_library (
+    idg-hybrid-cuda
+    $<TARGET_OBJECTS:cpu-common>
+    $<TARGET_OBJECTS:cpu-optimized>
+    $<TARGET_OBJECTS:cuda-common>
+    $<TARGET_OBJECTS:cuda-generic>
+    $<TARGET_OBJECTS:hybrid-cuda-common>
+)
 #
 #set (
 #    LINK_LIRBRARIES

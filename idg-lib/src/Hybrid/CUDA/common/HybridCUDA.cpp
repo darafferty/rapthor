@@ -1,44 +1,32 @@
 #include <cuda.h>
 #include <cudaProfiler.h>
 
+#include "CUDA.h"
+
 #include "HybridCUDA.h"
-
-#include "CU.h"
-#include "DeviceInstance.h"
-
-using namespace std;
-using namespace idg::proxy::cuda;
 
 namespace idg {
     namespace proxy {
         namespace hybrid {
 
-            /// Constructors
+            // Constructor
             HybridCUDA::HybridCUDA(
-                Parameters params) :
-                cpu(params), cuda(params)
+                CompileConstants constants) :
+                Proxy(constants)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << params;
+                std::cout << __func__ << std::endl;
                 #endif
 
-                mParams = params;
                 cuProfilerStart();
-
-                // Setup benchmark
-                init_benchmark();
             }
 
-            /// Destructor
+            // Destructor
             HybridCUDA::~HybridCUDA() {
                 cuProfilerStop();
             }
 
-            /*
-                High level routines
-                These routines operate on grids
-            */
+#if 0
             void HybridCUDA::grid_visibilities(
                 const std::complex<float> *visibilities,
                 const float *uvw,
@@ -272,7 +260,9 @@ namespace idg {
                 clog << endl;
                 #endif
             }
+#endif
 
+#if 0
             void HybridCUDA::degrid_visibilities(
                 std::complex<float> *visibilities,
                 const float *uvw,
@@ -494,7 +484,9 @@ namespace idg {
                 clog << endl;
                 #endif
             }
+#endif
 
+#if 0
             void HybridCUDA::transform(DomainAtoDomainB direction,
                 std::complex<float>* grid) {
                 #if defined(DEBUG)
@@ -503,114 +495,8 @@ namespace idg {
 
                 cpu.transform(direction, grid);
             }
+#endif
 
-            void HybridCUDA::init_benchmark() {
-                char *char_nr_repetitions = getenv("NR_REPETITIONS");
-                if (char_nr_repetitions) {
-                    nr_repetitions = atoi(char_nr_repetitions);
-                    enable_benchmark = nr_repetitions > 1;
-                }
-                if (enable_benchmark) {
-                    std::clog << "Benchmark mode enabled, nr_repetitions = " << nr_repetitions << std::endl;
-                }
-            }
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
-
-
-// C interface:
-// Rationale: calling the code from C code and Fortran easier,
-// and bases to create interface to scripting languages such as
-// Python, Julia, Matlab, ...
-extern "C" {
-    typedef idg::proxy::hybrid::HybridCUDA Hybrid_CUDA;
-
-    Hybrid_CUDA* Hybrid_CUDA_init(
-                unsigned int nr_stations,
-                unsigned int nr_channels,
-                unsigned int nr_time,
-                unsigned int nr_timeslots,
-                float        imagesize,
-                unsigned int grid_size,
-                unsigned int subgrid_size)
-    {
-        idg::Parameters P;
-        P.set_nr_stations(nr_stations);
-        P.set_nr_channels(nr_channels);
-        P.set_nr_time(nr_time);
-        P.set_nr_timeslots(nr_timeslots);
-        P.set_imagesize(imagesize);
-        P.set_subgrid_size(subgrid_size);
-        P.set_grid_size(grid_size);
-
-        return new Hybrid_CUDA(P);
-    }
-
-    void Hybrid_CUDA_grid(Hybrid_CUDA* p,
-                            void *visibilities,
-                            void *uvw,
-                            void *wavenumbers,
-                            void *metadata,
-                            void *grid,
-                            float w_offset,
-                            int   kernel_size,
-                            void *aterm,
-                            void *aterm_offsets,
-                            void *spheroidal)
-    {
-         p->grid_visibilities(
-                (const std::complex<float>*) visibilities,
-                (const float*) uvw,
-                (const float*) wavenumbers,
-                (const int*) metadata,
-                (std::complex<float>*) grid,
-                w_offset,
-                kernel_size,
-                (const std::complex<float>*) aterm,
-                (const int*) aterm_offsets,
-                (const float*) spheroidal);
-    }
-
-    void Hybrid_CUDA_degrid(Hybrid_CUDA* p,
-                            void *visibilities,
-                            void *uvw,
-                            void *wavenumbers,
-                            void *metadata,
-                            void *grid,
-                            float w_offset,
-                            int   kernel_size,
-                            void *aterm,
-                            void *aterm_offsets,
-                            void *spheroidal)
-    {
-         p->degrid_visibilities(
-                (std::complex<float>*) visibilities,
-                    (const float*) uvw,
-                    (const float*) wavenumbers,
-                    (const int*) metadata,
-                    (const std::complex<float>*) grid,
-                    w_offset,
-                    kernel_size,
-                    (const std::complex<float>*) aterm,
-                    (const int*) aterm_offsets,
-                    (const float*) spheroidal);
-     }
-
-    void Hybrid_CUDA_transform(Hybrid_CUDA* p,
-                    int direction,
-                    void *grid)
-    {
-       if (direction!=0)
-           p->transform(idg::ImageDomainToFourierDomain,
-                    (std::complex<float>*) grid);
-       else
-           p->transform(idg::FourierDomainToImageDomain,
-                    (std::complex<float>*) grid);
-    }
-
-    void Hybrid_CUDA_destroy(Hybrid_CUDA* p) {
-       delete p;
-    }
-
-} // end extern "C"
