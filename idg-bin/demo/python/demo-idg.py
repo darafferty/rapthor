@@ -219,20 +219,20 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     img_crop = img_real[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
 
     # Set plot properties
-    colormap=plt.get_cmap("hot")
+    colormap_grid=plt.get_cmap('hot')
+    colormap_img=plt.get_cmap('hot')
     font_size = 16
 
     # Make first plot (raw grid)
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax1.set_axis_bgcolor(colormap(0))
-    ax1.imshow(np.log(np.abs(grid[0,:,:]) + 1), interpolation='nearest')
+    ax1.imshow(np.log(np.abs(grid[0,:,:]) + 1), cmap=colormap_grid)
     time1 = timestamp_block[0]
     ax1.set_title("UV Data: %2.2i:%2.2i\n" % (np.mod(int(time1/3600 ),24), np.mod(int(time1/60),60)), fontsize=font_size)
 
     # Make second plot (processed grid)
-    m = np.amax(img)
-    ax2.imshow(img_crop, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap)
+    m = np.amax(img_crop)
+    ax2.imshow(img_crop, interpolation='nearest', clim = (-0.01*m, 0.3*m), cmap=colormap_img)
     ax2.set_title("Sky image\n", fontsize=font_size)
     ax2.set_xticks([])
     ax2.set_yticks([])
