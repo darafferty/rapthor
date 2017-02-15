@@ -4,5 +4,6 @@
 #include "idg-common.h"
 #include "idg-cpu.h"
 #include "idg-cuda.h"
-#include "Hybrid/CUDA/HybridCUDA.h"
+#include "Hybrid/CUDA/common/HybridCUDA.h"
+#include "Hybrid/CUDA/GenericOptimized/GenericOptimized.h"
 #endif

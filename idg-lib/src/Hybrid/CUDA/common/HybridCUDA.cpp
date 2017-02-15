@@ -1,9 +1,12 @@
 #include <cuda.h>
 #include <cudaProfiler.h>
 
-#include "CUDA.h"
-
 #include "HybridCUDA.h"
+
+using namespace std;
+using namespace idg::proxy::cuda;
+using namespace idg::proxy::cpu;
+using namespace idg::kernel::cpu;
 
 namespace idg {
     namespace proxy {
@@ -11,11 +14,20 @@ namespace idg {
 
             // Constructor
             HybridCUDA::HybridCUDA(
+                CPU* cpu,
                 CompileConstants constants) :
-                Proxy(constants)
+                cpu(cpu),
+                CUDA(constants, default_info())
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
+                #endif
+
+                // Initialize host PowerSensor
+                #if defined(HAVE_LIKWID)
+                hostPowerSensor = new LikwidPowerSensor();
+                #else
+                hostPowerSensor = new RaplPowerSensor();
                 #endif
 
                 cuProfilerStart();
@@ -23,8 +35,65 @@ namespace idg {
 
             // Destructor
             HybridCUDA::~HybridCUDA() {
+                delete cpu;
+                delete hostPowerSensor;
                 cuProfilerStop();
             }
+
+            /* High level routines */
+            void HybridCUDA::transform(
+                DomainAtoDomainB direction,
+                Array3D<std::complex<float>>& grid)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                cout << "Transform direction: " << direction << endl;
+                #endif
+
+                cpu->transform(direction, grid);
+            } // end transform
+
+
+            void HybridCUDA::gridding(
+                const Plan& plan,
+                const float w_offset, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                Array3D<std::complex<float>>& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+            } // end gridding
+
+
+            void HybridCUDA::degridding(
+                const Plan& plan,
+                const float w_offset, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const Array1D<float>& frequencies,
+                Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array3D<std::complex<float>>& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
+            {
+                #if defined(DEBUG)
+                cout << __func__ << endl;
+                #endif
+
+            } // end degridding
 
 #if 0
             void HybridCUDA::grid_visibilities(

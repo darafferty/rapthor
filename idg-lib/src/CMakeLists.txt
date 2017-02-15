@@ -184,32 +184,33 @@ add_library (
     $<TARGET_OBJECTS:cuda-common>
     $<TARGET_OBJECTS:cuda-generic>
     $<TARGET_OBJECTS:hybrid-cuda-common>
+    $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>
 )
-#
-#set (
-#    LINK_LIRBRARIES
-#    idg-common idg-powersensor
-#    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
-#)
-#
-#target_link_libraries (
-#    idg-hybrid-cuda
-#    ${LINK_LIRBRARIES}
-#)
-#
-#set_target_properties (
-#    idg-hybrid-cuda PROPERTIES
-#    PUBLIC_HEADER idg-hybrid-cuda.h
-#)
-#
-#install(
-#    TARGETS idg-hybrid-cuda
-#    EXPORT IDGTargets
-#    RUNTIME DESTINATION bin
-#    LIBRARY DESTINATION lib
-#    ARCHIVE DESTINATION lib/static
-#    PUBLIC_HEADER DESTINATION include
-#)
+
+set (
+    LINK_LIRBRARIES
+    idg-common idg-powersensor
+    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
+)
+
+target_link_libraries (
+    idg-hybrid-cuda
+    ${LINK_LIRBRARIES}
+)
+
+set_target_properties (
+    idg-hybrid-cuda PROPERTIES
+    PUBLIC_HEADER idg-hybrid-cuda.h
+)
+
+install(
+    TARGETS idg-hybrid-cuda
+    EXPORT IDGTargets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
+)
 
 endif()
 
