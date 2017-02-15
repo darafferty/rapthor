@@ -36,11 +36,7 @@ NVMLPowerSensor::NVMLPowerSensor(
 
 #ifdef BUILD_LIB_CUDA
     checkNVMLCall(nvmlInit());
-    unsigned int device_count;
-    checkNVMLCall(nvmlDeviceGetCount(&device_count));
-
-    unsigned int nvml_device_number = device_count - (device_number + 1);
-    checkNVMLCall(nvmlDeviceGetHandleByIndex(nvml_device_number, &device));
+    checkNVMLCall(nvmlDeviceGetHandleByIndex(device_number, &device));
 #endif
 
     previousState = read();
