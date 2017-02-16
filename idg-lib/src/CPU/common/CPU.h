@@ -64,6 +64,8 @@ namespace idg {
                     using Proxy::degridding;
                     using Proxy::transform;
 
+                    kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
+
                 private:
                     void grid_onto_subgrids(
                         const Plan& plan,
@@ -101,7 +103,7 @@ namespace idg {
 
 
                 protected:
-                    kernel::cpu::InstanceCPU mKernels;
+                    kernel::cpu::InstanceCPU kernels;
                     PowerSensor *powerSensor;
 
             }; // end class CPU
