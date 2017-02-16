@@ -16,3 +16,5 @@ namespace idg {
         } // namespace idg
     } // namespace proxy
 } // namespace idg
+
+#include "GenericOptimizedC.h"
