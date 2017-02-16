@@ -298,17 +298,6 @@ namespace idg {
                 stopStates[nr_devices]  = hostPowerSensor->read();
                 total_runtime_gridding += omp_get_wtime();
 
-                // Add grids
-                for (int d = 1; d < get_num_devices(); d++) {
-                    float2 *grid_src = (float2 *) get_device(d).get_host_grid();
-                    float2 *grid_dst = (float2 *) grid.data();
-
-                    #pragma omp parallel for
-                    for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
-                        grid_dst[i] += grid_src[i];
-                    }
-                }
-
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 InstanceCUDA& device          = get_device(0);
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
