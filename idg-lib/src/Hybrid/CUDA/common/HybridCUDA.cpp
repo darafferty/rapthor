@@ -45,7 +45,7 @@ namespace idg {
             }
 
             /* High level routines */
-            void HybridCUDA::transform(
+            void HybridCUDA::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)
             {
@@ -58,7 +58,7 @@ namespace idg {
             } // end transform
 
 
-            void HybridCUDA::gridding(
+            void HybridCUDA::do_gridding(
                 const Plan& plan,
                 const float w_offset, // in lambda
                 const float cell_size,
@@ -334,7 +334,7 @@ namespace idg {
             } // end gridding
 
 
-            void HybridCUDA::degridding(
+            void HybridCUDA::do_degridding(
                 const Plan& plan,
                 const float w_offset, // in lambda
                 const float cell_size,
