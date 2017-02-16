@@ -58,6 +58,7 @@ namespace idg {
 
             // Destructor
             InstanceCUDA::~InstanceCUDA() {
+                context->setCurrent();
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;

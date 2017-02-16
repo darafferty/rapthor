@@ -32,6 +32,8 @@ namespace idg {
                 hostPowerSensor = new RaplPowerSensor();
                 #endif
 
+                omp_set_nested(true);
+
                 cuProfilerStart();
             }
 
@@ -102,7 +104,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 2;
+                const int nr_streams = 3;
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
@@ -297,17 +299,6 @@ namespace idg {
                 // End timing
                 stopStates[nr_devices]  = hostPowerSensor->read();
                 total_runtime_gridding += omp_get_wtime();
-
-                // Add grids
-                for (int d = 1; d < get_num_devices(); d++) {
-                    float2 *grid_src = (float2 *) get_device(d).get_host_grid();
-                    float2 *grid_dst = (float2 *) grid.data();
-
-                    #pragma omp parallel for
-                    for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
-                        grid_dst[i] += grid_src[i];
-                    }
-                }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 InstanceCUDA& device          = get_device(0);
