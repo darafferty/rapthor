@@ -32,6 +32,8 @@ namespace idg {
                 hostPowerSensor = new RaplPowerSensor();
                 #endif
 
+                omp_set_nested(true);
+
                 cuProfilerStart();
             }
 
