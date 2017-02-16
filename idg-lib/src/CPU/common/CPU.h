@@ -27,8 +27,11 @@ namespace idg {
                     // Destructor
                     virtual ~CPU();
 
+                    kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
+
+                private:
                     // Routines
-                    virtual void gridding(
+                    virtual void do_gridding(
                         const Plan& plan,
                         const float w_step, // in lambda
                         const float cell_size,
@@ -37,12 +40,12 @@ namespace idg {
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        Array3D<std::complex<float>>& grid,
+                        Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void degridding(
+                    virtual void do_degridding(
                         const Plan& plan,
                         const float w_step, // in lambda
                         const float cell_size,
@@ -51,22 +54,15 @@ namespace idg {
                         Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        const Array3D<std::complex<float>>& grid,
+                        const Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void transform(
+                    virtual void do_transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    using Proxy::gridding;
-                    using Proxy::degridding;
-                    using Proxy::transform;
-
-                    kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
-
-                private:
                     void grid_onto_subgrids(
                         const Plan& plan,
                         const float w_step,

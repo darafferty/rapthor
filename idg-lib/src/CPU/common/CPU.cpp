@@ -47,7 +47,7 @@ namespace idg {
             /*
                 High level routines
             */
-            void CPU::gridding(
+            void CPU::do_gridding(
                 const Plan& plan,
                 const float w_step,
                 const float cell_size,
@@ -56,7 +56,7 @@ namespace idg {
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                Array3D<std::complex<float>>& grid,
+                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -153,7 +153,7 @@ namespace idg {
                 }
             } // end gridding
 
-            void CPU::degridding(
+            void CPU::do_degridding(
                 const Plan& plan,
                 const float w_step,
                 const float cell_size,
@@ -162,7 +162,7 @@ namespace idg {
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                const Array3D<std::complex<float>>& grid,
+                const Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -259,7 +259,7 @@ namespace idg {
                 }
             } // end degridding
 
-            void CPU::transform(
+            void CPU::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)
             {

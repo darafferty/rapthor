@@ -2,11 +2,12 @@
 #define IDG_TYPES_H_
 
 #include <ostream>
+#include <complex>
 
 namespace idg {
 
     /* Structures */
-
+    
     typedef struct { int x, y; } Coordinate;
 
     typedef struct { unsigned int station1, station2; } Baseline;
@@ -94,8 +95,8 @@ namespace idg {
         return {x.real, -x.imag};
     }
 
-
     /* Classes */
+    
     template<class T>
     class Array1D {
         public:
@@ -496,6 +497,11 @@ namespace idg {
             T*           m_buffer;
     };
 
+    
+    /*               */
+    typedef Array3D<std::complex<float>> Grid;
+
+    
     /* Output */
 
     std::ostream& operator<<(std::ostream& os, Baseline& b);

@@ -32,7 +32,7 @@ namespace idg {
             }
 
             /* High level routines */
-            void Generic::transform(
+            void Generic::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)
             {
@@ -129,7 +129,7 @@ namespace idg {
             } // end transform
 
 
-            void Generic::gridding(
+            void Generic::do_gridding(
                 const Plan& plan,
                 const float w_step, // in lambda
                 const float cell_size,
@@ -418,7 +418,7 @@ namespace idg {
             } //end gridding
 
 
-            void Generic::degridding(
+            void Generic::do_degridding(
                 const Plan& plan,
                 const float w_step, // in lambda
                 const float cell_size,
