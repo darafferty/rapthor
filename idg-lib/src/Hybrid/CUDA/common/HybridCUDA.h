@@ -11,7 +11,7 @@ namespace idg {
 
                 public:
                     HybridCUDA(
-                        idg::proxy::cpu::CPU* cpu,
+                        idg::proxy::cpu::CPU* cpuProxy,
                         CompileConstants constants);
 
                     ~HybridCUDA();
@@ -55,7 +55,7 @@ namespace idg {
 
                 private:
                     PowerSensor* hostPowerSensor;
-                    idg::proxy::cpu::CPU* cpu;
+                    idg::proxy::cpu::CPU* cpuProxy;
 
             }; // class HybridCUDA
         } // namespace hybrid
