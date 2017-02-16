@@ -31,3 +31,8 @@ try:
     from Plan import *
 except OSError as e:
     handle_error("utils", e)
+
+try:
+    import HybridCUDA
+except OSError as e:
+    handle_error("HybridCUDA", e)

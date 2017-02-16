@@ -1,4 +1,4 @@
-project(cpu-reference2)
+project(cpu-reference)
 
 # sources and header files
 set (${PROJECT_NAME}_headers

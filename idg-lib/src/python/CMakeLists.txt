@@ -7,7 +7,7 @@ install(FILES
         CPU.py
         CUDA.py
         OpenCL.py
-        #HybridCUDA.py
+        HybridCUDA.py
         #HybridOpenCL.py
         Proxy.py
         fft.py
