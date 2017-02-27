@@ -1,11 +1,11 @@
 /**
- * DegridderPlan.h
+ * DegridderBuffer.h
  *
- * \class DegridderPlan
+ * \class DegridderBuffer
  *
  * \brief Access to IDG's high level gridder routines
  *
- * The DegridderPlan manages two buffers: a request buffer and a visibility buffer.
+ * The DegridderBuffer manages two buffers: a request buffer and a visibility buffer.
  * The former holds UVW data and antenna IDs for the visibilities to predict later.
  * Once filled with requests, the visibilities can be predicted, which fills the
  * visibility buffer. Now one can read the visibility buffer, and signal that the
@@ -13,7 +13,7 @@
  *
  * Usage (pseudocode):
  *
- * idg::DegridderPlan plan(...);
+ * idg::DegridderBuffer plan(...);
  * plan.set_image(image);
  * plan.set_other_properties(...);
  * plan.bake();
@@ -63,18 +63,19 @@
 #if defined(BUILD_LIB_CPU)
 #include "idg-cpu.h"
 #endif
-#include "Scheme.h"
+#include "Buffer.h"
 
 namespace idg {
+namespace api {
 
-    class DegridderPlan : public Scheme
+    class DegridderBuffer : public Buffer
     {
     public:
         // Constructors and destructor
-        DegridderPlan(Type architecture = Type::CPU_REFERENCE,
+        DegridderBuffer(Type architecture = Type::CPU_REFERENCE,
                       size_t bufferTimesteps = 4096);
 
-        virtual ~DegridderPlan();
+        virtual ~DegridderBuffer();
 
         /** \brief Request a visibility to compute later
          *  \param rowId [in] unique identifier used to read the data
@@ -85,7 +86,7 @@ namespace idg {
          *  \param uvwInMeters [in] (u, v, w)
          *  \return buffer_full [out] true, if request buffer is already full
          */
-        bool request_visibilities(
+        virtual bool request_visibilities(
             size_t rowId,
             size_t timeIndex,
             size_t antenna1,
@@ -96,7 +97,7 @@ namespace idg {
          *  Note: if this method is used for requesting, reading must be done
          *  without the rowId identifier as well
          */
-        bool request_visibilities(
+        virtual bool request_visibilities(
             size_t timeIndex,
             size_t antenna1,
             size_t antenna2,
@@ -109,10 +110,10 @@ namespace idg {
         /** \brief Compute visibility of the requested visibilities
          *  \return list_of_rowIds [out] a list of all computed rowIds
          */
-        std::vector<std::pair<size_t, std::complex<float>*>> compute();
+        virtual std::vector<std::pair<size_t, std::complex<float>*>> compute();
 
         /** \brief Signal that the visibilities can be overwritten */
-        void finished_reading();
+        virtual void finished_reading();
 
 //         /** \brief Read the visibilities from the visibility buffer
 //          *  \param rowId [in] identifier used in the request
@@ -170,36 +171,6 @@ namespace idg {
         /** \brief Explicitly flush the buffer */
         virtual void flush() override;
 
-        // Set and get methods
-
-        /** \brief Set the image to be used for predicting visibilities
-         *  \param [in] nr_polarizations number of correlations (normally 4)
-         *  \param [in] size size in pixels of a square image
-         *  \param [in] grid std::complex<double>[nr_polarizations][size][size]
-         */
-        void set_image(
-            size_t nr_polarizations,
-            size_t size,
-            std::complex<double>* grid)
-        {
-            set_grid(nr_polarizations, size, grid);
-        }
-
-        /** \brief Set the image to be used for predicting visibilities
-         *  \param [in] nr_polarizations number of correlations (normally 4)
-         *  \param [in] height hight in pixels
-         *  \param [in] width width in pixels
-         *  \param [in] grid std::complex<double>[nr_polarizations][size][size]
-         */
-        void set_image(
-            size_t nr_polarizations,
-            size_t height,
-            size_t width,
-            std::complex<double>* grid)
-        {
-            set_grid(nr_polarizations, height, width, grid);
-        }
-
         size_t get_image_height() const { return get_grid_height(); };
         size_t get_image_width() const { return get_grid_width(); } ;
 
@@ -214,6 +185,7 @@ namespace idg {
         std::vector<std::pair<size_t, std::complex<float>*>> m_row_ids_to_data;
     };
 
+} // namespace api
 } // namespace idg
 
 #endif

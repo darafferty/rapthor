@@ -1,10 +1,10 @@
 /*
- * GridderPlan.h
+ * Buffer.h
  * Access to IDG's high level gridder routines
  */
 
-#ifndef IDG_SCHEME_H_
-#define IDG_SCHEME_H_
+#ifndef IDG_BUFFER_H_
+#define IDG_BUFFER_H_
 
 #include <complex>
 #include <vector>
@@ -21,18 +21,23 @@
 #if defined(BUILD_LIB_CUDA)
 #include "idg-cuda.h"
 #endif
+#if defined(BUILD_LIB_CUDA) && defined(BUILD_LIB_CPU)
+#include "idg-hybrid-cuda.h"
+#endif
 #if defined(BUILD_LIB_OPENCL)
 #include "idg-opencl.h"
 #endif
 #include "Datatypes.h"
 
 namespace idg {
+namespace api {    
 
     enum class Type {
         CPU_REFERENCE,
         CPU_OPTIMIZED,
         CUDA_GENERIC,
-        OPENCL_GENERIC
+        OPENCL_GENERIC,
+        HYBRID_CUDA_CPU_OPTIMIZED
     };
 
 
@@ -42,19 +47,21 @@ namespace idg {
     };
 
 
-    class Scheme   // TODO: rename to Plan or so
+    class Buffer
     {
     public:
 
         // Constructors and destructor
-        Scheme(Type architecture = Type::CPU_REFERENCE,
+        Buffer(Type architecture = Type::CPU_REFERENCE,
                size_t bufferTimesteps = 4096);
 
-        virtual ~Scheme();
+        virtual ~Buffer();
 
         // Set/get all parameters
         void set_frequencies(size_t channelCount,
                              const double* frequencyList);
+
+        void set_frequencies(const std::vector<double> &frequency_list);
 
         size_t get_frequencies_size() const;
         double get_frequency(size_t channel) const;
@@ -66,8 +73,8 @@ namespace idg {
         double get_cell_height() const;
         double get_cell_width() const;
 
-        void set_w_kernel(size_t size);
-        size_t get_w_kernel_size() const;
+        void set_kernel_size(size_t size);
+        size_t get_kernel_size() const;
 
         void set_spheroidal(
             size_t size,
@@ -79,20 +86,21 @@ namespace idg {
             const float* spheroidal);
 
         void set_grid(
-            size_t nr_polarizations,
-            size_t size,
-            std::complex<double>* grid);
+            Grid* grid);
 
-        void set_grid(
-            size_t nr_polarizations,
-            size_t height,
-            size_t width,
-            std::complex<double>* grid);
+//         void set_grid(
+//             size_t nr_polarizations,
+//             size_t height,
+//             size_t width,
+//             std::complex<float>* grid);
 
         size_t get_grid_height() const;
         size_t get_grid_width() const;
         size_t get_nr_polarizations() const;
 
+        void set_image(double *image) {}
+        
+        
         // Bake the plan after parameters are set
         // Must be called before the plan is used
         // if have settings have changed after construction
@@ -100,14 +108,6 @@ namespace idg {
 
         // Flush the buffer explicitly
         virtual void flush() = 0;
-
-
-        // While filling buffer, start and end regions having
-        // the same A-terms and same w-offset
-        // Calling "start/finish" will flush the non-empty buffer implicitly
-        void start_w_layer(double wOffsetInLambda);
-
-        void finish_w_layer();
 
         void start_aterm(
             size_t nrStations,
@@ -123,6 +123,23 @@ namespace idg {
             const std::complex<double>* aterm);
 
         void finish_aterm();
+        
+        virtual bool request_visibilities(
+            size_t rowId,
+            size_t timeIndex,
+            size_t antenna1,
+            size_t antenna2,
+            const double* uvwInMeters) {}
+
+        bool request_visibilities(
+            size_t timeIndex,
+            size_t antenna1,
+            size_t antenna2,
+            const double* uvwInMeters) {}
+
+        virtual std::vector<std::pair<size_t, std::complex<float>*>> compute() {}
+
+        virtual void finished_reading() {}
 
         // Methods the transform the grid. i.e., perform FFT, scaling,
         // and apply the sheroidal
@@ -151,14 +168,9 @@ namespace idg {
             size_t width,
             std::complex<double>* grid);
 
-        // Internal or deprecated methods
+        void set_subgrid_size(const size_t size);
+        size_t get_subgrid_size() const;
 
-        // Internal function, not needed for most users
-        void internal_set_subgrid_size(const size_t size);
-        size_t internal_get_subgrid_size() const;
-
-        // Deprecated: use cell size
-        void set_image_size(double imageSize);
         double get_image_size() const;
 
     protected:
@@ -170,7 +182,7 @@ namespace idg {
         size_t baseline_index(size_t antenna1, size_t antenna2) const;
 
         // Other helper routines
-        void malloc_buffers();
+        virtual void malloc_buffers();
         void reset_buffers();
         void set_uvw_to_infinity();
         void init_default_aterm();
@@ -191,9 +203,8 @@ namespace idg {
         size_t m_subgridSize;
         float  m_cellHeight;
         float  m_cellWidth;
-        float  m_wOffsetInLambda;
-        size_t m_wKernelSize;
-        float  m_imageSize; // TODO: deprecated, remove member
+        float  m_wStepInLambda;
+        size_t m_kernel_size;
         Array1D<unsigned int>  m_aterm_offsets;
         proxy::Proxy* m_proxy;
 
@@ -207,10 +218,10 @@ namespace idg {
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs;                         // BL
         Array3D<Visibility<std::complex<float>>> m_bufferVisibilities;   // BL x TI x CH
 
-        std::complex<double>* m_grid_double; // HACK: pointer to double precision grid
-        Array3D<std::complex<float>> m_grid;  // HACK: complex<float> as needed for kernel
+        Grid* m_grid; // pointer grid
     };
 
+} // namespace api
 } // namespace idg
 
 #endif

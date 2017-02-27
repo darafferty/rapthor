@@ -26,29 +26,38 @@ else()
 endif()
 
 
+# set cmake module path
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+
 
 find_package(IDG NO_MODULE)
 include_directories (${IDG_INCLUDE_DIR})
 
+find_package(LAPACKE)
+include_directories (${LAPACK_INCLUDE_DIR})
 
 
 # sources and header files
 set (${PROJECT_NAME}_headers
-    idg-wsclean.h
-    Scheme.h
-    GridderPlan.h
-    DegridderPlan.h
+    Buffer.h
+    BufferSet.h
+    GridderBuffer.h
+    DegridderBuffer.h
     Datatypes.h
+    taper.h
 )
 
 set (${PROJECT_NAME}_sources
-    Scheme.cpp
-    GridderPlan.cpp
-    DegridderPlan.cpp
+    Buffer.cpp
+    BufferSet.cpp
+    GridderBuffer.cpp
+    DegridderBuffer.cpp
+    taper.cpp
 )
 
 set (${PROJECT_NAME}_link_libraries
-    idg
+    ${IDG_LIB}
+    ${LAPACK_LIB}
 )
 
 add_library(
@@ -67,6 +76,13 @@ target_link_libraries (
 install(
     FILES
     ${${PROJECT_NAME}_headers}
+    DESTINATION
+    include/idg-wsclean
+)
+
+install(
+    FILES
+    idg-wsclean.h
     DESTINATION
     include
 )

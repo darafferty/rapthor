@@ -1,19 +1,20 @@
 /*
- * DegridderPlan.h
+ * DegridderBuffer.h
  * Access to IDG's high level degridder routines
  */
 
 
-#include "DegridderPlan.h"
+#include "DegridderBuffer.h"
 
 
 using namespace std;
 
 namespace idg {
+namespace api {
 
-    DegridderPlan::DegridderPlan(Type architecture,
+    DegridderBuffer::DegridderBuffer(Type architecture,
                                  size_t bufferTimesteps)
-        : Scheme(architecture, bufferTimesteps),
+        : Buffer(architecture, bufferTimesteps),
           m_buffer_full(false),
           m_data_read(true)
     {
@@ -23,7 +24,7 @@ namespace idg {
     }
 
 
-    DegridderPlan::~DegridderPlan()
+    DegridderBuffer::~DegridderBuffer()
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -31,7 +32,7 @@ namespace idg {
     }
 
 
-    bool DegridderPlan::request_visibilities(
+    bool DegridderBuffer::request_visibilities(
         size_t rowId,
         size_t timeIndex,
         size_t antenna1,
@@ -89,7 +90,6 @@ namespace idg {
             static_cast<float>(uvwInMeters[2])
         };
 
-        // if (antenna1 > antenna2) swap(antenna1, antenna2);
         m_bufferStationPairs(local_bl) = {
             int(antenna1),
             int(antenna2)
@@ -99,7 +99,7 @@ namespace idg {
     }
 
 
-//     void DegridderPlan::read_visibilities(
+//     void DegridderBuffer::read_visibilities(
 //      size_t rowId,
 //      complex<float>* visibilities)
 //     {
@@ -120,7 +120,7 @@ namespace idg {
 //              visibilities);
 //     }
 // 
-//     void DegridderPlan::read_visibilities(
+//     void DegridderBuffer::read_visibilities(
 //         size_t timeIndex,
 //         size_t antenna1,
 //         size_t antenna2,
@@ -148,39 +148,43 @@ namespace idg {
 // 
 
     // Must be called whenever the buffer is full or no more data added
-    void DegridderPlan::flush()
+    void DegridderBuffer::flush()
     {
         if (m_buffer_full == true && m_data_read == false) return;
 
         // Return if no input in buffer
         if (m_timeindices.size() == 0) return;
 
-        // TODO: remove below //////////////////////////
-        // HACK: copy double precison grid to single precison
-        for (auto p = 0; p < m_nrPolarizations; ++p) {
-            for (auto y = 0; y < m_gridHeight; ++y) {
-                for (auto x = 0; x < m_gridWidth; ++x) {
-                    m_grid(p, y, x) = complex<float>(
-                        m_grid_double[p*m_gridHeight*m_gridWidth
-                                      + y*m_gridWidth + x]);
-                }
-            }
-        }
-        std::cout << "flush: grid point 0: " << m_grid(0, 0, 0) << " " << m_grid(0, 0, 1) << std::endl;
-        
-        // TODO: remove above //////////////////////////
+//         // TODO: remove below //////////////////////////
+//         // HACK: copy double precison grid to single precison
+//         for (auto p = 0; p < m_nrPolarizations; ++p) {
+//             for (auto y = 0; y < m_gridHeight; ++y) {
+//                 for (auto x = 0; x < m_gridWidth; ++x) {
+//                     m_grid(0, p, y, x) = complex<float>(
+//                         m_grid_double[p*m_gridHeight*m_gridWidth
+//                                       + y*m_gridWidth + x]);
+//                 }
+//             }
+//         }
+// 
+//         // TODO: remove above //////////////////////////
 
-        // int kernSize = max(m_wKernelSize, m_aKernelSize, m_spheroidalKernelSize);
-        int kernelSize = m_wKernelSize;
+        std::cout << "m_nrGroups: " << m_nrGroups << std::endl;
+        std::cout << "m_bufferTimesteps: " << m_bufferTimesteps << std::endl;
+        std::cout << "nr_channels: " << get_frequencies_size() << std::endl;
+        std::cout << "m_nrGroups*m_bufferTimesteps: " << (m_nrGroups*m_bufferTimesteps) << std::endl;
+        std::cout << "m_nrGroups*m_bufferTimesteps*nr_channels: " << (m_nrGroups*m_bufferTimesteps*get_frequencies_size()) << std::endl;
+        std::cout << "m_row_ids_to_data.size()" << m_row_ids_to_data.size() << std::endl;
+        
         m_proxy->degridding(
-            m_wOffsetInLambda,
+            m_wStepInLambda,
             m_cellHeight,
-            m_wKernelSize,
+            m_kernel_size,
             m_frequencies,
             m_bufferVisibilities,
             m_bufferUVW,
             m_bufferStationPairs,
-            m_grid,
+            *m_grid,
             m_aterms,
             m_aterm_offsets,
             m_spheroidal);
@@ -189,59 +193,61 @@ namespace idg {
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
+        
         set_uvw_to_infinity();
+        
         m_data_read = false;
     }
 
 
-    void DegridderPlan::transform_grid(
+    void DegridderBuffer::transform_grid(
         double crop_tolerance,
         size_t nr_polarizations,
         size_t height,
         size_t width,
         complex<double> *grid)
     {
-        // Normal case: no arguments -> transform member grid
-        // Note: the other case is to perform the transform on a copy
-        // so that the process can be monitored
-        if (grid == nullptr) {
-            nr_polarizations = m_nrPolarizations;
-            height           = m_gridHeight;
-            width            = m_gridWidth;
-            grid             = m_grid_double;
-        }
-
-        // FFT complex-to-complex for each polarization
-        std::cout << "calling fft_grid" << std::endl;
-        fft_grid(nr_polarizations, height, width, grid);
-        std::cout << "returned from fft_grid" << std::endl;
-
-        // // TODO: Apply spheroidal here as well?
-        // Grid2D<float> spheroidal_grid(height, width);
-        // resize2f(static_cast<int>(m_subgridSize),
-        //          static_cast<int>(m_subgridSize),
-        //          m_spheroidal.data(),
-        //          static_cast<int>(height),
-        //          static_cast<int>(width),
-        //          spheroidal_grid.data());
-
-        // for (auto pol = 0; pol < nr_polarizations; ++pol) {
-        //     for (auto y = 0; y < height; ++y) {
-        //         for (auto x = 0; x < width; ++x) {
-        //             complex<double> scale;
-        //             if (spheroidal_grid(y,x) >= crop_tolerance) {
-        //                 scale = complex<double>(1.0/spheroidal_grid(y,x));
-        //             } else {
-        //                 scale = 0.0;
-        //             }
-        //             grid[pol*height*width + y*width + x] *= scale;
-        //         }
-        //     }
-        // }
+//         // Normal case: no arguments -> transform member grid
+//         // Note: the other case is to perform the transform on a copy
+//         // so that the process can be monitored
+//         if (grid == nullptr) {
+//             nr_polarizations = m_nrPolarizations;
+//             height           = m_gridHeight;
+//             width            = m_gridWidth;
+//             grid             = m_grid_double;
+//         }
+// 
+//         // FFT complex-to-complex for each polarization
+//         std::cout << "calling fft_grid" << std::endl;
+//         fft_grid(nr_polarizations, height, width, grid);
+//         std::cout << "returned from fft_grid" << std::endl;
+// 
+//         // // TODO: Apply spheroidal here as well?
+//         // Grid2D<float> spheroidal_grid(height, width);
+//         // resize2f(static_cast<int>(m_subgridSize),
+//         //          static_cast<int>(m_subgridSize),
+//         //          m_spheroidal.data(),
+//         //          static_cast<int>(height),
+//         //          static_cast<int>(width),
+//         //          spheroidal_grid.data());
+// 
+//         // for (auto pol = 0; pol < nr_polarizations; ++pol) {
+//         //     for (auto y = 0; y < height; ++y) {
+//         //         for (auto x = 0; x < width; ++x) {
+//         //             complex<double> scale;
+//         //             if (spheroidal_grid(y,x) >= crop_tolerance) {
+//         //                 scale = complex<double>(1.0/spheroidal_grid(y,x));
+//         //             } else {
+//         //                 scale = 0.0;
+//         //             }
+//         //             grid[pol*height*width + y*width + x] *= scale;
+//         //         }
+//         //     }
+//         // }
     }
 
 
-    std::vector<std::pair<size_t, std::complex<float>*>> DegridderPlan::compute()
+    std::vector<std::pair<size_t, std::complex<float>*>> DegridderBuffer::compute()
     {
         flush();
         m_buffer_full =  false;
@@ -249,7 +255,7 @@ namespace idg {
     }
 
 
-    void DegridderPlan::finished_reading()
+    void DegridderBuffer::finished_reading()
     {
         #if defined(DEBUG)
         cout << "FINISHED READING: buffer full " << m_buffer_full << endl;
@@ -259,6 +265,7 @@ namespace idg {
         m_data_read = true;
     }
 
+} // namespace api
 } // namespace idg
 
 
@@ -269,24 +276,24 @@ namespace idg {
 // Python, Julia, Matlab, ...
 extern "C" {
 
-    idg::DegridderPlan* DegridderPlan_init(unsigned int type,
+    idg::api::DegridderBuffer* DegridderBuffer_init(unsigned int type,
                                            unsigned int bufferTimesteps)
     {
-        auto proxytype = idg::Type::CPU_REFERENCE;
+        auto proxytype = idg::api::Type::CPU_REFERENCE;
         if (type == 0) {
-            proxytype = idg::Type::CPU_REFERENCE;
+            proxytype = idg::api::Type::CPU_REFERENCE;
         } else if (type == 1) {
-            proxytype = idg::Type::CPU_OPTIMIZED;
+            proxytype = idg::api::Type::CPU_OPTIMIZED;
         }
-        return new idg::DegridderPlan(proxytype, bufferTimesteps);
+        return new idg::api::DegridderBuffer(proxytype, bufferTimesteps);
     }
 
-    void DegridderPlan_destroy(idg::DegridderPlan* p) {
+    void DegridderBuffer_destroy(idg::api::DegridderBuffer* p) {
        delete p;
     }
 
-    // void DegridderPlan_request_visibilities(
-    //     idg::DegridderPlan* p,
+    // void DegridderBuffer_request_visibilities(
+    //     idg::DegridderBuffer* p,
     //     int timeIndex,
     //     int antenna1,
     //     int antenna2,
@@ -299,8 +306,8 @@ extern "C" {
     //         uvwInMeters);
     // }
 
-    int DegridderPlan_request_visibilities_with_rowid(
-        idg::DegridderPlan* p,
+    int DegridderBuffer_request_visibilities_with_rowid(
+        idg::api::DegridderBuffer* p,
         int rowId,
         int timeIndex,
         int antenna1,
@@ -317,8 +324,8 @@ extern "C" {
         else return 0;
     }
 
-//     void DegridderPlan_read_visibilities(
-//         idg::DegridderPlan* p,
+//     void DegridderBuffer_read_visibilities(
+//         idg::DegridderBuffer* p,
 //         int timeIndex,
 //         int antenna1,
 //         int antenna2,
@@ -332,8 +339,8 @@ extern "C" {
 //     }
 
 
-    void DegridderPlan_transform_grid(
-        idg::DegridderPlan* p,
+    void DegridderBuffer_transform_grid(
+        idg::api::DegridderBuffer* p,
         double crop_tolarance,
         int nr_polarizations,
         int height,

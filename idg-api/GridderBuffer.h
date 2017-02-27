@@ -1,17 +1,17 @@
 /**
- * GridderPlan.h
+ * GridderBuffer.h
  *
- * \class GridderPlan
+ * \class GridderBuffer
  *
  * \brief Access to IDG's high level gridder routines
  *
- * The GridderPlan manages a buffer of a fixed number of time steps
+ * The GridderBuffer manages a buffer of a fixed number of time steps
  * One fills the buffer, which fill occasionally be flushed to grid
  * the visibilities onto the grid.
  *
  * Usage (pseudocode):
  *
- * idg::GridderPlan plan(...);
+ * idg::GridderBuffer plan(...);
  * plan.set_grid(grid);
  * plan.set_other_properties(...);
  * plan.bake();
@@ -42,18 +42,19 @@
 #if defined(BUILD_LIB_CPU)
 #include "idg-cpu.h"
 #endif
-#include "Scheme.h"
+#include "Buffer.h"
 
 namespace idg {
+namespace api {
 
-    class GridderPlan : public Scheme
+    class GridderBuffer : public Buffer
     {
     public:
         // Constructors and destructor
-        GridderPlan(Type architecture = Type::CPU_REFERENCE,
+        GridderBuffer(Type architecture = Type::CPU_REFERENCE,
                     size_t bufferTimesteps = 4096);
 
-        virtual ~GridderPlan();
+        virtual ~GridderBuffer();
 
         /** \brief Adds the visibilities to the buffer
          *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
@@ -93,6 +94,9 @@ namespace idg {
             size_t width               = 0,
             std::complex<double> *grid = nullptr) override;
             
+    protected:
+        virtual void malloc_buffers();
+
     private:
 
         //secondary buffers      
@@ -102,9 +106,11 @@ namespace idg {
         
 
         std::thread m_flush_thread;
+        void flush_thread_worker();
     };
     
 
+} // namespace api
 } // namespace idg
 
 #endif
