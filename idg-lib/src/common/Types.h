@@ -8,7 +8,7 @@ namespace idg {
 
     /* Structures */
     
-    typedef struct { int x, y; } Coordinate;
+    typedef struct { int x, y, z; } Coordinate;
 
     typedef struct { unsigned int station1, station2; } Baseline;
 
@@ -17,7 +17,6 @@ namespace idg {
         int time_offset;
         int nr_timesteps;
         int aterm_index;
-        int w_index;
         Baseline baseline;
         Coordinate coordinate; } Metadata;
 
@@ -496,11 +495,129 @@ namespace idg {
             bool   m_delete_buffer;
             T*           m_buffer;
     };
+    
+    template<class T>
+    class Grid_ {
+        public:
+            Grid_(
+                size_t nr_w_layers,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                m_w_dim(nr_w_layers),
+                m_z_dim(z_dim),
+                m_y_dim(y_dim),
+                m_x_dim(x_dim),
+                m_delete_buffer((nr_w_layers*x_dim*y_dim*z_dim) > 0),
+                m_buffer((T*) malloc(nr_w_layers*z_dim*y_dim*x_dim*sizeof(T)))
+            {}
+
+            Grid_(
+                T* data,
+                size_t nr_w_layers,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                m_w_dim(nr_w_layers),
+                m_z_dim(z_dim),
+                m_y_dim(y_dim),
+                m_x_dim(x_dim),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {}
+
+            Grid_(const Grid_& other) = delete;
+            Grid_& operator=(const Grid_& rhs) = delete;
+
+            Grid_(Grid_&& other)
+                : m_x_dim(other.m_x_dim),
+                  m_y_dim(other.m_y_dim),
+                  m_z_dim(other.m_z_dim),
+                  m_w_dim(other.m_w_dim),
+                  m_delete_buffer(other.m_delete_buffer),
+                  m_buffer(other.m_buffer)
+            {
+                other.m_buffer = nullptr;
+            }
+
+            // move assignment operator
+            Grid_& operator=(Grid_&& other)
+            {
+                if (m_delete_buffer) free(m_buffer);
+                m_w_dim = other.m_w_dim;
+                m_x_dim = other.m_x_dim;
+                m_y_dim = other.m_y_dim;
+                m_z_dim = other.m_z_dim;
+                m_delete_buffer = other.m_delete_buffer;
+                m_buffer = other.m_buffer;
+                other.m_buffer = nullptr;
+            }
+
+            virtual ~Grid_() { if (m_delete_buffer) free(m_buffer); }
+
+            T* data(
+                size_t w=0,
+                size_t z=0,
+                size_t y=0,
+                size_t x=0) const
+            {
+                return &m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+            }
+
+            size_t get_x_dim() const { return m_x_dim; }
+            size_t get_y_dim() const { return m_y_dim; }
+            size_t get_z_dim() const { return m_z_dim; }
+            size_t get_w_dim() const { return m_w_dim; }
+            size_t get_nr_w_layers() const { return m_w_dim; }
+
+            const T& operator()(
+                size_t w,
+                size_t z,
+                size_t y,
+                size_t x) const
+            {
+                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+            }
+
+            T& operator()(
+                size_t w,
+                size_t z,
+                size_t y,
+                size_t x)
+            {
+                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+            }
+
+            void init(const T& a) {
+                for (unsigned int w = 0; w < get_w_dim(); ++w) {
+                    for (unsigned int z = 0; z < get_z_dim(); ++z) {
+                        for (unsigned int y = 0; y < get_y_dim(); ++y) {
+                            for (unsigned int x = 0; x < get_x_dim(); ++x) {
+                                (*this)(w, z, y, x) = a;
+                            }
+                        }
+                    }
+                }
+            }
+
+            size_t bytes() const {
+                return get_w_dim() * get_z_dim() *
+                       get_y_dim() * get_x_dim() * sizeof(T);
+            }
+
+        private:
+            size_t m_x_dim;
+            size_t m_y_dim;
+            size_t m_z_dim;
+            size_t m_w_dim;
+            bool   m_delete_buffer;
+            T*           m_buffer;
+    };
 
     
+    typedef Grid_<std::complex<float>> Grid;
+    
     /*               */
-    typedef Array3D<std::complex<float>> Grid;
-
     
     /* Output */
 
@@ -569,7 +686,7 @@ namespace idg {
     template<class T>
     std::ostream& operator<<(
         std::ostream& os,
-        const Array4D<T>& a)
+        const Grid_<T>& a)
     {
         for (unsigned int w = 0; w < a.get_w_dim(); ++w) {
             os << std::endl;

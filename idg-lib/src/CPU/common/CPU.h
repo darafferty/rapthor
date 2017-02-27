@@ -27,6 +27,9 @@ namespace idg {
                     // Destructor
                     virtual ~CPU();
 
+                    virtual bool supports_wstack_gridding() {return kernels.has_adder_wstack();}
+                    virtual bool supports_wstack_degridding() {return kernels.has_splitter_wstack();}
+                    
                     kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
 
                 private:
@@ -78,12 +81,12 @@ namespace idg {
                     virtual void add_subgrids_to_grid(
                         const Plan& plan,
                         const Array4D<std::complex<float>>& subgrids,
-                        Array3D<std::complex<float>>& grid);
+                        Grid& grid);
 
                     virtual void split_grid_into_subgrids(
                         const Plan& plan,
                         Array4D<std::complex<float>>& subgrids,
-                        const Array3D<std::complex<float>>& grid);
+                        const Grid& grid);
 
                     virtual void degrid_from_subgrids(
                         const Plan& plan,

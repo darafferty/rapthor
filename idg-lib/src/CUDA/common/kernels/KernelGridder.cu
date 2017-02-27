@@ -64,7 +64,7 @@ __device__ void kernel_gridder_(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.w_index;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += blockSize) {

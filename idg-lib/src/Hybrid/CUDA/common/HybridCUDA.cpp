@@ -67,7 +67,7 @@ namespace idg {
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                Array3D<std::complex<float>>& grid,
+                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -100,6 +100,7 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
                 auto nr_timeslots = aterms.get_w_dim();
                 auto grid_size    = grid.get_x_dim();
+                auto nr_w_layers  = grid.get_nr_w_layers();
                 auto image_size   = cell_size * grid_size;
 
                 // Configuration
@@ -256,7 +257,11 @@ namespace idg {
                         #pragma omp critical (CPU)
                         {
                             powerStates[0]  = hostPowerSensor->read();
-                            cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
+                            if (nr_w_layers>1) {
+                                cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
+                            } else {
+                                cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
+                            }
                             powerStates[1]  = hostPowerSensor->read();
                         }
 
@@ -343,7 +348,7 @@ namespace idg {
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                const Array3D<std::complex<float>>& grid,
+                const Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -376,6 +381,7 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
                 auto nr_timeslots = aterms.get_w_dim();
                 auto grid_size    = grid.get_x_dim();
+                auto nr_w_layers  = grid.get_nr_w_layers();
                 auto image_size   = cell_size * grid_size;
 
                 // Configuration
@@ -401,7 +407,6 @@ namespace idg {
                     htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
 
                     if (d == 0) {
-                        device.reuse_host_grid(grid_size, grid.data());
                         device.reuse_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                         device.reuse_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                     }
@@ -489,7 +494,11 @@ namespace idg {
 
                         // Extract subgrid from grid
                         powerStates[0] = hostPowerSensor->read();
-                        cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
+                        if (nr_w_layers>1) {
+                            cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
+                        } else {
+                            cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
+                        }
                         powerStates[1] = hostPowerSensor->read();
 
                         #pragma omp critical (lock)

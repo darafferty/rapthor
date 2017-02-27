@@ -29,6 +29,8 @@ namespace idg {
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array1D<unsigned int>& aterms_offsets,
+                const float w_step = 0.0,
+                const int nr_w_layers = 1,
                 const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
 
             // Destructor
@@ -43,6 +45,8 @@ namespace idg {
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array1D<unsigned int>& aterms_offsets,
+                const float w_step = 0.0,
+                const int nr_w_layers = 1,
                 const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
 
             // total number of subgrids
@@ -89,12 +93,16 @@ namespace idg {
             const Metadata* get_metadata_ptr(int baseline = 0) const;
 
             void copy_metadata(void *ptr) const;
+            
+            bool get_needs_w_stacking() const {return needs_w_stacking;}
 
         private:
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;
             std::vector<int> total_nr_timesteps_per_baseline;
             std::vector<int> total_nr_visibilities_per_baseline;
+            float w_step;
+            bool needs_w_stacking;
 
         }; // class Plan
 

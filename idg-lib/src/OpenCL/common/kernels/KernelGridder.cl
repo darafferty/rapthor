@@ -57,7 +57,7 @@ __kernel void kernel_gridder_1(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.w_index;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Iterate all timesteps
     int current_nr_timesteps = MAX_NR_TIMESTEPS;
@@ -237,7 +237,7 @@ __kernel void kernel_gridder_4(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.w_index;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS_4; i += blocksize) {
@@ -426,7 +426,7 @@ __kernel void kernel_gridder_8(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.w_index;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS_8; i += blocksize) {

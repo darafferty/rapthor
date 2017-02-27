@@ -425,7 +425,7 @@ namespace idg {
             void CPU::add_subgrids_to_grid(
                 const Plan& plan,
                 const Array4D<std::complex<float>>& subgrids,
-                Array3D<std::complex<float>>& grid)
+                Grid& grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -486,7 +486,7 @@ namespace idg {
             void CPU::split_grid_into_subgrids(
                 const Plan& plan,
                 Array4D<std::complex<float>>& subgrids,
-                const Array3D<std::complex<float>>& grid)
+                const Grid& grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

@@ -42,7 +42,7 @@ __kernel void kernel_degridder_1(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.w_index;
+    const float w_offset = w_step * m.coordinate.z;
 
 	// Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
@@ -210,7 +210,7 @@ __kernel void kernel_degridder_8(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.w_index;
+    const float w_offset = w_step * m.coordinate.z;
 
 	// Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;

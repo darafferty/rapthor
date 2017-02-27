@@ -123,7 +123,7 @@ namespace idg {
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    const Array3D<std::complex<float>>& grid,
+                    const Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
@@ -179,6 +179,9 @@ namespace idg {
                     return mConstants.get_nr_correlations(); }
                 unsigned int get_subgrid_size() const {
                     return mConstants.get_subgrid_size(); }
+                bool supports_wstack() {return (supports_wstack_gridding() && supports_wstack_degridding());}
+                virtual bool supports_wstack_gridding() {return false;}
+                virtual bool supports_wstack_degridding() {return false;}
 
             private:
                 //! Degrid the visibilities from a uniform grid
@@ -244,7 +247,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    const Array3D<std::complex<float>>& grid,
+                    const Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal) const;

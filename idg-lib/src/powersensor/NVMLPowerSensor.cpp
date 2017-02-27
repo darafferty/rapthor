@@ -16,14 +16,14 @@ inline void __checkNVMLCall(
     const char *const file,
     int const line)
 {
-    if (result != NVML_SUCCESS) {
-        std::cerr << "NVML Error at " << file;
-        std::cerr << ":" << line;
-        std::cerr << " in function " << func;
-        std::cerr << ": " << nvmlErrorString(result);
-        std::cerr << std::endl;
-        exit(EXIT_FAILURE);
-    }
+//     if (result != NVML_SUCCESS) {
+//         std::cerr << "NVML Error at " << file;
+//         std::cerr << ":" << line;
+//         std::cerr << " in function " << func;
+//         std::cerr << ": " << nvmlErrorString(result);
+//         std::cerr << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
 
 }
 #endif
