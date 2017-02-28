@@ -20,7 +20,6 @@ namespace idg {
                 mInfo(info),
                 function_adder_wstack(nullptr),
                 function_splitter_wstack(nullptr)
-
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

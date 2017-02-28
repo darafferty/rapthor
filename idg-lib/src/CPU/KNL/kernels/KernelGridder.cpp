@@ -45,7 +45,6 @@ void kernel_gridder_(
         const int y_coordinate = m.coordinate.y;
         const float w_offset_in_lambda = w_step_in_lambda * m.w_index;
 
-
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);
         const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);

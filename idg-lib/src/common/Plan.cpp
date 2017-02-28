@@ -173,7 +173,7 @@ namespace idg {
         needs_w_stacking = false;
 
         // Iterate all baselines
-//         #pragma omp parallel for
+        #pragma omp parallel for
         for (int bl = 0; bl < nr_baselines; bl++) {
             // Get thread id
             const int thread_id = omp_get_thread_num();

@@ -1,4 +1,5 @@
 #include <complex>
+#include <iostream>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,6 @@
 
 #include "Types.h"
 
-#include <iostream>
 
 extern "C" {
 void kernel_splitter_wstack(
@@ -52,7 +52,11 @@ void kernel_splitter_wstack(
 
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-						int grid_idx = (grid_z * NR_POLARIZATIONS * gridsize * gridsize) + (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+						int grid_idx =
+						    (grid_z * NR_POLARIZATIONS * gridsize * gridsize) + 
+						    (pol * gridsize * gridsize) +
+						    ((grid_y + y) * gridsize) +
+						    (grid_x + x);
                         subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
                     }
                 }

@@ -1,4 +1,5 @@
 #include <complex>
+#include <iostream>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,6 @@
 
 #include "Types.h"
 
-#include <iostream>
 
 extern "C" {
 void kernel_splitter(

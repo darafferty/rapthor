@@ -7,7 +7,6 @@
 namespace idg {
 
     /* Structures */
-    
     typedef struct { int x, y, z; } Coordinate;
 
     typedef struct { unsigned int station1, station2; } Baseline;
@@ -172,7 +171,7 @@ namespace idg {
         private:
             size_t m_x_dim;
             bool   m_delete_buffer;
-            T*           m_buffer;
+            T*     m_buffer;
     };
 
 
@@ -269,7 +268,7 @@ namespace idg {
             size_t m_x_dim;
             size_t m_y_dim;
             bool   m_delete_buffer;
-            T*           m_buffer;
+            T*     m_buffer;
     };
 
 
@@ -375,7 +374,7 @@ namespace idg {
             size_t m_y_dim;
             size_t m_z_dim;
             bool   m_delete_buffer;
-            T*           m_buffer;
+            T*     m_buffer;
     };
 
 
@@ -493,7 +492,7 @@ namespace idg {
             size_t m_z_dim;
             size_t m_w_dim;
             bool   m_delete_buffer;
-            T*           m_buffer;
+            T*     m_buffer;
     };
     
     template<class T>
@@ -611,13 +610,12 @@ namespace idg {
             size_t m_z_dim;
             size_t m_w_dim;
             bool   m_delete_buffer;
-            T*           m_buffer;
+            T*     m_buffer;
     };
 
     
     typedef Grid_<std::complex<float>> Grid;
     
-    /*               */
     
     /* Output */
 
