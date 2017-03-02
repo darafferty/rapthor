@@ -104,17 +104,20 @@ void *NVMLPowerSensor::IOthread() {
 
 
 PowerSensor::State NVMLPowerSensor::read() {
+    State state;
+    state.timeAtRead = omp_get_wtime();
+
+#ifdef BUILD_LIB_CUDA
     unsigned int power;
     checkNVMLCall(nvmlDeviceGetPowerUsage(device, &power));
 
-    State state;
-    state.timeAtRead = omp_get_wtime();
     state.instantaneousPower = power;
 
     state.consumedEnergyDevice = previousState.consumedEnergyDevice;
     float averagePower = (state.instantaneousPower + previousState.instantaneousPower) / 2;
     float timeElapsed = (state.timeAtRead - previousState.timeAtRead);
     state.consumedEnergyDevice += averagePower * timeElapsed;
+#endif
 
     return state;
 }
