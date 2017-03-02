@@ -22,10 +22,12 @@ endif()
 install(
 	FILES
 	kernels/KernelAdder.cpp
+	kernels/KernelAdderWStack.cpp
 	kernels/KernelDegridder.cpp
 	kernels/KernelFFT.cpp
 	kernels/KernelGridder.cpp
 	kernels/KernelSplitter.cpp
+	kernels/KernelSplitterWStack.cpp
 	${CMAKE_SOURCE_DIR}/src/common/Types.h
 	kernels/Math.h
 	DESTINATION
