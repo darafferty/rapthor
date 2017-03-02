@@ -25,7 +25,8 @@ set (${PROJECT_NAME}_sources
 )
 
 include_directories(
-    ${LIKWID_INCLUDE_DIRS}
+    ${LIKWID_INCLUDE_DIRS} % LikwidPowerSensor
+    ${CUDA_INCLUDE_DIRS}   % NVMLPowerSensor
 )
 
 add_library(
