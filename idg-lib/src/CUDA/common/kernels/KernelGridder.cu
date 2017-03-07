@@ -64,7 +64,8 @@ __device__ void kernel_gridder_(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.coordinate.z;
+    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
+    const float w_offset = 2*M_PI*w_offset_in_lambda;
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += blockSize) {
@@ -123,9 +124,10 @@ __device__ void kernel_gridder_(
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-            float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-            float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+            float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float tmp = (l * l) + (m * m);
+            float n = tmp / (1.0f + sqrtf(1.0f - tmp));
 
             // Iterate all timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {

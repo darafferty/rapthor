@@ -80,11 +80,13 @@ namespace idg {
 
                     virtual void add_subgrids_to_grid(
                         const Plan& plan,
+                        const float w_step,
                         const Array4D<std::complex<float>>& subgrids,
                         Grid& grid);
 
                     virtual void split_grid_into_subgrids(
                         const Plan& plan,
+                        const float w_step,
                         Array4D<std::complex<float>>& subgrids,
                         const Grid& grid);
 

@@ -16,10 +16,13 @@ namespace idg {
 
                     ~HybridCUDA();
 
+                    virtual bool supports_wstack_gridding() {return cpuProxy->supports_wstack_gridding();}
+                    virtual bool supports_wstack_degridding() {return cpuProxy->supports_wstack_degridding();}
+
                 private:
                     virtual void do_gridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
@@ -33,7 +36,7 @@ namespace idg {
 
                     virtual void do_degridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,

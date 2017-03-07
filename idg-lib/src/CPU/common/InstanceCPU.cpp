@@ -18,6 +18,11 @@ namespace idg {
                 ProxyInfo info) :
                 KernelsInstance(constants),
                 mInfo(info),
+                function_gridder(nullptr),
+                function_degridder(nullptr),
+                function_fft(nullptr),
+                function_adder(nullptr),
+                function_splitter(nullptr),
                 function_adder_wstack(nullptr),
                 function_splitter_wstack(nullptr)
             {
@@ -30,6 +35,13 @@ namespace idg {
                 compile(compiler, flags);
                 load_shared_objects();
                 load_kernel_funcions();
+                std::cout << "function_gridder: " << function_gridder << std::endl;
+                std::cout << "function_degridder: " << function_degridder << std::endl;
+                std::cout << "function_fft: " << function_fft << std::endl;
+                std::cout << "function_adder: " << function_adder << std::endl;
+                std::cout << "function_splitter: " << function_splitter << std::endl;
+                std::cout << "function_adder_wstack: " << function_adder_wstack << std::endl;
+                std::cout << "function_splitter_wstack: " << function_splitter_wstack << std::endl;
             }
 
             // Destructor
@@ -214,7 +226,7 @@ namespace idg {
             #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
             #define sig_splitter        (void (*)(long,long,int,void*,void*,void*))
             #define sig_adder_wstack    (void (*)(long,long,int,int,void*,void*,void*))
-            #define sig_splitter_wstack (void (*)(long,long,int,int,void*,void*,void*))
+            #define sig_splitter_wstack (void (*)(long,long,int,void*,void*,void*))
 
 
             void InstanceCPU::run_gridder(
@@ -305,12 +317,12 @@ namespace idg {
             void InstanceCPU::run_splitter_wstack(
                 int nr_subgrids,
                 int gridsize,
-                int nr_w_layers,
                 void *metadata,
                 void *subgrid,
                 void *grid)
             {
-                (sig_splitter_wstack (void *) *function_splitter_wstack)(nr_subgrids, gridsize, nr_w_layers, metadata, subgrid, grid);
+                std::cout << "run splitter w_stack" << std::endl;
+                (sig_splitter_wstack (void *) *function_splitter_wstack)(nr_subgrids, gridsize, metadata, subgrid, grid);
             }
 
         } // namespace cpu

@@ -118,6 +118,7 @@ namespace idg {
 
                     add_subgrids_to_grid(
                         plan,
+                        w_step,
                         subgrids,
                         grid);
 
@@ -212,6 +213,7 @@ namespace idg {
                     // Run subroutines
                     split_grid_into_subgrids(
                          plan,
+                         w_step,
                          subgrids,
                          grid);
 
@@ -424,6 +426,7 @@ namespace idg {
 
             void CPU::add_subgrids_to_grid(
                 const Plan& plan,
+                const float w_step,
                 const Array4D<std::complex<float>>& subgrids,
                 Grid& grid)
             {
@@ -434,6 +437,7 @@ namespace idg {
                 // Constants
                 auto jobsize      = 128; // TODO
                 auto grid_size    = grid.get_x_dim();
+                auto nr_w_layers  = grid.get_nr_w_layers();
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
 
@@ -455,7 +459,19 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
+<<<<<<< HEAD
                     kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+=======
+                    if (w_step == 0.0)
+                    {
+                        kernels.run_adder(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
+                    else
+                    {
+                        kernels.run_adder_wstack(nr_subgrids, grid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
+
+>>>>>>> Fix CUDA kernels. Call Wstack adder and splitter from CPU and Hybrid when needed
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -485,6 +501,7 @@ namespace idg {
 
             void CPU::split_grid_into_subgrids(
                 const Plan& plan,
+                const float w_step,
                 Array4D<std::complex<float>>& subgrids,
                 const Grid& grid)
             {
@@ -516,7 +533,19 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
+<<<<<<< HEAD
                     kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+=======
+                    if (w_step == 0.0)
+                    {
+                       kernels.run_splitter(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
+                    else
+                    {
+                       kernels.run_splitter_wstack(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
+
+>>>>>>> Fix CUDA kernels. Call Wstack adder and splitter from CPU and Hybrid when needed
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)

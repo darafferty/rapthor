@@ -60,7 +60,7 @@ namespace idg {
 
             void HybridCUDA::do_gridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
@@ -229,7 +229,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
@@ -257,7 +257,7 @@ namespace idg {
                         #pragma omp critical (CPU)
                         {
                             powerStates[0]  = hostPowerSensor->read();
-                            if (nr_w_layers>1) {
+                            if (w_step != 0.0) {
                                 cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
                             } else {
                                 cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
@@ -341,7 +341,7 @@ namespace idg {
 
             void HybridCUDA::do_degridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
@@ -381,7 +381,6 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
                 auto nr_timeslots = aterms.get_w_dim();
                 auto grid_size    = grid.get_x_dim();
-                auto nr_w_layers  = grid.get_nr_w_layers();
                 auto image_size   = cell_size * grid_size;
 
                 // Configuration
@@ -494,7 +493,7 @@ namespace idg {
 
                         // Extract subgrid from grid
                         powerStates[0] = hostPowerSensor->read();
-                        if (nr_w_layers>1) {
+                        if (w_step != 0.0) {
                             cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
                         } else {
                             cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
@@ -523,7 +522,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[2], executestream);
                             device.launch_degridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[3], executestream);
                             executestream.record(outputReady);
