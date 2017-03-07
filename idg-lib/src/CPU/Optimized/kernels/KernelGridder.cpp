@@ -1,7 +1,6 @@
 #include <cmath>
 
-#if defined(__INTEL_COMPILER) || defined(HAVE_MKL)
-#define USE_VML
+#if defined(USE_VML)
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
 #endif
@@ -151,6 +150,7 @@ void kernel_gridder_(
                     float phasor_real_ = cosf(phase[i]);
                     float phasor_imag_ = sinf(phase[i]);
                     #endif
+
                     pixels_xx_real += vis_real[0][i] * phasor_real_;
                     pixels_xx_imag += vis_real[0][i] * phasor_imag_;
                     pixels_xx_real -= vis_imag[0][i] * phasor_imag_;
@@ -237,11 +237,13 @@ void kernel_gridder(
     )
 {
     int channel_offset = 0;
+    #if defined(USE_AVX512)
     for (; (channel_offset + 16) <= nr_channels; channel_offset += 16) {
         kernel_gridder_<16>(
             nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
+    #endif
 
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_gridder_<8>(

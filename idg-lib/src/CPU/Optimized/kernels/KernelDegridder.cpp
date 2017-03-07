@@ -1,7 +1,6 @@
 #include <cmath>
 
-#if defined(__INTEL_COMPILER) || defined(HAVE_MKL)
-#define USE_VML
+#if defined(USE_VML)
 #define VML_PRECISION VML_LA
 #include <mkl_vml.h>
 #endif
@@ -48,8 +47,8 @@ void kernel_degridder_(
         const int y_coordinate = m.coordinate.y;
 
         // Storage
-        float pixels_real[NR_POLARIZATIONS][SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(64)));
-        float pixels_imag[NR_POLARIZATIONS][SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(64)));
+        float pixels_real[NR_POLARIZATIONS][SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(ALIGNMENT)));
+        float pixels_imag[NR_POLARIZATIONS][SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(ALIGNMENT)));
 
         // Apply aterm to subgrid
         for (int i = 0; i < SUBGRIDSIZE * SUBGRIDSIZE; i++) {
@@ -137,7 +136,7 @@ void kernel_degridder_(
             // Iterate all channels
             for (int chan = 0; chan < current_nr_channels; chan++) {
                 // Compute phase
-                float phase[SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(64)));
+                float phase[SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(ALIGNMENT)));
 
                 for (int i = 0; i < SUBGRIDSIZE * SUBGRIDSIZE; i++) {
                     int y = i / SUBGRIDSIZE;
@@ -150,8 +149,8 @@ void kernel_degridder_(
 
                 #if defined(USE_VML)
                 // Compute phasor
-                float phasor_real[SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(64)));
-                float phasor_imag[SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(64)));
+                float phasor_real[SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(ALIGNMENT)));
+                float phasor_imag[SUBGRIDSIZE*SUBGRIDSIZE] __attribute__((aligned(ALIGNMENT)));
 
                 vmsSinCos(
                     SUBGRIDSIZE*SUBGRIDSIZE,
@@ -245,11 +244,13 @@ void kernel_degridder(
     )
 {
     int channel_offset = 0;
+    #if defined(USE_AVX512)
     for (; (channel_offset + 16) <= nr_channels; channel_offset += 16) {
         kernel_degridder_<16>(
             nr_subgrids, gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
+    #endif
 
     for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
         kernel_degridder_<8>(

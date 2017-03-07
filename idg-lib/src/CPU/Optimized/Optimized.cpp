@@ -77,7 +77,24 @@ namespace idg {
 
                 // Intel compiler
                 stringstream intel_flags;
-                intel_flags << " -qopenmp -axcore-avx2 -mkl=parallel";
+                intel_flags << " -qopenmp -xHost -mkl=parallel";
+
+                // AVX-512 (Knights Landing) specific flags
+                if (avx512_supported) {
+                    intel_flags << " -DUSE_AVX512";
+                }
+
+                // AVX-2 (Haswell) specific flags
+                if (avx2_supported) {
+                       intel_flags  << " -DUSE_AVX2";
+                }
+
+                // Flags for specific cases
+                if (avx512_supported && !avx2_supported) {
+                    intel_flags  << " -DUSE_VML";
+                }
+
+                // Alignment
                 unsigned int alignment = avx512_supported ? 64 : 32;
                 intel_flags << " -DALIGNMENT=" << alignment;
 
@@ -88,11 +105,6 @@ namespace idg {
 
                 // GNU compiler
                 stringstream gnu_flags;
-
-                #if defined(DEBUG)
-                printf("AVX512 support: %d\n", avx512_supported);
-                printf("AVX2 support: %d\n", avx2_supported);
-                #endif
 
                 gnu_flags << " -std=c++11 -fopenmp -ffast-math";
                 if (avx512_supported) {
