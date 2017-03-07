@@ -12,11 +12,14 @@ extern "C" {
 void kernel_splitter_wstack(
     const int nr_subgrids,
     const int gridsize,
-    const int max_w_index,
     const idg::Metadata metadata[],
           idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   grid[]
-    ) {
+    )
+{
+
+    const int transpose[4] = {0, 2, 1, 3};
+
     // Precompute phaosr
     float phasor_real[SUBGRIDSIZE][SUBGRIDSIZE];
     float phasor_imag[SUBGRIDSIZE][SUBGRIDSIZE];
@@ -37,27 +40,58 @@ void kernel_splitter_wstack(
         int grid_y = metadata[s].coordinate.y;
         int grid_z = metadata[s].coordinate.z;
 
-        for (int y = 0; y < SUBGRIDSIZE; y++) {
-            for (int x = 0; x < SUBGRIDSIZE; x++) {
-                // Compute shifted position in subgrid
-                int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+        if (grid_z < 0)
+        {
+            for (int y = 0; y < SUBGRIDSIZE; y++) {
+                for (int x = 0; x < SUBGRIDSIZE; x++) {
+                    // Compute shifted position in subgrid
+                    int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
 
-                // Check wheter subgrid fits in grid
-                if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
-                    grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
+                    // Check wheter subgrid fits in grid
+                    if (grid_x >= 1 && grid_x < gridsize-SUBGRIDSIZE &&
+                        grid_y >= 1 && grid_y < gridsize-SUBGRIDSIZE) {
 
-                    // Load phasor
-                    idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
+                        // Load phasor
+                        idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
 
-                    // Set grid value to subgrid
-                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-						int grid_idx =
-						    (grid_z * NR_POLARIZATIONS * gridsize * gridsize) + 
-						    (pol * gridsize * gridsize) +
-						    ((grid_y + y) * gridsize) +
-						    (grid_x + x);
-                        subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
+                        // Set grid value to subgrid
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            int grid_idx =
+                                ( -(grid_z+1) * NR_POLARIZATIONS * gridsize * gridsize) +
+                                (transpose[pol] * gridsize * gridsize) +
+                                ((gridsize - grid_y - y) * gridsize) +
+                                (gridsize - grid_x - x);
+                            subgrid[s][pol][y_dst][x_dst] = phasor * conj(grid[grid_idx]);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int y = 0; y < SUBGRIDSIZE; y++) {
+                for (int x = 0; x < SUBGRIDSIZE; x++) {
+                    // Compute shifted position in subgrid
+                    int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+
+                    // Check wheter subgrid fits in grid
+                    if (grid_x >= 1 && grid_x < gridsize-SUBGRIDSIZE &&
+                        grid_y >= 1 && grid_y < gridsize-SUBGRIDSIZE) {
+
+                        // Load phasor
+                        idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
+
+                        // Set grid value to subgrid
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            int grid_idx =
+                                (grid_z * NR_POLARIZATIONS * gridsize * gridsize) +
+                                (pol * gridsize * gridsize) +
+                                ((grid_y + y) * gridsize) +
+                                (grid_x + x);
+                            subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
+                        }
                     }
                 }
             }
