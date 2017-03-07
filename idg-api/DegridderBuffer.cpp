@@ -98,55 +98,6 @@ namespace api {
         return m_buffer_full;
     }
 
-
-//     void DegridderBuffer::read_visibilities(
-//      size_t rowId,
-//      complex<float>* visibilities)
-//     {
-//         auto indices    = m_row_ids_to_indices.at(rowId);
-//         auto local_bl   = indices.first;
-//         auto local_time = indices.second;
-// 
-//         // #if defined(DEBUG)
-//         // cout << "READING: row " << rowId
-//         //      << " at location (" <<  local_bl << ", " <<  local_time << ")"
-//         //      << endl;
-//         // #endif
-// 
-//         // copy visibilities
-//         complex<float>* start_ptr = (complex<float>*)
-//             &m_bufferVisibilities(local_bl, local_time, 0);
-//         copy(start_ptr, start_ptr + get_frequencies_size() * m_nrPolarizations,
-//              visibilities);
-//     }
-// 
-//     void DegridderBuffer::read_visibilities(
-//         size_t timeIndex,
-//         size_t antenna1,
-//         size_t antenna2,
-//         complex<float>* visibilities)
-//     {
-//         // exclude auto-correlations
-//         if (antenna1 == antenna2)
-//             throw invalid_argument("Cannot read if Antenna 1 == Antenna 2");
-// 
-//         // Make sure visibilities are computed before read
-//         flush();
-// 
-//         // Read from buffer: note m_timeStartThisBatch is fro the next batch at this point
-//         int    local_time = timeIndex - (m_timeStartThisBatch - m_bufferTimesteps);
-//         size_t local_bl   = baseline_index(antenna1, antenna2);
-// 
-//         if (local_time < 0 || local_time >= m_bufferTimesteps)
-//             throw invalid_argument("Attempt to read visibilites not in local buffer.");
-// 
-//         complex<float>* start_ptr = (complex<float>*)
-//             &m_bufferVisibilities(local_bl, local_time, 0);
-//         copy(start_ptr, start_ptr + get_frequencies_size() * m_nrPolarizations,
-//              visibilities);
-//     }
-// 
-
     // Must be called whenever the buffer is full or no more data added
     void DegridderBuffer::flush()
     {
@@ -169,13 +120,6 @@ namespace api {
 // 
 //         // TODO: remove above //////////////////////////
 
-        std::cout << "m_nrGroups: " << m_nrGroups << std::endl;
-        std::cout << "m_bufferTimesteps: " << m_bufferTimesteps << std::endl;
-        std::cout << "nr_channels: " << get_frequencies_size() << std::endl;
-        std::cout << "m_nrGroups*m_bufferTimesteps: " << (m_nrGroups*m_bufferTimesteps) << std::endl;
-        std::cout << "m_nrGroups*m_bufferTimesteps*nr_channels: " << (m_nrGroups*m_bufferTimesteps*get_frequencies_size()) << std::endl;
-        std::cout << "m_row_ids_to_data.size()" << m_row_ids_to_data.size() << std::endl;
-        
         m_proxy->degridding(
             m_wStepInLambda,
             m_cellHeight,
@@ -193,9 +137,9 @@ namespace api {
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
-        
+
         set_uvw_to_infinity();
-        
+
         m_data_read = false;
     }
 

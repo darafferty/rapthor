@@ -127,8 +127,8 @@ void init_optimal_taper_1D(int subgridsize, int gridsize, float kernelsize, floa
     
     for(int i = 0; i < N/2; i++)
     {
-        taper_subgrid[i] = (U1[N/2-1][i]);
-        taper_subgrid[N-1-i] = (U1[N/2-1][i]);
+        taper_subgrid[i] = U1[N/2-1][i]/U1[N/2-1][N/2-1];
+        taper_subgrid[N-1-i] = U1[N/2-1][i]/U1[N/2-1][N/2-1];
     }
     
     for(int i = 0; i < gridsize; i++)
@@ -212,7 +212,7 @@ void init_optimal_gridding_taper_1D(int subgridsize, int gridsize, float kernels
     
     for(int i = 0; i < N/2; i++)
     {
-        taper_subgrid[i] = taper_subgrid[N-i-1] = (U[0][i]);
+        taper_subgrid[i] = taper_subgrid[N-i-1] = U[0][i]/U[0][N/2-1];
 //         std::cout << taper_subgrid[i];
 //         if (i < N/2) std::cout << ", ";
     }

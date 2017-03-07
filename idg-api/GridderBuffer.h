@@ -72,7 +72,7 @@ namespace api {
             const std::complex<float>* visibilities);
 
         /** \brief Signal that not more visibilies are gridded */
-        void finished();
+        virtual void finished() override;
 
         /** \brief Explicitly flush the buffer */
         virtual void flush() override;

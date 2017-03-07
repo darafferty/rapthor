@@ -46,7 +46,6 @@ namespace api {
         ImageToFourier = 1
     };
 
-
     class Buffer
     {
     public:
@@ -73,8 +72,11 @@ namespace api {
         double get_cell_height() const;
         double get_cell_width() const;
 
-        void set_kernel_size(size_t size);
-        size_t get_kernel_size() const;
+        void set_w_step(float w_step);
+        float get_w_step() const;
+
+        void set_kernel_size(float size);
+        float get_kernel_size() const;
 
         void set_spheroidal(
             size_t size,
@@ -88,19 +90,12 @@ namespace api {
         void set_grid(
             Grid* grid);
 
-//         void set_grid(
-//             size_t nr_polarizations,
-//             size_t height,
-//             size_t width,
-//             std::complex<float>* grid);
-
         size_t get_grid_height() const;
         size_t get_grid_width() const;
         size_t get_nr_polarizations() const;
 
         void set_image(double *image) {}
-        
-        
+
         // Bake the plan after parameters are set
         // Must be called before the plan is used
         // if have settings have changed after construction
@@ -108,6 +103,8 @@ namespace api {
 
         // Flush the buffer explicitly
         virtual void flush() = 0;
+
+        virtual void finished() {}
 
         void start_aterm(
             size_t nrStations,
@@ -123,23 +120,6 @@ namespace api {
             const std::complex<double>* aterm);
 
         void finish_aterm();
-        
-        virtual bool request_visibilities(
-            size_t rowId,
-            size_t timeIndex,
-            size_t antenna1,
-            size_t antenna2,
-            const double* uvwInMeters) {}
-
-        bool request_visibilities(
-            size_t timeIndex,
-            size_t antenna1,
-            size_t antenna2,
-            const double* uvwInMeters) {}
-
-        virtual std::vector<std::pair<size_t, std::complex<float>*>> compute() {}
-
-        virtual void finished_reading() {}
 
         // Methods the transform the grid. i.e., perform FFT, scaling,
         // and apply the sheroidal
@@ -154,13 +134,13 @@ namespace api {
             size_t nr_polarizations    = 0,
             size_t height              = 0,
             size_t width               = 0,
-            std::complex<double> *grid = nullptr);
+            std::complex<float> *grid = nullptr);
 
         void ifft_grid(
             size_t nr_polarizations    = 0,
             size_t height              = 0,
             size_t width               = 0,
-            std::complex<double> *grid = nullptr);
+            std::complex<float> *grid = nullptr);
 
         void copy_grid(
             size_t nr_polarizations,
@@ -204,7 +184,7 @@ namespace api {
         float  m_cellHeight;
         float  m_cellWidth;
         float  m_wStepInLambda;
-        size_t m_kernel_size;
+        float  m_kernel_size;
         Array1D<unsigned int>  m_aterm_offsets;
         proxy::Proxy* m_proxy;
 

@@ -53,7 +53,6 @@ namespace api {
         delete m_proxy;
     }
 
-
     // Set/get all parameters
 
     void Buffer::set_stations(const size_t nrStations)
@@ -96,6 +95,17 @@ namespace api {
     }
 
 
+    void Buffer::set_w_step(float w_step)
+    {
+        m_wStepInLambda = w_step;
+    }
+
+
+    float Buffer::get_w_step() const
+    {
+        return m_wStepInLambda;
+    }
+
     void Buffer::set_subgrid_size(const size_t size)
     {
         m_subgridSize = size;
@@ -108,13 +118,13 @@ namespace api {
     }
 
 
-    void Buffer::set_kernel_size(size_t size)
+    void Buffer::set_kernel_size(float size)
     {
         m_kernel_size = size;
     }
 
 
-    size_t Buffer::get_kernel_size() const
+    float Buffer::get_kernel_size() const
     {
         return m_kernel_size;
     }
@@ -142,6 +152,7 @@ namespace api {
             }
         }
     }
+
 
     void Buffer::set_frequencies(
         size_t channelCount,
@@ -180,27 +191,9 @@ namespace api {
         return m_frequencies.get_x_dim();
     }
 
-//     void Buffer::set_grid(
-//         const size_t nr_polarizations,
-//         const size_t size,
-//         std::complex<float>* grid)
-//     {
-//         set_grid(nr_polarizations, size, size, grid);
-//     }
-
-
     void Buffer::set_grid(
         Grid* grid)
     {
-//         // For later support of non-square grids and nr_polarizations=1
-//         if (height != width)
-//             throw invalid_argument("Only square grids supported.");
-//         if (nr_polarizations != 4)
-//             throw invalid_argument("The number of polarization pairs must be equals 4.");
-// 
-//         m_nrPolarizations = nr_polarizations;
-//         m_gridHeight      = height;
-//         m_gridWidth       = width;
         m_grid            = grid;
     }
 
@@ -239,7 +232,7 @@ namespace api {
 
         int nr_correlations = 4;
         CompileConstants constants(nr_correlations, m_subgridSize);
-        
+
         #if defined(BUILD_LIB_CPU)
         if (m_architecture == Type::CPU_REFERENCE) {
             m_proxy = new proxy::cpu::Reference(constants);
@@ -370,25 +363,13 @@ namespace api {
         size_t nr_polarizations,
         size_t height,
         size_t width,
-        complex<double> *grid)
+        complex<float> *grid)
     {
-//         // Normal case: no arguments -> transform member grid
-//         // Note: the other case is to perform the transform on a copy
-//         // so that the process can be monitored
-//         if (grid == nullptr) {
-//             nr_polarizations = m_nrPolarizations;
-//             height           = m_gridHeight;
-//             width            = m_gridWidth;
-//             grid             = m_grid_double;
-//         }
-// 
-//          #pragma omp parallel for
-//         for (int pol = 0; pol < m_nrPolarizations; pol++) {
-//             fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
-//           std::cout << "calling fft2" << std::endl;
-//             fft2(height, width, &grid[pol*height*width]);
-//           std::cout << "returned from fft2" << endl;
-//         }
+        #pragma omp parallel for
+        for (int pol = 0; pol < m_nrPolarizations; pol++) {
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+            fft2f(height, width, &grid[pol*height*width]);
+        }
     }
 
 
@@ -396,7 +377,7 @@ namespace api {
         size_t nr_polarizations,
         size_t height,
         size_t width,
-        complex<double> *grid)
+        complex<float> *grid)
     {
 //         // Normal case: no arguments -> transform member grid
 //         // Note: the other case is to perform the transform on a copy
@@ -408,11 +389,11 @@ namespace api {
 //             grid             = m_grid_double;
 //         }
 // 
-//         #pragma omp parallel for
-//         for (int pol = 0; pol < m_nrPolarizations; pol++) {
-//             ifft2(height, width, &grid[pol*height*width]);
-//             fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
-//         }
+        #pragma omp parallel for
+        for (int pol = 0; pol < m_nrPolarizations; pol++) {
+            ifft2f(height, width, &grid[pol*height*width]);
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+        }
     }
 
 

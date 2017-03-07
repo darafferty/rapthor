@@ -27,12 +27,15 @@ namespace api {
             float max_w,         
             BufferSetType buffer_set_type);
         
-        Buffer* operator[] (int i);
+        DegridderBuffer* get_degridder(int i);
+        GridderBuffer* get_gridder(int i);
     
-        void set_image(const double* image);
-        void get_image(double* image) {}
+        virtual void set_image(const double* image);
+        virtual void get_image(double* image);
+        virtual void finished();
         
     private:
+        BufferSetType m_buffer_set_type;
         std::vector<std::unique_ptr<Buffer>> m_buffers;
         std::vector<float> m_taper_subgrid;
         std::vector<float> m_taper_grid;
