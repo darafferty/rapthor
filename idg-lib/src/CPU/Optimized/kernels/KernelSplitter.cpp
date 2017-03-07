@@ -13,7 +13,6 @@ void kernel_splitter(
     const long nr_subgrids,
     const long grid_size,
     const int subgrid_size,
-    const int max_w_index,
     const idg::Metadata metadata[],
           idg::float2   subgrid[][NR_POLARIZATIONS][subgrid_size][subgrid_size],
     const idg::float2   grid[]
