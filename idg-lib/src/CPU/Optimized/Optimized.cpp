@@ -71,9 +71,16 @@ namespace idg {
                     flags << "-std=c++11 -Wall -O3";
                 }
 
+                // Check instruction set support
+                bool avx2_supported   = check_4th_gen_intel_core_features();
+                bool avx512_supported = has_intel_knl_features();
+
                 // Intel compiler
                 stringstream intel_flags;
                 intel_flags << " -qopenmp -axcore-avx2 -mkl=parallel";
+                unsigned int alignment = avx512_supported ? 64 : 32;
+                intel_flags << " -DALIGNMENT=" << alignment;
+
                 #if defined(BUILD_WITH_PYTHON)
                 // HACK: to make code be corretly loaded with ctypes
                 intel_flags << " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
@@ -81,8 +88,6 @@ namespace idg {
 
                 // GNU compiler
                 stringstream gnu_flags;
-                bool avx512_supported = has_intel_knl_features();
-                bool avx2_supported = check_4th_gen_intel_core_features();
 
                 #if defined(DEBUG)
                 printf("AVX512 support: %d\n", avx512_supported);
