@@ -78,6 +78,7 @@ namespace idg {
                 delete function_splitter;
                 delete device;
                 delete context;
+                delete powerSensor;
             }
 
 
@@ -264,7 +265,7 @@ namespace idg {
                     }
                     powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
                 } else {
-                    powerSensor = new NVMLPowerSensor(device_number, str_power_file);
+                    powerSensor = NVMLPowerSensor::create(device_number, str_power_file);
                 }
             }
 
