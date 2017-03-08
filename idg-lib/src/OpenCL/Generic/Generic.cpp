@@ -40,7 +40,7 @@ namespace idg {
 
                 // Initialize host PowerSensor
                 #if defined(HAVE_LIKWID)
-                hostPowerSensor = new LikwidPowerSensor();
+                hostPowerSensor = LikwidPowerSensor::create();
                 #else
                 hostPowerSensor = new RaplPowerSensor();
                 #endif
