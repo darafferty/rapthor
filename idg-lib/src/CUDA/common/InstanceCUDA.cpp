@@ -78,6 +78,7 @@ namespace idg {
                 delete function_splitter;
                 delete device;
                 delete context;
+                delete powerSensor;
             }
 
 
@@ -92,10 +93,7 @@ namespace idg {
 
                 // CUDA specific flags
                 std::stringstream flags_cuda;
-                
-                //DEBUG
                 flags_cuda << "-use_fast_math ";
-                
                 flags_cuda << "-lineinfo ";
                 flags_cuda << "-src-in-ptx";
 
@@ -260,10 +258,6 @@ namespace idg {
                 const char *str_power_file,
                 int device_number)
             {
-                //DEBUG NVML power sensor does not work on laptop -> disable it
-                powerSensor = new DummyPowerSensor();
-                return;
-                
                 if (str_power_sensor) {
                     std::cout << "Power sensor: " << str_power_sensor << std::endl;
                     if (str_power_file) {

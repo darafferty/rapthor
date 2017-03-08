@@ -9,10 +9,7 @@
 
 class NVMLPowerSensor : public PowerSensor {
     public:
-        virtual ~NVMLPowerSensor() = 0;
         static NVMLPowerSensor* create(const int device_number, const char *dumpFileName);
-    protected:
-        NVMLPowerSensor();
 };
 
 #endif

@@ -14,6 +14,8 @@
 
 class PowerSensor {
     public:
+        virtual ~PowerSensor() {}
+
         class State {
             public:
                 // Timestamp
