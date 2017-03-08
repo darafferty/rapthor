@@ -29,7 +29,7 @@ namespace idg {
                 #if defined(HAVE_LIKWID)
                 powerSensor = LikwidPowerSensor::create();
                 #else
-                powerSensor = new RaplPowerSensor();
+                powerSensor = RaplPowerSensor::create();
                 #endif
             }
 
