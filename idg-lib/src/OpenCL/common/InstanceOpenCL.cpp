@@ -240,14 +240,9 @@ namespace idg {
                     if (str_power_file) {
                         std::cout << "Power file:   " << str_power_file << std::endl;
                     }
-                    try {
-                        powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
-                    } catch (const std::invalid_argument& ia) {
-                        std::cerr << "Invalid argument: " << ia.what() << '\n';
-                        powerSensor = new DummyPowerSensor();
-                    }
+                    powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
                 } else {
-                    powerSensor = new DummyPowerSensor();
+                    powerSensor = DummyPowerSensor::create();
                 }
             }
 
