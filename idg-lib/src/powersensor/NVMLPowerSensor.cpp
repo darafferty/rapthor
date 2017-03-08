@@ -29,10 +29,10 @@ inline void __checkNVMLCall(
 #endif
 
 
-class NVMLPowerSensorImpl : public NVMLPowerSensor {
+class NVMLPowerSensor_ : public NVMLPowerSensor {
     public:
-        NVMLPowerSensorImpl(const int device_number, const char *dumpFileName);
-        virtual ~NVMLPowerSensorImpl();
+        NVMLPowerSensor_(const int device_number, const char *dumpFileName);
+        virtual ~NVMLPowerSensor_();
 
         virtual PowerSensor::State read();
         virtual double seconds(const State &firstState, const State &secondState) override;
@@ -57,7 +57,7 @@ class NVMLPowerSensorImpl : public NVMLPowerSensor {
         std::ofstream *dumpFile;
 
 #ifdef BUILD_LIB_CUDA
-        nvmlDevice_t *device;
+        nvmlDevice_t device;
 #endif
 };
 
@@ -65,10 +65,10 @@ NVMLPowerSensor* NVMLPowerSensor::create(
     const int device_number,
     const char *dumpFileName)
 {
-    return new NVMLPowerSensorImpl(device_number, dumpFileName);
+    return new NVMLPowerSensor_(device_number, dumpFileName);
 }
 
-NVMLPowerSensorImpl::NVMLPowerSensorImpl(
+NVMLPowerSensor_::NVMLPowerSensor_(
     const int device_number,
     const char *dumpFileName)
 {
@@ -77,7 +77,7 @@ NVMLPowerSensorImpl::NVMLPowerSensorImpl(
 
 #ifdef BUILD_LIB_CUDA
     checkNVMLCall(nvmlInit());
-    checkNVMLCall(nvmlDeviceGetHandleByIndex(device_number, device));
+    checkNVMLCall(nvmlDeviceGetHandleByIndex(device_number, &device));
 #endif
 
     previousState = read();
@@ -88,21 +88,30 @@ NVMLPowerSensorImpl::NVMLPowerSensorImpl(
         exit(1);
     }
 
-    if ((errno = pthread_create(&thread, 0, &NVMLPowerSensorImpl::IOthread, this)) != 0) {
+    if ((errno = pthread_create(&thread, 0, &NVMLPowerSensor_::IOthread, this)) != 0) {
         perror("pthread_create");
         exit(1);
     }
 }
 
 
-NVMLPowerSensorImpl::~NVMLPowerSensorImpl() {
+NVMLPowerSensor_::~NVMLPowerSensor_() {
+    stop = true;
+    if ((errno = pthread_join(thread, 0)) != 0) {
+        perror("pthread_join");
+    }
+
+    if ((errno = pthread_mutex_destroy(&mutex)) != 0) {
+        perror("pthread_mutex_destroy");
+    }
+
 #ifdef BUILD_LIB_CUDA
     checkNVMLCall(nvmlShutdown());
 #endif
 }
 
 
-void NVMLPowerSensorImpl::lock() {
+void NVMLPowerSensor_::lock() {
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
@@ -110,7 +119,7 @@ void NVMLPowerSensorImpl::lock() {
 }
 
 
-void NVMLPowerSensorImpl::unlock() {
+void NVMLPowerSensor_::unlock() {
     if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
         perror("pthread_mutex_unlock");
         exit(1);
@@ -118,12 +127,12 @@ void NVMLPowerSensorImpl::unlock() {
 }
 
 
-void *NVMLPowerSensorImpl::IOthread(void *arg) {
-    return static_cast<NVMLPowerSensorImpl *>(arg)->IOthread();
+void *NVMLPowerSensor_::IOthread(void *arg) {
+    return static_cast<NVMLPowerSensor_ *>(arg)->IOthread();
 }
 
 
-void *NVMLPowerSensorImpl::IOthread() {
+void *NVMLPowerSensor_::IOthread() {
     State firstState = read(), currentState;
 
     while (!stop) {
@@ -144,13 +153,13 @@ void *NVMLPowerSensorImpl::IOthread() {
 }
 
 
-PowerSensor::State NVMLPowerSensorImpl::read() {
+PowerSensor::State NVMLPowerSensor_::read() {
     State state;
     state.timeAtRead = omp_get_wtime();
 
 #ifdef BUILD_LIB_CUDA
     unsigned int power;
-    checkNVMLCall(nvmlDeviceGetPowerUsage(*device, &power));
+    checkNVMLCall(nvmlDeviceGetPowerUsage(device, &power));
 
     state.instantaneousPower = power;
 
@@ -164,12 +173,12 @@ PowerSensor::State NVMLPowerSensorImpl::read() {
 }
 
 
-double NVMLPowerSensorImpl::seconds(const State &firstState, const State &secondState) {
+double NVMLPowerSensor_::seconds(const State &firstState, const State &secondState) {
     return secondState.timeAtRead - firstState.timeAtRead;
 }
 
 
-double NVMLPowerSensorImpl::Joules(const State &firstState, const State &secondState) {
+double NVMLPowerSensor_::Joules(const State &firstState, const State &secondState) {
 #ifdef BUILD_LIB_CUDA
     return (secondState.consumedEnergyDevice - firstState.consumedEnergyDevice) * 1e-3;
 #else
@@ -178,6 +187,6 @@ double NVMLPowerSensorImpl::Joules(const State &firstState, const State &secondS
 }
 
 
-double NVMLPowerSensorImpl::Watt(const State &firstState, const State &secondState) {
+double NVMLPowerSensor_::Watt(const State &firstState, const State &secondState) {
     return Joules(firstState, secondState) / seconds(firstState, secondState);
 }
