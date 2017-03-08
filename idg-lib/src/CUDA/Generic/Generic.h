@@ -7,6 +7,8 @@ namespace cu {
     class HostMemory;
 }
 
+class PowerSensor;
+
 namespace idg {
     namespace proxy {
         namespace cuda {

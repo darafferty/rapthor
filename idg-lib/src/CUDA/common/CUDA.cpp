@@ -4,6 +4,7 @@
 #include <cudaProfiler.h>
 
 #include "CUDA.h"
+#include "idg-powersensor.h"
 
 #include "InstanceCUDA.h"
 

@@ -6,6 +6,8 @@
 #include <unistd.h>
 
 #ifdef BUILD_LIB_CUDA
+#include "nvml.h"
+
 #define checkNVMLCall(val)  __checkNVMLCall((val), #val, __FILE__, __LINE__)
 
 inline void __checkNVMLCall(
@@ -27,7 +29,46 @@ inline void __checkNVMLCall(
 #endif
 
 
-NVMLPowerSensor::NVMLPowerSensor(
+class NVMLPowerSensorImpl : public NVMLPowerSensor {
+    public:
+        NVMLPowerSensorImpl(const int device_number, const char *dumpFileName);
+        virtual ~NVMLPowerSensorImpl();
+
+        virtual PowerSensor::State read();
+        virtual double seconds(const State &firstState, const State &secondState) override;
+        virtual double Joules(const State &firstState, const State &secondState) override;
+        virtual double Watt(const State &firstState, const State &secondState) override;
+
+    private:
+        // Thread
+        pthread_t       thread;
+        pthread_mutex_t mutex;
+        volatile bool   stop;
+        static void     *IOthread(void *);
+        void	        *IOthread();
+        void	        lock();
+        void            unlock();
+
+        // State
+        State previousState;
+
+        // Dump
+        int fd;
+        std::ofstream *dumpFile;
+
+#ifdef BUILD_LIB_CUDA
+        nvmlDevice_t *device;
+#endif
+};
+
+NVMLPowerSensor* NVMLPowerSensor::create(
+    const int device_number,
+    const char *dumpFileName)
+{
+    return new NVMLPowerSensorImpl(device_number, dumpFileName);
+}
+
+NVMLPowerSensorImpl::NVMLPowerSensorImpl(
     const int device_number,
     const char *dumpFileName)
 {
@@ -36,7 +77,7 @@ NVMLPowerSensor::NVMLPowerSensor(
 
 #ifdef BUILD_LIB_CUDA
     checkNVMLCall(nvmlInit());
-    checkNVMLCall(nvmlDeviceGetHandleByIndex(device_number, &device));
+    checkNVMLCall(nvmlDeviceGetHandleByIndex(device_number, device));
 #endif
 
     previousState = read();
@@ -47,21 +88,21 @@ NVMLPowerSensor::NVMLPowerSensor(
         exit(1);
     }
 
-    if ((errno = pthread_create(&thread, 0, &NVMLPowerSensor::IOthread, this)) != 0) {
+    if ((errno = pthread_create(&thread, 0, &NVMLPowerSensorImpl::IOthread, this)) != 0) {
         perror("pthread_create");
         exit(1);
     }
 }
 
 
-NVMLPowerSensor::~NVMLPowerSensor() {
+NVMLPowerSensorImpl::~NVMLPowerSensorImpl() {
 #ifdef BUILD_LIB_CUDA
     checkNVMLCall(nvmlShutdown());
 #endif
 }
 
 
-void NVMLPowerSensor::lock() {
+void NVMLPowerSensorImpl::lock() {
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
         perror("pthread_mutex_lock");
         exit(1);
@@ -69,7 +110,7 @@ void NVMLPowerSensor::lock() {
 }
 
 
-void NVMLPowerSensor::unlock() {
+void NVMLPowerSensorImpl::unlock() {
     if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
         perror("pthread_mutex_unlock");
         exit(1);
@@ -77,12 +118,12 @@ void NVMLPowerSensor::unlock() {
 }
 
 
-void *NVMLPowerSensor::IOthread(void *arg) {
-    return static_cast<NVMLPowerSensor *>(arg)->IOthread();
+void *NVMLPowerSensorImpl::IOthread(void *arg) {
+    return static_cast<NVMLPowerSensorImpl *>(arg)->IOthread();
 }
 
 
-void *NVMLPowerSensor::IOthread() {
+void *NVMLPowerSensorImpl::IOthread() {
     State firstState = read(), currentState;
 
     while (!stop) {
@@ -103,13 +144,13 @@ void *NVMLPowerSensor::IOthread() {
 }
 
 
-PowerSensor::State NVMLPowerSensor::read() {
+PowerSensor::State NVMLPowerSensorImpl::read() {
     State state;
     state.timeAtRead = omp_get_wtime();
 
 #ifdef BUILD_LIB_CUDA
     unsigned int power;
-    checkNVMLCall(nvmlDeviceGetPowerUsage(device, &power));
+    checkNVMLCall(nvmlDeviceGetPowerUsage(*device, &power));
 
     state.instantaneousPower = power;
 
@@ -123,12 +164,12 @@ PowerSensor::State NVMLPowerSensor::read() {
 }
 
 
-double NVMLPowerSensor::seconds(const State &firstState, const State &secondState) {
+double NVMLPowerSensorImpl::seconds(const State &firstState, const State &secondState) {
     return secondState.timeAtRead - firstState.timeAtRead;
 }
 
 
-double NVMLPowerSensor::Joules(const State &firstState, const State &secondState) {
+double NVMLPowerSensorImpl::Joules(const State &firstState, const State &secondState) {
 #ifdef BUILD_LIB_CUDA
     return (secondState.consumedEnergyDevice - firstState.consumedEnergyDevice) * 1e-3;
 #else
@@ -137,6 +178,6 @@ double NVMLPowerSensor::Joules(const State &firstState, const State &secondState
 }
 
 
-double NVMLPowerSensor::Watt(const State &firstState, const State &secondState) {
+double NVMLPowerSensorImpl::Watt(const State &firstState, const State &secondState) {
     return Joules(firstState, secondState) / seconds(firstState, secondState);
 }
