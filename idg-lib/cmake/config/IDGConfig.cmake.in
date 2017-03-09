@@ -38,3 +38,12 @@ if (@BUILD_WITH_PYTHON@)
 set(IDG_PYTHON_MODULE_PATH "${IDG_PREFIX_DIR}/lib/python2.7/dist-packages"
     CACHE PATH "IDG python module path")
 endif()
+
+find_library(IDG_LIBRARY ${IDG_LIB} PATH ${IDG_LIB_PATH} NO_DEFAULT_PATH)
+
+set(IDG_INCLUDE_DIRS ${IDG_INCLUDE_DIR}
+   CACHE PATH "IDG include directories")
+
+set(IDG_LIBRARIES ${IDG_LIBRARY}
+    CACHE PATH "IDG libraries")
+
