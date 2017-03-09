@@ -48,34 +48,23 @@
  *
  */
 
-#ifndef IDG_DEGRIDDERPLAN_H_
-#define IDG_DEGRIDDERPLAN_H_
+#ifndef IDG_DEGRIDDERBUFFER_H_
+#define IDG_DEGRIDDERBUFFER_H_
 
-#include <complex>
+#include <cstddef>
 #include <vector>
-#include <algorithm>
-#include <utility>
-#include <map>
-#include <stdexcept>
-#include <cmath>
+#include <complex>
 
-#include "idg-common.h"
-#if defined(BUILD_LIB_CPU)
-#include "idg-cpu.h"
-#endif
 #include "Buffer.h"
 
 namespace idg {
 namespace api {
 
-    class DegridderBuffer : public Buffer
+    class DegridderBuffer : public virtual Buffer
     {
     public:
-        // Constructors and destructor
-        DegridderBuffer(Type architecture = Type::CPU_REFERENCE,
-                      size_t bufferTimesteps = 4096);
-
-        virtual ~DegridderBuffer();
+        // Destructor
+        virtual ~DegridderBuffer() {};
 
         /** \brief Request a visibility to compute later
          *  \param rowId [in] unique identifier used to read the data
@@ -91,29 +80,18 @@ namespace api {
             size_t timeIndex,
             size_t antenna1,
             size_t antenna2,
-            const double* uvwInMeters);
-
-        /** \brief Request a visibility without using the rowId identifier
-         *  Note: if this method is used for requesting, reading must be done
-         *  without the rowId identifier as well
-         */
-        virtual bool request_visibilities(
-            size_t timeIndex,
-            size_t antenna1,
-            size_t antenna2,
-            const double* uvwInMeters)
-        {
-            return request_visibilities(0, timeIndex, antenna1,
-                                 antenna2, uvwInMeters);
-        }
+            const double* uvwInMeters) = 0;
 
         /** \brief Compute visibility of the requested visibilities
          *  \return list_of_rowIds [out] a list of all computed rowIds
          */
-        virtual std::vector<std::pair<size_t, std::complex<float>*>> compute();
+        virtual std::vector<std::pair<size_t, std::complex<float>*>> compute() = 0;
 
         /** \brief Signal that the visibilities can be overwritten */
-        virtual void finished_reading();
+        virtual void finished_reading() = 0;
+
+    protected:
+        DegridderBuffer() {}
 
 //         /** \brief Read the visibilities from the visibility buffer
 //          *  \param rowId [in] identifier used in the request
@@ -143,46 +121,46 @@ namespace api {
          * param width [in] width in pixel
          * param grid [in] complex<double>[nr_polarizations][height][width]
          */
-        virtual void transform_grid(
-            double crop_tolerance      = 5e-3,
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<double> *grid = nullptr) override;
-
-        /** \brief Alias to call transform_grid()
-         * param crop_tolerance [in] ...
-         * param nr_polarizations [in] number of correlations (normally 4)
-         * param height [in] width in pixel
-         * param width [in] width in pixel
-         * param grid [in] complex<double>[nr_polarizations][height][width]
-         */
-        virtual void image_to_fourier(
-            double crop_tolerance      = 5e-3,
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<double> *grid = nullptr)
-        {
-            transform_grid(crop_tolerance, nr_polarizations,
-                           height, width, grid);
-        }
-
-        /** \brief Explicitly flush the buffer */
-        virtual void flush() override;
-
-        size_t get_image_height() const { return get_grid_height(); };
-        size_t get_image_width() const { return get_grid_width(); } ;
-
-        bool is_request_buffer_full() const { return m_buffer_full; }
-        bool is_data_marked_as_read() const { return m_data_read; }
-
-    private:
-
-        // Data
-        bool m_buffer_full;
-        bool m_data_read;
-        std::vector<std::pair<size_t, std::complex<float>*>> m_row_ids_to_data;
+//         virtual void transform_grid(
+//             double crop_tolerance      = 5e-3,
+//             size_t nr_polarizations    = 0,
+//             size_t height              = 0,
+//             size_t width               = 0,
+//             std::complex<double> *grid = nullptr) override;
+// 
+//         /** \brief Alias to call transform_grid()
+//          * param crop_tolerance [in] ...
+//          * param nr_polarizations [in] number of correlations (normally 4)
+//          * param height [in] width in pixel
+//          * param width [in] width in pixel
+//          * param grid [in] complex<double>[nr_polarizations][height][width]
+//          */
+//         virtual void image_to_fourier(
+//             double crop_tolerance      = 5e-3,
+//             size_t nr_polarizations    = 0,
+//             size_t height              = 0,
+//             size_t width               = 0,
+//             std::complex<double> *grid = nullptr)
+//         {
+//             transform_grid(crop_tolerance, nr_polarizations,
+//                            height, width, grid);
+//         }
+// 
+//         /** \brief Explicitly flush the buffer */
+//         virtual void flush() override;
+// 
+//         size_t get_image_height() const { return get_grid_height(); };
+//         size_t get_image_width() const { return get_grid_width(); } ;
+// 
+//         bool is_request_buffer_full() const { return m_buffer_full; }
+//         bool is_data_marked_as_read() const { return m_data_read; }
+// 
+//     private:
+// 
+//         // Data
+//         bool m_buffer_full;
+//         bool m_data_read;
+//         std::vector<std::pair<size_t, std::complex<float>*>> m_row_ids_to_data;
     };
 
 } // namespace api

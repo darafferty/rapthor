@@ -1,20 +1,17 @@
 /*
- * DegridderBuffer.h
- * Access to IDG's high level degridder routines
+ * DegridderBuffer.cpp
  */
 
-
-#include "DegridderBuffer.h"
-
+#include "DegridderBufferImpl.h"
 
 using namespace std;
 
 namespace idg {
 namespace api {
 
-    DegridderBuffer::DegridderBuffer(Type architecture,
+    DegridderBufferImpl::DegridderBufferImpl(Type architecture,
                                  size_t bufferTimesteps)
-        : Buffer(architecture, bufferTimesteps),
+        : BufferImpl(architecture, bufferTimesteps),
           m_buffer_full(false),
           m_data_read(true)
     {
@@ -24,7 +21,7 @@ namespace api {
     }
 
 
-    DegridderBuffer::~DegridderBuffer()
+    DegridderBufferImpl::~DegridderBufferImpl()
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -32,7 +29,7 @@ namespace api {
     }
 
 
-    bool DegridderBuffer::request_visibilities(
+    bool DegridderBufferImpl::request_visibilities(
         size_t rowId,
         size_t timeIndex,
         size_t antenna1,
@@ -99,7 +96,7 @@ namespace api {
     }
 
     // Must be called whenever the buffer is full or no more data added
-    void DegridderBuffer::flush()
+    void DegridderBufferImpl::flush()
     {
         if (m_buffer_full == true && m_data_read == false) return;
 
@@ -144,13 +141,13 @@ namespace api {
     }
 
 
-    void DegridderBuffer::transform_grid(
-        double crop_tolerance,
-        size_t nr_polarizations,
-        size_t height,
-        size_t width,
-        complex<double> *grid)
-    {
+//     void DegridderBufferImpl::transform_grid(
+//         double crop_tolerance,
+//         size_t nr_polarizations,
+//         size_t height,
+//         size_t width,
+//         complex<double> *grid)
+//     {
 //         // Normal case: no arguments -> transform member grid
 //         // Note: the other case is to perform the transform on a copy
 //         // so that the process can be monitored
@@ -188,10 +185,10 @@ namespace api {
 //         //         }
 //         //     }
 //         // }
-    }
+//     }
 
 
-    std::vector<std::pair<size_t, std::complex<float>*>> DegridderBuffer::compute()
+    std::vector<std::pair<size_t, std::complex<float>*>> DegridderBufferImpl::compute()
     {
         flush();
         m_buffer_full =  false;
@@ -199,7 +196,7 @@ namespace api {
     }
 
 
-    void DegridderBuffer::finished_reading()
+    void DegridderBufferImpl::finished_reading()
     {
         #if defined(DEBUG)
         cout << "FINISHED READING: buffer full " << m_buffer_full << endl;
@@ -229,7 +226,7 @@ extern "C" {
         } else if (type == 1) {
             proxytype = idg::api::Type::CPU_OPTIMIZED;
         }
-        return new idg::api::DegridderBuffer(proxytype, bufferTimesteps);
+        return new idg::api::DegridderBufferImpl(proxytype, bufferTimesteps);
     }
 
     void DegridderBuffer_destroy(idg::api::DegridderBuffer* p) {
@@ -283,20 +280,20 @@ extern "C" {
 //     }
 
 
-    void DegridderBuffer_transform_grid(
-        idg::api::DegridderBuffer* p,
-        double crop_tolarance,
-        int nr_polarizations,
-        int height,
-        int width,
-        void *grid)
-    {
-        p->transform_grid(
-            crop_tolarance,
-            nr_polarizations,
-            height,
-            width,
-            (complex<double> *) grid);
-    }
+//     void DegridderBuffer_transform_grid(
+//         idg::api::DegridderBuffer* p,
+//         double crop_tolarance,
+//         int nr_polarizations,
+//         int height,
+//         int width,
+//         void *grid)
+//     {
+//         p->transform_grid(
+//             crop_tolarance,
+//             nr_polarizations,
+//             height,
+//             width,
+//             (complex<double> *) grid);
+//     }
 
 } // extern C

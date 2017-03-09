@@ -1,10 +1,9 @@
 /*
- * Buffer.cpp
+ * BufferImpl.cpp
  * Access to IDG's high level gridder routines
  */
 
-
-#include "Buffer.h"
+#include "BufferImpl.h"
 
 using namespace std;
 
@@ -12,7 +11,7 @@ namespace idg {
 namespace api {
 
     // Constructors and destructor
-    Buffer::Buffer(Type architecture,
+    BufferImpl::BufferImpl(Type architecture,
                    size_t bufferTimesteps)
         : m_architecture(architecture),
           m_bufferTimesteps(bufferTimesteps),
@@ -45,7 +44,7 @@ namespace api {
         m_aterm_offsets(1) = bufferTimesteps;
     }
 
-    Buffer::~Buffer()
+    BufferImpl::~BufferImpl()
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -55,25 +54,25 @@ namespace api {
 
     // Set/get all parameters
 
-    void Buffer::set_stations(const size_t nrStations)
+    void BufferImpl::set_stations(const size_t nrStations)
     {
         m_nrStations = nrStations;
         m_nrGroups = ((nrStations - 1) * nrStations) / 2;
     }
 
 
-    size_t Buffer::get_stations() const
+    size_t BufferImpl::get_stations() const
     {
         return m_nrStations;
     }
 
-    double Buffer::get_image_size() const
+    double BufferImpl::get_image_size() const
     {
         return m_cellWidth * m_gridWidth;
     }
 
 
-    void Buffer::set_cell_size(double height, double width)
+    void BufferImpl::set_cell_size(double height, double width)
     {
         if (height != width)
             throw invalid_argument("Only square cells supported.");
@@ -83,54 +82,54 @@ namespace api {
     }
 
 
-    double Buffer::get_cell_height() const
+    double BufferImpl::get_cell_height() const
     {
         return m_cellHeight;
     }
 
 
-    double Buffer::get_cell_width() const
+    double BufferImpl::get_cell_width() const
     {
         return m_cellWidth;
     }
 
 
-    void Buffer::set_w_step(float w_step)
+    void BufferImpl::set_w_step(float w_step)
     {
         m_wStepInLambda = w_step;
     }
 
 
-    float Buffer::get_w_step() const
+    float BufferImpl::get_w_step() const
     {
         return m_wStepInLambda;
     }
 
-    void Buffer::set_subgrid_size(const size_t size)
+    void BufferImpl::set_subgrid_size(const size_t size)
     {
         m_subgridSize = size;
     }
 
 
-    size_t Buffer::get_subgrid_size() const
+    size_t BufferImpl::get_subgrid_size() const
     {
         return m_subgridSize;
     }
 
 
-    void Buffer::set_kernel_size(float size)
+    void BufferImpl::set_kernel_size(float size)
     {
         m_kernel_size = size;
     }
 
 
-    float Buffer::get_kernel_size() const
+    float BufferImpl::get_kernel_size() const
     {
         return m_kernel_size;
     }
 
 
-    void Buffer::set_spheroidal(
+    void BufferImpl::set_spheroidal(
         size_t size,
         const float* spheroidal)
     {
@@ -138,7 +137,7 @@ namespace api {
     }
 
 
-    void Buffer::set_spheroidal(
+    void BufferImpl::set_spheroidal(
         size_t height,
         size_t width,
         const float* spheroidal)
@@ -154,7 +153,7 @@ namespace api {
     }
 
 
-    void Buffer::set_frequencies(
+    void BufferImpl::set_frequencies(
         size_t channelCount,
         const double* frequencyList)
     {
@@ -167,7 +166,7 @@ namespace api {
         }
     }
 
-    void Buffer::set_frequencies(
+    void BufferImpl::set_frequencies(
         const std::vector<double> &frequency_list)
     {
         const int channelCount = frequency_list.size();
@@ -180,37 +179,37 @@ namespace api {
         }
     }
 
-    double Buffer::get_frequency(const size_t channel) const
+    double BufferImpl::get_frequency(const size_t channel) const
     {
         return m_frequencies(channel);
     }
 
 
-    size_t Buffer::get_frequencies_size() const
+    size_t BufferImpl::get_frequencies_size() const
     {
         return m_frequencies.get_x_dim();
     }
 
-    void Buffer::set_grid(
+    void BufferImpl::set_grid(
         Grid* grid)
     {
         m_grid            = grid;
     }
 
 
-    size_t Buffer::get_nr_polarizations() const
+    size_t BufferImpl::get_nr_polarizations() const
     {
         return m_nrPolarizations;
     }
 
 
-    size_t Buffer::get_grid_height() const
+    size_t BufferImpl::get_grid_height() const
     {
         return m_gridHeight;
     }
 
 
-    size_t Buffer::get_grid_width() const
+    size_t BufferImpl::get_grid_width() const
     {
         return m_gridWidth;
     }
@@ -218,7 +217,7 @@ namespace api {
 
     // Plan creation and helper functions
 
-    void Buffer::bake()
+    void BufferImpl::bake()
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -267,7 +266,7 @@ namespace api {
     }
 
 
-    void Buffer::malloc_buffers()
+    void BufferImpl::malloc_buffers()
     {
         m_bufferUVW = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
         m_bufferVisibilities = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
@@ -277,7 +276,7 @@ namespace api {
     }
 
 
-    void Buffer::reset_buffers()
+    void BufferImpl::reset_buffers()
     {
         m_bufferVisibilities.init({0,0,0,0});
         set_uvw_to_infinity();
@@ -285,7 +284,7 @@ namespace api {
     }
 
 
-    void Buffer::set_uvw_to_infinity()
+    void BufferImpl::set_uvw_to_infinity()
     {
         m_bufferUVW.init({numeric_limits<float>::infinity(),
                           numeric_limits<float>::infinity(),
@@ -293,7 +292,7 @@ namespace api {
     }
 
 
-    void Buffer::init_default_aterm() {
+    void BufferImpl::init_default_aterm() {
         for (auto s = 0; s < m_nrStations; ++s)
             for (auto y = 0; y < m_subgridSize; ++y)
                 for (auto x = 0; x < m_subgridSize; ++x)
@@ -306,7 +305,7 @@ namespace api {
      *   0 implies antenna1=0, antenna2=1 ;
      *   1 implies antenna1=0, antenna2=2 ;
      * n-1 implies antenna1=1, antenna2=2 etc. */
-    size_t Buffer::baseline_index(size_t antenna1, size_t antenna2) const
+    size_t BufferImpl::baseline_index(size_t antenna1, size_t antenna2) const
     {
         assert(antenna1 < antenna2);
         auto offset =  antenna1*m_nrStations - ((antenna1+1)*antenna1)/2 - 1;
@@ -314,7 +313,7 @@ namespace api {
     }
 
 
-    void Buffer::start_aterm(
+    void BufferImpl::start_aterm(
         size_t nrStations,
         size_t height,
         size_t width,
@@ -343,7 +342,7 @@ namespace api {
     }
 
 
-    void Buffer::start_aterm(
+    void BufferImpl::start_aterm(
         size_t nrStations,
         size_t size,
         size_t nrPolarizations,
@@ -353,13 +352,13 @@ namespace api {
     }
 
 
-    void Buffer::finish_aterm()
+    void BufferImpl::finish_aterm()
     {
         flush();
     }
 
 
-    void Buffer::fft_grid(
+    void BufferImpl::fft_grid(
         size_t nr_polarizations,
         size_t height,
         size_t width,
@@ -373,7 +372,7 @@ namespace api {
     }
 
 
-    void Buffer::ifft_grid(
+    void BufferImpl::ifft_grid(
         size_t nr_polarizations,
         size_t height,
         size_t width,
@@ -397,7 +396,7 @@ namespace api {
     }
 
 
-    void Buffer::copy_grid(
+    void BufferImpl::copy_grid(
         size_t nr_polarizations,
         size_t height,
         size_t width,
@@ -435,19 +434,19 @@ namespace api {
 // Python, Julia, Matlab, ...
 extern "C" {
 
-    int Buffer_get_stations(idg::api::Buffer* p)
+    int Buffer_get_stations(idg::api::BufferImpl* p)
     {
         return p->get_stations();
     }
 
 
-    void Buffer_set_stations(idg::api::Buffer* p, int n) {
+    void Buffer_set_stations(idg::api::BufferImpl* p, int n) {
         p->set_stations(n);
     }
 
 
     void Buffer_set_frequencies(
-        idg::api::Buffer* p,
+        idg::api::BufferImpl* p,
         int nr_channels,
         double* frequencies)
     {
@@ -455,25 +454,25 @@ extern "C" {
     }
 
 
-    double Buffer_get_frequency(idg::api::Buffer* p, int channel)
+    double Buffer_get_frequency(idg::api::BufferImpl* p, int channel)
     {
         return p->get_frequency(channel);
     }
 
 
-    int Buffer_get_frequencies_size(idg::api::Buffer* p)
+    int Buffer_get_frequencies_size(idg::api::BufferImpl* p)
     {
         return p->get_frequencies_size();
     }
 
 
-    void Buffer_set_w_kernel_size(idg::api::Buffer* p, int size)
+    void Buffer_set_w_kernel_size(idg::api::BufferImpl* p, int size)
     {
         p->set_kernel_size(size);
     }
 
 
-    int Buffer_get_w_kernel_size(idg::api::Buffer* p)
+    int Buffer_get_w_kernel_size(idg::api::BufferImpl* p)
     {
         return p->get_kernel_size();
     }
@@ -494,26 +493,26 @@ extern "C" {
 //     }
 // 
 
-    int Buffer_get_nr_polarizations(idg::api::Buffer* p)
+    int Buffer_get_nr_polarizations(idg::api::BufferImpl* p)
     {
         return p->get_nr_polarizations();
     }
 
 
-    int Buffer_get_grid_height(idg::api::Buffer* p)
+    int Buffer_get_grid_height(idg::api::BufferImpl* p)
     {
         return p->get_grid_height();
     }
 
 
-    int Buffer_get_grid_width(idg::api::Buffer* p)
+    int Buffer_get_grid_width(idg::api::BufferImpl* p)
     {
         return p->get_grid_width();
     }
 
 
     void Buffer_set_spheroidal(
-        idg::api::Buffer* p,
+        idg::api::BufferImpl* p,
         int height,
         int width,
         float* spheroidal)
@@ -522,37 +521,37 @@ extern "C" {
     }
 
 
-    void Buffer_set_cell_size(idg::api::Buffer* p, double height, double width)
+    void Buffer_set_cell_size(idg::api::BufferImpl* p, double height, double width)
     {
         p->set_cell_size(height, width);
     }
 
 
-    double Buffer_get_cell_height(idg::api::Buffer* p)
+    double Buffer_get_cell_height(idg::api::BufferImpl* p)
     {
         return p->get_cell_height();
     }
 
 
-    double Buffer_get_cell_width(idg::api::Buffer* p)
+    double Buffer_get_cell_width(idg::api::BufferImpl* p)
     {
         return p->get_cell_width();
     }
 
-    double Buffer_get_image_size(idg::api::Buffer* p)
+    double Buffer_get_image_size(idg::api::BufferImpl* p)
     {
         return p->get_image_size();
     }
 
 
-    void Buffer_bake(idg::api::Buffer* p)
+    void Buffer_bake(idg::api::BufferImpl* p)
     {
         p->bake();
     }
 
 
     void Buffer_start_aterm(
-        idg::api::Buffer* p,
+        idg::api::BufferImpl* p,
         int nrStations,
         int height,
         int width,
@@ -568,44 +567,44 @@ extern "C" {
     }
 
 
-    void Buffer_finish_aterm(idg::api::Buffer* p)
+    void Buffer_finish_aterm(idg::api::BufferImpl* p)
     {
         p->finish_aterm();
     }
 
 
-    void Buffer_flush(idg::api::Buffer* p)
+    void Buffer_flush(idg::api::BufferImpl* p)
     {
         p->flush();
     }
 
 
-    void Buffer_set_subgrid_size(idg::api::Buffer* p, int size)
+    void Buffer_set_subgrid_size(idg::api::BufferImpl* p, int size)
     {
         p->set_subgrid_size(size);
     }
 
 
-    int Buffer_get_subgrid_size(idg::api::Buffer* p)
+    int Buffer_get_subgrid_size(idg::api::BufferImpl* p)
     {
         return p->get_subgrid_size();
     }
 
 
-    void Buffer_ifft_grid(idg::api::Buffer* p)
+    void Buffer_ifft_grid(idg::api::BufferImpl* p)
     {
         p->ifft_grid();
     }
 
 
-    void Buffer_fft_grid(idg::api::Buffer* p)
+    void Buffer_fft_grid(idg::api::BufferImpl* p)
     {
         p->fft_grid();
     }
 
 
     void Buffer_copy_grid(
-        idg::api::Buffer* p,
+        idg::api::BufferImpl* p,
         int   nr_polarizations,
         int   height,
         int   width,

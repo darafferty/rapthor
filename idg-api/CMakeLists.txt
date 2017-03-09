@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.0)
 
-project(idg-wsclean)
+project(idg-api)
 
 
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
@@ -51,7 +51,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 
 
 find_package(IDG NO_MODULE)
-include_directories (${IDG_INCLUDE_DIR})
+include_directories (${IDG_INCLUDE_DIRS})
 
 find_package(LAPACKE)
 include_directories (${LAPACK_INCLUDE_DIR})
@@ -63,7 +63,6 @@ set (${PROJECT_NAME}_headers
     BufferSet.h
     GridderBuffer.h
     DegridderBuffer.h
-    Datatypes.h
     taper.h
 )
 
@@ -76,8 +75,8 @@ set (${PROJECT_NAME}_sources
 )
 
 set (${PROJECT_NAME}_link_libraries
-    ${IDG_LIB}
-    ${LAPACK_LIB}
+    ${IDG_LIBRARIES}
+    ${lapacke_LIBRARY}
 )
 
 add_library(
@@ -97,19 +96,37 @@ install(
     FILES
     ${${PROJECT_NAME}_headers}
     DESTINATION
-    include/idg-wsclean
+    include/idg-api
 )
 
 install(
     FILES
-    idg-wsclean.h
+    idg-api.h
     DESTINATION
     include
 )
 
 install(TARGETS ${PROJECT_NAME}
+  EXPORT IDGAPITargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
   PUBLIC_HEADER DESTINATION include
 )
+
+install(EXPORT IDGAPITargets
+        DESTINATION lib/cmake)
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/config/IDGAPIConfig.cmake.in"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfig.cmake" @ONLY)
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/config/IDGAPIConfigVersion.cmake.in"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfigVersion.cmake" @ONLY)
+
+install(FILES
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfig.cmake"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_PREFIX})
+

@@ -4,17 +4,16 @@
  */
 
 
-#include "GridderBuffer.h"
-
+#include "GridderBufferImpl.h"
 
 using namespace std;
 
 namespace idg {
 namespace api {
 
-    GridderBuffer::GridderBuffer(Type architecture,
+    GridderBufferImpl::GridderBufferImpl(Type architecture,
                              size_t bufferTimesteps)
-        : Buffer(architecture, bufferTimesteps),
+        : BufferImpl(architecture, bufferTimesteps),
           m_bufferUVW2(0,0),
           m_bufferStationPairs2(0),
           m_bufferVisibilities2(0,0,0)
@@ -25,7 +24,7 @@ namespace api {
     }
 
 
-    GridderBuffer::~GridderBuffer()
+    GridderBufferImpl::~GridderBufferImpl()
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -34,7 +33,7 @@ namespace api {
     }
 
 
-    void GridderBuffer::grid_visibilities(
+    void GridderBufferImpl::grid_visibilities(
         size_t timeIndex,
         size_t antenna1,
         size_t antenna2,
@@ -83,7 +82,7 @@ namespace api {
              (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0));
     }
 
-    void GridderBuffer::flush_thread_worker()
+    void GridderBufferImpl::flush_thread_worker()
     {
         m_proxy->gridding(
             m_wStepInLambda,
@@ -100,7 +99,7 @@ namespace api {
     }
     
     // Must be called whenever the buffer is full or no more data added
-    void GridderBuffer::flush()
+    void GridderBufferImpl::flush()
     {
         // Return if no input in buffer
         if (m_timeindices.size() == 0) return;
@@ -113,7 +112,7 @@ namespace api {
         std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
         
-        m_flush_thread = std::thread(&GridderBuffer::flush_thread_worker, this);
+        m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 
         // Temporary fix: wait for thread and swap buffers back
         // Needed because the proxy needs to be called each time with the same buffers
@@ -129,7 +128,7 @@ namespace api {
         set_uvw_to_infinity();
     }
     
-    void GridderBuffer::finished()
+    void GridderBufferImpl::finished()
     {
         flush();
         // if there is still a flushthread running, wait for it to finish
@@ -148,13 +147,13 @@ namespace api {
     }
 
 
-    void GridderBuffer::transform_grid(
-        double crop_tolerance,
-        size_t nr_polarizations,
-        size_t height,
-        size_t width,
-        complex<double> *grid)
-    {
+//     void GridderBufferImpl::transform_grid(
+//         double crop_tolerance,
+//         size_t nr_polarizations,
+//         size_t height,
+//         size_t width,
+//         complex<double> *grid)
+//     {
 //         // Normal case: no arguments -> transform member grid
 //         // Note: the other case is to perform the transform on a copy
 //         // so that the process can be monitored
@@ -194,11 +193,11 @@ namespace api {
 //                 }
 //             }
 //         }
-    }
+//     }
     
-    void GridderBuffer::malloc_buffers()
+    void GridderBufferImpl::malloc_buffers()
     {
-        Buffer::malloc_buffers();
+        BufferImpl::malloc_buffers();
         
         m_bufferUVW2 = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
         m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
@@ -228,7 +227,7 @@ extern "C" {
         } else if (type == 1) {
             proxytype = idg::api::Type::CPU_OPTIMIZED;
         }
-        return new idg::api::GridderBuffer(proxytype, bufferTimesteps);
+        return new idg::api::GridderBufferImpl(proxytype, bufferTimesteps);
     }
 
     void GridderBuffer_destroy(idg::api::GridderBuffer* p) {
@@ -251,20 +250,20 @@ extern "C" {
             (complex<float>*) visibilities); // size CH x PL
     }
 
-    void GridderBuffer_transform_grid(
-        idg::api::GridderBuffer* p,
-        double crop_tol,
-        int    nr_polarizations,
-        int    height,
-        int    width,
-        void*  grid)
-    {
-        p->transform_grid(
-            crop_tol,
-            nr_polarizations,
-            height,
-            width,
-            (complex<double> *) grid);
-    }
+//     void GridderBuffer_transform_grid(
+//         idg::api::GridderBuffer* p,
+//         double crop_tol,
+//         int    nr_polarizations,
+//         int    height,
+//         int    width,
+//         void*  grid)
+//     {
+//         p->transform_grid(
+//             crop_tol,
+//             nr_polarizations,
+//             height,
+//             width,
+//             (complex<double> *) grid);
+//     }
 
 } // extern C

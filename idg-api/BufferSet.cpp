@@ -1,13 +1,33 @@
-#include "BufferSet.h"
+#include "BufferSetImpl.h"
+#include "GridderBufferImpl.h"
+#include "DegridderBufferImpl.h"
 
+#include <complex>
 #include <cmath>
+#include <iostream>
 
 #include "taper.h"
 
 namespace idg {
 namespace api {
 
-    BufferSet::BufferSet(
+    BufferSet* BufferSet::create(
+        Type architecture,
+        size_t bufferTimesteps,
+        std::vector<std::vector<double>> bands,
+        int nr_stations,
+        size_t width,
+        float cellsize,
+        float max_w,
+        BufferSetType buffer_set_type)
+    {
+        return new BufferSetImpl(architecture, bufferTimesteps, bands, 
+                                 nr_stations, width, cellsize, max_w, 
+                                 buffer_set_type);
+    }
+
+
+    BufferSetImpl::BufferSetImpl(
         Type architecture, 
         size_t bufferTimesteps, 
         std::vector<std::vector<double>> bands,
@@ -69,21 +89,22 @@ namespace api {
             for(int j = 0; j < int(subgridsize); j++)
                 taper[i*subgridsize + j] = m_taper_subgrid[i] * m_taper_subgrid[j];
 
-        m_buffers.reserve(bands.size());
-
         for (auto band : bands )
         {
-            Buffer *buffer;
-            if (buffer_set_type == BufferSetType::gridding)
+            BufferImpl *buffer;
+            if (m_buffer_set_type == BufferSetType::gridding)
             {
-                buffer = new GridderBuffer(architecture, bufferTimesteps);
+                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(architecture, bufferTimesteps);
+                m_gridderbuffers.push_back(std::unique_ptr<GridderBuffer>(gridderbuffer));
+                buffer = gridderbuffer;
             }
             else
             {
-                buffer = new DegridderBuffer(architecture, bufferTimesteps);
+                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(architecture, bufferTimesteps);
+                m_degridderbuffers.push_back(std::unique_ptr<DegridderBuffer>(degridderbuffer));
+                buffer = degridderbuffer;
             }
 
-            m_buffers.push_back(std::unique_ptr<Buffer>(buffer));
 
             buffer->set_subgrid_size(subgridsize);
 
@@ -98,25 +119,25 @@ namespace api {
         }
     }
 
-    GridderBuffer* BufferSet::get_gridder(int i)
+    GridderBuffer* BufferSetImpl::get_gridder(int i)
     {
         if (m_buffer_set_type != BufferSetType::gridding)
         {
             throw(std::logic_error("BufferSet is not of gridding type"));
         }
-        return static_cast<GridderBuffer*>(m_buffers[i].get());
+        return m_gridderbuffers[i].get();
     }
 
-    DegridderBuffer* BufferSet::get_degridder(int i)
+    DegridderBuffer* BufferSetImpl::get_degridder(int i)
     {
         if (m_buffer_set_type != BufferSetType::degridding)
         {
             throw(std::logic_error("BufferSet is not of degridding type"));
         }
-        return static_cast<DegridderBuffer*>(m_buffers[i].get());
+        return m_degridderbuffers[i].get();
     }
 
-    void BufferSet::set_image(const double* image) 
+    void BufferSetImpl::set_image(const double* image) 
     {
         //Convert from stokes to linear into w plane 0
 
@@ -198,11 +219,11 @@ namespace api {
                     }
                 }
             }
-            m_buffers[0]->fft_grid(4, width, width, &m_grid(w_layer,0,0,0));
+            m_degridderbuffers[0]->fft_grid(4, width, width, &m_grid(w_layer,0,0,0));
         }
     };
 
-    void BufferSet::get_image(double* image) 
+    void BufferSetImpl::get_image(double* image) 
     {
         int width = m_grid.get_x_dim();
         int nr_w_layers = m_grid.get_nr_w_layers();
@@ -217,7 +238,7 @@ namespace api {
 
         for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
         {
-            m_buffers[0]->ifft_grid(4, width, width, &m_grid(w_layer,0,0,0));
+            m_gridderbuffers[0]->ifft_grid(4, width, width, &m_grid(w_layer,0,0,0));
         }
         for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
         {
@@ -296,11 +317,21 @@ namespace api {
         }
     }
 
-    void BufferSet::finished()
+    void BufferSetImpl::finished()
     {
-        for (auto& buffer : m_buffers )
+        if (m_buffer_set_type == BufferSetType::gridding)
         {
-            buffer->finished();
+            for (auto& buffer : m_gridderbuffers )
+            {
+                buffer->finished();
+            }
+        }
+        else
+        {
+            for (auto& buffer : m_degridderbuffers )
+            {
+                buffer->finished();
+            }
         }
     }
 

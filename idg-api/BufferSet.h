@@ -1,6 +1,7 @@
 #ifndef IDG_API_BUFFERSET_H_
 #define IDG_API_BUFFERSET_H_
 
+#include <vector>
 
 #include "GridderBuffer.h"
 #include "DegridderBuffer.h"
@@ -13,11 +14,11 @@ namespace api {
         gridding,
         degridding
     };
-    
-    
+
     class BufferSet {
     public:
-        BufferSet(
+
+        static BufferSet* create(
             Type architecture, 
             size_t bufferTimesteps, 
             std::vector<std::vector<double>> bands,
@@ -26,25 +27,18 @@ namespace api {
             float cellsize, 
             float max_w,         
             BufferSetType buffer_set_type);
-        
-        DegridderBuffer* get_degridder(int i);
-        GridderBuffer* get_gridder(int i);
-    
-        virtual void set_image(const double* image);
-        virtual void get_image(double* image);
-        virtual void finished();
-        
-    private:
-        BufferSetType m_buffer_set_type;
-        std::vector<std::unique_ptr<Buffer>> m_buffers;
-        std::vector<float> m_taper_subgrid;
-        std::vector<float> m_taper_grid;
-        Grid m_grid;
-        float m_image_size;
-        float m_w_step;
+
+        virtual ~BufferSet() {};
+
+        virtual DegridderBuffer* get_degridder(int i) = 0;
+        virtual GridderBuffer* get_gridder(int i) = 0;
+
+        virtual void set_image(const double* image) = 0 ;
+        virtual void get_image(double* image) = 0;
+        virtual void finished() = 0;
+    protected:
+        BufferSet() {}
     };
-    
-    
 
 } // namespace api
 } // namespace idg
