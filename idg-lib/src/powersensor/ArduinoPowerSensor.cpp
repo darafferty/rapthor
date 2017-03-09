@@ -1,6 +1,42 @@
 #include "ArduinoPowerSensor.h"
+class ArduinoPowerSensor_ : public ArduinoPowerSensor {
+    public:
+        ArduinoPowerSensor_(const char *device, const char *dumpFileName);
 
-ArduinoPowerSensor::ArduinoPowerSensor(const char *device, const char *dumpFileName) {
+        State read();
+        void mark(const State &, const char *name = 0, unsigned tag = 0);
+        void mark(const State &start, const State &stop, const char *name = 0, unsigned tag = 0);
+
+        virtual double seconds(const State &firstState, const State &secondState) override;
+        virtual double Joules(const State &firstState, const State &secondState) override;
+        virtual double Watt(const State &firstState, const State &secondState) override;
+
+    private:
+        // Thread
+        pthread_t       thread;
+        pthread_mutex_t mutex;
+        volatile bool   stop;
+        static void     *IOthread(void *);
+        void	        *IOthread();
+        void            doMeasurement();
+
+        // State
+        State::Measurement lastMeasurement;
+        State::Measurement previousMeasurement;
+
+        // Dump
+        int fd;
+        std::ofstream *dumpFile;
+};
+
+ArduinoPowerSensor* ArduinoPowerSensor::create(
+    const char *device,
+    const char *dumpFileName)
+{
+    return new ArduinoPowerSensor_(device, dumpFileName);
+}
+
+ArduinoPowerSensor_::ArduinoPowerSensor_(const char *device, const char *dumpFileName) {
     dumpFile = (dumpFileName == 0 ? 0 : new std::ofstream(dumpFileName));
     stop = false;
     lastMeasurement.microSeconds = 0;
@@ -50,17 +86,17 @@ ArduinoPowerSensor::ArduinoPowerSensor(const char *device, const char *dumpFileN
     // Initialize
     doMeasurement();
 
-    if ((errno = pthread_create(&thread, 0, &ArduinoPowerSensor::IOthread, this)) != 0) {
+    if ((errno = pthread_create(&thread, 0, &ArduinoPowerSensor_::IOthread, this)) != 0) {
         perror("pthread_create");
         exit(1);
     }
 }
 
-void *ArduinoPowerSensor::IOthread(void *arg) {
-    return static_cast<ArduinoPowerSensor *>(arg)->IOthread();
+void *ArduinoPowerSensor_::IOthread(void *arg) {
+    return static_cast<ArduinoPowerSensor_ *>(arg)->IOthread();
 }
 
-void *ArduinoPowerSensor::IOthread() {
+void *ArduinoPowerSensor_::IOthread() {
     while (!stop)
         doMeasurement();
     void *retval;
@@ -69,7 +105,7 @@ void *ArduinoPowerSensor::IOthread() {
 }
 
 
-void ArduinoPowerSensor::doMeasurement() {
+void ArduinoPowerSensor_::doMeasurement() {
     State::Measurement currentState;
 
     ssize_t retval, bytesRead = 0;
@@ -107,7 +143,7 @@ void ArduinoPowerSensor::doMeasurement() {
     }
 }
 
-PowerSensor::State ArduinoPowerSensor::read() {
+PowerSensor::State ArduinoPowerSensor_::read() {
     State state;
 
     if ((errno = pthread_mutex_lock(&mutex)) != 0) {
@@ -128,17 +164,17 @@ PowerSensor::State ArduinoPowerSensor::read() {
 }
 
 
-double ArduinoPowerSensor::seconds(const State &firstState, const State &secondState) {
+double ArduinoPowerSensor_::seconds(const State &firstState, const State &secondState) {
     return secondState.timeAtRead - firstState.timeAtRead;
 }
 
 
-double ArduinoPowerSensor::Joules(const State &firstState, const State &secondState) {
+double ArduinoPowerSensor_::Joules(const State &firstState, const State &secondState) {
     return Watt(firstState, secondState) * seconds(firstState, secondState);
 }
 
 
-double ArduinoPowerSensor::Watt(const State &firstState, const State &secondState) {
+double ArduinoPowerSensor_::Watt(const State &firstState, const State &secondState) {
     uint32_t microSeconds = secondState.lastMeasurement.microSeconds - firstState.lastMeasurement.microSeconds;
 
     if (microSeconds != 0) {
