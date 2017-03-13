@@ -29,7 +29,7 @@ namespace idg {
                 #if defined(HAVE_LIKWID)
                 hostPowerSensor = LikwidPowerSensor::create();
                 #else
-                hostPowerSensor = new RaplPowerSensor();
+                hostPowerSensor = RaplPowerSensor::create();
                 #endif
 
                 omp_set_nested(true);

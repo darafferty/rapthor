@@ -6,5 +6,6 @@ if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 endif()
 
 if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
-    add_subdirectory(OpenCL)
+    # TODO: reimplement
+    #add_subdirectory(OpenCL)
 endif()

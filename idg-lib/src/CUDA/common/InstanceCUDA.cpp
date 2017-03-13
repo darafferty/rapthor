@@ -263,7 +263,7 @@ namespace idg {
                     if (str_power_file) {
                         std::cout << "Power file:   " << str_power_file << std::endl;
                     }
-                    powerSensor = new ArduinoPowerSensor(str_power_sensor, str_power_file);
+                    powerSensor = ArduinoPowerSensor::create(str_power_sensor, str_power_file);
                 } else {
                     powerSensor = NVMLPowerSensor::create(device_number, str_power_file);
                 }
