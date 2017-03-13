@@ -192,8 +192,8 @@ namespace idg {
             int n2 = n / 2;
 
             // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
-            #pragma omp parallel for private(tmp13, tmp24)
             for (int pol = 0; pol < nr_polarizations; pol++) {
+                #pragma omp parallel for private(tmp13, tmp24) collapse(2)
                 for (int i = 0; i < n2; i++) {
                     for (int k = 0; k < n2; k++) {
                         tmp13                 = data(pol, i, k);
@@ -216,7 +216,7 @@ namespace idg {
             int height = data.get_y_dim();
             int width = data.get_x_dim();
 
-            #pragma omp parallel for collapse(2)
+            #pragma omp parallel for collapse(3)
             for (int pol = 0; pol < nr_polarizations; pol++) {
                 for (int y = 0; y < height; y++) {
                     for (int x = 0; x < width; x++) {
