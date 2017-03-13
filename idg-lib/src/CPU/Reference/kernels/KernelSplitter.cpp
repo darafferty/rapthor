@@ -9,8 +9,8 @@
 
 extern "C" {
 void kernel_splitter(
-    const int nr_subgrids,
-    const int gridsize,
+    const long nr_subgrids,
+    const long gridsize,
     const idg::Metadata metadata[],
           idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
     const idg::float2   grid[]
@@ -38,7 +38,7 @@ void kernel_splitter(
 
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-						int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+						size_t grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
                         subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
                     }
                 }
