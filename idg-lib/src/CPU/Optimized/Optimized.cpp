@@ -75,6 +75,10 @@ namespace idg {
                 bool avx2_supported   = check_4th_gen_intel_core_features();
                 bool avx512_supported = has_intel_knl_features();
 
+                // Alignment
+                unsigned int alignment = avx512_supported ? 64 : 32;
+                flags << " -DALIGNMENT=" << alignment;
+
                 // Intel compiler
                 stringstream intel_flags;
                 intel_flags << " -qopenmp -xHost -mkl=parallel";
