@@ -203,9 +203,9 @@ namespace idg {
             // Function signatures
             #define sig_gridder   (void (*)(int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder (void (*)(int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_fft		  (void (*)(int,int,int,void*,int))
-            #define sig_adder	  (void (*)(int,int,void*,void*,void*))
-            #define sig_splitter  (void (*)(int,int,void*,void*,void*))
+            #define sig_fft		  (void (*)(long,long,long,void*,int))
+            #define sig_adder	  (void (*)(long,long,void*,void*,void*))
+            #define sig_splitter  (void (*)(long,long,void*,void*,void*))
 
 
             void InstanceCPU::run_gridder(

@@ -9,8 +9,8 @@
 
 extern "C" {
 void kernel_adder(
-    const int nr_subgrids,
-    const int gridsize,
+    const long nr_subgrids,
+    const long gridsize,
     const idg::Metadata metadata[],
     const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
           idg::float2   grid[]
@@ -38,7 +38,7 @@ void kernel_adder(
                         idg::float2 phasor = {cosf(phase), sinf(phase)};
 
                         // Add subgrid value to grid
-						int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+						size_t grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
                         grid[grid_idx] += phasor * subgrid[s][pol][y_src][x_src];
                     }
                 }

@@ -8,9 +8,9 @@
 
 extern "C" {
 void kernel_fft(
-    int gridsize,
-	int size,
-	int batch,
+    long gridsize,
+	long size,
+	long batch,
     fftwf_complex *data,
     int sign    // Note: -1=FFTW_FORWARD, 1=FFTW_BACKWARD
 	) {

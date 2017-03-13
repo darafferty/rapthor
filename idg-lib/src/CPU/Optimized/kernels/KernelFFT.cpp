@@ -11,7 +11,7 @@
 
 extern "C" {
 void kernel_fft_grid(
-	int size,
+	long size,
     fftwf_complex *_data,
     int sign    // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
     ) {
@@ -48,8 +48,8 @@ void kernel_fft_grid(
 }
 
 void kernel_fft_subgrid(
-	int size,
-	int batch,
+	long size,
+	long batch,
     fftwf_complex *_data,
 	int sign
 	) {
@@ -99,9 +99,9 @@ void kernel_fft_subgrid(
 }
 
 void kernel_fft(
-    int gridsize,
-	int size,
-	int batch,
+    long gridsize,
+	long size,
+	long batch,
     fftwf_complex *data,
 	int sign
 	) {
