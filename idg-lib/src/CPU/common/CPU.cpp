@@ -455,7 +455,7 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-                    kernels.run_adder(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -516,7 +516,7 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-                    kernels.run_splitter(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
