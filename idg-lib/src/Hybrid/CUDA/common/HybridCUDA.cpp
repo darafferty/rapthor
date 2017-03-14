@@ -119,7 +119,6 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_grid        = device.allocate_device_grid(grid_size);
 
                     htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                     htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
@@ -164,7 +163,6 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                    cu::DeviceMemory& d_grid         = device.get_device_grid();
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -397,12 +395,10 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.allocate_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_grid        = device.allocate_device_grid(grid_size);
 
                     htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                     htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                     htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                    htodstream.memcpyHtoDAsync(d_grid, grid.data());
 
                     if (d == 0) {
                         device.reuse_host_grid(grid_size, grid.data());
@@ -443,7 +439,6 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                    cu::DeviceMemory& d_grid         = device.get_device_grid();
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
