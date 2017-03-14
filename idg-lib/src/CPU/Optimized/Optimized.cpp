@@ -94,10 +94,6 @@ namespace idg {
                     intel_flags  << " -DUSE_VML";
                 }
 
-                // Alignment
-                unsigned int alignment = avx512_supported ? 64 : 32;
-                intel_flags << " -DALIGNMENT=" << alignment;
-
                 #if defined(BUILD_WITH_PYTHON)
                 // HACK: to make code be corretly loaded with ctypes
                 intel_flags << " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";

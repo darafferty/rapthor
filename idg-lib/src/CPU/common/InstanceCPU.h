@@ -28,7 +28,8 @@ namespace idg {
 
                     void run_gridder(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         float image_size,
                         float w_offset,
                         int nr_channels,
@@ -43,7 +44,8 @@ namespace idg {
 
                     void run_degridder(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         float image_size,
                         float w_offset,
                         int nr_channels,

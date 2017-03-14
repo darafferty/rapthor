@@ -368,6 +368,7 @@ namespace idg {
                     kernels.run_gridder(
                         current_nr_subgrids,
                         grid_size,
+                        subgrid_size,
                         image_size,
                         w_offset,
                         nr_channels,
@@ -601,6 +602,7 @@ namespace idg {
                     kernels.run_degridder(
                         current_nr_subgrids,
                         grid_size,
+                        subgrid_size,
                         image_size,
                         w_offset,
                         nr_channels,
