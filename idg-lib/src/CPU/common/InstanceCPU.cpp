@@ -120,12 +120,7 @@ namespace idg {
                 // Set compile arguments:
                 stringstream arguments;
                 arguments << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
-                arguments << " -DSUBGRIDSIZE=" << mConstants.get_subgrid_size();
                 arguments << " " << flags;
-                #if defined(HAVE_MKL)
-                arguments << " -DHAVE_MKL";
-                arguments << " -I" << MKL_INCLUDE_DIRS;
-                #endif
 
                 // Get list of libraries to build
                 vector<string> v = mInfo.get_lib_names();
@@ -201,16 +196,17 @@ namespace idg {
 
 
             // Function signatures
-            #define sig_gridder   (void (*)(int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder (void (*)(int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_gridder   (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_fft		  (void (*)(long,long,long,void*,int))
-            #define sig_adder	  (void (*)(long,long,void*,void*,void*))
-            #define sig_splitter  (void (*)(long,long,void*,void*,void*))
+            #define sig_adder	  (void (*)(long,long,int,void*,void*,void*))
+            #define sig_splitter  (void (*)(long,long,int,void*,void*,void*))
 
 
             void InstanceCPU::run_gridder(
                 int nr_subgrids,
-                int gridsize,
+                int grid_size,
+                int subgrid_size,
                 float image_size,
                 float w_offset,
                 int nr_channels,
@@ -224,13 +220,14 @@ namespace idg {
                 void *subgrid)
             {
                   (sig_gridder (void *) *function_gridder)(
-                  nr_subgrids, gridsize, image_size, w_offset, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
             void InstanceCPU::run_degridder(
                 int nr_subgrids,
-                int gridsize,
+                int grid_size,
+                int subgrid_size,
                 float image_size,
                 float w_offset,
                 int nr_channels,
@@ -244,38 +241,40 @@ namespace idg {
                 void *subgrid)
             {
                   (sig_degridder (void *) *function_degridder)(
-                  nr_subgrids, gridsize, image_size, w_offset, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
             void InstanceCPU::run_fft(
-                int gridsize,
+                int grid_size,
                 int size,
                 int batch,
                 void *data,
                 int direction)
             {
-                (sig_fft (void *) *function_fft)(gridsize, size, batch, data, direction);
+                (sig_fft (void *) *function_fft)(grid_size, size, batch, data, direction);
             }
 
             void InstanceCPU::run_adder(
                 int nr_subgrids,
-                int gridsize,
+                int grid_size,
+                int subgrid_size,
                 void *metadata,
                 void *subgrid,
                 void *grid)
             {
-                (sig_adder (void *) *function_adder)(nr_subgrids, gridsize, metadata, subgrid, grid);
+                (sig_adder (void *) *function_adder)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
             }
 
             void InstanceCPU::run_splitter(
                 int nr_subgrids,
-                int gridsize,
+                int grid_size,
+                int subgrid_size,
                 void *metadata,
                 void *subgrid,
                 void *grid)
             {
-                (sig_splitter (void *) *function_splitter)(nr_subgrids, gridsize, metadata, subgrid, grid);
+                (sig_splitter (void *) *function_splitter)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
             }
 
         } // namespace cpu

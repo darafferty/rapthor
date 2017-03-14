@@ -28,7 +28,8 @@ namespace idg {
 
                     void run_gridder(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         float image_size,
                         float w_offset,
                         int nr_channels,
@@ -43,7 +44,8 @@ namespace idg {
 
                     void run_degridder(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         float image_size,
                         float w_offset,
                         int nr_channels,
@@ -57,7 +59,7 @@ namespace idg {
                         void *subgrid);
 
                     void run_fft(
-                        int gridsize,
+                        int grid_size,
                         int size,
                         int batch,
                         void *data,
@@ -65,14 +67,16 @@ namespace idg {
 
                     void run_adder(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         void *metadata,
                         void *subgrid,
                         void *grid);
 
                     void run_splitter(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         void *metadata,
                         void *subgrid,
                         void *grid);

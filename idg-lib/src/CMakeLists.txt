@@ -55,7 +55,10 @@ add_library(idg-powersensor
   $<TARGET_OBJECTS:powersensor>
 )
 
-set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES} ${NVML_LIBRARY})
+set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
+if (BUILD_LIB_CUDA)
+    set(LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NVML_LIBRARY})
+endif()
 target_link_libraries(idg-powersensor ${LINK_LIRBRARIES})
 
 set_target_properties(idg-powersensor PROPERTIES

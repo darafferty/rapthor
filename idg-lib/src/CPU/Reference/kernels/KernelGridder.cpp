@@ -9,6 +9,7 @@ extern "C" {
     void kernel_gridder(
         const int   nr_subgrids,
         const int   gridsize,
+        const int   subgridsize,
         const float imagesize,
         const float w_offset_in_lambda,
         const int   nr_channels,
@@ -41,22 +42,22 @@ extern "C" {
             const int y_coordinate = m.coordinate.y;
 
             // Compute u and v offset in wavelenghts
-            const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2)
+            const float u_offset = (x_coordinate + subgridsize/2 - gridsize/2)
                                    * (2*M_PI / imagesize);
-            const float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2)
+            const float v_offset = (y_coordinate + subgridsize/2 - gridsize/2)
                                    * (2*M_PI / imagesize);
             const float w_offset = 2*M_PI * w_offset_in_lambda;
 
             // Iterate all pixels in subgrid
-            for (int y = 0; y < SUBGRIDSIZE; y++) {
-                for (int x = 0; x < SUBGRIDSIZE; x++) {
+            for (int y = 0; y < subgridsize; y++) {
+                for (int x = 0; x < subgridsize; x++) {
                     // Initialize pixel for every polarization
                     std::complex<float> pixels[NR_POLARIZATIONS];
                     memset(pixels, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
 
                     // Compute l,m,n
-                    const float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-                    const float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                    const float l = (x+0.5-(subgridsize/2)) * imagesize/subgridsize;
+                    const float m = (y+0.5-(subgridsize/2)) * imagesize/subgridsize;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
@@ -95,8 +96,8 @@ extern "C" {
                     // Load a term for station1
                     int station1_index =
                         (aterm_index * nr_stations + station1) *
-                        SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS +
-                        y * SUBGRIDSIZE * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                        subgridsize * subgridsize * NR_POLARIZATIONS +
+                        y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
                     std::complex<float> aXX1 = aterms[station1_index + 0];
                     std::complex<float> aXY1 = aterms[station1_index + 1];
                     std::complex<float> aYX1 = aterms[station1_index + 2];
@@ -105,8 +106,8 @@ extern "C" {
                     // Load aterm for station2
                     int station2_index =
                         (aterm_index * nr_stations + station2) *
-                        SUBGRIDSIZE * SUBGRIDSIZE * NR_POLARIZATIONS +
-                        y * SUBGRIDSIZE * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                        subgridsize * subgridsize * NR_POLARIZATIONS +
+                        y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
                     std::complex<float> aXX2 = conj(aterms[station2_index + 0]);
                     std::complex<float> aXY2 = conj(aterms[station2_index + 1]);
                     std::complex<float> aYX2 = conj(aterms[station2_index + 2]);
@@ -145,16 +146,16 @@ extern "C" {
                     pixels[3] += (pixelsYY * aYY2);
 
                     // Load spheroidal
-                    float sph = spheroidal[y * SUBGRIDSIZE + x];
+                    float sph = spheroidal[y * subgridsize + x];
 
                     // Compute shifted position in subgrid
-                    int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                    int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                    int x_dst = (x + (subgridsize/2)) % subgridsize;
+                    int y_dst = (y + (subgridsize/2)) % subgridsize;
 
                     // Set subgrid value
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        subgrid[s * NR_POLARIZATIONS * SUBGRIDSIZE * SUBGRIDSIZE +
-                                pol * SUBGRIDSIZE * SUBGRIDSIZE + y_dst * SUBGRIDSIZE +
+                        subgrid[s * NR_POLARIZATIONS * subgridsize * subgridsize +
+                                pol * subgridsize * subgridsize + y_dst * subgridsize +
                                 x_dst] = pixels[pol] * sph;
                     }
                 } // end x
