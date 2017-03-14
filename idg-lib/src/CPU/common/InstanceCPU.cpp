@@ -121,10 +121,6 @@ namespace idg {
                 stringstream arguments;
                 arguments << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
                 arguments << " " << flags;
-                #if defined(HAVE_MKL)
-                arguments << " -DHAVE_MKL";
-                arguments << " -I" << MKL_INCLUDE_DIRS;
-                #endif
 
                 // Get list of libraries to build
                 vector<string> v = mInfo.get_lib_names();

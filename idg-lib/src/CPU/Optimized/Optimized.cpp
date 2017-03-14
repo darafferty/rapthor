@@ -79,16 +79,6 @@ namespace idg {
                 stringstream intel_flags;
                 intel_flags << " -qopenmp -xHost -mkl=parallel";
 
-                // AVX-512 (Knights Landing) specific flags
-                if (avx512_supported) {
-                    intel_flags << " -DUSE_AVX512";
-                }
-
-                // AVX-2 (Haswell) specific flags
-                if (avx2_supported) {
-                       intel_flags  << " -DUSE_AVX2";
-                }
-
                 // Flags for specific cases
                 if (avx512_supported && !avx2_supported) {
                     intel_flags  << " -DUSE_VML";
@@ -96,7 +86,7 @@ namespace idg {
 
                 #if defined(BUILD_WITH_PYTHON)
                 // HACK: to make code be corretly loaded with ctypes
-                intel_flags << " -lmkl_avx2 -lmkl_vml_avx2 -lmkl_avx -lmkl_vml_avx";
+                intel_flags << " -lmkl_def";
                 #endif
 
                 // GNU compiler
