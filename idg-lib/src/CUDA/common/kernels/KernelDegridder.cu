@@ -9,8 +9,8 @@
 
 extern "C" {
 __global__ void kernel_degridder(
-    const int gridsize,
-    const float imagesize,
+    const int grid_size,
+    const float image_size,
     const float w_offset,
     const int nr_channels,
     const int nr_stations,
@@ -42,8 +42,8 @@ __global__ void kernel_degridder(
 	const int y_coordinate = m.coordinate.y;
 
 	// Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
-    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
+    float u_offset = (x_coordinate + SUBGRIDSIZE/2 - grid_size/2) / image_size * 2 * M_PI;
+    float v_offset = (y_coordinate + SUBGRIDSIZE/2 - grid_size/2) / image_size * 2 * M_PI;
 
     // Shared data
     __shared__ float4 _pix[NR_POLARIZATIONS / 2][BATCH_SIZE];
@@ -147,8 +147,8 @@ __global__ void kernel_degridder(
                 _pix[1][i] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-                float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+                float l = (x+0.5-(SUBGRIDSIZE/2)) * image_size/SUBGRIDSIZE;
+                float m = (y+0.5-(SUBGRIDSIZE/2)) * image_size/SUBGRIDSIZE;
                 float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[i] = make_float4(l, m, n, phase_offset);

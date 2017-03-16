@@ -10,8 +10,8 @@
 */
 template<int current_nr_channels>
 __device__ void kernel_gridder_(
-    const int gridsize,
-    const float imagesize,
+    const int grid_size,
+    const float image_size,
     const float w_offset,
     const int nr_channels,
     const int channel_offset,
@@ -95,8 +95,8 @@ __device__ void kernel_gridder_(
 	    __syncthreads();
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - gridsize/2) / imagesize * 2 * M_PI;
+        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - grid_size/2) / image_size * 2 * M_PI;
+        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - grid_size/2) / image_size * 2 * M_PI;
 
 	    // Iterate all pixels in subgrid
         for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
@@ -110,8 +110,8 @@ __device__ void kernel_gridder_(
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-            float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float l = (x+0.5-(SUBGRIDSIZE/2)) * image_size/SUBGRIDSIZE;
+            float m = (y+0.5-(SUBGRIDSIZE/2)) * image_size/SUBGRIDSIZE;
             float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
             // Iterate all timesteps
@@ -199,17 +199,17 @@ __device__ void kernel_gridder_(
     } // end for time_offset_local
 }
 
-extern "C" {
 #define KERNEL_GRIDDER_TEMPLATE(NR_CHANNELS) \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
         kernel_gridder_<NR_CHANNELS>( \
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations, \
+            grid_size, image_size, w_offset, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
     }
 
+extern "C" {
 __global__ void kernel_gridder(
-    const int gridsize,
-    const float imagesize,
+    const int grid_size,
+    const float image_size,
     const float w_offset,
     const int nr_channels,
     const int nr_stations,
