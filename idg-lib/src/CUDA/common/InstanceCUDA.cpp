@@ -89,7 +89,6 @@ namespace idg {
                 // Constants
                 std::stringstream flags_constants;
                 flags_constants << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
-                flags_constants << " -DSUBGRIDSIZE=" << mConstants.get_subgrid_size();
 
                 // CUDA specific flags
                 std::stringstream flags_cuda;

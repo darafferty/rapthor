@@ -6,7 +6,7 @@
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
 
 /*
-	Kernel
+    Kernel
 */
 template<int current_nr_channels>
 __device__ void kernel_gridder_(
@@ -17,27 +17,31 @@ __device__ void kernel_gridder_(
     const int nr_channels,
     const int channel_offset,
     const int nr_stations,
-	const UVWType			__restrict__ uvw,
-	const WavenumberType	__restrict__ wavenumbers,
-	const VisibilitiesType	__restrict__ visibilities,
-	const SpheroidalType	__restrict__ spheroidal,
-	const ATermType			__restrict__ aterm,
-	const MetadataType		__restrict__ metadata,
-	SubGridType				__restrict__ subgrid
-	) {
-	int tidx = threadIdx.x;
-	int tidy = threadIdx.y;
-	int tid = tidx + tidy * blockDim.x;
-	int blockSize = blockDim.x * blockDim.y;
+    const UVWType          __restrict__ uvw,
+    const WavenumberType   __restrict__ wavenumbers,
+    const VisibilitiesType __restrict__ visibilities,
+    const float*           __restrict__ spheroidal,
+    const float2*          __restrict__ aterm,
+    const Metadata*        __restrict__ metadata,
+          float2*          __restrict__ subgrid
+    ) {
+    int tidx = threadIdx.x;
+    int tidy = threadIdx.y;
+    int tid = tidx + tidy * blockDim.x;
+    int blockSize = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
     // Set subgrid to zero
     if (channel_offset == 0) {
-        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
-            subgrid[s][0][0][i] = make_float2(0, 0);
-            subgrid[s][1][0][i] = make_float2(0, 0);
-            subgrid[s][2][0][i] = make_float2(0, 0);
-            subgrid[s][3][0][i] = make_float2(0, 0);
+        for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
+            int idx_xx = index_subgrid(subgrid_size, s, 0, 0, i);
+            int idx_xy = index_subgrid(subgrid_size, s, 1, 0, i);
+            int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
+            int idx_yy = index_subgrid(subgrid_size, s, 3, 0, i);
+            subgrid[idx_xx] = make_float2(0, 0);
+            subgrid[idx_xy] = make_float2(0, 0);
+            subgrid[idx_yx] = make_float2(0, 0);
+            subgrid[idx_yy] = make_float2(0, 0);
         }
     }
 
@@ -47,19 +51,19 @@ __device__ void kernel_gridder_(
     const Metadata &m_0 = metadata[0];
 
     // Load metadata for current subgrid
-	const Metadata &m = metadata[s];
+    const Metadata &m = metadata[s];
     const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
     const int nr_timesteps = m.nr_timesteps;
-	const int aterm_index = m.aterm_index;
-	const int station1 = m.baseline.station1;
-	const int station2 = m.baseline.station2;
-	const int x_coordinate = m.coordinate.x;
-	const int y_coordinate = m.coordinate.y;
+    const int aterm_index = m.aterm_index;
+    const int station1 = m.baseline.station1;
+    const int station2 = m.baseline.station2;
+    const int x_coordinate = m.coordinate.x;
+    const int y_coordinate = m.coordinate.y;
 
     // Shared data
-	__shared__ float4 _visibilities[2][BATCH_SIZE][current_nr_channels];
-	__shared__ float4 _uvw[BATCH_SIZE];
-	__shared__ float _wavenumbers[current_nr_channels];
+    __shared__ float4 _visibilities[2][BATCH_SIZE][current_nr_channels];
+    __shared__ float4 _uvw[BATCH_SIZE];
+    __shared__ float _wavenumbers[current_nr_channels];
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += blockSize) {
@@ -74,14 +78,14 @@ __device__ void kernel_gridder_(
 
         __syncthreads();
 
-	    // Load UVW
-	    for (int time = tid; time < current_nr_timesteps; time += blockSize) {
+        // Load UVW
+        for (int time = tid; time < current_nr_timesteps; time += blockSize) {
             UVW a = uvw[time_offset_global + time_offset_local + time];
             _uvw[time] = make_float4(a.u, a.v, a.w, 0);
         }
 
-	    // Load visibilities
-	    for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += blockSize) {
+        // Load visibilities
+        for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += blockSize) {
             int time = i / current_nr_channels;
             int chan = i % current_nr_channels;
             int index = (time_offset_global + time_offset_local + time) * nr_channels + (channel_offset + chan);
@@ -93,16 +97,16 @@ __device__ void kernel_gridder_(
             _visibilities[1][time][chan] = make_float4(c.x, c.y, d.x, d.y);
         }
 
-	    __syncthreads();
+        __syncthreads();
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2 - grid_size/2) / image_size * 2 * M_PI;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2 - grid_size/2) / image_size * 2 * M_PI;
+        float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+        float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
 
-	    // Iterate all pixels in subgrid
-        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
-            int y = i / SUBGRIDSIZE;
-            int x = i % SUBGRIDSIZE;
+        // Iterate all pixels in subgrid
+        for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
+            int y = i / subgrid_size;
+            int x = i % subgrid_size;
 
             // Private pixels
             float2 uvXX = make_float2(0, 0);
@@ -111,8 +115,8 @@ __device__ void kernel_gridder_(
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x+0.5-(SUBGRIDSIZE/2)) * image_size/SUBGRIDSIZE;
-            float m = (y+0.5-(SUBGRIDSIZE/2)) * image_size/SUBGRIDSIZE;
+            float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
+            float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
             float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
             // Iterate all timesteps
@@ -167,16 +171,18 @@ __device__ void kernel_gridder_(
             } // end for time
 
             // Get aterm for station1
-            float2 aXX1 = aterm[aterm_index * nr_stations + station1][y][x][0];
-            float2 aXY1 = aterm[aterm_index * nr_stations + station1][y][x][1];
-            float2 aYX1 = aterm[aterm_index * nr_stations + station1][y][x][2];
-            float2 aYY1 = aterm[aterm_index * nr_stations + station1][y][x][3];
+            int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
+            float2 aXX1 = aterm[station1_idx + 0];
+            float2 aXY1 = aterm[station1_idx + 1];
+            float2 aYX1 = aterm[station1_idx + 2];
+            float2 aYY1 = aterm[station1_idx + 3];
 
             // Get aterm for station2
-            float2 aXX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][0]);
-            float2 aXY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][1]);
-            float2 aYX2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][2]);
-            float2 aYY2 = cuConjf(aterm[aterm_index * nr_stations + station2][y][x][3]);
+            int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
+            float2 aXX2 = cuConjf(aterm[station2_idx + 0]);
+            float2 aXY2 = cuConjf(aterm[station2_idx + 1]);
+            float2 aYX2 = cuConjf(aterm[station2_idx + 2]);
+            float2 aYY2 = cuConjf(aterm[station2_idx + 3]);
 
             // Apply aterm
             apply_aterm(
@@ -185,18 +191,22 @@ __device__ void kernel_gridder_(
                 uvXX, uvXY, uvYX, uvYY);
 
             // Load spheroidal
-            float sph = spheroidal[y][x];
+            float spheroidal_ = spheroidal[y * subgrid_size + x];
 
             // Compute shifted position in subgrid
-            int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-            int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+            int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
             // Set subgrid value
-            subgrid[s][0][y_dst][x_dst] += uvXX * sph;
-            subgrid[s][1][y_dst][x_dst] += uvXY * sph;
-            subgrid[s][2][y_dst][x_dst] += uvYX * sph;
-            subgrid[s][3][y_dst][x_dst] += uvYY * sph;
-	    } // end for i
+            int idx_xx = index_subgrid(subgrid_size, s, 0, y_dst, x_dst);
+            int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
+            int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
+            int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
+            subgrid[idx_xx] += uvXX * spheroidal_;
+            subgrid[idx_xy] += uvXY * spheroidal_;
+            subgrid[idx_yx] += uvYX * spheroidal_;
+            subgrid[idx_yy] += uvYY * spheroidal_;
+        } // end for i
     } // end for time_offset_local
 }
 
@@ -209,20 +219,20 @@ __device__ void kernel_gridder_(
 
 extern "C" {
 __global__ void kernel_gridder(
-    const int grid_size,
-    const int subgrid_size,
-    const float image_size,
-    const float w_offset,
-    const int nr_channels,
-    const int nr_stations,
-	const UVWType			__restrict__ uvw,
-	const WavenumberType	__restrict__ wavenumbers,
-	const VisibilitiesType	__restrict__ visibilities,
-	const SpheroidalType	__restrict__ spheroidal,
-	const ATermType			__restrict__ aterm,
-	const MetadataType		__restrict__ metadata,
-	SubGridType				__restrict__ subgrid
-	) {
+    const int                           grid_size,
+    const int                           subgrid_size,
+    const float                         image_size,
+    const float                         w_offset,
+    const int                           nr_channels,
+    const int                           nr_stations,
+    const UVWType          __restrict__ uvw,
+    const WavenumberType   __restrict__ wavenumbers,
+    const VisibilitiesType __restrict__ visibilities,
+    const float*           __restrict__ spheroidal,
+    const float2*          __restrict__ aterm,
+    const MetadataType     __restrict__ metadata,
+          float2*          __restrict__ subgrid
+    ) {
     int channel_offset = 0;
     KERNEL_GRIDDER_TEMPLATE(8)
     KERNEL_GRIDDER_TEMPLATE(4)

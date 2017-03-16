@@ -6,19 +6,19 @@
 extern "C" {
 
 /*
-	Kernel
+    Kernel
 */
 __global__ void kernel_splitter(
-    const int                       grid_size,
-    const int                       subgrid_size,
-	const MetadataType __restrict__ metadata,
-	SubGridType        __restrict__ subgrid,
-	const GridType     __restrict__ grid
-	) {
-	int tidx = threadIdx.x;
-	int tidy = threadIdx.y;
-	int tid = tidx + tidy * blockDim.x;
-	int blockSize = blockDim.x * blockDim.y;
+    const int                    grid_size,
+    const int                    subgrid_size,
+    const Metadata* __restrict__ metadata,
+    float2*         __restrict__ subgrid,
+    const float2*   __restrict__ grid
+    ) {
+    int tidx = threadIdx.x;
+    int tidy = threadIdx.y;
+    int tid = tidx + tidy * blockDim.x;
+    int blockSize = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
     // Load position in grid
@@ -26,25 +26,26 @@ __global__ void kernel_splitter(
     int grid_y = metadata[s].coordinate.y;
 
     // Check whether subgrid fits in grid
-    if (grid_x >= 0 && grid_x < grid_size-SUBGRIDSIZE &&
-        grid_y >= 0 && grid_y < grid_size-SUBGRIDSIZE) {
+    if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
+        grid_y >= 0 && grid_y < grid_size-subgrid_size) {
 
         // Iterate all pixels
-        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
-            int y = i / SUBGRIDSIZE;
-            int x = i % SUBGRIDSIZE;
-            float phase = -M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+        for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
+            int y = i / subgrid_size;
+            int x = i % subgrid_size;
+            float phase = -M_PI*(x+y-subgrid_size)/subgrid_size;
             float2 phasor = make_float2(cos(phase), sin(phase));
 
             // Compute shifted position in subgrid
-            int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-            int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+            int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
             // Set grid value to subgrid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int grid_idx = (pol * grid_size * grid_size) + ((grid_y + y) * grid_size) + (grid_x + x);
-                subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
+                int src_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                int dst_idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
+                subgrid[dst_idx] = phasor * grid[src_idx];
             }
         }
     }
