@@ -128,7 +128,7 @@ __device__ void kernel_gridder_(
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                 // Compute phasor
-                #pragma unroll 8
+                #pragma unroll current_nr_channels
                 for (int chan = 0; chan < current_nr_channels; chan++) {
                     float wavenumber = _wavenumbers[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
