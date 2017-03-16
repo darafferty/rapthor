@@ -227,6 +227,12 @@ __global__ void kernel_gridder(
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
     }
 
+    for (; (channel_offset + 2) <= nr_channels; channel_offset += 2) {
+        kernel_gridder_<2>(
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+    }
+
     for (; channel_offset < nr_channels; channel_offset++) {
         kernel_gridder_<1>(
             gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
