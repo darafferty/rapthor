@@ -89,7 +89,6 @@ namespace idg {
                 // Constants
                 std::stringstream flags_constants;
                 flags_constants << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
-                flags_constants << " -DSUBGRIDSIZE=" << mConstants.get_subgrid_size();
 
                 // CUDA specific flags
                 std::stringstream flags_cuda;
@@ -283,6 +282,7 @@ namespace idg {
             void InstanceCUDA::launch_gridder(
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 float image_size,
                 float w_offset,
                 int nr_channels,
@@ -296,7 +296,7 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
-                    &grid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
+                    &grid_size, &subgrid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
@@ -307,6 +307,7 @@ namespace idg {
             void InstanceCUDA::launch_degridder(
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 float image_size,
                 float w_offset,
                 int nr_channels,
@@ -320,7 +321,7 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
-                    &grid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
+                    &grid_size, &subgrid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
@@ -358,11 +359,12 @@ namespace idg {
             void InstanceCUDA::launch_adder(
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
                 cu::DeviceMemory& d_grid)
             {
-                const void *parameters[] = { &grid_size, d_metadata, d_subgrid, d_grid };
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
             }
@@ -370,20 +372,22 @@ namespace idg {
             void InstanceCUDA::launch_splitter(
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
                 cu::DeviceMemory& d_grid)
             {
-                const void *parameters[] = { &grid_size, d_metadata, d_subgrid, d_grid };
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
             }
 
             void InstanceCUDA::launch_scaler(
                 int nr_subgrids,
+                int subgrid_size,
                 cu::DeviceMemory& d_subgrid)
             {
-                const void *parameters[] = { d_subgrid };
+                const void *parameters[] = { &subgrid_size, d_subgrid };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_scaler, grid, block_scaler, 0, parameters);
             }

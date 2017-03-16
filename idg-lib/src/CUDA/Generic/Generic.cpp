@@ -301,7 +301,7 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
-                                current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
@@ -311,14 +311,14 @@ namespace idg {
 
                             // Launch scaler kernel
                             device.launch_scaler(
-                                current_nr_subgrids, d_subgrids);
+                                current_nr_subgrids, subgrid_size, d_subgrids);
                             device.measure(powerRecords[3], executestream);
                             executestream.record(outputReady);
                             executestream.record(inputFree);
 
                             // Launch adder kernel
                             device.launch_adder(
-                                current_nr_subgrids, grid_size,
+                                current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
 
                             device.measure(powerRecords[4], executestream);
@@ -584,7 +584,7 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
                             device.launch_splitter(
-                                current_nr_subgrids, grid_size,
+                                current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
                             device.measure(powerRecords[1], executestream);
 
@@ -596,7 +596,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
-                                current_nr_subgrids, grid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
