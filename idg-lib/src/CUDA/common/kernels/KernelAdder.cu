@@ -9,7 +9,8 @@ extern "C" {
 	Kernel
 */
 __global__ void kernel_adder(
-    const int                       gridsize,
+    const int                       grid_size,
+    const int                       subgrid_size,
 	const MetadataType __restrict__ metadata,
 	const SubGridType  __restrict__ subgrid,
 	GridType           __restrict__ grid
@@ -32,8 +33,8 @@ __global__ void kernel_adder(
         float2 phasor = make_float2(cos(phase), sin(phase));
 
         // Check wheter subgrid fits in grid
-        if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
-            grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
+        if (grid_x >= 0 && grid_x < grid_size-SUBGRIDSIZE &&
+            grid_y >= 0 && grid_y < grid_size-SUBGRIDSIZE) {
             // Compute shifted position in subgrid
             int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
             int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
@@ -41,7 +42,7 @@ __global__ void kernel_adder(
             // Add subgrid value to grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+                int grid_idx = (pol * grid_size * grid_size) + ((grid_y + y) * grid_size) + (grid_x + x);
                 atomicAdd(&(grid[grid_idx]), phasor * subgrid[s][pol][y_src][x_src]);
             }
         }

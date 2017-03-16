@@ -9,6 +9,7 @@ extern "C" {
 	Kernel
 */
 __global__ void kernel_scaler(
+    int subgrid_size,
 	SubGridType __restrict__ subgrid
 	) {
     // Compute scaling factor

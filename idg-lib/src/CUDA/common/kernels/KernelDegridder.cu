@@ -10,6 +10,7 @@
 extern "C" {
 __global__ void kernel_degridder(
     const int grid_size,
+    const int subgrid_size,
     const float image_size,
     const float w_offset,
     const int nr_channels,

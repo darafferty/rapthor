@@ -9,7 +9,8 @@ extern "C" {
 	Kernel
 */
 __global__ void kernel_splitter(
-    const int                       gridsize,
+    const int                       grid_size,
+    const int                       subgrid_size,
 	const MetadataType __restrict__ metadata,
 	SubGridType        __restrict__ subgrid,
 	const GridType     __restrict__ grid
@@ -25,8 +26,8 @@ __global__ void kernel_splitter(
     int grid_y = metadata[s].coordinate.y;
 
     // Check whether subgrid fits in grid
-    if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
-        grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
+    if (grid_x >= 0 && grid_x < grid_size-SUBGRIDSIZE &&
+        grid_y >= 0 && grid_y < grid_size-SUBGRIDSIZE) {
 
         // Iterate all pixels
         for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blockSize) {
@@ -42,7 +43,7 @@ __global__ void kernel_splitter(
             // Set grid value to subgrid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+                int grid_idx = (pol * grid_size * grid_size) + ((grid_y + y) * grid_size) + (grid_x + x);
                 subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
             }
         }

@@ -11,6 +11,7 @@
 template<int current_nr_channels>
 __device__ void kernel_gridder_(
     const int grid_size,
+    const int subgrid_size,
     const float image_size,
     const float w_offset,
     const int nr_channels,
@@ -202,13 +203,14 @@ __device__ void kernel_gridder_(
 #define KERNEL_GRIDDER_TEMPLATE(NR_CHANNELS) \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
         kernel_gridder_<NR_CHANNELS>( \
-            grid_size, image_size, w_offset, nr_channels, channel_offset, nr_stations, \
+            grid_size, subgrid_size, image_size, w_offset, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
     }
 
 extern "C" {
 __global__ void kernel_gridder(
     const int grid_size,
+    const int subgrid_size,
     const float image_size,
     const float w_offset,
     const int nr_channels,

@@ -44,6 +44,7 @@ namespace idg {
                     void launch_gridder(
                         int nr_subgrids,
                         int grid_size,
+                        int subgrid_size,
                         float image_size,
                         float w_offset,
                         int nr_channels,
@@ -59,6 +60,7 @@ namespace idg {
                     void launch_degridder(
                         int nr_subgrids,
                         int grid_size,
+                        int subgrid_size,
                         float image_size,
                         float w_offset,
                         int nr_channels,
@@ -81,6 +83,7 @@ namespace idg {
                     void launch_adder(
                         int nr_subgrids,
                         int grid_size,
+                        int subgrid_size,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
                         cu::DeviceMemory& d_grid);
@@ -88,12 +91,14 @@ namespace idg {
                     void launch_splitter(
                         int nr_subgrids,
                         int grid_size,
+                        int subgrid_size,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
                         cu::DeviceMemory& d_grid);
 
                     void launch_scaler(
                         int nr_subgrids,
+                        int subgrid_size,
                         cu::DeviceMemory& d_subgrid);
 
 
