@@ -10,15 +10,15 @@
 */
 template<int current_nr_channels>
 __device__ void kernel_gridder_(
-    const int grid_size,
-    const int subgrid_size,
-    const float image_size,
-    const float w_offset,
-    const int nr_channels,
-    const int channel_offset,
-    const int nr_stations,
-    const UVWType          __restrict__ uvw,
-    const WavenumberType   __restrict__ wavenumbers,
+    const int                           grid_size,
+    const int                           subgrid_size,
+    const float                         image_size,
+    const float                         w_offset,
+    const int                           nr_channels,
+    const int                           channel_offset,
+    const int                           nr_stations,
+    const UVW*             __restrict__ uvw,
+    const float*           __restrict__ wavenumbers,
     const VisibilitiesType __restrict__ visibilities,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterm,
@@ -225,12 +225,12 @@ __global__ void kernel_gridder(
     const float                         w_offset,
     const int                           nr_channels,
     const int                           nr_stations,
-    const UVWType          __restrict__ uvw,
-    const WavenumberType   __restrict__ wavenumbers,
+    const UVW*             __restrict__ uvw,
+    const float*           __restrict__ wavenumbers,
     const VisibilitiesType __restrict__ visibilities,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterm,
-    const MetadataType     __restrict__ metadata,
+    const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid
     ) {
     int channel_offset = 0;
