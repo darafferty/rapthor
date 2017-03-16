@@ -215,5 +215,5 @@ __global__ void kernel_degridder(
     } // end for i (visibilities)
 
     __syncthreads();
-}
-}
+} // end kernel_degridder
+} // end extern "C"
