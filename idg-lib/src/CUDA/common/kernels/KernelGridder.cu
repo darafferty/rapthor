@@ -10,20 +10,20 @@
 */
 template<int current_nr_channels>
 __device__ void kernel_gridder_(
-    const int                           grid_size,
-    const int                           subgrid_size,
-    const float                         image_size,
-    const float                         w_offset,
-    const int                           nr_channels,
-    const int                           channel_offset,
-    const int                           nr_stations,
-    const UVW*             __restrict__ uvw,
-    const float*           __restrict__ wavenumbers,
-    const VisibilitiesType __restrict__ visibilities,
-    const float*           __restrict__ spheroidal,
-    const float2*          __restrict__ aterm,
-    const Metadata*        __restrict__ metadata,
-          float2*          __restrict__ subgrid
+    const int                    grid_size,
+    const int                    subgrid_size,
+    const float                  image_size,
+    const float                  w_offset,
+    const int                    nr_channels,
+    const int                    channel_offset,
+    const int                    nr_stations,
+    const UVW*      __restrict__ uvw,
+    const float*    __restrict__ wavenumbers,
+    const float2*   __restrict__ visibilities,
+    const float*    __restrict__ spheroidal,
+    const float2*   __restrict__ aterm,
+    const Metadata* __restrict__ metadata,
+          float2*   __restrict__ subgrid
     ) {
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -88,11 +88,16 @@ __device__ void kernel_gridder_(
         for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += blockSize) {
             int time = i / current_nr_channels;
             int chan = i % current_nr_channels;
-            int index = (time_offset_global + time_offset_local + time) * nr_channels + (channel_offset + chan);
-            float2 a = visibilities[index][0];
-            float2 b = visibilities[index][1];
-            float2 c = visibilities[index][2];
-            float2 d = visibilities[index][3];
+            int idx_time = time_offset_global + time_offset_local + time;
+            int idx_chan = channel_offset + chan;
+            int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
+            int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
+            int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
+            int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
+            float2 a = visibilities[idx_xx];
+            float2 b = visibilities[idx_xy];
+            float2 c = visibilities[idx_yx];
+            float2 d = visibilities[idx_yy];
             _visibilities[0][time][chan] = make_float4(a.x, a.y, b.x, b.y);
             _visibilities[1][time][chan] = make_float4(c.x, c.y, d.x, d.y);
         }
@@ -227,7 +232,7 @@ __global__ void kernel_gridder(
     const int                           nr_stations,
     const UVW*             __restrict__ uvw,
     const float*           __restrict__ wavenumbers,
-    const VisibilitiesType __restrict__ visibilities,
+    const float2*          __restrict__ visibilities,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterm,
     const Metadata*        __restrict__ metadata,

@@ -17,7 +17,7 @@ __global__ void kernel_degridder(
     const int                         nr_stations,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
-    VisibilitiesType     __restrict__ visibilities,
+          float2*        __restrict__ visibilities,
     const float*         __restrict__ spheroidal,
     const float2*        __restrict__ aterm,
     const Metadata*      __restrict__ metadata,
@@ -212,12 +212,17 @@ __global__ void kernel_degridder(
 
         // Store visibility
         const float scale = 1.0f / (nr_pixels);
-        int index = (time_offset_global + time) * nr_channels + chan;
+        int idx_time = time_offset_global + time;
+        int idx_xx = index_visibility(nr_channels, idx_time, chan, 0);
+        int idx_xy = index_visibility(nr_channels, idx_time, chan, 1);
+        int idx_yx = index_visibility(nr_channels, idx_time, chan, 2);
+        int idx_yy = index_visibility(nr_channels, idx_time, chan, 3);
+
         if (time < nr_timesteps) {
-            visibilities[index][0] = visXX * scale;
-            visibilities[index][1] = visXY * scale;
-            visibilities[index][2] = visYX * scale;
-            visibilities[index][3] = visYY * scale;
+            visibilities[idx_xx] = visXX * scale;
+            visibilities[idx_xy] = visXY * scale;
+            visibilities[idx_yx] = visYX * scale;
+            visibilities[idx_yy] = visYY * scale;
         }
     } // end for i (visibilities)
 

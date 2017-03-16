@@ -60,3 +60,15 @@ inline __device__ int index_aterm(
            y * subgrid_size * NR_POLARIZATIONS +
            x * NR_POLARIZATIONS;
 }
+
+inline __device__ int index_visibility(
+    int nr_channels,
+    int time,
+    int chan,
+    int pol)
+{
+    // visibilities: [nr_time][nr_channels][nr_polarizations]
+    return time * nr_channels * NR_POLARIZATIONS +
+           chan * NR_POLARIZATIONS +
+           pol;
+}
