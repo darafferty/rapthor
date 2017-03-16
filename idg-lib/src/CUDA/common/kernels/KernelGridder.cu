@@ -200,6 +200,13 @@ __device__ void kernel_gridder_(
 }
 
 extern "C" {
+#define KERNEL_GRIDDER_TEMPLATE(NR_CHANNELS) \
+    for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
+        kernel_gridder_<NR_CHANNELS>( \
+            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations, \
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
+    }
+
 __global__ void kernel_gridder(
     const int gridsize,
     const float imagesize,
@@ -215,28 +222,10 @@ __global__ void kernel_gridder(
 	SubGridType				__restrict__ subgrid
 	) {
     int channel_offset = 0;
-    for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
-        kernel_gridder_<8>(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
-        kernel_gridder_<4>(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 2) <= nr_channels; channel_offset += 2) {
-        kernel_gridder_<2>(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-    }
-
-    for (; channel_offset < nr_channels; channel_offset++) {
-        kernel_gridder_<1>(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-    }
+    KERNEL_GRIDDER_TEMPLATE(8)
+    KERNEL_GRIDDER_TEMPLATE(4)
+    KERNEL_GRIDDER_TEMPLATE(3)
+    KERNEL_GRIDDER_TEMPLATE(2)
+    KERNEL_GRIDDER_TEMPLATE(1)
 }
 }
