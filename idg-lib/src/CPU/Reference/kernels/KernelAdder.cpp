@@ -10,9 +10,10 @@
 extern "C" {
 void kernel_adder(
     const long nr_subgrids,
-    const long gridsize,
+    const long grid_size,
+    const int subgrid_size,
     const idg::Metadata metadata[],
-    const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
+    const idg::float2   subgrid[][NR_POLARIZATIONS][subgrid_size][subgrid_size],
           idg::float2   grid[]
     ) {
 
@@ -24,21 +25,21 @@ void kernel_adder(
             int grid_y = metadata[s].coordinate.y;
 
             // Check wheter subgrid fits in grid
-            if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
-                grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
+            if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
+                grid_y >= 0 && grid_y < grid_size-subgrid_size) {
 
-                for (int y = 0; y < SUBGRIDSIZE; y++) {
-                    for (int x = 0; x < SUBGRIDSIZE; x++) {
+                for (int y = 0; y < subgrid_size; y++) {
+                    for (int x = 0; x < subgrid_size; x++) {
                         // Compute shifted position in subgrid
-                        int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-                        int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+                        int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                        int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
                         // Compute phasor
-                        float phase  = M_PI*(x+y-SUBGRIDSIZE)/SUBGRIDSIZE;
+                        float phase  = M_PI*(x+y-subgrid_size)/subgrid_size;
                         idg::float2 phasor = {cosf(phase), sinf(phase)};
 
                         // Add subgrid value to grid
-						size_t grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
+						size_t grid_idx = (pol * grid_size * grid_size) + ((grid_y + y) * grid_size) + (grid_x + x);
                         grid[grid_idx] += phasor * subgrid[s][pol][y_src][x_src];
                     }
                 }
