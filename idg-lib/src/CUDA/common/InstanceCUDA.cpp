@@ -41,7 +41,8 @@ namespace idg {
                 d_wavenumbers  = NULL;
                 d_aterms       = NULL;
                 d_spheroidal   = NULL;
-                fft_plan       = NULL;
+                fft_plan_bulk  = NULL;
+                fft_plan_misc  = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -70,7 +71,8 @@ namespace idg {
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
                 if (d_spheroidal) { d_spheroidal->~DeviceMemory(); }
                 for (cu::Module *module : mModules) { delete module; }
-                if (fft_plan) { delete fft_plan; }
+                if (fft_plan_bulk) { delete fft_plan_bulk; }
+                if (fft_plan_misc) { delete fft_plan_misc; }
                 delete function_gridder;
                 delete function_degridder;
                 delete function_scaler;
@@ -120,9 +122,7 @@ namespace idg {
 
                 // Compile all libraries (ptx files)
                 std::vector<std::string> v = mInfo.get_lib_names();
-                #if !defined(DEBUG)
                 #pragma omp parallel for
-                #endif
                 for (int i = 0; i < v.size(); i++) {
                     context->setCurrent();
 
@@ -227,6 +227,20 @@ namespace idg {
                 } else {
                     // IDG has never been tested with pre-Kepler GPUs
                     set_parameters_kepler();
+                }
+
+                // Override parameters from environment
+                char *cstr_batch_size = getenv("BATCHSIZE");
+                if (cstr_batch_size) {
+                    auto batch_size = atoi(cstr_batch_size);
+                    batch_gridder   = batch_size;
+                    batch_degridder = batch_size;
+                }
+                char *cstr_block_size = getenv("BLOCKSIZE");
+                if (cstr_block_size) {
+                    auto block_size = atoi(cstr_block_size);
+                    block_gridder   = dim3(block_size);
+                    block_degridder = dim3(block_size);
                 }
             }
 
@@ -336,11 +350,28 @@ namespace idg {
                 int stride = 1;
                 int dist = size * size;
 
-                if (fft_plan) {
-                    delete fft_plan;
+                // Plan bulk fft
+                if (batch > fft_bulk) {
+                    if (fft_plan_bulk) {
+                        delete fft_plan_bulk;
+                    }
+                    fft_plan_bulk = new cufft::C2C_2D(
+                        size, size, stride, dist,
+                        fft_bulk * nr_correlations);
                 }
 
-                fft_plan = new cufft::C2C_2D(size, size, stride, dist, batch * nr_correlations);
+                // Plan remainder fft
+                int fft_remainder_size = batch % fft_bulk;
+                if (fft_plan_misc) {
+                    delete fft_plan_misc;
+                }
+                fft_plan_misc = new cufft::C2C_2D(
+                    size, size, stride, dist,
+                    fft_remainder_size * nr_correlations);
+
+                // Store parameters
+                fft_size = size;
+                fft_batch = batch;
             }
 
             void InstanceCUDA::launch_fft(
@@ -349,11 +380,21 @@ namespace idg {
             {
                 int nr_correlations = mConstants.get_nr_correlations();
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
-                int s = 0;
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
-                fft_plan->setStream(*executestream);
-                fft_plan->execute(data_ptr, data_ptr, sign);
+                if (fft_plan_bulk) {
+                    fft_plan_bulk->setStream(*executestream);
+                }
+
+                int s = 0;
+                for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
+                    fft_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    data_ptr += fft_size * fft_size * nr_correlations * fft_bulk;
+                }
+                if (s < fft_batch) {
+                    fft_plan_misc->setStream(*executestream);
+                    fft_plan_misc->execute(data_ptr, data_ptr, sign);
+                }
             }
 
             void InstanceCUDA::launch_adder(

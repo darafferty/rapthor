@@ -4,11 +4,16 @@
 #include "math.cu"
 
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
+#define MAX_NR_CHANNELS 8
+
+__shared__ float4 visibilities_[2][BATCH_SIZE*MAX_NR_CHANNELS];
+__shared__ float4 uvw_[BATCH_SIZE*MAX_NR_CHANNELS];
+__shared__ float  wavenumbers_[MAX_NR_CHANNELS];
 
 /*
     Kernel
 */
-template<int current_nr_channels>
+template<int current_batch_size, int current_nr_channels>
 __device__ void kernel_gridder_(
     const int                    grid_size,
     const int                    subgrid_size,
@@ -60,46 +65,43 @@ __device__ void kernel_gridder_(
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
 
-    // Shared data
-    __shared__ float4 _visibilities[2][BATCH_SIZE][current_nr_channels];
-    __shared__ float4 _uvw[BATCH_SIZE];
-    __shared__ float _wavenumbers[current_nr_channels];
-
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += blockSize) {
-        _wavenumbers[i] = wavenumbers[channel_offset + i];
+        wavenumbers_[i] = wavenumbers[channel_offset + i];
     }
 
     // Iterate all timesteps
-    int current_nr_timesteps = BATCH_SIZE;
+    int current_nr_timesteps = current_batch_size;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        current_nr_timesteps = nr_timesteps - time_offset_local < BATCH_SIZE ?
-                               nr_timesteps - time_offset_local : BATCH_SIZE;
+        current_nr_timesteps = nr_timesteps - time_offset_local < current_batch_size ?
+                               nr_timesteps - time_offset_local : current_batch_size;
 
         __syncthreads();
 
         // Load UVW
         for (int time = tid; time < current_nr_timesteps; time += blockSize) {
             UVW a = uvw[time_offset_global + time_offset_local + time];
-            _uvw[time] = make_float4(a.u, a.v, a.w, 0);
+            uvw_[time] = make_float4(a.u, a.v, a.w, 0);
         }
 
         // Load visibilities
         for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += blockSize) {
             int time = i / current_nr_channels;
             int chan = i % current_nr_channels;
-            int idx_time = time_offset_global + time_offset_local + time;
-            int idx_chan = channel_offset + chan;
-            int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
-            int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
-            int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
-            int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
-            float2 a = visibilities[idx_xx];
-            float2 b = visibilities[idx_xy];
-            float2 c = visibilities[idx_yx];
-            float2 d = visibilities[idx_yy];
-            _visibilities[0][time][chan] = make_float4(a.x, a.y, b.x, b.y);
-            _visibilities[1][time][chan] = make_float4(c.x, c.y, d.x, d.y);
+            if (time < current_nr_timesteps && chan < current_nr_channels) {
+                int idx_time = time_offset_global + time_offset_local + time;
+                int idx_chan = channel_offset + chan;
+                int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
+                int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
+                int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
+                float2 a = visibilities[idx_xx];
+                float2 b = visibilities[idx_xy];
+                float2 c = visibilities[idx_yx];
+                float2 d = visibilities[idx_yy];
+                visibilities_[0][i] = make_float4(a.x, a.y, b.x, b.y);
+                visibilities_[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            }
         }
 
         __syncthreads();
@@ -127,9 +129,9 @@ __device__ void kernel_gridder_(
             // Iterate all timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
-                float u = _uvw[time].x;
-                float v = _uvw[time].y;
-                float w = _uvw[time].z;
+                float u = uvw_[time].x;
+                float v = uvw_[time].y;
+                float w = uvw_[time].z;
 
                 // Compute phase index
                 float phase_index = u*l + v*m + w*n;
@@ -140,13 +142,13 @@ __device__ void kernel_gridder_(
                 // Compute phasor
                 #pragma unroll current_nr_channels
                 for (int chan = 0; chan < current_nr_channels; chan++) {
-                    float wavenumber = _wavenumbers[chan];
+                    float wavenumber = wavenumbers_[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
                     float2 phasor = make_float2(cos(phase), sin(phase));
 
                     // Load visibilities from shared memory
-                    float4 a = _visibilities[0][time][chan];
-                    float4 b = _visibilities[1][time][chan];
+                    float4 a = visibilities_[0][time*current_nr_channels+chan];
+                    float4 b = visibilities_[1][time*current_nr_channels+chan];
                     float2 visXX = make_float2(a.x, a.y);
                     float2 visXY = make_float2(a.z, a.w);
                     float2 visYX = make_float2(b.x, b.y);
@@ -215,9 +217,9 @@ __device__ void kernel_gridder_(
     } // end for time_offset_local
 }
 
-#define KERNEL_GRIDDER_TEMPLATE(NR_CHANNELS) \
+#define KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE_, NR_CHANNELS) \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
-        kernel_gridder_<NR_CHANNELS>( \
+        kernel_gridder_<BATCH_SIZE_, NR_CHANNELS>( \
             grid_size, subgrid_size, image_size, w_offset, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
     }
@@ -238,11 +240,16 @@ __global__ void kernel_gridder(
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid
     ) {
+
     int channel_offset = 0;
-    KERNEL_GRIDDER_TEMPLATE(8)
-    KERNEL_GRIDDER_TEMPLATE(4)
-    KERNEL_GRIDDER_TEMPLATE(3)
-    KERNEL_GRIDDER_TEMPLATE(2)
-    KERNEL_GRIDDER_TEMPLATE(1)
+    assert(MAX_NR_CHANNELS == 8);
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE,   8)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 7)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 6)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 5)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 4)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 3)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*4, 2)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*8, 1)
 }
-}
+} // end extern "C"
