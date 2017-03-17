@@ -4,10 +4,11 @@
 #include "math.cu"
 
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
+#define MAX_NR_CHANNELS 8
 
-__shared__ float4 visibilities_[2][BATCH_SIZE*8];
-__shared__ float4 uvw_[BATCH_SIZE*8];
-__shared__ float  wavenumbers_[8];
+__shared__ float4 visibilities_[2][BATCH_SIZE*MAX_NR_CHANNELS];
+__shared__ float4 uvw_[BATCH_SIZE*MAX_NR_CHANNELS];
+__shared__ float  wavenumbers_[MAX_NR_CHANNELS];
 
 /*
     Kernel
@@ -241,6 +242,7 @@ __global__ void kernel_gridder(
     ) {
 
     int channel_offset = 0;
+    assert(MAX_NR_CHANNELS == 8);
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE,   8)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 7)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 6)
