@@ -120,9 +120,7 @@ namespace idg {
 
                 // Compile all libraries (ptx files)
                 std::vector<std::string> v = mInfo.get_lib_names();
-                #if !defined(DEBUG)
                 #pragma omp parallel for
-                #endif
                 for (int i = 0; i < v.size(); i++) {
                     context->setCurrent();
 
