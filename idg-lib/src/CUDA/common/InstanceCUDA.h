@@ -215,7 +215,11 @@ namespace idg {
                     int batch_degridder;
 
                     // FFT kernel
-                    cufft::C2C_2D *fft_plan;
+                    const int fft_bulk = 1024;
+                    int fft_batch;
+                    int fft_size;
+                    cufft::C2C_2D *fft_plan_bulk;
+                    cufft::C2C_2D *fft_plan_misc;
 
             };
 
