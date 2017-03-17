@@ -228,6 +228,20 @@ namespace idg {
                     // IDG has never been tested with pre-Kepler GPUs
                     set_parameters_kepler();
                 }
+
+                // Override parameters from environment
+                char *cstr_batch_size = getenv("BATCHSIZE");
+                if (cstr_batch_size) {
+                    auto batch_size = atoi(cstr_batch_size);
+                    batch_gridder   = batch_size;
+                    batch_degridder = batch_size;
+                }
+                char *cstr_block_size = getenv("BLOCKSIZE");
+                if (cstr_block_size) {
+                    auto block_size = atoi(cstr_block_size);
+                    block_gridder   = dim3(block_size);
+                    block_degridder = dim3(block_size);
+                }
             }
 
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d) {
