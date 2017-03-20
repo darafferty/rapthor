@@ -80,7 +80,7 @@ namespace idg {
                 intel_flags << " -qopenmp -xHost -mkl=parallel";
 
                 // Flags for specific cases
-                if (avx512_supported && !avx2_supported) {
+                if (!avx512_supported && avx2_supported) {
                     intel_flags  << " -DUSE_VML";
                 }
 
