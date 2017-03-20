@@ -56,9 +56,6 @@ add_library(idg-powersensor
 )
 
 set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-if (BUILD_LIB_CUDA)
-    set(LINK_LIRBRARIES ${LINK_LIRBRARIES} ${NVML_LIBRARY})
-endif()
 target_link_libraries(idg-powersensor ${LINK_LIRBRARIES})
 
 set_target_properties(idg-powersensor PROPERTIES
@@ -145,12 +142,13 @@ add_library (
     idg-cuda
     $<TARGET_OBJECTS:cuda-common>
     $<TARGET_OBJECTS:cuda-generic>
+    $<TARGET_OBJECTS:powersensor-nvml>
 )
 
 set(
     LINK_LIRBRARIES
     idg-common idg-powersensor
-    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
+    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
 target_link_libraries (
@@ -188,12 +186,13 @@ add_library (
     $<TARGET_OBJECTS:cuda-generic>
     $<TARGET_OBJECTS:hybrid-cuda-common>
     $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>
+    $<TARGET_OBJECTS:powersensor-nvml>
 )
 
 set (
     LINK_LIRBRARIES
     idg-common idg-powersensor
-    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY}
+    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
 target_link_libraries (
