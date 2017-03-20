@@ -21,7 +21,6 @@ set (${PROJECT_NAME}_sources
     LikwidPowerSensor.cpp
     rapl-read.cpp
     RaplPowerSensor.cpp
-    NVMLPowerSensor.cpp
 )
 
 include_directories(
@@ -35,6 +34,14 @@ add_library(
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+
+add_library(
+    powersensor-nvml OBJECT PowerSensor.h
+                            NVMLPowerSensor.h
+                            NVMLPowerSensor.cpp
+)
+
+set_target_properties(powersensor-nvml PROPERTIES COMPILE_FLAGS "-fPIC")
 
 # Copy header files
 install(
