@@ -660,12 +660,12 @@ def init_example_uvw(uvw, integration_time = 10):
                                            ctypes.c_int,
                                            ctypes.c_int,
                                            ctypes.c_int,
-                                           ctypes.c_int]
+                                           ctypes.c_float]
     lib.utils_init_example_uvw( uvw.ctypes.data_as(ctypes.c_void_p),
                                 ctypes.c_int(nr_stations),
                                 ctypes.c_int(nr_baselines),
                                 ctypes.c_int(nr_time),
-                                ctypes.c_int(integration_time))
+                                ctypes.c_float(integration_time))
 
 
 def init_example_wavenumbers(wavenumbers):

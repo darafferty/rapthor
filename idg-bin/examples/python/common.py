@@ -152,6 +152,7 @@ def main(proxyname):
     print "grid_size             = ", grid_size
     print "image_size            = ", image_size
     print "kernel_size           = ", kernel_size
+    print "integration_time      = ", integration_time
 
     ######################################################################
     # initialize data

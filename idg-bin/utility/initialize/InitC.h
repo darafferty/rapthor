@@ -291,7 +291,7 @@ extern "C" {
          int nr_stations,
          int nr_baselines,
          int nr_time,
-         int integration_time)
+         float integration_time)
     {
         idg::init_example_uvw(
             ptr, nr_stations, nr_baselines,
