@@ -79,15 +79,18 @@ namespace idg {
                 stringstream intel_flags;
                 intel_flags << " -qopenmp -xHost -mkl=parallel";
 
+                // Flags to make mkl work with Python ctypes
+                #if defined(BUILD_WITH_PYTHON)
+                intel_flags << " -lmkl_def";
+                #endif
+
                 // Flags for specific cases
                 if (!avx512_supported && avx2_supported) {
                     intel_flags  << " -DUSE_VML";
+                    #if defined(BUILD_WITH_PYTHON)
+                    intel_flags << " -lmkl_vml_avx2";
+                    #endif
                 }
-
-                #if defined(BUILD_WITH_PYTHON)
-                // HACK: to make code be corretly loaded with ctypes
-                intel_flags << " -lmkl_def";
-                #endif
 
                 // GNU compiler
                 stringstream gnu_flags;
