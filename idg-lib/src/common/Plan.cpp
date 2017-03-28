@@ -244,8 +244,13 @@ namespace idg {
                         const float v_pixels0 = visibility0.v_pixels;
                         const float w_lambda0 = visibility0.w_lambda;
 
+                        DataPoint visibility1 = datapoints[time_offset*nr_channels + nr_channels - 1];
+                        const float u_pixels1 = visibility1.u_pixels;
+                        const float v_pixels1 = visibility1.v_pixels;
+                        const float w_lambda1 = visibility1.w_lambda;
+
                         // Try to add visibilities to subgrid
-                        if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0))
+                        if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) && subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda1))
                         {
                             nr_timesteps_subgrid++;
                         } else {
