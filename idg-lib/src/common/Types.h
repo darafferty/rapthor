@@ -525,6 +525,15 @@ namespace idg {
                 m_buffer(data)
             {}
 
+            Grid_(Array3D<T> &array) :
+                m_w_dim(1),
+                m_z_dim(array.get_z_dim()),
+                m_y_dim(array.get_y_dim()),
+                m_x_dim(array.get_x_dim()),
+                m_buffer(array.data()),
+                m_delete_buffer(false)
+            {}
+
             Grid_(const Grid_& other) = delete;
             Grid_& operator=(const Grid_& rhs) = delete;
 
@@ -613,10 +622,8 @@ namespace idg {
             T*     m_buffer;
     };
 
-    
     typedef Grid_<std::complex<float>> Grid;
-    
-    
+
     /* Output */
 
     std::ostream& operator<<(std::ostream& os, Baseline& b);
