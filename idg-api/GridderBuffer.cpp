@@ -92,7 +92,7 @@ namespace api {
             m_bufferVisibilities2,
             m_bufferUVW2,
             m_bufferStationPairs2,
-            *m_grid,
+            std::move(*m_grid),
             m_aterms,
             m_aterm_offsets,
             m_spheroidal);
