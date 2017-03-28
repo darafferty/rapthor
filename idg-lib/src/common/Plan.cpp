@@ -202,7 +202,7 @@ namespace idg {
                     float w_lambda;
                 };
 
-                DataPoint datapoints[nr_timesteps_per_aterm][nr_channels];
+                std::vector<DataPoint> datapoints(nr_timesteps_per_aterm * nr_channels);
 
                 for (int t = 0; t < nr_timesteps_per_aterm; t++) {
                     for (int c = 0; c < nr_channels; c++) {
@@ -213,9 +213,10 @@ namespace idg {
 
                         float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(c));
                         float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(c));
+
                         float w_lambda = meters_to_lambda(w_meters, frequencies(c));
 
-                        datapoints[t][c] = {t, c, u_pixels, v_pixels, w_lambda};
+                        datapoints[t*nr_channels + c] = {t, c, u_pixels, v_pixels, w_lambda};
                     }
                 } // end for time
 
@@ -225,7 +226,7 @@ namespace idg {
                 int time_offset = 0;
                 while (time_offset < nr_timesteps_per_aterm) {
                     // Load first visibility
-                    DataPoint first_datapoint = datapoints[time_offset][0];
+                    DataPoint first_datapoint = datapoints[time_offset*nr_channels];
                     const int first_timestep = first_datapoint.timestep;
 
                     // Create subgrid
@@ -237,7 +238,8 @@ namespace idg {
                     int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) : nr_timesteps_per_aterm;
                     for (; time_offset < time_max; time_offset++) {
                         // Visibility for first channel
-                        DataPoint visibility0 = datapoints[time_offset][nr_channels/2];
+                        
+                        DataPoint visibility0 = datapoints[time_offset*nr_channels];
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
                         const float w_lambda0 = visibility0.w_lambda;
