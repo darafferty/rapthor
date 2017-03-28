@@ -1,9 +1,12 @@
 #include "taper.h"
 
 #include <cmath>
-#include <lapacke.h>
 
-// #include <iostream>
+#if defined(HAVE_MKL)
+    #include <mkl_lapacke.h>
+#else
+    #include <lapacke.h>
+#endif
 
 void init_optimal_taper_1D(int subgridsize, int gridsize, float kernelsize, float padding, float* taper_subgrid, float* taper_grid)
 {

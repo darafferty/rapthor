@@ -53,8 +53,14 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 find_package(IDG NO_MODULE)
 include_directories (${IDG_INCLUDE_DIRS})
 
-find_package(LAPACKE)
-include_directories (${LAPACK_INCLUDE_DIR})
+find_package(MKL QUIET)
+if (${MKL_FOUND})
+    set (HAVE_MKL TRUE)
+else()
+    find_package(LAPACKE)
+    include_directories (${LAPACK_INCLUDE_DIR})
+endif()
+
 
 
 # sources and header files
