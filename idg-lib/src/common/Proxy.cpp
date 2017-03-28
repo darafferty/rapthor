@@ -5,7 +5,7 @@
 
 namespace idg {
     namespace proxy {
-        
+
         void Proxy::gridding(
             const Plan& plan,
             const float w_step, // in lambda
@@ -15,7 +15,7 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid& grid,
+            Grid&& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
@@ -25,7 +25,7 @@ namespace idg {
             }
             do_gridding(plan, w_step, cell_size, kernel_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
-        
+
         void Proxy::gridding(
             const float w_step,
             const float cell_size,
@@ -34,7 +34,7 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid& grid,
+            Grid&& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
@@ -54,7 +54,7 @@ namespace idg {
                 aterms_offsets,
                 w_step, 
                 grid.get_nr_w_layers());
-            
+
             gridding(
                 plan,
                 w_step,
@@ -64,7 +64,7 @@ namespace idg {
                 visibilities,
                 uvw,
                 baselines,
-                grid,
+                std::move(grid),
                 aterms,
                 aterms_offsets,
                 spheroidal);
@@ -154,7 +154,7 @@ namespace idg {
                 visibilities_,
                 uvw_,
                 baselines_,
-                grid_,
+                std::move(grid_),
                 aterms_,
                 aterms_offsets_,
                 spheroidal_);
@@ -180,7 +180,6 @@ namespace idg {
             }
             do_degridding(plan, w_step, cell_size, kernel_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
-        
 
         void Proxy::degridding(
             const float w_step,
@@ -224,7 +223,6 @@ namespace idg {
                 aterms_offsets,
                 spheroidal);
         }
-
 
         void Proxy::degridding(
             float w_step,
@@ -323,7 +321,7 @@ namespace idg {
         {
             do_transform(direction, grid);
         }
-        
+
         void Proxy::transform(
             DomainAtoDomainB direction,
             std::complex<float>* grid,

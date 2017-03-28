@@ -49,7 +49,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Grid& grid,
+                    Grid&& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
@@ -62,7 +62,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Grid& grid,
+                    Grid&& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
