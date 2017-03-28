@@ -268,8 +268,8 @@ namespace idg {
 
                     // Check whether current subgrid is in grid range
                     Coordinate coordinate = subgrid.get_coordinate();
-                    bool uv_max_pixels = max(coordinate.x, coordinate.y);
-                    bool uv_min_pixels = min(coordinate.x, coordinate.y);
+                    int  uv_max_pixels = max(coordinate.x, coordinate.y);
+                    int  uv_min_pixels = min(coordinate.x, coordinate.y);
                     int  w_index = coordinate.z;
                     bool uvw_in_range = uv_min_pixels >= 1 && 
                                         uv_max_pixels < (grid_size - subgrid_size) &&
