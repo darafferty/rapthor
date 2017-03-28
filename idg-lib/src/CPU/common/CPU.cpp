@@ -333,8 +333,8 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto jobsize      = 128; // TODO
                 auto nr_baselines = visibilities.get_z_dim();
+                auto jobsize      = 128; // TODO
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
@@ -353,15 +353,19 @@ namespace idg {
 
                     // Number of subgrids for all baselines in job
                     auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                    // if this job is empty continue to next
+                    if (current_nr_subgrids == 0) continue;
+
                     auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *uvw_ptr          = uvw.data(bl, 0);
-                    void *visibilities_ptr = visibilities.data(bl, 0, 0);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                    void *uvw_ptr          = uvw.data(0, 0) + ((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset;
+                    void *visibilities_ptr = visibilities.data(0, 0, 0) + (((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * nr_channels;
                     void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
 
                     // Gridder kernel
@@ -590,8 +594,8 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto jobsize      = 128; // TODO
                 auto nr_baselines = visibilities.get_z_dim();
+                auto jobsize      = nr_baselines; // TODO
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
@@ -610,15 +614,19 @@ namespace idg {
 
                     // Number of subgrids for all baselines in job
                     auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                    // if this job is empty continue to next
+                    if (current_nr_subgrids == 0) continue;
+
                     auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *uvw_ptr          = uvw.data(bl, 0);
-                    void *visibilities_ptr = visibilities.data(bl, 0, 0);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                    void *uvw_ptr          = uvw.data(0, 0) + ((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset;
+                    void *visibilities_ptr = visibilities.data(0, 0, 0) + (((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * nr_channels;
                     void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
 
                     // FFT kernel

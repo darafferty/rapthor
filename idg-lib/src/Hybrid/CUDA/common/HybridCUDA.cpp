@@ -203,10 +203,14 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                        // if this job is empty continue to next
+                        if (current_nr_subgrids == 0) continue;
+
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        void *uvw_ptr             = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
-                        void *visibilities_ptr    = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
+                        void *uvw_ptr             = h_uvw.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_uvw(1, 1));
+                        void *visibilities_ptr    = h_visibilities.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_visibilities(1, 1, nr_channels));
 
                         // Power measurement
                         PowerRecord powerRecords[4];
@@ -482,10 +486,14 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                        // if this job is empty continue to next
+                        if (current_nr_subgrids == 0) continue;
+
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        void *uvw_ptr             = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
-                        void *visibilities_ptr    = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
+                        void *uvw_ptr             = h_uvw.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_uvw(1, 1));
+                        void *visibilities_ptr    = h_visibilities.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_visibilities(1, 1, nr_channels));
 
                         // Power measurement
                         PowerRecord powerRecords[5];
