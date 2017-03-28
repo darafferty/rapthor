@@ -1,6 +1,10 @@
 #include "FFT.h"
 
-#include <fftw3.h>
+#if defined(HAVE_MKL)
+    #include <fftw3_mkl.h>
+#else
+    #include <fftw3.h>
+#endif
 
 using namespace std;
 
