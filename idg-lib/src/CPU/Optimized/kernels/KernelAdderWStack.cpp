@@ -7,6 +7,8 @@
 
 #include "Types.h"
 
+#include <iostream>
+
 
 extern "C" {
 void kernel_adder_wstack(
@@ -16,8 +18,8 @@ void kernel_adder_wstack(
     const idg::Metadata metadata[],
     const idg::float2   subgrid[][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE],
           idg::float2   grid[]
-    ) {
-
+    ) 
+{
     const int transpose[4] = {0, 2, 1, 3};
 
     // Precompute phaosr
@@ -33,8 +35,8 @@ void kernel_adder_wstack(
         }
     }
 
-    for (int w_layer; w_layer < nr_w_layers; w_layer++){
-        idg::float2 *grid_ = grid + w_layer * NR_POLARIZATIONS * gridsize * gridsize;
+    for (int w_layer = 0; w_layer < nr_w_layers; w_layer++){
+        idg::float2 *grid_ = grid + w_layer * NR_POLARIZATIONS * size_t(gridsize) * size_t(gridsize);
         // Iterate all colums of grid
         #pragma omp parallel for schedule(guided)
         for (int row = 1; row < gridsize; row++) {
@@ -54,8 +56,8 @@ void kernel_adder_wstack(
                     int offset_y_mirrored = SUBGRIDSIZE - 1 - offset_y;
 
                     // Check wheter subgrid fits in grid and matches curent row
-                    if (subgrid_x >= 0 && subgrid_x < gridsize-SUBGRIDSIZE &&
-                        subgrid_y >= 0 && subgrid_y < gridsize-SUBGRIDSIZE &&
+                    if (subgrid_x >= 1 && subgrid_x < gridsize-SUBGRIDSIZE &&
+                        subgrid_y >= 1 && subgrid_y < gridsize-SUBGRIDSIZE &&
                         offset_y >= 0 &&  offset_y < SUBGRIDSIZE) {
 
                         // Iterate all columns of subgrid
@@ -71,7 +73,7 @@ void kernel_adder_wstack(
                             // Add subgrid value to grid
                             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 int pol_transposed = transpose[pol];
-                                int grid_idx = (pol * gridsize * gridsize) + (row * gridsize) + (subgrid_x + x);
+                                size_t grid_idx = (pol * size_t(gridsize) * size_t(gridsize)) + (row * size_t(gridsize)) + (subgrid_x + x);
                                 grid_[grid_idx] += conj(phasor * subgrid[s][pol_transposed][y_src][x_src]);
                             }
                         }
@@ -90,8 +92,8 @@ void kernel_adder_wstack(
                     int offset_y = row - subgrid_y;
 
                     // Check wheter subgrid fits in grid and matches curent row
-                    if (subgrid_x >= 0 && subgrid_x < gridsize-SUBGRIDSIZE &&
-                        subgrid_y >= 0 && subgrid_y < gridsize-SUBGRIDSIZE &&
+                    if (subgrid_x >= 1 && subgrid_x < gridsize-SUBGRIDSIZE &&
+                        subgrid_y >= 1 && subgrid_y < gridsize-SUBGRIDSIZE &&
                         offset_y >= 0 &&  offset_y < SUBGRIDSIZE) {
 
                         // Iterate all columns of subgrid
@@ -105,7 +107,7 @@ void kernel_adder_wstack(
 
                             // Add subgrid value to grid
                             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                int grid_idx = (pol * gridsize * gridsize) + (row * gridsize) + (subgrid_x + x);
+                                size_t grid_idx = (pol * size_t(gridsize) * size_t(gridsize)) + (row * size_t(gridsize)) + (subgrid_x + x);
                                 grid_[grid_idx] += phasor * subgrid[s][pol][y_src][x_src];
                             }
                         }

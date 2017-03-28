@@ -57,11 +57,11 @@ void kernel_splitter_wstack(
 
                         // Set grid value to subgrid
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            int grid_idx =
-                                ( -(grid_z+1) * NR_POLARIZATIONS * gridsize * gridsize) +
-                                (transpose[pol] * gridsize * gridsize) +
-                                ((gridsize - grid_y - y) * gridsize) +
-                                (gridsize - grid_x - x);
+                            size_t grid_idx =
+                                ( -(grid_z+1) * NR_POLARIZATIONS * size_t(gridsize) * size_t(gridsize)) +
+                                (transpose[pol] * size_t(gridsize) * size_t(gridsize)) +
+                                ((size_t(gridsize) - grid_y - y) * size_t(gridsize)) +
+                                (size_t(gridsize) - grid_x - x);
                             subgrid[s][pol][y_dst][x_dst] = phasor * conj(grid[grid_idx]);
                         }
                     }
@@ -85,10 +85,10 @@ void kernel_splitter_wstack(
 
                         // Set grid value to subgrid
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            int grid_idx =
-                                (grid_z * NR_POLARIZATIONS * gridsize * gridsize) +
-                                (pol * gridsize * gridsize) +
-                                ((grid_y + y) * gridsize) +
+                            size_t grid_idx =
+                                (grid_z * NR_POLARIZATIONS * size_t(gridsize) * size_t(gridsize)) +
+                                (pol * size_t(gridsize) * size_t(gridsize)) +
+                                ((grid_y + y) * size_t(gridsize)) +
                                 (grid_x + x);
                             subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
                         }
