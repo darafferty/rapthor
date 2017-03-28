@@ -39,6 +39,7 @@ namespace api {
         std::vector<float> m_taper_grid;
         Grid m_grid;
         float m_image_size;
+        float m_cell_size;
         float m_w_step;
     };
     

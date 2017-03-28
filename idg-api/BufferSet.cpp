@@ -17,13 +17,28 @@ namespace api {
         std::vector<std::vector<double>> bands,
         int nr_stations,
         size_t width,
-        float cellsize,
+        float cell_size,
         float max_w,
         BufferSetType buffer_set_type)
     {
         return new BufferSetImpl(architecture, bufferTimesteps, bands, 
-                                 nr_stations, width, cellsize, max_w, 
+                                 nr_stations, width, cell_size, max_w, 
                                  buffer_set_type);
+    }
+
+
+    int nextcomposite(int n)
+    {
+        n += (n & 1);
+        while (true)
+        {
+            int nn = n;
+            while ((nn % 2) == 0) nn /= 2;
+            while ((nn % 3) == 0) nn /= 3;
+            while ((nn % 5) == 0) nn /= 5;
+            if (nn == 1) return n;
+            n += 2;
+        }
     }
 
 
@@ -34,16 +49,24 @@ namespace api {
         int nr_stations,
         size_t width, 
         float cell_size, 
-        float max_w,         
+        float max_w,
         BufferSetType buffer_set_type) :
         m_grid(0,0,0,0,0),
-        m_buffer_set_type(buffer_set_type)
+        m_buffer_set_type(buffer_set_type),
+        m_cell_size(cell_size)
     {
+        const float taper_kernel_size = 7.0;
+        const float padding = 1.125;
+        const float a_term_kernel_size = 0.0;
+        
+        size_t padded_width = nextcomposite(std::ceil(width * padding));
+        
+
         // 
         m_image_size = cell_size * width;
 
         // this cuts the w kernel approximately at the 1% level        
-        const float max_w_size = 2*max_w * m_image_size * m_image_size;
+        const float max_w_size = max_w * m_image_size * m_image_size;
 
         // some heuristic to set kernel size
         // square root splits the w_kernel evenly over wstack and wprojection
@@ -52,20 +75,28 @@ namespace api {
         float w_kernel_size = std::max(8, int(std::round(2*std::sqrt(max_w_size))));
 
         m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
+
         int nr_w_layers = std::ceil(max_w / m_w_step);
+
+        //DEBUG manually restrict nr w layers
+//         nr_w_layers = std::min(3, nr_w_layers);
+
+        std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+
         m_w_step = max_w / nr_w_layers;
         w_kernel_size = 0.5*m_w_step * m_image_size * m_image_size;
+
+        // DEBUG no w-stacking
+//         w_kernel_size = max_w_size;
+//         nr_w_layers = 1;
+//         m_w_step = 0.0;
+
 
         int max_nr_channels = 0;
         for (auto band : bands )
         {
             max_nr_channels = std::max(max_nr_channels, int(band.size()));
         }
-
-        float taper_kernel_size = 7.0;
-        float padding = 1.25;
-
-        float a_term_kernel_size = 0.0;
 
         // idg library's Plan does not account for channels, when mapping visibilities onto subgrids
         // therefore the maximum number of channels is added to the kernel size
@@ -143,13 +174,15 @@ namespace api {
 
         m_grid.init(0.0);
 
-        int width = m_grid.get_x_dim();
+        size_t width = m_grid.get_x_dim();
         int nr_w_layers = m_grid.get_nr_w_layers();
 
         // Stokes I
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 m_grid(0,0,i,j) = image[width*i+j];
                 m_grid(0,3,i,j) = image[width*i+j];
@@ -157,9 +190,11 @@ namespace api {
         }
 
         // Stokes Q
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 m_grid(0,0,i,j) += image[width*width + width*i+j];
                 m_grid(0,3,i,j) -= image[width*width + width*i+j];
@@ -167,9 +202,11 @@ namespace api {
         }
 
         // Stokes U
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 m_grid(0,1,i,j) = image[2*width*width + width*i+j];
                 m_grid(0,2,i,j) = image[2*width*width + width*i+j];
@@ -177,9 +214,11 @@ namespace api {
         }
 
         // Stokes V
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 m_grid(0,1,i,j).imag(image[3*width*width + width*i+j]);
                 m_grid(0,2,i,j).imag(-image[3*width*width + width*i+j]);
@@ -193,19 +232,20 @@ namespace api {
         for(size_t i=0; i < width ; ++i)
         {
             float y = m_taper_grid[i];
-            if (y > 1e-3) inv_spheroidal[i] = 1.0/y;
+            if (y > 1e-2) inv_spheroidal[i] = 1.0/y;
         }
 
         for(int w_layer=nr_w_layers - 1; w_layer >= 0; w_layer--)
         {
             std::cout << "w_layer: " << w_layer << std::endl;
             const float w_offset = (w_layer+0.5)*m_w_step;
+            #pragma omp parallel for
             for(int i=0; i < width; i++)
             {
                 for(int j=0; j < width; j++)
                 {
-                    const float l = (i-(width/2)) * m_image_size/width;
-                    const float m = (j-(width/2)) * m_image_size/width;
+                    const float l = (i-((int)width/2)) * m_cell_size;
+                    const float m = (j-((int)width/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
@@ -213,6 +253,7 @@ namespace api {
 
                     float phase = 2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
+                    #pragma omp simd
                     for(int pol=0; pol<4; pol++)
                     {
                         m_grid(w_layer, pol, i, j) = m_grid(0, pol, i, j) * inv_spheroidal[i] * inv_spheroidal[j] * phasor;
@@ -225,7 +266,7 @@ namespace api {
 
     void BufferSetImpl::get_image(double* image) 
     {
-        int width = m_grid.get_x_dim();
+        size_t width = m_grid.get_x_dim();
         int nr_w_layers = m_grid.get_nr_w_layers();
 
         std::vector<float> inv_spheroidal(width, 0.0);
@@ -233,7 +274,7 @@ namespace api {
         for(size_t i=0; i < width ; ++i)
         {
             float y = m_taper_grid[i];
-            if (y > 1e-3) inv_spheroidal[i] = 1.0/y;
+            if (y > 1e-2) inv_spheroidal[i] = 1.0/y;
         }
 
         for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
@@ -249,8 +290,8 @@ namespace api {
             {
                 for(int j=0; j < width; j++)
                 {
-                    const float l = (i-(width/2)) * m_image_size/width;
-                    const float m = (j-(width/2)) * m_image_size/width;
+                    const float l = (i-((int)width/2)) * m_cell_size;
+                    const float m = (j-((int)width/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
@@ -268,10 +309,12 @@ namespace api {
 
         for(int w_layer=1; w_layer < nr_w_layers; w_layer++)
         {
-            for(int i=0; i < width; i++)
+            #pragma omp parallel for
+            for(size_t i=0; i < width; i++)
             {
-                for(int j=0; j < width; j++)
+                for(size_t j=0; j < width; j++)
                 {
+                    #pragma omp simd collapse(2)
                     for(int pol=0; pol<4; pol++)
                     {
                         m_grid(0, pol, i, j) += m_grid(w_layer, pol, i, j);
@@ -281,36 +324,44 @@ namespace api {
         }
 
         // Stokes I
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 image[width*i+j] = 0.5 * (m_grid(0,0,i,j).real() + m_grid(0,3,i,j).real());
             }
         }
 
         // Stokes Q
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 image[width*width + width*i+j] = 0.5 * (m_grid(0,0,i,j).real() - m_grid(0,3,i,j).real());
             }
         }
 
         // Stokes U
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 image[2*width*width + width*i+j] = 0.5 * (m_grid(0,1,i,j).real() + m_grid(0,2,i,j).real());
             }
         }
 
         // Stokes V
-        for(int i=0; i < width; i++)
+        #pragma omp parallel for
+        for(size_t i=0; i < width; i++)
         {
-            for(int j=0; j < width; j++)
+            #pragma omp simd
+            for(size_t j=0; j < width; j++)
             {
                 image[3*width*width + width*i+j] = 0.5 * (m_grid(0,1,i,j).imag() - m_grid(0,2,i,j).imag());;
             }
