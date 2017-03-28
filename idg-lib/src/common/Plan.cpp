@@ -272,7 +272,7 @@ namespace idg {
                     int  uv_min_pixels = min(coordinate.x, coordinate.y);
                     int  w_index = coordinate.z;
                     bool uvw_in_range = uv_min_pixels >= 1 && 
-                                        uv_max_pixels < (grid_size - subgrid_size) &&
+                                        uv_max_pixels <= (grid_size - subgrid_size) &&
                                         w_index >= -nr_w_layers &&
                                         w_index < nr_w_layers;
 
