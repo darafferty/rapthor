@@ -1,8 +1,36 @@
-# This module tries to find Nvidia Management library on your system
+# Module for locating libnvidia-ml
 #
-# Once done this will define
-#  NVML_FOUND        - system has NVML
-#  NVML_LIBRARIES    - link these to use NVML
+# Read-only variables:
+#   NVML_FOUND
+#     Indicates that the library has been found.
+#
+#   NVML_INCLUDE_DIR
+#     Points to the libnvidia-ml include directory.
+#
+#   NVML_LIBRARY_DIR
+#     Points to the directory that contains the libraries.
+#     The content of this variable can be passed to link_directories.
+#
+#   NVML_LIBRARY
+#     Points to the libnvidia-ml that can be passed to target_link_libararies.
 
-FIND_PACKAGE(PackageHandleStandardArgs)
-FIND_LIBRARY(NVML_LIBRARY nvidia-ml ENV LD_LIBRARY_PATH)
+include(FindPackageHandleStandardArgs)
+
+find_path(NVML_INCLUDE_DIR
+  NAMES nvml.h
+  HINTS ${NVML_ROOT_DIR} /usr/local/cuda/
+  PATH_SUFFIXES include
+  DOC "NVML include directory")
+
+find_library(NVML_LIBRARY
+  NAMES nvidia-ml
+  HINTS ${NVML_ROOT_DIR}
+  DOC "NVML library")
+
+if (NVML_LIBRARY)
+    get_filename_component(NVML_LIBRARY_DIR ${NVML_LIBRARY} PATH)
+endif()
+
+mark_as_advanced(NVML_ROOT_DIR NVML_INCLUDE_DIR NVML_LIBRARY_DIR NVML_LIBRARY)
+
+find_package_handle_standard_args(NVML REQUIRED_VARS NVML_INCLUDE_DIR NVML_LIBRARY)
