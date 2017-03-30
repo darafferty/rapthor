@@ -124,8 +124,8 @@ __device__ void kernel_gridder_(
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-            float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
+            float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
             float tmp = (l * l) + (m * m);
             float n = tmp / (1.0f + sqrtf(1.0f - tmp));
 

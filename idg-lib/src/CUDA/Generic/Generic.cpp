@@ -600,7 +600,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
-                                current_nr_subgrids, grid_size, image_size, w_step, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);

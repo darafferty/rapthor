@@ -19,8 +19,7 @@ namespace idg {
         const Array1D<unsigned int>& aterms_offsets,
         const float w_step,
         const int nr_w_layers,
-        const int max_nr_timesteps_per_subgrid
-              )
+        const int max_nr_timesteps_per_subgrid)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -235,7 +234,7 @@ namespace idg {
 
                     // Iterate all datapoints
                     int time_limit = abs(time_offset + max_nr_timesteps_per_subgrid);
-                    int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) : nr_timesteps_per_aterm;
+                    int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) :nr_timesteps_per_aterm;
                     for (; time_offset < time_max; time_offset++) {
                         // Visibility for first channel
                         
@@ -250,8 +249,8 @@ namespace idg {
                         const float w_lambda1 = visibility1.w_lambda;
 
                         // Try to add visibilities to subgrid
-                        if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) && subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda1))
-                        {
+                        if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
+                            subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda1)) {
                             nr_timesteps_subgrid++;
                         } else {
                             break;

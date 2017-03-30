@@ -463,19 +463,12 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-<<<<<<< HEAD
-                    kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
-=======
-                    if (w_step == 0.0)
-                    {
-                        kernels.run_adder(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    if (w_step == 0.0) {
+                        kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
-                    else
-                    {
-                        kernels.run_adder_wstack(nr_subgrids, grid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
+                    else {
+                        kernels.run_adder_wstack(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
-
->>>>>>> Fix CUDA kernels. Call Wstack adder and splitter from CPU and Hybrid when needed
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -537,19 +530,11 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-<<<<<<< HEAD
-                    kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
-=======
-                    if (w_step == 0.0)
-                    {
-                       kernels.run_splitter(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    if (w_step == 0.0) {
+                       kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    } else {
+                       kernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
-                    else
-                    {
-                       kernels.run_splitter_wstack(nr_subgrids, grid_size, metadata_ptr, subgrids_ptr, grid_ptr);
-                    }
-
->>>>>>> Fix CUDA kernels. Call Wstack adder and splitter from CPU and Hybrid when needed
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)

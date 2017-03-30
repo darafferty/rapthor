@@ -40,7 +40,7 @@ extern "C" {
             const int station2     = m.baseline.station2;
             const int x_coordinate = m.coordinate.x;
             const int y_coordinate = m.coordinate.y;
-            const float w_offset_in_lambda = w_step_in_lambda * m.w_index;
+            const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
             // Compute u and v offset in wavelenghts
             const float u_offset = (x_coordinate + subgridsize/2 - gridsize/2)

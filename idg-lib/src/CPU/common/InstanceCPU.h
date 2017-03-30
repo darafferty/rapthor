@@ -83,7 +83,8 @@ namespace idg {
                     
                     void run_adder_wstack(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         int nr_w_layers,
                         void *metadata,
                         void *subgrid,
@@ -91,7 +92,8 @@ namespace idg {
 
                     void run_splitter_wstack(
                         int nr_subgrids,
-                        int gridsize,
+                        int grid_size,
+                        int subgrid_size,
                         void *metadata,
                         void *subgrid,
                         void *grid);
