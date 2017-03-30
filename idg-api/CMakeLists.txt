@@ -55,6 +55,7 @@ include_directories (${IDG_INCLUDE_DIRS})
 
 find_package(MKL QUIET)
 if (${MKL_FOUND})
+    add_definitions(-DHAVE_MKL)  # TODO put define in a config.h.in file
     set (HAVE_MKL TRUE)
 else()
     find_package(LAPACKE)
