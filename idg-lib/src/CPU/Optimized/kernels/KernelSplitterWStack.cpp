@@ -10,7 +10,7 @@
 
 extern "C" {
 void kernel_splitter_wstack(
-    const int nr_subgrids,
+    const long nr_subgrids,
     const long grid_size,
     const int subgrid_size,
     const idg::Metadata metadata[],
@@ -61,7 +61,7 @@ void kernel_splitter_wstack(
                             size_t grid_idx =
                                 ( -(grid_z+1) * NR_POLARIZATIONS * grid_size * grid_size) +
                                 (transpose[pol] * grid_size * grid_size) +
-                                (grid_size) - grid_y - y * grid_size +
+                                (grid_size - grid_y - y) * grid_size +
                                 (grid_size - grid_x - x);
                             subgrid[s][pol][y_dst][x_dst] = phasor * conj(grid[grid_idx]);
                         }
@@ -87,10 +87,10 @@ void kernel_splitter_wstack(
                         // Set grid value to subgrid
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             size_t grid_idx =
-                                (grid_z * NR_POLARIZATIONS * size_t(grid_size) * size_t(grid_size)) +
-                                (pol * size_t(grid_size) * size_t(grid_size)) +
-                                ((grid_y + y) * size_t(grid_size)) +
-                                (grid_x + x);
+                                grid_z * NR_POLARIZATIONS * grid_size * grid_size +
+                                pol * grid_size * grid_size +
+                                (grid_y + y) * grid_size +
+                                grid_x + x;
                             subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
                         }
                     }
