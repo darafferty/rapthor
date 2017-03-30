@@ -37,7 +37,7 @@ class Reference(Proxy):
 
     def _cwrap_griddding(
         self,
-        w_offset,
+        w_step,
         cell_size,
         kernel_size,
         frequencies,
@@ -68,7 +68,7 @@ class Reference(Proxy):
         spheroidal_width):
         lib.CPU_Reference_gridding(
             self.obj,
-            ctypes.c_float(w_offset),
+            ctypes.c_float(w_step),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             frequencies.ctypes.data_as(ctypes.c_void_p),
@@ -104,7 +104,7 @@ class Reference(Proxy):
 
     def _cwrap_degridding(
         self,
-        w_offset,
+        w_step,
         cell_size,
         kernel_size,
         frequencies,
@@ -138,7 +138,7 @@ class Reference(Proxy):
         spheroidal_width):
         lib.CPU_Reference_degridding(
             self.obj,
-            ctypes.c_float(w_offset),
+            ctypes.c_float(w_step),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             frequencies.ctypes.data_as(ctypes.c_void_p),
@@ -213,7 +213,7 @@ class Optimized(Proxy):
 
     def _cwrap_griddding(
         self,
-        w_offset,
+        w_step,
         cell_size,
         kernel_size,
         frequencies,
@@ -244,7 +244,7 @@ class Optimized(Proxy):
         spheroidal_width):
         lib.CPU_Optimized_gridding(
             self.obj,
-            ctypes.c_float(w_offset),
+            ctypes.c_float(w_step),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             frequencies.ctypes.data_as(ctypes.c_void_p),
@@ -280,7 +280,7 @@ class Optimized(Proxy):
 
     def _cwrap_degridding(
         self,
-        w_offset,
+        w_step,
         cell_size,
         kernel_size,
         frequencies,
@@ -314,7 +314,7 @@ class Optimized(Proxy):
         spheroidal_width):
         lib.CPU_Optimized_degridding(
             self.obj,
-            ctypes.c_float(w_offset),
+            ctypes.c_float(w_step),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             frequencies.ctypes.data_as(ctypes.c_void_p),

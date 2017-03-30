@@ -40,35 +40,35 @@ namespace idg {
                     High level routines
                 */
                 //! Grid the visibilities onto a uniform grid
-                virtual void gridding(
+                void gridding(
                     const Plan& plan,
-                    const float w_offset, // in lambda
+                    const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Array3D<std::complex<float>>& grid,
+                    Grid&& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
-                    const Array2D<float>& spheroidal) = 0;
+                    const Array2D<float>& spheroidal);
 
                 void gridding(
-                    const float w_offset,
+                    const float w_step,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Array3D<std::complex<float>>& grid,
+                    Grid&& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
 
-                virtual void gridding(
-                    float w_offset,
+                void gridding(
+                    float w_step,
                     float cell_size,
                     unsigned int kernel_size,
                     float* frequencies,
@@ -101,36 +101,35 @@ namespace idg {
                     unsigned int spheroidal_height,
                     unsigned int spheroidal_width);
 
-                //! Degrid the visibilities from a uniform grid
-                virtual void degridding(
+                void degridding(
                     const Plan& plan,
-                    const float w_offset, // in lambda
+                    const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const Array1D<float>& frequencies,
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    const Array3D<std::complex<float>>& grid,
+                    const Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
-                    const Array2D<float>& spheroidal) = 0;
+                    const Array2D<float>& spheroidal);
 
                 void degridding(
-                    const float w_offset,
+                    const float w_step,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const Array1D<float>& frequencies,
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    const Array3D<std::complex<float>>& grid,
+                    const Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
 
                 void degridding(
-                    float w_offset,
+                    float w_step,
                     float cell_size,
                     unsigned int kernel_size,
                     float* frequencies,
@@ -164,9 +163,9 @@ namespace idg {
                     unsigned int spheroidal_width);
 
                 //! Applyies (inverse) Fourier transform to grid
-                virtual void transform(
+                void transform(
                     DomainAtoDomainB direction,
-                    Array3D<std::complex<float>>& grid) = 0;
+                    Array3D<std::complex<float>>& grid);
 
                 void transform(
                     DomainAtoDomainB direction,
@@ -180,6 +179,44 @@ namespace idg {
                     return mConstants.get_nr_correlations(); }
                 unsigned int get_subgrid_size() const {
                     return mConstants.get_subgrid_size(); }
+                bool supports_wstack() {return (supports_wstack_gridding() && supports_wstack_degridding());}
+                virtual bool supports_wstack_gridding() {return false;}
+                virtual bool supports_wstack_degridding() {return false;}
+
+            private:
+                //! Degrid the visibilities from a uniform grid
+                virtual void do_gridding(
+                    const Plan& plan,
+                    const float w_step, // in lambda
+                    const float cell_size, // TODO: unit?
+                    const unsigned int kernel_size, // full width in pixels
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) = 0;
+
+                virtual void do_degridding(
+                    const Plan& plan,
+                    const float w_step, // in lambda
+                    const float cell_size, // TODO: unit?
+                    const unsigned int kernel_size, // full width in pixels
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) = 0;
+
+                //! Applyies (inverse) Fourier transform to grid
+                virtual void do_transform(
+                    DomainAtoDomainB direction,
+                    Array3D<std::complex<float>>& grid) = 0;
 
             protected:
                 void check_dimensions(
@@ -210,7 +247,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    const Array3D<std::complex<float>>& grid,
+                    const Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal) const;

@@ -12,7 +12,7 @@ __global__ void kernel_degridder(
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
-    const float                       w_offset,
+    const float                       w_step,
     const int                         nr_channels,
     const int                         nr_stations,
     const UVW*           __restrict__ uvw,
@@ -41,6 +41,8 @@ __global__ void kernel_degridder(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
+    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
+    const float w_offset = 2*M_PI*w_offset_in_lambda;
 
     // Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
@@ -154,9 +156,10 @@ __global__ void kernel_degridder(
                 _pix[1][i] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+                const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
+                const float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
+                const float tmp = (l * l) + (m * m);
+                const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[i] = make_float4(l, m, n, phase_offset);
             }

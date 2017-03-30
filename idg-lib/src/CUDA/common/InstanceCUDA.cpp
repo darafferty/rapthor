@@ -298,7 +298,7 @@ namespace idg {
                 int grid_size,
                 int subgrid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 cu::DeviceMemory& d_uvw,
@@ -310,7 +310,7 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
+                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
@@ -323,7 +323,7 @@ namespace idg {
                 int grid_size,
                 int subgrid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 cu::DeviceMemory& d_uvw,
@@ -335,7 +335,7 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_offset, &nr_channels, &nr_stations,
+                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 

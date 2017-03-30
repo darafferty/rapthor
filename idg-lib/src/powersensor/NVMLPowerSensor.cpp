@@ -24,7 +24,6 @@ inline void __checkNVMLCall(
         std::cerr << std::endl;
         exit(EXIT_FAILURE);
     }
-
 }
 #endif
 

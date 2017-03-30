@@ -47,16 +47,16 @@ namespace idg {
             /*
                 High level routines
             */
-            void CPU::gridding(
+            void CPU::do_gridding(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                Array3D<std::complex<float>>& grid,
+                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -106,7 +106,7 @@ namespace idg {
                     // Run subroutines
                     grid_onto_subgrids(
                         plan,
-                        w_offset,
+                        w_step,
                         grid_size,
                         image_size,
                         wavenumbers,
@@ -118,6 +118,7 @@ namespace idg {
 
                     add_subgrids_to_grid(
                         plan,
+                        w_step,
                         subgrids,
                         grid);
 
@@ -153,16 +154,16 @@ namespace idg {
                 }
             } // end gridding
 
-            void CPU::degridding(
+            void CPU::do_degridding(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const Array1D<float>& frequencies,
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                const Array3D<std::complex<float>>& grid,
+                const Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -212,12 +213,13 @@ namespace idg {
                     // Run subroutines
                     split_grid_into_subgrids(
                          plan,
+                         w_step,
                          subgrids,
                          grid);
 
                     degrid_from_subgrids(
                         plan,
-                        w_offset,
+                        w_step,
                         grid_size,
                         image_size,
                         wavenumbers,
@@ -259,7 +261,7 @@ namespace idg {
                 }
             } // end degridding
 
-            void CPU::transform(
+            void CPU::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)
             {
@@ -316,7 +318,7 @@ namespace idg {
             */
             void CPU::grid_onto_subgrids(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const unsigned int grid_size,
                 const float image_size,
                 const Array1D<float>& wavenumbers,
@@ -331,8 +333,8 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto jobsize      = 128; // TODO
                 auto nr_baselines = visibilities.get_z_dim();
+                auto jobsize      = 128; // TODO
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
@@ -351,15 +353,19 @@ namespace idg {
 
                     // Number of subgrids for all baselines in job
                     auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                    // if this job is empty continue to next
+                    if (current_nr_subgrids == 0) continue;
+
                     auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *uvw_ptr          = uvw.data(bl, 0);
-                    void *visibilities_ptr = visibilities.data(bl, 0, 0);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                    void *uvw_ptr          = uvw.data(0, 0) + ((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset;
+                    void *visibilities_ptr = visibilities.data(0, 0, 0) + (((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * nr_channels;
                     void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
 
                     // Gridder kernel
@@ -370,7 +376,7 @@ namespace idg {
                         grid_size,
                         subgrid_size,
                         image_size,
-                        w_offset,
+                        w_step,
                         nr_channels,
                         nr_stations,
                         uvw_ptr,
@@ -424,8 +430,9 @@ namespace idg {
 
             void CPU::add_subgrids_to_grid(
                 const Plan& plan,
+                const float w_step,
                 const Array4D<std::complex<float>>& subgrids,
-                Array3D<std::complex<float>>& grid)
+                Grid& grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -434,6 +441,7 @@ namespace idg {
                 // Constants
                 auto jobsize      = 128; // TODO
                 auto grid_size    = grid.get_x_dim();
+                auto nr_w_layers  = grid.get_nr_w_layers();
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
 
@@ -455,7 +463,12 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-                    kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    if (w_step == 0.0) {
+                        kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
+                    else {
+                        kernels.run_adder_wstack(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -485,8 +498,9 @@ namespace idg {
 
             void CPU::split_grid_into_subgrids(
                 const Plan& plan,
+                const float w_step,
                 Array4D<std::complex<float>>& subgrids,
-                const Array3D<std::complex<float>>& grid)
+                const Grid& grid)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -516,7 +530,11 @@ namespace idg {
                     void *grid_ptr     = grid.data();
 
                     powerStates[0] = powerSensor->read();
-                    kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    if (w_step == 0.0) {
+                       kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    } else {
+                       kernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE)
@@ -546,7 +564,7 @@ namespace idg {
 
             void CPU::degrid_from_subgrids(
                 const Plan& plan,
-                const float w_offset,
+                const float w_step,
                 const unsigned int grid_size,
                 const float image_size,
                 const Array1D<float>& wavenumbers,
@@ -561,8 +579,8 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto jobsize      = 128; // TODO
                 auto nr_baselines = visibilities.get_z_dim();
+                auto jobsize      = nr_baselines; // TODO
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
@@ -581,15 +599,19 @@ namespace idg {
 
                     // Number of subgrids for all baselines in job
                     auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                    // if this job is empty continue to next
+                    if (current_nr_subgrids == 0) continue;
+
                     auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *uvw_ptr          = uvw.data(bl, 0);
-                    void *visibilities_ptr = visibilities.data(bl, 0, 0);
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
+                    void *uvw_ptr          = uvw.data(0, 0) + ((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset;
+                    void *visibilities_ptr = visibilities.data(0, 0, 0) + (((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * nr_channels;
                     void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
 
                     // FFT kernel
@@ -604,7 +626,7 @@ namespace idg {
                         grid_size,
                         subgrid_size,
                         image_size,
-                        w_offset,
+                        w_step,
                         nr_channels,
                         nr_stations,
                         uvw_ptr,

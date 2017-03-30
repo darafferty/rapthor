@@ -13,7 +13,7 @@
 __kernel void kernel_gridder_1(
     const int gridsize,
     const float imagesize,
-    const float w_offset,
+    const float w_step,
     const int nr_channels,
     const int channel_offset,
     const int nr_stations,
@@ -57,6 +57,7 @@ __kernel void kernel_gridder_1(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Iterate all timesteps
     int current_nr_timesteps = MAX_NR_TIMESTEPS;
@@ -191,7 +192,7 @@ __kernel void kernel_gridder_1(
 __kernel void kernel_gridder_4(
     const int gridsize,
     const float imagesize,
-    const float w_offset,
+    const float w_step,
     const int nr_channels,
     const int channel_offset,
     const int nr_stations,
@@ -236,6 +237,7 @@ __kernel void kernel_gridder_4(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS_4; i += blocksize) {
@@ -379,7 +381,7 @@ __kernel void kernel_gridder_4(
 __kernel void kernel_gridder_8(
     const int gridsize,
     const float imagesize,
-    const float w_offset,
+    const float w_step,
     const int nr_channels,
     const int channel_offset,
     const int nr_stations,
@@ -424,6 +426,7 @@ __kernel void kernel_gridder_8(
 	const int station2 = m.baseline.station2;
 	const int x_coordinate = m.coordinate.x;
 	const int y_coordinate = m.coordinate.y;
+    const float w_offset = w_step * m.coordinate.z;
 
     // Load wavenumbers
     for (int i = tid; i < NR_CHANNELS_8; i += blocksize) {
@@ -567,7 +570,7 @@ __kernel void kernel_gridder_8(
 __kernel void kernel_gridder(
     const int gridsize,
     const float imagesize,
-	const float w_offset,
+	const float w_step,
     const int nr_channels,
     const int nr_stations,
 	__global const UVWType			uvw,
@@ -586,7 +589,7 @@ __kernel void kernel_gridder(
         __local float  _wavenumbers[NR_CHANNELS_8];
 
         kernel_gridder_8(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_step, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities,spheroidal, aterm, metadata, subgrid,
             _visibilities, _uvw, _wavenumbers);
     }
@@ -597,7 +600,7 @@ __kernel void kernel_gridder(
         __local float  _wavenumbers[NR_CHANNELS_4];
 
         kernel_gridder_4(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_step, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities,spheroidal, aterm, metadata, subgrid,
             _visibilities, _uvw, _wavenumbers);
     }
@@ -608,7 +611,7 @@ __kernel void kernel_gridder(
 	    __local float4 _uvw[MAX_NR_TIMESTEPS];
 
         kernel_gridder_1(
-            gridsize, imagesize, w_offset, nr_channels, channel_offset, nr_stations,
+            gridsize, imagesize, w_step, nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities,spheroidal, aterm, metadata, subgrid,
             _visibilities, _uvw);
     }

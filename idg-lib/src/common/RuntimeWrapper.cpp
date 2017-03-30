@@ -44,6 +44,8 @@ namespace idg {
 	        
 	        if (WEXITSTATUS(retval) != 0) {
 	            cerr << "Error compiling: " << input_file_name << endl;
+                cerr << "retval: " << retval << endl;
+                cerr << "WEXITSTATUS(retval)" << WEXITSTATUS(retval) << endl;
 	            exit(EXIT_FAILURE);
 	        }
         }

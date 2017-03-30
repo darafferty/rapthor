@@ -3,19 +3,38 @@
 
 #include "Proxy.h"
 
-using namespace std;
-
 namespace idg {
     namespace proxy {
+
         void Proxy::gridding(
-            const float w_offset,
+            const Plan& plan,
+            const float w_step, // in lambda
+            const float cell_size, // TODO: unit?
+            const unsigned int kernel_size, // full width in pixels
+            const Array1D<float>& frequencies,
+            const Array3D<Visibility<std::complex<float>>>& visibilities,
+            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+            Grid&& grid,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array1D<unsigned int>& aterms_offsets,
+            const Array2D<float>& spheroidal)
+        {
+            if ((w_step != 0.0) && (!supports_wstack_gridding())) {
+                throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
+            }
+            do_gridding(plan, w_step, cell_size, kernel_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+        }
+
+        void Proxy::gridding(
+            const float w_step,
             const float cell_size,
             const unsigned int kernel_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Array3D<std::complex<float>>& grid,
+            Grid&& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
@@ -32,25 +51,27 @@ namespace idg {
                 frequencies,
                 uvw,
                 baselines,
-                aterms_offsets);
+                aterms_offsets,
+                w_step, 
+                grid.get_nr_w_layers());
 
             gridding(
                 plan,
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies,
                 visibilities,
                 uvw,
                 baselines,
-                grid,
+                std::move(grid),
                 aterms,
                 aterms_offsets,
                 spheroidal);
         }
 
         void Proxy::gridding(
-            float w_offset,
+            float w_step,
             float cell_size,
             unsigned int kernel_size,
             float* frequencies,
@@ -115,8 +136,8 @@ namespace idg {
                 (UVWCoordinate<float> *) uvw, uvw_nr_baselines, uvw_nr_timesteps);
             Array1D<std::pair<unsigned int,unsigned int>> baselines_(
                 (std::pair<unsigned int,unsigned int> *) baselines, baselines_nr_baselines);
-            Array3D<std::complex<float>> grid_(
-                grid, grid_nr_correlations, grid_height, grid_width);
+            Grid grid_(
+                grid, 1, grid_nr_correlations, grid_height, grid_width);
             Array4D<Matrix2x2<std::complex<float>>> aterms_(
                 (Matrix2x2<std::complex<float>> *) aterms, aterms_nr_timeslots, aterms_nr_stations,
                 aterms_aterm_height, aterms_aterm_width);
@@ -126,14 +147,14 @@ namespace idg {
                 spheroidal, spheroidal_height, spheroidal_width);
 
             gridding(
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies_,
                 visibilities_,
                 uvw_,
                 baselines_,
-                grid_,
+                std::move(grid_),
                 aterms_,
                 aterms_offsets_,
                 spheroidal_);
@@ -141,14 +162,34 @@ namespace idg {
 
 
         void Proxy::degridding(
-            const float w_offset,
+            const Plan& plan,
+            const float w_step, // in lambda
+            const float cell_size, // TODO: unit?
+            const unsigned int kernel_size, // full width in pixels
+            const Array1D<float>& frequencies,
+            Array3D<Visibility<std::complex<float>>>& visibilities,
+            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+            const Grid& grid,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array1D<unsigned int>& aterms_offsets,
+            const Array2D<float>& spheroidal)
+        {
+            if ((w_step != 0.0) && (!supports_wstack_degridding())) {
+                throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
+            }
+            do_degridding(plan, w_step, cell_size, kernel_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+        }
+
+        void Proxy::degridding(
+            const float w_step,
             const float cell_size,
             const unsigned int kernel_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            const Array3D<std::complex<float>>& grid,
+            const Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
@@ -158,12 +199,19 @@ namespace idg {
             auto grid_size        = grid.get_x_dim();
 
             Plan plan(
-                kernel_size, subgrid_size, grid_size, cell_size,
-                frequencies, uvw, baselines, aterms_offsets);
+                kernel_size,
+                subgrid_size,
+                grid_size,
+                cell_size,
+                frequencies,
+                uvw, baselines,
+                aterms_offsets,
+                w_step, 
+                grid.get_nr_w_layers());
 
             degridding(
                 plan,
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies,
@@ -176,9 +224,8 @@ namespace idg {
                 spheroidal);
         }
 
-
         void Proxy::degridding(
-            float w_offset,
+            float w_step,
             float cell_size,
             unsigned int kernel_size,
             float* frequencies,
@@ -243,8 +290,8 @@ namespace idg {
                 (UVWCoordinate<float> *) uvw, uvw_nr_baselines, uvw_nr_timesteps);
             Array1D<std::pair<unsigned int,unsigned int>> baselines_(
                 (std::pair<unsigned int,unsigned int> *) baselines, baselines_nr_baselines);
-            Array3D<std::complex<float>> grid_(
-                grid, grid_nr_correlations, grid_height, grid_width);
+            Grid grid_(
+                grid, 1, grid_nr_correlations, grid_height, grid_width);
             Array4D<Matrix2x2<std::complex<float>>> aterms_(
                 (Matrix2x2<std::complex<float>> *) aterms, aterms_nr_timeslots, aterms_nr_stations,
                 aterms_aterm_height, aterms_aterm_width);
@@ -254,7 +301,7 @@ namespace idg {
                 spheroidal, spheroidal_height, spheroidal_width);
 
             degridding(
-                w_offset,
+                w_step,
                 cell_size,
                 kernel_size,
                 frequencies_,
@@ -265,6 +312,14 @@ namespace idg {
                 aterms_,
                 aterms_offsets_,
                 spheroidal_);
+        }
+        
+        
+        void Proxy::transform(
+            DomainAtoDomainB direction, 
+            Array3D<std::complex<float>>& grid)
+        {
+            do_transform(direction, grid);
         }
 
         void Proxy::transform(
@@ -328,7 +383,7 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            const Array3D<std::complex<float>>& grid,
+            const Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal) const

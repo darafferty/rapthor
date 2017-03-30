@@ -17,7 +17,14 @@ namespace idg {
                 Compilerflags flags,
                 ProxyInfo info) :
                 KernelsInstance(constants),
-                mInfo(info)
+                mInfo(info),
+                function_gridder(nullptr),
+                function_degridder(nullptr),
+                function_fft(nullptr),
+                function_adder(nullptr),
+                function_splitter(nullptr),
+                function_adder_wstack(nullptr),
+                function_splitter_wstack(nullptr)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -48,6 +55,8 @@ namespace idg {
                 delete function_fft;
                 delete function_adder;
                 delete function_splitter;
+                delete function_adder_wstack;
+                delete function_splitter_wstack;
 
                 // Delete .so files
                 if (mInfo.delete_shared_objects()) {
@@ -102,7 +111,9 @@ namespace idg {
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cpp");
                 p.add_src_file_to_lib(libfft, "KernelFFT.cpp");
                 p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
+                p.add_src_file_to_lib(libadder, "KernelAdderWStack.cpp", true);
                 p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
+                p.add_src_file_to_lib(libsplitter, "KernelSplitterWStack.cpp", true);
 
                 p.set_delete_shared_objects(true);
 
@@ -191,16 +202,24 @@ namespace idg {
                     if (dlsym(*modules[i], kernel::cpu::name_splitter.c_str())) {
                         function_splitter = new runtime::Function(*modules[i], name_splitter.c_str());
                     }
+                    if (dlsym(*modules[i], kernel::cpu::name_adder_wstack.c_str())) {
+                        function_adder_wstack = new runtime::Function(*modules[i], name_adder_wstack.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_splitter_wstack.c_str())) {
+                        function_splitter_wstack = new runtime::Function(*modules[i], name_splitter_wstack.c_str());
+                    }
                 } // end for
             } // end load_kernel_funcions
 
 
             // Function signatures
-            #define sig_gridder   (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_fft		  (void (*)(long,long,long,void*,int))
-            #define sig_adder	  (void (*)(long,long,int,void*,void*,void*))
-            #define sig_splitter  (void (*)(long,long,int,void*,void*,void*))
+            #define sig_gridder         (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder       (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_fft		        (void (*)(long,long,long,void*,int))
+            #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
+            #define sig_splitter        (void (*)(long,long,int,void*,void*,void*))
+            #define sig_adder_wstack    (void (*)(long,long,int,int,void*,void*,void*))
+            #define sig_splitter_wstack (void (*)(long,long,int,void*,void*,void*))
 
 
             void InstanceCPU::run_gridder(
@@ -208,7 +227,7 @@ namespace idg {
                 int grid_size,
                 int subgrid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 void *uvw,
@@ -220,7 +239,7 @@ namespace idg {
                 void *subgrid)
             {
                   (sig_gridder (void *) *function_gridder)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
@@ -229,7 +248,7 @@ namespace idg {
                 int grid_size,
                 int subgrid_size,
                 float image_size,
-                float w_offset,
+                float w_step,
                 int nr_channels,
                 int nr_stations,
                 void *uvw,
@@ -241,7 +260,7 @@ namespace idg {
                 void *subgrid)
             {
                   (sig_degridder (void *) *function_degridder)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
             }
 
@@ -275,6 +294,29 @@ namespace idg {
                 void *grid)
             {
                 (sig_splitter (void *) *function_splitter)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
+            }
+
+            void InstanceCPU::run_adder_wstack(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                int nr_w_layers,
+                void *metadata,
+                void *subgrid,
+                void *grid)
+            {
+                (sig_adder_wstack (void *) *function_adder_wstack)(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata, subgrid, grid);
+            }
+
+            void InstanceCPU::run_splitter_wstack(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                void *metadata,
+                void *subgrid,
+                void *grid)
+            {
+                (sig_splitter_wstack (void *) *function_splitter_wstack)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
             }
 
         } // namespace cpu

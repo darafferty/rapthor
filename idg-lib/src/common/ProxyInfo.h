@@ -42,7 +42,7 @@ namespace idg {
         void set_path_to_lib(std::string s) { path_to_lib = s; }
 
         void add_lib(std::string libname);
-        void add_src_file_to_lib(std::string libname, std::string filename);
+        void add_src_file_to_lib(std::string libname, std::string filename, bool optional = false);
 
         void set_delete_shared_objects(bool b) { delete_libs=b; }
         void set_keep_shared_objects(bool b) { delete_libs=!b; }

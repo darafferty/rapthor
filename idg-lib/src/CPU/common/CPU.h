@@ -27,49 +27,48 @@ namespace idg {
                     // Destructor
                     virtual ~CPU();
 
+                    virtual bool supports_wstack_gridding() {return kernels.has_adder_wstack();}
+                    virtual bool supports_wstack_degridding() {return kernels.has_splitter_wstack();}
+                    
+                    kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
+
+                private:
                     // Routines
-                    virtual void gridding(
+                    virtual void do_gridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        Array3D<std::complex<float>>& grid,
+                        Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void degridding(
+                    virtual void do_degridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
                         Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        const Array3D<std::complex<float>>& grid,
+                        const Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void transform(
+                    virtual void do_transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    using Proxy::gridding;
-                    using Proxy::degridding;
-                    using Proxy::transform;
-
-                    kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
-
-                private:
                     void grid_onto_subgrids(
                         const Plan& plan,
-                        const float w_offset,
+                        const float w_step,
                         const unsigned int grid_size,
                         const float image_size,
                         const Array1D<float>& wavenumbers,
@@ -81,17 +80,19 @@ namespace idg {
 
                     virtual void add_subgrids_to_grid(
                         const Plan& plan,
+                        const float w_step,
                         const Array4D<std::complex<float>>& subgrids,
-                        Array3D<std::complex<float>>& grid);
+                        Grid& grid);
 
                     virtual void split_grid_into_subgrids(
                         const Plan& plan,
+                        const float w_step,
                         Array4D<std::complex<float>>& subgrids,
-                        const Array3D<std::complex<float>>& grid);
+                        const Grid& grid);
 
                     virtual void degrid_from_subgrids(
                         const Plan& plan,
-                        const float w_offset,
+                        const float w_step,
                         const unsigned int grid_size,
                         const float image_size,
                         const Array1D<float>& wavenumbers,

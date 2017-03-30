@@ -11,7 +11,7 @@ extern "C" {
         const int   gridsize,
         const int   subgridsize,
         const float imagesize,
-        const float w_offset_in_lambda,
+        const float w_step_in_lambda,
         const int   nr_channels,
         const int   nr_stations,
         const idg::UVWCoordinate<float>* uvw,
@@ -41,6 +41,7 @@ extern "C" {
             const int station2     = m.baseline.station2;
             const int x_coordinate = m.coordinate.x;
             const int y_coordinate = m.coordinate.y;
+            const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
             // Storage
             std::complex<float> pixels[subgridsize][subgridsize][NR_POLARIZATIONS];

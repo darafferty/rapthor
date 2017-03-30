@@ -13,7 +13,7 @@ void kernel_gridder_(
     const int           nr_subgrids,
     const int           gridsize,
     const float         imagesize,
-    const float         w_offset_in_lambda,
+    const float         w_step_in_lambda,
     const int           nr_channels,
     const int           channel_offset,
     const int           nr_stations,
@@ -43,6 +43,7 @@ void kernel_gridder_(
         const int station2     = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;
         const int y_coordinate = m.coordinate.y;
+        const float w_offset_in_lambda = w_step_in_lambda * m.w_index;
 
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + SUBGRIDSIZE/2 - gridsize/2) * (2*M_PI / imagesize);

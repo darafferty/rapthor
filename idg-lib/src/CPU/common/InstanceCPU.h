@@ -31,7 +31,7 @@ namespace idg {
                         int grid_size,
                         int subgrid_size,
                         float image_size,
-                        float w_offset,
+                        float w_step,
                         int nr_channels,
                         int nr_stations,
                         void *uvw,
@@ -47,7 +47,7 @@ namespace idg {
                         int grid_size,
                         int subgrid_size,
                         float image_size,
-                        float w_offset,
+                        float w_step,
                         int nr_channels,
                         int nr_stations,
                         void *uvw,
@@ -80,6 +80,27 @@ namespace idg {
                         void *metadata,
                         void *subgrid,
                         void *grid);
+                    
+                    void run_adder_wstack(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        int nr_w_layers,
+                        void *metadata,
+                        void *subgrid,
+                        void *grid);
+
+                    void run_splitter_wstack(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        void *metadata,
+                        void *subgrid,
+                        void *grid);
+                    
+                    bool has_adder_wstack() {return (function_adder_wstack != nullptr);}
+
+                    bool has_splitter_wstack() {return (function_splitter_wstack != nullptr);}
 
                     static std::string make_tempdir();
                     static ProxyInfo default_proxyinfo(
@@ -101,16 +122,20 @@ namespace idg {
                     runtime::Function *function_fft;
                     runtime::Function *function_adder;
                     runtime::Function *function_splitter;
+                    runtime::Function *function_adder_wstack;
+                    runtime::Function *function_splitter_wstack;
 
             };
 
             // Kernel names
-            static const std::string name_gridder   = "kernel_gridder";
-            static const std::string name_degridder = "kernel_degridder";
-            static const std::string name_adder     = "kernel_adder";
-            static const std::string name_splitter  = "kernel_splitter";
-            static const std::string name_fft       = "kernel_fft";
-            static const std::string name_scaler    = "kernel_scaler";
+            static const std::string name_gridder         = "kernel_gridder";
+            static const std::string name_degridder       = "kernel_degridder";
+            static const std::string name_adder           = "kernel_adder";
+            static const std::string name_splitter        = "kernel_splitter";
+            static const std::string name_adder_wstack    = "kernel_adder_wstack";
+            static const std::string name_splitter_wstack = "kernel_splitter_wstack";
+            static const std::string name_fft             = "kernel_fft";
+            static const std::string name_scaler          = "kernel_scaler";
 
         } // end namespace cpu
     } // end namespace kernel

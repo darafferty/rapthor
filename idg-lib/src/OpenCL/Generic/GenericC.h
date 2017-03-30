@@ -14,7 +14,7 @@ extern "C" {
 
     void OpenCL_Generic_gridding(
         ProxyType* p,
-        float w_offset,
+        float w_step,
         const float cell_size,
         unsigned int kernel_size,
         float* frequencies,
@@ -48,7 +48,7 @@ extern "C" {
         unsigned int spheroidal_width)
     {
         p->gridding(
-            w_offset,
+            w_step,
             cell_size,
             kernel_size,
             frequencies,
@@ -85,7 +85,7 @@ extern "C" {
 
      void OpenCL_Generic_degridding(
         ProxyType* p,
-        float w_offset,
+        float w_step,
         const float cell_size,
         unsigned int kernel_size,
         float* frequencies,
@@ -119,7 +119,7 @@ extern "C" {
         unsigned int spheroidal_width)
     {
         p->degridding(
-            w_offset,
+            w_step,
             cell_size,
             kernel_size,
             frequencies,

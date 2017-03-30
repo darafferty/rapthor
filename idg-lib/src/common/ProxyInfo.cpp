@@ -1,11 +1,17 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <sys/stat.h>
 
 #include "idg-config.h"
 #include "ProxyInfo.h"
 
 using namespace std;
+
+inline bool exists (const std::string& name) {
+    struct stat buffer;   
+    return (stat (name.c_str(), &buffer) == 0); 
+}
 
 namespace idg {
 
@@ -20,12 +26,14 @@ namespace idg {
     libs[libname] = vector<string>();
   }
 
-  void ProxyInfo::add_src_file_to_lib(std::string libname, std::string filename) 
+  void ProxyInfo::add_src_file_to_lib(std::string libname, std::string filename, bool optional) 
   {
     if (libs.find(libname) != libs.end()) {
-	// libname exist as a key, add a file name to the value vector
-	libs.at(libname).push_back(filename);
+      // libname exist as a key, add a file name to the value vector
+      if (!optional || exists(path_to_src + "/" + filename)) {
+          libs.at(libname).push_back(filename);
       }
+    }
   }
 
 

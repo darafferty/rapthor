@@ -32,7 +32,7 @@ namespace idg {
             }
 
             /* High level routines */
-            void Generic::transform(
+            void Generic::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)
             {
@@ -129,16 +129,16 @@ namespace idg {
             } // end transform
 
 
-            void Generic::gridding(
+            void Generic::do_gridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                Array3D<std::complex<float>>& grid,
+                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -277,10 +277,14 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+
+                        // if this job is empty continue to next
+                        if (current_nr_subgrids == 0) continue;
+
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        void *uvw_ptr             = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
-                        void *visibilities_ptr    = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
+                        void *uvw_ptr             = h_uvw.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_uvw(1, 1));
+                        void *visibilities_ptr    = h_visibilities.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_visibilities(1, 1, nr_channels));
 
                         // Power measurement
                         PowerRecord powerRecords[5];
@@ -301,7 +305,7 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
@@ -418,16 +422,16 @@ namespace idg {
             } //end gridding
 
 
-            void Generic::degridding(
+            void Generic::do_degridding(
                 const Plan& plan,
-                const float w_offset, // in lambda
+                const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const Array1D<float>& frequencies,
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                const Array3D<std::complex<float>>& grid,
+                const Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -563,9 +567,9 @@ namespace idg {
                         auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
                         auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        void *uvw_ptr             = h_uvw.get(bl * device.sizeof_uvw(1, nr_timesteps));
-                        void *visibilities_ptr    = h_visibilities.get(bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels));
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
+                        void *uvw_ptr             = h_uvw.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_uvw(1, 1));
+                        void *visibilities_ptr    = h_visibilities.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_visibilities(1, 1, nr_channels));
 
                         // Power measurement
                         PowerRecord powerRecords[5];
@@ -596,7 +600,7 @@ namespace idg {
                             executestream.waitEvent(outputFree);
                             device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_offset, nr_channels, nr_stations,
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);

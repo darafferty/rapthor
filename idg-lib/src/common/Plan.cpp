@@ -17,6 +17,8 @@ namespace idg {
         const Array2D<UVWCoordinate<float>>& uvw,
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
+        const float w_step,
+        const int nr_w_layers,
         const int max_nr_timesteps_per_subgrid)
     {
         #if defined(DEBUG)
@@ -26,18 +28,20 @@ namespace idg {
         initialize(
             kernel_size, subgrid_size, grid_size, cell_size,
             frequencies, uvw, baselines, aterms_offsets,
-            max_nr_timesteps_per_subgrid);
+            w_step, nr_w_layers, max_nr_timesteps_per_subgrid);
     }
 
     class Subgrid {
         public:
             Subgrid(
-                const int kernel_size,
-                const int subgrid_size,
-                const int grid_size) :
+                const int   kernel_size,
+                const int   subgrid_size,
+                const int   grid_size,
+                const float w_step) :
                 kernel_size(kernel_size),
                 subgrid_size(subgrid_size),
-                grid_size(grid_size)
+                grid_size(grid_size),
+                w_step(w_step)
             {
                 reset();
             }
@@ -50,9 +54,18 @@ namespace idg {
                 uv_width = 0;
             }
 
-            bool add_visibility(float u_pixels, float v_pixels) {
+            bool add_visibility(float u_pixels, float v_pixels, float w_lambda) {
                 // Return false for invalid visibilities
-                if (isinf(u_pixels) || isinf(v_pixels)) {
+                if (std::isinf(u_pixels) || std::isinf(v_pixels)) {
+                    return false;
+                }
+                
+                int w_index_ = 0;
+                if (w_step) w_index_ = int(std::floor(w_lambda/w_step));
+                
+                // if this is not the first sample, it should map to the
+                // same w_index as the others, if not, return false
+                if (std::isfinite(u_min) && (w_index_ != w_index)) {
                     return false;
                 }
 
@@ -68,7 +81,7 @@ namespace idg {
                 int uv_width_ = fmax(u_width_, v_width_);
 
                 // Return false if the visibility does not fit
-                if ((uv_width + kernel_size) >= subgrid_size) {
+                if ((uv_width_ + kernel_size) >= subgrid_size) {
                     return false;
                 } else {
                     u_min = u_min_;
@@ -76,6 +89,7 @@ namespace idg {
                     v_min = v_min_;
                     v_max = v_max_;
                     uv_width = uv_width_;
+                    w_index = w_index_;
                     return true;
                 }
             }
@@ -93,7 +107,7 @@ namespace idg {
                 u_pixels -= (subgrid_size/2);
                 v_pixels -= (subgrid_size/2);
 
-                return {u_pixels, v_pixels};
+                return {u_pixels, v_pixels, w_index};
             }
 
             const int kernel_size;
@@ -104,6 +118,8 @@ namespace idg {
             float v_min;
             float v_max;
             float uv_width;
+            int   w_index;
+            float w_step;
     }; // end class Subgrid
 
 
@@ -112,6 +128,10 @@ namespace idg {
         return meters * imagesize * (frequency / speed_of_light);
     }
 
+    inline float meters_to_lambda(float meters, float frequency) {
+        const double speed_of_light = 299792458.0;
+        return meters * (frequency / speed_of_light);
+    }
 
     void Plan::initialize(
         const int kernel_size,
@@ -122,6 +142,8 @@ namespace idg {
         const Array2D<UVWCoordinate<float>>& uvw,
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
+        const float w_step,
+        const int nr_w_layers,
         const int max_nr_timesteps_per_subgrid)
     {
         #if defined(DEBUG)
@@ -146,6 +168,8 @@ namespace idg {
         for (int bl = 0; bl < nr_baselines; bl++) {
             metadata_[bl].reserve(nr_timesteps / nr_timeslots);
         }
+        
+        needs_w_stacking = false;
 
         // Iterate all baselines
         #pragma omp parallel for
@@ -174,30 +198,34 @@ namespace idg {
                     int channel;
                     float u_pixels;
                     float v_pixels;
+                    float w_lambda;
                 };
 
-                DataPoint datapoints[nr_timesteps_per_aterm][nr_channels];
+                std::vector<DataPoint> datapoints(nr_timesteps_per_aterm * nr_channels);
 
                 for (int t = 0; t < nr_timesteps_per_aterm; t++) {
                     for (int c = 0; c < nr_channels; c++) {
                         // U,V in meters
                         float u_meters = uvw(bl, timeslot * nr_timesteps_per_aterm + t).u;
                         float v_meters = uvw(bl, timeslot * nr_timesteps_per_aterm + t).v;
+                        float w_meters = uvw(bl, timeslot * nr_timesteps_per_aterm + t).w;
 
                         float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(c));
                         float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(c));
 
-                        datapoints[t][c] = {t, c, u_pixels, v_pixels};
+                        float w_lambda = meters_to_lambda(w_meters, frequencies(c));
+
+                        datapoints[t*nr_channels + c] = {t, c, u_pixels, v_pixels, w_lambda};
                     }
                 } // end for time
 
                 // Initialize subgrid
-                Subgrid subgrid(kernel_size, subgrid_size, grid_size);
+                Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step);
 
                 int time_offset = 0;
                 while (time_offset < nr_timesteps_per_aterm) {
                     // Load first visibility
-                    DataPoint first_datapoint = datapoints[time_offset][0];
+                    DataPoint first_datapoint = datapoints[time_offset*nr_channels];
                     const int first_timestep = first_datapoint.timestep;
 
                     // Create subgrid
@@ -206,16 +234,23 @@ namespace idg {
 
                     // Iterate all datapoints
                     int time_limit = abs(time_offset + max_nr_timesteps_per_subgrid);
-                    int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) : nr_timesteps_per_aterm;
+                    int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) :nr_timesteps_per_aterm;
                     for (; time_offset < time_max; time_offset++) {
                         // Visibility for first channel
-                        DataPoint visibility0 = datapoints[time_offset][nr_channels/2];
+                        
+                        DataPoint visibility0 = datapoints[time_offset*nr_channels];
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
+                        const float w_lambda0 = visibility0.w_lambda;
+
+                        DataPoint visibility1 = datapoints[time_offset*nr_channels + nr_channels - 1];
+                        const float u_pixels1 = visibility1.u_pixels;
+                        const float v_pixels1 = visibility1.v_pixels;
+                        const float w_lambda1 = visibility1.w_lambda;
 
                         // Try to add visibilities to subgrid
-                        if (subgrid.add_visibility(u_pixels0, v_pixels0))
-                        {
+                        if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
+                            subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda1)) {
                             nr_timesteps_subgrid++;
                         } else {
                             break;
@@ -232,12 +267,16 @@ namespace idg {
 
                     // Check whether current subgrid is in grid range
                     Coordinate coordinate = subgrid.get_coordinate();
-                    bool uv_max_pixels = max(coordinate.x, coordinate.y);
-                    bool uv_min_pixels = min(coordinate.x, coordinate.y);
-                    bool uv_in_range = uv_min_pixels >= 0 && uv_max_pixels < (grid_size - subgrid_size);
+                    int  uv_max_pixels = max(coordinate.x, coordinate.y);
+                    int  uv_min_pixels = min(coordinate.x, coordinate.y);
+                    int  w_index = coordinate.z;
+                    bool uvw_in_range = uv_min_pixels >= 1 && 
+                                        uv_max_pixels <= (grid_size - subgrid_size) &&
+                                        w_index >= -nr_w_layers &&
+                                        w_index < nr_w_layers;
 
                     // Add subgrid to metadata
-                    if (uv_in_range) {
+                    if (uvw_in_range) {
                         Metadata m = {
                             bl * (int) nr_timesteps,                // baseline offset, TODO: store bl index
                             current_aterms_offset + first_timestep, // time offset, TODO: store time index
@@ -246,8 +285,8 @@ namespace idg {
                             baseline,                               // baselines
                             coordinate                              // coordinate
                         };
-
                         metadata_[bl].push_back(m);
+                        if (w_index) needs_w_stacking = true;
                     }
                 } // end while
             } // end for timeslot

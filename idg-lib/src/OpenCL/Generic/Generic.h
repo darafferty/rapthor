@@ -15,10 +15,10 @@ namespace idg {
                     // Destructor
                     ~Generic();
 
-                public:
-                    virtual void gridding(
+                private:
+                    virtual void do_gridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
@@ -30,9 +30,9 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void degridding(
+                    virtual void do_degridding(
                         const Plan& plan,
-                        const float w_offset, // in lambda
+                        const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const Array1D<float>& frequencies,
@@ -44,15 +44,10 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void transform(
+                    virtual void do_transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    using Proxy::gridding;
-                    using Proxy::degridding;
-                    using Proxy::transform;
-
-                private:
                     PowerSensor *hostPowerSensor;
 
             }; // class Generic
