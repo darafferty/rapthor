@@ -9,12 +9,12 @@
 
 extern "C" {
 void kernel_adder(
-    const long nr_subgrids,
-    const long grid_size,
-    const int subgrid_size,
-    const idg::Metadata metadata[],
-    const idg::float2   subgrid[][NR_POLARIZATIONS][subgrid_size][subgrid_size],
-          idg::float2   grid[]
+    const long           nr_subgrids,
+    const long           grid_size,
+    const int            subgrid_size,
+    const idg::Metadata* metadata,
+    const idg::float2*   subgrid,
+          idg::float2*   grid
     ) {
 
     #pragma omp parallel for
@@ -39,8 +39,9 @@ void kernel_adder(
                         idg::float2 phasor = {cosf(phase), sinf(phase)};
 
                         // Add subgrid value to grid
-						size_t grid_idx = (pol * grid_size * grid_size) + ((grid_y + y) * grid_size) + (grid_x + x);
-                        grid[grid_idx] += phasor * subgrid[s][pol][y_src][x_src];
+                        int dst_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                        int src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                        grid[dst_idx] += phasor * subgrid[src_idx];
                     }
                 }
             }

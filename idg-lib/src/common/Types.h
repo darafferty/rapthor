@@ -31,8 +31,8 @@ namespace idg {
     template<class T>
     struct UVWCoordinate {T u; T v; T w;};
 
-    /* Inline operations */
 
+    /* Inline operations */
     inline float2 operator*(const float2& x, const float2& y)
     {
         return {x.real*y.real - x.imag*y.imag,
@@ -93,8 +93,8 @@ namespace idg {
         return {x.real, -x.imag};
     }
 
+
     /* Classes */
-    
     template<class T>
     class Array1D {
         public:
@@ -494,7 +494,7 @@ namespace idg {
             bool   m_delete_buffer;
             T*     m_buffer;
     };
-    
+
     template<class T>
     class Grid_ {
         public:
@@ -624,8 +624,8 @@ namespace idg {
 
     typedef Grid_<std::complex<float>> Grid;
 
-    /* Output */
 
+    /* Output */
     std::ostream& operator<<(std::ostream& os, Baseline& b);
     std::ostream& operator<<(std::ostream& os, Coordinate& c);
     std::ostream& operator<<(std::ostream& os, Metadata& m);
@@ -713,5 +713,31 @@ namespace idg {
 
 }
 
+    /* Index methods */
+    inline long index_grid(
+            long grid_size,
+            int pol,
+            int y,
+            int x)
+    {
+        // grid: [nr_polarizations][grid_size][grid_size]
+        return pol * grid_size * grid_size +
+               y * grid_size +
+               x;
+    }
 
+    inline long index_subgrid(
+        int nr_polarizations,
+        int subgrid_size,
+        int s,
+        int pol,
+        int y,
+        int x)
+    {
+        // subgrid: [nr_subgrids][nr_polarizations][subgrid_size][subgrid_size]
+       return s * nr_polarizations * subgrid_size * subgrid_size +
+              pol * subgrid_size * subgrid_size +
+              y * subgrid_size +
+              x;
+    }
 #endif
