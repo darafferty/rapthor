@@ -740,4 +740,34 @@ namespace idg {
               y * subgrid_size +
               x;
     }
+
+    inline int index_visibility(
+        int nr_channels,
+        int nr_polarizations,
+        int time,
+        int chan,
+        int pol)
+    {
+        // visibilities: [nr_time][nr_channels][nr_polarizations]
+        return time * nr_channels * nr_polarizations +
+               chan * nr_polarizations +
+               pol;
+    }
+
+    inline int index_aterm(
+        int subgrid_size,
+        int nr_polarizations,
+        int nr_stations,
+        int aterm_index,
+        int station,
+        int y,
+        int x)
+    {
+        // aterm: [nr_aterms][subgrid_size][subgrid_size][nr_polarizations]
+        int aterm_nr = (aterm_index * nr_stations + station);
+        return aterm_nr * subgrid_size * subgrid_size * nr_polarizations +
+               y * subgrid_size * nr_polarizations +
+               x * nr_polarizations;
+    }
+
 #endif

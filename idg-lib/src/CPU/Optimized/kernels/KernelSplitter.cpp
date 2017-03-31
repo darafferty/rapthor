@@ -10,12 +10,12 @@
 
 extern "C" {
 void kernel_splitter(
-    const long nr_subgrids,
-    const long grid_size,
-    const int subgrid_size,
-    const idg::Metadata metadata[],
-          idg::float2   subgrid[][NR_POLARIZATIONS][subgrid_size][subgrid_size],
-    const idg::float2   grid[]
+    const long           nr_subgrids,
+    const long           grid_size,
+    const int            subgrid_size,
+    const idg::Metadata* metadata,
+          idg::float2*   subgrid,
+    const idg::float2*   grid
     ) {
     // Precompute phaosr
     float phasor_real[subgrid_size][subgrid_size];
@@ -51,8 +51,9 @@ void kernel_splitter(
 
                     // Set grid value to subgrid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-						size_t grid_idx = (pol * grid_size * grid_size) + ((grid_y + y) * grid_size) + (grid_x + x);
-                        subgrid[s][pol][y_dst][x_dst] = phasor * grid[grid_idx];
+                        int src_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                        int dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
+                        subgrid[dst_idx] = phasor * grid[src_idx];
                     }
                 }
             }

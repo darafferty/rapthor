@@ -111,9 +111,9 @@ namespace idg {
                 p.add_src_file_to_lib(libdegridder, "KernelDegridder.cpp");
                 p.add_src_file_to_lib(libfft, "KernelFFT.cpp");
                 p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
-                p.add_src_file_to_lib(libadder, "KernelAdderWStack.cpp", true);
+                //p.add_src_file_to_lib(libadder, "KernelAdderWStack.cpp", true);
                 p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
-                p.add_src_file_to_lib(libsplitter, "KernelSplitterWStack.cpp", true);
+                //p.add_src_file_to_lib(libsplitter, "KernelSplitterWStack.cpp", true);
 
                 p.set_delete_shared_objects(true);
 
