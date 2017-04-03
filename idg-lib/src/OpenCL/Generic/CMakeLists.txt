@@ -25,6 +25,7 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties (
     ${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
 
 # Set install
 install (
