@@ -715,6 +715,21 @@ namespace idg {
 
     /* Index methods */
     inline long index_grid(
+            int nr_polarizations,
+            long grid_size,
+            int w_layer,
+            int pol,
+            int y,
+            int x)
+    {
+        // grid: [nr_w_layers][nr_polarizations][grid_size][grid_size]
+        return w_layer * nr_polarizations * grid_size * grid_size +
+               pol * grid_size * grid_size +
+               y * grid_size +
+               x;
+    }
+
+    inline long index_grid(
             long grid_size,
             int pol,
             int y,

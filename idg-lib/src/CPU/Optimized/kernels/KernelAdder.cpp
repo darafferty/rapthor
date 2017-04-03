@@ -15,8 +15,8 @@ void kernel_adder(
     const int            subgrid_size,
     const idg::Metadata* metadata,
     const idg::float2*   subgrid,
-          idg::float2*   grid
-    ) {
+          idg::float2*   grid)
+{
     // Precompute phaosr
     float phasor_real[subgrid_size][subgrid_size];
     float phasor_imag[subgrid_size][subgrid_size];
@@ -30,7 +30,7 @@ void kernel_adder(
         }
     }
 
-    // Iterate all colums of grid
+    // Iterate all rows of grid
     #pragma omp parallel for schedule(guided)
     for (int row = 0; row < grid_size; row++) {
         for (int s = 0; s < nr_subgrids; s++) {
@@ -60,10 +60,10 @@ void kernel_adder(
                         int dst_idx = index_grid(grid_size, pol, row, subgrid_x + x);
                         int src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
                         grid[dst_idx] += phasor * subgrid[src_idx];
-					}
-                }
-            }
-        }
-    }
-}
-}
+					} // end for pol
+                } // end for row
+            } // end if fit
+        } // end for s
+    } // end for row
+} // end kernel_adder
+} // end extern "C"
