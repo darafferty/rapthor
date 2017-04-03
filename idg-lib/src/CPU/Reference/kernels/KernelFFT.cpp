@@ -19,7 +19,7 @@ void kernel_fft(
     int rank = 2;
 
     // For grids of size*size elements
-    int n[] = {size, size};
+    int n[] = {(int) size, (int) size};
 
     // Set stride
     int istride = 1;

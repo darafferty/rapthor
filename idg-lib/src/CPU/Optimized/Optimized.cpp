@@ -99,7 +99,7 @@ namespace idg {
                 // GNU compiler
                 stringstream gnu_flags;
 
-                gnu_flags << " -std=c++11 -fopenmp -ffast-math";
+                gnu_flags << " -std=c++11 -fopenmp -ffast-math -Wno-unknown-pragmas";
                 if (avx512_supported) {
                     gnu_flags << " -mavx512f -mavx512pf -mavx512er -mavx512cd";
                 } else if (avx2_supported) {

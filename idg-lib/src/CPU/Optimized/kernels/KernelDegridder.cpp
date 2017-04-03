@@ -10,22 +10,21 @@
 
 template<int current_nr_channels>
 void kernel_degridder_(
-    const int                       nr_subgrids,
-    const int                       grid_size,
-    const int                       subgrid_size,
-    const float                     image_size,
-    const float                     w_step_in_lambda,
-    const int                       nr_channels,
-    const int                       channel_offset,
-    const int                       nr_stations,
-    const idg::UVWCoordinate<float> uvw[],
-    const float                     wavenumbers[],
-          idg::float2               visibilities[][NR_POLARIZATIONS],
-    const float                     spheroidal[subgrid_size][subgrid_size],
-    const idg::float2               aterms[][subgrid_size][subgrid_size][NR_POLARIZATIONS],
-    const idg::Metadata             metadata[],
-    const idg::float2               subgrid[][NR_POLARIZATIONS][subgrid_size][subgrid_size]
-    )
+    const int                        nr_subgrids,
+    const int                        grid_size,
+    const int                        subgrid_size,
+    const float                      image_size,
+    const float                      w_step_in_lambda,
+    const int                        nr_channels,
+    const int                        channel_offset,
+    const int                        nr_stations,
+    const idg::UVWCoordinate<float>* uvw,
+    const float*                     wavenumbers,
+          idg::float2*               visibilities,
+    const float*                     spheroidal,
+    const idg::float2*               aterms,
+    const idg::Metadata*             metadata,
+    const idg::float2*               subgrid)
 {
     // Find offset of first subgrid
     const idg::Metadata m       = metadata[0];
@@ -58,19 +57,21 @@ void kernel_degridder_(
             int x = i % subgrid_size;
 
             // Load aterm for station1
-            idg::float2 aXX1 = aterms[aterm_index * nr_stations + station1][y][x][0];
-            idg::float2 aXY1 = aterms[aterm_index * nr_stations + station1][y][x][1];
-            idg::float2 aYX1 = aterms[aterm_index * nr_stations + station1][y][x][2];
-            idg::float2 aYY1 = aterms[aterm_index * nr_stations + station1][y][x][3];
+            int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
+            idg::float2 aXX1 = aterms[station1_idx + 0];
+            idg::float2 aXY1 = aterms[station1_idx + 1];
+            idg::float2 aYX1 = aterms[station1_idx + 2];
+            idg::float2 aYY1 = aterms[station1_idx + 3];
 
             // Load aterm for station2
-            idg::float2 aXX2 = conj(aterms[aterm_index * nr_stations + station2][y][x][0]);
-            idg::float2 aXY2 = conj(aterms[aterm_index * nr_stations + station2][y][x][1]);
-            idg::float2 aYX2 = conj(aterms[aterm_index * nr_stations + station2][y][x][2]);
-            idg::float2 aYY2 = conj(aterms[aterm_index * nr_stations + station2][y][x][3]);
+            int station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+            idg::float2 aXX2 = conj(aterms[station2_idx + 0]);
+            idg::float2 aXY2 = conj(aterms[station2_idx + 1]);
+            idg::float2 aYX2 = conj(aterms[station2_idx + 2]);
+            idg::float2 aYY2 = conj(aterms[station2_idx + 3]);
 
             // Load spheroidal
-            float _spheroidal = spheroidal[y][x];
+            float _spheroidal = spheroidal[y * subgrid_size + x];
 
             // Compute shifted position in subgrid
             int x_src = (x + (subgrid_size/2)) % subgrid_size;
@@ -78,10 +79,10 @@ void kernel_degridder_(
 
             // Load pixel values and apply spheroidal
             idg::float2 pixels[NR_POLARIZATIONS];
-            pixels[0] = _spheroidal * subgrid[s][0][y_src][x_src];
-            pixels[1] = _spheroidal * subgrid[s][1][y_src][x_src];
-            pixels[2] = _spheroidal * subgrid[s][2][y_src][x_src];
-            pixels[3] = _spheroidal * subgrid[s][3][y_src][x_src];
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                int src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                pixels[pol] = _spheroidal * subgrid[src_idx];
+            }
 
             apply_aterm(
                 aXX1, aXY1, aYX1, aYY1,
@@ -141,9 +142,6 @@ void kernel_degridder_(
                 float phase[subgrid_size*subgrid_size];
 
                 for (int i = 0; i < subgrid_size * subgrid_size; i++) {
-                    int y = i / subgrid_size;
-                    int x = i % subgrid_size;
-
                     // Compute phase
                     float wavenumber = wavenumbers[channel_offset + chan];
                     phase[i] = (phase_index[i] * wavenumber) - phase_offset[i];
@@ -219,11 +217,12 @@ void kernel_degridder_(
 
                 // Store visibilities
                 const float scale = 1.0f / (subgrid_size*subgrid_size);
-                size_t index = (offset + time)*nr_channels + (channel_offset + chan);
-                visibilities[index][0] = {scale*sums[0].real, scale*sums[0].imag};
-                visibilities[index][1] = {scale*sums[1].real, scale*sums[1].imag};
-                visibilities[index][2] = {scale*sums[2].real, scale*sums[2].imag};
-                visibilities[index][3] = {scale*sums[3].real, scale*sums[3].imag};
+                int time_idx = offset + time;
+                int chan_idx = channel_offset + chan;
+                int dst_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    visibilities[dst_idx+pol] = {scale*sums[pol].real, scale*sums[pol].imag};
+                }
             } // end for channel
         } // end for time
     } // end #pragma parallel
@@ -232,20 +231,20 @@ void kernel_degridder_(
 extern "C" {
 
 void kernel_degridder(
-    const int                       nr_subgrids,
-    const int                       grid_size,
-    const int                       subgrid_size,
-    const float                     image_size,
-    const float                     w_offset_in_lambda,
-    const int                       nr_channels,
-    const int                       nr_stations,
-    const idg::UVWCoordinate<float> uvw[],
-    const float                     wavenumbers[],
-          idg::float2               visibilities[][NR_POLARIZATIONS],
-    const float                     spheroidal[subgrid_size][subgrid_size],
-    const idg::float2               aterms[][subgrid_size][subgrid_size][NR_POLARIZATIONS],
-    const idg::Metadata             metadata[],
-    const idg::float2               subgrid[][NR_POLARIZATIONS][subgrid_size][subgrid_size])
+    const int                        nr_subgrids,
+    const int                        grid_size,
+    const int                        subgrid_size,
+    const float                      image_size,
+    const float                      w_offset_in_lambda,
+    const int                        nr_channels,
+    const int                        nr_stations,
+    const idg::UVWCoordinate<float>* uvw,
+    const float*                     wavenumbers,
+          idg::float2*               visibilities,
+    const float*                     spheroidal,
+    const idg::float2*               aterms,
+    const idg::Metadata*             metadata,
+    const idg::float2*               subgrid)
 {
     int channel_offset = 0;
 

@@ -31,8 +31,8 @@ namespace idg {
     template<class T>
     struct UVWCoordinate {T u; T v; T w;};
 
-    /* Inline operations */
 
+    /* Inline operations */
     inline float2 operator*(const float2& x, const float2& y)
     {
         return {x.real*y.real - x.imag*y.imag,
@@ -93,8 +93,8 @@ namespace idg {
         return {x.real, -x.imag};
     }
 
+
     /* Classes */
-    
     template<class T>
     class Array1D {
         public:
@@ -168,7 +168,7 @@ namespace idg {
                 return get_x_dim() * sizeof(T);
             }
 
-        private:
+        protected:
             size_t m_x_dim;
             bool   m_delete_buffer;
             T*     m_buffer;
@@ -264,7 +264,7 @@ namespace idg {
                        get_x_dim() * sizeof(T);
             }
 
-        private:
+        protected:
             size_t m_x_dim;
             size_t m_y_dim;
             bool   m_delete_buffer;
@@ -369,7 +369,7 @@ namespace idg {
                        get_x_dim() * sizeof(T);
             }
 
-        private:
+        protected:
             size_t m_x_dim;
             size_t m_y_dim;
             size_t m_z_dim;
@@ -386,10 +386,10 @@ namespace idg {
                 size_t z_dim,
                 size_t y_dim,
                 size_t x_dim) :
-                m_w_dim(w_dim),
-                m_z_dim(z_dim),
-                m_y_dim(y_dim),
                 m_x_dim(x_dim),
+                m_y_dim(y_dim),
+                m_z_dim(z_dim),
+                m_w_dim(w_dim),
                 m_delete_buffer((w_dim*x_dim*y_dim*z_dim) > 0),
                 m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)))
             {}
@@ -400,10 +400,10 @@ namespace idg {
                 size_t z_dim,
                 size_t y_dim,
                 size_t x_dim) :
-                m_w_dim(w_dim),
-                m_z_dim(z_dim),
-                m_y_dim(y_dim),
                 m_x_dim(x_dim),
+                m_y_dim(y_dim),
+                m_z_dim(z_dim),
+                m_w_dim(w_dim),
                 m_delete_buffer(false),
                 m_buffer(data)
             {}
@@ -486,7 +486,7 @@ namespace idg {
                        get_y_dim() * get_x_dim() * sizeof(T);
             }
 
-        private:
+        protected:
             size_t m_x_dim;
             size_t m_y_dim;
             size_t m_z_dim;
@@ -494,138 +494,28 @@ namespace idg {
             bool   m_delete_buffer;
             T*     m_buffer;
     };
-    
-    template<class T>
-    class Grid_ {
+
+    class Grid : public Array4D<std::complex<float>> {
         public:
-            Grid_(
-                size_t nr_w_layers,
-                size_t z_dim,
-                size_t y_dim,
-                size_t x_dim) :
-                m_w_dim(nr_w_layers),
-                m_z_dim(z_dim),
-                m_y_dim(y_dim),
-                m_x_dim(x_dim),
-                m_delete_buffer((nr_w_layers*x_dim*y_dim*z_dim) > 0),
-                m_buffer((T*) malloc(nr_w_layers*z_dim*y_dim*x_dim*sizeof(T)))
-            {}
+            Grid(Array3D<std::complex<float>> &array) :
+                    Array4D<std::complex<float>>(array.data(),
+                                                 1,
+                                                 array.get_z_dim(),
+                                                 array.get_y_dim(),
+                                                 array.get_x_dim())
+                {}
 
-            Grid_(
-                T* data,
-                size_t nr_w_layers,
-                size_t z_dim,
-                size_t y_dim,
-                size_t x_dim) :
-                m_w_dim(nr_w_layers),
-                m_z_dim(z_dim),
-                m_y_dim(y_dim),
-                m_x_dim(x_dim),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {}
-
-            Grid_(Array3D<T> &array) :
-                m_w_dim(1),
-                m_z_dim(array.get_z_dim()),
-                m_y_dim(array.get_y_dim()),
-                m_x_dim(array.get_x_dim()),
-                m_buffer(array.data()),
-                m_delete_buffer(false)
-            {}
-
-            Grid_(const Grid_& other) = delete;
-            Grid_& operator=(const Grid_& rhs) = delete;
-
-            Grid_(Grid_&& other)
-                : m_x_dim(other.m_x_dim),
-                  m_y_dim(other.m_y_dim),
-                  m_z_dim(other.m_z_dim),
-                  m_w_dim(other.m_w_dim),
-                  m_delete_buffer(other.m_delete_buffer),
-                  m_buffer(other.m_buffer)
-            {
-                other.m_buffer = nullptr;
-            }
-
-            // move assignment operator
-            Grid_& operator=(Grid_&& other)
-            {
-                if (m_delete_buffer) free(m_buffer);
-                m_w_dim = other.m_w_dim;
-                m_x_dim = other.m_x_dim;
-                m_y_dim = other.m_y_dim;
-                m_z_dim = other.m_z_dim;
-                m_delete_buffer = other.m_delete_buffer;
-                m_buffer = other.m_buffer;
-                other.m_buffer = nullptr;
-            }
-
-            virtual ~Grid_() { if (m_delete_buffer) free(m_buffer); }
-
-            T* data(
-                size_t w=0,
-                size_t z=0,
-                size_t y=0,
-                size_t x=0) const
-            {
-                return &m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
-            }
-
-            size_t get_x_dim() const { return m_x_dim; }
-            size_t get_y_dim() const { return m_y_dim; }
-            size_t get_z_dim() const { return m_z_dim; }
-            size_t get_w_dim() const { return m_w_dim; }
-            size_t get_nr_w_layers() const { return m_w_dim; }
-
-            const T& operator()(
-                size_t w,
-                size_t z,
-                size_t y,
-                size_t x) const
-            {
-                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
-            }
-
-            T& operator()(
-                size_t w,
-                size_t z,
-                size_t y,
-                size_t x)
-            {
-                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
-            }
-
-            void init(const T& a) {
-                for (unsigned int w = 0; w < get_w_dim(); ++w) {
-                    for (unsigned int z = 0; z < get_z_dim(); ++z) {
-                        for (unsigned int y = 0; y < get_y_dim(); ++y) {
-                            for (unsigned int x = 0; x < get_x_dim(); ++x) {
-                                (*this)(w, z, y, x) = a;
-                            }
-                        }
-                    }
-                }
-            }
-
-            size_t bytes() const {
-                return get_w_dim() * get_z_dim() *
-                       get_y_dim() * get_x_dim() * sizeof(T);
-            }
-
-        private:
-            size_t m_x_dim;
-            size_t m_y_dim;
-            size_t m_z_dim;
-            size_t m_w_dim;
-            bool   m_delete_buffer;
-            T*     m_buffer;
+                Grid(std::complex<float>* data,
+                    size_t w_dim,
+                    size_t z_dim,
+                    size_t y_dim,
+                    size_t x_dim) :
+                    Array4D<std::complex<float>>(data, w_dim, z_dim, y_dim, x_dim)
+                {}
     };
 
-    typedef Grid_<std::complex<float>> Grid;
 
     /* Output */
-
     std::ostream& operator<<(std::ostream& os, Baseline& b);
     std::ostream& operator<<(std::ostream& os, Coordinate& c);
     std::ostream& operator<<(std::ostream& os, Metadata& m);
@@ -691,7 +581,7 @@ namespace idg {
     template<class T>
     std::ostream& operator<<(
         std::ostream& os,
-        const Grid_<T>& a)
+        const Array4D<T>& a)
     {
         for (unsigned int w = 0; w < a.get_w_dim(); ++w) {
             os << std::endl;
@@ -711,7 +601,78 @@ namespace idg {
         return os;
     }
 
-}
+} // end namespace idg
 
+    /* Index methods */
+    inline long index_grid(
+            int nr_polarizations,
+            long grid_size,
+            int w_layer,
+            int pol,
+            int y,
+            int x)
+    {
+        // grid: [nr_w_layers][nr_polarizations][grid_size][grid_size]
+        return w_layer * nr_polarizations * grid_size * grid_size +
+               pol * grid_size * grid_size +
+               y * grid_size +
+               x;
+    }
+
+    inline long index_grid(
+            long grid_size,
+            int pol,
+            int y,
+            int x)
+    {
+        // grid: [nr_polarizations][grid_size][grid_size]
+        return pol * grid_size * grid_size +
+               y * grid_size +
+               x;
+    }
+
+    inline long index_subgrid(
+        int nr_polarizations,
+        int subgrid_size,
+        int s,
+        int pol,
+        int y,
+        int x)
+    {
+        // subgrid: [nr_subgrids][nr_polarizations][subgrid_size][subgrid_size]
+       return s * nr_polarizations * subgrid_size * subgrid_size +
+              pol * subgrid_size * subgrid_size +
+              y * subgrid_size +
+              x;
+    }
+
+    inline int index_visibility(
+        int nr_channels,
+        int nr_polarizations,
+        int time,
+        int chan,
+        int pol)
+    {
+        // visibilities: [nr_time][nr_channels][nr_polarizations]
+        return time * nr_channels * nr_polarizations +
+               chan * nr_polarizations +
+               pol;
+    }
+
+    inline int index_aterm(
+        int subgrid_size,
+        int nr_polarizations,
+        int nr_stations,
+        int aterm_index,
+        int station,
+        int y,
+        int x)
+    {
+        // aterm: [nr_aterms][subgrid_size][subgrid_size][nr_polarizations]
+        int aterm_nr = (aterm_index * nr_stations + station);
+        return aterm_nr * subgrid_size * subgrid_size * nr_polarizations +
+               y * subgrid_size * nr_polarizations +
+               x * nr_polarizations;
+    }
 
 #endif
