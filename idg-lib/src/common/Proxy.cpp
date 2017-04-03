@@ -42,6 +42,7 @@ namespace idg {
             auto subgrid_size     = mConstants.get_subgrid_size();
             auto nr_polarizations = mConstants.get_nr_correlations();
             auto grid_size        = grid.get_x_dim();
+            auto nr_w_layers      = grid.get_w_dim();
 
             Plan plan(
                 kernel_size,
@@ -53,7 +54,7 @@ namespace idg {
                 baselines,
                 aterms_offsets,
                 w_step, 
-                grid.get_nr_w_layers());
+                nr_w_layers);
 
             gridding(
                 plan,
@@ -197,6 +198,7 @@ namespace idg {
             auto subgrid_size     = mConstants.get_subgrid_size();
             auto nr_polarizations = mConstants.get_nr_correlations();
             auto grid_size        = grid.get_x_dim();
+            auto nr_w_layers      = grid.get_w_dim();
 
             Plan plan(
                 kernel_size,
@@ -207,7 +209,7 @@ namespace idg {
                 uvw, baselines,
                 aterms_offsets,
                 w_step, 
-                grid.get_nr_w_layers());
+                nr_w_layers);
 
             degridding(
                 plan,

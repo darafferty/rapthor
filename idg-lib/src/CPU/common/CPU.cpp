@@ -441,7 +441,7 @@ namespace idg {
                 // Constants
                 auto jobsize      = 128; // TODO
                 auto grid_size    = grid.get_x_dim();
-                auto nr_w_layers  = grid.get_nr_w_layers();
+                auto nr_w_layers  = grid.get_w_dim();
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
 
