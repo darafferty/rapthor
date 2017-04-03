@@ -27,3 +27,42 @@ typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
 typedef FLOAT_COMPLEX GridType[1];
 typedef FLOAT_COMPLEX SubGridType[1][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
 typedef Metadata MetadataType[1];
+
+inline int index_subgrid(
+    int subgrid_size, 
+    int s,
+    int pol,
+    int y,
+    int x)
+{
+    // subgrid: [nr_subgrids][NR_POLARIZATIONS][subgrid_size][subgrid_size]
+   return s * NR_POLARIZATIONS * subgrid_size * subgrid_size +
+          pol * subgrid_size * subgrid_size +
+          y * subgrid_size +
+          x;
+}
+
+inline int index_aterm(
+    int subgrid_size,
+    int nr_stations,
+    int aterm_index,
+    int station,
+    int y,
+    int x)
+{
+    // aterm: [nr_aterms][subgrid_size][subgrid_size][NR_POLARIZATIONS]
+    int aterm_nr = (aterm_index * nr_stations + station);
+    return aterm_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
+           y * subgrid_size * NR_POLARIZATIONS +
+           x * NR_POLARIZATIONS;
+}
+
+inline int index_visibility(
+    int nr_channels,
+    int time,
+    int chan)
+{
+    // visibilities: [nr_time][nr_channels][nr_polarizations]
+    return time * nr_channels * NR_POLARIZATIONS +
+           chan * NR_POLARIZATIONS;
+}
