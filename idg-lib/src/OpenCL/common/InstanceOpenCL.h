@@ -43,6 +43,7 @@ namespace idg {
                     int nr_timesteps,
                     int nr_subgrids,
                     int grid_size,
+                    int subgrid_size,
                     float image_size,
                     float w_step,
                     int nr_channels,
@@ -60,6 +61,7 @@ namespace idg {
                     int nr_timesteps,
                     int nr_subgrids,
                     int grid_size,
+                    int subgrid_size,
                     float image_size,
                     float w_step,
                     int nr_channels,
@@ -89,6 +91,7 @@ namespace idg {
                 void launch_adder(
                     int nr_subgrids,
                     int grid_size,
+                    int subgrid_size,
                     cl::Buffer& d_metadata,
                     cl::Buffer& d_subgrid,
                     cl::Buffer& d_grid,
@@ -97,6 +100,7 @@ namespace idg {
                 void launch_splitter(
                     int nr_subgrids,
                     int grid_size,
+                    int subgrid_size,
                     cl::Buffer& d_metadata,
                     cl::Buffer& d_subgrid,
                     cl::Buffer& d_grid,
@@ -104,6 +108,7 @@ namespace idg {
 
                 void launch_scaler(
                     int nr_subgrids,
+                    int subgrid_size,
                     cl::Buffer& d_subgrid,
                     PerformanceCounter& counter);
 

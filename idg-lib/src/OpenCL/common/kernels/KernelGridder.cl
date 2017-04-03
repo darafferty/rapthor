@@ -10,8 +10,9 @@
 */
 __kernel void kernel_gridder_(
     const int                current_nr_channels,
-    const int                gridsize,
-    const float              imagesize,
+    const int                grid_size,
+    const int                subgrid_size,
+    const float              image_size,
     const float              w_step,
     const int                nr_channels,
     const int                channel_offset,
@@ -35,11 +36,11 @@ __kernel void kernel_gridder_(
 
     // Set subgrid to zero
     if (channel_offset == 0) {
-        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-            int idx_xx = index_subgrid(SUBGRIDSIZE, s, 0, 0, i);
-            int idx_xy = index_subgrid(SUBGRIDSIZE, s, 1, 0, i);
-            int idx_yx = index_subgrid(SUBGRIDSIZE, s, 2, 0, i);
-            int idx_yy = index_subgrid(SUBGRIDSIZE, s, 3, 0, i);
+        for (int i = tid; i < subgrid_size * subgrid_size; i += blocksize) {
+            int idx_xx = index_subgrid(subgrid_size, s, 0, 0, i);
+            int idx_xy = index_subgrid(subgrid_size, s, 1, 0, i);
+            int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
+            int idx_yy = index_subgrid(subgrid_size, s, 3, 0, i);
             subgrid[idx_xx] = (float2) (0, 0);
             subgrid[idx_xy] = (float2) (0, 0);
             subgrid[idx_yx] = (float2) (0, 0);
@@ -100,13 +101,13 @@ __kernel void kernel_gridder_(
         barrier(CLK_LOCAL_MEM_FENCE);
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + SUBGRIDSIZE/2 -gridsize/2) / imagesize * 2 * M_PI;
-        float v_offset = (y_coordinate + SUBGRIDSIZE/2 -gridsize/2) / imagesize * 2 * M_PI;
+        float u_offset = (x_coordinate + subgrid_size/2 -grid_size/2) / image_size * 2 * M_PI;
+        float v_offset = (y_coordinate + subgrid_size/2 -grid_size/2) / image_size * 2 * M_PI;
 
         // Iterate all pixels in subgrid
-        for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
-            int y = i / SUBGRIDSIZE;
-            int x = i % SUBGRIDSIZE;
+        for (int i = tid; i < subgrid_size * subgrid_size; i += blocksize) {
+            int y = i / subgrid_size;
+            int x = i % subgrid_size;
 
             // Private subgrid points
             float2 uvXX = (float2) (0, 0);
@@ -115,8 +116,8 @@ __kernel void kernel_gridder_(
             float2 uvYY = (float2) (0, 0);
 
             // Compute l,m,n
-            float l = (x+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
-            float m = (y+0.5-(SUBGRIDSIZE/2)) * imagesize/SUBGRIDSIZE;
+            float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
+            float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
             float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
 
             // Iterate all timesteps
@@ -171,14 +172,14 @@ __kernel void kernel_gridder_(
             }
 
             // Get a term for station1
-            int station1_idx = index_aterm(SUBGRIDSIZE, nr_stations, aterm_index, station1, y, x);
+            int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
             float2 aXX1 = aterm[station1_idx + 0];
             float2 aXY1 = aterm[station1_idx + 1];
             float2 aYX1 = aterm[station1_idx + 2];
             float2 aYY1 = aterm[station1_idx + 3];
 
             // Get aterm for station2
-            int station2_idx = index_aterm(SUBGRIDSIZE, nr_stations, aterm_index, station2, y, x);
+            int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
             float2 aXX2 = conj(aterm[station2_idx + 0]);
             float2 aXY2 = conj(aterm[station2_idx + 1]);
             float2 aYX2 = conj(aterm[station2_idx + 2]);
@@ -191,17 +192,17 @@ __kernel void kernel_gridder_(
                 &uvXX, &uvXY, &uvYX, &uvYY);
 
             // Load spheroidal
-            float sph = spheroidal[y * SUBGRIDSIZE + x];
+            float sph = spheroidal[y * subgrid_size + x];
 
             // Compute shifted position in subgrid
-            int x_dst = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
-            int y_dst = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
+            int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+            int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
             // Apply spheroidal and update uv grid
-            int idx_xx = index_subgrid(SUBGRIDSIZE, s, 0, y_dst, x_dst);
-            int idx_xy = index_subgrid(SUBGRIDSIZE, s, 1, y_dst, x_dst);
-            int idx_yx = index_subgrid(SUBGRIDSIZE, s, 2, y_dst, x_dst);
-            int idx_yy = index_subgrid(SUBGRIDSIZE, s, 3, y_dst, x_dst);
+            int idx_xx = index_subgrid(subgrid_size, s, 0, y_dst, x_dst);
+            int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
+            int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
+            int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
             subgrid[idx_xx] += uvXX * sph;
             subgrid[idx_xy] += uvXY * sph;
             subgrid[idx_yx] += uvYX * sph;
@@ -213,14 +214,15 @@ __kernel void kernel_gridder_(
 #define KERNEL_GRIDDER_TEMPLATE(NR_CHANNELS) \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
         kernel_gridder_( \
-            NR_CHANNELS, gridsize, imagesize, w_step, nr_channels, channel_offset, nr_stations, \
+            NR_CHANNELS, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid, \
             _visibilities, _uvw, _wavenumbers); \
     }
 
 __kernel void kernel_gridder(
-    const int                gridsize,
-    const float              imagesize,
+    const int                grid_size,
+    const int                subgrid_size,
+    const float              image_size,
     const float              w_step,
     const int                nr_channels,
     const int                nr_stations,
