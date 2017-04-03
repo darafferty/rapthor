@@ -11,16 +11,8 @@ typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
                  Baseline baseline; Coordinate coordinate; } Metadata;
 
 /*
-    Complex numbers
+    Index methods
 */
-#define FLOAT_COMPLEX float2
-
-
-/*
-    Datatypes
-*/
-typedef FLOAT_COMPLEX VisibilitiesType[1][NR_POLARIZATIONS];
-
 inline __device__ int index_grid(
         int grid_size,
         int pol,

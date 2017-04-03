@@ -160,7 +160,7 @@ namespace idg {
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                Array3D<std::complex<float>>& grid,
+                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -349,7 +349,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&outputFree, NULL);
                             device.launch_gridder(
                                 current_nr_timesteps, current_nr_subgrids,
-                                grid_size, image_size, w_step, nr_channels, nr_stations,
+                                grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                                 d_aterms, d_metadata, d_subgrids, counters[0]);
 
@@ -360,7 +360,7 @@ namespace idg {
 
                             // Launch adder kernel
                             device.launch_adder(
-                                current_nr_subgrids, grid_size,
+                                current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
@@ -443,7 +443,7 @@ namespace idg {
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                const Array3D<std::complex<float>>& grid,
+                const Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
@@ -623,7 +623,7 @@ namespace idg {
                             // Launch splitter kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
                             device.launch_splitter(
-                                current_nr_subgrids, grid_size,
+                                current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid, counters[0]);
 
                             // Launch FFT
@@ -635,7 +635,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(&outputFree, NULL);
                             device.launch_degridder(
                                 current_nr_timesteps, current_nr_subgrids,
-                                grid_size, image_size, w_step, nr_channels, nr_stations,
+                                grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                                 d_aterms, d_metadata, d_subgrids, counters[2]);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);

@@ -110,7 +110,6 @@ namespace idg {
                 // Parameter flags
                 std::stringstream flags_constants;
                 flags_constants << " -DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
-                flags_constants << " -DSUBGRIDSIZE=" << mConstants.get_subgrid_size();
 
 				// OpenCL specific flags
                 std::stringstream flags_opencl;
@@ -253,6 +252,7 @@ namespace idg {
                 int nr_timesteps,
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 float image_size,
                 float w_step,
                 int nr_channels,
@@ -270,17 +270,18 @@ namespace idg {
                 int local_size_y = block_gridder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel_gridder->setArg(0,  grid_size);
-                kernel_gridder->setArg(1,  image_size);
-                kernel_gridder->setArg(2,  w_step);
-                kernel_gridder->setArg(3,  nr_channels);
-                kernel_gridder->setArg(4,  nr_stations);
-                kernel_gridder->setArg(5,  d_uvw);
-                kernel_gridder->setArg(6,  d_wavenumbers);
-                kernel_gridder->setArg(7,  d_visibilities);
-                kernel_gridder->setArg(8,  d_spheroidal);
-                kernel_gridder->setArg(9,  d_aterm);
-                kernel_gridder->setArg(10, d_metadata);
-                kernel_gridder->setArg(11, d_subgrid);
+                kernel_gridder->setArg(1,  subgrid_size);
+                kernel_gridder->setArg(2,  image_size);
+                kernel_gridder->setArg(3,  w_step);
+                kernel_gridder->setArg(4,  nr_channels);
+                kernel_gridder->setArg(5,  nr_stations);
+                kernel_gridder->setArg(6,  d_uvw);
+                kernel_gridder->setArg(7,  d_wavenumbers);
+                kernel_gridder->setArg(8,  d_visibilities);
+                kernel_gridder->setArg(9,  d_spheroidal);
+                kernel_gridder->setArg(10, d_aterm);
+                kernel_gridder->setArg(11, d_metadata);
+                kernel_gridder->setArg(12, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_gridder, cl::NullRange, global_size, block_gridder, NULL, &event_gridder);
@@ -300,6 +301,7 @@ namespace idg {
                 int nr_timesteps,
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 float image_size,
                 float w_step,
                 int nr_channels,
@@ -317,17 +319,18 @@ namespace idg {
                 int local_size_y = block_degridder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel_degridder->setArg(0,  grid_size);
-                kernel_degridder->setArg(1,  image_size);
-                kernel_degridder->setArg(2,  w_step);
-                kernel_degridder->setArg(3,  nr_channels);
-                kernel_degridder->setArg(4,  nr_stations);
-                kernel_degridder->setArg(5,  d_uvw);
-                kernel_degridder->setArg(6,  d_wavenumbers);
-                kernel_degridder->setArg(7,  d_visibilities);
-                kernel_degridder->setArg(8,  d_spheroidal);
-                kernel_degridder->setArg(9,  d_aterm);
-                kernel_degridder->setArg(10, d_metadata);
-                kernel_degridder->setArg(11, d_subgrid);
+                kernel_degridder->setArg(1,  subgrid_size);
+                kernel_degridder->setArg(2,  image_size);
+                kernel_degridder->setArg(3,  w_step);
+                kernel_degridder->setArg(4,  nr_channels);
+                kernel_degridder->setArg(5,  nr_stations);
+                kernel_degridder->setArg(6,  d_uvw);
+                kernel_degridder->setArg(7,  d_wavenumbers);
+                kernel_degridder->setArg(8,  d_visibilities);
+                kernel_degridder->setArg(9,  d_spheroidal);
+                kernel_degridder->setArg(10, d_aterm);
+                kernel_degridder->setArg(11, d_metadata);
+                kernel_degridder->setArg(12, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_degridder, cl::NullRange, global_size, block_degridder, NULL, &event_degridder);
@@ -424,6 +427,7 @@ namespace idg {
             void InstanceOpenCL::launch_adder(
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid,
                 cl::Buffer& d_grid,
@@ -433,9 +437,10 @@ namespace idg {
                 int local_size_y = block_adder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel_adder->setArg(0, grid_size);
-                kernel_adder->setArg(1, d_metadata);
-                kernel_adder->setArg(2, d_subgrid);
-                kernel_adder->setArg(3, d_grid);
+                kernel_adder->setArg(1, subgrid_size);
+                kernel_adder->setArg(2, d_metadata);
+                kernel_adder->setArg(3, d_subgrid);
+                kernel_adder->setArg(4, d_grid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_adder, cl::NullRange, global_size, block_adder, NULL, &event_adder);
@@ -454,6 +459,7 @@ namespace idg {
             void InstanceOpenCL::launch_splitter(
                 int nr_subgrids,
                 int grid_size,
+                int subgrid_size,
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid,
                 cl::Buffer& d_grid,
@@ -463,9 +469,10 @@ namespace idg {
                 int local_size_y = block_splitter[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
                 kernel_splitter->setArg(0, grid_size);
-                kernel_splitter->setArg(1, d_metadata);
-                kernel_splitter->setArg(2, d_subgrid);
-                kernel_splitter->setArg(3, d_grid);
+                kernel_splitter->setArg(1, subgrid_size);
+                kernel_splitter->setArg(2, d_metadata);
+                kernel_splitter->setArg(3, d_subgrid);
+                kernel_splitter->setArg(4, d_grid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_splitter, cl::NullRange, global_size, block_splitter, NULL, &event_splitter);
@@ -483,13 +490,15 @@ namespace idg {
 
             void InstanceOpenCL::launch_scaler(
                 int nr_subgrids,
+                int subgrid_size,
                 cl::Buffer& d_subgrid,
                 PerformanceCounter& counter)
             {
                 int local_size_x = block_scaler[0];
                 int local_size_y = block_scaler[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-                kernel_scaler->setArg(0, d_subgrid);
+                kernel_scaler->setArg(0, subgrid_size);
+                kernel_scaler->setArg(1, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_scaler, cl::NullRange, global_size, block_scaler, NULL, &event_scaler);

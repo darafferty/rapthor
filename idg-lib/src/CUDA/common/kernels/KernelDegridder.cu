@@ -56,7 +56,7 @@ __global__ void kernel_degridder(
 
     // Prepare pixels
     const int nr_pixels = subgrid_size * subgrid_size;
-    for (int i = tid; i < nr_pixels; i+= nr_threads) {
+    for (int i = tid; i < nr_pixels; i += nr_threads) {
         int y = i / subgrid_size;
         int x = i % subgrid_size;
 
