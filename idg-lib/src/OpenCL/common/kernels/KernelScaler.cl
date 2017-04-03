@@ -6,8 +6,8 @@
 	Kernel
 */
 __kernel void kernel_scaler(
-    __global SubGridType subgrid
-	) {
+    __global float2* subgrid)
+{
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
@@ -23,8 +23,9 @@ __kernel void kernel_scaler(
         int x = i % SUBGRIDSIZE;
 
         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            float2 value = subgrid[s][pol][y][x];
-            subgrid[s][pol][y][x] = (float2) (value.x * scale, value.y * scale);
+            int idx = index_subgrid(SUBGRIDSIZE, s, pol, y, x);
+            float2 value = subgrid[idx];
+            subgrid[idx] = (float2) (value.x * scale, value.y * scale);
         }
     }
 }

@@ -6,11 +6,11 @@
 	Kernel
 */
 __kernel void kernel_adder(
-    const int                   gridsize,
-	__global const MetadataType metadata,
-	__global const SubGridType  subgrid,
-	__global GridType           grid
-	) {
+    const int                grid_size,
+	__global const Metadata* metadata,
+	__global const float2*   subgrid,
+	__global float2*         grid)
+{
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
@@ -30,8 +30,8 @@ __kernel void kernel_adder(
         float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
         // Check wheter subgrid fits in grid
-        if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
-            grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
+        if (grid_x >= 0 && grid_x < grid_size-SUBGRIDSIZE &&
+            grid_y >= 0 && grid_y < grid_size-SUBGRIDSIZE) {
             // Compute shifted position in subgrid
             int x_src = (x + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
             int y_src = (y + (SUBGRIDSIZE/2)) % SUBGRIDSIZE;
@@ -39,8 +39,9 @@ __kernel void kernel_adder(
             // Add subgrid value to grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
-                atomicAdd(&(grid[grid_idx]), cmul(phasor, subgrid[s][pol][y_src][x_src]));
+                int dst_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                int src_idx = index_subgrid(SUBGRIDSIZE, s, pol, y_src, x_src);
+                atomicAdd(&(grid[dst_idx]), cmul(phasor, subgrid[src_idx]));
             }
         }
     }

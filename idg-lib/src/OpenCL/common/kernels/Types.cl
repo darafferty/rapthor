@@ -11,22 +11,19 @@ typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
                  Baseline baseline; Coordinate coordinate; } Metadata;
 
 /*
-    Complex numbers
+	Index methods
 */
-#define FLOAT_COMPLEX fcomplex
-
-
-/*
-	Datatypes
-*/
-typedef UVW UVWType[1];
-typedef FLOAT_COMPLEX VisibilitiesType[1][NR_POLARIZATIONS];
-typedef float WavenumberType[1];
-typedef FLOAT_COMPLEX ATermType[1][SUBGRIDSIZE][SUBGRIDSIZE][NR_POLARIZATIONS];
-typedef float SpheroidalType[SUBGRIDSIZE][SUBGRIDSIZE];
-typedef FLOAT_COMPLEX GridType[1];
-typedef FLOAT_COMPLEX SubGridType[1][NR_POLARIZATIONS][SUBGRIDSIZE][SUBGRIDSIZE];
-typedef Metadata MetadataType[1];
+inline int index_grid(
+        int grid_size,
+        int pol,
+        int y,
+        int x)
+{
+    // grid: [NR_POLARIZATIONS][grid_size][grid_size]
+    return pol * grid_size * grid_size +
+           y * grid_size +
+           x;
+}
 
 inline int index_subgrid(
     int subgrid_size, 

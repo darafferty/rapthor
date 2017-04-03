@@ -6,11 +6,11 @@
 	Kernel
 */
 __kernel void kernel_splitter(
-    const int                   gridsize,
-	__global const MetadataType metadata,
-	__global SubGridType        subgrid,
-	__global const GridType     grid
-	) {
+    const int                grid_size,
+	__global const Metadata* metadata,
+	__global float2*         subgrid,
+	__global const float2*   grid)
+{
 	int tidx = get_local_id(0);
 	int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
@@ -23,8 +23,8 @@ __kernel void kernel_splitter(
     int grid_y = m.coordinate.y;
 
     // Check wheter subgrid fits in grid
-    if (grid_x >= 0 && grid_x < gridsize-SUBGRIDSIZE &&
-        grid_y >= 0 && grid_y < gridsize-SUBGRIDSIZE) {
+    if (grid_x >= 0 && grid_x < grid_size-SUBGRIDSIZE &&
+        grid_y >= 0 && grid_y < grid_size-SUBGRIDSIZE) {
 
         // Iterate all pixels in subgrid
         for (int i = tid; i < SUBGRIDSIZE * SUBGRIDSIZE; i += blocksize) {
@@ -40,8 +40,9 @@ __kernel void kernel_splitter(
             // Set grid value to subgrid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int grid_idx = (pol * gridsize * gridsize) + ((grid_y + y) * gridsize) + (grid_x + x);
-                subgrid[s][pol][y_dst][x_dst] = cmul(phasor, grid[grid_idx]);
+                int src_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                int dst_idx = index_subgrid(SUBGRIDSIZE, s, pol, y_dst, x_dst);
+                subgrid[dst_idx] = cmul(phasor, grid[src_idx]);
             }
         }
     }
