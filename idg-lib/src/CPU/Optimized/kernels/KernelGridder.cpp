@@ -36,8 +36,7 @@ void kernel_gridder_(
     for (int s = 0; s < nr_subgrids; s++) {
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const int offset       = (m.baseline_offset - baseline_offset_1) +
-                                 (m.time_offset - time_offset_1);
+        const int offset       = (m.baseline_offset - baseline_offset_1) + m.time_offset;
         const int nr_timesteps = m.nr_timesteps;
         const int aterm_index  = m.aterm_index;
         const int station1     = m.baseline.station1;

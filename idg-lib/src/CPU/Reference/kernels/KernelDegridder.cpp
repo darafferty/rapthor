@@ -25,7 +25,6 @@ extern "C" {
         // Find offset of first subgrid
         const idg::Metadata m       = metadata[0];
         const int baseline_offset_1 = m.baseline_offset;
-        const int time_offset_1     = m.time_offset;
 
         // Iterate all subgrids
         #pragma omp parallel for
@@ -33,8 +32,7 @@ extern "C" {
 
             // Load metadata
             const idg::Metadata m  = metadata[s];
-            const int local_offset = (m.baseline_offset - baseline_offset_1) +
-                                     (m.time_offset - time_offset_1);
+            const int local_offset = (m.baseline_offset - baseline_offset_1) + m.time_offset;
             const int nr_timesteps = m.nr_timesteps;
             const int aterm_index  = m.aterm_index;
             const int station1     = m.baseline.station1;
