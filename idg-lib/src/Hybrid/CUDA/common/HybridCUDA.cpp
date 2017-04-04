@@ -100,7 +100,7 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
                 auto nr_timeslots = aterms.get_w_dim();
                 auto grid_size    = grid.get_x_dim();
-                auto nr_w_layers  = grid.get_nr_w_layers();
+                auto nr_w_layers  = grid.get_z_dim();
                 auto image_size   = cell_size * grid_size;
 
                 // Configuration
