@@ -512,6 +512,14 @@ namespace idg {
                     size_t x_dim) :
                     Array4D<std::complex<float>>(data, w_dim, z_dim, y_dim, x_dim)
                 {}
+
+                Grid(
+                    size_t w_dim,
+                    size_t z_dim,
+                    size_t y_dim,
+                    size_t x_dim) :
+                    Array4D<std::complex<float>>(w_dim, z_dim, y_dim, x_dim)
+                {}
     };
 
 
