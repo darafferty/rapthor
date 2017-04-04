@@ -348,25 +348,28 @@ namespace idg {
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Number of baselines in job
-                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+                    // Determine number of baselines in this job
+                    auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+                    auto first_bl = bl;
+                    auto last_bl  = bl + current_nr_baselines;
 
-                    // Number of subgrids for all baselines in job
-                    auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    // Skip empty baselines
+                    while (plan.get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
+                        first_bl++;
+                    }
+                    current_nr_baselines = last_bl - first_bl;
+                    if (current_nr_baselines == 0) continue;
 
-                    // if this job is empty continue to next
-                    if (current_nr_subgrids == 0) continue;
-
-                    auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-
-                    // Pointers to the first element in processed batch
+                    // Initialize iteration
+                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
-                    void *uvw_ptr          = uvw.data(0, 0) + ((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset;
-                    void *visibilities_ptr = visibilities.data(0, 0, 0) + (((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * nr_channels;
-                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
+                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
+                    void *uvw_ptr          = uvw.data(first_bl, 0);
+                    void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
+                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
 
                     // Gridder kernel
                     powerStates[0] = powerSensor->read();
@@ -594,25 +597,28 @@ namespace idg {
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Number of baselines in job
-                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+                    // Determine number of baselines in this job
+                    auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+                    auto first_bl = bl;
+                    auto last_bl  = bl + current_nr_baselines;
 
-                    // Number of subgrids for all baselines in job
-                    auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    // Skip empty baselines
+                    while (plan.get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
+                        first_bl++;
+                    }
+                    current_nr_baselines = last_bl - first_bl;
+                    if (current_nr_baselines == 0) continue;
 
-                    // if this job is empty continue to next
-                    if (current_nr_subgrids == 0) continue;
-
-                    auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-
-                    // Pointers to the first element in processed batch
+                    // Initialize iteration
+                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(bl);
-                    void *uvw_ptr          = uvw.data(0, 0) + ((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset;
-                    void *visibilities_ptr = visibilities.data(0, 0, 0) + (((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * nr_channels;
-                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
+                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
+                    void *uvw_ptr          = uvw.data(first_bl, 0);
+                    void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
+                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
 
                     // FFT kernel
                     powerStates[0] = powerSensor->read();
