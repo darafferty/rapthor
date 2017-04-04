@@ -274,17 +274,24 @@ namespace idg {
                     total_runtime_gridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Initialize iteration
+                        // Determine number of baselines in this job
                         auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
+                        auto first_bl = bl;
+                        auto last_bl  = bl + current_nr_baselines;
 
-                        // if this job is empty continue to next
-                        if (current_nr_subgrids == 0) continue;
+                        // Skip empty baselines
+                        while (plan.get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
+                            first_bl++;
+                        }
+                        current_nr_baselines = last_bl - first_bl;
+                        if (current_nr_baselines == 0) continue;
 
-                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
-                        void *uvw_ptr             = h_uvw.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_uvw(1, 1));
-                        void *visibilities_ptr    = h_visibilities.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_visibilities(1, 1, nr_channels));
+                        // Initialize iteration
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
+                        void *uvw_ptr             = uvw.data(first_bl, 0);
+                        void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                         // Power measurement
                         PowerRecord powerRecords[5];
@@ -563,13 +570,24 @@ namespace idg {
                     total_runtime_degridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        // Initialize iteration
+                        // Determine number of baselines in this job
                         auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
-                        void *uvw_ptr             = h_uvw.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_uvw(1, 1));
-                        void *visibilities_ptr    = h_visibilities.get((((Metadata*)metadata_ptr)->baseline_offset + ((Metadata*)metadata_ptr)->time_offset) * device.sizeof_visibilities(1, 1, nr_channels));
+                        auto first_bl = bl;
+                        auto last_bl  = bl + current_nr_baselines;
+
+                        // Skip empty baselines
+                        while (plan.get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
+                            first_bl++;
+                        }
+                        current_nr_baselines = last_bl - first_bl;
+                        if (current_nr_baselines == 0) continue;
+
+                        // Initialize iteration
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
+                        void *uvw_ptr             = uvw.data(first_bl, 0);
+                        void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                         // Power measurement
                         PowerRecord powerRecords[5];
