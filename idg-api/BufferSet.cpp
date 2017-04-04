@@ -175,7 +175,7 @@ namespace api {
         m_grid.init(0.0);
 
         size_t width = m_grid.get_x_dim();
-        int nr_w_layers = m_grid.get_nr_w_layers();
+        int nr_w_layers = m_grid.get_w_dim();
 
         // Stokes I
         #pragma omp parallel for
@@ -267,7 +267,7 @@ namespace api {
     void BufferSetImpl::get_image(double* image) 
     {
         size_t width = m_grid.get_x_dim();
-        int nr_w_layers = m_grid.get_nr_w_layers();
+        int nr_w_layers = m_grid.get_w_dim();
 
         std::vector<float> inv_spheroidal(width, 0.0);
 
