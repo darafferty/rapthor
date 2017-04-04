@@ -5,6 +5,11 @@
 #if defined(HAVE_MKL)
     #include <mkl_lapacke.h>
 #else
+    // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
+    #include <complex.h>
+    #define lapack_complex_float    float _Complex
+    #define lapack_complex_double   double _Complex
+    // End workaround
     #include <lapacke.h>
 #endif
 
