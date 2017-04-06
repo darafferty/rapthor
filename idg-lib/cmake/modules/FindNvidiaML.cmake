@@ -18,13 +18,16 @@ include(FindPackageHandleStandardArgs)
 
 find_path(NVML_INCLUDE_DIR
   NAMES nvml.h
-  HINTS ${NVML_ROOT_DIR} /usr/local/cuda/
-  PATH_SUFFIXES include
+  HINTS ${NVML_ROOT_DIR} /usr/local/cuda
+  ENV NVML_INCLUDE
+  PATH_SUFFIX include
   DOC "NVML include directory")
 
 find_library(NVML_LIBRARY
   NAMES nvidia-ml
   HINTS ${NVML_ROOT_DIR}
+  ENV NVML_LIB
+  ENV LD_LIBRARY_PATH
   DOC "NVML library")
 
 if (NVML_LIBRARY)
