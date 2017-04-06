@@ -74,7 +74,7 @@ endif()
 
 
 # resolve idg library
-find_package(IDG NO_MODULE)
+find_package(IDG NO_MODULE REQUIRED)
 include_directories (${IDG_INCLUDE_DIR})
 
 # write config file
