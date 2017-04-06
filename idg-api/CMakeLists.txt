@@ -83,7 +83,7 @@ set (${PROJECT_NAME}_sources
 
 set (${PROJECT_NAME}_link_libraries
     ${IDG_LIBRARIES}
-    ${lapacke_LIBRARY}
+    ${LAPACKE_LIB}
 )
 
 add_library(
