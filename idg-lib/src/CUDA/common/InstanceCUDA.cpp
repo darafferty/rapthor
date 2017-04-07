@@ -195,33 +195,33 @@ namespace idg {
             }
 
             void InstanceCUDA::set_parameters_kepler() {
-                block_gridder    = dim3(16, 16);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
-                batch_gridder    = 32;
-                batch_degridder  = block_degridder.x;
-            }
-
-            void InstanceCUDA::set_parameters_maxwell() {
-                block_gridder    = dim3(128);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
-                batch_gridder    = 64;
-                batch_degridder  = 64;
-            }
-
-            void InstanceCUDA::set_parameters_pascal() {
-                block_gridder    = dim3(192);
+                block_gridder    = dim3(320);
                 block_degridder  = dim3(256);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 64;
-                batch_degridder  = 64;
+                batch_gridder    = 32;
+                batch_degridder  = 96;
+            }
+
+            void InstanceCUDA::set_parameters_maxwell() {
+                block_gridder    = dim3(320);
+                block_degridder  = dim3(256);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 96;
+                batch_degridder  = 96;
+            }
+
+            void InstanceCUDA::set_parameters_pascal() {
+                block_gridder    = dim3(320);
+                block_degridder  = dim3(256);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 96;
+                batch_degridder  = 96;
             }
 
             void InstanceCUDA::set_parameters() {
