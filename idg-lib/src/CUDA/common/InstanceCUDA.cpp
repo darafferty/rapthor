@@ -117,31 +117,48 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
+                // Get source directory
+                std::string srcdir = auxiliary::get_lib_dir() + "/idg-cuda";
+                #if defined(DEBUG)
+                std::cout << "Searching for source files in: " << srcdir << std::endl;
+                #endif
+
+                // Create temp directory
+                char _tmpdir[] = "/tmp/idg-XXXXXX";
+                char *tmpdir = mkdtemp(_tmpdir);
+                #if defined(DEBUG)
+                std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
+                #endif
+
                 // Get compiler flags
                 std::string flags = get_compiler_flags();
 
-                // Compile all libraries (ptx files)
-                std::vector<std::string> v = mInfo.get_lib_names();
+                // Create vector of source filenames
+                std::vector<std::string> src;
+                src.push_back("KernelGridder.cu");
+                src.push_back("KernelDegridder.cu");
+                src.push_back("KernelScaler.cu");
+                src.push_back("KernelAdder.cu");
+                src.push_back("KernelSplitter.cu");
+
+                // Create vector of ptx filenames
+                std::vector<std::string> ptx;
+                ptx.push_back("Gridder.ptx");
+                ptx.push_back("Degridder.ptx");
+                ptx.push_back("Scaler.ptx");
+                ptx.push_back("Adder.ptx");
+                ptx.push_back("Splitter.ptx");
+
+                // Compile all kernels
                 #pragma omp parallel for
-                for (int i = 0; i < v.size(); i++) {
+                for (int i = 0; i < src.size(); i++) {
                     context->setCurrent();
 
-                    // Create a string with the full path to the ptx file "libname.ptx"
-                    std::string libname = v[i];
-                    std::string lib = mInfo.get_path_to_lib() + "/" + libname;
+                    // Create a string with the full path to the ptx file "kernel.ptx"
+                    std::string lib = mInfo.get_path_to_lib() + "/" + ptx[i];
 
                     // Create a string for all sources that are combined
-                    std::vector<std::string> source_files = mInfo.get_source_files(libname);
-
-                    std::string source;
-                    for (auto src : source_files) {
-                        source += mInfo.get_path_to_src() + "/" + src + " ";
-                    } // source = a.cpp b.cpp c.cpp ...
-
-                    #if defined(DEBUG)
-                    #pragma omp critical(cout)
-                    std::cout << lib << " " << source << " " << std::endl;
-                    #endif
+                    std::string source = mInfo.get_path_to_src() + "/" + src[i];
 
                     // Call the compiler
                     cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
@@ -154,25 +171,21 @@ namespace idg {
             void InstanceCUDA::load_kernels() {
                 CUfunction function;
                 int found = 0;
-                for (int i = 0; i < mModules.size(); i++) {
-                    if (cuModuleGetFunction(&function, *mModules[i], name_gridder.c_str()) == CUDA_SUCCESS) {
-                        function_gridder = new cu::Function(function); found++;
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[i], name_degridder.c_str()) == CUDA_SUCCESS) {
-                        function_degridder = new cu::Function(function); found++;
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[i], name_fft.c_str()) == CUDA_SUCCESS) {
-                        function_fft = new cu::Function(function); found++;
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[i], name_scaler.c_str()) == CUDA_SUCCESS) {
-                        function_scaler = new cu::Function(function); found++;
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[i], name_adder.c_str()) == CUDA_SUCCESS) {
-                        function_adder = new cu::Function(function); found++;
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[i], name_splitter.c_str()) == CUDA_SUCCESS) {
-                        function_splitter = new cu::Function(function); found++;
-                    }
+
+                if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) == CUDA_SUCCESS) {
+                    function_gridder = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) == CUDA_SUCCESS) {
+                    function_degridder = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) == CUDA_SUCCESS) {
+                    function_scaler = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[3], name_adder.c_str()) == CUDA_SUCCESS) {
+                    function_adder = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
+                    function_splitter = new cu::Function(function); found++;
                 }
 
                 if (found != mModules.size()) {
@@ -182,33 +195,33 @@ namespace idg {
             }
 
             void InstanceCUDA::set_parameters_kepler() {
-                block_gridder    = dim3(16, 16);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
-                batch_gridder    = 32;
-                batch_degridder  = block_degridder.x;
-            }
-
-            void InstanceCUDA::set_parameters_maxwell() {
-                block_gridder    = dim3(128);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
-                batch_gridder    = 64;
-                batch_degridder  = 64;
-            }
-
-            void InstanceCUDA::set_parameters_pascal() {
-                block_gridder    = dim3(192);
+                block_gridder    = dim3(320);
                 block_degridder  = dim3(256);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 64;
-                batch_degridder  = 64;
+                batch_gridder    = 32;
+                batch_degridder  = 96;
+            }
+
+            void InstanceCUDA::set_parameters_maxwell() {
+                block_gridder    = dim3(320);
+                block_degridder  = dim3(256);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 96;
+                batch_degridder  = 96;
+            }
+
+            void InstanceCUDA::set_parameters_pascal() {
+                block_gridder    = dim3(320);
+                block_degridder  = dim3(256);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 96;
+                batch_degridder  = 96;
             }
 
             void InstanceCUDA::set_parameters() {
