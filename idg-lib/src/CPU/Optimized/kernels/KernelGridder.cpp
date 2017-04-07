@@ -29,7 +29,6 @@ void kernel_gridder_(
     // Find offset of first subgrid
     const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
-    const int time_offset_1     = m.time_offset; // should be 0
 
     // Iterate all subgrids
     #pragma omp parallel for

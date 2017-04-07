@@ -6,6 +6,5 @@
 #include "CPU/common/InstanceCPU.h"
 #include "CPU/Reference/Reference.h"
 #include "CPU/Optimized/Optimized.h"
-#include "CPU/KNL/KNL.h"
 
 #endif
