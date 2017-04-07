@@ -67,7 +67,7 @@ namespace idg {
 
             void CUDA::free_devices() {
                 for (InstanceCUDA *device : devices) {
-                    device->~InstanceCUDA();
+                    delete device;
                 }
             }
 
