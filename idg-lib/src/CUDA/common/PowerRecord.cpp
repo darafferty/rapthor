@@ -6,7 +6,7 @@ namespace idg {
 
             void PowerRecord::enqueue(cu::Stream &stream) {
                 stream.record(event);
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &state);
+                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, this);
             }
 
             void PowerRecord::getPower(CUstream, CUresult, void *userData) {
