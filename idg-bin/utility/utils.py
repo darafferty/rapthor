@@ -361,7 +361,7 @@ def plot_grid_all(grid, form='abs', scaling='none', interpolation_method='none')
     Input:
     grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                          dtype = idg.gridtype)
-    form - 'real', 'imag', 'abs', 'phase'
+    form - 'real', 'imag', 'abs', 'angle'
     scaling - 'none', 'log', 'sqrt'
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
@@ -469,7 +469,7 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none', pol
     Input:
     grid - numpy.ndarray(shape=(nr_polarizations, grid_size, grid_size),
                          dtype = idg.gridtype)
-    form - 'real', 'imag', 'abs', 'phase'
+    form - 'real', 'imag', 'abs', 'angle'
     scaling - 'none', 'log', 'sqrt'
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
