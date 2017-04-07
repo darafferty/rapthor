@@ -348,16 +348,8 @@ namespace idg {
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Determine number of baselines in this job
-                    auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                    auto first_bl = bl;
-                    auto last_bl  = bl + current_nr_baselines;
-
-                    // Skip empty baselines
-                    while (plan.get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
-                        first_bl++;
-                    }
-                    current_nr_baselines = last_bl - first_bl;
+                    unsigned int first_bl, last_bl, current_nr_baselines;
+                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
 
                     // Initialize iteration
@@ -597,16 +589,8 @@ namespace idg {
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Determine number of baselines in this job
-                    auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                    auto first_bl = bl;
-                    auto last_bl  = bl + current_nr_baselines;
-
-                    // Skip empty baselines
-                    while (plan.get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
-                        first_bl++;
-                    }
-                    current_nr_baselines = last_bl - first_bl;
+                    unsigned int first_bl, last_bl, current_nr_baselines;
+                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
 
                     // Initialize iteration

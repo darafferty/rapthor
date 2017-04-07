@@ -407,6 +407,32 @@ namespace idg {
         memcpy(ptr, get_metadata_ptr(), get_nr_subgrids() * sizeof(Metadata));
     }
 
+    void Plan::initialize_job(
+        const unsigned int nr_baselines,
+        const unsigned int jobsize,
+        const unsigned int bl,
+        unsigned int *first_bl_,
+        unsigned int *last_bl_,
+        unsigned int *current_nr_baselines_) const
+    {
+        // Determine maximum number of baselines in this job
+        auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
+
+        // Determine first and last baseline in this job
+        auto first_bl = bl;
+        auto last_bl  = bl + current_nr_baselines;
+
+        // Skip empty baselines
+        while (get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
+            first_bl++;
+        }
+
+        // Update parameters
+        (*first_bl_) = first_bl;
+        (*last_bl_)  = last_bl;
+        (*current_nr_baselines_) = last_bl - first_bl;
+    }
+
 } // namespace idg
 
 #include "PlanC.h"

@@ -323,14 +323,17 @@ namespace idg {
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                        unsigned int first_bl, last_bl, current_nr_baselines;
+                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                        if (current_nr_baselines == 0) continue;
+
                         // Initialize iteration
-                        auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        auto subgrid_offset       = plan.get_subgrid_offset(bl);
-                        auto uvw_offset           = bl * device.sizeof_uvw(1, nr_timesteps);
-                        auto visibilities_offset  = bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        auto subgrid_offset       = plan.get_subgrid_offset(first_bl);
+                        auto uvw_offset           = first_bl * device.sizeof_uvw(1, nr_timesteps);
+                        auto visibilities_offset  = first_bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
+                        auto *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
 
                         #pragma omp critical (lock)
                         {
@@ -601,14 +604,17 @@ namespace idg {
 
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                        unsigned int first_bl, last_bl, current_nr_baselines;
+                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                        if (current_nr_baselines == 0) continue;
+
                         // Initialize iteration
-                        auto current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(bl, current_nr_baselines);
-                        auto subgrid_offset       = plan.get_subgrid_offset(bl);
-                        auto uvw_offset           = bl * device.sizeof_uvw(1, nr_timesteps);
-                        auto visibilities_offset  = bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(bl);
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        auto subgrid_offset       = plan.get_subgrid_offset(first_bl);
+                        auto uvw_offset           = first_bl * device.sizeof_uvw(1, nr_timesteps);
+                        auto visibilities_offset  = first_bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
+                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
 
                         #pragma omp critical (lock)
                         {

@@ -93,8 +93,16 @@ namespace idg {
             const Metadata* get_metadata_ptr(int baseline = 0) const;
 
             void copy_metadata(void *ptr) const;
-            
-            bool get_needs_w_stacking() const {return needs_w_stacking;}
+
+            bool get_needs_w_stacking() const { return needs_w_stacking; }
+
+            void initialize_job(
+                const unsigned int nr_baselines,
+                const unsigned int jobsize,
+                const unsigned int bl,
+                unsigned int *first_bl,
+                unsigned int *last_bl,
+                unsigned int *current_nr_baselines) const;
 
         private:
             std::vector<Metadata> metadata;
