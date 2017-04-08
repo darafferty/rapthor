@@ -4,6 +4,7 @@
 #include "math.cu"
 
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
+#define BLOCK_SIZE GRIDDER_BLOCK_SIZE
 #define MAX_NR_CHANNELS 8
 
 __shared__ float4 visibilities_[2][BATCH_SIZE*MAX_NR_CHANNELS];
@@ -228,7 +229,9 @@ __device__ void kernel_gridder_(
     }
 
 extern "C" {
-__global__ void kernel_gridder(
+__global__ void
+__launch_bounds__(BLOCK_SIZE)
+    kernel_gridder(
     const int                           grid_size,
     const int                           subgrid_size,
     const float                         image_size,
