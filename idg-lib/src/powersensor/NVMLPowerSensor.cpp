@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <sstream>
 
 #include <unistd.h>
 
@@ -17,12 +18,13 @@ inline void __checkNVMLCall(
     int const line)
 {
     if (result != NVML_SUCCESS) {
-        std::cerr << "NVML Error at " << file;
-        std::cerr << ":" << line;
-        std::cerr << " in function " << func;
-        std::cerr << ": " << nvmlErrorString(result);
-        std::cerr << std::endl;
-        exit(EXIT_FAILURE);
+        std::stringstream error;
+        error << "NVML Error at " << file;
+        error << ":" << line;
+        error << " in function " << func;
+        error << ": " << nvmlErrorString(result);
+        error << std::endl;
+        throw std::runtime_error(error.str());
     }
 }
 #endif

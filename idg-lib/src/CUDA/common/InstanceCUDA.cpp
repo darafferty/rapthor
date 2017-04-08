@@ -286,14 +286,21 @@ namespace idg {
                 const char *str_power_file,
                 int device_number)
             {
-                if (str_power_sensor) {
-                    std::cout << "Power sensor: " << str_power_sensor << std::endl;
-                    if (str_power_file) {
-                        std::cout << "Power file:   " << str_power_file << std::endl;
+                try {
+                    if (str_power_sensor) {
+                        // Try to initialize ArduinoPowerSensor
+                        std::cout << "Power sensor: " << str_power_sensor << std::endl;
+                        if (str_power_file) {
+                            std::cout << "Power file:   " << str_power_file << std::endl;
+                        }
+                        powerSensor = ArduinoPowerSensor::create(str_power_sensor, str_power_file);
+                    } else {
+                        // Try to initialize NVMLPowerSensor
+                        powerSensor = NVMLPowerSensor::create(device_number, str_power_file);
                     }
-                    powerSensor = ArduinoPowerSensor::create(str_power_sensor, str_power_file);
-                } else {
-                    powerSensor = NVMLPowerSensor::create(device_number, str_power_file);
+                } catch (std::runtime_error &e) {
+                    // Initialize DummyPowerSensor
+                    powerSensor = DummyPowerSensor::create();
                 }
             }
 
