@@ -104,6 +104,8 @@ namespace idg {
                 flags_device << "-arch=sm_"                << capability;
                 flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
                 flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
+                flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder.x;
+                flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
 
                 // Combine flags
                 std::string flags = " " + flags_cuda.str() +
@@ -195,13 +197,13 @@ namespace idg {
             }
 
             void InstanceCUDA::set_parameters_kepler() {
-                block_gridder    = dim3(320);
-                block_degridder  = dim3(256);
+                block_gridder    = dim3(384);
+                block_degridder  = dim3(128);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 32;
-                batch_degridder  = 96;
+                batch_gridder    = 56;
+                batch_degridder  = 128;
             }
 
             void InstanceCUDA::set_parameters_maxwell() {

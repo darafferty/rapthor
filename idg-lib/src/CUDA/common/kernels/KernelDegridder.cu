@@ -4,11 +4,14 @@
 #include "math.cu"
 
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
+#define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 
 extern "C" {
-__global__ void kernel_degridder(
+__global__ void
+__launch_bounds__(BLOCK_SIZE)
+kernel_degridder(
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
