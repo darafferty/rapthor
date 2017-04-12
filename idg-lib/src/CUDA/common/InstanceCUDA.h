@@ -38,8 +38,7 @@ namespace idg {
 
                     PowerSensor* get_powersensor() { return powerSensor; };
                     PowerSensor::State measure();
-                    void measure(
-                        idg::kernel::cuda::PowerRecord &record, cu::Stream &stream);
+                    void measure(PowerRecord &record, cu::Stream &stream);
 
                     void launch_gridder(
                         int nr_subgrids,

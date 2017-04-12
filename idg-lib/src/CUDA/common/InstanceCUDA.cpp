@@ -310,9 +310,8 @@ namespace idg {
 
             void InstanceCUDA::measure(
                 PowerRecord &record, cu::Stream &stream) {
-                stream.record(record.event);
                 record.sensor = powerSensor;
-                stream.addCallback((CUstreamCallback) &PowerRecord::getPower, &record);
+                record.enqueue(stream);
             }
 
             void InstanceCUDA::launch_gridder(

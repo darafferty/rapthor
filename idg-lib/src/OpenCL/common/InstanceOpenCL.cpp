@@ -1,9 +1,7 @@
 #include <clFFT.h>
 
 #include "InstanceOpenCL.h"
-#include "PerformanceCounter.h"
-
-#define ENABLE_PERFORMANCE_COUNTERS 1
+#include "PowerRecord.h"
 
 using namespace idg::kernel::opencl;
 
@@ -245,6 +243,18 @@ namespace idg {
                 }
             }
 
+            PowerSensor::State InstanceOpenCL::measure() {
+                return powerSensor->read();
+            }
+
+            void InstanceOpenCL::measure(
+                PowerRecord &record,
+                cl::CommandQueue &queue)
+            {
+                record.sensor = powerSensor;
+                record.enqueue(queue);
+            }
+
             /*
                 Kernels
             */
@@ -263,8 +273,7 @@ namespace idg {
                 cl::Buffer& d_spheroidal,
                 cl::Buffer& d_aterm,
                 cl::Buffer& d_metadata,
-                cl::Buffer& d_subgrid,
-                PerformanceCounter& counter)
+                cl::Buffer& d_subgrid)
             {
                 int local_size_x = block_gridder[0];
                 int local_size_y = block_gridder[1];
@@ -284,13 +293,7 @@ namespace idg {
                 kernel_gridder->setArg(12, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
-                        *kernel_gridder, cl::NullRange, global_size, block_gridder, NULL, &event_gridder);
-                    #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(
-                        event_gridder, "gridder",
-                        flops_gridder(nr_channels, nr_timesteps, nr_subgrids),
-                        bytes_gridder(nr_channels, nr_timesteps, nr_subgrids));
-                    #endif
+                        *kernel_gridder, cl::NullRange, global_size, block_gridder);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -312,8 +315,7 @@ namespace idg {
                 cl::Buffer& d_spheroidal,
                 cl::Buffer& d_aterm,
                 cl::Buffer& d_metadata,
-                cl::Buffer& d_subgrid,
-                PerformanceCounter& counter)
+                cl::Buffer& d_subgrid)
             {
                 int local_size_x = block_degridder[0];
                 int local_size_y = block_degridder[1];
@@ -333,13 +335,7 @@ namespace idg {
                 kernel_degridder->setArg(12, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
-                        *kernel_degridder, cl::NullRange, global_size, block_degridder, NULL, &event_degridder);
-                    #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(
-                        event_degridder, "degridder",
-                        flops_degridder(nr_channels, nr_timesteps, nr_subgrids),
-                        bytes_degridder(nr_channels, nr_timesteps, nr_subgrids));
-                    #endif
+                        *kernel_degridder, cl::NullRange, global_size, block_degridder);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -400,38 +396,13 @@ namespace idg {
                 }
             }
 
-            void InstanceOpenCL::launch_fft(
-                cl::Buffer &d_data,
-                DomainAtoDomainB direction,
-                PerformanceCounter &counter,
-                const char *name)
-            {
-                executequeue->enqueueMarkerWithWaitList(NULL, &event_fft_start);
-                clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
-                cl_command_queue *queue = &(*executequeue)();
-                clfftStatus status = clfftEnqueueTransform(
-                    fft_plan, sign, 1, queue, 0, NULL, NULL, &d_data(), NULL, NULL);
-                executequeue->enqueueMarkerWithWaitList(NULL, &event_fft_end);
-                #if ENABLE_PERFORMANCE_COUNTERS
-                counter.doOperation(
-                    event_fft_start, event_fft_end, name,
-                    flops_fft(fft_planned_size, fft_planned_batch),
-                    bytes_fft(fft_planned_size, fft_planned_batch));
-                #endif
-                if (status != CL_SUCCESS) {
-                    std::cerr << "Error enqueing fft plan" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-            }
-
             void InstanceOpenCL::launch_adder(
                 int nr_subgrids,
                 int grid_size,
                 int subgrid_size,
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid,
-                cl::Buffer& d_grid,
-                PerformanceCounter& counter)
+                cl::Buffer& d_grid)
             {
                 int local_size_x = block_adder[0];
                 int local_size_y = block_adder[1];
@@ -443,13 +414,7 @@ namespace idg {
                 kernel_adder->setArg(4, d_grid);
                 try {
                     executequeue->enqueueNDRangeKernel(
-                        *kernel_adder, cl::NullRange, global_size, block_adder, NULL, &event_adder);
-                    #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(
-                        event_adder, "adder",
-                        flops_adder(nr_subgrids),
-                        bytes_adder(nr_subgrids));
-                    #endif
+                        *kernel_adder, cl::NullRange, global_size, block_adder);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching adder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -462,8 +427,7 @@ namespace idg {
                 int subgrid_size,
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid,
-                cl::Buffer& d_grid,
-                PerformanceCounter& counter)
+                cl::Buffer& d_grid)
             {
                 int local_size_x = block_splitter[0];
                 int local_size_y = block_splitter[1];
@@ -475,13 +439,7 @@ namespace idg {
                 kernel_splitter->setArg(4, d_grid);
                 try {
                     executequeue->enqueueNDRangeKernel(
-                        *kernel_splitter, cl::NullRange, global_size, block_splitter, NULL, &event_splitter);
-                    #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(
-                        event_splitter, "splitter",
-                        flops_splitter(nr_subgrids),
-                        bytes_splitter(nr_subgrids));
-                    #endif
+                        *kernel_splitter, cl::NullRange, global_size, block_splitter);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching splitter: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -491,8 +449,7 @@ namespace idg {
             void InstanceOpenCL::launch_scaler(
                 int nr_subgrids,
                 int subgrid_size,
-                cl::Buffer& d_subgrid,
-                PerformanceCounter& counter)
+                cl::Buffer& d_subgrid)
             {
                 int local_size_x = block_scaler[0];
                 int local_size_y = block_scaler[1];
@@ -501,13 +458,7 @@ namespace idg {
                 kernel_scaler->setArg(1, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
-                        *kernel_scaler, cl::NullRange, global_size, block_scaler, NULL, &event_scaler);
-                    #if ENABLE_PERFORMANCE_COUNTERS
-                    counter.doOperation(
-                        event_scaler, "scaler",
-                        flops_scaler(nr_subgrids),
-                        bytes_scaler(nr_subgrids));
-                    #endif
+                        *kernel_scaler, cl::NullRange, global_size, block_scaler);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching scaler: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);

@@ -258,7 +258,6 @@ namespace idg {
                     }
 
                     // Events
-                    cu::Event inputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
 
@@ -291,7 +290,6 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device memory
-                            htodstream.waitEvent(inputFree);
                             htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
                                 device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
@@ -316,8 +314,6 @@ namespace idg {
                             device.launch_scaler(
                                 current_nr_subgrids, subgrid_size, d_subgrids);
                             device.measure(powerRecords[3], executestream);
-                            executestream.record(outputReady);
-                            executestream.record(inputFree);
 
                             // Launch adder kernel
                             device.launch_adder(
@@ -545,10 +541,9 @@ namespace idg {
                     }
 
                     // Events
-                    cu::Event inputFree;
-                    cu::Event outputFree;
                     cu::Event inputReady;
                     cu::Event outputReady;
+                    cu::Event outputFree;
 
                     // Power measurement
                     PowerSensor *devicePowerSensor = device.get_powersensor();
@@ -579,7 +574,6 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.waitEvent(inputFree);
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
                                 device.sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
@@ -606,7 +600,6 @@ namespace idg {
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
-                            executestream.record(inputFree);
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);

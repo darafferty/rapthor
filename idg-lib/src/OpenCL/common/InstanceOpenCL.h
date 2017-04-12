@@ -10,12 +10,12 @@
 
 #include "Util.h"
 
-class PerformanceCounter;
 
 namespace idg {
     namespace kernel {
         namespace opencl {
             typedef size_t clfftPlanHandle;
+            class PowerRecord;
 
             class InstanceOpenCL : public KernelsInstance {
                 public:
@@ -30,14 +30,16 @@ namespace idg {
                     // Destructor
                     ~InstanceOpenCL();
 
-                    cl::Device&  get_device()  const { return *device; }
-                    cl::CommandQueue&  get_execute_queue() const { return *executequeue; };
-                    cl::CommandQueue&  get_htod_queue() const { return *htodqueue; };
-                    cl::CommandQueue&  get_dtoh_queue() const { return *dtohqueue; };
+                    cl::Device&       get_device()  const { return *device; }
+                    cl::CommandQueue& get_execute_queue() const { return *executequeue; };
+                    cl::CommandQueue& get_htod_queue() const { return *htodqueue; };
+                    cl::CommandQueue& get_dtoh_queue() const { return *dtohqueue; };
 
                     std::string get_compiler_flags();
 
                     PowerSensor* get_powersensor() { return powerSensor; };
+                    PowerSensor::State measure();
+                    void measure(PowerRecord &record, cl::CommandQueue &queue);
 
                 void launch_gridder(
                     int nr_timesteps,
@@ -54,8 +56,7 @@ namespace idg {
                     cl::Buffer& d_spheroidal,
                     cl::Buffer& d_aterm,
                     cl::Buffer& d_metadata,
-                    cl::Buffer& d_subgrid,
-                    PerformanceCounter& counter);
+                    cl::Buffer& d_subgrid);
 
                 void launch_degridder(
                     int nr_timesteps,
@@ -72,8 +73,7 @@ namespace idg {
                     cl::Buffer& d_spheroidal,
                     cl::Buffer& d_aterm,
                     cl::Buffer& d_metadata,
-                    cl::Buffer& d_subgrid,
-                    PerformanceCounter& counter);
+                    cl::Buffer& d_subgrid);
 
                 void plan_fft(
                     int size, int batch);
@@ -82,20 +82,13 @@ namespace idg {
                     cl::Buffer &d_data,
                     DomainAtoDomainB direction);
 
-                void launch_fft(
-                    cl::Buffer &d_data,
-                    DomainAtoDomainB direction,
-                    PerformanceCounter &counter,
-                    const char *name);
-
                 void launch_adder(
                     int nr_subgrids,
                     int grid_size,
                     int subgrid_size,
                     cl::Buffer& d_metadata,
                     cl::Buffer& d_subgrid,
-                    cl::Buffer& d_grid,
-                    PerformanceCounter& counter);
+                    cl::Buffer& d_grid);
 
                 void launch_splitter(
                     int nr_subgrids,
@@ -103,14 +96,12 @@ namespace idg {
                     int subgrid_size,
                     cl::Buffer& d_metadata,
                     cl::Buffer& d_subgrid,
-                    cl::Buffer& d_grid,
-                    PerformanceCounter& counter);
+                    cl::Buffer& d_grid);
 
                 void launch_scaler(
                     int nr_subgrids,
                     int subgrid_size,
-                    cl::Buffer& d_subgrid,
-                    PerformanceCounter& counter);
+                    cl::Buffer& d_subgrid);
 
                 protected:
                     void compile_kernels();
@@ -136,13 +127,6 @@ namespace idg {
                     cl::Kernel *kernel_adder;
                     cl::Kernel *kernel_splitter;
                     cl::Kernel *kernel_scaler;
-                    cl::Event event_gridder;
-                    cl::Event event_degridder;
-                    cl::Event event_adder;
-                    cl::Event event_splitter;
-                    cl::Event event_scaler;
-                    cl::Event event_fft_start;
-                    cl::Event event_fft_end;
                     std::vector<cl::Program*> mPrograms;
                     PowerSensor *powerSensor;
 
