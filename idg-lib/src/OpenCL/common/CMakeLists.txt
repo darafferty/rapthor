@@ -3,16 +3,16 @@ project(opencl-common)
 # sources and header files
 set (${PROJECT_NAME}_headers
     OpenCL.h
-    PerformanceCounter.h
     Util.h
     InstanceOpenCL.h
+    PowerRecord.h
 )
 
 set (${PROJECT_NAME}_sources
     OpenCL.cpp
-    PerformanceCounter.cpp
     Util.cpp
     InstanceOpenCL.cpp
+    PowerRecord.cpp
 )
 
 # create library
