@@ -57,8 +57,8 @@ void kernel_adder(
 
                     // Add subgrid value to grid
 					for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        int dst_idx = index_grid(grid_size, pol, row, subgrid_x + x);
-                        int src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                        long dst_idx = index_grid(grid_size, pol, row, subgrid_x + x);
+                        long src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
                         grid[dst_idx] += phasor * subgrid[src_idx];
 					} // end for pol
                 } // end for row
