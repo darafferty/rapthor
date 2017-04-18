@@ -2,7 +2,7 @@
 
 #include <CL/cl.hpp>
 
-#include "idg-powersensor.h"
+#include "idg-common.h"
 
 namespace idg {
     namespace kernel {
@@ -12,8 +12,8 @@ namespace idg {
                 public:
                     void enqueue(cl::CommandQueue &queue);
                     static void getPower(cl_event, cl_int, void *userData);
-                    PowerSensor *sensor;
-                    PowerSensor::State state;
+                    powersensor::PowerSensor *sensor;
+                    powersensor::State state;
                     cl::Event event;
             };
 

@@ -6,6 +6,7 @@
 #include "InstanceOpenCL.h"
 
 using namespace idg::kernel::opencl;
+using namespace powersensor;
 
 namespace idg {
     namespace proxy {

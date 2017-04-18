@@ -23,6 +23,7 @@
 
 using namespace std;
 using namespace idg::kernel::opencl;
+using namespace powersensor;
 
 
 namespace idg {
@@ -39,10 +40,17 @@ namespace idg {
                 #endif
 
                 // Initialize host PowerSensor
-                #if defined(HAVE_LIKWID)
-                hostPowerSensor = LikwidPowerSensor::create();
-                #else
-                hostPowerSensor = RaplPowerSensor::create();
+                #if defined(HAVE_POWERSENSOR)
+                char *char_power_sensor = getenv("POWER_SENSOR");
+                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
+                char_power_sensor = power_sensors.size() > 0 ? (char *) (power_sensors[0].c_str()) : NULL;
+                if (use_powersensor(name_likwid, char_power_sensor)) {
+                    hostPowerSensor = likwid::LikwidPowerSensor::create();
+                } else if (use_powersensor(name_rapl, char_power_sensor)) {
+                    hostPowerSensor = rapl::RaplPowerSensor::create();
+                } else {
+                    hostPowerSensor = DummyPowerSensor::create();
+                }
                 #endif
             }
 
@@ -75,7 +83,7 @@ namespace idg {
 
                 // Power measurement
                 PowerRecord powerRecords[5];
-                PowerSensor::State powerStates[4];
+                State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
                 powerStates[2] = devicePowerSensor->read();
 
@@ -247,8 +255,8 @@ namespace idg {
                 double total_runtime_fft      = 0;
                 double total_runtime_adder    = 0;
                 double total_runtime_gridding = 0;
-                PowerSensor::State startStates[nr_devices+1];
-                PowerSensor::State stopStates[nr_devices+1];
+                State startStates[nr_devices+1];
+                State stopStates[nr_devices+1];
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
@@ -548,8 +556,8 @@ namespace idg {
                 double total_runtime_fft        = 0;
                 double total_runtime_splitter   = 0;
                 double total_runtime_degridding = 0;
-                PowerSensor::State startStates[nr_devices+1];
-                PowerSensor::State stopStates[nr_devices+1];
+                State startStates[nr_devices+1];
+                State stopStates[nr_devices+1];
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {

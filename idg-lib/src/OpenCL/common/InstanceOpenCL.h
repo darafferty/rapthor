@@ -6,7 +6,6 @@
 #include <memory>
 
 #include "idg-common.h"
-#include "idg-powersensor.h"
 
 #include "Util.h"
 
@@ -37,8 +36,8 @@ namespace idg {
 
                     std::string get_compiler_flags();
 
-                    PowerSensor* get_powersensor() { return powerSensor; };
-                    PowerSensor::State measure();
+                    powersensor::PowerSensor* get_powersensor() { return powerSensor; };
+                    powersensor::State measure();
                     void measure(PowerRecord &record, cl::CommandQueue &queue);
 
                 void launch_gridder(
@@ -128,7 +127,7 @@ namespace idg {
                     cl::Kernel *kernel_splitter;
                     cl::Kernel *kernel_scaler;
                     std::vector<cl::Program*> mPrograms;
-                    PowerSensor *powerSensor;
+                    powersensor::PowerSensor *powerSensor;
 
                 protected:
                     cl::NDRange block_gridder;

@@ -3,6 +3,11 @@
 
 #include "idg-opencl.h"
 
+namespace powersensor {
+    class PowerSensor;
+}
+
+
 namespace idg {
     namespace proxy {
         namespace opencl {
@@ -48,7 +53,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    PowerSensor *hostPowerSensor;
+                    powersensor::PowerSensor *hostPowerSensor;
 
             }; // class Generic
 
