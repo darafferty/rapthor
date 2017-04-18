@@ -30,7 +30,6 @@
 #define FFTW3_LIB "@FFTW3_LIBRARY@"
 #define FFTW3F_LIB "@FFTW3F_LIBRARY@"
 
-#cmakedefine HAVE_LIKWID
-#cmakedefine HAVE_NUMA
+#cmakedefine HAVE_POWERSENSOR
 
 #endif

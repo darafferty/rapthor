@@ -7,7 +7,9 @@ namespace cu {
     class HostMemory;
 }
 
-class PowerSensor;
+namespace powersensor {
+    class PowerSensor;
+}
 
 namespace idg {
     namespace proxy {
@@ -55,7 +57,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    PowerSensor *hostPowerSensor;
+                    powersensor::PowerSensor *hostPowerSensor;
             }; // class Generic
 
         } // namespace cuda

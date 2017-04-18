@@ -4,6 +4,7 @@
 #include "PowerRecord.h"
 
 using namespace idg::kernel::opencl;
+using namespace powersensor;
 
 namespace idg {
     namespace kernel {
@@ -232,18 +233,16 @@ namespace idg {
                 const char *str_power_sensor,
                 const char *str_power_file)
             {
-                if (str_power_sensor) {
-                    std::cout << "Power sensor: " << str_power_sensor << std::endl;
-                    if (str_power_file) {
-                        std::cout << "Power file:   " << str_power_file << std::endl;
-                    }
-                    powerSensor = ArduinoPowerSensor::create(str_power_sensor, str_power_file);
+                #if defined(HAVE_POWERSENSOR)
+                if (use_powersensor(name_arduino, str_power_sensor)) {
+                    powerSensor = arduino::ArduinoPowerSensor::create(str_power_sensor, str_power_file);
                 } else {
                     powerSensor = DummyPowerSensor::create();
                 }
+                #endif
             }
 
-            PowerSensor::State InstanceOpenCL::measure() {
+            State InstanceOpenCL::measure() {
                 return powerSensor->read();
             }
 

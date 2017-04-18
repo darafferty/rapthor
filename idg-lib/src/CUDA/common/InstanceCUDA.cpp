@@ -4,6 +4,7 @@
 #include "PowerRecord.h"
 
 using namespace idg::kernel;
+using namespace powersensor;
 
 namespace idg {
     namespace kernel {
@@ -286,25 +287,24 @@ namespace idg {
                 const char *str_power_file,
                 int device_number)
             {
+                powerSensor = DummyPowerSensor::create();
+
                 try {
-                    if (str_power_sensor) {
+                    #if defined(HAVE_POWERSENSOR)
+                    if (use_powersensor(name_arduino, str_power_sensor)) {
                         // Try to initialize ArduinoPowerSensor
-                        std::cout << "Power sensor: " << str_power_sensor << std::endl;
-                        if (str_power_file) {
-                            std::cout << "Power file:   " << str_power_file << std::endl;
-                        }
-                        powerSensor = ArduinoPowerSensor::create(str_power_sensor, str_power_file);
-                    } else {
+                        powerSensor = arduino::ArduinoPowerSensor::create(str_power_sensor, str_power_file);
+                    } else if(use_powersensor(name_nvml, str_power_sensor)) {
                         // Try to initialize NVMLPowerSensor
-                        powerSensor = NVMLPowerSensor::create(device_number, str_power_file);
+                        powerSensor = nvml::NVMLPowerSensor::create(device_number, str_power_file);
                     }
+                    #endif
                 } catch (std::runtime_error &e) {
-                    // Initialize DummyPowerSensor
-                    powerSensor = DummyPowerSensor::create();
+                    // Use DummyPowerSensor
                 }
             }
 
-            PowerSensor::State InstanceCUDA::measure() {
+            State InstanceCUDA::measure() {
                 return powerSensor->read();
             }
 

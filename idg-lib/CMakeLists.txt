@@ -92,31 +92,17 @@ else()
     endif()
 endif()
 
-# Find dependencies for Likwid power sensor
-find_package(Numa QUIET)
-find_package(Likwid QUIET)
-if (${NUMA_FOUND} AND ${LIKWID_FOUND})
-    set (HAVE_LIKWID TRUE)
-    set (HAVE_NUMA TRUE)
+# resolve dependencies
+find_package(PowerSensor QUIET)
+if (${POWERSENSOR_FOUND})
+    set(HAVE_POWERSENSOR TRUE)
+    include_directories(${POWERSENSOR_INCLUDE_DIR})
 else ()
-    # These values are not used when both libraries are not found
-    unset (LIKWID_INCLUDE_DIRS CACHE)
-    unset (LIKWID_LIBRARIES CACHE)
-    unset (NUMA_ROOT_DIR CACHE)
-    unset (NUMA_INCLUDE_DIR CACHE)
-    unset (NUMA_LIBRARY CACHE)
-endif ()
+    unset(POWERSENSOR_LIBRARY CACHE)
+    unset(POWERSENSOR_INCLUDE_DIR CACHE)
+endif()
 
 include_directories (${CMAKE_BINARY_DIR}/src)
-
-# Copy header files
-install(
-    FILES
-    ${PROJECT_BINARY_DIR}/src/idg-config.h
-    DESTINATION
-    include
-)
-
 
 # add main include folder
 include_directories (${CMAKE_SOURCE_DIR}/src)
@@ -152,7 +138,6 @@ configure_file (
 #####################################################
 set(TARGETS_TO_BUILD idg)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-common)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-powersensor)
 if (BUILD_LIB_CPU)
 set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cpu)
 endif()

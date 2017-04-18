@@ -10,5 +10,6 @@
 #include "common/Plan.h"
 #include "common/KernelsInstance.h"
 #include "common/CompileConstants.h"
+#include "common/PowerSensor.h"
 
 #endif

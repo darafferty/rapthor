@@ -2,7 +2,6 @@
 #define IDG_CPU_H_
 
 #include "idg-common.h"
-#include "idg-powersensor.h"
 
 #include "InstanceCPU.h"
 
@@ -105,7 +104,7 @@ namespace idg {
 
                 protected:
                     kernel::cpu::InstanceCPU kernels;
-                    PowerSensor *powerSensor;
+                    powersensor::PowerSensor *powerSensor;
 
             }; // end class CPU
 

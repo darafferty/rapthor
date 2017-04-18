@@ -4,7 +4,6 @@
 #include <cudaProfiler.h>
 
 #include "CUDA.h"
-#include "idg-powersensor.h"
 
 #include "InstanceCUDA.h"
 
@@ -54,6 +53,15 @@ namespace idg {
                 // Get list of all power files
                 char *char_power_file = getenv("POWER_FILE");
                 std::vector<std::string> power_files = idg::auxiliary::split_string(char_power_file, ",");
+
+                // Remove host power sensor, if specified
+                if (power_sensors.size() > 0 &&
+                    power_sensors[0].find(powersensor::name_arduino) == std::string::npos) {
+                    if (power_sensors.size() == power_files.size()) {
+                        power_files.erase(power_files.begin());
+                    }
+                    power_sensors.erase(power_sensors.begin());
+                }
 
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {

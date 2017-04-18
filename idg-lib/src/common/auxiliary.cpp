@@ -5,6 +5,7 @@
 
 #include "idg-config.h"
 #include "auxiliary.h"
+#include "PowerSensor.h"
 
 using namespace std;
 
@@ -73,9 +74,9 @@ namespace idg {
             const char *name,
             uint64_t flops,
             uint64_t bytes,
-            PowerSensor *powerSensor,
-            PowerSensor::State startState,
-            PowerSensor::State endState)
+            powersensor::PowerSensor *powerSensor,
+            powersensor::State startState,
+            powersensor::State endState)
         {
             double seconds = powerSensor->seconds(startState, endState);
             double watts   = powerSensor->Watt(startState, endState);

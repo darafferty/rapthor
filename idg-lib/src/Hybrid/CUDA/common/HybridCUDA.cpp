@@ -9,6 +9,7 @@ using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
+using namespace powersensor;
 
 namespace idg {
     namespace proxy {
@@ -26,10 +27,17 @@ namespace idg {
                 #endif
 
                 // Initialize host PowerSensor
-                #if defined(HAVE_LIKWID)
-                hostPowerSensor = LikwidPowerSensor::create();
-                #else
-                hostPowerSensor = RaplPowerSensor::create();
+                #if defined(HAVE_POWERSENSOR)
+                char *char_power_sensor = getenv("POWER_SENSOR");
+                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
+                char_power_sensor = power_sensors.size() > 0 ? (char *) (power_sensors[0].c_str()) : NULL;
+                if (use_powersensor(name_likwid, char_power_sensor)) {
+                    hostPowerSensor = likwid::LikwidPowerSensor::create();
+                } else if (use_powersensor(name_rapl, char_power_sensor)) {
+                    hostPowerSensor = rapl::RaplPowerSensor::create();
+                } else {
+                    hostPowerSensor = DummyPowerSensor::create();
+                }
                 #endif
 
                 omp_set_nested(true);
@@ -137,8 +145,8 @@ namespace idg {
                 double total_runtime_scaler   = 0;
                 double total_runtime_adder    = 0;
                 double total_runtime_gridding = 0;
-                PowerSensor::State startStates[nr_devices+1];
-                PowerSensor::State stopStates[nr_devices+1];
+                State startStates[nr_devices+1];
+                State stopStates[nr_devices+1];
                 startStates[nr_devices] = hostPowerSensor->read();
 
                 // Locks
@@ -213,7 +221,7 @@ namespace idg {
 
                         // Power measurement
                         PowerRecord powerRecords[4];
-                        PowerSensor::State powerStates[2];
+                        State powerStates[2];
 
                         #pragma omp critical (lock)
                         {
@@ -419,8 +427,8 @@ namespace idg {
                 double total_runtime_fft        = 0;
                 double total_runtime_splitter   = 0;
                 double total_runtime_degridding = 0;
-                PowerSensor::State startStates[nr_devices+1];
-                PowerSensor::State stopStates[nr_devices+1];
+                State startStates[nr_devices+1];
+                State stopStates[nr_devices+1];
                 startStates[nr_devices] = hostPowerSensor->read();
 
                 // Locks
@@ -495,7 +503,7 @@ namespace idg {
 
                         // Power measurement
                         PowerRecord powerRecords[5];
-                        PowerSensor::State powerStates[2];
+                        State powerStates[2];
 
                         // Extract subgrid from grid
                         powerStates[0] = hostPowerSensor->read();

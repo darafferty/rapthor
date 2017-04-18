@@ -2,7 +2,6 @@ project(idg)
 
 # add subfolders
 add_subdirectory(common)
-add_subdirectory(powersensor)
 
 if (BUILD_LIB_CPU)
     add_subdirectory(fft)
@@ -34,6 +33,11 @@ add_library(idg-common
   $<TARGET_OBJECTS:common>
 )
 
+if(HAVE_POWERSENSOR)
+    target_link_libraries(idg-common
+        ${POWERSENSOR_LIBRARY})
+endif()
+
 set_target_properties(idg-common PROPERTIES
                       PUBLIC_HEADER idg-common.h)
 
@@ -47,27 +51,6 @@ install(TARGETS idg-common
 
 
 
-#########################################################
-# build libidg-powersensor, containing all code used to #
-# to measure runtime and power consumption of kernels   #
-#########################################################
-add_library(idg-powersensor
-  $<TARGET_OBJECTS:powersensor>
-)
-
-set (LINK_LIRBRARIES ${NUMA_LIBRARY} ${LIKWID_LIBRARIES})
-target_link_libraries(idg-powersensor ${LINK_LIRBRARIES})
-
-set_target_properties(idg-powersensor PROPERTIES
-                      PUBLIC_HEADER idg-powersensor.h)
-
-install(TARGETS idg-powersensor
-  EXPORT IDGTargets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
-)
 #########################################################
 # build libidg-fft, that wraps calls to FFTW or MKL;    #
 # used in the CPU code, the example init code, API code #
@@ -111,7 +94,7 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS})
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS})
 target_link_libraries (
   idg-cpu
   ${LINK_LIRBRARIES}
@@ -141,12 +124,11 @@ add_library (
     idg-cuda
     $<TARGET_OBJECTS:cuda-common>
     $<TARGET_OBJECTS:cuda-generic>
-    $<TARGET_OBJECTS:powersensor-nvml>
 )
 
 set(
     LINK_LIRBRARIES
-    idg-common idg-powersensor
+    idg-common
     ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
@@ -185,12 +167,11 @@ add_library (
     $<TARGET_OBJECTS:cuda-generic>
     $<TARGET_OBJECTS:hybrid-cuda-common>
     $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>
-    $<TARGET_OBJECTS:powersensor-nvml>
 )
 
 set (
     LINK_LIRBRARIES
-    idg-common idg-powersensor
+    idg-common
     ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
@@ -229,7 +210,7 @@ if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
 #  $<TARGET_OBJECTS:hybrid-opencl>
 #)
 #
-#set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+#set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 #
 #target_link_libraries (
 #  idg-hybrid-opencl
@@ -258,7 +239,7 @@ add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-generic>
 )
 
-set(LINK_LIRBRARIES idg-common idg-powersensor ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
 target_link_libraries(
   idg-opencl

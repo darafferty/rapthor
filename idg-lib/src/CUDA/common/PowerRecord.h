@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#include "idg-powersensor.h"
+#include "idg-common.h"
 
 #include "CU.h"
 
@@ -15,8 +15,8 @@ namespace idg {
                 public:
                     void enqueue(cu::Stream &stream);
                     static void getPower(CUstream, CUresult, void *userData);
-                    PowerSensor *sensor;
-                    PowerSensor::State state;
+                    powersensor::PowerSensor *sensor;
+                    powersensor::State state;
                     cu::Event event;
             };
 
