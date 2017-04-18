@@ -16,8 +16,12 @@ namespace powersensor {
 
     static std::string name_likwid("likwid");
     static std::string name_rapl("rapl");
+    static std::string name_nvml("nvml");
+    static std::string name_arduino("tty");
 
-    bool use_powersensor(const std::string name);
+    bool use_powersensor(
+            const std::string name,
+            const char *power_sensor = NULL);
 
     #if not defined(HAVE_POWERSENSOR)
     class State {

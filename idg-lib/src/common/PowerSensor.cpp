@@ -3,11 +3,14 @@
 
 namespace powersensor {
 
-    bool use_powersensor(const std::string name) {
-        char *char_power_sensor = getenv("POWER_SENSOR");
+    bool use_powersensor(
+        const std::string name,
+        const char *power_sensor)
+    {
+        char *char_power_sensor = power_sensor ? (char *) power_sensor : getenv("POWER_SENSOR");
         if (char_power_sensor) {
             std::string str_power_sensor = std::string(char_power_sensor);
-            return str_power_sensor.compare(name) == 0;
+            return str_power_sensor.find(name) != std::string::npos;
         } else {
             return false;
         }

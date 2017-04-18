@@ -53,7 +53,7 @@ namespace idg {
                         Array3D<std::complex<float>>& grid) override;
 
                 private:
-                    PowerSensor* hostPowerSensor;
+                    powersensor::PowerSensor* hostPowerSensor;
                     idg::proxy::cpu::CPU* cpuProxy;
 
             }; // class HybridCUDA

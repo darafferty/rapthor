@@ -36,8 +36,8 @@ namespace idg {
 
                     std::string get_compiler_flags();
 
-                    PowerSensor* get_powersensor() { return powerSensor; };
-                    PowerSensor::State measure();
+                    powersensor::PowerSensor* get_powersensor() { return powerSensor; };
+                    powersensor::State measure();
                     void measure(PowerRecord &record, cu::Stream &stream);
 
                     void launch_gridder(
@@ -199,7 +199,7 @@ namespace idg {
                     std::vector<cu::Module*> mModules;
 
                     // Power sensor private to this InstanceCUDA
-                    PowerSensor *powerSensor;
+                    powersensor::PowerSensor *powerSensor;
 
                 protected:
                     dim3 block_gridder;
