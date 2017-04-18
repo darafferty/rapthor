@@ -8,6 +8,7 @@
 using namespace std;
 using namespace idg;
 using namespace idg::kernel;
+using namespace powersensor;
 
 namespace idg {
     namespace proxy {
@@ -26,10 +27,16 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                #if defined(HAVE_LIKWID)
-                powerSensor = LikwidPowerSensor::create();
+                #if defined(HAVE_POWERSENSOR)
+                if (use_powersensor(name_likwid)) {
+                    powerSensor = likwid::LikwidPowerSensor::create();
+                } else if (use_powersensor(name_rapl)) {
+                    powerSensor = rapl::RaplPowerSensor::create();
+                } else {
+                    powerSensor = DummyPowerSensor::create();
+                }
                 #else
-                powerSensor = RaplPowerSensor::create();
+                powerSensor = DummyPowerSensor::create();
                 #endif
             }
 
@@ -285,7 +292,7 @@ namespace idg {
                     }
 
                     // Run FFT
-                    PowerSensor::State powerStates[2];
+                    State powerStates[2];
                     powerStates[0] = powerSensor->read();
                     kernels.run_fft(grid_size, grid_size, 1, grid.data(), sign);
                     powerStates[1] = powerSensor->read();
@@ -344,7 +351,7 @@ namespace idg {
                 double total_runtime_gridding = 0;
                 double total_runtime_gridder  = 0;
                 double total_runtime_fft      = 0;
-                PowerSensor::State powerStates[4];
+                State powerStates[4];
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -444,7 +451,7 @@ namespace idg {
                 double total_runtime_adding = 0;
                 double total_runtime_adder  = 0;
                 total_runtime_adding = -omp_get_wtime();
-                PowerSensor::State powerStates[2];
+                State powerStates[2];
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -511,7 +518,7 @@ namespace idg {
                 double total_runtime_splitting = 0;
                 double total_runtime_splitter  = 0;
                 total_runtime_splitting = -omp_get_wtime();
-                PowerSensor::State powerStates[2];
+                State powerStates[2];
 
                 // Run splitter
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -585,7 +592,7 @@ namespace idg {
                 double total_runtime_degridding = 0;
                 double total_runtime_degridder  = 0;
                 double total_runtime_fft        = 0;
-                PowerSensor::State powerStates[4];
+                State powerStates[4];
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {

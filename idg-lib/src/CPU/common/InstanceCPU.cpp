@@ -1,4 +1,5 @@
 #include <cstdint> // unint64_t
+#include <unistd.h> // rmdir
 
 #include "idg-config.h"
 

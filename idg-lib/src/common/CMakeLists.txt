@@ -11,6 +11,7 @@ set (${PROJECT_NAME}_headers
     Proxy.h
 	Plan.h
     PlanC.h
+    PowerSensor.h
 )
 
 set (${PROJECT_NAME}_sources
@@ -22,6 +23,7 @@ set (${PROJECT_NAME}_sources
     CompileConstants.cpp
     Proxy.cpp
 	Plan.cpp
+    PowerSensor.cpp
 )
 
 add_library(
