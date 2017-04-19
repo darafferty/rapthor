@@ -38,6 +38,8 @@ namespace idg {
                 } else {
                     hostPowerSensor = DummyPowerSensor::create();
                 }
+                #else
+                hostPowerSensor = DummyPowerSensor::create();
                 #endif
 
                 omp_set_nested(true);
