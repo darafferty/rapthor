@@ -132,6 +132,12 @@ configure_file (
     "${PROJECT_BINARY_DIR}/src/idg-config.h"
 )
 
+install(
+    FILES
+    ${PROJECT_BINARY_DIR}/src/idg-config.h
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}/include
+)
 
 #####################################################
 # Create IDGConfig.cmake and IDGConfigVersion.cmake #
