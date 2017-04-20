@@ -36,8 +36,8 @@ void kernel_adder_wstack(
         for (int row = 1; row < grid_size; row++) {
             for (int s = 0; s < nr_subgrids; s++) {
                 // Load subgrid coordinates
-                int subgrid_x = grid_size - metadata[s].coordinate.x - subgrid_size + 1;
-                int subgrid_y = grid_size - metadata[s].coordinate.y - subgrid_size + 1;
+                int subgrid_x = metadata[s].coordinate.x;
+                int subgrid_y = metadata[s].coordinate.y;
                 int subgrid_w = metadata[s].coordinate.z;
 
                 // Mirror subgrid coordinates for negative w-values
