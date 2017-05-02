@@ -4,6 +4,7 @@
 #include <cstring>
 #include <sstream>
 #include <memory>
+#include <fstream>
 
 #include "idg-common.h"
 
