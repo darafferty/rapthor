@@ -23,7 +23,9 @@ add_library(
 if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
+if (${CMAKE_VERSION} VERSION_GREATER 2.8.12)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
+endif()
 
 # Copy kernel source files
 install(
