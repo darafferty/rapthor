@@ -45,6 +45,7 @@ __kernel void kernel_degridder_(
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
     const float w_offset = w_step * m.coordinate.z;
+    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
 
     // Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
@@ -116,9 +117,10 @@ __kernel void kernel_degridder_(
                 _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                float l = (x+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
-                float m = (y+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
-                float n = 1.0f - (float) sqrt(1.0 - (double) (l * l) - (double) (m * m));
+                const float l = (x+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
+                const float m = (y+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
+                const float tmp = (l * l) + (m * m);
+                const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);
             }
