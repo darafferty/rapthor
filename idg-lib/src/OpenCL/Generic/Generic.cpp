@@ -517,9 +517,12 @@ namespace idg {
                 cl::CommandQueue& htodqueue = device0.get_htod_queue();
                 auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
+                auto sizeof_metadata        = device0.sizeof_metadata(plan.get_nr_subgrids());
                 cl::Buffer h_visibilities   = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities);
                 cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
+                cl::Buffer h_metadata       = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata);
                 htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
+                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata, plan.get_metadata_ptr());
 
                 // Initialize memory for all devices
                 std::vector<cl::Buffer> d_grid_(nr_devices);
@@ -638,15 +641,15 @@ namespace idg {
                         auto subgrid_offset       = plan.get_subgrid_offset(first_bl);
                         auto uvw_offset           = first_bl * device.sizeof_uvw(1, nr_timesteps);
                         auto visibilities_offset  = first_bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
+                        auto metadata_offset      = plan.get_subgrid_offset(first_bl) * device.sizeof_metadata(1);
 
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
                                 device.sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
-                                device.sizeof_metadata(current_nr_subgrids), metadata_ptr);
+                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0,
+                                device.sizeof_metadata(current_nr_subgrids));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch splitter kernel
