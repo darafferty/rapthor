@@ -233,11 +233,10 @@ namespace idg {
                 const char *str_power_sensor,
                 const char *str_power_file)
             {
+                powerSensor = DummyPowerSensor::create();
                 #if defined(HAVE_POWERSENSOR)
                 if (use_powersensor(name_arduino, str_power_sensor)) {
                     powerSensor = arduino::ArduinoPowerSensor::create(str_power_sensor, str_power_file);
-                } else {
-                    powerSensor = DummyPowerSensor::create();
                 }
                 #endif
             }
