@@ -54,7 +54,7 @@ __kernel void kernel_degridder(
     __local float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
     __local float4 _lmn_phaseoffset[BATCH_SIZE];
 
-    // Iterate timesteps and channels
+    // Iterate visibilities
     for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
         int time = i / nr_channels;
         int chan = i % nr_channels;
@@ -69,8 +69,9 @@ __kernel void kernel_degridder(
             wavenumber = wavenumbers[chan];
         }
 
-        // Prepare pixels
+        // Iterate pixels
         const int nr_pixels = subgrid_size * subgrid_size;
+        int pixel_offset = 0;
         for (int j = tid; j < ALIGN(subgrid_size * subgrid_size, nr_threads); j += nr_threads) {
             int y = j / subgrid_size;
             int x = j % subgrid_size;
@@ -130,14 +131,13 @@ __kernel void kernel_degridder(
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
+            int current_nr_pixels = BATCH_SIZE;
             if (time < nr_timesteps) {
-                int last_k = nr_threads;
-                if (nr_pixels % nr_threads != 0) {
-                    int first_j = j / nr_threads * nr_threads;
-                    last_k =  first_j + nr_threads < subgrid_size * subgrid_size ? nr_threads : subgrid_size * subgrid_size - first_j;
-                }
+                current_nr_pixels = nr_pixels - pixel_offset < BATCH_SIZE ?
+                                    nr_pixels - pixel_offset : BATCH_SIZE;
 
-                for (int k = 0; k < last_k; k ++) {
+                // Iterate batch
+                for (int k = 0; k < current_nr_pixels; k ++) {
                     // Load l,m,n
                     float  l = _lmn_phaseoffset[k].x;
                     float  m = _lmn_phaseoffset[k].y;
@@ -180,8 +180,10 @@ __kernel void kernel_degridder(
                     vis.s6 -= phasor.y * apYY.y;
                     vis.s7 += phasor.y * apYY.x;
                 }
-            }
-        }
+            } // end k (batch)
+
+            pixel_offset += current_nr_pixels;
+        } // end j (pixels)
 
         // Set visibility value
         const float scale = 1.0f / (subgrid_size*subgrid_size);
@@ -197,5 +199,5 @@ __kernel void kernel_degridder(
             visibilities[idx_yx + 2] = (float2) (vis.s4, vis.s5) * scale;
             visibilities[idx_yy + 3] = (float2) (vis.s6, vis.s7) * scale;
         }
-    }
+    } // end i (visibilities)
 }
