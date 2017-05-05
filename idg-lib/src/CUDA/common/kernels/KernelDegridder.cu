@@ -28,7 +28,7 @@ kernel_degridder(
     ) {
     int tidx       = threadIdx.x;
     int tidy       = threadIdx.y;
-    int tid        = tidx + tidy * blockDim.y;
+    int tid        = tidx + tidy * blockDim.x;
     int nr_threads = blockDim.x * blockDim.y;
     int s          = blockIdx.x;
 
