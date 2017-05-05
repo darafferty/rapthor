@@ -28,7 +28,7 @@ __kernel void kernel_degridder(
     int s = get_group_id(0);
     int tidx = get_local_id(0);
     int tidy = get_local_id(1);
-    int tid  = tidx + tidy + get_local_size(1);
+    int tid  = tidx + tidy * get_local_size(0);
     int nr_threads = get_local_size(0) * get_local_size(1);
 
     // Load metadata for first subgrid
@@ -55,7 +55,7 @@ __kernel void kernel_degridder(
     __local float4 _lmn_phaseoffset[BATCH_SIZE];
 
     // Iterate timesteps and channels
-    for (int i = tidx; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
+    for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
         int time = i / nr_channels;
         int chan = i % nr_channels;
 
@@ -71,7 +71,7 @@ __kernel void kernel_degridder(
 
         // Prepare pixels
         const int nr_pixels = subgrid_size * subgrid_size;
-        for (int j = tidx; j < ALIGN(subgrid_size * subgrid_size, nr_threads); j += nr_threads) {
+        for (int j = tid; j < ALIGN(subgrid_size * subgrid_size, nr_threads); j += nr_threads) {
             int y = j / subgrid_size;
             int x = j % subgrid_size;
 
@@ -116,8 +116,8 @@ __kernel void kernel_degridder(
                     &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
 
                 // Store pixels
-                _pix[0][tidx] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][tidx] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                _pix[0][tid] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
+                _pix[1][tid] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
                 const float l = (x+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
@@ -125,7 +125,7 @@ __kernel void kernel_degridder(
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[tidx] = (float4) (l, m, n, phase_offset);
+                _lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
             }
 
             barrier(CLK_LOCAL_MEM_FENCE);
