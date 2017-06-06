@@ -65,8 +65,8 @@ namespace idg {
             void InstanceOpenCL::set_parameters_default() {
                 batch_gridder   = 32;
                 batch_degridder = 256;
-                block_gridder   = cl::NDRange(256, 1);
-                block_degridder = cl::NDRange(batch_degridder, 1);
+                block_gridder   = cl::NDRange(128, 1);
+                block_degridder = cl::NDRange(256, 1);
                 block_adder     = cl::NDRange(128, 1);
                 block_splitter  = cl::NDRange(128, 1);
                 block_scaler    = cl::NDRange(128, 1);
@@ -102,6 +102,20 @@ namespace idg {
 				} else if (name.compare("Tahiti") == 0) {
 					set_parameters_tahiti();
 				}
+
+                // Override parameters from environment
+                char *cstr_batch_size = getenv("BATCHSIZE");
+                if (cstr_batch_size) {
+                    auto batch_size = atoi(cstr_batch_size);
+                    batch_gridder   = batch_size;
+                    batch_degridder = batch_size;
+                }
+                char *cstr_block_size = getenv("BLOCKSIZE");
+                if (cstr_block_size) {
+                    auto block_size = atoi(cstr_block_size);
+                    block_gridder   = cl::NDRange(block_size, 1);
+                    block_degridder = cl::NDRange(block_size, 1);
+                }
             }
 
 
