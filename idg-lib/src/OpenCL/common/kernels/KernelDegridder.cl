@@ -2,7 +2,6 @@
 #include "Types.cl"
 
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
-#define MAX_NR_CHANNELS 8
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
@@ -131,10 +130,9 @@ __kernel void kernel_degridder(
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
-            int current_nr_pixels = BATCH_SIZE;
             if (time < nr_timesteps) {
-                current_nr_pixels = nr_pixels - pixel_offset < BATCH_SIZE ?
-                                    nr_pixels - pixel_offset : BATCH_SIZE;
+                int current_nr_pixels = nr_pixels - pixel_offset < nr_threads ?
+                                        nr_pixels - pixel_offset : nr_threads;
 
                 // Iterate batch
                 for (int k = 0; k < current_nr_pixels; k ++) {
@@ -180,9 +178,9 @@ __kernel void kernel_degridder(
                     vis.s6 -= phasor.y * apYY.y;
                     vis.s7 += phasor.y * apYY.x;
                 }
-            } // end k (batch)
 
-            pixel_offset += current_nr_pixels;
+                pixel_offset += current_nr_pixels;
+            } // end k (batch)
         } // end j (pixels)
 
         // Set visibility value

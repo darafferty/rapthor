@@ -66,7 +66,7 @@ namespace idg {
                 batch_gridder   = 32;
                 batch_degridder = 256;
                 block_gridder   = cl::NDRange(128, 1);
-                block_degridder = cl::NDRange(batch_degridder, 1);
+                block_degridder = cl::NDRange(256, 1);
                 block_adder     = cl::NDRange(128, 1);
                 block_splitter  = cl::NDRange(128, 1);
                 block_scaler    = cl::NDRange(128, 1);
