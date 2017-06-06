@@ -64,7 +64,7 @@ namespace idg {
 
             void InstanceOpenCL::set_parameters_default() {
                 batch_gridder   = 32;
-                batch_degridder = 256;
+                batch_degridder = 192;
                 block_gridder   = cl::NDRange(128, 1);
                 block_degridder = cl::NDRange(256, 1);
                 block_adder     = cl::NDRange(128, 1);
