@@ -3,12 +3,15 @@
 #include "Types.cl"
 
 #define MAX_NR_TIMESTEPS GRIDDER_BATCH_SIZE
+#define BLOCK_SIZE       GRIDDER_BLOCK_SIZE
 #define MAX_NR_CHANNELS 8
 
 /*
     Kernel
 */
-__kernel void kernel_gridder_(
+__kernel
+__attribute__((work_group_size_hint(BLOCK_SIZE, 1, 1)))
+void kernel_gridder_(
     const int                current_nr_channels,
     const int                grid_size,
     const int                subgrid_size,
