@@ -2,13 +2,16 @@
 #include "Types.cl"
 
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
+#define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 
 /*
     Kernel
 */
-__kernel void kernel_degridder(
+__kernel
+__attribute__((work_group_size_hint(BLOCK_SIZE, 1, 1)))
+void kernel_degridder(
     const int                grid_size,
     const int                subgrid_size,
     const float              image_size,

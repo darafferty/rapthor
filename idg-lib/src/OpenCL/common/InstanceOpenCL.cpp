@@ -64,8 +64,8 @@ namespace idg {
 
             void InstanceOpenCL::set_parameters_default() {
                 batch_gridder   = 32;
-                batch_degridder = 256;
-                block_gridder   = cl::NDRange(128, 1);
+                batch_degridder = 192;
+                block_gridder   = cl::NDRange(192, 1);
                 block_degridder = cl::NDRange(256, 1);
                 block_adder     = cl::NDRange(128, 1);
                 block_splitter  = cl::NDRange(128, 1);
@@ -139,6 +139,8 @@ namespace idg {
 				std::stringstream flags_device;
                 flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
                 flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
+                flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder[0];
+                flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder[0];
 
                 // Combine flags
                 std::string flags = flags_opencl.str() +
