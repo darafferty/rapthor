@@ -65,8 +65,11 @@ void kernel_gridder_(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
-    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
-    const float w_offset = 2*M_PI*w_offset_in_lambda;
+
+    // Compute u,v,w offset in wavelenghts
+    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float w_offset = w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += nr_threads) {
@@ -105,10 +108,6 @@ void kernel_gridder_(
         }
 
         barrier(CLK_LOCAL_MEM_FENCE);
-
-        // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-        float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
 
         // Iterate all pixels in subgrid
         for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
