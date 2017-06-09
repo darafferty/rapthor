@@ -47,12 +47,11 @@ kernel_degridder(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.coordinate.z;
-    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
 
-    // Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    // Compute u,v,w offset in wavelenghts
+    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Shared data
     __shared__ float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
