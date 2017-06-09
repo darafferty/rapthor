@@ -9,6 +9,9 @@
 
 
 extern "C" {
+/*
+    Kernel
+*/
 __global__ void
 __launch_bounds__(BLOCK_SIZE)
 kernel_degridder(
@@ -24,13 +27,13 @@ kernel_degridder(
     const float*         __restrict__ spheroidal,
     const float2*        __restrict__ aterm,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ subgrid
-    ) {
+    const float2*        __restrict__ subgrid)
+{
+    int s          = blockIdx.x;
     int tidx       = threadIdx.x;
     int tidy       = threadIdx.y;
     int tid        = tidx + tidy * blockDim.x;
     int nr_threads = blockDim.x * blockDim.y;
-    int s          = blockIdx.x;
 
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
@@ -45,13 +48,14 @@ kernel_degridder(
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
     const float w_offset = w_step * m.coordinate.z;
+    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
 
     // Compute u and v offset in wavelenghts
     float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
 
     // Shared data
-    __shared__ float4 _pix[NR_POLARIZATIONS / 2][BATCH_SIZE];
+    __shared__ float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
     __shared__ float4 _lmn_phaseoffset[BATCH_SIZE];
 
     __syncthreads();
@@ -62,8 +66,8 @@ kernel_degridder(
         int chan = i % nr_channels;
 
         float2 visXX, visXY, visYX, visYY;
-        float  u, v, w;
-        float  wavenumber;
+        float u, v, w;
+        float wavenumber;
 
         if (time < nr_timesteps) {
             visXX = make_float2(0, 0);
@@ -208,6 +212,5 @@ kernel_degridder(
         }
     } // end for i (visibilities)
 
-    __syncthreads();
 } // end kernel_degridder
 } // end extern "C"

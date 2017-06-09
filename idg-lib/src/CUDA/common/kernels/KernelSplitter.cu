@@ -13,12 +13,12 @@ __global__ void kernel_splitter(
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     float2*         __restrict__ subgrid,
-    const float2*   __restrict__ grid
-    ) {
+    const float2*   __restrict__ grid)
+{
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
     int tid = tidx + tidy * blockDim.x;
-    int blockSize = blockDim.x * blockDim.y;
+    int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
     // Load position in grid
@@ -29,10 +29,10 @@ __global__ void kernel_splitter(
     if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
         grid_y >= 0 && grid_y < grid_size-subgrid_size) {
 
-        // Iterate all pixels
-        for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
-            int y = i / subgrid_size;
+        // Iterate all pixels in subgrid
+        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
             int x = i % subgrid_size;
+            int y = i / subgrid_size;
             float phase = -M_PI*(x+y-subgrid_size)/subgrid_size;
             float2 phasor = make_float2(cos(phase), sin(phase));
 
@@ -50,4 +50,4 @@ __global__ void kernel_splitter(
         }
     }
 }
-}
+} // end kernel_splitter

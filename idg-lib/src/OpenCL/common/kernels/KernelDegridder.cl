@@ -60,15 +60,18 @@ void kernel_degridder(
         int time = i / nr_channels;
         int chan = i % nr_channels;
 
-        float8 vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
-        float4 _uvw;
+        float8 vis;
+        float u, v, w;
         float wavenumber;
 
         if (time < nr_timesteps) {
-            UVW a = uvw[time_offset_global + time];
-            _uvw = (float4) (a.u, a.v, a.w, 0);
+            vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
+            u = uvw[time_offset_global + time].u;
+            v = uvw[time_offset_global + time].v;
+            w = uvw[time_offset_global + time].w;
             wavenumber = wavenumbers[chan];
         }
+        barrier(CLK_GLOBAL_MEM_FENCE);
 
         // Iterate pixels
         const int nr_pixels = subgrid_size * subgrid_size;
@@ -99,7 +102,7 @@ void kernel_degridder(
                 float2 aYY2 = conj(aterm[station2_idx + 3]);
 
                 // Load spheroidal
-                float _spheroidal = spheroidal[y * subgrid_size + x];
+                float spheroidal_ = spheroidal[y * subgrid_size + x];
 
                 // Compute shifted position in subgrid
                 int x_src = (x + (subgrid_size/2)) % subgrid_size;
@@ -110,10 +113,10 @@ void kernel_degridder(
                 int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
                 int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
                 int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                float2 pixelsXX = _spheroidal * subgrid[idx_xx];
-                float2 pixelsXY = _spheroidal * subgrid[idx_xy];
-                float2 pixelsYX = _spheroidal * subgrid[idx_yx];
-                float2 pixelsYY = _spheroidal * subgrid[idx_yy];
+                float2 pixelsXX = spheroidal_ * subgrid[idx_xx];
+                float2 pixelsXY = spheroidal_ * subgrid[idx_xy];
+                float2 pixelsYX = spheroidal_ * subgrid[idx_yx];
+                float2 pixelsYY = spheroidal_ * subgrid[idx_yy];
 
                 // Apply aterm
                 apply_aterm(
@@ -126,8 +129,8 @@ void kernel_degridder(
                 _pix[1][tid] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                const float l = (x+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
-                const float m = (y+0.5-(subgrid_size / 2)) * image_size/subgrid_size;
+                const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
+                const float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
@@ -137,17 +140,17 @@ void kernel_degridder(
             barrier(CLK_LOCAL_MEM_FENCE);
 
             // Iterate current batch of pixels
-            for (int k = 0; k < current_nr_pixels; k ++) {
+            for (int k = 0; k < current_nr_pixels; k++) {
                 // Load l,m,n
-                float  l = _lmn_phaseoffset[k].x;
-                float  m = _lmn_phaseoffset[k].y;
-                float  n = _lmn_phaseoffset[k].z;
+                float l = _lmn_phaseoffset[k].x;
+                float m = _lmn_phaseoffset[k].y;
+                float n = _lmn_phaseoffset[k].z;
 
                 // Load phase offset
-                float  phase_offset = _lmn_phaseoffset[k].w;
+                float phase_offset = _lmn_phaseoffset[k].w;
 
                 // Compute phase index
-                float  phase_index = _uvw.x * l + _uvw.y * m + _uvw.z * n;
+                float phase_index = u * l + v * m + w * n;
 
                 // Compute phasor
                 float  phase  = (phase_index * wavenumber) - phase_offset;
@@ -183,18 +186,15 @@ void kernel_degridder(
         } // end for j (pixels)
 
         // Store visibility
-        const float scale = 1.0f / (subgrid_size*subgrid_size);
+        const float scale = 1.0f / (nr_pixels);
         int idx_time = time_offset_global + time;
-        int idx_xx = index_visibility(nr_channels, idx_time, chan);
-        int idx_xy = index_visibility(nr_channels, idx_time, chan);
-        int idx_yx = index_visibility(nr_channels, idx_time, chan);
-        int idx_yy = index_visibility(nr_channels, idx_time, chan);
+        int idx_vis = index_visibility(nr_channels, idx_time, chan);
 
         if (time < nr_timesteps) {
-            visibilities[idx_xx + 0] = (float2) (vis.s0, vis.s1) * scale;
-            visibilities[idx_xy + 1] = (float2) (vis.s2, vis.s3) * scale;
-            visibilities[idx_yx + 2] = (float2) (vis.s4, vis.s5) * scale;
-            visibilities[idx_yy + 3] = (float2) (vis.s6, vis.s7) * scale;
+            visibilities[idx_vis + 0] = (float2) (vis.s0, vis.s1) * scale;
+            visibilities[idx_vis + 1] = (float2) (vis.s2, vis.s3) * scale;
+            visibilities[idx_vis + 2] = (float2) (vis.s4, vis.s5) * scale;
+            visibilities[idx_vis + 3] = (float2) (vis.s6, vis.s7) * scale;
         }
     } // end for i (visibilities)
-}
+} // end kernel_degridder

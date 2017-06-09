@@ -15,7 +15,7 @@ __kernel void kernel_splitter(
     int tidx = get_local_id(0);
     int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
-    int blocksize = get_local_size(0) * get_local_size(1);
+    int nr_threads = get_local_size(0) * get_local_size(1);
     int s = get_group_id(0);
 
     // Load position in grid
@@ -23,12 +23,12 @@ __kernel void kernel_splitter(
     int grid_x = m.coordinate.x;
     int grid_y = m.coordinate.y;
 
-    // Check wheter subgrid fits in grid
+    // Check whether subgrid fits in grid
     if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
         grid_y >= 0 && grid_y < grid_size-subgrid_size) {
 
         // Iterate all pixels in subgrid
-        for (int i = tid; i < subgrid_size * subgrid_size; i += blocksize) {
+        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
             int x = i % subgrid_size;
             int y = i / subgrid_size;
             float phase = -M_PI*(x+y-subgrid_size)/subgrid_size;
@@ -47,4 +47,4 @@ __kernel void kernel_splitter(
             }
         }
     }
-}
+} // end kernel_splitter

@@ -15,7 +15,7 @@ __kernel void kernel_adder(
     int tidx = get_local_id(0);
     int tidy = get_local_id(1);
     int tid = tidx + tidy * get_local_size(0);
-    int blocksize = get_local_size(0) * get_local_size(1);
+    int nr_threads = get_local_size(0) * get_local_size(1);
     int s = get_group_id(0);
 
     // Load position in grid
@@ -24,7 +24,7 @@ __kernel void kernel_adder(
     int grid_y = m.coordinate.y;
 
     // Iterate all pixels in subgrid
-    for (int i = tid; i < subgrid_size * subgrid_size; i += blocksize) {
+    for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
         int y = i / subgrid_size;
         int x = i % subgrid_size;
         float phase = M_PI*(x+y-subgrid_size)/subgrid_size;
@@ -46,4 +46,4 @@ __kernel void kernel_adder(
             }
         }
     }
-}
+} // end kernel_adder
