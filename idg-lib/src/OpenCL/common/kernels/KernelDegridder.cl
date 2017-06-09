@@ -37,7 +37,7 @@ void kernel_degridder(
 
     // Load metadata for current subgrid
     const Metadata m = metadata[s];
-    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
+    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
     const int nr_timesteps = m.nr_timesteps;
     const int aterm_index = m.aterm_index;
     const int station1 = m.baseline.station1;
@@ -125,8 +125,8 @@ void kernel_degridder(
                     &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
 
                 // Store pixels
-                _pix[0][tid] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][tid] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                _pix[0][j] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
+                _pix[1][j] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
                 const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -134,7 +134,7 @@ void kernel_degridder(
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[tid] = (float4) (l, m, n, phase_offset);
+                _lmn_phaseoffset[j] = (float4) (l, m, n, phase_offset);
             } // end for j (pixels)
 
             barrier(CLK_LOCAL_MEM_FENCE);

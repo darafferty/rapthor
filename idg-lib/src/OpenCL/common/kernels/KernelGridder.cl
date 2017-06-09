@@ -58,7 +58,7 @@ void kernel_gridder_(
 
     // Load metadata for current subgrid
     const Metadata m = metadata[s];
-    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
+    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
     const int nr_timesteps = m.nr_timesteps;
     const int aterm_index = m.aterm_index;
     const int station1 = m.baseline.station1;
