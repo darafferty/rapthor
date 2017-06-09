@@ -14,6 +14,6 @@ namespace idg {
                 record->state = record->sensor->read();
             }
 
-        } // end namespace cuda
+        } // end namespace opencl
     } // end namespace kernel
 } // end namespace idg
