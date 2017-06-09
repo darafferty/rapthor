@@ -29,17 +29,17 @@ __device__ void kernel_gridder_(
     const float*    __restrict__ spheroidal,
     const float2*   __restrict__ aterm,
     const Metadata* __restrict__ metadata,
-          float2*   __restrict__ subgrid
-    ) {
+          float2*   __restrict__ subgrid)
+{
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
     int tid = tidx + tidy * blockDim.x;
-    int blockSize = blockDim.x * blockDim.y;
+    int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
     // Set subgrid to zero
     if (channel_offset == 0) {
-        for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
+        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
             int idx_xx = index_subgrid(subgrid_size, s, 0, 0, i);
             int idx_xy = index_subgrid(subgrid_size, s, 1, 0, i);
             int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
@@ -65,11 +65,9 @@ __device__ void kernel_gridder_(
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
-    const float w_offset_in_lambda = w_step * ((float)m.coordinate.z + 0.5);
-    const float w_offset = 2*M_PI*w_offset_in_lambda;
 
     // Load wavenumbers
-    for (int i = tid; i < current_nr_channels; i += blockSize) {
+    for (int i = tid; i < current_nr_channels; i += nr_threads) {
         wavenumbers_[i] = wavenumbers[channel_offset + i];
     }
 
@@ -82,13 +80,13 @@ __device__ void kernel_gridder_(
         __syncthreads();
 
         // Load UVW
-        for (int time = tid; time < current_nr_timesteps; time += blockSize) {
+        for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
             UVW a = uvw[time_offset_global + time_offset_local + time];
             uvw_[time] = make_float4(a.u, a.v, a.w, 0);
         }
 
         // Load visibilities
-        for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += blockSize) {
+        for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += nr_threads) {
             int time = i / current_nr_channels;
             int chan = i % current_nr_channels;
             if (time < current_nr_timesteps && chan < current_nr_channels) {
@@ -110,11 +108,12 @@ __device__ void kernel_gridder_(
         __syncthreads();
 
         // Compute u and v offset in wavelenghts
-        float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-        float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+        const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+        const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+        const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
         // Iterate all pixels in subgrid
-        for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
+        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
             int y = i / subgrid_size;
             int x = i % subgrid_size;
 
@@ -219,7 +218,7 @@ __device__ void kernel_gridder_(
             subgrid[idx_yy] += uvYY * spheroidal_;
         } // end for i
     } // end for time_offset_local
-}
+} // end kernel_gridder_
 
 #define KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE_, NR_CHANNELS) \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
@@ -244,8 +243,8 @@ __launch_bounds__(BLOCK_SIZE)
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterm,
     const Metadata*        __restrict__ metadata,
-          float2*          __restrict__ subgrid
-    ) {
+          float2*          __restrict__ subgrid)
+{
 
     int channel_offset = 0;
     assert(MAX_NR_CHANNELS == 8);
@@ -257,5 +256,5 @@ __launch_bounds__(BLOCK_SIZE)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 3)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*4, 2)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*8, 1)
-}
+} // end kernel_gridder
 } // end extern "C"

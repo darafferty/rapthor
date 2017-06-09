@@ -9,6 +9,9 @@
 
 
 extern "C" {
+/*
+    Kernel
+*/
 __global__ void
 __launch_bounds__(BLOCK_SIZE)
 kernel_degridder(
@@ -24,34 +27,34 @@ kernel_degridder(
     const float*         __restrict__ spheroidal,
     const float2*        __restrict__ aterm,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ subgrid
-    ) {
+    const float2*        __restrict__ subgrid)
+{
+    int s          = blockIdx.x;
     int tidx       = threadIdx.x;
     int tidy       = threadIdx.y;
     int tid        = tidx + tidy * blockDim.x;
     int nr_threads = blockDim.x * blockDim.y;
-    int s          = blockIdx.x;
 
     // Load metadata for first subgrid
     const Metadata &m_0 = metadata[0];
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + (m.time_offset - m_0.time_offset);
+    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
     const int nr_timesteps = m.nr_timesteps;
     const int aterm_index = m.aterm_index;
     const int station1 = m.baseline.station1;
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
-    const float w_offset = w_step * m.coordinate.z;
 
-    // Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    // Compute u,v,w offset in wavelenghts
+    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Shared data
-    __shared__ float4 _pix[NR_POLARIZATIONS / 2][BATCH_SIZE];
+    __shared__ float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
     __shared__ float4 _lmn_phaseoffset[BATCH_SIZE];
 
     __syncthreads();
@@ -62,8 +65,8 @@ kernel_degridder(
         int chan = i % nr_channels;
 
         float2 visXX, visXY, visYX, visYY;
-        float  u, v, w;
-        float  wavenumber;
+        float u, v, w;
+        float wavenumber;
 
         if (time < nr_timesteps) {
             visXX = make_float2(0, 0);
@@ -132,8 +135,8 @@ kernel_degridder(
                     pixelsXX, pixelsXY, pixelsYX, pixelsYY);
 
                 // Store pixels
-                _pix[0][tid] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][tid] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                _pix[0][j] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
+                _pix[1][j] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
                 const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -141,7 +144,7 @@ kernel_degridder(
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[tid] = make_float4(l, m, n, phase_offset);
+                _lmn_phaseoffset[j] = make_float4(l, m, n, phase_offset);
             } // end for j (pixels)
 
              __syncthreads();
@@ -208,6 +211,5 @@ kernel_degridder(
         }
     } // end for i (visibilities)
 
-    __syncthreads();
 } // end kernel_degridder
 } // end extern "C"

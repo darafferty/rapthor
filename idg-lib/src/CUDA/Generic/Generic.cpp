@@ -629,8 +629,8 @@ namespace idg {
                         double runtime_fft       = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
                         double runtime_degridder = devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
                         #if defined(REPORT_VERBOSE)
-                        auxiliary::report(" splitter", device.flops_adder(current_nr_subgrids),
-                                                       device.bytes_adder(current_nr_subgrids),
+                        auxiliary::report(" splitter", device.flops_splitter(current_nr_subgrids),
+                                                       device.bytes_splitter(current_nr_subgrids),
                                                        devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
                         auxiliary::report("  sub-fft", device.flops_fft(subgrid_size, current_nr_subgrids),
                                                        device.bytes_fft(subgrid_size, current_nr_subgrids),

@@ -13,12 +13,12 @@ __global__ void kernel_adder(
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     const float2*   __restrict__ subgrid,
-          float2*   __restrict__ grid
-    ) {
+          float2*   __restrict__ grid)
+{
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
     int tid = tidx + tidy * blockDim.x;
-    int blockSize = blockDim.x * blockDim.y;
+    int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
     // Load position in grid
@@ -26,7 +26,8 @@ __global__ void kernel_adder(
     int grid_x = m.coordinate.x;
     int grid_y = m.coordinate.y;
 
-    for (int i = tid; i < subgrid_size * subgrid_size; i += blockSize) {
+    // Iterate all pixels in subgrid
+    for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
         int y = i / subgrid_size;
         int x = i % subgrid_size;
         float phase = M_PI*(x+y-subgrid_size)/subgrid_size;
@@ -48,5 +49,5 @@ __global__ void kernel_adder(
             }
         }
     }
-}
+} // end kernel_adder
 }
