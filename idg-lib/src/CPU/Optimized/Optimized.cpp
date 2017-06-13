@@ -89,6 +89,7 @@ namespace idg {
                     intel_flags  << " -DUSE_VML";
                     #if defined(BUILD_WITH_PYTHON)
                     intel_flags << " -lmkl_vml_avx2";
+                    intel_flags << " -lmkl_vml_avx";
                     #endif
                 }
 
