@@ -1,3 +1,9 @@
+#if defined(USE_LOOKUP)
+#define PI     float(M_PI)
+#define TWO_PI float(2 * M_PI)
+#define HLF_PI float(M_PI_2)
+#endif
+
 inline void compute_sincos(
     const int n,
     const float *x,
@@ -10,10 +16,73 @@ inline void compute_sincos(
     for (int i = 0; i < n; i++) {
             sin[i] = sinf(x[i]);
             cos[i] = cosf(x[i]);
-        }
+    }
     #endif
 }
 
+#if defined(USE_LOOKUP)
+inline void compute_lookup(
+    const int n,
+    float* __restrict__ lookup)
+{
+    float p = 0;
+    float increment = HLF_PI / NR_SAMPLES;
+    for (int i = 0; i < NR_SAMPLES+1; i++) {
+        lookup[i] = sinf(p);
+        p += increment;
+    }
+}
+
+inline idg::float2 compute_sincos(
+    const float* __restrict__ lookup,
+    const float x)
+{
+        float p = x;
+        float s1 = 1;
+        float s2;
+
+        // Shift p in range [0:2*pi]
+        if (p < 0 || p > TWO_PI) {
+            p = fmodf(p, TWO_PI);
+            p = p < 0 ? p + TWO_PI : p;
+        }
+
+        // Shift p in range [0:pi]
+        if (p > PI) {
+            p = p - PI;
+            s1 = -1;
+        }
+
+        // Shift p in range [0:0.5*pi]
+        if (p > HLF_PI) {
+            p = PI - p;
+            s2 = -s1;
+        } else {
+            s2 = s1;
+        }
+
+        // Compute indices
+        int index1 = (int) ((p * NR_SAMPLES / HLF_PI) + 0.5f);
+        int index2 = NR_SAMPLES - index1;
+
+        return {lookup[index2] * s2, lookup[index1] * s1};
+}
+
+inline void compute_sincos(
+    const float* __restrict__ lookup,
+    const float* __restrict__ x,
+    const int                 n,
+    float*       __restrict__ sin,
+    float*       __restrict__ cos)
+{
+    #pragma vector aligned(x, sin, cos)
+    for (int i = 0; i < n; i++) {
+        idg::float2 phasor = compute_sincos(lookup, x[i]);
+        cos[i] = phasor.real;
+        sin[i] = phasor.imag;
+    }
+}
+#endif
 
 inline void apply_aterm(
     const idg::float2 aXX1, const idg::float2 aXY1,

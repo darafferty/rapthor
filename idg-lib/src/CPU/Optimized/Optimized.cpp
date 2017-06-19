@@ -136,6 +136,13 @@ namespace idg {
                     flags << intel_flags.str();
                 #endif
 
+                // Flags for sincos lookup table
+                char *cstr_use_lookup = getenv("USE_LOOKUP");
+                if (cstr_use_lookup) {
+                    flags << " -DUSE_LOOKUP=1";
+                    flags << " -DNR_SAMPLES=" << atoi(cstr_use_lookup);
+                }
+
                 return flags.str();
             }
 
