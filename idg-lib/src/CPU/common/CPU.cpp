@@ -582,7 +582,7 @@ namespace idg {
 
                 // Constants
                 auto nr_baselines = visibilities.get_z_dim();
-                auto jobsize      = nr_baselines; // TODO
+                auto jobsize      = 128; // TODO
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
