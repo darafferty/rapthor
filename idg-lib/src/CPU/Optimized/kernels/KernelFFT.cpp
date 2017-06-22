@@ -53,32 +53,37 @@ void kernel_fft_subgrid(
     fftwf_complex *_data,
 	int sign
 	) {
-    #pragma omp parallel for
+
+    fftwf_complex *data = (fftwf_complex *) _data;
+
+    // 2D FFT
+    int rank = 2;
+
+    // For grids of size*size elements
+    int n[] = {(int) size, (int) size};
+
+    // Set stride
+    int istride = 1;
+    int ostride = istride;
+
+    // Set dist
+    int idist = n[0] * n[1];
+    int odist = idist;
+
+    // Planner flags
+    int flags = FFTW_ESTIMATE;
+
+
+    // Create plan
+    fftwf_plan plan;
+    plan = fftwf_plan_many_dft(
+        rank, n, NR_POLARIZATIONS, _data, n,
+        istride, idist, _data, n,
+        ostride, odist, sign, flags);
+
+    #pragma omp parallel for private(data)
     for (int i = 0; i < batch; i++) {
-        fftwf_complex *data = (fftwf_complex *) _data + i * (NR_POLARIZATIONS * size * size);
-        // 2D FFT
-        int rank = 2;
-
-        // For grids of size*size elements
-        int n[] = {(int) size, (int) size};
-
-        // Set stride
-        int istride = 1;
-        int ostride = istride;
-
-        // Set dist
-        int idist = n[0] * n[1];
-        int odist = idist;
-
-        // Planner flags
-        int flags = FFTW_ESTIMATE;
-        fftwf_plan plan;
-
-        #pragma omp critical
-        plan = fftwf_plan_many_dft(
-            rank, n, NR_POLARIZATIONS, _data, n,
-            istride, idist, _data, n,
-            ostride, odist, sign, flags);
+        data = (fftwf_complex *) _data + i * (NR_POLARIZATIONS * size * size);
 
         // Execute FFTs
         fftwf_execute_dft(plan, data, data);
@@ -92,10 +97,10 @@ void kernel_fft_subgrid(
             }
         }
 
-        #pragma omp critical
-        fftwf_destroy_plan(plan);
-
     } // end for batch
+
+    // Cleanup
+    fftwf_destroy_plan(plan);
 }
 
 void kernel_fft(
