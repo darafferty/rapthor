@@ -15,6 +15,7 @@
 #cmakedefine REPORT_VERBOSE
 #cmakedefine REPORT_TOTAL
 #cmakedefine REPORT_OPS
+#cmakedefine COMPILE_VERBOSE
 
 #cmakedefine CLANG_CXX_COMPILER
 #cmakedefine GNU_CXX_COMPILER
