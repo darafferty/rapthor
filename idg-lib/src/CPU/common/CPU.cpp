@@ -341,7 +341,7 @@ namespace idg {
 
                 // Constants
                 auto nr_baselines = visibilities.get_z_dim();
-                auto jobsize      = 128; // TODO
+                auto jobsize      = kernel::cpu::jobsize_gridder;
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
@@ -441,7 +441,7 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto jobsize      = 128; // TODO
+                auto jobsize      = kernel::cpu::jobsize_adder;
                 auto grid_size    = grid.get_x_dim();
                 auto nr_w_layers  = grid.get_w_dim();
                 auto nr_baselines = plan.get_nr_baselines();
@@ -509,7 +509,7 @@ namespace idg {
                 #endif
 
                 // Constants
-                auto jobsize      = 128; // TODO
+                auto jobsize      = kernel::cpu::jobsize_splitter;
                 auto grid_size    = grid.get_x_dim();
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
@@ -582,7 +582,7 @@ namespace idg {
 
                 // Constants
                 auto nr_baselines = visibilities.get_z_dim();
-                auto jobsize      = 128; // TODO
+                auto jobsize      = kernel::cpu::jobsize_degridder;
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();

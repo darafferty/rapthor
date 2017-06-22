@@ -212,7 +212,6 @@ namespace idg {
                 } // end for
             } // end load_kernel_funcions
 
-
             // Function signatures
             #define sig_gridder         (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder       (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
