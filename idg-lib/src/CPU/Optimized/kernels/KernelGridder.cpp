@@ -27,8 +27,8 @@ void kernel_gridder_(
           idg::float2*               subgrid)
 {
     #if defined(USE_LOOKUP)
-    float lookup[NR_SAMPLES+1];
-    compute_lookup(NR_SAMPLES, lookup);
+    float lookup[NR_SAMPLES];
+    compute_lookup(lookup);
     #endif
 
     // Find offset of first subgrid
@@ -123,6 +123,7 @@ void kernel_gridder_(
                 #if defined(USE_LOOKUP)
                 float phasor_real[nr_timesteps*current_nr_channels];
                 float phasor_imag[nr_timesteps*current_nr_channels];
+
                 compute_sincos(lookup, phase, nr_timesteps*current_nr_channels, phasor_imag, phasor_real);
                 #elif defined(USE_VML)
                 float phasor_real[nr_timesteps*current_nr_channels];

@@ -1,7 +1,18 @@
 #if defined(USE_LOOKUP)
+// Floating-point PI values
 #define PI     float(M_PI)
 #define TWO_PI float(2 * M_PI)
 #define HLF_PI float(M_PI_2)
+
+// Integer representations of PI
+#define TWO_PI_INT        32768
+#define PI_INT            TWO_PI_INT / 2
+#define HLF_PI_INT        TWO_PI_INT / 4
+
+// Constants for sine/cosine lookup table
+#define TWO_HLF_PI        TWO_PI + HLF_PI
+#define TWO_HLF_PI_INT    TWO_PI_INT + HLF_PI_INT
+#define NR_SAMPLES        TWO_HLF_PI_INT + 1
 #endif
 
 inline void compute_sincos(
@@ -22,14 +33,10 @@ inline void compute_sincos(
 
 #if defined(USE_LOOKUP)
 inline void compute_lookup(
-    const int n,
     float* __restrict__ lookup)
 {
-    float p = 0;
-    float increment = HLF_PI / NR_SAMPLES;
-    for (int i = 0; i < NR_SAMPLES+1; i++) {
-        lookup[i] = sinf(p);
-        p += increment;
+    for (int i = 0; i < NR_SAMPLES; i++) {
+        lookup[i] = sinf(i * (TWO_PI / TWO_PI_INT));
     }
 }
 
@@ -38,34 +45,16 @@ inline idg::float2 compute_sincos(
     const float x)
 {
         float p = x;
-        float s1 = 1;
-        float s2;
+
+        // Convert to integer pi range [0:NR_SAMPLES]
+        int p_int = int(p * (TWO_PI_INT / TWO_PI));
 
         // Shift p in range [0:2*pi]
-        if (p < 0 || p > TWO_PI) {
-            p = fmodf(p, TWO_PI);
-            p = p < 0 ? p + TWO_PI : p;
-        }
+        p_int &= (TWO_PI_INT - 1);
 
-        // Shift p in range [0:pi]
-        if (p > PI) {
-            p = p - PI;
-            s1 = -1;
-        }
-
-        // Shift p in range [0:0.5*pi]
-        if (p > HLF_PI) {
-            p = PI - p;
-            s2 = -s1;
-        } else {
-            s2 = s1;
-        }
-
-        // Compute indices
-        int index1 = (int) ((p * NR_SAMPLES / HLF_PI) + 0.5f);
-        int index2 = NR_SAMPLES - index1;
-
-        return {lookup[index2] * s2, lookup[index1] * s1};
+        return {
+            lookup[p_int+HLF_PI_INT],
+            lookup[p_int]};
 }
 
 inline void compute_sincos(
