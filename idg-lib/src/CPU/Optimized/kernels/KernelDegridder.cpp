@@ -26,10 +26,9 @@ void kernel_degridder_(
     const idg::Metadata*             metadata,
     const idg::float2*               subgrid)
 {
-    // Construct sine lookup table for [0:0.5*pi]
     #if defined(USE_LOOKUP)
-    float lookup[NR_SAMPLES+1];
-    compute_lookup(NR_SAMPLES, lookup);
+    float lookup[NR_SAMPLES];
+    compute_lookup(lookup);
     #endif
 
     // Find offset of first subgrid
@@ -154,6 +153,7 @@ void kernel_degridder_(
                 #if defined(USE_LOOKUP)
                 float phasor_real[subgrid_size*subgrid_size];
                 float phasor_imag[subgrid_size*subgrid_size];
+
                 compute_sincos(lookup, phase, subgrid_size*subgrid_size, phasor_imag, phasor_real);
                 #elif defined(USE_VML)
                 // Compute phasor
