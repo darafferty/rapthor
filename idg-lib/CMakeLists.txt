@@ -22,7 +22,7 @@ option (BUILD_WITH_POWERSENSOR " Build with PowerSensor" OFF)
 option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (REPORT_OPS "Report performance in ops (fma, sincos) instead of flops (add, mul)" OFF)
-
+option (COMPILE_VERBOSE "Report compiler flags used during runtime compilation" OFF)
 
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
