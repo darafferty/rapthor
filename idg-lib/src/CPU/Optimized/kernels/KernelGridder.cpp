@@ -27,8 +27,8 @@ void kernel_gridder_(
           idg::float2*               subgrid)
 {
     #if defined(USE_LOOKUP)
-    float lookup[NR_SAMPLES+1];
-    compute_lookup(NR_SAMPLES, lookup);
+    float lookup[NR_SAMPLES];
+    compute_lookup(lookup);
     #endif
 
     // Find offset of first subgrid
@@ -55,8 +55,9 @@ void kernel_gridder_(
         const float w_offset = 2*M_PI * w_offset_in_lambda;
 
         // Preload visibilities
-        float vis_real[NR_POLARIZATIONS][nr_timesteps*current_nr_channels];
-        float vis_imag[NR_POLARIZATIONS][nr_timesteps*current_nr_channels];
+        const int nr_visibilities = nr_timesteps * current_nr_channels;
+        float vis_real[NR_POLARIZATIONS][nr_visibilities];
+        float vis_imag[NR_POLARIZATIONS][nr_visibilities];
 
         for (int time = 0; time < nr_timesteps; time++) {
             for (int chan = 0; chan < current_nr_channels; chan++) {
@@ -119,74 +120,18 @@ void kernel_gridder_(
                     }
                 } // end time
 
-                // Precompute phasor
+                // Compute phasor
+                float phasor_real[nr_visibilities];
+                float phasor_imag[nr_visibilities];
                 #if defined(USE_LOOKUP)
-                float phasor_real[nr_timesteps*current_nr_channels];
-                float phasor_imag[nr_timesteps*current_nr_channels];
-                compute_sincos(lookup, phase, nr_timesteps*current_nr_channels, phasor_imag, phasor_real);
-                #elif defined(USE_VML)
-                float phasor_real[nr_timesteps*current_nr_channels];
-                float phasor_imag[nr_timesteps*current_nr_channels];
-
-                vmsSinCos(
-                    nr_timesteps * current_nr_channels,
-                    (float *) phase,
-                    (float *) phasor_imag,
-                    (float *) phasor_real,
-                    VML_LA);
+                compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
+                #else
+                compute_sincos(nr_visibilities, phase, phasor_imag, phasor_real);
                 #endif
 
-                // Initialize pixel for every polarization
-                float pixels_xx_real = 0.0f;
-                float pixels_xy_real = 0.0f;
-                float pixels_yx_real = 0.0f;
-                float pixels_yy_real = 0.0f;
-                float pixels_xx_imag = 0.0f;
-                float pixels_xy_imag = 0.0f;
-                float pixels_yx_imag = 0.0f;
-                float pixels_yy_imag = 0.0f;
-
-                #pragma vector aligned(phase, vis_real, vis_imag)
-                #pragma omp simd reduction(+:pixels_xx_real,pixels_xx_imag, \
-                                             pixels_xy_real,pixels_xy_imag, \
-                                             pixels_yx_real,pixels_yx_imag, \
-                                             pixels_yy_real,pixels_yy_imag)
-                for (int i = 0; i < nr_timesteps * current_nr_channels; i++) {
-                    #if defined(USE_LOOKUP) || defined(USE_VML)
-                    float phasor_real_ = phasor_real[i];
-                    float phasor_imag_ = phasor_imag[i];
-                    #else
-                    float phasor_real_ = cosf(phase[i]);
-                    float phasor_imag_ = sinf(phase[i]);
-                    #endif
-
-                    pixels_xx_real += vis_real[0][i] * phasor_real_;
-                    pixels_xx_imag += vis_real[0][i] * phasor_imag_;
-                    pixels_xx_real -= vis_imag[0][i] * phasor_imag_;
-                    pixels_xx_imag += vis_imag[0][i] * phasor_real_;
-
-                    pixels_xy_real += vis_real[1][i] * phasor_real_;
-                    pixels_xy_imag += vis_real[1][i] * phasor_imag_;
-                    pixels_xy_real -= vis_imag[1][i] * phasor_imag_;
-                    pixels_xy_imag += vis_imag[1][i] * phasor_real_;
-
-                    pixels_yx_real += vis_real[2][i] * phasor_real_;
-                    pixels_yx_imag += vis_real[2][i] * phasor_imag_;
-                    pixels_yx_real -= vis_imag[2][i] * phasor_imag_;
-                    pixels_yx_imag += vis_imag[2][i] * phasor_real_;
-
-                    pixels_yy_real += vis_real[3][i] * phasor_real_;
-                    pixels_yy_imag += vis_real[3][i] * phasor_imag_;
-                    pixels_yy_real -= vis_imag[3][i] * phasor_imag_;
-                    pixels_yy_imag += vis_imag[3][i] * phasor_real_;
-                }
-
-                // Create the pixels
+                // Compute pixels
                 idg::float2 pixels[NR_POLARIZATIONS];
-                pixels[0] = {pixels_xx_real, pixels_xx_imag};
-                pixels[1] = {pixels_xy_real, pixels_xy_imag};
-                pixels[2] = {pixels_yx_real, pixels_yx_imag};
-                pixels[3] = {pixels_yy_real, pixels_yy_imag};
+                compute_reduction(nr_visibilities, vis_real, vis_imag, phasor_real, phasor_imag, pixels);
 
                 // Load a term for station1
                 int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
