@@ -128,10 +128,10 @@ namespace idg {
             };
 
             // Jobsize
-            static const int  jobsize_gridder   = 256;
-            static const int  jobsize_degridder = 256;
-            static const int  jobsize_adder     = 256;
-            static const int  jobsize_splitter  = 256;
+            static const int  jobsize_gridder   = 1024;
+            static const int  jobsize_degridder = 1024;
+            static const int  jobsize_adder     = 1024;
+            static const int  jobsize_splitter  = 1024;
 
             // Kernel names
             static const std::string name_gridder         = "kernel_gridder";
