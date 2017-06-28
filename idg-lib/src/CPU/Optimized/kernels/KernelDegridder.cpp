@@ -51,11 +51,12 @@ void kernel_degridder_(
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
         // Storage
-        float pixels_real[NR_POLARIZATIONS][subgrid_size*subgrid_size];
-        float pixels_imag[NR_POLARIZATIONS][subgrid_size*subgrid_size];
+        const int nr_pixels = subgrid_size*subgrid_size;
+        float pixels_real[NR_POLARIZATIONS][nr_pixels];
+        float pixels_imag[NR_POLARIZATIONS][nr_pixels];
 
         // Apply aterm to subgrid
-        for (int i = 0; i < subgrid_size * subgrid_size; i++) {
+        for (int i = 0; i < nr_pixels; i++) {
             int y = i / subgrid_size;
             int x = i % subgrid_size;
 
@@ -117,10 +118,10 @@ void kernel_degridder_(
             float v = uvw[offset + time].v;
             float w = uvw[offset + time].w;
 
-            float phase_index[subgrid_size*subgrid_size];
-            float phase_offset[subgrid_size*subgrid_size];
+            float phase_index[nr_pixels];
+            float phase_offset[nr_pixels];
 
-            for (int i = 0; i < subgrid_size * subgrid_size; i++) {
+            for (int i = 0; i < nr_pixels; i++) {
                 int y = i / subgrid_size;
                 int x = i % subgrid_size;
 
@@ -142,89 +143,30 @@ void kernel_degridder_(
             // Iterate all channels
             for (int chan = 0; chan < current_nr_channels; chan++) {
                 // Compute phase
-                float phase[subgrid_size*subgrid_size];
+                float phase[nr_pixels];
 
-                for (int i = 0; i < subgrid_size * subgrid_size; i++) {
+                for (int i = 0; i < nr_pixels; i++) {
                     // Compute phase
                     float wavenumber = wavenumbers[channel_offset + chan];
                     phase[i] = (phase_index[i] * wavenumber) - phase_offset[i];
                 }
 
-                #if defined(USE_LOOKUP)
-                float phasor_real[subgrid_size*subgrid_size];
-                float phasor_imag[subgrid_size*subgrid_size];
-
-                compute_sincos(lookup, phase, subgrid_size*subgrid_size, phasor_imag, phasor_real);
-                #elif defined(USE_VML)
                 // Compute phasor
-                float phasor_real[subgrid_size*subgrid_size];
-                float phasor_imag[subgrid_size*subgrid_size];
-
-                vmsSinCos(
-                    subgrid_size*subgrid_size,
-                    (float *) phase,
-                    (float *) phasor_imag,
-                    (float *) phasor_real,
-                    VML_LA);
+                float phasor_real[nr_pixels];
+                float phasor_imag[nr_pixels];
+                #if defined(USE_LOOKUP)
+                compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
+                #else
+                compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
                 #endif
 
-                // Multiply phasor with pixels and reduce for all pixels
+                // Compute visibilities
                 idg::float2 sums[NR_POLARIZATIONS];
 
-                // Initialize pixel for every polarization
-                float sums_xx_real = 0.0f;
-                float sums_xy_real = 0.0f;
-                float sums_yx_real = 0.0f;
-                float sums_yy_real = 0.0f;
-                float sums_xx_imag = 0.0f;
-                float sums_xy_imag = 0.0f;
-                float sums_yx_imag = 0.0f;
-                float sums_yy_imag = 0.0f;
-
-                // Accumulate visibility value from all pixels
-                #pragma vector aligned(phase, pixels_real, pixels_imag)
-                #pragma omp simd reduction(+:sums_xx_real,sums_xx_imag, \
-                                             sums_xy_real,sums_xy_imag, \
-                                             sums_yx_real,sums_yx_imag, \
-                                             sums_yy_real,sums_yy_imag)
-                for (int i = 0; i < subgrid_size * subgrid_size; i++) {
-                    #if defined(USE_LOOKUP) || defined(USE_VML)
-                    float phasor_real_ = phasor_real[i];
-                    float phasor_imag_ = phasor_imag[i];
-                    #else
-                    float phasor_real_ = cosf(phase[i]);
-                    float phasor_imag_ = sinf(phase[i]);
-                    #endif
-
-                    sums_xx_real += phasor_real_ * pixels_real[0][i];
-                    sums_xx_imag += phasor_real_ * pixels_imag[0][i];
-                    sums_xx_real -= phasor_imag_ * pixels_imag[0][i];
-                    sums_xx_imag += phasor_imag_ * pixels_real[0][i];
-
-                    sums_xy_real += phasor_real_ * pixels_real[1][i];
-                    sums_xy_imag += phasor_real_ * pixels_imag[1][i];
-                    sums_xy_real -= phasor_imag_ * pixels_imag[1][i];
-                    sums_xy_imag += phasor_imag_ * pixels_real[1][i];
-
-                    sums_yx_real += phasor_real_ * pixels_real[2][i];
-                    sums_yx_imag += phasor_real_ * pixels_imag[2][i];
-                    sums_yx_real -= phasor_imag_ * pixels_imag[2][i];
-                    sums_yx_imag += phasor_imag_ * pixels_real[2][i];
-
-                    sums_yy_real += phasor_real_ * pixels_real[3][i];
-                    sums_yy_imag += phasor_real_ * pixels_imag[3][i];
-                    sums_yy_real -= phasor_imag_ * pixels_imag[3][i];
-                    sums_yy_imag += phasor_imag_ * pixels_real[3][i];
-                }
-
-                // Combine real and imaginary parts
-                sums[0] = {sums_xx_real, sums_xx_imag};
-                sums[1] = {sums_xy_real, sums_xy_imag};
-                sums[2] = {sums_yx_real, sums_yx_imag};
-                sums[3] = {sums_yy_real, sums_yy_imag};
+                compute_reduction(nr_pixels, pixels_real, pixels_imag, phasor_real, phasor_imag, sums);
 
                 // Store visibilities
-                const float scale = 1.0f / (subgrid_size*subgrid_size);
+                const float scale = 1.0f / nr_pixels;
                 int time_idx = offset + time;
                 int chan_idx = channel_offset + chan;
                 int dst_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
