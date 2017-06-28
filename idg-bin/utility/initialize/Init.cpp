@@ -209,6 +209,7 @@ namespace idg {
         const Visibility<std::complex<float>> visibility = {1.0f, 0.0f, 0.0f, 1.0f};
 
         // Set all visibilities
+        #pragma omp parallel for
         for (int bl = 0; bl < nr_baselines; bl++) {
             for (int time = 0; time < nr_timesteps; time++) {
                 for (int chan = 0; chan < nr_channels; chan++) {
