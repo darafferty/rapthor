@@ -49,6 +49,7 @@ namespace idg {
                     hostPowerSensor = likwid::LikwidPowerSensor::create();
                 } else if (use_powersensor(name_rapl, char_power_sensor)) {
                     hostPowerSensor = rapl::RaplPowerSensor::create();
+                }
                 #endif
             }
 
