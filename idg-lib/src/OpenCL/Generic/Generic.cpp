@@ -40,17 +40,7 @@ namespace idg {
                 #endif
 
                 // Initialize host PowerSensor
-                hostPowerSensor = DummyPowerSensor::create();
-                #if defined(HAVE_POWERSENSOR)
-                char *char_power_sensor = getenv("POWER_SENSOR");
-                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
-                char_power_sensor = power_sensors.size() > 0 ? (char *) (power_sensors[0].c_str()) : NULL;
-                if (use_powersensor(name_likwid, char_power_sensor)) {
-                    hostPowerSensor = likwid::LikwidPowerSensor::create();
-                } else if (use_powersensor(name_rapl, char_power_sensor)) {
-                    hostPowerSensor = rapl::RaplPowerSensor::create();
-                }
-                #endif
+                hostPowerSensor = get_power_sensor(sensor_host);
             }
 
             // Destructor

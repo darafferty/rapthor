@@ -14,9 +14,7 @@ namespace idg {
             InstanceOpenCL::InstanceOpenCL(
                 CompileConstants& constants,
                 cl::Context& context,
-                int device_number,
-                const char *str_power_sensor,
-                const char *str_power_file) :
+                int device_number) :
                 KernelsInstance(constants),
                 mContext(context),
                 mPrograms(5)
@@ -41,7 +39,7 @@ namespace idg {
                 load_kernels();
 
                 // Initialize power sensor
-                init_powersensor(str_power_sensor, str_power_file);
+                powerSensor = get_power_sensor(sensor_device, device_number);
 
                 // Kernel specific initialization
                 fft_planned = false;
@@ -243,18 +241,6 @@ namespace idg {
 				os << std::endl;
 
                 return os;
-            }
-
-            void InstanceOpenCL::init_powersensor(
-                const char *str_power_sensor,
-                const char *str_power_file)
-            {
-                powerSensor = DummyPowerSensor::create();
-                #if defined(HAVE_POWERSENSOR)
-                if (use_powersensor(name_arduino, str_power_sensor)) {
-                    powerSensor = arduino::ArduinoPowerSensor::create(str_power_sensor, str_power_file);
-                }
-                #endif
             }
 
             State InstanceOpenCL::measure() {

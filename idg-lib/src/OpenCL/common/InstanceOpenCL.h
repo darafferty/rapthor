@@ -23,9 +23,7 @@ namespace idg {
                     InstanceOpenCL(
                         CompileConstants& constants,
                         cl::Context& context,
-                        int device_number,
-                        const char *power_sensor = NULL,
-                        const char *power_file = NULL);
+                        int device_number);
 
                     // Destructor
                     ~InstanceOpenCL();
@@ -111,9 +109,6 @@ namespace idg {
                     void set_parameters_fiji();
                     void set_parameters_hawaii();
                     void set_parameters_tahiti();
-                    void init_powersensor(
-                        const char *str_power_sensor,
-                        const char *str_power_file);
 
                 private:
                     cl::Context& mContext;

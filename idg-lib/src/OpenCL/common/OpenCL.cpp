@@ -105,20 +105,10 @@ namespace idg {
                     device_numbers = idg::auxiliary::split_int(char_opencl_device, ",");
                 }
 
-                // Get list of all power sensors
-                char *char_power_sensor = getenv("POWER_SENSOR");
-                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
-
-                // Get list of all power files
-                char *char_power_file = getenv("POWER_FILE");
-                std::vector<std::string> power_files = idg::auxiliary::split_string(char_power_file, ",");
-
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {
-                    const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
-                    const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
                     InstanceOpenCL *device = new InstanceOpenCL(
-                        mConstants, *context, device_numbers[i], power_sensor, power_file);
+                        mConstants, *context, device_numbers[i]);
                     devices.push_back(device);
                 }
             }
