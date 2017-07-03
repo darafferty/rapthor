@@ -208,9 +208,9 @@ namespace idg {
                 cl::Buffer h_visibilities   = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities);
                 cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
                 cl::Buffer h_metadata       = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata);
-                htodqueue.enqueueWriteBuffer(h_visibilities, CL_FALSE, 0, sizeof_visibilities, visibilities.data());
-                htodqueue.enqueueWriteBuffer(h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
-                htodqueue.enqueueWriteBuffer(h_metadata, CL_FALSE, 0, sizeof_metadata, plan.get_metadata_ptr());
+                writeBufferBatched(htodqueue, h_visibilities, CL_FALSE, 0, sizeof_visibilities, visibilities.data());
+                writeBufferBatched(htodqueue, h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
+                writeBufferBatched(htodqueue, h_metadata, CL_FALSE, 0, sizeof_metadata, metadata);
 
                 // Initialize memory for all devices
                 std::vector<cl::Buffer> d_grid_(nr_devices);
@@ -229,10 +229,10 @@ namespace idg {
                     cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers);
                     cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal);
                     cl::Buffer d_aterms      = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_aterms);
-                    htodqueue.enqueueWriteBuffer(d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers, wavenumbers.data());
-                    htodqueue.enqueueWriteBuffer(d_spheroidal, CL_FALSE, 0, sizeof_spheroidal, spheroidal.data());
-                    htodqueue.enqueueWriteBuffer(d_aterms, CL_FALSE, 0, sizeof_aterms, aterms.data());
-                    htodqueue.enqueueWriteBuffer(d_grid, CL_FALSE, 0, sizeof_grid, grid.data());
+                    writeBufferBatched(htodqueue, d_wavenumbers, CL_FALSE, 0, sizeof_wavenumbers, wavenumbers.data());
+                    writeBufferBatched(htodqueue, d_spheroidal, CL_FALSE, 0, sizeof_spheroidal, spheroidal.data());
+                    writeBufferBatched(htodqueue, d_aterms, CL_FALSE, 0, sizeof_aterms, aterms.data());
+                    writeBufferBatched(htodqueue, d_grid, CL_FALSE, 0, sizeof_grid, grid.data());
                     d_grid_[d]        = d_grid;
                     d_wavenumbers_[d] = d_wavenumbers;
                     d_spheroidal_[d]  = d_spheroidal;
