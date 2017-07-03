@@ -48,10 +48,6 @@ namespace powersensor {
     };
     #endif // end if not defined(HAVE_POWERSENSOR)
 
-    bool use_powersensor(
-            const std::string name,
-            const char *power_sensor = NULL);
-
     PowerSensor* get_power_sensor(
         const std::string name,
         const int i = 0);
