@@ -695,6 +695,9 @@ namespace idg {
                 // End timing
                 total_runtime_degridding += omp_get_wtime();
 
+                // Workaround for synchronization bug when using wait() after degridding iteration
+                total_runtime_degridding = total_runtime_degridder + total_runtime_fft + total_runtime_splitter;
+
                 // Copy visibilities
                 cl::CommandQueue& dtohqueue = device0.get_dtoh_queue();
                 dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0,
