@@ -48,3 +48,12 @@ void writeBufferBatched(cl::CommandQueue &queue, cl::Buffer &dst, cl_bool blocki
         queue.enqueueWriteBuffer(dst, blocking_write, offset_, size_, ptr_);
     }
 }
+
+void readBufferBatched(cl::CommandQueue &queue, cl::Buffer &src, cl_bool blocking_read, size_t offset, size_t size, void *ptr) {
+    size_t batch_size = READ_BUFFER_BATCH_SIZE;
+    for (size_t offset_ = 0; offset_ < size; offset_ += batch_size) {
+        size_t size_ = offset_ + batch_size > size ? size - offset_ : batch_size;
+        void *ptr_ = (char *) ptr + offset_;
+        queue.enqueueReadBuffer(src, blocking_read, offset_, size_, ptr_);
+    }
+}
