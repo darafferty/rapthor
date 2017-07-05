@@ -5,12 +5,6 @@
 #include "InstanceOpenCL.h"
 #include "PowerRecord.h"
 
-/*
-    Toggle warmup
-        Copy some memory to device prior to
-        starting the actual computation
-*/
-#define ENABLE_WARMUP 0
 
 /*
     Toggle planning and execution of Fourier transformations on and off
@@ -294,13 +288,6 @@ namespace idg {
                     if (local_id == 0) {
                         device.plan_fft(subgrid_size, max_nr_subgrids);
                     }
-                    #endif
-
-                    // Warmup
-                    #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities);
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw);
-                    htodqueue.finish();
                     #endif
 
                     // Performance measurement
@@ -599,13 +586,6 @@ namespace idg {
                     if (local_id == 0) {
                         device.plan_fft(subgrid_size, max_nr_subgrids);
                     }
-                    #endif
-
-                    // Warmup
-                    #if ENABLE_WARMUP
-                    htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, 0, 0, sizeof_visibilities);
-                    htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, 0, 0, sizeof_uvw);
-                    htodqueue.finish();
                     #endif
 
                     // Performance measurement
