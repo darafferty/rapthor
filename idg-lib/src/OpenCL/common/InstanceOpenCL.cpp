@@ -25,9 +25,9 @@ namespace idg {
 
                 // Initialize members
                 device       = new cl::Device(context.getInfo<CL_CONTEXT_DEVICES>()[device_number]);
-                executequeue = new cl::CommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE);
-                htodqueue    = new cl::CommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE);
-                dtohqueue    = new cl::CommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE);
+                executequeue = new cl::CommandQueue(context, *device);
+                htodqueue    = new cl::CommandQueue(context, *device);
+                dtohqueue    = new cl::CommandQueue(context, *device);
 
                 // Set kernel parameters
                 set_parameters();
