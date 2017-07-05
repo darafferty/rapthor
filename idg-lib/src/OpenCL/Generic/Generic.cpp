@@ -273,6 +273,7 @@ namespace idg {
                     // Events
                     vector<cl::Event> inputReady(1);
                     vector<cl::Event> outputReady(1);
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Allocate private device memory
                     auto sizeof_visibilities = device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
@@ -319,6 +320,7 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
+                            htodqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0,
                                 device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
@@ -328,7 +330,7 @@ namespace idg {
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
 							// Launch gridder kernel
-                            executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
+                            executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
                             device.measure(powerRecords[0], executequeue);
                             device.launch_gridder(
                                 current_nr_timesteps, current_nr_subgrids,
@@ -351,6 +353,7 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
 
+                        // TODO: this call triggers unnecessary synchronization
                         outputReady[0].wait();
 
                         #if defined(REPORT_VERBOSE)
@@ -382,12 +385,13 @@ namespace idg {
                         stopStates[device_id] = devicePowerSensor->read();
                         stopStates[nr_devices] = hostPowerSensor->read();
                     }
-
-                    dtohqueue.finish();
                 } // end omp parallel
 
                 // End timing
                 total_runtime_gridding += omp_get_wtime();
+
+                // Workaround for synchronization bug when using wait() after gridding iteration
+                total_runtime_gridding = total_runtime_gridder + total_runtime_fft + total_runtime_adder;
 
                 // Add grids
                 for (int d = 0; d < nr_devices; d++) {
