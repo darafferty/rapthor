@@ -28,6 +28,7 @@ namespace powersensor {
         std::vector<std::string> power_sensors = idg::auxiliary::split_string(power_sensor_char, sensor_delimiter);
 
         // Try to initialize the specified PowerSensor
+        #if defined(HAVE_POWERSENSOR)
         if (power_sensors.size() > 0 && i < power_sensors.size()) {
             std::string power_sensor_str = power_sensors[i];
             if (power_sensor_str.compare(name_likwid)) {
@@ -40,6 +41,7 @@ namespace powersensor {
                 return arduino::ArduinoPowerSensor::create(power_sensor_str.c_str(), NULL);
             }
         }
+        #endif
 
         // Use the DummyPowerSensor as backup
         return powersensor::DummyPowerSensor::create();
