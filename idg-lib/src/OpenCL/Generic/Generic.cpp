@@ -186,27 +186,24 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 2;
+                const int nr_streams = 3;
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Initialize memory for first device
+                // Initialize host memory
                 cl::Context& context        = get_context();
                 InstanceOpenCL& device0     = get_device(0);
                 cl::CommandQueue& htodqueue = device0.get_htod_queue();
                 auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
-                auto sizeof_metadata        = device0.sizeof_metadata(plan.get_nr_subgrids());
                 cl::Buffer h_visibilities   = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities);
                 cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
-                cl::Buffer h_metadata       = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata);
                 writeBufferBatched(htodqueue, h_visibilities, CL_FALSE, 0, sizeof_visibilities, visibilities.data());
                 writeBufferBatched(htodqueue, h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
-                writeBufferBatched(htodqueue, h_metadata, CL_FALSE, 0, sizeof_metadata, metadata);
 
-                // Initialize memory for all devices
+                // Initialize device memory
                 std::vector<cl::Buffer> d_grid_(nr_devices);
                 std::vector<cl::Buffer> d_wavenumbers_(nr_devices);
                 std::vector<cl::Buffer> d_spheroidal_(nr_devices);
@@ -279,6 +276,7 @@ namespace idg {
                     auto sizeof_visibilities = device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
                     auto sizeof_uvw          = device.sizeof_uvw(jobsize, nr_timesteps);
                     auto sizeof_subgrids     = device.sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                    auto sizeof_metadata     = device.sizeof_metadata(max_nr_subgrids);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities);
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw);
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids);
@@ -312,10 +310,8 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                        auto subgrid_offset       = plan.get_subgrid_offset(first_bl);
                         auto uvw_offset           = first_bl * device.sizeof_uvw(1, nr_timesteps);
                         auto visibilities_offset  = first_bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        auto metadata_offset      = plan.get_subgrid_offset(first_bl) * device.sizeof_metadata(1);
 
                         #pragma omp critical (lock)
                         {
@@ -325,8 +321,9 @@ namespace idg {
                                 device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
                                 device.sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0,
-                                device.sizeof_metadata(current_nr_subgrids));
+                            htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
+                                    device.sizeof_metadata(current_nr_subgrids),
+                                    plan.get_metadata_ptr(first_bl));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
 							// Launch gridder kernel
@@ -353,7 +350,6 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
 
-                        // TODO: this call triggers unnecessary synchronization
                         outputReady[0].wait();
 
                         #if defined(REPORT_VERBOSE)
