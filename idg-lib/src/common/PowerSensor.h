@@ -1,16 +1,14 @@
 #ifndef IDG_POWER_SENSOR_H_
 #define IDG_POWER_SENSOR_H_
 
-#if defined(HAVE_POWERSENSOR)
-#include "powersensor.h"
-#else
 #include <string>
-
 #include <omp.h>
 
 #include "idg-config.h"
-#endif
 
+#if defined(HAVE_POWERSENSOR)
+#include "powersensor.h"
+#endif
 
 namespace powersensor {
 
@@ -19,9 +17,11 @@ namespace powersensor {
     static std::string name_nvml("nvml");
     static std::string name_arduino("tty");
 
-    bool use_powersensor(
-            const std::string name,
-            const char *power_sensor = NULL);
+    static std::string sensor_default("POWER_SENSOR");
+    static std::string sensor_host("HOST_SENSOR");
+    static std::string sensor_device("DEVICE_SENSOR");
+
+    static const char *sensor_delimiter = ",";
 
     #if not defined(HAVE_POWERSENSOR)
     class State {
@@ -46,8 +46,11 @@ namespace powersensor {
         public:
             static DummyPowerSensor* create();
     };
-
     #endif // end if not defined(HAVE_POWERSENSOR)
+
+    PowerSensor* get_power_sensor(
+        const std::string name,
+        const int i = 0);
 
 } // end namespace powersensor
 

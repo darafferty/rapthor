@@ -163,10 +163,6 @@ namespace idg {
                     void set_parameters_kepler();
                     void set_parameters_maxwell();
                     void set_parameters_pascal();
-                    void init_powersensor(
-                        const char *str_power_sensor,
-                        const char *str_power_file,
-                        int device_number = 0);
 
                 protected:
                     // Variables shared by all InstanceCUDA instances

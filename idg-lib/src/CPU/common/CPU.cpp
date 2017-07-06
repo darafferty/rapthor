@@ -27,17 +27,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                #if defined(HAVE_POWERSENSOR)
-                if (use_powersensor(name_likwid)) {
-                    powerSensor = likwid::LikwidPowerSensor::create();
-                } else if (use_powersensor(name_rapl)) {
-                    powerSensor = rapl::RaplPowerSensor::create();
-                } else {
-                    powerSensor = DummyPowerSensor::create();
-                }
-                #else
-                powerSensor = DummyPowerSensor::create();
-                #endif
+                powerSensor = get_power_sensor(sensor_host);
             }
 
             // Destructor
