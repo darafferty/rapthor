@@ -493,20 +493,8 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
-                // Initialize memory for first device
-                cl::Context& context        = get_context();
-                InstanceOpenCL& device0     = get_device(0);
-                cl::CommandQueue& htodqueue = device0.get_htod_queue();
-                auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
-                auto sizeof_metadata        = device0.sizeof_metadata(plan.get_nr_subgrids());
-                cl::Buffer h_visibilities   = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities);
-                cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
-                cl::Buffer h_metadata       = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_metadata);
-                writeBufferBatched(htodqueue, h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
-                writeBufferBatched(htodqueue, h_metadata, CL_FALSE, 0, sizeof_metadata, metadata);
-
-                // Initialize memory for all devices
+                // Initialize device memory
+                cl::Context& context = get_context();
                 std::vector<cl::Buffer> d_grid_(nr_devices);
                 std::vector<cl::Buffer> d_wavenumbers_(nr_devices);
                 std::vector<cl::Buffer> d_spheroidal_(nr_devices);
@@ -574,6 +562,7 @@ namespace idg {
                     vector<cl::Event> inputReady(1);
                     vector<cl::Event> outputReady(1);
                     vector<cl::Event> outputFree(1);
+                    htodqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
 
                     // Allocate private device memory
                     auto sizeof_visibilities = device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
@@ -613,18 +602,15 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                        auto subgrid_offset       = plan.get_subgrid_offset(first_bl);
-                        auto uvw_offset           = first_bl * device.sizeof_uvw(1, nr_timesteps);
-                        auto visibilities_offset  = first_bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
-                        auto metadata_offset      = plan.get_subgrid_offset(first_bl) * device.sizeof_metadata(1);
 
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
-                                device.sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodqueue.enqueueCopyBuffer(h_metadata, d_metadata, metadata_offset, 0,
-                                device.sizeof_metadata(current_nr_subgrids));
+                            htodqueue.enqueueBarrierWithWaitList(&outputFree, NULL);
+                            htodqueue.enqueueWriteBuffer(d_uvw, CL_FALSE, 0,
+                                    device.sizeof_uvw(current_nr_baselines, nr_timesteps), uvw.data(first_bl, 0));
+                            htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
+                                    device.sizeof_metadata(current_nr_subgrids), plan.get_metadata_ptr(first_bl));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch splitter kernel
@@ -651,10 +637,11 @@ namespace idg {
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                             // Copy visibilities to host
-                            dtohqueue.enqueueMarkerWithWaitList(&outputReady, NULL);
-                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset,
+                            dtohqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
+                            dtohqueue.enqueueReadBuffer(d_visibilities, CL_FALSE, 0,
                                 device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels),
-                                NULL, &outputFree[0]);
+                                visibilities.data(first_bl, 0, 0));
+                            dtohqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
 
                         outputFree[0].wait();
@@ -697,11 +684,6 @@ namespace idg {
 
                 // Workaround for synchronization bug when using wait() after degridding iteration
                 total_runtime_degridding = total_runtime_degridder + total_runtime_fft + total_runtime_splitter;
-
-                // Copy visibilities
-                cl::CommandQueue& dtohqueue = device0.get_dtoh_queue();
-                dtohqueue.enqueueReadBuffer(h_visibilities, CL_TRUE, 0,
-                    device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels), visibilities.data());
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 InstanceOpenCL& device          = get_device(0);
