@@ -14,8 +14,21 @@ float get_opencl_version(cl::Device &device);
 void printDevice(cl::Device &device, bool marker = false);
 void printDevices(int deviceNumber);
 
-#define WRITE_BUFFER_BATCH_SIZE 1024 * 1024 * 1024 // 1 Gb
-#define READ_BUFFER_BATCH_SIZE WRITE_BUFFER_BATCH_SIZE
-void writeBufferBatched(cl::CommandQueue &queue, cl::Buffer &dst, cl_bool blocking_write, size_t offset, size_t size, const void *ptr);
-void readBufferBatched(cl::CommandQueue &queue, cl::Buffer &src, cl_bool blocking_read, size_t offset, size_t size, void *ptr);
+#define BUFFER_BATCH_SIZE 1024 * 1024 * 1024 // 1 Gb
+
+void writeBufferBatched(
+        cl::CommandQueue &queue,
+        cl::Buffer &dst,
+        cl_bool blocking_write,
+        size_t offset,
+        size_t size,
+        const void *ptr);
+
+void readBufferBatched(
+        cl::CommandQueue &queue,
+        cl::Buffer &src,
+        cl_bool blocking_read,
+        size_t offset,
+        size_t size,
+        void *ptr);
 #endif
