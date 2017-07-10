@@ -161,14 +161,17 @@ namespace idg {
                  << " Ksubgrids/s" << endl;
         }
 
-        std::vector<int> split_int(char *string, const char *delimiter) {
+        std::vector<int> split_int(const char *string, const char *delimiter) {
             std::vector<int> splits;
-            char *token = strtok(string, delimiter);
+            char * string_buffer = new char [strlen(string)+1];
+            std::strcpy (string_buffer, string);
+            char *token = strtok(string_buffer, delimiter);
             if (token) splits.push_back(atoi(token));
             while (token) {
                 token = strtok(NULL, delimiter);
                 if (token) splits.push_back(atoi(token));
             }
+            delete [] string_buffer;
             return splits;
         }
 
