@@ -141,6 +141,7 @@ namespace idg {
                 // Locks
                 int locks[nr_devices];
 
+                omp_set_nested(true);
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
