@@ -56,20 +56,30 @@ void kernel_gridder_(
 
         // Preload visibilities
         const int nr_visibilities = nr_timesteps * current_nr_channels;
-        float vis_real[NR_POLARIZATIONS][nr_visibilities];
-        float vis_imag[NR_POLARIZATIONS][nr_visibilities];
+        float vis_xx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
 
         for (int time = 0; time < nr_timesteps; time++) {
             for (int chan = 0; chan < current_nr_channels; chan++) {
                 int time_idx = offset + time;
                 int chan_idx = channel_offset + chan;
-                size_t src_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
                 size_t dst_idx = time * current_nr_channels + chan;
-                #pragma vector aligned(vis_real, vis_imag)
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    vis_real[pol][dst_idx] = visibilities[src_idx + pol].real;
-                    vis_imag[pol][dst_idx] = visibilities[src_idx + pol].imag;
-                }
+
+                vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
+                vis_xy_real[dst_idx] = visibilities[src_idx + 1].real;
+                vis_yx_real[dst_idx] = visibilities[src_idx + 2].real;
+                vis_yy_real[dst_idx] = visibilities[src_idx + 3].real;
+                vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
+                vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag;
+                vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag;
+                vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag;
             }
         }
 
@@ -121,8 +131,8 @@ void kernel_gridder_(
                 } // end time
 
                 // Compute phasor
-                float phasor_real[nr_visibilities];
-                float phasor_imag[nr_visibilities];
+                float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+                float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
                 #if defined(USE_LOOKUP)
                 compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
                 #else
@@ -130,8 +140,12 @@ void kernel_gridder_(
                 #endif
 
                 // Compute pixels
-                idg::float2 pixels[NR_POLARIZATIONS];
-                compute_reduction(nr_visibilities, vis_real, vis_imag, phasor_real, phasor_imag, pixels);
+                idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned((ALIGNMENT))));
+                compute_reduction(
+                    nr_visibilities,
+                    vis_xx_real, vis_xy_real, vis_yx_real, vis_yy_real,
+                    vis_xx_imag, vis_xy_imag, vis_yx_imag, vis_yy_imag,
+                    phasor_real, phasor_imag, pixels);
 
                 // Load a term for station1
                 int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);

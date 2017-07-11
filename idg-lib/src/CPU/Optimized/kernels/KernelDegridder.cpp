@@ -52,8 +52,14 @@ void kernel_degridder_(
 
         // Storage
         const int nr_pixels = subgrid_size*subgrid_size;
-        float pixels_real[NR_POLARIZATIONS][nr_pixels];
-        float pixels_imag[NR_POLARIZATIONS][nr_pixels];
+        float pixels_xx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
 
         // Apply aterm to subgrid
         for (int i = 0; i < nr_pixels; i++) {
@@ -94,14 +100,14 @@ void kernel_degridder_(
                 pixels);
 
             // Store pixels
-            pixels_real[0][i] = pixels[0].real;
-            pixels_real[1][i] = pixels[1].real;
-            pixels_real[2][i] = pixels[2].real;
-            pixels_real[3][i] = pixels[3].real;
-            pixels_imag[0][i] = pixels[0].imag;
-            pixels_imag[1][i] = pixels[1].imag;
-            pixels_imag[2][i] = pixels[2].imag;
-            pixels_imag[3][i] = pixels[3].imag;
+            pixels_xx_real[i] = pixels[0].real;
+            pixels_xy_real[i] = pixels[1].real;
+            pixels_yx_real[i] = pixels[2].real;
+            pixels_yy_real[i] = pixels[3].real;
+            pixels_xx_imag[i] = pixels[0].imag;
+            pixels_xy_imag[i] = pixels[1].imag;
+            pixels_yx_imag[i] = pixels[2].imag;
+            pixels_yy_imag[i] = pixels[3].imag;
         }
 
         // Compute u and v offset in wavelenghts
@@ -152,8 +158,8 @@ void kernel_degridder_(
                 }
 
                 // Compute phasor
-                float phasor_real[nr_pixels];
-                float phasor_imag[nr_pixels];
+                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 #if defined(USE_LOOKUP)
                 compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
                 #else
@@ -163,7 +169,11 @@ void kernel_degridder_(
                 // Compute visibilities
                 idg::float2 sums[NR_POLARIZATIONS];
 
-                compute_reduction(nr_pixels, pixels_real, pixels_imag, phasor_real, phasor_imag, sums);
+                compute_reduction(
+                    nr_pixels,
+                    pixels_xx_real, pixels_xy_real, pixels_yx_real, pixels_yy_real,
+                    pixels_xx_imag, pixels_xy_imag, pixels_yx_imag, pixels_yy_imag,
+                    phasor_real, phasor_imag, sums);
 
                 // Store visibilities
                 const float scale = 1.0f / nr_pixels;
