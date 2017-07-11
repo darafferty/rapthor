@@ -18,6 +18,13 @@
 #define NR_SAMPLES        TWO_HLF_PI_INT + 1
 #endif
 
+// ALignment
+#if defined(__AVX512F__)
+#define ALIGNMENT 64
+#else
+#define ALIGNMENT 32
+#endif
+
 inline void compute_sincos(
     const int n,
     const float *x,
@@ -134,8 +141,14 @@ inline float _mm256_reduce_add_ps(__m256 x) {
 inline void compute_reduction_scalar(
     int *i_,
     const int n,
-    const float input_real[NR_POLARIZATIONS][n],
-    const float input_imag[NR_POLARIZATIONS][n],
+    const float *input_xx_real,
+    const float *input_xy_real,
+    const float *input_yx_real,
+    const float *input_yy_real,
+    const float *input_xx_imag,
+    const float *input_xy_imag,
+    const float *input_yx_imag,
+    const float *input_yy_imag,
     const float *phasor_real,
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
@@ -159,25 +172,25 @@ inline void compute_reduction_scalar(
         float phasor_real_ = phasor_real[i];
         float phasor_imag_ = phasor_imag[i];
 
-        output_xx_real += input_real[0][i] * phasor_real_;
-        output_xx_imag += input_real[0][i] * phasor_imag_;
-        output_xx_real -= input_imag[0][i] * phasor_imag_;
-        output_xx_imag += input_imag[0][i] * phasor_real_;
+        output_xx_real += input_xx_real[i] * phasor_real_;
+        output_xx_imag += input_xx_real[i] * phasor_imag_;
+        output_xx_real -= input_xx_imag[i] * phasor_imag_;
+        output_xx_imag += input_xx_imag[i] * phasor_real_;
 
-        output_xy_real += input_real[1][i] * phasor_real_;
-        output_xy_imag += input_real[1][i] * phasor_imag_;
-        output_xy_real -= input_imag[1][i] * phasor_imag_;
-        output_xy_imag += input_imag[1][i] * phasor_real_;
+        output_xy_real += input_xy_real[i] * phasor_real_;
+        output_xy_imag += input_xy_real[i] * phasor_imag_;
+        output_xy_real -= input_xy_imag[i] * phasor_imag_;
+        output_xy_imag += input_xy_imag[i] * phasor_real_;
 
-        output_yx_real += input_real[2][i] * phasor_real_;
-        output_yx_imag += input_real[2][i] * phasor_imag_;
-        output_yx_real -= input_imag[2][i] * phasor_imag_;
-        output_yx_imag += input_imag[2][i] * phasor_real_;
+        output_yx_real += input_yx_real[i] * phasor_real_;
+        output_yx_imag += input_yx_real[i] * phasor_imag_;
+        output_yx_real -= input_yx_imag[i] * phasor_imag_;
+        output_yx_imag += input_yx_imag[i] * phasor_real_;
 
-        output_yy_real += input_real[3][i] * phasor_real_;
-        output_yy_imag += input_real[3][i] * phasor_imag_;
-        output_yy_real -= input_imag[3][i] * phasor_imag_;
-        output_yy_imag += input_imag[3][i] * phasor_real_;
+        output_yy_real += input_yy_real[i] * phasor_real_;
+        output_yy_imag += input_yy_real[i] * phasor_imag_;
+        output_yy_real -= input_yy_imag[i] * phasor_imag_;
+        output_yy_imag += input_yy_imag[i] * phasor_real_;
     }
 
     // Update output
@@ -189,11 +202,18 @@ inline void compute_reduction_scalar(
     *i_ = i;
 } // end compute_reduction_scalar
 
+#if defined(__AVX2__)
 inline void compute_reduction_avx2(
     int *i_,
     const int n,
-    const float input_real[NR_POLARIZATIONS][n],
-    const float input_imag[NR_POLARIZATIONS][n],
+    const float *input_xx_real,
+    const float *input_xy_real,
+    const float *input_yx_real,
+    const float *input_yy_real,
+    const float *input_xx_imag,
+    const float *input_xy_imag,
+    const float *input_yx_imag,
+    const float *input_yy_imag,
     const float *phasor_real,
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
@@ -213,16 +233,16 @@ inline void compute_reduction_avx2(
 
     for (; i < (n / vector_length) * vector_length; i += vector_length) {
         __m256 input_xx, input_xy, input_yx, input_yy;
-        __m256 phasor_r, phasor_i, phasor_in;
+        __m256 phasor_r, phasor_i;
 
         phasor_r  = _mm256_load_ps(&phasor_real[i]);
         phasor_i  = _mm256_load_ps(&phasor_imag[i]);
 
-        // Load real part of visibilities
-        input_xx = _mm256_load_ps(&input_real[0][i]);
-        input_xy = _mm256_load_ps(&input_real[1][i]);
-        input_yx = _mm256_load_ps(&input_real[2][i]);
-        input_yy = _mm256_load_ps(&input_real[3][i]);
+        // Load real part of input
+        input_xx = _mm256_load_ps(&input_xx_real[i]);
+        input_xy = _mm256_load_ps(&input_xy_real[i]);
+        input_yx = _mm256_load_ps(&input_yx_real[i]);
+        input_yy = _mm256_load_ps(&input_yy_real[i]);
 
         // Update output
         output_xx_r = _mm256_fmadd_ps(input_xx, phasor_r, output_xx_r);
@@ -234,11 +254,11 @@ inline void compute_reduction_avx2(
         output_yy_r = _mm256_fmadd_ps(input_yy, phasor_r, output_yy_r);
         output_yy_i = _mm256_fmadd_ps(input_yy, phasor_i, output_yy_i);
 
-        // Load imag part of visibilities
-        input_xx = _mm256_load_ps(&input_imag[0][i]);
-        input_xy = _mm256_load_ps(&input_imag[1][i]);
-        input_yx = _mm256_load_ps(&input_imag[2][i]);
-        input_yy = _mm256_load_ps(&input_imag[3][i]);
+        // Load imag part of input
+        input_xx = _mm256_load_ps(&input_xx_imag[i]);
+        input_xy = _mm256_load_ps(&input_xy_imag[i]);
+        input_yx = _mm256_load_ps(&input_yx_imag[i]);
+        input_yy = _mm256_load_ps(&input_yy_imag[i]);
 
         // Update output
         output_xx_r = _mm256_fnmadd_ps(input_xx, phasor_i, output_xx_r);
@@ -265,12 +285,20 @@ inline void compute_reduction_avx2(
 
     *i_ = i;
 } // end compute_reduction_avx2
+#endif
 
+#if defined(__AVX512F__)
 inline void compute_reduction_avx512(
     int *i_,
     const int n,
-    const float input_real[NR_POLARIZATIONS][n],
-    const float input_imag[NR_POLARIZATIONS][n],
+    const float *input_xx_real,
+    const float *input_xy_real,
+    const float *input_yx_real,
+    const float *input_yy_real,
+    const float *input_xx_imag,
+    const float *input_xy_imag,
+    const float *input_yx_imag,
+    const float *input_yy_imag,
     const float *phasor_real,
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
@@ -290,16 +318,16 @@ inline void compute_reduction_avx512(
 
     for (; i < (n / vector_length) * vector_length; i += vector_length) {
         __m512 input_xx, input_xy, input_yx, input_yy;
-        __m512 phasor_r, phasor_i, phasor_in;
+        __m512 phasor_r, phasor_i;
 
         phasor_r  = _mm512_load_ps(&phasor_real[i]);
         phasor_i  = _mm512_load_ps(&phasor_imag[i]);
 
-        // Load real part of visibilities
-        input_xx = _mm512_load_ps(&input_real[0][i]);
-        input_xy = _mm512_load_ps(&input_real[1][i]);
-        input_yx = _mm512_load_ps(&input_real[2][i]);
-        input_yy = _mm512_load_ps(&input_real[3][i]);
+        // Load real part of input
+        input_xx = _mm512_load_ps(&input_xx_real[i]);
+        input_xy = _mm512_load_ps(&input_xy_real[i]);
+        input_yx = _mm512_load_ps(&input_yx_real[i]);
+        input_yy = _mm512_load_ps(&input_yy_real[i]);
 
         // Update output
         output_xx_r = _mm512_fmadd_ps(input_xx, phasor_r, output_xx_r);
@@ -311,11 +339,11 @@ inline void compute_reduction_avx512(
         output_yy_r = _mm512_fmadd_ps(input_yy, phasor_r, output_yy_r);
         output_yy_i = _mm512_fmadd_ps(input_yy, phasor_i, output_yy_i);
 
-        // Load imag part of visibilities
-        input_xx = _mm512_load_ps(&input_imag[0][i]);
-        input_xy = _mm512_load_ps(&input_imag[1][i]);
-        input_yx = _mm512_load_ps(&input_imag[2][i]);
-        input_yy = _mm512_load_ps(&input_imag[3][i]);
+        // Load imag part of input
+        input_xx = _mm512_load_ps(&input_xx_imag[i]);
+        input_xy = _mm512_load_ps(&input_xy_imag[i]);
+        input_yx = _mm512_load_ps(&input_yx_imag[i]);
+        input_yy = _mm512_load_ps(&input_yy_imag[i]);
 
         // Update output
         output_xx_r = _mm512_fnmadd_ps(input_xx, phasor_i, output_xx_r);
@@ -342,11 +370,18 @@ inline void compute_reduction_avx512(
 
     *i_ = i;
 } // end compute_reduction_avx512
+#endif
 
 inline void compute_reduction(
     const int n,
-    const float input_real[NR_POLARIZATIONS][n],
-    const float input_imag[NR_POLARIZATIONS][n],
+    const float *input_xx_real,
+    const float *input_xy_real,
+    const float *input_yx_real,
+    const float *input_yy_real,
+    const float *input_xx_imag,
+    const float *input_xy_imag,
+    const float *input_yx_imag,
+    const float *input_yy_imag,
     const float *phasor_real,
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
@@ -360,7 +395,8 @@ inline void compute_reduction(
     // Vectorized loop, 16-elements, AVX512
     compute_reduction_avx512(
             &i, n,
-            input_real, input_imag,
+            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
             output);
     #endif
@@ -369,7 +405,8 @@ inline void compute_reduction(
     // Vectorized loop, 8-elements, AVX2
     compute_reduction_avx2(
             &i, n,
-            input_real, input_imag,
+            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
             output);
     #endif
@@ -377,7 +414,8 @@ inline void compute_reduction(
     // Remainder loop, scalar
     compute_reduction_scalar(
             &i, n,
-            input_real, input_imag,
+            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
             output);
 }
