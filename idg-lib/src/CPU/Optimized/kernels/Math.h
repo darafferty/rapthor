@@ -139,7 +139,7 @@ inline float _mm256_reduce_add_ps(__m256 x) {
 }
 
 inline void compute_reduction_scalar(
-    int *i_,
+    int *offset,
     const int n,
     const float *input_xx_real,
     const float *input_xy_real,
@@ -162,13 +162,11 @@ inline void compute_reduction_scalar(
     float output_yx_imag = 0.0f;
     float output_yy_imag = 0.0f;
 
-    int i = *i_;
-
     #pragma omp simd reduction(+:output_xx_real,output_xx_imag, \
                                  output_xy_real,output_xy_imag, \
                                  output_yx_real,output_yx_imag, \
                                  output_yy_real,output_yy_imag)
-    for (; i < n; i++) {
+    for (int i = *offset; i < n; i++) {
         float phasor_real_ = phasor_real[i];
         float phasor_imag_ = phasor_imag[i];
 
@@ -193,18 +191,18 @@ inline void compute_reduction_scalar(
         output_yy_imag += input_yy_imag[i] * phasor_real_;
     }
 
+    *offset = n;
+
     // Update output
     output[0] += {output_xx_real, output_xx_imag};
     output[1] += {output_xy_real, output_xy_imag};
     output[2] += {output_yx_real, output_yx_imag};
     output[3] += {output_yy_real, output_yy_imag};
-
-    *i_ = i;
 } // end compute_reduction_scalar
 
 #if defined(__AVX2__)
 inline void compute_reduction_avx2(
-    int *i_,
+    int *offset,
     const int n,
     const float *input_xx_real,
     const float *input_xy_real,
@@ -229,9 +227,7 @@ inline void compute_reduction_avx2(
     __m256 output_yx_i = _mm256_setzero_ps();
     __m256 output_yy_i = _mm256_setzero_ps();
 
-    int i = *i_;
-
-    for (; i < (n / vector_length) * vector_length; i += vector_length) {
+    for (int i = *offset; i < (n / vector_length) * vector_length; i += vector_length) {
         __m256 input_xx, input_xy, input_yx, input_yy;
         __m256 phasor_r, phasor_i;
 
@@ -272,7 +268,7 @@ inline void compute_reduction_avx2(
     }
 
     // Reduce all vectors
-    if (i > 0) {
+    if (n - *offset > 0) {
         output[0].real += _mm256_reduce_add_ps(output_xx_r);
         output[1].real += _mm256_reduce_add_ps(output_xy_r);
         output[2].real += _mm256_reduce_add_ps(output_yx_r);
@@ -283,13 +279,14 @@ inline void compute_reduction_avx2(
         output[3].imag += _mm256_reduce_add_ps(output_yy_i);
     }
 
-    *i_ = i;
+
+    *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx2
 #endif
 
 #if defined(__AVX512F__)
 inline void compute_reduction_avx512(
-    int *i_,
+    int *offset,
     const int n,
     const float *input_xx_real,
     const float *input_xy_real,
@@ -314,9 +311,7 @@ inline void compute_reduction_avx512(
     __m512 output_yx_i = _mm512_setzero_ps();
     __m512 output_yy_i = _mm512_setzero_ps();
 
-    int i = *i_;
-
-    for (; i < (n / vector_length) * vector_length; i += vector_length) {
+    for (int i = *offset; i < (n / vector_length) * vector_length; i += vector_length) {
         __m512 input_xx, input_xy, input_yx, input_yy;
         __m512 phasor_r, phasor_i;
 
@@ -357,7 +352,7 @@ inline void compute_reduction_avx512(
     }
 
     // Reduce all vectors
-    if (i > 0) {
+    if (n - *offset > 0) {
         output[0].real += _mm512_reduce_add_ps(output_xx_r);
         output[1].real += _mm512_reduce_add_ps(output_xy_r);
         output[2].real += _mm512_reduce_add_ps(output_yx_r);
@@ -368,7 +363,7 @@ inline void compute_reduction_avx512(
         output[3].imag += _mm512_reduce_add_ps(output_yy_i);
     }
 
-    *i_ = i;
+    *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx512
 #endif
 
@@ -386,7 +381,7 @@ inline void compute_reduction(
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
 {
-    int i = 0;
+    int offset = 0;
 
     // Initialize output to zero
     memset(output, 0, NR_POLARIZATIONS * sizeof(idg::float2));
@@ -394,7 +389,7 @@ inline void compute_reduction(
     #if defined(__AVX512F__)
     // Vectorized loop, 16-elements, AVX512
     compute_reduction_avx512(
-            &i, n,
+            &offset, n,
             input_xx_real, input_xy_real, input_yx_real, input_yy_real,
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
@@ -404,7 +399,7 @@ inline void compute_reduction(
     #if defined(__AVX2__)
     // Vectorized loop, 8-elements, AVX2
     compute_reduction_avx2(
-            &i, n,
+            &offset, n,
             input_xx_real, input_xy_real, input_yx_real, input_yy_real,
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
@@ -413,7 +408,7 @@ inline void compute_reduction(
 
     // Remainder loop, scalar
     compute_reduction_scalar(
-            &i, n,
+            &offset, n,
             input_xx_real, input_xy_real, input_yx_real, input_yy_real,
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
