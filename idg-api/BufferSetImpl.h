@@ -41,6 +41,8 @@ namespace api {
         float m_image_size;
         float m_cell_size;
         float m_w_step;
+        size_t m_width;
+        size_t m_padded_width;
     };
     
     
