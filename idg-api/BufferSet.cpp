@@ -26,7 +26,6 @@ namespace api {
                                  buffer_set_type);
     }
 
-
     int nextcomposite(int n)
     {
         n += (n & 1);
@@ -41,7 +40,6 @@ namespace api {
         }
     }
 
-
     BufferSetImpl::BufferSetImpl(
         Type architecture, 
         size_t bufferTimesteps, 
@@ -53,15 +51,15 @@ namespace api {
         BufferSetType buffer_set_type) :
         m_grid(0,0,0,0,0),
         m_buffer_set_type(buffer_set_type),
+        m_max_nr_w_layers(0),
         m_cell_size(cell_size),
         m_width(width)
     {
         const float taper_kernel_size = 7.0;
         const float padding = 1.20;
         const float a_term_kernel_size = 0.0;
-        
+
         m_padded_width = nextcomposite(std::ceil(m_width * padding));
-        
 
         // 
         m_image_size = cell_size * m_padded_width;
@@ -79,8 +77,8 @@ namespace api {
 
         int nr_w_layers = std::ceil(max_w / m_w_step);
 
-        //DEBUG manually restrict nr w layers
-        nr_w_layers = std::min(12, nr_w_layers);
+        //restrict nr w layers
+        if (m_max_nr_w_layers) nr_w_layers = std::min(m_max_nr_w_layers, nr_w_layers);
 
         std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
 

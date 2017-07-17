@@ -33,6 +33,7 @@ namespace api {
         virtual DegridderBuffer* get_degridder(int i) = 0;
         virtual GridderBuffer* get_gridder(int i) = 0;
 
+        virtual void set_max_nr_w_layers(int max_nr_w_layers) = 0;
         virtual void set_image(const double* image) = 0 ;
         virtual void get_image(double* image) = 0;
         virtual void finished() = 0;
