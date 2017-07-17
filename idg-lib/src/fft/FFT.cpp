@@ -16,10 +16,13 @@ namespace idg {
         fftwf_plan plan;
 
         #pragma omp critical
+        {
+        fftwf_plan_with_nthreads(4);
         plan = fftwf_plan_dft_2d(m, n,
                                  tmp, tmp,
                                  FFTW_FORWARD,
                                  FFTW_ESTIMATE);
+        }
         fftwf_execute(plan);
         fftshift(m, n, data);
         fftwf_destroy_plan(plan);
@@ -38,10 +41,13 @@ namespace idg {
         fftwf_plan plan;
 
         #pragma omp critical
+        {
+        fftwf_plan_with_nthreads(4);
         plan = fftwf_plan_dft_2d(m, n,
                                  tmp, tmp,
                                  FFTW_BACKWARD,
                                  FFTW_ESTIMATE);
+        }
         ifftshift(m, n, data);
         fftwf_execute(plan);
         fftwf_destroy_plan(plan);

@@ -112,7 +112,7 @@ if (${MKL_FOUND})
 else()
     unset (MKL_INCLUDE_DIRS CACHE)
     unset (MKL_LIBRARIES CACHE)
-    find_package(FFTW3 COMPONENTS single double)
+    find_package(FFTW3 COMPONENTS single double threads)
 endif()
 
 
