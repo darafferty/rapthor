@@ -21,16 +21,12 @@ namespace api {
             int nr_stations,
             size_t width, 
             float cellsize, 
-            float max_w,         
+            float max_w,
+            int max_nr_w_layers,
             BufferSetType buffer_set_type);
 
         DegridderBuffer* get_degridder(int i);
         GridderBuffer* get_gridder(int i);
-
-        virtual void set_max_nr_w_layers(int max_nr_w_layers) 
-        {
-            m_max_nr_w_layers = max_nr_w_layers;
-        }
 
         virtual void set_image(const double* image);
         virtual void get_image(double* image);
@@ -43,7 +39,6 @@ namespace api {
         std::vector<float> m_taper_subgrid;
         std::vector<float> m_taper_grid;
         Grid m_grid;
-        int m_max_nr_w_layers;
         float m_image_size;
         float m_cell_size;
         float m_w_step;

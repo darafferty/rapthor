@@ -19,11 +19,12 @@ namespace api {
         size_t width,
         float cell_size,
         float max_w,
+        int max_nr_w_layers,
         BufferSetType buffer_set_type)
     {
         return new BufferSetImpl(architecture, bufferTimesteps, bands, 
                                  nr_stations, width, cell_size, max_w, 
-                                 buffer_set_type);
+                                 max_nr_w_layers, buffer_set_type);
     }
 
     int nextcomposite(int n)
@@ -48,10 +49,10 @@ namespace api {
         size_t width, 
         float cell_size, 
         float max_w,
+        int max_nr_w_layers,
         BufferSetType buffer_set_type) :
         m_grid(0,0,0,0,0),
         m_buffer_set_type(buffer_set_type),
-        m_max_nr_w_layers(0),
         m_cell_size(cell_size),
         m_width(width)
     {
@@ -78,7 +79,7 @@ namespace api {
         int nr_w_layers = std::ceil(max_w / m_w_step);
 
         //restrict nr w layers
-        if (m_max_nr_w_layers) nr_w_layers = std::min(m_max_nr_w_layers, nr_w_layers);
+        if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
         std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
 
