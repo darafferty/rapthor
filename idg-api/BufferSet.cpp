@@ -244,6 +244,7 @@ namespace api {
             #pragma omp parallel for
             for(int i=0; i < m_width; i++)
             {
+                #pragma omp simd
                 for(int j=0; j < m_width; j++)
                 {
                     const float l = (i-((int)m_width/2)) * m_cell_size;
@@ -255,11 +256,10 @@ namespace api {
 
                     float phase = 2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
-                    #pragma omp simd
-                    for(int pol=0; pol<4; pol++)
-                    {
                         float inv_spheroidal2 = inv_spheroidal[i] * inv_spheroidal[j];
                         inv_spheroidal2 = (inv_spheroidal2 < 1e3) ? inv_spheroidal2 : 0.0;
+                    for(int pol=0; pol<4; pol++)
+                    {
                         m_grid(w_layer, pol, i+i0, j+j0) = m_grid(0, pol, i+i0, j+j0) * inv_spheroidal2 * phasor;
                     }
                 }
