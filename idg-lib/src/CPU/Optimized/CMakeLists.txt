@@ -28,7 +28,7 @@ install(
 	kernels/KernelGridder.cpp
 	kernels/KernelSplitter.cpp
 	kernels/KernelSplitterWStack.cpp
-	${CMAKE_SOURCE_DIR}/src/common/Types.h
+	${CMAKE_CURRENT_SOURCE_DIR}/../../common/Types.h
 	kernels/Math.h
 	DESTINATION
 	lib/idg-cpu/Optimized

@@ -26,7 +26,7 @@ install(
     kernels/KernelFFT.cpp
     kernels/KernelGridder.cpp
     kernels/KernelSplitter.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/Types.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/Types.h
     DESTINATION
     lib/idg-cpu/Reference
 )

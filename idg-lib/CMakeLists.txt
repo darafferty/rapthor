@@ -8,7 +8,7 @@ cmake_policy(SET CMP0012 NEW) # 2.8.0
 project(ImageDomainGridder CXX)
 
 # set cmake module path
-list(APPEND CMAKE_MODULE_PATH "@CMAKE_CURRENT_SOURCE_DIR@/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 
 # options
@@ -100,10 +100,10 @@ else ()
     unset(POWERSENSOR_INCLUDE_DIR CACHE)
 endif()
 
-include_directories (${CMAKE_BINARY_DIR}/src)
+include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # add main include folder
-include_directories (${CMAKE_SOURCE_DIR}/src)
+include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # add subfolders, after specifying the targets to build
 add_subdirectory(src)
