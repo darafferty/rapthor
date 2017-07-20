@@ -6,6 +6,13 @@ This repository will contain the three subprojects of Image Domain Gridding:
 
 Each repository can also be installed separately if desired.
 
+# Installation
+```
+git clone --recursive https://gitlab.com/astron-idg/idg
+cd idg && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local/idg/ ..
+```
+
 # Work-in-progress!
-For now, this repository is not yet usable. Please use the instructions in
-https://gitlab.com/astron-idg/idg-api and https://gitlab.com/astron-idg/idg-api
+For now, this head repository is not completely tested.
+When in doubt, please install the submodules separately.
