@@ -31,4 +31,4 @@ install(TARGETS ${PROJECT_NAME}
 
 # test
 add_test(NAME ${PROJECT_NAME}
-         COMMAND ${CMAKE_BINARY_DIR}/tests/cxx/CPU/Reference/${PROJECT_NAME})
+         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/cxx/CPU/Reference/${PROJECT_NAME})
