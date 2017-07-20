@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8.0)
 project(ImageDomainGridder CXX)
 
 # set cmake module path
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "@CMAKE_CURRENT_SOURCE_DIR@/cmake/modules")
 
 # options
 option (BUILD_LIB_CPU "Build CPU libraries" ON)
