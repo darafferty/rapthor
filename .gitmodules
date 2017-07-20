@@ -1,0 +1,9 @@
+[submodule "idg-lib"]
+	path = idg-lib
+	url = git@gitlab.com:astron-idg/idg-lib.git
+[submodule "idg-bin"]
+	path = idg-bin
+	url = git@gitlab.com:astron-idg/idg-bin.git
+[submodule "idg-api"]
+	path = idg-api
+	url = git@gitlab.com:astron-idg/idg-api.git
