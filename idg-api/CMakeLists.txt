@@ -50,8 +50,14 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "@CMAKE_CURRENT_SOURCE_DIR@/cmake/modules")
 
 
-find_package(IDG NO_MODULE)
-include_directories (${IDG_INCLUDE_DIRS})
+if (${IDG_OnePackage})
+    include_directories (${CMAKE_BINARY_DIR}/idg-lib/src)
+    include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
+else()
+    find_package(IDG NO_MODULE)
+    include_directories (${IDG_INCLUDE_DIRS})
+endif()
+
 
 find_package(MKL QUIET)
 if (${MKL_FOUND})
