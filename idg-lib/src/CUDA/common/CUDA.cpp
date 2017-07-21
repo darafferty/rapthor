@@ -46,29 +46,10 @@ namespace idg {
                     device_numbers = idg::auxiliary::split_int(char_cuda_device, ",");
                 }
 
-                // Get list of all power sensors
-                char *char_power_sensor = getenv("POWER_SENSOR");
-                std::vector<std::string> power_sensors = idg::auxiliary::split_string(char_power_sensor, ",");
-
-                // Get list of all power files
-                char *char_power_file = getenv("POWER_FILE");
-                std::vector<std::string> power_files = idg::auxiliary::split_string(char_power_file, ",");
-
-                // Remove host power sensor, if specified
-                if (power_sensors.size() > 0 &&
-                    power_sensors[0].find(powersensor::name_arduino) == std::string::npos) {
-                    if (power_sensors.size() == power_files.size()) {
-                        power_files.erase(power_files.begin());
-                    }
-                    power_sensors.erase(power_sensors.begin());
-                }
-
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {
-                    const char *power_sensor = i < power_sensors.size() ? power_sensors[i].c_str() : NULL;
-                    const char *power_file = i < power_files.size() ? power_files[i].c_str() : NULL;
                     InstanceCUDA *device = new InstanceCUDA(
-                        mConstants, mInfo, device_numbers[i], power_sensor, power_file);
+                        mConstants, mInfo, i, device_numbers[i]);
                     devices.push_back(device);
                 }
             }
