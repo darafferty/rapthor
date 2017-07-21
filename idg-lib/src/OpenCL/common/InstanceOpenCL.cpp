@@ -14,7 +14,8 @@ namespace idg {
             InstanceOpenCL::InstanceOpenCL(
                 CompileConstants& constants,
                 cl::Context& context,
-                int device_number) :
+                int device_nr,
+                int device_id) :
                 KernelsInstance(constants),
                 mContext(context),
                 mPrograms(5)
@@ -24,7 +25,7 @@ namespace idg {
                 #endif
 
                 // Initialize members
-                device       = new cl::Device(context.getInfo<CL_CONTEXT_DEVICES>()[device_number]);
+                device       = new cl::Device(context.getInfo<CL_CONTEXT_DEVICES>()[device_id]);
                 executequeue = new cl::CommandQueue(context, *device);
                 htodqueue    = new cl::CommandQueue(context, *device);
                 dtohqueue    = new cl::CommandQueue(context, *device);
@@ -39,7 +40,7 @@ namespace idg {
                 load_kernels();
 
                 // Initialize power sensor
-                powerSensor = get_power_sensor(sensor_device, device_number);
+                powerSensor = get_power_sensor(sensor_device, device_nr);
 
                 // Kernel specific initialization
                 fft_planned = false;

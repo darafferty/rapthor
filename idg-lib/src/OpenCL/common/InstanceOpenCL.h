@@ -23,7 +23,8 @@ namespace idg {
                     InstanceOpenCL(
                         CompileConstants& constants,
                         cl::Context& context,
-                        int device_number);
+                        int device_nr,
+                        int device_id);
 
                     // Destructor
                     ~InstanceOpenCL();

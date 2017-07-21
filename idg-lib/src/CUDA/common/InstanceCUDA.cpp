@@ -14,9 +14,8 @@ namespace idg {
             InstanceCUDA::InstanceCUDA(
                 CompileConstants &constants,
                 ProxyInfo &info,
-                int device_number,
-                const char *str_power_sensor,
-                const char *str_power_file) :
+                int device_nr,
+                int device_id) :
                 KernelsInstance(constants),
                 mInfo(info),
                 mModules(5),
@@ -29,7 +28,7 @@ namespace idg {
                 #endif
 
                 // Initialize members
-                device = new cu::Device(device_number);
+                device = new cu::Device(device_id);
                 context = new cu::Context(*device);
                 context->setCurrent();
                 executestream  = new cu::Stream();
@@ -55,7 +54,7 @@ namespace idg {
                 load_kernels();
 
                 // Initialize power sensor
-                powerSensor = get_power_sensor(sensor_device, device_number);
+                powerSensor = get_power_sensor(sensor_device, device_nr);
             }
 
             // Destructor

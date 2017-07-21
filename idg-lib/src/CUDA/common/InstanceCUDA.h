@@ -17,9 +17,8 @@ namespace idg {
                     InstanceCUDA(
                         CompileConstants &constants,
                         ProxyInfo &info,
-                        int device_number,
-                        const char *power_sensor = NULL,
-                        const char *power_file = NULL);
+                        int device_nr = 0,
+                        int device_id = 0);
 
                     // Destructor
                     ~InstanceCUDA();

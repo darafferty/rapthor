@@ -31,11 +31,11 @@ namespace powersensor {
         #if defined(HAVE_POWERSENSOR)
         if (power_sensors.size() > 0 && i < power_sensors.size()) {
             std::string power_sensor_str = power_sensors[i];
-            if (power_sensor_str.compare(name_likwid)) {
+            if (power_sensor_str.compare(name_likwid) == 0) {
                 return likwid::LikwidPowerSensor::create();
-            } else if (power_sensor_str.compare(name_rapl)) {
+            } else if (power_sensor_str.compare(name_rapl) == 0) {
                 return rapl::RaplPowerSensor::create();
-            } else if (power_sensor_str.compare(name_nvml)) {
+            } else if (power_sensor_str.compare(name_nvml) == 0) {
                 return nvml::NVMLPowerSensor::create(i, NULL);
             } else if (power_sensor_str.find(name_arduino) != std::string::npos) {
                 return arduino::ArduinoPowerSensor::create(power_sensor_str.c_str(), NULL);
