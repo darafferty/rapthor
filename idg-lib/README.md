@@ -1,5 +1,4 @@
 # Quick installation guide:      
-
 mkdir idg; cd idg     
 git clone https://gitlab.com/astron-idg/code.git      
 cd code     
@@ -16,7 +15,6 @@ make install
 * BUILD_LIB_CUDA: build library 'libidg-cuda' for usage on Nvidia GPU's      
 * BUILD_LIB_OPENCL: build library 'libidg-opencl' for usage of OpenCL     
 * BUILD_WITH_PYTHON: build Python module 'idg' to use IDG from Python       
-* BUILD_WITH_BOOST_PYTHON: ...       
 
 All other build options are for development purposes only, and should be
 left at the default values by a regular user.      
@@ -58,3 +56,17 @@ For instance, for the CPU library, include the "idg-cpu." in your source file. I
 *include_directories (${IDG_INCLUDE_DIR})*    
 *target_link_libraries (a.out ${IDG_LIB})*      
 
+# Legal
+ASTRON has a patent pending on the Image Domain Gridding method implemented by
+this software.  This software is licensed under the GNU General Public License
+v3.0 (GPLv3.0).  That means that you are allowed to use, modify, distribute and 
+sell this software under the conditions of GPLv3.0. For the exact terms of
+GPLv3.0, see the LICENSE file.  Making, using, distributing, or offering for 
+sale of independent implementations of the Image Domain Gridding method, other
+than under GPLv3.0, might infringe upon patent claims by ASTRON. In that case
+you must obtain a license from ASTRON.
+
+ASTRON (Netherlands Institute for Radio Astronomy)
+Attn. IPR Department
+P.O.Box 2, 7990 AA Dwingeloo, The Netherlands
+T +31 521 595100
