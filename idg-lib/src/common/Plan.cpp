@@ -250,7 +250,8 @@ namespace idg {
 
                         // Try to add visibilities to subgrid
                         if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
-                            subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda1)) {
+                            // HACK also pass w_lambda0 below
+                            subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda0)) {
                             nr_timesteps_subgrid++;
                         } else {
                             break;
@@ -261,6 +262,15 @@ namespace idg {
                     // Subgrid is empty when first visibility can not be added to subgrid,
                     // next attempt will fail as well, so advance to next timestep.
                     if (nr_timesteps_subgrid == 0) {
+                        DataPoint visibility = datapoints[time_offset*nr_channels];
+                        const float u_pixels = visibility.u_pixels;
+                        const float v_pixels = visibility.v_pixels;
+
+                        if (std::isfinite(u_pixels) && std::isfinite(v_pixels))
+                        {
+                            #pragma omp critical
+                            throw std::runtime_error("empty subgrid, visibilities do not fit in subgrid (too many channnels)");
+                        }
                         time_offset++;
                         continue;
                     }
@@ -287,6 +297,11 @@ namespace idg {
                         };
                         metadata_[bl].push_back(m);
                         if (w_index) needs_w_stacking = true;
+                    }
+                    else
+                    {
+                        #pragma omp critical
+                        throw std::runtime_error("subgrid falls not within grid");
                     }
                 } // end while
             } // end for timeslot
