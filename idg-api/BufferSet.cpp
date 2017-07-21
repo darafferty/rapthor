@@ -97,15 +97,14 @@ namespace api {
             max_nr_channels = std::max(max_nr_channels, int(band.size()));
         }
 
-        // idg library's Plan does not account for channels, when mapping visibilities onto subgrids
-        // therefore the maximum number of channels is added to the kernel size
-        float kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size + max_nr_channels + 8.0;
+        float kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
         // reserved space in subgrid for time 
         float uv_span_time = 8.0;
+        
+        float uv_span_frequency = max_nr_channels;
 
-
-        int subgridsize = int(std::ceil((kernel_size + uv_span_time)/8.0))*8;
+        int subgridsize = int(std::ceil((kernel_size + uv_span_time + uv_span_frequency)/8.0))*8;
 
         m_grid = Grid(nr_w_layers,4,m_padded_width,m_padded_width);
 
