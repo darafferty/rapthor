@@ -255,8 +255,7 @@ namespace api {
 
                     float phase = 2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
-                        float inv_spheroidal2 = inv_spheroidal[i] * inv_spheroidal[j];
-                        inv_spheroidal2 = (inv_spheroidal2 < 1e3) ? inv_spheroidal2 : 0.0;
+                    float inv_spheroidal2 = inv_spheroidal[i] * inv_spheroidal[j];
                     for(int pol=0; pol<4; pol++)
                     {
                         m_grid(w_layer, pol, i+i0, j+j0) = m_grid(0, pol, i+i0, j+j0) * inv_spheroidal2 * phasor;
@@ -310,18 +309,13 @@ namespace api {
 
                     float phase = -2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
-                    
+
                     float inv_spheroidal2 = inv_spheroidal[i] * inv_spheroidal[j];
-                    inv_spheroidal2 = (inv_spheroidal2 < 1e3) ? inv_spheroidal2 : 0.0;
 
                     m_grid(w_layer, 0, i+i0, j+j0) = m_grid(w_layer, 0, i+i0, j+j0) * inv_spheroidal2 * phasor;
                     m_grid(w_layer, 1, i+i0, j+j0) = m_grid(w_layer, 1, i+i0, j+j0) * inv_spheroidal2 * phasor;
                     m_grid(w_layer, 2, i+i0, j+j0) = m_grid(w_layer, 2, i+i0, j+j0) * inv_spheroidal2 * phasor;
                     m_grid(w_layer, 3, i+i0, j+j0) = m_grid(w_layer, 3, i+i0, j+j0) * inv_spheroidal2 * phasor;
-//                     for(int pol=0; pol<4; pol++)
-//                     {
-//                          m_grid(w_layer, pol, i, j) = m_grid(w_layer, pol, i, j) * inv_spheroidal[i] * inv_spheroidal[j] * phasor;
-//                     }
                 }
             }
         }
