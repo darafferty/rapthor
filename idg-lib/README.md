@@ -66,7 +66,7 @@ sale of independent implementations of the Image Domain Gridding method, other
 than under GPLv3.0, might infringe upon patent claims by ASTRON. In that case
 you must obtain a license from ASTRON.
 
-ASTRON (Netherlands Institute for Radio Astronomy)
-Attn. IPR Department
-P.O.Box 2, 7990 AA Dwingeloo, The Netherlands
+ASTRON (Netherlands Institute for Radio Astronomy)  
+Attn. IPR Department  
+P.O.Box 2, 7990 AA Dwingeloo, The Netherlands  
 T +31 521 595100
