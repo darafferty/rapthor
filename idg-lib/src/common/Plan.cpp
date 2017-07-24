@@ -59,10 +59,10 @@ namespace idg {
                 if (std::isinf(u_pixels) || std::isinf(v_pixels)) {
                     return false;
                 }
-                
+
                 int w_index_ = 0;
                 if (w_step) w_index_ = int(std::floor(w_lambda/w_step));
-                
+
                 // if this is not the first sample, it should map to the
                 // same w_index as the others, if not, return false
                 if (std::isfinite(u_min) && (w_index_ != w_index)) {
@@ -76,9 +76,9 @@ namespace idg {
                 float v_max_ = fmax(v_max, v_pixels);
 
                 // Compute candidate uv width
-                int u_width_  = u_max_ - u_min_ + 1;
-                int v_width_  = v_max_ - v_min_ + 1;
-                int uv_width_ = fmax(u_width_, v_width_);
+                float u_width_  = u_max_ - u_min_;
+                float v_width_  = v_max_ - v_min_;
+                float uv_width_ = fmax(u_width_, v_width_);
 
                 // Return false if the visibility does not fit
                 if ((uv_width_ + kernel_size) >= subgrid_size) {
@@ -233,11 +233,9 @@ namespace idg {
                     int nr_timesteps_subgrid = 0;
 
                     // Iterate all datapoints
-                    int time_limit = abs(time_offset + max_nr_timesteps_per_subgrid);
-                    int time_max = time_limit > 0 ? min(time_limit, nr_timesteps_per_aterm) :nr_timesteps_per_aterm;
-                    for (; time_offset < time_max; time_offset++) {
+                    for (; time_offset < nr_timesteps_per_aterm; time_offset++) {
                         // Visibility for first channel
-                        
+
                         DataPoint visibility0 = datapoints[time_offset*nr_channels];
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
@@ -253,6 +251,7 @@ namespace idg {
                             // HACK also pass w_lambda0 below
                             subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda0)) {
                             nr_timesteps_subgrid++;
+                            if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) break;
                         } else {
                             break;
                         }
