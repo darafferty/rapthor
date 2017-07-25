@@ -2,7 +2,10 @@
 #define IDG_API_BUFFERSET_H_
 
 #include <vector>
+#include <string>
+#include <map>
 
+#include "Value.h"
 #include "GridderBuffer.h"
 #include "DegridderBuffer.h"
 
@@ -15,6 +18,8 @@ namespace api {
         degridding
     };
 
+    typedef std::map<std::string, Value> options_type;
+
     class BufferSet {
     public:
 
@@ -25,8 +30,9 @@ namespace api {
             int nr_stations,
             size_t width, 
             float cellsize, 
+            float max_baseline,
             float max_w,
-            int max_nr_w_layers,
+            options_type &options,
             BufferSetType buffer_set_type);
 
         virtual ~BufferSet() {};

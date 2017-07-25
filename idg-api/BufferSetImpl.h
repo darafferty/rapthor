@@ -21,8 +21,9 @@ namespace api {
             int nr_stations,
             size_t width, 
             float cellsize, 
+            float max_baseline,
             float max_w,
-            int max_nr_w_layers,
+            options_type &options,
             BufferSetType buffer_set_type);
 
         DegridderBuffer* get_degridder(int i);

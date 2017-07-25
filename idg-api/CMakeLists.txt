@@ -77,6 +77,7 @@ set (${PROJECT_NAME}_headers
     GridderBuffer.h
     DegridderBuffer.h
     taper.h
+    Value.h
 )
 
 set (${PROJECT_NAME}_sources

@@ -18,13 +18,14 @@ namespace api {
         int nr_stations,
         size_t width,
         float cell_size,
+        float max_baseline,
         float max_w,
-        int max_nr_w_layers,
+        options_type &options,
         BufferSetType buffer_set_type)
     {
-        return new BufferSetImpl(architecture, bufferTimesteps, bands, 
-                                 nr_stations, width, cell_size, max_w, 
-                                 max_nr_w_layers, buffer_set_type);
+        return new BufferSetImpl(
+            architecture, bufferTimesteps, bands, nr_stations, width,
+            cell_size, max_baseline, max_w, options, buffer_set_type);
     }
 
     int nextcomposite(int n)
@@ -48,8 +49,9 @@ namespace api {
         int nr_stations,
         size_t width, 
         float cell_size, 
+        float max_baseline,
         float max_w,
-        int max_nr_w_layers,
+        options_type &options,
         BufferSetType buffer_set_type) :
         m_grid(0,0,0,0,0),
         m_buffer_set_type(buffer_set_type),
@@ -59,6 +61,9 @@ namespace api {
         const float taper_kernel_size = 7.0;
         const float padding = 1.20;
         const float a_term_kernel_size = 0.0;
+
+        int max_nr_w_layers = 0;
+        if (options.count("max_nr_w_layers")) max_nr_w_layers = options["max_nr_w_layers"];
 
         m_padded_width = nextcomposite(std::ceil(m_width * padding));
 
