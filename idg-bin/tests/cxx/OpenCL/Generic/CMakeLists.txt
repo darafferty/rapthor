@@ -1,11 +1,5 @@
 project(test-opencl-generic.x)
 
-# Set external header files
-include_directories(
-  ${OPENCL_INCLUDE_DIRS}
-  ${CLFFT_INCLUDE_DIRS}
- )
-
 set (${PROJECT_NAME}_sources
   main.cpp
 )

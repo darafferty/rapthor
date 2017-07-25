@@ -1,10 +1,5 @@
 project(test-cpu-optimized.x)
 
-# Set external header files
-include_directories(
-  ${CMAKE_SOURCE_DIR}/utility
- )
-
 set (${PROJECT_NAME}_sources 
   main.cpp
 )
