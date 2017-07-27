@@ -1,5 +1,7 @@
 #include "Init.h"
 
+#include "uvwsim.h"
+
 namespace idg {
 
     void init_example_uvw(

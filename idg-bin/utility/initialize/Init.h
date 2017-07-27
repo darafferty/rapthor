@@ -10,7 +10,6 @@
 
 #include "idg-config.h"
 #include "idg-examples-config.h"
-#include "idg-utility.h"
 #include "idg-common.h" // idg data types
 #include "idg-fft.h"
 

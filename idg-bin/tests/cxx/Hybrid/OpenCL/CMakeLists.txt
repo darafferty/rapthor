@@ -1,11 +1,5 @@
 project(test-hybrid-opencl.x)
 
-# Set external header files
-include_directories (
-    ${OPENCL_INCLUDE_DIRS}
-    ${CLFFT_INCLUDE_DIRS}
-)
-
 # Set sources
 set (
     ${PROJECT_NAME}_sources

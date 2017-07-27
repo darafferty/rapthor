@@ -1,5 +1,8 @@
 project(cxx)
 
+# set utility include directory
+include_directories(${CMAKE_SOURCE_DIR}/utility)
+
 # set common include directory
 include_directories(common)
 
