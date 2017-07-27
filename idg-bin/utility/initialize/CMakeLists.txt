@@ -2,7 +2,7 @@ project(utility-initialize)
 
 # external header files needed
 include_directories (
-    ${CMAKE_SOURCE_DIR}/utility/external
+  ${IDG_BIN_UTILITY_INCLUDE_DIR}/external
 )
 
 # sources and header files

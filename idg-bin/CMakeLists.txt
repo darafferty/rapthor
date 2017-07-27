@@ -84,25 +84,27 @@ endif()
 
 # write config file
 configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/config/idg-examples-config.h.in"
-    "${PROJECT_BINARY_DIR}/idg-examples-config.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/idg-examples-config.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/idg-examples-config.h"
 )
 
 # add directory of config file to include directories
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # write file to initialize environment
 configure_file (
-    "${PROJECT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
-    "${PROJECT_BINARY_DIR}/init-environment.sh"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh"
 )
 
 install(
     FILES
-    "${PROJECT_BINARY_DIR}/init-environment.sh"
+    "${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh"
     DESTINATION
     ${CMAKE_INSTALL_PREFIX}
 )
+
+set (IDG_BIN_UTILITY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utility)
 
 # build utilities
 add_subdirectory(utility)

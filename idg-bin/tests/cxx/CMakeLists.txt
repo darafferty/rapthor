@@ -1,7 +1,7 @@
 project(cxx)
 
 # set utility include directory
-include_directories(${CMAKE_SOURCE_DIR}/utility)
+include_directories(${IDG_BIN_UTILITY_INCLUDE_DIR})
 
 # set common include directory
 include_directories(common)
