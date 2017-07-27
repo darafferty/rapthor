@@ -2,7 +2,7 @@ project(opencl-generic)
 
 # Set headers
 include_directories (
-	${CMAKE_SOURCE_DIR}/src/OpenCL/common
+    ${IDG_OpenCL_INCLUDE_DIR}
 )
 
 set (

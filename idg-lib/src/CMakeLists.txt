@@ -1,5 +1,8 @@
 project(idg)
 
+set (IDG_CUDA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/CUDA/common)
+set (IDG_OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/common)
+
 # add subfolders
 add_subdirectory(common)
 

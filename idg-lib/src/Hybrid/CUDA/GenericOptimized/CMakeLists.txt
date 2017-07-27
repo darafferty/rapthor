@@ -2,7 +2,7 @@ project(hybrid-cuda-generic-optimized)
 
 # Set headers
 include_directories (
-    ${CMAKE_SOURCE_DIR}/src/CUDA/common
+    ${IDG_CUDA_INCLUDE_DIR}
     ${CUDA_INCLUDE_DIRS}
 )
 
