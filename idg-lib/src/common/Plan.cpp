@@ -34,11 +34,13 @@ namespace idg {
                 const int   kernel_size,
                 const int   subgrid_size,
                 const int   grid_size,
-                const float w_step) :
+                const float w_step,
+                const unsigned nr_w_layers) :
                 kernel_size(kernel_size),
                 subgrid_size(subgrid_size),
                 grid_size(grid_size),
-                w_step(w_step)
+                w_step(w_step),
+                nr_w_layers(nr_w_layers)
             {
                 reset();
             }
@@ -49,9 +51,15 @@ namespace idg {
                 v_min =  std::numeric_limits<float>::infinity();
                 v_max = -std::numeric_limits<float>::infinity();
                 uv_width = 0;
+                finished = false;
             }
 
             bool add_visibility(float u_pixels, float v_pixels, float w_lambda) {
+                // Return false when finish() has been called
+                if (finished) {
+                    return false;
+                }
+
                 // Return false for invalid visibilities
                 if (std::isinf(u_pixels) || std::isinf(v_pixels)) {
                     return false;
@@ -91,7 +99,24 @@ namespace idg {
                 }
             }
 
-            Coordinate get_coordinate() {
+            bool in_range() {
+                Coordinate coordinate = get_coordinate();
+
+                // Compute extremes of subgrid position in grid
+                int uv_max_pixels = max(coordinate.x, coordinate.y);
+                int uv_min_pixels = min(coordinate.x, coordinate.y);
+
+                // Index in w-stack
+                int w_index = coordinate.z;
+
+                // Return whether the subgrid fits in grid and w-stack
+                return  uv_min_pixels >= 1 &&
+                        uv_max_pixels <= (grid_size - subgrid_size) &&
+                        w_index       >= -((int) nr_w_layers) &&
+                        w_index       <   ((int) nr_w_layers);
+            }
+
+            void compute_coordinate() {
                 // Compute middle point in pixels
                 int u_pixels = roundf((u_max + u_min) / 2);
                 int v_pixels = roundf((v_max + v_min) / 2);
@@ -104,7 +129,19 @@ namespace idg {
                 u_pixels -= (subgrid_size/2);
                 v_pixels -= (subgrid_size/2);
 
-                return {u_pixels, v_pixels, w_index};
+                coordinate = {u_pixels, v_pixels, w_index};
+            }
+
+            void finish() {
+                finished = true;
+                compute_coordinate();
+            }
+
+            Coordinate get_coordinate() {
+                if (!finished) {
+                    throw std::runtime_error("finish the subgrid before retrieving its coordinate");
+                }
+                return coordinate;
             }
 
             const int kernel_size;
@@ -117,6 +154,9 @@ namespace idg {
             float uv_width;
             int   w_index;
             float w_step;
+            int nr_w_layers;
+            bool finished;
+            Coordinate coordinate;
     }; // end class Subgrid
 
 
@@ -139,9 +179,7 @@ namespace idg {
         const Array2D<UVWCoordinate<float>>& uvw,
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
-        const float w_step,
-        const int nr_w_layers,
-        const int max_nr_timesteps_per_subgrid)
+        const Options& options)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -222,7 +260,7 @@ namespace idg {
                 } // end for time
 
                 // Initialize subgrid
-                Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step);
+                Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers);
 
                 int time_offset = 0;
                 while (time_offset < nr_timesteps_per_aterm) {
@@ -259,42 +297,35 @@ namespace idg {
                         }
                     } // end for time
 
-                    // Skip empty subgrid
-                    // Subgrid is empty when first visibility can not be added to subgrid,
-                    // next attempt will fail as well, so advance to next timestep.
+                    // Handle empty subgrid
                     if (nr_timesteps_subgrid == 0) {
                         DataPoint visibility = datapoints[time_offset*nr_channels];
                         const float u_pixels = visibility.u_pixels;
                         const float v_pixels = visibility.v_pixels;
 
-                        if (std::isfinite(u_pixels) && std::isfinite(v_pixels))
-                        {
+                        if (std::isfinite(u_pixels) && std::isfinite(v_pixels) && plan_strict) {
+                            // Coordinates are valid, but did not (all) fit onto subgrid
                             #pragma omp critical
-                            throw std::runtime_error("empty subgrid, visibilities do not fit in subgrid (too many channnels)");
+                            throw std::runtime_error("could not place (all) visibilities on subgrid (too many channnels, kernel size too large)");
+                        } else {
+                            // Advance to next timeslot when visibilities for current timeslot had infinite coordinates
+                            time_offset++;
+                            continue;
                         }
-                        time_offset++;
-                        continue;
                     }
 
-                    // Check whether current subgrid is in grid range
-                    Coordinate coordinate = subgrid.get_coordinate();
-                    int  uv_max_pixels = max(coordinate.x, coordinate.y);
-                    int  uv_min_pixels = min(coordinate.x, coordinate.y);
-                    int  w_index = coordinate.z;
-                    bool uvw_in_range = uv_min_pixels >= 1 && 
-                                        uv_max_pixels <= (grid_size - subgrid_size) &&
-                                        w_index >= -nr_w_layers &&
-                                        w_index < nr_w_layers;
+                    // Finish subgrid
+                    subgrid.finish();
 
                     // Add subgrid to metadata
-                    if (uvw_in_range) {
+                    if (subgrid.in_range()) {
                         Metadata m = {
                             bl * (int) nr_timesteps,                // baseline offset, TODO: store bl index
                             current_aterms_offset + first_timestep, // time offset, TODO: store time index
                             nr_timesteps_subgrid,                   // nr of timesteps
                             aterm_index,                            // aterm index
                             baseline,                               // baselines
-                            coordinate                              // coordinate
+                            subgrid.get_coordinate()                // coordinate
                         };
                         metadata_[bl].push_back(m);
                     }
