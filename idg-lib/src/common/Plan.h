@@ -17,6 +17,29 @@ namespace idg {
         class Plan {
 
         public:
+
+            struct Options
+            {
+                // w-stacking
+                float w_step;
+                unsigned nr_w_layers;
+
+                // throw error when visibilities do not fit onto subgrid
+                bool plan_strict;
+
+                // limit the maximum amount of timesteps per subgri
+                unsigned max_nr_timesteps_per_subgrid;
+            };
+
+            static Options get_default_options() {
+                Options options;
+                options.w_step = 0.0;
+                options.nr_w_layers = 1;
+                options.plan_strict = false;
+                options.max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max();
+                return options;
+            }
+
             // Constructors
             Plan() {};
 
@@ -29,9 +52,7 @@ namespace idg {
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array1D<unsigned int>& aterms_offsets,
-                const float w_step = 0.0,
-                const int nr_w_layers = 1,
-                const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
+                Options options = get_default_options());
 
             // Destructor
             virtual ~Plan() = default;
@@ -45,9 +66,7 @@ namespace idg {
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array1D<unsigned int>& aterms_offsets,
-                const float w_step = 0.0,
-                const int nr_w_layers = 1,
-                const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max());
+                const Options& options);
 
             // total number of subgrids
             int get_nr_subgrids() const;
@@ -94,8 +113,6 @@ namespace idg {
 
             void copy_metadata(void *ptr) const;
 
-            bool get_needs_w_stacking() const { return needs_w_stacking; }
-
             void initialize_job(
                 const unsigned int nr_baselines,
                 const unsigned int jobsize,
@@ -109,9 +126,6 @@ namespace idg {
             std::vector<int> subgrid_offset;
             std::vector<int> total_nr_timesteps_per_baseline;
             std::vector<int> total_nr_visibilities_per_baseline;
-            float w_step;
-            bool needs_w_stacking;
-
         }; // class Plan
 
 } // namespace idg
