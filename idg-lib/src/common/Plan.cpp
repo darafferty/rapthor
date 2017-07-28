@@ -190,7 +190,6 @@ namespace idg {
         int nr_w_layers = options.nr_w_layers;
         int max_nr_timesteps_per_subgrid = options.max_nr_timesteps_per_subgrid;
         bool plan_strict = options.plan_strict;
-        printf("%f, %d, %d, %d\n", w_step, nr_w_layers, options.plan_strict, max_nr_timesteps_per_subgrid);
 
         // Check arguments
         assert(baselines.get_x_dim() == uvw.get_y_dim());
