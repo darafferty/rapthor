@@ -36,7 +36,7 @@ install(
     kernels/KernelSplitter.cl
     kernels/KernelScaler.cl
     kernels/math.cl
-    kernels/Types.cl
+    kernels/types.cl
     DESTINATION
     lib/idg-opencl
 )

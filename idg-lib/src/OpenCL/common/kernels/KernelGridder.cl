@@ -1,7 +1,3 @@
-#include "math.cl"
-
-#include "Types.cl"
-
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
 #define BLOCK_SIZE GRIDDER_BLOCK_SIZE
 #define MAX_NR_CHANNELS 8
