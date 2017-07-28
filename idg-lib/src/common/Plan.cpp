@@ -17,9 +17,7 @@ namespace idg {
         const Array2D<UVWCoordinate<float>>& uvw,
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
-        const float w_step,
-        const int nr_w_layers,
-        const int max_nr_timesteps_per_subgrid)
+        Options options)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -27,8 +25,7 @@ namespace idg {
 
         initialize(
             kernel_size, subgrid_size, grid_size, cell_size,
-            frequencies, uvw, baselines, aterms_offsets,
-            w_step, nr_w_layers, max_nr_timesteps_per_subgrid);
+            frequencies, uvw, baselines, aterms_offsets, options);
     }
 
     class Subgrid {
@@ -150,6 +147,13 @@ namespace idg {
         cout << __func__ << endl;
         #endif
 
+        // Get options
+        float w_step = options.w_step;
+        int nr_w_layers = options.nr_w_layers;
+        int max_nr_timesteps_per_subgrid = options.max_nr_timesteps_per_subgrid;
+        bool plan_strict = options.plan_strict;
+        printf("%f, %d, %d, %d\n", w_step, nr_w_layers, options.plan_strict, max_nr_timesteps_per_subgrid);
+
         // Check arguments
         assert(baselines.get_x_dim() == uvw.get_y_dim());
 
@@ -168,8 +172,6 @@ namespace idg {
         for (int bl = 0; bl < nr_baselines; bl++) {
             metadata_[bl].reserve(nr_timesteps / nr_timeslots);
         }
-        
-        needs_w_stacking = false;
 
         // Iterate all baselines
         #pragma omp parallel for
@@ -295,7 +297,6 @@ namespace idg {
                             coordinate                              // coordinate
                         };
                         metadata_[bl].push_back(m);
-                        if (w_index) needs_w_stacking = true;
                     }
                     else
                     {

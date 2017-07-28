@@ -44,6 +44,10 @@ namespace idg {
             auto grid_size        = grid.get_x_dim();
             auto nr_w_layers      = grid.get_w_dim();
 
+            Plan::Options options;
+            options.w_step = w_step;
+            options.nr_w_layers = nr_w_layers;
+
             Plan plan(
                 kernel_size,
                 subgrid_size,
@@ -53,8 +57,7 @@ namespace idg {
                 uvw,
                 baselines,
                 aterms_offsets,
-                w_step, 
-                nr_w_layers);
+                options);
 
             gridding(
                 plan,
@@ -200,6 +203,10 @@ namespace idg {
             auto grid_size        = grid.get_x_dim();
             auto nr_w_layers      = grid.get_w_dim();
 
+            Plan::Options options;
+            options.w_step = w_step;
+            options.nr_w_layers = nr_w_layers;
+
             Plan plan(
                 kernel_size,
                 subgrid_size,
@@ -208,8 +215,7 @@ namespace idg {
                 frequencies,
                 uvw, baselines,
                 aterms_offsets,
-                w_step, 
-                nr_w_layers);
+                options);
 
             degridding(
                 plan,
