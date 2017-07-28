@@ -166,28 +166,23 @@ namespace idg {
                 // Get compile flags
                 Compilerflags flags = get_compiler_flags();
 
-				// Construct build options
-				std::string options = flags +
-								      " -I " + srcdir;
-
                 // Create vector of devices
                 std::vector<cl::Device> devices;
                 devices.push_back(*device);
 
-                // Add all kernels to build
-                std::vector<std::string> v;
-                v.push_back("KernelGridder.cl");
-                v.push_back("KernelDegridder.cl");
-                v.push_back("KernelAdder.cl");
-                v.push_back("KernelSplitter.cl");
-                v.push_back("KernelScaler.cl");
+                // All helper files to include in build
+                std::vector<std::string> helper_files;
+                helper_files.push_back("types.cl");
+                helper_files.push_back("math.cl");
 
-                // Build OpenCL programs
-                for (int i = 0; i < v.size(); i++) {
+                // Store helper files in string
+                std::stringstream source_helper_;
+
+                for (int i = 0; i < helper_files.size(); i++) {
                     // Get source filename
-                    std::stringstream _source_file_name;
-                    _source_file_name << srcdir << "/" << v[i];
-                    std::string source_file_name = _source_file_name.str();
+                    std::stringstream source_file_name_;
+                    source_file_name_ << srcdir << "/" << helper_files[i];
+                    std::string source_file_name = source_file_name_.str();
 
                     // Read source from file
                     std::ifstream source_file(source_file_name.c_str());
@@ -195,16 +190,53 @@ namespace idg {
                                       (std::istreambuf_iterator<char>()));
                     source_file.close();
 
+                    // Update source helper stream
+                    source_helper_ << source;
+                }
+
+                std::string source_helper = source_helper_.str();
+
+                // Alll kernels to build
+                std::vector<std::string> kernel_files;
+                kernel_files.push_back("KernelGridder.cl");
+                kernel_files.push_back("KernelDegridder.cl");
+                kernel_files.push_back("KernelAdder.cl");
+                kernel_files.push_back("KernelSplitter.cl");
+                kernel_files.push_back("KernelScaler.cl");
+
+                // Build OpenCL programs
+                for (int i = 0; i < kernel_files.size(); i++) {
+                    // Get source filename
+                    std::stringstream source_file_name_;
+                    source_file_name_ << srcdir << "/" << kernel_files[i];
+                    std::string source_file_name = source_file_name_.str();
+
+                    // Read kernel source from file
+                    std::ifstream source_file(source_file_name.c_str());
+                    std::string source_kernel(
+                        std::istreambuf_iterator<char>(source_file),
+                        (std::istreambuf_iterator<char>()));
+                    source_file.close();
+
+                    // Construct full source file
+                    std::stringstream full_source;
+                    full_source << source_helper;
+                    full_source << source_kernel;
+
                     // Print information about compilation
-					#if defined(DEBUG)
-                    std::cout << "Compiling: " << _source_file_name.str() << std::endl;
+					#if defined(COMPILE_VERBOSE)
+                    std::cout << "Compiling: " << source_file_name
+                              << " " << flags << std::endl;
+                    #if defined(DEBUG)
+                    std::cout << full_source.str() << std::endl;
+                    #endif
 					#endif
 
                     // Create OpenCL program
-                    mPrograms[i] = new cl::Program(mContext, source);
+                    mPrograms[i] = new cl::Program(mContext, full_source.str());
                     try {
                         // Build the program
-                        mPrograms[i]->build(devices, options.c_str());
+                        mPrograms[i]->build(devices, flags.c_str());
                     } catch (cl::Error error) {
                         std::cerr << "Compilation failed: " << error.what() << std::endl;
                         std::string msg;

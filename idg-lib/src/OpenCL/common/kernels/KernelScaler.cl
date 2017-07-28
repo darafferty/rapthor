@@ -1,7 +1,3 @@
-#include "math.cl"
-
-#include "Types.cl"
-
 /*
     Kernel
 */
