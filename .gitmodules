@@ -1,9 +1,9 @@
 [submodule "idg-lib"]
 	path = idg-lib
-	url = https://gitlab.com/astron-idg/idg-lib.git
+	url = idg-lib.git
 [submodule "idg-bin"]
 	path = idg-bin
-	url = https://gitlab.com/astron-idg/idg-bin.git
+	url = idg-bin.git
 [submodule "idg-api"]
 	path = idg-api
-	url = https://gitlab.com/astron-idg/idg-api.git
+	url = idg-api.git
