@@ -47,7 +47,7 @@ else()
 endif()
 
 # set cmake module path
-list(APPEND CMAKE_MODULE_PATH "@CMAKE_CURRENT_SOURCE_DIR@/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
 
 if (${IDG_OnePackage})
