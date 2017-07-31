@@ -87,6 +87,7 @@ namespace api {
         if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
         std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+        std::cout << "maximum baseline length: " << max_baseline << " (m)" << std::endl;
 
         m_w_step = max_w / nr_w_layers;
         w_kernel_size = 0.5*m_w_step * m_image_size * m_image_size;
@@ -106,8 +107,8 @@ namespace api {
 
         // reserved space in subgrid for time 
         float uv_span_time = 8.0;
-        
-        float uv_span_frequency = max_nr_channels;
+
+        float uv_span_frequency = 32.0;
 
         int subgridsize = int(std::ceil((kernel_size + uv_span_time + uv_span_frequency)/8.0))*8;
 
@@ -149,6 +150,8 @@ namespace api {
             buffer->set_kernel_size(kernel_size);
             buffer->set_spheroidal(subgridsize, subgridsize, taper.data());
             buffer->set_grid(&m_grid);
+            buffer->set_max_baseline(max_baseline);
+            buffer->set_uv_span_frequency(uv_span_frequency);
             buffer->bake();
         }
     }
