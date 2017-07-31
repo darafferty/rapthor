@@ -330,7 +330,7 @@ namespace api {
             #pragma omp parallel for
             for(size_t i=0; i < m_width; i++)
             {
-                #pragma omp simd collapse(2)
+                #pragma omp simd
                 for(size_t j=0; j < m_width; j++)
                 {
                     for(int pol=0; pol<4; pol++)
