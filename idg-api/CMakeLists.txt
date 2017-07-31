@@ -47,7 +47,7 @@ else()
 endif()
 
 # set cmake module path
-list(APPEND CMAKE_MODULE_PATH "@CMAKE_CURRENT_SOURCE_DIR@/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
 
 if (${IDG_OnePackage})
@@ -63,6 +63,7 @@ find_package(MKL QUIET)
 if (${MKL_FOUND})
     add_definitions(-DHAVE_MKL)  # TODO put define in a config.h.in file
     set (HAVE_MKL TRUE)
+    include_directories (${MKL_INCLUDE_DIRS})
 else()
     find_package(LAPACKE)
     include_directories (${LAPACK_INCLUDE_DIR})
