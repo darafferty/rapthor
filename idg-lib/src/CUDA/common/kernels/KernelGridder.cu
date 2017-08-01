@@ -221,6 +221,7 @@ __device__ void kernel_gridder_(
 } // end kernel_gridder_
 
 #define KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE_, NR_CHANNELS) \
+    assert(BATCH_SIZE_*NR_CHANNELS <= BATCH_SIZE*MAX_NR_CHANNELS); \
     for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
         kernel_gridder_<BATCH_SIZE_, NR_CHANNELS>( \
             grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
@@ -249,9 +250,9 @@ __launch_bounds__(BLOCK_SIZE)
     int channel_offset = 0;
     assert(MAX_NR_CHANNELS == 8);
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE,   8)
-    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 7)
-    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 6)
-    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 5)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE,   7)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE,   6)
+    KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE,   5)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 4)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*2, 3)
     KERNEL_GRIDDER_TEMPLATE(BATCH_SIZE*4, 2)
