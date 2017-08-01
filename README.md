@@ -18,4 +18,3 @@ make install
 
 # Developing with submodules
 If you intend to develop with this repository, it is useful to have the submodules point to the latest versions, instead of a frozen commit. To this purpose, please use `git clone --recursive --remote https://gitlab.com/astron-idg/idg` on newer git versions, or `git clone --recursive https://gitlab.com/astron-idg/idg`. On older git versions, update the submodules manually e.g. by typing `cd idg-api && git pull origin master`.
-```
