@@ -328,7 +328,7 @@ namespace idg {
                         };
                         metadata_[bl].push_back(m);
                     }
-                    else
+                    else if (plan_strict)
                     {
                         #pragma omp critical
                         throw std::runtime_error("subgrid falls not within grid");
