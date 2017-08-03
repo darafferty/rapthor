@@ -235,30 +235,57 @@ namespace api {
         int nr_correlations = 4;
         CompileConstants constants(nr_correlations, m_subgridSize);
 
-        #if defined(BUILD_LIB_CPU)
         if (m_architecture == Type::CPU_REFERENCE) {
-            m_proxy = new proxy::cpu::Reference(constants);
+            #if defined(BUILD_LIB_CPU)
+                m_proxy = new proxy::cpu::Reference(constants);
+            #else
+                throw std::runtime_error("Can not create CPU_REFERENCE proxy. idg-lib was built with BUILD_LIB_CPU=OFF");
+            #endif
         } else if (m_architecture == Type::CPU_OPTIMIZED) {
-            m_proxy = new proxy::cpu::Optimized(constants);
+            #if defined(BUILD_LIB_CPU)
+                m_proxy = new proxy::cpu::Optimized(constants);
+            #else
+                throw std::runtime_error("Can not create CPU_OPTIMIZED proxy. idg-lib was built with BUILD_LIB_CPU=OFF");
+            #endif
         }
-        #endif
-        #if defined(BUILD_LIB_CUDA)
         if (m_architecture == Type::CUDA_GENERIC) {
-            m_proxy = new proxy::cuda::Generic(constants);
+            #if defined(BUILD_LIB_CUDA)
+                m_proxy = new proxy::cuda::Generic(constants);
+            #else
+                throw std::runtime_error("Can not create CUDA_GENERIC proxy. idg-lib was built with BUILD_LIB_CUDA=OFF");
+            #endif
         }
-        #endif
-        #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
         if (m_architecture == Type::HYBRID_CUDA_CPU_OPTIMIZED) {
-            // cpu proxy will be deleted by hybrid proxy destructor
-            proxy::cpu::CPU *cpu_proxy = new proxy::cpu::Optimized(constants);
-            m_proxy = new proxy::hybrid::HybridCUDA(cpu_proxy, constants);
+            #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
+                // cpu proxy will be deleted by hybrid proxy destructor
+                proxy::cpu::CPU *cpu_proxy = new proxy::cpu::Optimized(constants);
+                m_proxy = new proxy::hybrid::HybridCUDA(cpu_proxy, constants);
+            #else
+                throw std::runtime_error(
+                    std::string("Can not create HYBRID_CUDA_CPU_OPTIMIZED proxy.\n") +
+                    std::string("For HYBRID_CUDA_CPU_OPTIMIZED idg-lib needs to be build with BUILD_LIB_CPU=ON and BUILD_LIB_CUDA=ON\n") +
+                    std::string("idg-lib was built with BUILD_LIB_CPU=") +
+                    #if defined(BUILD_LIB_CPU)
+                        std::string("ON")
+                    #else
+                        std::string("OFF")
+                    #endif
+                    + std::string(" and BUILD_LIB_CUDA=") +
+                    #if defined(BUILD_LIB_CUDA)
+                        std::string("ON")
+                    #else
+                        std::string("OFF")
+                    #endif
+                );
+            #endif
         }
-        #endif
-        #if defined(BUILD_LIB_OPENCL)
         if (m_architecture == Type::OPENCL_GENERIC) {
-            m_proxy = new proxy::opencl::Generic(constants);
+            #if defined(BUILD_LIB_OPENCL)
+                m_proxy = new proxy::opencl::Generic(constants);
+            #else
+                throw std::runtime_error("Can not create OPENCL_GENERIC proxy. idg-lib was built with BUILD_LIB_OPENCL=OFF");
+            #endif
         }
-        #endif
 
         if (m_proxy == nullptr)
             throw invalid_argument("Unknown architecture type.");
