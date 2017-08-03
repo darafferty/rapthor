@@ -39,8 +39,9 @@ namespace api {
     public:
 
         // Constructors and destructor
-        BufferImpl(Type architecture = Type::CPU_REFERENCE,
-               size_t bufferTimesteps = 4096);
+        BufferImpl(
+            Type architecture = Type::CPU_REFERENCE,
+            size_t bufferTimesteps = 4096);
 
         virtual ~BufferImpl();
 
@@ -77,6 +78,10 @@ namespace api {
 
         void set_grid(
             Grid* grid);
+
+        void set_max_baseline(float max_baseline) {m_max_baseline = max_baseline;}
+
+        void set_uv_span_frequency(float uv_span_frequency) {m_uv_span_frequency = uv_span_frequency;}
 
         size_t get_grid_height() const;
         size_t get_grid_width() const;
@@ -153,6 +158,11 @@ namespace api {
         size_t m_timeStartThisBatch;
         size_t m_timeStartNextBatch;
         std::set<size_t> m_timeindices;
+        std::vector<std::pair<int, int>> m_channel_groups;
+
+        //
+        float m_max_baseline;
+        float m_uv_span_frequency;
 
         // Parameters for proxy
         size_t m_nrStations;
@@ -171,13 +181,13 @@ namespace api {
 
         // Buffers
         Array1D<float> m_frequencies;                               // CH
-        Array1D<float> m_wavenumbers;                               // CH
+        std::vector<Array1D<float>> m_grouped_frequencies;          // CH
         Array2D<float> m_spheroidal;                                     // SB x SB
         Array4D<Matrix2x2<std::complex<float>>> m_aterms;                    // ST x SB x SB
 
         Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs;                         // BL
-        Array3D<Visibility<std::complex<float>>> m_bufferVisibilities;   // BL x TI x CH
+        std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities;   // BL x TI x CH
 
         Grid* m_grid; // pointer grid
     };

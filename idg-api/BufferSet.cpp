@@ -5,7 +5,7 @@
 #include <complex>
 #include <cmath>
 #include <iostream>
-
+#include <iomanip>
 #include "taper.h"
 
 namespace idg {
@@ -87,6 +87,7 @@ namespace api {
         if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
         std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+        std::cout << "maximum baseline length: " << max_baseline << " (m)" << std::endl;
 
         m_w_step = max_w / nr_w_layers;
         w_kernel_size = 0.5*m_w_step * m_image_size * m_image_size;
@@ -106,8 +107,8 @@ namespace api {
 
         // reserved space in subgrid for time 
         float uv_span_time = 8.0;
-        
-        float uv_span_frequency = max_nr_channels;
+
+        float uv_span_frequency = 24.0;
 
         int subgridsize = int(std::ceil((kernel_size + uv_span_time + uv_span_frequency)/8.0))*8;
 
@@ -149,6 +150,8 @@ namespace api {
             buffer->set_kernel_size(kernel_size);
             buffer->set_spheroidal(subgridsize, subgridsize, taper.data());
             buffer->set_grid(&m_grid);
+            buffer->set_max_baseline(max_baseline);
+            buffer->set_uv_span_frequency(uv_span_frequency);
             buffer->bake();
         }
     }
@@ -261,17 +264,23 @@ namespace api {
                     float phase = 2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
                     float inv_spheroidal2 = inv_spheroidal[i] * inv_spheroidal[j];
-                    for(int pol=0; pol<4; pol++)
-                    {
-                        m_grid(w_layer, pol, i+i0, j+j0) = m_grid(0, pol, i+i0, j+j0) * inv_spheroidal2 * phasor;
-                    }
+
+//                     for(int pol=0; pol<4; pol++)
+//                     {
+//                         m_grid(w_layer, pol, i+i0, j+j0) = m_grid(0, pol, i+i0, j+j0) * inv_spheroidal2 * phasor;
+//                     }
+                    m_grid(w_layer, 0, i+i0, j+j0) = m_grid(0, 0, i+i0, j+j0) * inv_spheroidal2 * phasor;
+                    m_grid(w_layer, 1, i+i0, j+j0) = m_grid(0, 1, i+i0, j+j0) * inv_spheroidal2 * phasor;
+                    m_grid(w_layer, 2, i+i0, j+j0) = m_grid(0, 2, i+i0, j+j0) * inv_spheroidal2 * phasor;
+                    m_grid(w_layer, 3, i+i0, j+j0) = m_grid(0, 3, i+i0, j+j0) * inv_spheroidal2 * phasor;
+
                 }
             }
             m_degridderbuffers[0]->fft_grid(4, m_padded_width, m_padded_width, &m_grid(w_layer,0,0,0));
         }
 
         runtime += omp_get_wtime();
-        std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
+        std::cout << "runtime " << __func__ << ": " << std::setprecision(3) << runtime << std::endl;
     };
 
     void BufferSetImpl::get_image(double* image) 
@@ -293,11 +302,9 @@ namespace api {
 
         for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
         {
+            std::cout << "w_layer: " << w_layer << "/" << nr_w_layers << std::endl;
             m_gridderbuffers[0]->ifft_grid(4, m_padded_width, m_padded_width, &m_grid(w_layer,0,0,0));
-        }
-        for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
-        {
-            std::cout << "w_layer: " << w_layer << std::endl;
+
             const float w_offset = (w_layer+0.5)*m_w_step;
             #pragma omp parallel for
             for(int i=0; i < m_width; i++)
@@ -323,19 +330,19 @@ namespace api {
                     m_grid(w_layer, 3, i+i0, j+j0) = m_grid(w_layer, 3, i+i0, j+j0) * inv_spheroidal2 * phasor;
                 }
             }
-        }
 
-        for(int w_layer=1; w_layer < nr_w_layers; w_layer++)
-        {
-            #pragma omp parallel for
-            for(size_t i=0; i < m_width; i++)
+            if (w_layer>0)
             {
-                #pragma omp simd
-                for(size_t j=0; j < m_width; j++)
+                #pragma omp parallel for
+                for(size_t i=0; i < m_width; i++)
                 {
-                    for(int pol=0; pol<4; pol++)
+                    #pragma omp simd
+                    for(size_t j=0; j < m_width; j++)
                     {
-                        m_grid(0, pol, i+i0, j+j0) += m_grid(w_layer, pol, i+i0, j+j0);
+                        for(int pol=0; pol<4; pol++)
+                        {
+                            m_grid(0, pol, i+i0, j+j0) += m_grid(w_layer, pol, i+i0, j+j0);
+                        }
                     }
                 }
             }

@@ -53,8 +53,9 @@ namespace api {
     {
     public:
         // Constructors and destructor
-        GridderBufferImpl(Type architecture = Type::CPU_REFERENCE,
-                    size_t bufferTimesteps = 4096);
+        GridderBufferImpl(
+            Type architecture = Type::CPU_REFERENCE,
+            size_t bufferTimesteps = 4096);
 
         virtual ~GridderBufferImpl();
 
@@ -98,7 +99,7 @@ namespace api {
         //secondary buffers      
         Array2D<UVWCoordinate<float>> m_bufferUVW2;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs2;                         // BL
-        Array3D<Visibility<std::complex<float>>> m_bufferVisibilities2;   // BL x TI x CH
+        std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities2;   // BL x TI x CH
 
         std::thread m_flush_thread;
         void flush_thread_worker();

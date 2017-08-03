@@ -10,10 +10,20 @@ using namespace std;
 namespace idg {
 namespace api {
 
+    inline float meters_to_pixels(float meters, float imagesize, float frequency) {
+        const double speed_of_light = 299792458.0;
+        return meters * imagesize * (frequency / speed_of_light);
+    }
+
+
+
     // Constructors and destructor
-    BufferImpl::BufferImpl(Type architecture,
-                   size_t bufferTimesteps)
+    BufferImpl::BufferImpl(
+        Type architecture,
+        size_t bufferTimesteps)
         : m_architecture(architecture),
+          m_max_baseline(0.0),
+          m_uv_span_frequency(0.0),
           m_bufferTimesteps(bufferTimesteps),
           m_timeStartThisBatch(0),
           m_timeStartNextBatch(bufferTimesteps),
@@ -29,12 +39,10 @@ namespace api {
           m_kernel_size(0),
           m_aterm_offsets(2),
           m_frequencies(0),
-          m_wavenumbers(100),
-          m_spheroidal(0,0),                            
-          m_aterms(0,0,0,0),            
+          m_spheroidal(0,0),
+          m_aterms(0,0,0,0),
           m_bufferUVW(0,0),
           m_bufferStationPairs(0),
-          m_bufferVisibilities(0,0,0),
           m_proxy(nullptr)
     {
         #if defined(DEBUG)
@@ -157,12 +165,9 @@ namespace api {
         size_t channelCount,
         const double* frequencyList)
     {
-        const double SPEED_OF_LIGHT = 299792458.0;
         m_frequencies = Array1D<float>(channelCount);
-        m_wavenumbers = Array1D<float>(channelCount);
         for (int i=0; i<channelCount; i++) {
             m_frequencies(i) = frequencyList[i];
-            m_wavenumbers(i) = 2 * M_PI * frequencyList[i] / SPEED_OF_LIGHT;
         }
     }
 
@@ -170,12 +175,9 @@ namespace api {
         const std::vector<double> &frequency_list)
     {
         const int channelCount = frequency_list.size();
-        const double SPEED_OF_LIGHT = 299792458.0;
         m_frequencies = Array1D<float>(channelCount);
-        m_wavenumbers = Array1D<float>(channelCount);
         for (int i=0; i<channelCount; i++) {
             m_frequencies(i) = frequency_list[i];
-            m_wavenumbers(i) = 2 * M_PI * frequency_list[i] / SPEED_OF_LIGHT;
         }
     }
 
@@ -226,7 +228,6 @@ namespace api {
         cout << __func__ << endl;
         #endif
 
-        // HACK: assume that, if image size not set, cell size is
         // NOTE: assume m_gridWidth == m_gridHeight
 
         // (1) Create new proxy
@@ -290,7 +291,42 @@ namespace api {
         if (m_proxy == nullptr)
             throw invalid_argument("Unknown architecture type.");
 
-        // (2) Setup buffers
+        // (2) Partition nr_channels
+
+        float image_size = get_image_size();
+        float frequency = get_frequency(0);
+        float begin_pos = meters_to_pixels(m_max_baseline, image_size, frequency);
+        m_channel_groups.clear();
+
+        for (int begin_channel = 0; begin_channel < get_frequencies_size();)
+        {
+            float end_pos;
+            int end_channel;
+            for (end_channel = begin_channel+1; end_channel < get_frequencies_size(); end_channel++)
+            {
+                frequency = get_frequency(end_channel);
+                end_pos = meters_to_pixels(m_max_baseline, image_size, frequency);
+                if (std::abs(begin_pos - end_pos) > m_uv_span_frequency) break;
+            }
+            std::cout << begin_channel << "-" << end_channel << std::endl;
+            m_channel_groups.push_back(std::make_pair(begin_channel, end_channel));
+            begin_channel = end_channel;
+            begin_pos = end_pos;
+        }
+
+        m_grouped_frequencies.clear();
+        for (auto & channel_group : m_channel_groups)
+        {
+            int nr_channels = channel_group.second - channel_group.first;
+            Array1D<float> frequencies(nr_channels);
+            for (int i=0; i<nr_channels; i++)
+            {
+                frequencies(i) = m_frequencies(channel_group.first + i);
+            }
+            m_grouped_frequencies.push_back(std::move(frequencies));
+        }
+
+        // (3) Setup buffers
         malloc_buffers();
         reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
     }
@@ -299,7 +335,13 @@ namespace api {
     void BufferImpl::malloc_buffers()
     {
         m_bufferUVW = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
-        m_bufferVisibilities = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
+        m_bufferVisibilities.clear();
+        for (auto & channel_group : m_channel_groups)
+        {
+            int nr_channels = channel_group.second - channel_group.first;
+            m_bufferVisibilities.push_back(Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, nr_channels));
+        }
+
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nrGroups);
         // already done: m_spheroidal.reserve(m_subgridSize, m_subgridSize);
         m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridSize, m_subgridSize);
@@ -308,7 +350,10 @@ namespace api {
 
     void BufferImpl::reset_buffers()
     {
-        m_bufferVisibilities.init({0,0,0,0});
+        for (auto & buffer : m_bufferVisibilities)
+        {
+            buffer.init({0,0,0,0});
+        }
         set_uvw_to_infinity();
         init_default_aterm();
     }

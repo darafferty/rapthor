@@ -11,12 +11,12 @@ using namespace std;
 namespace idg {
 namespace api {
 
-    GridderBufferImpl::GridderBufferImpl(Type architecture,
-                             size_t bufferTimesteps)
+    GridderBufferImpl::GridderBufferImpl(
+        Type architecture,
+        size_t bufferTimesteps)
         : BufferImpl(architecture, bufferTimesteps),
           m_bufferUVW2(0,0),
-          m_bufferStationPairs2(0),
-          m_bufferVisibilities2(0,0,0)
+          m_bufferStationPairs2(0)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -78,8 +78,12 @@ namespace api {
             static_cast<int>(antenna2)
         };
 
-        copy(visibilities, visibilities + get_frequencies_size() * m_nrPolarizations,
-             (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0));
+        for (int i = 0; i<m_channel_groups.size(); i++)
+        {
+            std::copy(visibilities + m_channel_groups[i].first * m_nrPolarizations,
+                      visibilities + m_channel_groups[i].second * m_nrPolarizations,
+                      (complex<float>*) &m_bufferVisibilities[i](local_bl, local_time, 0));
+        }
     }
 
     void GridderBufferImpl::flush_thread_worker()
@@ -90,32 +94,37 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = true;
 
-        Plan plan(
-            m_kernel_size,
-            m_subgridSize,
-            m_gridHeight,
-            m_cellHeight,
-            m_frequencies,
-            m_bufferUVW,
-            m_bufferStationPairs,
-            m_aterm_offsets,
-            options);
+        for (int i = 0; i<m_channel_groups.size(); i++)
+        {
+            std::cout << "gridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+            Plan plan(
+                m_kernel_size,
+                m_subgridSize,
+                m_gridHeight,
+                m_cellHeight,
+                m_grouped_frequencies[i],
+                m_bufferUVW2,
+                m_bufferStationPairs2,
+                m_aterm_offsets,
+                options);
 
-        m_proxy->gridding(
-            plan,
-            m_wStepInLambda,
-            m_cellHeight,
-            m_kernel_size,
-            m_frequencies,
-            m_bufferVisibilities2,
-            m_bufferUVW2,
-            m_bufferStationPairs2,
-            std::move(*m_grid),
-            m_aterms,
-            m_aterm_offsets,
-            m_spheroidal);
+            m_proxy->gridding(
+                plan,
+                m_wStepInLambda,
+                m_cellHeight,
+                m_kernel_size,
+                m_grouped_frequencies[i],
+                m_bufferVisibilities2[i],
+                m_bufferUVW2,
+                m_bufferStationPairs2,
+                std::move(*m_grid),
+                m_aterms,
+                m_aterm_offsets,
+                m_spheroidal);
+
+        }
     }
-    
+
     // Must be called whenever the buffer is full or no more data added
     void GridderBufferImpl::flush()
     {
@@ -125,11 +134,11 @@ namespace api {
 
         // if there is still a flushthread running, wait for it to finish
         if (m_flush_thread.joinable()) m_flush_thread.join();
-        
+
         std::swap(m_bufferUVW, m_bufferUVW2);
         std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
-        
+
         m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 
         // Temporary fix: wait for thread and swap buffers back
@@ -138,7 +147,7 @@ namespace api {
 //         std::swap(m_bufferUVW, m_bufferUVW2);
 //         std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
 //         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
-        
+
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
@@ -218,7 +227,12 @@ namespace api {
         BufferImpl::malloc_buffers();
         
         m_bufferUVW2 = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
-        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
+        m_bufferVisibilities2.clear();
+        for (auto & channel_group : m_channel_groups)
+        {
+            int nr_channels = channel_group.second - channel_group.first;
+            m_bufferVisibilities2.push_back(Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, nr_channels));
+        }
         m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nrGroups);
     }
 

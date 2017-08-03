@@ -74,8 +74,9 @@ namespace api {
     {
     public:
         // Constructors and destructor
-        DegridderBufferImpl(Type architecture = Type::CPU_REFERENCE,
-                      size_t bufferTimesteps = 4096);
+        DegridderBufferImpl(
+            Type architecture = Type::CPU_REFERENCE,
+            size_t bufferTimesteps = 4096);
 
         virtual ~DegridderBufferImpl();
 
@@ -133,9 +134,13 @@ namespace api {
         bool is_request_buffer_full() const { return m_buffer_full; }
         bool is_data_marked_as_read() const { return m_data_read; }
 
+    protected:
+        virtual void malloc_buffers();
+
     private:
 
         // Data
+        Array3D<Visibility<std::complex<float>>> m_bufferVisibilities2;   // BL x TI x CH
         bool m_buffer_full;
         bool m_data_read;
         std::vector<std::pair<size_t, std::complex<float>*>> m_row_ids_to_data;

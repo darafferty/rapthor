@@ -9,9 +9,11 @@ using namespace std;
 namespace idg {
 namespace api {
 
-    DegridderBufferImpl::DegridderBufferImpl(Type architecture,
-                                 size_t bufferTimesteps)
+    DegridderBufferImpl::DegridderBufferImpl(
+        Type architecture,
+        size_t bufferTimesteps)
         : BufferImpl(architecture, bufferTimesteps),
+          m_bufferVisibilities2(0,0,0),
           m_buffer_full(false),
           m_data_read(true)
     {
@@ -78,8 +80,8 @@ namespace api {
         // #endif
 
         // Keep mapping rowId -> (local_bl, local_time) for reading
-        m_row_ids_to_data.push_back(make_pair(rowId, (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0)));
-        
+        m_row_ids_to_data.push_back(make_pair(rowId, (complex<float>*) &m_bufferVisibilities2(local_bl, local_time, 0)));
+
         // Copy data into buffers
         m_bufferUVW(local_bl, local_time) = {
             static_cast<float>(uvwInMeters[0]),
@@ -103,19 +105,6 @@ namespace api {
         // Return if no input in buffer
         if (m_timeindices.size() == 0) return;
 
-//         // TODO: remove below //////////////////////////
-//         // HACK: copy double precison grid to single precison
-//         for (auto p = 0; p < m_nrPolarizations; ++p) {
-//             for (auto y = 0; y < m_gridHeight; ++y) {
-//                 for (auto x = 0; x < m_gridWidth; ++x) {
-//                     m_grid(0, p, y, x) = complex<float>(
-//                         m_grid_double[p*m_gridHeight*m_gridWidth
-//                                       + y*m_gridWidth + x]);
-//                 }
-//             }
-//         }
-// 
-//         // TODO: remove above //////////////////////////
 
         Plan::Options options = Plan::get_default_options();
 
@@ -123,30 +112,43 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = true;
 
-        Plan plan(
-            m_kernel_size,
-            m_subgridSize,
-            m_gridHeight,
-            m_cellHeight,
-            m_frequencies,
-            m_bufferUVW,
-            m_bufferStationPairs,
-            m_aterm_offsets,
-            options);
+        for (int i = 0; i<m_channel_groups.size(); i++)
+        {
+            std::cout << "degridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+            Plan plan(
+                m_kernel_size,
+                m_subgridSize,
+                m_gridHeight,
+                m_cellHeight,
+                m_grouped_frequencies[i],
+                m_bufferUVW,
+                m_bufferStationPairs,
+                m_aterm_offsets,
+                options);
 
-        m_proxy->degridding(
-            plan,
-            m_wStepInLambda,
-            m_cellHeight,
-            m_kernel_size,
-            m_frequencies,
-            m_bufferVisibilities,
-            m_bufferUVW,
-            m_bufferStationPairs,
-            *m_grid,
-            m_aterms,
-            m_aterm_offsets,
-            m_spheroidal);
+            m_proxy->degridding(
+                plan,
+                m_wStepInLambda,
+                m_cellHeight,
+                m_kernel_size,
+                m_grouped_frequencies[i],
+                m_bufferVisibilities[i],
+                m_bufferUVW,
+                m_bufferStationPairs,
+                *m_grid,
+                m_aterms,
+                m_aterm_offsets,
+                m_spheroidal);
+
+            // copy data from per channel buffer into buffer for all channels
+            for (int bl = 0; bl < m_nrGroups; bl++) {
+                for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
+                    std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
+                            &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
+                            &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
+                }
+            }
+        }
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
@@ -222,6 +224,12 @@ namespace api {
         cout << "m_row_ids_to_data size: " << m_row_ids_to_data.size() << endl;
         m_row_ids_to_data.clear();
         m_data_read = true;
+    }
+
+    void DegridderBufferImpl::malloc_buffers()
+    {
+        BufferImpl::malloc_buffers();
+        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
     }
 
 } // namespace api
