@@ -160,6 +160,7 @@ namespace api {
         size_t m_nrPolarizations;
         size_t m_gridHeight;
         size_t m_gridWidth;
+        size_t m_nr_w_layers;
         size_t m_subgridSize;
         float  m_cellHeight;
         float  m_cellWidth;

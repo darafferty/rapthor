@@ -84,7 +84,25 @@ namespace api {
 
     void GridderBufferImpl::flush_thread_worker()
     {
+        Plan::Options options = Plan::get_default_options();
+
+        options.w_step = m_wStepInLambda;
+        options.nr_w_layers = m_nr_w_layers;
+        options.plan_strict = true;
+
+        Plan plan(
+            m_kernel_size,
+            m_subgridSize,
+            m_gridHeight,
+            m_cellHeight,
+            m_frequencies,
+            m_bufferUVW,
+            m_bufferStationPairs,
+            m_aterm_offsets,
+            options);
+
         m_proxy->gridding(
+            plan,
             m_wStepInLambda,
             m_cellHeight,
             m_kernel_size,

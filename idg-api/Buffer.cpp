@@ -193,7 +193,10 @@ namespace api {
     void BufferImpl::set_grid(
         Grid* grid)
     {
-        m_grid            = grid;
+        m_grid        = grid;
+        m_gridHeight  = grid->get_x_dim();
+        m_gridWidth   = grid->get_y_dim();
+        m_nr_w_layers = grid->get_w_dim();
     }
 
 
