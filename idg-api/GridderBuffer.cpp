@@ -103,8 +103,8 @@ namespace api {
                 m_gridHeight,
                 m_cellHeight,
                 m_grouped_frequencies[i],
-                m_bufferUVW,
-                m_bufferStationPairs,
+                m_bufferUVW2,
+                m_bufferStationPairs2,
                 m_aterm_offsets,
                 options);
 
