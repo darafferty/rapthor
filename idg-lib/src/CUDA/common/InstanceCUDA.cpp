@@ -360,12 +360,15 @@ namespace idg {
 
                 // Plan remainder fft
                 int fft_remainder_size = batch % fft_bulk;
-                if (fft_plan_misc) {
-                    delete fft_plan_misc;
+
+                if (fft_remainder_size) {
+                    if (fft_plan_misc) {
+                        delete fft_plan_misc;
+                    }
+                    fft_plan_misc = new cufft::C2C_2D(
+                        size, size, stride, dist,
+                        fft_remainder_size * nr_correlations);
                 }
-                fft_plan_misc = new cufft::C2C_2D(
-                    size, size, stride, dist,
-                    fft_remainder_size * nr_correlations);
 
                 // Store parameters
                 fft_size = size;
