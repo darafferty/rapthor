@@ -13,9 +13,10 @@
     #include <lapacke.h>
 #endif
 
-void init_optimal_taper_1D(int subgridsize, int gridsize, float kernelsize, float padding, float* taper_subgrid, float* taper_grid)
+void init_optimal_taper_1D(int subgridsize, int padded_size, int size, float kernelsize, float* taper_subgrid, float* taper_grid)
 {
     
+    float padding = float(padded_size)/float(size);
     int N = subgridsize;
     float W = kernelsize;
     
@@ -139,10 +140,10 @@ void init_optimal_taper_1D(int subgridsize, int gridsize, float kernelsize, floa
         taper_subgrid[N-1-i] = U1[N/2-1][i]/U1[N/2-1][N/2-1];
     }
     
-    for(int i = 0; i < gridsize; i++)
+    for(int i = 0; i < padded_size; i++)
     {
         taper_grid[i] = 0.0;
-        float l = (float(i)/gridsize-0.5);
+        float l = (float(i)/padded_size-0.5);
         double d;
         double s;
         for(int j = 0; j<N; j++)
