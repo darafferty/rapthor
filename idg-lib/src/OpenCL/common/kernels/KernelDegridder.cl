@@ -48,8 +48,8 @@ void kernel_degridder(
     const float w_offset = w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Shared data
-    __local float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
-    __local float4 _lmn_phaseoffset[BATCH_SIZE];
+    __local float8 pixels_[BATCH_SIZE];
+    __local float4 lmn_phaseoffset_[BATCH_SIZE];
 
     // Iterate visibilities
     for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
@@ -121,8 +121,9 @@ void kernel_degridder(
                     &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
 
                 // Store pixels
-                _pix[0][j] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][j] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                pixels_[j] = (float8) (
+                    pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y,
+                    pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
                 const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -130,7 +131,7 @@ void kernel_degridder(
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[j] = (float4) (l, m, n, phase_offset);
+                lmn_phaseoffset_[j] = (float4) (l, m, n, phase_offset);
             } // end for j (pixels)
 
             barrier(CLK_LOCAL_MEM_FENCE);
@@ -138,12 +139,12 @@ void kernel_degridder(
             // Iterate current batch of pixels
             for (int k = 0; k < current_nr_pixels; k++) {
                 // Load l,m,n
-                float l = _lmn_phaseoffset[k].x;
-                float m = _lmn_phaseoffset[k].y;
-                float n = _lmn_phaseoffset[k].z;
+                float l = lmn_phaseoffset_[k].x;
+                float m = lmn_phaseoffset_[k].y;
+                float n = lmn_phaseoffset_[k].z;
 
                 // Load phase offset
-                float phase_offset = _lmn_phaseoffset[k].w;
+                float phase_offset = lmn_phaseoffset_[k].w;
 
                 // Compute phase index
                 float phase_index = u * l + v * m + w * n;
@@ -153,10 +154,10 @@ void kernel_degridder(
                 float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
                 // Load pixels from local memory
-                float2 apXX = (float2) (_pix[0][k].x, _pix[0][k].y);
-                float2 apXY = (float2) (_pix[0][k].z, _pix[0][k].w);
-                float2 apYX = (float2) (_pix[1][k].x, _pix[1][k].y);
-                float2 apYY = (float2) (_pix[1][k].z, _pix[1][k].w);
+                float2 apXX = (float2) (pixels_[k].s0, pixels_[k].s1);
+                float2 apXY = (float2) (pixels_[k].s2, pixels_[k].s3);
+                float2 apYX = (float2) (pixels_[k].s4, pixels_[k].s5);
+                float2 apYY = (float2) (pixels_[k].s6, pixels_[k].s7);
 
                 // Multiply pixels by phasor
                 vis.s0 += phasor.x * apXX.x;
