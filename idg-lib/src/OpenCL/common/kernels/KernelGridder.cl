@@ -110,8 +110,7 @@ void kernel_gridder_(
             int x = i % subgrid_size;
 
             // Private pixels
-            float8 pixels1 = (float8) (0);
-            float8 pixels2 = (float8) (0);
+            float8 pixels = (float8) (0);
 
             // Compute l,m,n
             float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -137,7 +136,7 @@ void kernel_gridder_(
                     // Compute phasor
                     float wavenumber = wavenumbers_[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
-                    float8 phasor_real = (float8) native_cos(phase);
+                    float8 phasor_real = native_cos(phase);
                     float val = native_sin(phase);
                     float8 phasor_imag = (float8) (val, -val, val, -val,
                                                    val, -val, val, -val);
@@ -146,16 +145,16 @@ void kernel_gridder_(
                     float8 vis = visibilities_[time][chan];
 
                     // Multiply visibility by phasor
-                    pixels1 += phasor_real * vis;
-                    pixels2 += phasor_imag * vis;
+                    pixels += phasor_real * vis;
+                    pixels += shuffle(phasor_imag * vis, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
                 }
             } // end for time
 
             // Create pixels
-            float2 uvXX = (float2) (pixels1.s0 + pixels2.s1, pixels1.s1 + pixels2.s0);
-            float2 uvXY = (float2) (pixels1.s2 + pixels2.s3, pixels1.s3 + pixels2.s2);
-            float2 uvYX = (float2) (pixels1.s4 + pixels2.s5, pixels1.s5 + pixels2.s4);
-            float2 uvYY = (float2) (pixels1.s6 + pixels2.s7, pixels1.s7 + pixels2.s6);
+            float2 uvXX = (float2) (pixels.s0, pixels.s1);
+            float2 uvXY = (float2) (pixels.s2, pixels.s3);
+            float2 uvYX = (float2) (pixels.s4, pixels.s5);
+            float2 uvYY = (float2) (pixels.s6, pixels.s7);
 
             // Get aterm for station1
             int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
