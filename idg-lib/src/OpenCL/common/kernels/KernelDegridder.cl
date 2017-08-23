@@ -61,10 +61,11 @@ void kernel_degridder(
 
         if (time < nr_timesteps) {
             visibility = (float8) (0);
-            uvw_ = (float4) (uvw[time_offset_global + time].u,
-                             uvw[time_offset_global + time].v,
-                             uvw[time_offset_global + time].w,
-                             0);
+            uvw_ = (float4) (
+                uvw[time_offset_global + time].u,
+                uvw[time_offset_global + time].v,
+                uvw[time_offset_global + time].w,
+                0);
         }
         barrier(CLK_GLOBAL_MEM_FENCE);
 
@@ -137,20 +138,14 @@ void kernel_degridder(
 
             // Iterate current batch of pixels
             for (int k = 0; k < current_nr_pixels; k++) {
-                // Load l,m,n
-                float l = lmn_phaseoffset_[k].x;
-                float m = lmn_phaseoffset_[k].y;
-                float n = lmn_phaseoffset_[k].z;
-
-                // Load phase offset
-                float phase_offset = lmn_phaseoffset_[k].w;
-
-                // Compute phase index
-                float phase_index = uvw_.x * l + uvw_.y * m + uvw_.z * n;
+                // Compute phase
+                float4 x = lmn_phaseoffset_[k];
+                float phase_offset = x.s3;
+                float phase_index = dot(uvw_, (float4) (x.s012, 0));
+                float phase  = (phase_index * wavenumbers[chan]) - phase_offset;
 
                 // Compute phasor
-                float  phase  = (phase_index * wavenumbers[chan]) - phase_offset;
-                float8 phasor_real = (float8) native_cos(phase);
+                float8 phasor_real = native_cos(phase);
                 float val = native_sin(phase);
                 float8 phasor_imag = (float8) (val, -val, val, -val,
                                                val, -val, val, -val);
@@ -164,16 +159,17 @@ void kernel_degridder(
             } // end for k (batch)
         } // end for j (pixels)
 
+        // Scale visibility
+        visibility *= (float8) (1.0f / (nr_pixels));
+
         // Store visibility
-        const float scale = 1.0f / (nr_pixels);
         int idx_time = time_offset_global + time;
         int idx_vis = index_visibility(nr_channels, idx_time, chan);
-
         if (time < nr_timesteps) {
-            visibilities[idx_vis + 0] = (float2) (visibility.s0, visibility.s1) * scale;
-            visibilities[idx_vis + 1] = (float2) (visibility.s2, visibility.s3) * scale;
-            visibilities[idx_vis + 2] = (float2) (visibility.s4, visibility.s5) * scale;
-            visibilities[idx_vis + 3] = (float2) (visibility.s6, visibility.s7) * scale;
+            visibilities[idx_vis + 0] = (float2) (visibility.s0, visibility.s1);
+            visibilities[idx_vis + 1] = (float2) (visibility.s2, visibility.s3);
+            visibilities[idx_vis + 2] = (float2) (visibility.s4, visibility.s5);
+            visibilities[idx_vis + 3] = (float2) (visibility.s6, visibility.s7);
         }
     } // end for i (visibilities)
 } // end kernel_degridder
