@@ -56,12 +56,12 @@ void kernel_degridder(
         int time = i / nr_channels;
         int chan = i % nr_channels;
 
-        float8 vis;
+        float8 visibility;
         float u, v, w;
         float wavenumber;
 
         if (time < nr_timesteps) {
-            vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
+            visibility = (float8) (0);
             u = uvw[time_offset_global + time].u;
             v = uvw[time_offset_global + time].v;
             w = uvw[time_offset_global + time].w;
@@ -151,34 +151,17 @@ void kernel_degridder(
 
                 // Compute phasor
                 float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = (float2) (native_cos(phase), native_sin(phase));
+                float8 phasor_real = (float8) native_cos(phase);
+                float val = native_sin(phase);
+                float8 phasor_imag = (float8) (val, -val, val, -val,
+                                               val, -val, val, -val);
 
                 // Load pixels from local memory
-                float2 apXX = (float2) (pixels_[k].s0, pixels_[k].s1);
-                float2 apXY = (float2) (pixels_[k].s2, pixels_[k].s3);
-                float2 apYX = (float2) (pixels_[k].s4, pixels_[k].s5);
-                float2 apYY = (float2) (pixels_[k].s6, pixels_[k].s7);
+                float8 pix = pixels_[k];
 
                 // Multiply pixels by phasor
-                vis.s0 += phasor.x * apXX.x;
-                vis.s1 += phasor.x * apXX.y;
-                vis.s0 -= phasor.y * apXX.y;
-                vis.s1 += phasor.y * apXX.x;
-
-                vis.s2 += phasor.x * apXY.x;
-                vis.s3 += phasor.x * apXY.y;
-                vis.s2 -= phasor.y * apXY.y;
-                vis.s3 += phasor.y * apXY.x;
-
-                vis.s4 += phasor.x * apYX.x;
-                vis.s5 += phasor.x * apYX.y;
-                vis.s4 -= phasor.y * apYX.y;
-                vis.s5 += phasor.y * apYX.x;
-
-                vis.s6 += phasor.x * apYY.x;
-                vis.s7 += phasor.x * apYY.y;
-                vis.s6 -= phasor.y * apYY.y;
-                vis.s7 += phasor.y * apYY.x;
+                visibility += phasor_real * pix;
+                visibility += shuffle(phasor_imag * pix, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
             } // end for k (batch)
         } // end for j (pixels)
 
@@ -188,10 +171,10 @@ void kernel_degridder(
         int idx_vis = index_visibility(nr_channels, idx_time, chan);
 
         if (time < nr_timesteps) {
-            visibilities[idx_vis + 0] = (float2) (vis.s0, vis.s1) * scale;
-            visibilities[idx_vis + 1] = (float2) (vis.s2, vis.s3) * scale;
-            visibilities[idx_vis + 2] = (float2) (vis.s4, vis.s5) * scale;
-            visibilities[idx_vis + 3] = (float2) (vis.s6, vis.s7) * scale;
+            visibilities[idx_vis + 0] = (float2) (visibility.s0, visibility.s1) * scale;
+            visibilities[idx_vis + 1] = (float2) (visibility.s2, visibility.s3) * scale;
+            visibilities[idx_vis + 2] = (float2) (visibility.s4, visibility.s5) * scale;
+            visibilities[idx_vis + 3] = (float2) (visibility.s6, visibility.s7) * scale;
         }
     } // end for i (visibilities)
 } // end kernel_degridder
