@@ -57,15 +57,14 @@ void kernel_degridder(
         int chan = i % nr_channels;
 
         float8 visibility;
-        float u, v, w;
-        float wavenumber;
+        float4 uvw_;
 
         if (time < nr_timesteps) {
             visibility = (float8) (0);
-            u = uvw[time_offset_global + time].u;
-            v = uvw[time_offset_global + time].v;
-            w = uvw[time_offset_global + time].w;
-            wavenumber = wavenumbers[chan];
+            uvw_ = (float4) (uvw[time_offset_global + time].u,
+                             uvw[time_offset_global + time].v,
+                             uvw[time_offset_global + time].w,
+                             0);
         }
         barrier(CLK_GLOBAL_MEM_FENCE);
 
@@ -147,10 +146,10 @@ void kernel_degridder(
                 float phase_offset = lmn_phaseoffset_[k].w;
 
                 // Compute phase index
-                float phase_index = u * l + v * m + w * n;
+                float phase_index = uvw_.x * l + uvw_.y * m + uvw_.z * n;
 
                 // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
+                float  phase  = (phase_index * wavenumbers[chan]) - phase_offset;
                 float8 phasor_real = (float8) native_cos(phase);
                 float val = native_sin(phase);
                 float8 phasor_imag = (float8) (val, -val, val, -val,
