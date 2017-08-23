@@ -63,9 +63,11 @@ void kernel_gridder_(
     const int y_coordinate = m.coordinate.y;
 
     // Compute u,v,w offset in wavelenghts
-    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    const float w_offset = w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI;
+    float4 uvw_offset = (float4) (
+        (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI,
+        (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI,
+        w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI,
+        0);
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += nr_threads) {
@@ -117,19 +119,18 @@ void kernel_gridder_(
             float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
             float tmp = (l * l) + (m * m);
             float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
+            float4 lmn = (float4) (l, m, n, 0);
 
             // Iterate all timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
-                float u = uvw_[time].x;
-                float v = uvw_[time].y;
-                float w = uvw_[time].z;
+                float4 t = uvw_[time];
 
                 // Compute phase index
-                float phase_index = u*l + v*m + w*n;
+                float phase_index = dot(t, lmn);
 
                 // Compute phase offset
-                float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                float phase_offset = dot(uvw_offset, lmn);
 
                 // Accumulate pixels
                 for (int chan = 0; chan < current_nr_channels; chan++) {
