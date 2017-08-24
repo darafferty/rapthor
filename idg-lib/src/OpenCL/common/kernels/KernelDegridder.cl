@@ -89,6 +89,8 @@ void kernel_degridder(
                 float2 aXY1 = aterm[station1_idx + 1];
                 float2 aYX1 = aterm[station1_idx + 2];
                 float2 aYY1 = aterm[station1_idx + 3];
+                float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
+                float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
 
                 // Load aterm for station2
                 int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
@@ -96,34 +98,44 @@ void kernel_degridder(
                 float2 aXY2 = conj(aterm[station2_idx + 1]);
                 float2 aYX2 = conj(aterm[station2_idx + 2]);
                 float2 aYY2 = conj(aterm[station2_idx + 3]);
-
-                // Load spheroidal
-                float spheroidal_ = spheroidal[y * subgrid_size + x];
+                float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
+                float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
 
                 // Compute shifted position in subgrid
                 int x_src = (x + (subgrid_size/2)) % subgrid_size;
                 int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                // Load uv values
+                // Load pixels
                 int idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
                 int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
                 int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
                 int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                float2 pixelsXX = spheroidal_ * subgrid[idx_xx];
-                float2 pixelsXY = spheroidal_ * subgrid[idx_xy];
-                float2 pixelsYX = spheroidal_ * subgrid[idx_yx];
-                float2 pixelsYY = spheroidal_ * subgrid[idx_yy];
+                float8 pixels = (float8) (
+                    subgrid[idx_xx], subgrid[idx_xy],
+                    subgrid[idx_yx], subgrid[idx_yy]);
 
-                // Apply aterm
-                apply_aterm(
-                    aXX1, aXY1, aYX1, aYY1,
-                    aXX2, aXY2, aYX2, aYY2,
-                    &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
+                // Apply spheroidal
+                pixels *= spheroidal[y * subgrid_size + x];
+
+                float8 pixels_aterm;
+
+                // Apply aterm to pixels: P*A1
+                // [ uvXX, uvXY;    [ aXX1, aXY1;
+                //   uvYX, uvYY ] *   aYX1, aYY1 ]
+                pixels_aterm = (float8) (0);
+                pixels_aterm += cmul8(pixels, aterm1);
+                pixels_aterm += cmul8(pixels, aterm2);
+
+                // Apply aterm to pixels: A2^H*P
+                // [ aXX2, aYX1;      [ uvXX, uvXY;
+                //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+                pixels = pixels_aterm;
+                pixels_aterm = (float8) (0);
+                pixels_aterm += cmul8(pixels, aterm3);
+                pixels_aterm += cmul8(pixels, aterm4);
 
                 // Store pixels
-                pixels_[j] = (float8) (
-                    pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y,
-                    pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                pixels_[j] = pixels_aterm;
 
                 // Compute l,m,n and phase offset
                 const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -166,10 +178,10 @@ void kernel_degridder(
         int idx_time = time_offset_global + time;
         int idx_vis = index_visibility(nr_channels, idx_time, chan);
         if (time < nr_timesteps) {
-            visibilities[idx_vis + 0] = (float2) (visibility.s0, visibility.s1);
-            visibilities[idx_vis + 1] = (float2) (visibility.s2, visibility.s3);
-            visibilities[idx_vis + 2] = (float2) (visibility.s4, visibility.s5);
-            visibilities[idx_vis + 3] = (float2) (visibility.s6, visibility.s7);
+            visibilities[idx_vis + 0] = visibility.s01;
+            visibilities[idx_vis + 1] = visibility.s23;
+            visibilities[idx_vis + 2] = visibility.s45;
+            visibilities[idx_vis + 3] = visibility.s67;
         }
     } // end for i (visibilities)
 } // end kernel_degridder

@@ -151,18 +151,14 @@ void kernel_gridder_(
                 }
             } // end for time
 
-            // Create pixels
-            float2 uvXX = (float2) (pixels.s0, pixels.s1);
-            float2 uvXY = (float2) (pixels.s2, pixels.s3);
-            float2 uvYX = (float2) (pixels.s4, pixels.s5);
-            float2 uvYY = (float2) (pixels.s6, pixels.s7);
-
             // Get aterm for station1
             int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
             float2 aXX1 = aterm[station1_idx + 0];
             float2 aXY1 = aterm[station1_idx + 1];
             float2 aYX1 = aterm[station1_idx + 2];
             float2 aYY1 = aterm[station1_idx + 3];
+            float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
+            float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
 
             // Get aterm for station2
             int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
@@ -170,15 +166,28 @@ void kernel_gridder_(
             float2 aXY2 = conj(aterm[station2_idx + 1]);
             float2 aYX2 = conj(aterm[station2_idx + 2]);
             float2 aYY2 = conj(aterm[station2_idx + 3]);
+            float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
+            float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
 
-            // Apply aterm
-            apply_aterm(
-                aXX1,   aXY1,  aYX1,  aYY1,
-                aXX2,   aXY2,  aYX2,  aYY2,
-                &uvXX, &uvXY, &uvYX, &uvYY);
+            float8 pixels_aterm;
+
+            // Apply aterm to pixels: P*A1
+            // [ uvXX, uvXY;    [ aXX1, aXY1;
+            //   uvYX, uvYY ] *   aYX1, aYY1 ]
+            pixels_aterm = (float8) (0);
+            pixels_aterm += cmul8(pixels, aterm1);
+            pixels_aterm += cmul8(pixels, aterm2);
+
+            // Apply aterm to pixels: A2^H*P
+            // [ aXX2, aYX1;      [ uvXX, uvXY;
+            //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+            pixels = pixels_aterm;
+            pixels_aterm = (float8) (0);
+            pixels_aterm += cmul8(pixels, aterm3);
+            pixels_aterm += cmul8(pixels, aterm4);
 
             // Load spheroidal
-            float spheroidal_ = spheroidal[y * subgrid_size + x];
+            pixels_aterm *= spheroidal[y * subgrid_size + x];
 
             // Compute shifted position in subgrid
             int x_dst = (x + (subgrid_size/2)) % subgrid_size;
@@ -189,10 +198,10 @@ void kernel_gridder_(
             int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
             int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
             int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
-            subgrid[idx_xx] += uvXX * spheroidal_;
-            subgrid[idx_xy] += uvXY * spheroidal_;
-            subgrid[idx_yx] += uvYX * spheroidal_;
-            subgrid[idx_yy] += uvYY * spheroidal_;
+            subgrid[idx_xx] += pixels_aterm.s01;
+            subgrid[idx_xy] += pixels_aterm.s23;
+            subgrid[idx_yx] += pixels_aterm.s45;
+            subgrid[idx_yy] += pixels_aterm.s67;
         } // end for i
     } // end for time_offset_local
 } // end kernel_gridder_
