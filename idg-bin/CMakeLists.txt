@@ -79,7 +79,7 @@ if (${IDG_OnePackage})
     include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
 else()
     find_package(IDG NO_MODULE REQUIRED)
-    include_directories (${IDG_INCLUDE_DIRS})
+    include_directories (${IDG_INCLUDE_DIR})
 endif()
 
 # write config file
