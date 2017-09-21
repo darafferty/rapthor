@@ -97,7 +97,7 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS})
+set(LINK_LIRBRARIES idg-common)
 target_link_libraries (
   idg-cpu
   ${LINK_LIRBRARIES}
@@ -213,7 +213,7 @@ if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
 #  $<TARGET_OBJECTS:hybrid-opencl>
 #)
 #
-#set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+#set(LINK_LIRBRARIES idg-common ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 #
 #target_link_libraries (
 #  idg-hybrid-opencl
@@ -242,7 +242,7 @@ add_library(idg-opencl
   $<TARGET_OBJECTS:opencl-generic>
 )
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS} ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
 
 target_link_libraries(
   idg-opencl
@@ -269,9 +269,9 @@ endif(BUILD_LIB_OPENCL)
 
 add_library(idg
     idg.cpp
+    $<TARGET_OBJECTS:common>
+    $<TARGET_OBJECTS:fft>
 )
-
-set(LINK_LIRBRARIES idg-fft ${CMAKE_DL_LIBS})
 
 if (BUILD_LIB_CPU)
   set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
