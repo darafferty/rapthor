@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -24,20 +25,140 @@ namespace powersensor {
 
 namespace idg {
     namespace auxiliary {
+        #define NR_CORRELATIONS 4
+
+        /*
+            Operation and byte count
+        */
+        uint64_t flops_gridder(
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t bytes_gridder(
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t flops_degridder(
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t bytes_degridder(
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t flops_fft(
+            uint64_t size,
+            uint64_t batch,
+            uint64_t nr_correlations = 4);
+
+        uint64_t bytes_fft(
+            uint64_t size,
+            uint64_t batch,
+            uint64_t nr_correlations = 4);
+
+        uint64_t flops_adder(
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t bytes_adder(
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t flops_splitter(
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size);
+
+        uint64_t bytes_splitter(
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size);
+
+        uint64_t flops_scaler(
+            uint64_t subgrid_size,
+            uint64_t nr_subgrids,
+            uint64_t nr_correlations = 4);
+
+        uint64_t bytes_scaler(
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        /*
+            Sizeof routines
+        */
+        uint64_t sizeof_visibilities(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps,
+            unsigned int nr_channels);
+
+        uint64_t sizeof_uvw(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps);
+
+        uint64_t sizeof_subgrids(
+            unsigned int nr_subgrids,
+            unsigned int subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t sizeof_metadata(
+            unsigned int nr_subgrids);
+
+        uint64_t sizeof_grid(
+            unsigned int grid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t sizeof_wavenumbers(
+            unsigned int nr_channels);
+
+        uint64_t sizeof_aterms(
+            unsigned int nr_stations,
+            unsigned int nr_timeslots,
+            unsigned int subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t sizeof_spheroidal(
+            unsigned int subgrid_size);
+
+        /*
+            Performance reporting
+         */
+        const std::string name_gridding("|gridding");
+        const std::string name_degridding("|degridding");
+        const std::string name_adding("|adding");
+        const std::string name_splitting("|splitting");
+        const std::string name_adder("adder");
+        const std::string name_splitter("splitter");
+        const std::string name_gridder("gridder");
+        const std::string name_degridder("degridder");
+        const std::string name_subgrid_fft("sub-fft");
+        const std::string name_grid_fft("grid-fft");
 
         void report(
-            const char *name,
+            const std::string name,
             double runtime);
 
         void report(
-            const char *name,
+            const std::string name,
             double runtime,
             uint64_t flops,
             uint64_t bytes,
             double watt=0);
 
         void report(
-            const char *name,
+            const std::string name,
             uint64_t flops,
             uint64_t bytes,
             powersensor::PowerSensor *powerSensor,
@@ -48,12 +169,12 @@ namespace idg {
             double runtime);
 
         void report_visibilities(
-            const char *name,
+            const std::string name,
             double runtime,
     		uint64_t nr_visibilities);
 
         void report_subgrids(
-            const char *name,
+            const std::string name,
             double runtime,
             uint64_t nr_subgrids);
 
@@ -61,6 +182,9 @@ namespace idg {
             double runtime,
             uint64_t nr_subgrids);
 
+        /*
+            Misc
+        */
         std::vector<int> split_int(const char *string, const char *delimiter);
         std::vector<std::string> split_string(char *string, const char *delimiter);
 

@@ -71,7 +71,7 @@ namespace idg {
                 powerStates[2] = devicePowerSensor->read();
 
                 // Device memory
-                auto sizeof_grid = device.sizeof_grid(grid_size);
+                auto sizeof_grid = auxiliary::sizeof_grid(grid_size);
                 cl::Buffer d_grid = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid);
 
                 // Perform fft shift
@@ -125,7 +125,7 @@ namespace idg {
                                   devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state),
                                   0, 0, 0);
                 auxiliary::report("  grid-fft",
-                                  device.flops_fft(grid_size, 1), device.bytes_fft(grid_size, 1),
+                                  auxiliary::flops_fft(grid_size, 1), auxiliary::bytes_fft(grid_size, 1),
                                   devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
                 auxiliary::report("    output",
                                   0, sizeof_grid,
@@ -194,10 +194,10 @@ namespace idg {
 
                 // Initialize host memory
                 cl::Context& context        = get_context();
-                InstanceOpenCL& device0     = get_device(0);
-                cl::CommandQueue& htodqueue = device0.get_htod_queue();
-                auto sizeof_visibilities    = device0.sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                auto sizeof_uvw             = device0.sizeof_uvw(nr_baselines, nr_timesteps);
+                InstanceOpenCL& device      = get_device(0);
+                cl::CommandQueue& htodqueue = device.get_htod_queue();
+                auto sizeof_visibilities    = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                auto sizeof_uvw             = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
                 cl::Buffer h_visibilities   = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_visibilities);
                 cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
                 writeBufferBatched(htodqueue, h_visibilities, CL_FALSE, 0, sizeof_visibilities, visibilities.data());
@@ -212,10 +212,10 @@ namespace idg {
                     vector<cl::Event> input(2);
                     InstanceOpenCL& device      = get_device(d);
                     cl::CommandQueue& htodqueue = device.get_htod_queue();
-                    auto sizeof_grid         = device.sizeof_grid(grid_size);
-                    auto sizeof_wavenumbers  = device.sizeof_wavenumbers(nr_channels);
-                    auto sizeof_spheroidal   = device.sizeof_spheroidal(subgrid_size);
-                    auto sizeof_aterms       = device.sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    auto sizeof_grid         = auxiliary::sizeof_grid(grid_size);
+                    auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
+                    auto sizeof_spheroidal   = auxiliary::sizeof_spheroidal(subgrid_size);
+                    auto sizeof_aterms       = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
                     cl::Buffer d_grid        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid);
                     cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers);
                     cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal);
@@ -273,10 +273,10 @@ namespace idg {
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                     // Allocate private device memory
-                    auto sizeof_visibilities = device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
-                    auto sizeof_uvw          = device.sizeof_uvw(jobsize, nr_timesteps);
-                    auto sizeof_subgrids     = device.sizeof_subgrids(max_nr_subgrids, subgrid_size);
-                    auto sizeof_metadata     = device.sizeof_metadata(max_nr_subgrids);
+                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                    auto sizeof_uvw          = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+                    auto sizeof_subgrids     = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                    auto sizeof_metadata     = auxiliary::sizeof_metadata(max_nr_subgrids);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities);
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw);
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids);
@@ -310,19 +310,19 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                        auto uvw_offset           = first_bl * device.sizeof_uvw(1, nr_timesteps);
-                        auto visibilities_offset  = first_bl * device.sizeof_visibilities(1, nr_timesteps, nr_channels);
+                        auto uvw_offset           = first_bl * auxiliary::sizeof_uvw(1, nr_timesteps);
+                        auto visibilities_offset  = first_bl * auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
 
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0,
-                                device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
-                                device.sizeof_uvw(current_nr_baselines, nr_timesteps));
+                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
-                                    device.sizeof_metadata(current_nr_subgrids),
+                                    auxiliary::sizeof_metadata(current_nr_subgrids),
                                     plan.get_metadata_ptr(first_bl));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
@@ -353,14 +353,14 @@ namespace idg {
                         outputReady[0].wait();
 
                         #if defined(REPORT_VERBOSE)
-                        auxiliary::report("gridder", device.flops_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids),
-                                                     device.bytes_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids),
+                        auxiliary::report("gridder", auxiliary::flops_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
+                                                     auxiliary::bytes_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
                                                      devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
-                        auxiliary::report("sub-fft", device.flops_fft(subgrid_size, current_nr_subgrids),
-                                                     device.bytes_fft(subgrid_size, current_nr_subgrids),
+                        auxiliary::report("sub-fft", auxiliary::flops_fft(subgrid_size, current_nr_subgrids, subgrid_size),
+                                                     auxiliary::bytes_fft(subgrid_size, current_nr_subgrids, subgrid_size),
                                                      devicePowerSensor, powerRecords[1].state, powerRecords[2].state);
-                        auxiliary::report("  adder", device.flops_adder(current_nr_subgrids),
-                                                     device.bytes_adder(current_nr_subgrids),
+                        auxiliary::report("  adder", auxiliary::flops_adder(current_nr_subgrids, subgrid_size),
+                                                     auxiliary::bytes_adder(current_nr_subgrids, subgrid_size),
                                                      devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -394,7 +394,7 @@ namespace idg {
                     InstanceOpenCL& device     = get_device(d);
                     cl::CommandQueue dtohqueue = device.get_dtoh_queue();
                     float2 *grid_dst = (float2 *) grid.data();
-                    float2 *grid_src = (float2 *) dtohqueue.enqueueMapBuffer(d_grid_[d], CL_TRUE, 0, 0, device.sizeof_grid(grid_size));
+                    float2 *grid_src = (float2 *) dtohqueue.enqueueMapBuffer(d_grid_[d], CL_TRUE, 0, 0, auxiliary::sizeof_grid(grid_size));
 
                     #pragma omp parallel for
                     for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
@@ -405,18 +405,17 @@ namespace idg {
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceOpenCL& device        = get_device(0);
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
                 auto total_nr_visibilities    = plan.get_nr_visibilities();
-                uint64_t total_flops_gridder  = device.flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_bytes_gridder  = device.bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_flops_fft      = device.flops_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_bytes_fft      = device.bytes_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_flops_scaler   = device.flops_scaler(total_nr_subgrids);
-                uint64_t total_bytes_scaler   = device.bytes_scaler(total_nr_subgrids);
-                uint64_t total_flops_adder    = device.flops_adder(total_nr_subgrids);
-                uint64_t total_bytes_adder    = device.bytes_adder(total_nr_subgrids);
+                uint64_t total_flops_gridder  = auxiliary::flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
+                uint64_t total_bytes_gridder  = auxiliary::bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
+                uint64_t total_flops_fft      = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_bytes_fft      = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_flops_scaler   = auxiliary::flops_scaler(total_nr_subgrids, subgrid_size);
+                uint64_t total_bytes_scaler   = auxiliary::bytes_scaler(total_nr_subgrids, subgrid_size);
+                uint64_t total_flops_adder    = auxiliary::flops_adder(total_nr_subgrids, subgrid_size);
+                uint64_t total_bytes_adder    = auxiliary::bytes_adder(total_nr_subgrids, subgrid_size);
                 uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
                 uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
@@ -499,10 +498,10 @@ namespace idg {
                     vector<cl::Event> input(2);
                     InstanceOpenCL& device      = get_device(d);
                     cl::CommandQueue& htodqueue = device.get_htod_queue();
-                    auto sizeof_grid         = device.sizeof_grid(grid_size);
-                    auto sizeof_wavenumbers  = device.sizeof_wavenumbers(nr_channels);
-                    auto sizeof_spheroidal   = device.sizeof_spheroidal(subgrid_size);
-                    auto sizeof_aterms       = device.sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    auto sizeof_grid         = auxiliary::sizeof_grid(grid_size);
+                    auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
+                    auto sizeof_spheroidal   = auxiliary::sizeof_spheroidal(subgrid_size);
+                    auto sizeof_aterms       = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
                     cl::Buffer d_grid        = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_grid);
                     cl::Buffer d_wavenumbers = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_wavenumbers);
                     cl::Buffer d_spheroidal  = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_spheroidal);
@@ -561,10 +560,10 @@ namespace idg {
                     htodqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
 
                     // Allocate private device memory
-                    auto sizeof_visibilities = device.sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
-                    auto sizeof_uvw          = device.sizeof_uvw(jobsize, nr_timesteps);
-                    auto sizeof_subgrids     = device.sizeof_subgrids(max_nr_subgrids, subgrid_size);
-                    auto sizeof_metadata     = device.sizeof_metadata(max_nr_subgrids);
+                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                    auto sizeof_uvw          = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+                    auto sizeof_subgrids     = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                    auto sizeof_metadata     = auxiliary::sizeof_metadata(max_nr_subgrids);
                     cl::Buffer d_visibilities = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_visibilities);
                     cl::Buffer d_uvw          = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_uvw);
                     cl::Buffer d_subgrids     = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof_subgrids);
@@ -604,9 +603,9 @@ namespace idg {
                             // Copy input data to device
                             htodqueue.enqueueBarrierWithWaitList(&outputFree, NULL);
                             htodqueue.enqueueWriteBuffer(d_uvw, CL_FALSE, 0,
-                                    device.sizeof_uvw(current_nr_baselines, nr_timesteps), uvw.data(first_bl, 0));
+                                    auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps), uvw.data(first_bl, 0));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
-                                    device.sizeof_metadata(current_nr_subgrids), plan.get_metadata_ptr(first_bl));
+                                    auxiliary::sizeof_metadata(current_nr_subgrids), plan.get_metadata_ptr(first_bl));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
 
                             // Launch splitter kernel
@@ -635,7 +634,7 @@ namespace idg {
                             // Copy visibilities to host
                             dtohqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
                             dtohqueue.enqueueReadBuffer(d_visibilities, CL_FALSE, 0,
-                                device.sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels),
+                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels),
                                 visibilities.data(first_bl, 0, 0));
                             dtohqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
@@ -646,14 +645,14 @@ namespace idg {
                         double runtime_fft       = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
                         double runtime_degridder = devicePowerSensor->seconds(powerRecords[2].state, powerRecords[3].state);
                         #if defined(REPORT_VERBOSE)
-                        auxiliary::report(" splitter", device.flops_splitter(current_nr_subgrids),
-                                                       device.bytes_splitter(current_nr_subgrids),
+                        auxiliary::report(" splitter", auxiliary::flops_splitter(current_nr_subgrids, subgrid_size),
+                                                       auxiliary::bytes_splitter(current_nr_subgrids, subgrid_size),
                                                        devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
-                        auxiliary::report("  sub-fft", device.flops_fft(subgrid_size, current_nr_subgrids),
-                                                       device.bytes_fft(subgrid_size, current_nr_subgrids),
+                        auxiliary::report("  sub-fft", auxiliary::flops_fft(subgrid_size, current_nr_subgrids),
+                                                       auxiliary::bytes_fft(subgrid_size, current_nr_subgrids),
                                                        devicePowerSensor, powerRecords[1].state, powerRecords[2].state);
-                        auxiliary::report("degridder", device.flops_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids),
-                                                       device.bytes_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids),
+                        auxiliary::report("degridder", auxiliary::flops_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
+                                                       auxiliary::bytes_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
                                                        devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
                         #endif
                         #if defined(REPORT_TOTAL)
@@ -682,16 +681,15 @@ namespace idg {
                 total_runtime_degridding = total_runtime_degridder + total_runtime_fft + total_runtime_splitter;
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceOpenCL& device          = get_device(0);
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
                 auto total_nr_timesteps         = plan.get_nr_timesteps();
                 auto total_nr_visibilities      = plan.get_nr_visibilities();
-                uint64_t total_flops_splitter   = device.flops_splitter(total_nr_subgrids);
-                uint64_t total_bytes_splitter   = device.bytes_splitter(total_nr_subgrids);
-                uint64_t total_flops_fft        = device.flops_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_bytes_fft        = device.bytes_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_flops_degridder  = device.flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
-                uint64_t total_bytes_degridder  = device.bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids);
+                uint64_t total_flops_splitter   = auxiliary::flops_splitter(total_nr_subgrids, subgrid_size);
+                uint64_t total_bytes_splitter   = auxiliary::bytes_splitter(total_nr_subgrids, subgrid_size);
+                uint64_t total_flops_fft        = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_bytes_fft        = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
+                uint64_t total_flops_degridder  = auxiliary::flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
+                uint64_t total_bytes_degridder  = auxiliary::bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
                 uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
                 uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
                 auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);

@@ -1,8 +1,10 @@
 # This module tries to find CUDA driver libaries on your system
 #
 # Once done this will define
-#  CUDA_DRIVER_FOUND        - system has CUDA
 #  CUDA_DRIVER_LIBRARIES    - link these to use CUDA
 
-FIND_PACKAGE(PackageHandleStandardArgs)
-FIND_LIBRARY(CUDA_DRIVER_LIBRARY cuda ENV LD_LIBRARY_PATH)
+find_package(PackageHandleStandardArgs)
+find_library(CUDA_DRIVER_LIBRARY
+    NAMES cuda
+    HINTS ENV LD_LIBRARY_PATH
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs)

@@ -451,7 +451,7 @@ namespace idg {
            cu::HostMemory& InstanceCUDA::allocate_host_grid(
                 unsigned int grid_size)
             {
-                auto size = sizeof_grid(grid_size);
+                auto size = auxiliary::sizeof_grid(grid_size);
                 h_grid = allocate_memory(size, h_grid);
                 return *h_grid;
             }
@@ -459,7 +459,7 @@ namespace idg {
            cu::DeviceMemory& InstanceCUDA::allocate_device_grid(
                 unsigned int grid_size)
             {
-                auto size = sizeof_grid(grid_size);
+                auto size = auxiliary::sizeof_grid(grid_size);
                 d_grid = allocate_memory(size, d_grid);
                 return *d_grid;
             }
@@ -469,7 +469,7 @@ namespace idg {
                 unsigned int nr_timesteps,
                 unsigned int nr_channels)
             {
-                auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 h_visibilities = allocate_memory(size, h_visibilities);
                 return *h_visibilities;
             }
@@ -478,7 +478,7 @@ namespace idg {
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps)
             {
-                auto size = sizeof_uvw(nr_baselines, nr_timesteps);
+                auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
                 h_uvw = allocate_memory(size, h_uvw);
                 return *h_uvw;
             }
@@ -486,7 +486,7 @@ namespace idg {
             cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(
                 unsigned int nr_channels)
             {
-                auto size = sizeof_wavenumbers(nr_channels);
+                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
                 d_wavenumbers = allocate_memory(size, d_wavenumbers);
                 return *d_wavenumbers;
             }
@@ -496,7 +496,7 @@ namespace idg {
                 unsigned int nr_timeslots,
                 unsigned int subgrid_size)
             {
-                auto size = sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                auto size = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
                 d_aterms = allocate_memory(size, d_aterms);
                 return *d_aterms;
             }
@@ -504,7 +504,7 @@ namespace idg {
             cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(
                 unsigned int subgrid_size)
             {
-                auto size = sizeof_spheroidal(subgrid_size);
+                auto size = auxiliary::sizeof_spheroidal(subgrid_size);
                 d_spheroidal = allocate_memory(size, d_spheroidal);
                 return *d_spheroidal;
             }
@@ -537,7 +537,7 @@ namespace idg {
                 unsigned int grid_size,
                 void *ptr)
             {
-                auto size = sizeof_grid(grid_size);
+                auto size = auxiliary::sizeof_grid(grid_size);
                 h_grid = reuse_memory(h_grid_, size, ptr, 2);
                 return *h_grid;
             }
@@ -548,7 +548,7 @@ namespace idg {
                 unsigned int nr_channels,
                 void *ptr)
             {
-                auto size = sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 h_visibilities = reuse_memory(h_visibilities_, size, ptr, 2);
                 return *h_visibilities;
             }
@@ -558,7 +558,7 @@ namespace idg {
                 unsigned int nr_timesteps,
                 void *ptr)
             {
-                auto size = sizeof_uvw(nr_baselines, nr_timesteps);
+                auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
                 h_uvw = reuse_memory(h_uvw_, size, ptr, 2);
                 return *h_uvw;
             }
