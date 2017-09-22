@@ -23,7 +23,7 @@ void kernel_gridder_(
     __global const float2*   aterm,
     __global const Metadata* metadata,
     __global       float2*   subgrid,
-    __local float4           visibilities_[BATCH_SIZE][MAX_NR_CHANNELS][NR_POLARIZATIONS/2],
+    __local float8           visibilities_[BATCH_SIZE][MAX_NR_CHANNELS],
     __local float4           uvw_[BATCH_SIZE],
     __local float            wavenumbers_[MAX_NR_CHANNELS])
 {
@@ -63,9 +63,11 @@ void kernel_gridder_(
     const int y_coordinate = m.coordinate.y;
 
     // Compute u,v,w offset in wavelenghts
-    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    const float w_offset = w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI;
+    float4 uvw_offset = (float4) (
+        (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI,
+        (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI,
+        w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI,
+        0);
 
     // Load wavenumbers
     for (int i = tid; i < current_nr_channels; i += nr_threads) {
@@ -98,8 +100,7 @@ void kernel_gridder_(
                 float2 b = visibilities[idx_vis + 1];
                 float2 c = visibilities[idx_vis + 2];
                 float2 d = visibilities[idx_vis + 3];
-                visibilities_[0][i][0] = (float4) (a.x, a.y, b.x, b.y);
-                visibilities_[0][i][1] = (float4) (c.x, c.y, d.x, d.y);
+                visibilities_[0][i] = (float8) (a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
             }
         }
 
@@ -111,65 +112,42 @@ void kernel_gridder_(
             int x = i % subgrid_size;
 
             // Private pixels
-            float2 uvXX = (float2) (0, 0);
-            float2 uvXY = (float2) (0, 0);
-            float2 uvYX = (float2) (0, 0);
-            float2 uvYY = (float2) (0, 0);
+            float8 pixels = (float8) (0);
 
             // Compute l,m,n
             float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
             float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
             float tmp = (l * l) + (m * m);
             float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
+            float4 lmn = (float4) (l, m, n, 0);
 
             // Iterate all timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
-                float u = uvw_[time].x;
-                float v = uvw_[time].y;
-                float w = uvw_[time].z;
+                float4 t = uvw_[time];
 
                 // Compute phase index
-                float phase_index = u*l + v*m + w*n;
+                float phase_index = dot(t, lmn);
 
                 // Compute phase offset
-                float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                float phase_offset = dot(uvw_offset, lmn);
 
-                // Compute phasor
-                #pragma unroll
+                // Accumulate pixels
                 for (int chan = 0; chan < current_nr_channels; chan++) {
+                    // Compute phasor
                     float wavenumber = wavenumbers_[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
-                    float2 phasor = (float2) (native_cos(phase), native_sin(phase));
+                    float8 phasor_real = native_cos(phase);
+                    float val = native_sin(phase);
+                    float8 phasor_imag = (float8) (val, -val, val, -val,
+                                                   val, -val, val, -val);
 
                     // Load visibilities from shared memory
-                    float4 a = visibilities_[time][chan][0];
-                    float4 b = visibilities_[time][chan][1];
-                    float2 visXX = (float2) (a.x, a.y);
-                    float2 visXY = (float2) (a.z, a.w);
-                    float2 visYX = (float2) (b.x, b.y);
-                    float2 visYY = (float2) (b.z, b.w);
+                    float8 vis = visibilities_[time][chan];
 
                     // Multiply visibility by phasor
-                    uvXX.x += phasor.x * visXX.x;
-                    uvXX.y += phasor.x * visXX.y;
-                    uvXX.x -= phasor.y * visXX.y;
-                    uvXX.y += phasor.y * visXX.x;
-
-                    uvXY.x += phasor.x * visXY.x;
-                    uvXY.y += phasor.x * visXY.y;
-                    uvXY.x -= phasor.y * visXY.y;
-                    uvXY.y += phasor.y * visXY.x;
-
-                    uvYX.x += phasor.x * visYX.x;
-                    uvYX.y += phasor.x * visYX.y;
-                    uvYX.x -= phasor.y * visYX.y;
-                    uvYX.y += phasor.y * visYX.x;
-
-                    uvYY.x += phasor.x * visYY.x;
-                    uvYY.y += phasor.x * visYY.y;
-                    uvYY.x -= phasor.y * visYY.y;
-                    uvYY.y += phasor.y * visYY.x;
+                    pixels += phasor_real * vis;
+                    pixels += shuffle(phasor_imag * vis, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
                 }
             } // end for time
 
@@ -179,6 +157,8 @@ void kernel_gridder_(
             float2 aXY1 = aterm[station1_idx + 1];
             float2 aYX1 = aterm[station1_idx + 2];
             float2 aYY1 = aterm[station1_idx + 3];
+            float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
+            float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
 
             // Get aterm for station2
             int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
@@ -186,15 +166,28 @@ void kernel_gridder_(
             float2 aXY2 = conj(aterm[station2_idx + 1]);
             float2 aYX2 = conj(aterm[station2_idx + 2]);
             float2 aYY2 = conj(aterm[station2_idx + 3]);
+            float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
+            float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
 
-            // Apply aterm
-            apply_aterm(
-                aXX1,   aXY1,  aYX1,  aYY1,
-                aXX2,   aXY2,  aYX2,  aYY2,
-                &uvXX, &uvXY, &uvYX, &uvYY);
+            float8 pixels_aterm;
+
+            // Apply aterm to pixels: P*A1
+            // [ uvXX, uvXY;    [ aXX1, aXY1;
+            //   uvYX, uvYY ] *   aYX1, aYY1 ]
+            pixels_aterm = (float8) (0);
+            pixels_aterm += cmul8(pixels, aterm1);
+            pixels_aterm += cmul8(pixels, aterm2);
+
+            // Apply aterm to pixels: A2^H*P
+            // [ aXX2, aYX1;      [ uvXX, uvXY;
+            //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+            pixels = pixels_aterm;
+            pixels_aterm = (float8) (0);
+            pixels_aterm += cmul8(pixels, aterm3);
+            pixels_aterm += cmul8(pixels, aterm4);
 
             // Load spheroidal
-            float spheroidal_ = spheroidal[y * subgrid_size + x];
+            pixels_aterm *= spheroidal[y * subgrid_size + x];
 
             // Compute shifted position in subgrid
             int x_dst = (x + (subgrid_size/2)) % subgrid_size;
@@ -205,10 +198,10 @@ void kernel_gridder_(
             int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
             int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
             int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
-            subgrid[idx_xx] += uvXX * spheroidal_;
-            subgrid[idx_xy] += uvXY * spheroidal_;
-            subgrid[idx_yx] += uvYX * spheroidal_;
-            subgrid[idx_yy] += uvYY * spheroidal_;
+            subgrid[idx_xx] += pixels_aterm.s01;
+            subgrid[idx_xy] += pixels_aterm.s23;
+            subgrid[idx_yx] += pixels_aterm.s45;
+            subgrid[idx_yy] += pixels_aterm.s67;
         } // end for i
     } // end for time_offset_local
 } // end kernel_gridder_
@@ -236,7 +229,7 @@ __kernel void kernel_gridder(
     __global const Metadata* metadata,
     __global       float2*   subgrid)
 {
-    __local float4 visibilities_[BATCH_SIZE][MAX_NR_CHANNELS][NR_POLARIZATIONS/2];
+    __local float8 visibilities_[BATCH_SIZE][MAX_NR_CHANNELS];
     __local float4 uvw_[BATCH_SIZE];
     __local float  wavenumbers_[MAX_NR_CHANNELS];
 

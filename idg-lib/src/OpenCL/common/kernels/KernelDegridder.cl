@@ -48,24 +48,24 @@ void kernel_degridder(
     const float w_offset = w_step * ((float)m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Shared data
-    __local float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
-    __local float4 _lmn_phaseoffset[BATCH_SIZE];
+    __local float8 pixels_[BATCH_SIZE];
+    __local float4 lmn_phaseoffset_[BATCH_SIZE];
 
     // Iterate visibilities
     for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
         int time = i / nr_channels;
         int chan = i % nr_channels;
 
-        float8 vis;
-        float u, v, w;
-        float wavenumber;
+        float8 visibility;
+        float4 uvw_;
 
         if (time < nr_timesteps) {
-            vis = (float8) (0, 0, 0, 0, 0, 0, 0 ,0);
-            u = uvw[time_offset_global + time].u;
-            v = uvw[time_offset_global + time].v;
-            w = uvw[time_offset_global + time].w;
-            wavenumber = wavenumbers[chan];
+            visibility = (float8) (0);
+            uvw_ = (float4) (
+                uvw[time_offset_global + time].u,
+                uvw[time_offset_global + time].v,
+                uvw[time_offset_global + time].w,
+                0);
         }
         barrier(CLK_GLOBAL_MEM_FENCE);
 
@@ -89,6 +89,8 @@ void kernel_degridder(
                 float2 aXY1 = aterm[station1_idx + 1];
                 float2 aYX1 = aterm[station1_idx + 2];
                 float2 aYY1 = aterm[station1_idx + 3];
+                float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
+                float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
 
                 // Load aterm for station2
                 int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
@@ -96,33 +98,44 @@ void kernel_degridder(
                 float2 aXY2 = conj(aterm[station2_idx + 1]);
                 float2 aYX2 = conj(aterm[station2_idx + 2]);
                 float2 aYY2 = conj(aterm[station2_idx + 3]);
-
-                // Load spheroidal
-                float spheroidal_ = spheroidal[y * subgrid_size + x];
+                float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
+                float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
 
                 // Compute shifted position in subgrid
                 int x_src = (x + (subgrid_size/2)) % subgrid_size;
                 int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                // Load uv values
+                // Load pixels
                 int idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
                 int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
                 int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
                 int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                float2 pixelsXX = spheroidal_ * subgrid[idx_xx];
-                float2 pixelsXY = spheroidal_ * subgrid[idx_xy];
-                float2 pixelsYX = spheroidal_ * subgrid[idx_yx];
-                float2 pixelsYY = spheroidal_ * subgrid[idx_yy];
+                float8 pixels = (float8) (
+                    subgrid[idx_xx], subgrid[idx_xy],
+                    subgrid[idx_yx], subgrid[idx_yy]);
 
-                // Apply aterm
-                apply_aterm(
-                    aXX1, aXY1, aYX1, aYY1,
-                    aXX2, aXY2, aYX2, aYY2,
-                    &pixelsXX, &pixelsXY, &pixelsYX, &pixelsYY);
+                // Apply spheroidal
+                pixels *= spheroidal[y * subgrid_size + x];
+
+                float8 pixels_aterm;
+
+                // Apply aterm to pixels: P*A1
+                // [ uvXX, uvXY;    [ aXX1, aXY1;
+                //   uvYX, uvYY ] *   aYX1, aYY1 ]
+                pixels_aterm = (float8) (0);
+                pixels_aterm += cmul8(pixels, aterm1);
+                pixels_aterm += cmul8(pixels, aterm2);
+
+                // Apply aterm to pixels: A2^H*P
+                // [ aXX2, aYX1;      [ uvXX, uvXY;
+                //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+                pixels = pixels_aterm;
+                pixels_aterm = (float8) (0);
+                pixels_aterm += cmul8(pixels, aterm3);
+                pixels_aterm += cmul8(pixels, aterm4);
 
                 // Store pixels
-                _pix[0][j] = (float4) (pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][j] = (float4) (pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                pixels_[j] = pixels_aterm;
 
                 // Compute l,m,n and phase offset
                 const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -130,67 +143,45 @@ void kernel_degridder(
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[j] = (float4) (l, m, n, phase_offset);
+                lmn_phaseoffset_[j] = (float4) (l, m, n, phase_offset);
             } // end for j (pixels)
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
             // Iterate current batch of pixels
             for (int k = 0; k < current_nr_pixels; k++) {
-                // Load l,m,n
-                float l = _lmn_phaseoffset[k].x;
-                float m = _lmn_phaseoffset[k].y;
-                float n = _lmn_phaseoffset[k].z;
-
-                // Load phase offset
-                float phase_offset = _lmn_phaseoffset[k].w;
-
-                // Compute phase index
-                float phase_index = u * l + v * m + w * n;
+                // Compute phase
+                float4 x = lmn_phaseoffset_[k];
+                float phase_offset = x.s3;
+                float phase_index = dot(uvw_, (float4) (x.s012, 0));
+                float phase  = (phase_index * wavenumbers[chan]) - phase_offset;
 
                 // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = (float2) (native_cos(phase), native_sin(phase));
+                float8 phasor_real = native_cos(phase);
+                float val = native_sin(phase);
+                float8 phasor_imag = (float8) (val, -val, val, -val,
+                                               val, -val, val, -val);
 
                 // Load pixels from local memory
-                float2 apXX = (float2) (_pix[0][k].x, _pix[0][k].y);
-                float2 apXY = (float2) (_pix[0][k].z, _pix[0][k].w);
-                float2 apYX = (float2) (_pix[1][k].x, _pix[1][k].y);
-                float2 apYY = (float2) (_pix[1][k].z, _pix[1][k].w);
+                float8 pix = pixels_[k];
 
                 // Multiply pixels by phasor
-                vis.s0 += phasor.x * apXX.x;
-                vis.s1 += phasor.x * apXX.y;
-                vis.s0 -= phasor.y * apXX.y;
-                vis.s1 += phasor.y * apXX.x;
-
-                vis.s2 += phasor.x * apXY.x;
-                vis.s3 += phasor.x * apXY.y;
-                vis.s2 -= phasor.y * apXY.y;
-                vis.s3 += phasor.y * apXY.x;
-
-                vis.s4 += phasor.x * apYX.x;
-                vis.s5 += phasor.x * apYX.y;
-                vis.s4 -= phasor.y * apYX.y;
-                vis.s5 += phasor.y * apYX.x;
-
-                vis.s6 += phasor.x * apYY.x;
-                vis.s7 += phasor.x * apYY.y;
-                vis.s6 -= phasor.y * apYY.y;
-                vis.s7 += phasor.y * apYY.x;
+                visibility += phasor_real * pix;
+                visibility += shuffle(phasor_imag * pix, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
             } // end for k (batch)
         } // end for j (pixels)
 
+        // Scale visibility
+        visibility *= (float8) (1.0f / (nr_pixels));
+
         // Store visibility
-        const float scale = 1.0f / (nr_pixels);
         int idx_time = time_offset_global + time;
         int idx_vis = index_visibility(nr_channels, idx_time, chan);
-
         if (time < nr_timesteps) {
-            visibilities[idx_vis + 0] = (float2) (vis.s0, vis.s1) * scale;
-            visibilities[idx_vis + 1] = (float2) (vis.s2, vis.s3) * scale;
-            visibilities[idx_vis + 2] = (float2) (vis.s4, vis.s5) * scale;
-            visibilities[idx_vis + 3] = (float2) (vis.s6, vis.s7) * scale;
+            visibilities[idx_vis + 0] = visibility.s01;
+            visibilities[idx_vis + 1] = visibility.s23;
+            visibilities[idx_vis + 2] = visibility.s45;
+            visibilities[idx_vis + 3] = visibility.s67;
         }
     } // end for i (visibilities)
 } // end kernel_degridder

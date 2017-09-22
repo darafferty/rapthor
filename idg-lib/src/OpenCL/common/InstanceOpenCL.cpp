@@ -71,6 +71,13 @@ namespace idg {
                 block_scaler    = cl::NDRange(128, 1);
             }
 
+            void InstanceOpenCL::set_parameters_vega() {
+                batch_gridder   = 32;
+                batch_degridder = 256;
+                block_gridder   = cl::NDRange(128, 1);
+                block_degridder = cl::NDRange(256, 1);
+            }
+
             void InstanceOpenCL::set_parameters_fiji() {
 				// Fiji parameters are default
             }
@@ -94,7 +101,9 @@ namespace idg {
 				std::string name = device->getInfo<CL_DEVICE_NAME>();
 
 				// Overide architecture specific parameters
-				if (name.compare("Fiji") == 0) {
+                if (name.compare("gfx900") == 0) { // vega
+					set_parameters_vega();
+                } else if (name.compare("Fiji") == 0) {
 					set_parameters_fiji();
 				} else if (name.compare("Hawaii") == 0) {
 					set_parameters_hawaii();

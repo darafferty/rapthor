@@ -107,6 +107,7 @@ namespace idg {
                     void load_kernels();
                     void set_parameters();
                     void set_parameters_default();
+                    void set_parameters_vega();
                     void set_parameters_fiji();
                     void set_parameters_hawaii();
                     void set_parameters_tahiti();
