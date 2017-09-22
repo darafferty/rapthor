@@ -20,6 +20,19 @@ else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
 endif()
 
+# make sure OpenMP is used
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+    if (INTEL_CXX_COMPILER)
+        set (OpenMP_CXX_FLAGS "-qopenmp")
+    endif()
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+else()
+    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no OpenMP support.")
+endif()
+
 # set debug print info
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
