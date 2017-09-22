@@ -1,0 +1,15 @@
+image: ubuntu:16.04
+
+variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+
+before_script:
+  - cat /etc/os-release
+  - apt-get update -qq && apt-get install -y -qq g++ cmake libfftw3-dev liblapacke-dev
+
+idg:
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make
