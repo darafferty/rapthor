@@ -1,20 +1,13 @@
-#define BATCH_SIZE GRIDDER_BATCH_SIZE
-#define BLOCK_SIZE GRIDDER_BLOCK_SIZE
-#define MAX_NR_CHANNELS 8
-
 /*
     Kernel
 */
 __kernel
 __attribute__((work_group_size_hint(BLOCK_SIZE, 1, 1)))
-void kernel_gridder_(
-    const int                current_nr_channels,
+void kernel_gridder(
     const int                grid_size,
     const int                subgrid_size,
     const float              image_size,
     const float              w_step,
-    const int                nr_channels,
-    const int                channel_offset,
     const int                nr_stations,
     __global const UVW*      uvw,
     __global const float*    wavenumbers,
@@ -22,10 +15,7 @@ void kernel_gridder_(
     __global const float*    spheroidal,
     __global const float2*   aterm,
     __global const Metadata* metadata,
-    __global       float2*   subgrid,
-    __local float8           visibilities_[BATCH_SIZE][MAX_NR_CHANNELS],
-    __local float4           uvw_[BATCH_SIZE],
-    __local float            wavenumbers_[MAX_NR_CHANNELS])
+    __global       float2*   subgrid)
 {
     int tidx = get_local_id(0);
     int tidy = get_local_id(1);
@@ -34,20 +24,23 @@ void kernel_gridder_(
     int s = get_group_id(0);
 
     // Set subgrid to zero
-    if (channel_offset == 0) {
-        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
-            int idx_xx = index_subgrid(subgrid_size, s, 0, 0, i);
-            int idx_xy = index_subgrid(subgrid_size, s, 1, 0, i);
-            int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
-            int idx_yy = index_subgrid(subgrid_size, s, 3, 0, i);
-            subgrid[idx_xx] = (float2) (0, 0);
-            subgrid[idx_xy] = (float2) (0, 0);
-            subgrid[idx_yx] = (float2) (0, 0);
-            subgrid[idx_yy] = (float2) (0, 0);
-        }
+    for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
+        int idx_xx = index_subgrid(subgrid_size, s, 0, 0, i);
+        int idx_xy = index_subgrid(subgrid_size, s, 1, 0, i);
+        int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
+        int idx_yy = index_subgrid(subgrid_size, s, 3, 0, i);
+        subgrid[idx_xx] = (float2) (0, 0);
+        subgrid[idx_xy] = (float2) (0, 0);
+        subgrid[idx_yx] = (float2) (0, 0);
+        subgrid[idx_yy] = (float2) (0, 0);
     }
 
     barrier(CLK_GLOBAL_MEM_FENCE);
+
+    // Local memory
+    __local float8 visibilities_[BATCH_SIZE][NR_CHANNELS];
+    __local float4 uvw_[BATCH_SIZE];
+    __local float  wavenumbers_[NR_CHANNELS];
 
     // Load metadata for first subgrid
     const Metadata m_0 = metadata[0];
@@ -70,8 +63,8 @@ void kernel_gridder_(
         0);
 
     // Load wavenumbers
-    for (int i = tid; i < current_nr_channels; i += nr_threads) {
-        wavenumbers_[i] = wavenumbers[channel_offset + i];
+    for (int i = tid; i < NR_CHANNELS; i += nr_threads) {
+        wavenumbers_[i] = wavenumbers[i];
     }
 
     // Iterate all timesteps
@@ -89,13 +82,13 @@ void kernel_gridder_(
         }
 
         // Load visibilities
-        for (int i = tid; i < current_nr_timesteps * current_nr_channels; i += nr_threads) {
-            int time = i / current_nr_channels;
-            int chan = i % current_nr_channels;
-            if (time < current_nr_timesteps && chan < current_nr_channels) {
+        for (int i = tid; i < current_nr_timesteps * NR_CHANNELS; i += nr_threads) {
+            int time = i / NR_CHANNELS;
+            int chan = i % NR_CHANNELS;
+            if (time < current_nr_timesteps && chan < NR_CHANNELS) {
                 int idx_time = time_offset_global + time_offset_local + time;
-                int idx_chan = channel_offset + chan;
-                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan);
+                int idx_chan = chan;
+                int idx_vis = index_visibility(NR_CHANNELS, idx_time, idx_chan);
                 float2 a = visibilities[idx_vis + 0];
                 float2 b = visibilities[idx_vis + 1];
                 float2 c = visibilities[idx_vis + 2];
@@ -133,7 +126,7 @@ void kernel_gridder_(
                 float phase_offset = dot(uvw_offset, lmn);
 
                 // Accumulate pixels
-                for (int chan = 0; chan < current_nr_channels; chan++) {
+                for (int chan = 0; chan < NR_CHANNELS; chan++) {
                     // Compute phasor
                     float wavenumber = wavenumbers_[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
@@ -204,38 +197,4 @@ void kernel_gridder_(
             subgrid[idx_yy] += pixels_aterm.s67;
         } // end for i
     } // end for time_offset_local
-} // end kernel_gridder_
-
-#define KERNEL_GRIDDER_TEMPLATE(NR_CHANNELS) \
-    for (; (channel_offset + NR_CHANNELS) <= nr_channels; channel_offset += NR_CHANNELS) { \
-        kernel_gridder_( \
-            NR_CHANNELS, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid, \
-            visibilities_, uvw_, wavenumbers_); \
-    }
-
-__kernel void kernel_gridder(
-    const int                grid_size,
-    const int                subgrid_size,
-    const float              image_size,
-    const float              w_step,
-    const int                nr_channels,
-    const int                nr_stations,
-    __global const UVW*      uvw,
-    __global const float*    wavenumbers,
-    __global const float2*   visibilities,
-    __global const float*    spheroidal,
-    __global const float2*   aterm,
-    __global const Metadata* metadata,
-    __global       float2*   subgrid)
-{
-    __local float8 visibilities_[BATCH_SIZE][MAX_NR_CHANNELS];
-    __local float4 uvw_[BATCH_SIZE];
-    __local float  wavenumbers_[MAX_NR_CHANNELS];
-
-    int channel_offset = 0;
-    for (int i = 8; i > 0; i--) {
-        KERNEL_GRIDDER_TEMPLATE(i);
-    }
 } // end kernel_gridder
-

@@ -1,7 +1,4 @@
-#define BATCH_SIZE DEGRIDDER_BATCH_SIZE
-#define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
-
 
 /*
     Kernel
@@ -13,7 +10,6 @@ void kernel_degridder(
     const int                subgrid_size,
     const float              image_size,
     const float              w_step,
-    const int                nr_channels,
     const int                nr_stations,
     __global const UVW*      uvw,
     __global const float*    wavenumbers,
@@ -52,9 +48,9 @@ void kernel_degridder(
     __local float4 lmn_phaseoffset_[BATCH_SIZE];
 
     // Iterate visibilities
-    for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-        int time = i / nr_channels;
-        int chan = i % nr_channels;
+    for (int i = tid; i < ALIGN(nr_timesteps * NR_CHANNELS, nr_threads); i += nr_threads) {
+        int time = i / NR_CHANNELS;
+        int chan = i % NR_CHANNELS;
 
         float8 visibility;
         float4 uvw_;
@@ -176,7 +172,7 @@ void kernel_degridder(
 
         // Store visibility
         int idx_time = time_offset_global + time;
-        int idx_vis = index_visibility(nr_channels, idx_time, chan);
+        int idx_vis = index_visibility(NR_CHANNELS, idx_time, chan);
         if (time < nr_timesteps) {
             visibilities[idx_vis + 0] = visibility.s01;
             visibilities[idx_vis + 1] = visibility.s23;
