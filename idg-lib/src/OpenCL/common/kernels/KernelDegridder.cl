@@ -23,7 +23,6 @@ void kernel_degridder(
     int tidx = get_local_id(0);
     int tidy = get_local_id(1);
     int tid  = tidx + tidy * get_local_size(0);
-    int nr_threads = get_local_size(0) * get_local_size(1);
 
     // Load metadata for first subgrid
     const Metadata m_0 = metadata[0];
@@ -48,7 +47,7 @@ void kernel_degridder(
     __local float4 lmn_phaseoffset_[BATCH_SIZE];
 
     // Iterate visibilities
-    for (int i = tid; i < ALIGN(nr_timesteps * NR_CHANNELS, nr_threads); i += nr_threads) {
+    for (int i = tid; i < ALIGN(nr_timesteps * NR_CHANNELS, BLOCK_SIZE); i += BLOCK_SIZE) {
         int time = i / NR_CHANNELS;
         int chan = i % NR_CHANNELS;
 
@@ -71,7 +70,7 @@ void kernel_degridder(
             barrier(CLK_LOCAL_MEM_FENCE);
 
             // Prepare data
-            for (int j = tid; j < BATCH_SIZE; j += nr_threads) {
+            for (int j = tid; j < BATCH_SIZE; j += BLOCK_SIZE) {
                 int y = (pixel_offset + j) / subgrid_size;
                 int x = (pixel_offset + j) % subgrid_size;
 
