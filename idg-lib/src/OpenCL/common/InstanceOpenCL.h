@@ -103,8 +103,11 @@ namespace idg {
                     cl::Buffer& d_subgrid);
 
                 protected:
-                    void compile_kernels();
-                    void load_kernels();
+                    cl::Kernel* compile_kernel(
+                        int kernel_id,
+                        std::string file_name,
+                        std::string kernel_name,
+                        std::string flags_misc = "");
                     void set_parameters();
                     void set_parameters_default();
                     void set_parameters_vega();
@@ -120,7 +123,6 @@ namespace idg {
                     cl::CommandQueue  *dtohqueue;
                     cl::Kernel *kernel_gridder;
                     cl::Kernel *kernel_degridder;
-                    cl::Kernel *kernel_fft;
                     cl::Kernel *kernel_adder;
                     cl::Kernel *kernel_splitter;
                     cl::Kernel *kernel_scaler;
@@ -135,6 +137,8 @@ namespace idg {
                     cl::NDRange block_scaler;
 
                     // (De)gridder kernel
+                    int nr_channels_gridder;
+                    int nr_channels_degridder;
                     int batch_gridder;
                     int batch_degridder;
 
@@ -149,6 +153,11 @@ namespace idg {
             std::ostream& operator<<(std::ostream& os, InstanceOpenCL &d);
 
 			// Kernel names
+			static const std::string file_gridder   = "KernelGridder.cl";
+			static const std::string file_degridder = "KernelDegridder.cl";
+			static const std::string file_adder     = "KernelAdder.cl";
+			static const std::string file_splitter  = "KernelSplitter.cl";
+			static const std::string file_scaler    = "KernelScaler.cl";
 			static const std::string name_gridder   = "kernel_gridder";
 			static const std::string name_degridder = "kernel_degridder";
 			static const std::string name_adder     = "kernel_adder";

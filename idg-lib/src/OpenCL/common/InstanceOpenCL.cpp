@@ -34,10 +34,13 @@ namespace idg {
                 set_parameters();
 
                 // Compile kernels
-                compile_kernels();
+                kernel_adder    = compile_kernel(2, file_adder, name_adder);
+                kernel_splitter = compile_kernel(3, file_splitter, name_splitter);
+                kernel_scaler   = compile_kernel(4, file_scaler, name_scaler);
 
-                // Load kernels
-                load_kernels();
+                // The gridder and degridder kernels are compiled on first use
+                kernel_gridder   = NULL;
+                kernel_degridder = NULL;
 
                 // Initialize power sensor
                 powerSensor = get_power_sensor(sensor_device, device_nr);
@@ -127,7 +130,8 @@ namespace idg {
             }
 
 
-            std::string InstanceOpenCL::get_compiler_flags() {
+            std::string InstanceOpenCL::get_compiler_flags()
+            {
                 // Parameter flags
                 std::stringstream flags_constants;
                 flags_constants << " -DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
@@ -143,23 +147,19 @@ namespace idg {
                     //flags_opencl << " -DUSE_ATOMIC_FETCH_ADD";
                 }
 
-				// Device specific flags
-				std::stringstream flags_device;
-                flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
-                flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
-                flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder[0];
-                flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder[0];
-
                 // Combine flags
                 std::string flags = flags_opencl.str() +
-                                    flags_device.str() +
                                     flags_constants.str();
 
                 return flags;
             }
 
 
-            void InstanceOpenCL::compile_kernels()
+            cl::Kernel* InstanceOpenCL::compile_kernel(
+                int kernel_id,
+                std::string file_name,
+                std::string kernel_name,
+                std::string flags_misc)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -173,7 +173,10 @@ namespace idg {
                 #endif
 
                 // Get compile flags
-                Compilerflags flags = get_compiler_flags();
+                std::stringstream flags_;
+                flags_ << get_compiler_flags();
+                flags_ << flags_misc;
+                std::string flags = flags_.str();
 
                 // Create vector of devices
                 std::vector<cl::Device> devices;
@@ -205,70 +208,57 @@ namespace idg {
 
                 std::string source_helper = source_helper_.str();
 
-                // Alll kernels to build
-                std::vector<std::string> kernel_files;
-                kernel_files.push_back("KernelGridder.cl");
-                kernel_files.push_back("KernelDegridder.cl");
-                kernel_files.push_back("KernelAdder.cl");
-                kernel_files.push_back("KernelSplitter.cl");
-                kernel_files.push_back("KernelScaler.cl");
+                // Get source filename
+                std::stringstream source_file_name_;
+                source_file_name_ << srcdir << "/" << file_name;
+                std::string source_file_name = source_file_name_.str();
 
-                // Build OpenCL programs
-                for (int i = 0; i < kernel_files.size(); i++) {
-                    // Get source filename
-                    std::stringstream source_file_name_;
-                    source_file_name_ << srcdir << "/" << kernel_files[i];
-                    std::string source_file_name = source_file_name_.str();
+                // Read kernel source from file
+                std::ifstream source_file(source_file_name.c_str());
+                std::string source_kernel(
+                    std::istreambuf_iterator<char>(source_file),
+                    (std::istreambuf_iterator<char>()));
+                source_file.close();
 
-                    // Read kernel source from file
-                    std::ifstream source_file(source_file_name.c_str());
-                    std::string source_kernel(
-                        std::istreambuf_iterator<char>(source_file),
-                        (std::istreambuf_iterator<char>()));
-                    source_file.close();
+                // Construct full source file
+                std::stringstream full_source;
+                full_source << source_helper;
+                full_source << source_kernel;
 
-                    // Construct full source file
-                    std::stringstream full_source;
-                    full_source << source_helper;
-                    full_source << source_kernel;
+                // Print information about compilation
+				#if defined(COMPILE_VERBOSE)
+                std::cout << "Compiling: " << source_file_name
+                          << " " << flags << std::endl;
+                #if defined(DEBUG)
+                std::cout << full_source.str() << std::endl;
+                #endif
+				#endif
 
-                    // Print information about compilation
-					#if defined(COMPILE_VERBOSE)
-                    std::cout << "Compiling: " << source_file_name
-                              << " " << flags << std::endl;
-                    #if defined(DEBUG)
-                    std::cout << full_source.str() << std::endl;
-                    #endif
-					#endif
-
-                    // Create OpenCL program
-                    mPrograms[i] = new cl::Program(mContext, full_source.str());
-                    try {
-                        // Build the program
-                        mPrograms[i]->build(devices, flags.c_str());
-                    } catch (cl::Error error) {
-                        std::cerr << "Compilation failed: " << error.what() << std::endl;
-                        std::string msg;
-                        mPrograms[i]->getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);
-                        std::cout << msg << std::endl;
-                        exit(EXIT_FAILURE);
-                    }
-                } // for each library
-            } // end compile_kernels
-
-
-            void InstanceOpenCL::load_kernels() {
+                // Create OpenCL program
+                mPrograms[kernel_id] = new cl::Program(mContext, full_source.str());
                 try {
-                    kernel_gridder   = new cl::Kernel(*(mPrograms[0]), name_gridder.c_str());
-                    kernel_degridder = new cl::Kernel(*(mPrograms[1]), name_degridder.c_str());
-                    kernel_adder     = new cl::Kernel(*(mPrograms[2]), name_adder.c_str());
-                    kernel_splitter  = new cl::Kernel(*(mPrograms[3]), name_splitter.c_str());
-                    kernel_scaler    = new cl::Kernel(*(mPrograms[4]), name_scaler.c_str());
-                } catch (cl::Error& error) {
-                    std::cerr << "Loading kernels failed: " << error.what() << std::endl;
+                    // Build the program
+                    mPrograms[kernel_id]->build(devices, flags.c_str());
+                } catch (cl::Error error) {
+                    std::cerr << "Compilation failed: " << error.what() << std::endl;
+                    std::string msg;
+                    mPrograms[kernel_id]->getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);
+                    std::cout << msg << std::endl;
                     exit(EXIT_FAILURE);
                 }
-            } // end load_kernels
+
+                // Create OpenCL kernel
+                cl::Kernel *kernel;
+                try {
+                    kernel = new cl::Kernel(*(mPrograms[kernel_id]), kernel_name.c_str());
+                } catch (cl::Error& error) {
+                    std::cerr << "Loading kernel \"" << kernel_name << "\" failed: "
+                              << error.what() << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+
+                return kernel;
+            } // end compile_kernel
 
             std::ostream& operator<<(std::ostream& os, InstanceOpenCL &di) {
 				cl::Device d = di.get_device();
@@ -317,6 +307,15 @@ namespace idg {
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid)
             {
+                if (kernel_gridder == NULL || nr_channels_gridder != nr_channels) {
+                    nr_channels_gridder = nr_channels;
+				    std::stringstream flags;
+                    flags << " -DBATCH_SIZE="  << batch_gridder / max(1, (nr_channels / 8));
+                    flags << " -DBLOCK_SIZE="  << block_gridder[0];
+                    flags << " -DNR_CHANNELS=" << nr_channels;
+                    kernel_gridder = compile_kernel(0, file_gridder, name_gridder, flags.str());
+                }
+
                 int local_size_x = block_gridder[0];
                 int local_size_y = block_gridder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
@@ -324,15 +323,14 @@ namespace idg {
                 kernel_gridder->setArg(1,  subgrid_size);
                 kernel_gridder->setArg(2,  image_size);
                 kernel_gridder->setArg(3,  w_step);
-                kernel_gridder->setArg(4,  nr_channels);
-                kernel_gridder->setArg(5,  nr_stations);
-                kernel_gridder->setArg(6,  d_uvw);
-                kernel_gridder->setArg(7,  d_wavenumbers);
-                kernel_gridder->setArg(8,  d_visibilities);
-                kernel_gridder->setArg(9,  d_spheroidal);
-                kernel_gridder->setArg(10, d_aterm);
-                kernel_gridder->setArg(11, d_metadata);
-                kernel_gridder->setArg(12, d_subgrid);
+                kernel_gridder->setArg(4,  nr_stations);
+                kernel_gridder->setArg(5,  d_uvw);
+                kernel_gridder->setArg(6,  d_wavenumbers);
+                kernel_gridder->setArg(7,  d_visibilities);
+                kernel_gridder->setArg(8,  d_spheroidal);
+                kernel_gridder->setArg(9,  d_aterm);
+                kernel_gridder->setArg(10, d_metadata);
+                kernel_gridder->setArg(11, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_gridder, cl::NullRange, global_size, block_gridder);
@@ -359,6 +357,15 @@ namespace idg {
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid)
             {
+                if (kernel_degridder == NULL || nr_channels_degridder != nr_channels) {
+                    nr_channels_degridder = nr_channels;
+				    std::stringstream flags;
+                    flags << " -DBATCH_SIZE="  << batch_degridder;
+                    flags << " -DBLOCK_SIZE="  << block_degridder[0];
+                    flags << " -DNR_CHANNELS=" << nr_channels;
+                    kernel_degridder = compile_kernel(0, file_degridder, name_degridder, flags.str());
+                }
+
                 int local_size_x = block_degridder[0];
                 int local_size_y = block_degridder[1];
                 cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
@@ -366,15 +373,14 @@ namespace idg {
                 kernel_degridder->setArg(1,  subgrid_size);
                 kernel_degridder->setArg(2,  image_size);
                 kernel_degridder->setArg(3,  w_step);
-                kernel_degridder->setArg(4,  nr_channels);
-                kernel_degridder->setArg(5,  nr_stations);
-                kernel_degridder->setArg(6,  d_uvw);
-                kernel_degridder->setArg(7,  d_wavenumbers);
-                kernel_degridder->setArg(8,  d_visibilities);
-                kernel_degridder->setArg(9,  d_spheroidal);
-                kernel_degridder->setArg(10, d_aterm);
-                kernel_degridder->setArg(11, d_metadata);
-                kernel_degridder->setArg(12, d_subgrid);
+                kernel_degridder->setArg(4,  nr_stations);
+                kernel_degridder->setArg(5,  d_uvw);
+                kernel_degridder->setArg(6,  d_wavenumbers);
+                kernel_degridder->setArg(7,  d_visibilities);
+                kernel_degridder->setArg(8,  d_spheroidal);
+                kernel_degridder->setArg(9,  d_aterm);
+                kernel_degridder->setArg(10, d_metadata);
+                kernel_degridder->setArg(11, d_subgrid);
                 try {
                     executequeue->enqueueNDRangeKernel(
                         *kernel_degridder, cl::NullRange, global_size, block_degridder);
