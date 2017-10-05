@@ -25,5 +25,6 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 # test
-add_test(NAME ${PROJECT_NAME}
-         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/cxx/CPU/Reference/${PROJECT_NAME})
+add_test(
+    NAME ${PROJECT_NAME}
+    COMMAND ${CMAKE_INSTALL_PREFIX}/bin/tests/cxx/${PROJECT_NAME})

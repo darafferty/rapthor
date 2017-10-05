@@ -34,5 +34,5 @@ install (
 # Set test
 add_test(
     NAME ${PROJECT_NAME}
-    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/bin/tests/cxx/${PROJECT_NAME}
+    COMMAND ${CMAKE_INSTALL_PREFIX}/bin/tests/cxx/${PROJECT_NAME})
 )
