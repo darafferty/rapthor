@@ -323,7 +323,7 @@ namespace idg {
     }
 
 
-    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+    Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
         unsigned int nr_timeslots,
         unsigned int nr_stations,
         unsigned int height,
@@ -407,6 +407,43 @@ namespace idg {
 
         return spheroidal;
     }
+
+    void add_pt_src(
+        Array3D<Visibility<std::complex<float>>> &visibilities,
+        Array2D<UVWCoordinate<float>> &uvw,
+        Array1D<float> &wavenumbers,
+        float image_size,
+        int   grid_size,
+        float x,
+        float y,
+        float amplitude)
+    {
+
+        int nr_baselines = visibilities.get_z_dim();
+        int nr_timesteps = visibilities.get_y_dim();
+        int nr_channels  = visibilities.get_x_dim();
+        int nr_polarizations = 4;
+
+        float l = x * image_size/grid_size;
+        float m = y * image_size/grid_size;
+
+        #pragma omp parallel for
+        for (int b = 0; b < nr_baselines; b++) {
+            for (int t = 0; t < nr_timesteps; t++) {
+                for (int c = 0; c < nr_channels; c++) {
+                    float u = wavenumbers(c) * uvw(b,t).u / (2 * M_PI);
+                    float v = wavenumbers(c) * uvw(b,t).v / (2 * M_PI);
+                    std::complex<float> value = amplitude *
+                        std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
+                    visibilities(b,t,c).xx += value;
+                    visibilities(b,t,c).xy += value;
+                    visibilities(b,t,c).yx += value;
+                    visibilities(b,t,c).yy += value;
+                }
+            }
+        }
+    }
+
 
 } // namespace idg
 

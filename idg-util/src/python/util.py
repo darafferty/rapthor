@@ -696,18 +696,18 @@ def init_example_visibilities(visibilities):
                                         ctypes.c_int(nr_polarizations) )
 
 
-def init_example_aterms(aterms):
+def init_identity_aterms(aterms):
     """Initialize aterms for test case defined in utility/initialize"""
     nr_timeslots     = aterms.shape[0]
     nr_stations      = aterms.shape[1]
     subgrid_size     = aterms.shape[2]
     nr_polarizations = aterms.shape[4]
-    lib.utils_init_example_aterms.argtypes = [ctypes.c_void_p,
+    lib.utils_init_identity_aterms.argtypes = [ctypes.c_void_p,
                                               ctypes.c_int,
                                               ctypes.c_int,
                                               ctypes.c_int,
                                               ctypes.c_int]
-    lib.utils_init_example_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+    lib.utils_init_identity_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
                                   ctypes.c_int(nr_timeslots),
                                   ctypes.c_int(nr_stations),
                                   ctypes.c_int(subgrid_size),
@@ -810,7 +810,7 @@ def get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations
     aterms = numpy.zeros(
         (nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_polarizations),
         dtype = atermtype)
-    init_example_aterms(aterms)
+    init_identity_aterms(aterms)
     if info==True:
         print "aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
               "subgrid_size, subgrid_size, nr_polarizations), " + \
