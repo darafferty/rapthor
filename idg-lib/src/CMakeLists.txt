@@ -164,17 +164,14 @@ if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
 add_library (
     idg-hybrid-cuda
-    $<TARGET_OBJECTS:cpu-common>
-    $<TARGET_OBJECTS:cpu-optimized>
-    $<TARGET_OBJECTS:cuda-common>
-    $<TARGET_OBJECTS:cuda-generic>
     $<TARGET_OBJECTS:hybrid-cuda-common>
     $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>
 )
 
 set (
     LINK_LIRBRARIES
-    idg-common
+    idg-cpu
+    idg-cuda
     ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
@@ -197,39 +194,6 @@ install(
     PUBLIC_HEADER DESTINATION include
 )
 
-endif()
-
-
-##################################################################
-# build libidg-hybrid-opencl: containing all for CPU/OpenCL code #
-##################################################################
-if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
-#add_library(idg-hybrid-opencl
-#  $<TARGET_OBJECTS:cpu-common>
-#  $<TARGET_OBJECTS:cpu-reference>
-#  $<TARGET_OBJECTS:cpu-optimized>
-#  $<TARGET_OBJECTS:opencl-common>
-#  $<TARGET_OBJECTS:opencl-generic>
-#  $<TARGET_OBJECTS:hybrid-opencl>
-#)
-#
-#set(LINK_LIRBRARIES idg-common ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
-#
-#target_link_libraries (
-#  idg-hybrid-opencl
-#  ${LINK_LIRBRARIES}
-#)
-#
-#set_target_properties(idg-hybrid-opencl PROPERTIES
-#                      PUBLIC_HEADER idg-hybrid-opencl.h)
-#
-#install(TARGETS idg-hybrid-opencl
-#  EXPORT IDGTargets
-#  RUNTIME DESTINATION bin
-#  LIBRARY DESTINATION lib
-#  ARCHIVE DESTINATION lib/static
-#  PUBLIC_HEADER DESTINATION include
-#)
 endif()
 
 

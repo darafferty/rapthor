@@ -8,7 +8,6 @@ install(FILES
         CUDA.py
         OpenCL.py
         HybridCUDA.py
-        #HybridOpenCL.py
         Proxy.py
         fft.py
         Plan.py
