@@ -108,9 +108,6 @@ install(
 
 #set (IDG_BIN_UTILITY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utility)
 
-# build utilities
-#add_subdirectory(utility)
-
 # build all examples
 add_subdirectory(examples)
 
