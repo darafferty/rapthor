@@ -8,7 +8,7 @@ import signal
 import argparse
 import time
 import idg
-import utils
+import util
 
 # Enable interactive plotting and create figure to plot into
 plt.ion()
@@ -76,15 +76,15 @@ cell_size        = image_size / grid_size
 ######################################################################
 # Initialize data
 ######################################################################
-grid           = utils.get_example_grid(nr_correlations, grid_size)
-aterms         = utils.get_example_aterms(
+grid           = util.get_example_grid(nr_correlations, grid_size)
+aterms         = util.get_identity_aterms(
                     nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-aterms_offsets = utils.get_example_aterms_offset(
+aterms_offsets = util.get_example_aterms_offset(
                     nr_timeslots, nr_timesteps)
 
 # Initialize spheroidal
-spheroidal = utils.get_example_spheroidal(subgrid_size)
-spheroidal_grid = utils.get_identity_spheroidal(grid_size)
+spheroidal = util.get_example_spheroidal(subgrid_size)
+spheroidal_grid = util.get_identity_spheroidal(grid_size)
 
 ######################################################################
 # Initialize proxy
