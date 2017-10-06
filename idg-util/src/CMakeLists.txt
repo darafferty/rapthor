@@ -17,6 +17,13 @@ add_library(
     $<TARGET_OBJECTS:utility-external>
 )
 
+set(LINK_LIRBRARIES idg-fft)
+
+target_link_libraries(
+    idg-util
+    ${LINK_LIRBRARIES}
+)
+
 set_target_properties(
     idg-util
     PROPERTIES

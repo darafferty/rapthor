@@ -10,6 +10,7 @@
 
 #include "idg-util-config.h"
 #include "idg-common.h" // idg data types
+#include "idg-fft.h"
 
 /* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))

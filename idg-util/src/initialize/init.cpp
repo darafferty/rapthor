@@ -186,6 +186,43 @@ namespace idg {
         }
     }
 
+    // TODO: make generic, not spheroidal specific
+    // TODO: use real-to-complex and complex-to-real FFT
+    void resize_spheroidal(
+        float *__restrict__ spheroidal_in,
+        int   size_in,
+        float *__restrict__ spheroidal_out,
+        int   size_out)
+    {
+        auto in_ft  = new std::complex<float>[size_in*size_in];
+        auto out_ft = new std::complex<float>[size_out*size_out];
+
+        for (int i = 0; i < size_in; i++) {
+            for (int j = 0; j < size_in; j++) {
+                in_ft[i*size_in + j] = spheroidal_in[i*size_in + j];
+            }
+        }
+        idg::fft2f(size_in, in_ft);
+
+        int offset = int((size_out - size_in)/2);
+
+        for (int i = 0; i < size_in; i++) {
+            for (int j = 0; j < size_in; j++) {
+                out_ft[(i+offset)*size_out + (j+offset)] = in_ft[i*size_in + j];
+            }
+        }
+        idg::ifft2f(size_out, out_ft);
+
+        float s = 1.0f / (size_in * size_in);
+        for (int i = 0; i < size_out; i++) {
+            for (int j = 0; j < size_out; j++) {
+                spheroidal_out[i*size_out + j] = out_ft[i*size_out + j].real() * s;
+            }
+        }
+
+        delete [] in_ft;
+        delete [] out_ft;
+    }
 
     Array1D<float> get_example_frequencies(
         unsigned int nr_channels,
@@ -372,3 +409,6 @@ namespace idg {
     }
 
 } // namespace idg
+
+
+#include "initc.h"

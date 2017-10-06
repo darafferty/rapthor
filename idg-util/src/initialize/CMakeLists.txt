@@ -8,6 +8,7 @@ include_directories (
 # sources and header files
 set (${PROJECT_NAME}_headers 
     init.h
+    initc.h
 )
 
 set (${PROJECT_NAME}_sources 
