@@ -6,6 +6,9 @@ include_directories(${IDG_BIN_UTILITY_INCLUDE_DIR})
 # set common include directory
 include_directories(common)
 
+# set common link libraries
+set(LINK_LIBRARIES idg-util idg-cpu)
+
 # add subfolders
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)

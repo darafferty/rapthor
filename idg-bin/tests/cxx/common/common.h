@@ -7,7 +7,7 @@
 using namespace std;
 
 #include "idg-cpu.h" // Reference proxy
-#include "idg-utility.h"  // Data init routines
+#include "idg-util.h"  // Data init routines
 
 
 // computes max|A[i]-B[i]| / max|B[i]|

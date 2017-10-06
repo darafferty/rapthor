@@ -11,14 +11,9 @@ add_executable (
     ${PROJECT_NAME} ${${PROJECT_NAME}_sources}
 )
 
-# Set libraries to link
-set (
-    LINK_LIRBRARIES idg-utility idg-cpu idg-cuda
-)
-
 target_link_libraries (
     ${PROJECT_NAME}
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 # Set install
@@ -33,4 +28,3 @@ install (
 add_test(
     NAME ${PROJECT_NAME}
     COMMAND ${CMAKE_INSTALL_PREFIX}/bin/tests/cxx/${PROJECT_NAME})
-)

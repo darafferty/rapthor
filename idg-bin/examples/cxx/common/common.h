@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "idg-cpu.h"
-#include "idg-utility.h"  // Data init routines
+#include "idg-util.h"  // Data init routines
 
 using namespace std;
 

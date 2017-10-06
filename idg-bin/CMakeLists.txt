@@ -77,6 +77,8 @@ endif()
 if (${IDG_OnePackage})
     include_directories (${CMAKE_BINARY_DIR}/idg-lib/src)
     include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
+    include_directories (${CMAKE_BINARY_DIR}/idg-util/src)
+    include_directories (${CMAKE_SOURCE_DIR}/idg-util/src)
 else()
     find_package(IDG NO_MODULE REQUIRED)
     include_directories (${IDG_INCLUDE_DIR})
@@ -104,10 +106,10 @@ install(
     ${CMAKE_INSTALL_PREFIX}
 )
 
-set (IDG_BIN_UTILITY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utility)
+#set (IDG_BIN_UTILITY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utility)
 
 # build utilities
-add_subdirectory(utility)
+#add_subdirectory(utility)
 
 # build all examples
 add_subdirectory(examples)
