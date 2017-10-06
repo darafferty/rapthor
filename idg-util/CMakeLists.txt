@@ -46,7 +46,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # write config file
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/idg-util-config.h.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/idg-util-config.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/src/idg-util-config.h"
 )
 
 # install config file

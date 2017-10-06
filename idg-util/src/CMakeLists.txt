@@ -1,5 +1,7 @@
-add_subdirectory(initialize)
 add_subdirectory(external)
+include_directories(external)
+
+add_subdirectory(initialize)
 
 #########################################################
 # build libidg-util: init example data, ...
