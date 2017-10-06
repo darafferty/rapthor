@@ -3,7 +3,7 @@
 # after INSTALLING the library, and sourcing init-enviroment.sh
 # (or setting the PYTHONPATH manually), you can import the idg module
 import idg
-import utils
+import util
 import numpy
 import matplotlib.pyplot as plt
 import random
@@ -63,7 +63,7 @@ def init_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels):
     visibilities =  numpy.ones(
         (nr_baselines, nr_timesteps, nr_channels, _nr_correlations),
         dtype = idg.visibilitiestype)
-    #utils.plot_visibilities(visibilities)
+    #util.plot_visibilities(visibilities)
     return visibilities
 
 
@@ -80,7 +80,7 @@ def plot_metadata(
     nr_subgrids = plan.get_nr_subgrids()
     metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
     plan.copy_metadata(metadata)
-    utils.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
+    util.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
 
 
 
@@ -94,10 +94,10 @@ def gridding(
         w_offset, cell_size, kernel_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
-    #utils.plot_grid(grid, scaling='log')
+    #util.plot_grid(grid, scaling='log')
     p.transform(idg.FourierDomainToImageDomain, grid)
-    #utils.plot_grid(grid)
-    #utils.plot_grid(grid, pol=0)
+    #util.plot_grid(grid)
+    #util.plot_grid(grid, pol=0)
 
 
 ############
@@ -111,7 +111,7 @@ def degridding(
         w_offset, cell_size, kernel_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
-    #utils.plot_visibilities(visibilities)
+    #util.plot_visibilities(visibilities)
 
 
 def main(proxyname):
@@ -158,24 +158,24 @@ def main(proxyname):
     ######################################################################
     # initialize data
     ######################################################################
-    uvw            = utils.get_example_uvw(
+    uvw            = util.get_example_uvw(
                         nr_baselines, nr_timesteps, integration_time)
-    wavenumbers    = utils.get_example_wavenumbers(nr_channels)
-    frequencies    = utils.get_example_frequencies(nr_channels)
-    baselines      = utils.get_example_baselines(nr_baselines)
-    grid           = utils.get_example_grid(
+    wavenumbers    = util.get_example_wavenumbers(nr_channels)
+    frequencies    = util.get_example_frequencies(nr_channels)
+    baselines      = util.get_example_baselines(nr_baselines)
+    grid           = util.get_example_grid(
                         nr_correlations, grid_size)
-    grid2          = utils.get_example_grid(
+    grid2          = util.get_example_grid(
                         nr_correlations, grid_size)
-    aterms         = utils.get_example_aterms(
+    aterms         = util.get_example_aterms(
                         nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-    aterms_offsets = utils.get_example_aterms_offset(
+    aterms_offsets = util.get_example_aterms_offset(
                         nr_timeslots, nr_timesteps)
-    spheroidal     = utils.get_identity_spheroidal(subgrid_size)
-    visibilities   = utils.get_example_visibilities(
+    spheroidal     = util.get_identity_spheroidal(subgrid_size)
+    visibilities   = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, wavenumbers)
-    visibilities2  = utils.get_example_visibilities(
+    visibilities2  = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, wavenumbers)
 
@@ -202,5 +202,5 @@ def main(proxyname):
     ######################################################################
     # plot difference between visibilities
     ######################################################################
-    utils.plot_visibilities(visibilities2 - visibilities)
+    util.plot_visibilities(visibilities2 - visibilities)
     plt.show()

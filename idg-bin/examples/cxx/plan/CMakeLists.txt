@@ -9,11 +9,11 @@ set (${PROJECT_NAME}_sources
 add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
-set(LINK_LIRBRARIES idg-utility idg-common)
+set(LINK_LIBRARIES idg-util idg-common)
 
 target_link_libraries (
     ${PROJECT_NAME}
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 # install

@@ -14,13 +14,9 @@ add_executable (
 # Set libraries to link
 link_directories (${LIBRARY_OUTPUT_PATH})
 
-set(
-    LINK_LIRBRARIES idg-utility idg-cpu idg-hybrid-cuda
-)
-
 target_link_libraries (
     ${PROJECT_NAME}
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 # Set install
@@ -35,4 +31,3 @@ install (
 add_test(
     NAME ${PROJECT_NAME}
     COMMAND ${CMAKE_INSTALL_PREFIX}/bin/tests/cxx/${PROJECT_NAME})
-)

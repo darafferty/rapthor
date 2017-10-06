@@ -10,11 +10,9 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories (${LIBRARY_OUTPUT_PATH}) 
 
-set(LINK_LIRBRARIES idg-utility idg-cpu)
-
 target_link_libraries (
   ${PROJECT_NAME} 
-  ${LINK_LIRBRARIES}
+  ${LINK_LIBRARIES}
 )
 
 # install

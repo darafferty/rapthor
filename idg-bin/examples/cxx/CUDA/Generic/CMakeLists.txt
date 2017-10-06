@@ -9,14 +9,9 @@ set ( ${PROJECT_NAME}_sources
 add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources}
 )
 
-# Set libraries to link
-set (
-    LINK_LIRBRARIES idg-utility idg-cuda
-)
-
 target_link_libraries (
     ${PROJECT_NAME}
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 # Set install

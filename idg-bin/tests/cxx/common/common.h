@@ -7,7 +7,7 @@
 using namespace std;
 
 #include "idg-cpu.h" // Reference proxy
-#include "idg-utility.h"  // Data init routines
+#include "idg-util.h"  // Data init routines
 
 
 // computes max|A[i]-B[i]| / max|B[i]|
@@ -137,7 +137,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     idg::Array3D<std::complex<float>> grid_ref =
         idg::get_zero_grid(nr_correlations, grid_size, grid_size);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-        idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =

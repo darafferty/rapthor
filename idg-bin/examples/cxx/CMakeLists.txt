@@ -6,6 +6,9 @@ include_directories(${IDG_BIN_UTILITY_INCLUDE_DIR})
 # set common include directory
 include_directories(common)
 
+# set common link libraries
+set(LINK_LIBRARIES idg-util)
+
 # add subfolders
 add_subdirectory(CPU)
 add_subdirectory(Hybrid)
