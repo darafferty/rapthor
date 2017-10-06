@@ -164,17 +164,14 @@ if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
 add_library (
     idg-hybrid-cuda
-    $<TARGET_OBJECTS:cpu-common>
-    $<TARGET_OBJECTS:cpu-optimized>
-    $<TARGET_OBJECTS:cuda-common>
-    $<TARGET_OBJECTS:cuda-generic>
     $<TARGET_OBJECTS:hybrid-cuda-common>
     $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>
 )
 
 set (
     LINK_LIRBRARIES
-    idg-common
+    idg-cpu
+    idg-cuda
     ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
