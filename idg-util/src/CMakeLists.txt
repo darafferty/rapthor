@@ -3,6 +3,10 @@ include_directories(external)
 
 add_subdirectory(initialize)
 
+if (BUILD_WITH_PYTHON)
+    add_subdirectory(python)
+endif()
+
 #########################################################
 # build libidg-util: init example data, ...
 #########################################################
