@@ -164,7 +164,7 @@ def main(proxyname):
     baselines      = util.get_example_baselines(nr_baselines)
     grid           = util.get_example_grid(
                         nr_correlations, grid_size)
-    aterms         = util.get_example_aterms(
+    aterms         = util.get_identity_aterms(
                         nr_timeslots, nr_stations, subgrid_size, nr_correlations)
     aterms_offsets = util.get_example_aterms_offset(
                         nr_timeslots, nr_timesteps)
