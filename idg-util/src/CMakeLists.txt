@@ -1,5 +1,11 @@
-add_subdirectory(initialize)
 add_subdirectory(external)
+include_directories(external)
+
+add_subdirectory(initialize)
+
+if (BUILD_WITH_PYTHON)
+    add_subdirectory(python)
+endif()
 
 #########################################################
 # build libidg-util: init example data, ...
@@ -9,6 +15,13 @@ add_library(
     SHARED
     $<TARGET_OBJECTS:utility-initialize>
     $<TARGET_OBJECTS:utility-external>
+)
+
+set(LINK_LIRBRARIES idg-fft)
+
+target_link_libraries(
+    idg-util
+    ${LINK_LIRBRARIES}
 )
 
 set_target_properties(

@@ -10,6 +10,7 @@
 
 #include "idg-util-config.h"
 #include "idg-common.h" // idg data types
+#include "idg-fft.h"
 
 /* Macro */
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -67,7 +68,7 @@ namespace idg {
         unsigned int height,
         unsigned int width);
 
-    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+    Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
         unsigned int nr_timeslots,
         unsigned int nr_stations,
         unsigned int height,
@@ -86,6 +87,16 @@ namespace idg {
         unsigned int width);
 
     float evaluate_spheroidal(float nu);
+
+    void add_pt_src(
+        Array3D<Visibility<std::complex<float>>> &visibilities,
+        Array2D<UVWCoordinate<float>> &uvw,
+        Array1D<float> &wavenumbers,
+        float image_size,
+        int   grid_size,
+        float x,
+        float y,
+        float amplitude);
 
 } // namespace idg
 

@@ -186,6 +186,43 @@ namespace idg {
         }
     }
 
+    // TODO: make generic, not spheroidal specific
+    // TODO: use real-to-complex and complex-to-real FFT
+    void resize_spheroidal(
+        float *__restrict__ spheroidal_in,
+        int   size_in,
+        float *__restrict__ spheroidal_out,
+        int   size_out)
+    {
+        auto in_ft  = new std::complex<float>[size_in*size_in];
+        auto out_ft = new std::complex<float>[size_out*size_out];
+
+        for (int i = 0; i < size_in; i++) {
+            for (int j = 0; j < size_in; j++) {
+                in_ft[i*size_in + j] = spheroidal_in[i*size_in + j];
+            }
+        }
+        idg::fft2f(size_in, in_ft);
+
+        int offset = int((size_out - size_in)/2);
+
+        for (int i = 0; i < size_in; i++) {
+            for (int j = 0; j < size_in; j++) {
+                out_ft[(i+offset)*size_out + (j+offset)] = in_ft[i*size_in + j];
+            }
+        }
+        idg::ifft2f(size_out, out_ft);
+
+        float s = 1.0f / (size_in * size_in);
+        for (int i = 0; i < size_out; i++) {
+            for (int j = 0; j < size_out; j++) {
+                spheroidal_out[i*size_out + j] = out_ft[i*size_out + j].real() * s;
+            }
+        }
+
+        delete [] in_ft;
+        delete [] out_ft;
+    }
 
     Array1D<float> get_example_frequencies(
         unsigned int nr_channels,
@@ -286,7 +323,7 @@ namespace idg {
     }
 
 
-    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+    Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
         unsigned int nr_timeslots,
         unsigned int nr_stations,
         unsigned int height,
@@ -371,4 +408,44 @@ namespace idg {
         return spheroidal;
     }
 
+    void add_pt_src(
+        Array3D<Visibility<std::complex<float>>> &visibilities,
+        Array2D<UVWCoordinate<float>> &uvw,
+        Array1D<float> &wavenumbers,
+        float image_size,
+        int   grid_size,
+        float x,
+        float y,
+        float amplitude)
+    {
+
+        int nr_baselines = visibilities.get_z_dim();
+        int nr_timesteps = visibilities.get_y_dim();
+        int nr_channels  = visibilities.get_x_dim();
+        int nr_polarizations = 4;
+
+        float l = x * image_size/grid_size;
+        float m = y * image_size/grid_size;
+
+        #pragma omp parallel for
+        for (int b = 0; b < nr_baselines; b++) {
+            for (int t = 0; t < nr_timesteps; t++) {
+                for (int c = 0; c < nr_channels; c++) {
+                    float u = wavenumbers(c) * uvw(b,t).u / (2 * M_PI);
+                    float v = wavenumbers(c) * uvw(b,t).v / (2 * M_PI);
+                    std::complex<float> value = amplitude *
+                        std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
+                    visibilities(b,t,c).xx += value;
+                    visibilities(b,t,c).xy += value;
+                    visibilities(b,t,c).yx += value;
+                    visibilities(b,t,c).yy += value;
+                }
+            }
+        }
+    }
+
+
 } // namespace idg
+
+
+#include "initc.h"
