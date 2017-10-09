@@ -1,0 +1,22 @@
+#  Config file for the idg-lib library
+
+# Compute paths
+get_filename_component(IDG_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(IDG_PREFIX_DIR "${IDG_CMAKE_DIR}" ABSOLUTE)
+
+set(
+    IDG_INCLUDE_DIR "${IDG_PREFIX_DIR}/include"
+    CACHE PATH "idg include directory"
+)
+
+set(
+    IDG_LIB_DIR "${IDG_PREFIX_DIR}/lib"
+    CACHE PATH "idg library directory"
+)
+
+find_library(
+    IDG_LIBRARY idg
+    PATH ${IDG_LIB_DIR} NO_DEFAULT_PATH
+)
+
+include("${IDG_PREFIX_DIR}/lib/cmake/idg-targets.cmake")

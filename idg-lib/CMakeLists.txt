@@ -150,48 +150,39 @@ install(
     ${CMAKE_INSTALL_PREFIX}/include
 )
 
-#####################################################
-# Create IDGConfig.cmake and IDGConfigVersion.cmake #
-# for other cmake projects to make use of IDG       #
-# See: https://cmake.org/Wiki/CMake/Tutorials/      #
-# How_to_create_a_ProjectConfig.cmake_file          #
-#####################################################
-set(TARGETS_TO_BUILD idg)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-common)
+# Create idg-targets.cmake
+set(TARGETS_TO_EXPORT idg)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-common)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-fft)
 if (BUILD_LIB_CPU)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cpu)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-cpu)
 endif()
 if (BUILD_LIB_CUDA)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-cuda)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-cuda)
 endif()
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-hybrid-cuda)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-hybrid-cuda)
 endif()
 if (BUILD_LIB_OPENCL)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-opencl)
-include_directories(
-    ${OPENCL_INCLUDE_DIRS}
-    ${CLFFT_INCLUDE_DIRS}
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-opencl)
+endif()
+export(
+    TARGETS ${TARGETS_TO_EXPORT}
+    FILE ${PROJECT_BINARY_DIR}/CMakeFiles/idg-targets.cmake
 )
-endif()
-if (BUILD_LIB_CPU)
-set(TARGETS_TO_BUILD ${TARGETS_TO_BUILD} idg-fft)
-endif()
-export(TARGETS ${TARGETS_TO_BUILD}
-       FILE "${PROJECT_BINARY_DIR}/CMakeFiles/IDGTargets.cmake")
 
-install(EXPORT IDGTargets
-        DESTINATION lib/cmake)
+install(
+    EXPORT idg-targets
+    DESTINATION lib/cmake
+)
 
+# Create idg-config.cmake
 configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfig.cmake.in"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake" @ONLY)
+    ${PROJECT_SOURCE_DIR}/cmake/config/idg-config.cmake.in
+    ${PROJECT_BINARY_DIR}/CMakeFiles/idg-config.cmake @ONLY
+)
 
-configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/config/IDGConfigVersion.cmake.in"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake" @ONLY)
-
-install(FILES
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfig.cmake"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGConfigVersion.cmake"
-    DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(
+    FILES ${PROJECT_BINARY_DIR}/CMakeFiles/idg-config.cmake
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+)
