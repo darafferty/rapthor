@@ -45,10 +45,11 @@ if (${IDG_OnePackage})
 else()
     find_package(IDG NO_MODULE REQUIRED)
     include_directories(${IDG_INCLUDE_DIR})
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 # add directory of config file to include directories
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # write config file
 configure_file(
@@ -67,3 +68,14 @@ install(
 # add subfolders
 add_subdirectory(data)
 add_subdirectory(src)
+
+
+# Create idg-util-config.cmake
+configure_file(
+    ${PROJECT_SOURCE_DIR}/cmake/config/idg-util-config.cmake.in
+    ${PROJECT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake @ONLY)
+
+install(
+    FILES ${PROJECT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+)
