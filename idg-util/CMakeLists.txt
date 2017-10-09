@@ -59,7 +59,7 @@ configure_file(
 # install config file
 install(
     FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/idg-util-config.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/src/idg-util-config.h"
     DESTINATION
     ${CMAKE_INSTALL_PREFIX}/include
 )
