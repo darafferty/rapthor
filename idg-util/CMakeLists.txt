@@ -62,12 +62,25 @@ install(
     FILES
     "${CMAKE_CURRENT_BINARY_DIR}/src/idg-util-config.h"
     DESTINATION
-    ${CMAKE_INSTALL_PREFIX}/include
+    "${CMAKE_INSTALL_PREFIX}/include"
 )
 
 # add subfolders
 add_subdirectory(data)
 add_subdirectory(src)
+
+# Create file to initialize environment
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh"
+)
+
+install(
+    FILES
+    ${PROJECT_BINARY_DIR}/init-environment.sh
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}
+)
 
 # Create idg-targets.cmake
 export(
