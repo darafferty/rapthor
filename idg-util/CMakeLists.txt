@@ -45,10 +45,11 @@ if (${IDG_OnePackage})
 else()
     find_package(IDG NO_MODULE REQUIRED)
     include_directories(${IDG_INCLUDE_DIR})
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 # add directory of config file to include directories
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # write config file
 configure_file(
@@ -61,9 +62,43 @@ install(
     FILES
     "${CMAKE_CURRENT_BINARY_DIR}/src/idg-util-config.h"
     DESTINATION
-    ${CMAKE_INSTALL_PREFIX}/include
+    "${CMAKE_INSTALL_PREFIX}/include"
 )
 
 # add subfolders
 add_subdirectory(data)
 add_subdirectory(src)
+
+# Create file to initialize environment
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh"
+)
+
+install(
+    FILES
+    ${PROJECT_BINARY_DIR}/init-environment.sh
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}
+)
+
+# Create idg-targets.cmake
+export(
+    TARGETS idg-util
+    FILE ${PROJECT_BINARY_DIR}/CMakeFiles/idg-targets.cmake
+)
+
+install(
+    EXPORT idg-util-targets
+    DESTINATION lib/cmake
+)
+
+# Create idg-util-config.cmake
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/idg-util-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake @ONLY)
+
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+)

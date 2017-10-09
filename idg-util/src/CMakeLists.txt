@@ -31,7 +31,7 @@ set_target_properties(
 
 install(
     TARGETS idg-util
-    EXPORT IDGTargets
+    EXPORT  idg-util-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
