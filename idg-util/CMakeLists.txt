@@ -37,8 +37,15 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 # resolve idg library
-find_package(IDG NO_MODULE REQUIRED)
-include_directories(${IDG_INCLUDE_DIR})
+if (${IDG_OnePackage})
+    include_directories (${CMAKE_BINARY_DIR}/idg-lib/src)
+    include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
+    include_directories (${CMAKE_BINARY_DIR}/idg-util/src)
+    include_directories (${CMAKE_SOURCE_DIR}/idg-util/src)
+else()
+    find_package(IDG NO_MODULE REQUIRED)
+    include_directories(${IDG_INCLUDE_DIR})
+endif()
 
 # add directory of config file to include directories
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
