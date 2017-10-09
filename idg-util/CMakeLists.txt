@@ -69,6 +69,16 @@ install(
 add_subdirectory(data)
 add_subdirectory(src)
 
+# Create idg-targets.cmake
+export(
+    TARGETS idg-util
+    FILE ${PROJECT_BINARY_DIR}/CMakeFiles/idg-targets.cmake
+)
+
+install(
+    EXPORT idg-util-targets
+    DESTINATION lib/cmake
+)
 
 # Create idg-util-config.cmake
 configure_file(

@@ -14,7 +14,13 @@ set(
     CACHE PATH "idg-util library directory"
 )
 
+set(
+    TARGETS_TO_EXPORT idg-util
+)
+
 find_library(
-    IDG_UTIL_LIBRARY idg-util
+    IDG_UTIL_LIBRARY ${TARGETS_TO_EXPORT}
     PATH ${IDG_UTIL_LIB_DIR} NO_DEFAULT_PATH
 )
+
+include("${IDG_UTIL_PREFIX_DIR}/lib/cmake/idg-util-targets.cmake")
