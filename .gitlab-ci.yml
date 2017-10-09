@@ -15,3 +15,28 @@ idg:
     - make install
     - source init-environment.sh
     - ctest --verbose
+
+idg2:
+  script:
+    - mkdir -p build/lib
+    - mkdir -p build/util
+    - mkdir -p build/bin
+    - mkdir install
+    - cd build/lib
+    - cmake ../../idg-lib -DCMAKE_INSTALL_PREFIX=../../install/lib
+    - make
+    - make install
+    - cd ../..
+    - source install/lib/init-environment.sh
+    - cd build/util
+    - cmake ../../idg-util -DCMAKE_INSTALL_PREFIX=../../install/util -DIDG_DIR=`realpath ../../install/lib`
+    - make
+    - make install
+    - cd ../..
+    - source install/util/init-environment.sh
+    - cd build/bin
+    - cmake ../../idg-bin -DCMAKE_INSTALL_PREFIX=../../install/bin -DIDG_DIR=`realpath ../../install/lib` -DIDG_UTIL_DIR=`realpath ../../install/util` -DBUILD_WITH_TESTS=On
+    - make
+    - make install
+    - source init-environment.sh
+    - ctest --verbose
