@@ -82,6 +82,8 @@ if (${IDG_OnePackage})
 else()
     find_package(IDG NO_MODULE REQUIRED)
     include_directories (${IDG_INCLUDE_DIR})
+    find_package(IDG_UTIL NO_MODULE REQUIRED)
+    include_directories(${IDG_UTIL_INCLUDE_DIR})
 endif()
 
 # write config file
@@ -105,8 +107,6 @@ install(
     DESTINATION
     ${CMAKE_INSTALL_PREFIX}
 )
-
-#set (IDG_BIN_UTILITY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utility)
 
 # build all examples
 add_subdirectory(examples)
