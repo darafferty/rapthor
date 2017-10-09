@@ -44,8 +44,9 @@ endif()
 set_target_properties(idg-common PROPERTIES
                       PUBLIC_HEADER idg-common.h)
 
-install(TARGETS idg-common
-  EXPORT IDGTargets
+install(
+  TARGETS idg-common
+  EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
@@ -77,8 +78,9 @@ target_link_libraries(
 set_target_properties(idg-fft PROPERTIES
                       PUBLIC_HEADER idg-fft.h)
 
-install(TARGETS idg-fft
-  EXPORT IDGTargets
+install(
+  TARGETS idg-fft
+  EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
@@ -106,8 +108,9 @@ target_link_libraries (
 set_target_properties(idg-cpu PROPERTIES
                       PUBLIC_HEADER idg-cpu.h)
 
-install(TARGETS idg-cpu
-  EXPORT IDGTargets
+install(
+  TARGETS idg-cpu
+  EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
@@ -147,7 +150,7 @@ set_target_properties(
 
 install(
     TARGETS idg-cuda
-    EXPORT IDGTargets
+    EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
@@ -187,7 +190,7 @@ set_target_properties (
 
 install(
     TARGETS idg-hybrid-cuda
-    EXPORT IDGTargets
+    EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
@@ -216,8 +219,9 @@ target_link_libraries(
 set_target_properties(idg-opencl PROPERTIES
                       PUBLIC_HEADER idg-opencl.h)
 
-install(TARGETS idg-opencl
-  EXPORT IDGTargets
+install(
+    TARGETS idg-opencl
+  EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
@@ -255,8 +259,9 @@ target_link_libraries (
 set_target_properties(idg PROPERTIES
                       PUBLIC_HEADER idg.h)
 
-install(TARGETS idg
-  EXPORT IDGTargets
+install(
+    TARGETS idg
+  EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib/static
