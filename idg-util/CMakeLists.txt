@@ -95,10 +95,10 @@ install(
 
 # Create idg-util-config.cmake
 configure_file(
-    ${PROJECT_SOURCE_DIR}/cmake/config/idg-util-config.cmake.in
-    ${PROJECT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake @ONLY)
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/idg-util-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake @ONLY)
 
 install(
-    FILES ${PROJECT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/idg_util-config.cmake
     DESTINATION ${CMAKE_INSTALL_PREFIX}
 )
