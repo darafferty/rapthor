@@ -286,7 +286,7 @@ namespace idg {
 
                         #pragma omp critical (lock)
                         {
-                            // Copy input data to device memory
+                            // Copy input data to device
                             htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
                                 auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
@@ -570,6 +570,9 @@ namespace idg {
 
                         #pragma omp critical (lock)
                         {
+                            // Initialize visibilities to zero
+                            d_visibilities.zero();
+
                             // Copy input data to device
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
                                 auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
