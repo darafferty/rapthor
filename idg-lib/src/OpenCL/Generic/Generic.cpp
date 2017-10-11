@@ -412,12 +412,10 @@ namespace idg {
                 uint64_t total_bytes_gridder  = auxiliary::bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
                 uint64_t total_flops_fft      = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
                 uint64_t total_bytes_fft      = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_flops_scaler   = auxiliary::flops_scaler(total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_scaler   = auxiliary::bytes_scaler(total_nr_subgrids, subgrid_size);
                 uint64_t total_flops_adder    = auxiliary::flops_adder(total_nr_subgrids, subgrid_size);
                 uint64_t total_bytes_adder    = auxiliary::bytes_adder(total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
+                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_adder;
+                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_adder;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
