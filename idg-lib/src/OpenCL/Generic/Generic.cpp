@@ -486,8 +486,15 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
+                // Initialize host memory
+                cl::Context& context        = get_context();
+                InstanceOpenCL& device      = get_device(0);
+                cl::CommandQueue& htodqueue = device.get_htod_queue();
+                auto sizeof_uvw             = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
+                cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
+                writeBufferBatched(htodqueue, h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
+
                 // Initialize device memory
-                cl::Context& context = get_context();
                 std::vector<cl::Buffer> d_grid_(nr_devices);
                 std::vector<cl::Buffer> d_wavenumbers_(nr_devices);
                 std::vector<cl::Buffer> d_spheroidal_(nr_devices);
@@ -595,13 +602,14 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        auto uvw_offset           = first_bl * auxiliary::sizeof_uvw(1, nr_timesteps);
 
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
                             htodqueue.enqueueBarrierWithWaitList(&outputFree, NULL);
-                            htodqueue.enqueueWriteBuffer(d_uvw, CL_FALSE, 0,
-                                    auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps), uvw.data(first_bl, 0));
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
+                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
                                     auxiliary::sizeof_metadata(current_nr_subgrids), plan.get_metadata_ptr(first_bl));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);
