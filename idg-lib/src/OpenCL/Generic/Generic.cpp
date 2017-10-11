@@ -606,6 +606,10 @@ namespace idg {
 
                         #pragma omp critical (lock)
                         {
+                            // Initialize visibilities to zero
+                            zeroBuffer(htodqueue, d_visibilities, 0,
+                                    auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+
                             // Copy input data to device
                             htodqueue.enqueueBarrierWithWaitList(&outputFree, NULL);
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
