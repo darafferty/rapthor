@@ -527,6 +527,106 @@ namespace idg {
                 }
             }
 
+            cl::Buffer* InstanceOpenCL::reuse_memory(
+                uint64_t size,
+                cl::Buffer *buffer,
+                cl_mem_flags flags)
+            {
+                if (buffer && size != buffer->getInfo<CL_MEM_SIZE>()) {
+                    delete buffer;
+                    buffer = new cl::Buffer(mContext, flags, size);
+                } else if(!buffer) {
+                    buffer = new cl::Buffer(mContext, flags, size);
+                }
+                return buffer;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_device_grid(
+                unsigned int grid_size)
+            {
+                if (grid_size > 0) {
+                    auto size = auxiliary::sizeof_grid(grid_size);
+                    d_grid = reuse_memory(size, d_grid, CL_MEM_READ_WRITE);
+                }
+                return *d_grid;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_device_wavenumbers(
+                unsigned int nr_channels)
+            {
+                if (nr_channels > 0)
+                {
+                    auto size = auxiliary::sizeof_wavenumbers(nr_channels);
+                    d_wavenumbers = reuse_memory(size, d_wavenumbers, CL_MEM_READ_WRITE);
+                }
+                return *d_wavenumbers;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_device_aterms(
+                unsigned int nr_stations,
+                unsigned int nr_timeslots,
+                unsigned int subgrid_size)
+            {
+                if (nr_stations > 0 &&
+                    nr_timeslots > 0 &&
+                    subgrid_size > 0)
+                {
+                    auto size = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    d_aterms = reuse_memory(size, d_aterms, CL_MEM_READ_WRITE);
+                }
+                return *d_aterms;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_device_spheroidal(
+                unsigned int subgrid_size)
+            {
+                if (subgrid_size > 0)
+                {
+                    auto size = auxiliary::sizeof_spheroidal(subgrid_size);
+                    d_spheroidal = reuse_memory(size, d_spheroidal, CL_MEM_READ_WRITE);
+                }
+                return *d_spheroidal;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_host_grid(
+                unsigned int grid_size)
+            {
+                if (grid_size > 0) {
+                    auto size = auxiliary::sizeof_grid(grid_size);
+                    h_grid = reuse_memory(size, h_grid, CL_MEM_ALLOC_HOST_PTR);
+                }
+                return *h_grid;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_host_visibilities(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                if (nr_baselines > 0 &&
+                    nr_timesteps > 0 &&
+                    nr_channels > 0)
+                {
+                    auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                    h_visibilities = reuse_memory(size, h_visibilities, CL_MEM_ALLOC_HOST_PTR);
+                }
+                return *h_visibilities;
+            }
+
+            cl::Buffer& InstanceOpenCL::get_host_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps)
+            {
+                if (nr_baselines > 0 &&
+                    nr_timesteps > 0)
+                {
+                    auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
+                    h_uvw = reuse_memory(size, h_uvw, CL_MEM_ALLOC_HOST_PTR);
+                }
+                return *h_uvw;
+            }
+
+
         } // end namespace opencl
     } // end namespace kernel
 } // end namespace idg
