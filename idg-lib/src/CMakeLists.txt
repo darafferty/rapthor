@@ -5,11 +5,7 @@ set (IDG_OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/common)
 
 # add subfolders
 add_subdirectory(common)
-
-if (BUILD_LIB_CPU)
-    add_subdirectory(fft)
-endif()
-
+add_subdirectory(fft)
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
