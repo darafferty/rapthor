@@ -74,11 +74,10 @@ void readBufferBatched(
 
 void zeroBuffer(
         cl::CommandQueue &queue,
-        cl::Buffer &buffer,
-        size_t offset,
-        size_t size)
+        cl::Buffer &buffer)
 {
-
+    size_t offset    = 0;
+    size_t size      = buffer.getInfo<CL_MEM_SIZE>();
     float pattern[1] = {0.0f};
     queue.enqueueFillBuffer<float[1]>(buffer, pattern, offset, size);
 }

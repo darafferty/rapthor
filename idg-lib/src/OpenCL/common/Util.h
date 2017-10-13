@@ -34,7 +34,5 @@ void readBufferBatched(
 
 void zeroBuffer(
         cl::CommandQueue &queue,
-        cl::Buffer &buffer,
-        size_t offset,
-        size_t size);
+        cl::Buffer &buffer);
 #endif
