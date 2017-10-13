@@ -25,10 +25,17 @@ namespace idg {
                 #endif
 
                 // Initialize members
-                device       = new cl::Device(context.getInfo<CL_CONTEXT_DEVICES>()[device_id]);
-                executequeue = new cl::CommandQueue(context, *device);
-                htodqueue    = new cl::CommandQueue(context, *device);
-                dtohqueue    = new cl::CommandQueue(context, *device);
+                device         = new cl::Device(context.getInfo<CL_CONTEXT_DEVICES>()[device_id]);
+                executequeue   = new cl::CommandQueue(context, *device);
+                htodqueue      = new cl::CommandQueue(context, *device);
+                dtohqueue      = new cl::CommandQueue(context, *device);
+                d_grid         = NULL;
+                d_wavenumbers  = NULL;
+                d_aterms       = NULL;
+                d_spheroidal   = NULL;
+                h_grid         = NULL;
+                h_visibilities = NULL;
+                h_uvw          = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -62,6 +69,13 @@ namespace idg {
                 delete kernel_adder;
                 delete kernel_splitter;
                 delete kernel_scaler;
+                delete d_grid;
+                delete d_wavenumbers;
+                delete d_aterms;
+                delete d_spheroidal;
+                delete h_grid;
+                delete h_visibilities;
+                delete h_uvw;
             }
 
             void InstanceOpenCL::set_parameters_default() {

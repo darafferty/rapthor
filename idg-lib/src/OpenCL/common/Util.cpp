@@ -40,36 +40,41 @@ void printDevices(int deviceNumber) {
 	std::clog << "\n";
 }
 
-void writeBufferBatched(
+void writeBuffer(
         cl::CommandQueue &queue,
-        cl::Buffer &dst,
-        cl_bool blocking_write,
-        size_t offset,
-        size_t size,
+        cl::Buffer &buffer,
+        cl_bool blocking,
         const void *ptr)
 {
+    size_t size   = buffer.getInfo<CL_MEM_SIZE>();
+    size_t offset = 0;
+    queue.enqueueWriteBuffer(buffer, blocking, offset, size, (void *) ptr);
+}
+
+void writeBufferBatched(
+        cl::CommandQueue &queue,
+        cl::Buffer &buffer,
+        cl_bool blocking,
+        const void *ptr)
+{
+    size_t size       = buffer.getInfo<CL_MEM_SIZE>();
     size_t batch_size = BUFFER_BATCH_SIZE;
     for (size_t offset_ = 0; offset_ < size; offset_ += batch_size) {
         size_t size_ = offset_ + batch_size > size ? size - offset_ : batch_size;
         const void *ptr_ = (const char *) ptr + offset_;
-        queue.enqueueWriteBuffer(dst, blocking_write, offset_, size_, ptr_);
+        queue.enqueueWriteBuffer(buffer, blocking, offset_, size_, ptr_);
     }
 }
 
-void readBufferBatched(
+void readBuffer(
         cl::CommandQueue &queue,
-        cl::Buffer &src,
-        cl_bool blocking_read,
-        size_t offset,
-        size_t size,
+        cl::Buffer &buffer,
+        cl_bool blocking,
         void *ptr)
 {
-    size_t batch_size = BUFFER_BATCH_SIZE;
-    for (size_t offset_ = 0; offset_ < size; offset_ += batch_size) {
-        size_t size_ = offset_ + batch_size > size ? size - offset_ : batch_size;
-        void *ptr_ = (char *) ptr + offset_;
-        queue.enqueueReadBuffer(src, blocking_read, offset_, size_, ptr_);
-    }
+    size_t size   = buffer.getInfo<CL_MEM_SIZE>();
+    size_t offset = 0;
+    queue.enqueueReadBuffer(buffer, blocking, offset, size, ptr);
 }
 
 void zeroBuffer(
@@ -80,4 +85,23 @@ void zeroBuffer(
     size_t size      = buffer.getInfo<CL_MEM_SIZE>();
     float pattern[1] = {0.0f};
     queue.enqueueFillBuffer<float[1]>(buffer, pattern, offset, size);
+}
+
+void* mapBuffer(
+        cl::CommandQueue &queue,
+        cl::Buffer &buffer,
+        cl_bool blocking,
+        cl_map_flags flags)
+{
+    size_t size      = buffer.getInfo<CL_MEM_SIZE>();
+    size_t offset = 0;
+    return queue.enqueueMapBuffer(buffer, blocking, flags, offset, size);
+}
+
+void unmapBuffer(
+        cl::CommandQueue &queue,
+        cl::Buffer &buffer,
+        const void *ptr)
+{
+    queue.enqueueUnmapMemObject(buffer, (void *) ptr);
 }
