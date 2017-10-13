@@ -412,12 +412,10 @@ namespace idg {
                 uint64_t total_bytes_gridder  = auxiliary::bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
                 uint64_t total_flops_fft      = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
                 uint64_t total_bytes_fft      = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_flops_scaler   = auxiliary::flops_scaler(total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_scaler   = auxiliary::bytes_scaler(total_nr_subgrids, subgrid_size);
                 uint64_t total_flops_adder    = auxiliary::flops_adder(total_nr_subgrids, subgrid_size);
                 uint64_t total_bytes_adder    = auxiliary::bytes_adder(total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
+                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_adder;
+                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_adder;
                 auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
                 auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
                 auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
@@ -488,8 +486,15 @@ namespace idg {
                 const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
+                // Initialize host memory
+                cl::Context& context        = get_context();
+                InstanceOpenCL& device      = get_device(0);
+                cl::CommandQueue& htodqueue = device.get_htod_queue();
+                auto sizeof_uvw             = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
+                cl::Buffer h_uvw            = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof_uvw);
+                writeBufferBatched(htodqueue, h_uvw, CL_FALSE, 0, sizeof_uvw, uvw.data());
+
                 // Initialize device memory
-                cl::Context& context = get_context();
                 std::vector<cl::Buffer> d_grid_(nr_devices);
                 std::vector<cl::Buffer> d_wavenumbers_(nr_devices);
                 std::vector<cl::Buffer> d_spheroidal_(nr_devices);
@@ -597,13 +602,18 @@ namespace idg {
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        auto uvw_offset           = first_bl * auxiliary::sizeof_uvw(1, nr_timesteps);
 
                         #pragma omp critical (lock)
                         {
+                            // Initialize visibilities to zero
+                            zeroBuffer(htodqueue, d_visibilities, 0,
+                                    auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+
                             // Copy input data to device
                             htodqueue.enqueueBarrierWithWaitList(&outputFree, NULL);
-                            htodqueue.enqueueWriteBuffer(d_uvw, CL_FALSE, 0,
-                                    auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps), uvw.data(first_bl, 0));
+                            htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
+                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodqueue.enqueueWriteBuffer(d_metadata, CL_FALSE, 0,
                                     auxiliary::sizeof_metadata(current_nr_subgrids), plan.get_metadata_ptr(first_bl));
                             htodqueue.enqueueMarkerWithWaitList(NULL, &inputReady[0]);

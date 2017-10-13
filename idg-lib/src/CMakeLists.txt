@@ -203,30 +203,40 @@ endif()
 ###################################################
 # build libidg-opencl, containing all common code #
 ###################################################
-if (BUILD_LIB_OPENCL)
-add_library(idg-opencl
-  $<TARGET_OBJECTS:opencl-common>
-  $<TARGET_OBJECTS:opencl-generic>
+if(BUILD_LIB_OPENCL)
+
+add_library(
+    idg-opencl
+    $<TARGET_OBJECTS:opencl-common>
+    $<TARGET_OBJECTS:opencl-generic>
 )
 
-set(LINK_LIRBRARIES idg-common ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
+set(
+    LINK_LIRBRARIES
+    idg-common
+    ${OPENCL_LIBRARIES}
+    ${CLFFT_LIBRARIES}
+)
 
 target_link_libraries(
-  idg-opencl
-  ${LINK_LIRBRARIES}
+    idg-opencl
+    ${LINK_LIRBRARIES}
 )
 
-set_target_properties(idg-opencl PROPERTIES
-                      PUBLIC_HEADER idg-opencl.h)
+set_target_properties(
+    idg-opencl PROPERTIES
+    PUBLIC_HEADER idg-opencl.h
+)
 
 install(
     TARGETS idg-opencl
-  EXPORT idg-targets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
+    EXPORT idg-targets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
 )
+
 endif(BUILD_LIB_OPENCL)
 
 

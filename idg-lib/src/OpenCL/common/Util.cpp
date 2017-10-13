@@ -71,3 +71,14 @@ void readBufferBatched(
         queue.enqueueReadBuffer(src, blocking_read, offset_, size_, ptr_);
     }
 }
+
+void zeroBuffer(
+        cl::CommandQueue &queue,
+        cl::Buffer &buffer,
+        size_t offset,
+        size_t size)
+{
+
+    float pattern[1] = {0.0f};
+    queue.enqueueFillBuffer<float[1]>(buffer, pattern, offset, size);
+}
