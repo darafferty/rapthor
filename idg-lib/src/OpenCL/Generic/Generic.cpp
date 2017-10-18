@@ -476,7 +476,6 @@ namespace idg {
                 cl::Context& context        = get_context();
                 InstanceOpenCL& device      = get_device(0);
                 cl::CommandQueue& htodqueue = device.get_htod_queue();
-                cl::Buffer h_visibilities   = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
                 cl::Buffer h_uvw            = device.get_host_uvw(nr_baselines, nr_timesteps);
                 writeBufferBatched(htodqueue, h_uvw, CL_FALSE, uvw.data());
 
@@ -642,7 +641,6 @@ namespace idg {
                         total_runtime_fft       += devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
                         total_runtime_degridder += devicePowerSensor->seconds(powerRecords[2].state, powerRecords[3].state);
                         #endif
-
                     } // end for bl
 
                     // Wait for all jobs to finish
