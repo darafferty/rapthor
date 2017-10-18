@@ -170,17 +170,20 @@ namespace idg {
                     cl::Buffer& get_host_visibilities(
                         unsigned int nr_baselines = 0,
                         unsigned int nr_timesteps = 0,
-                        unsigned int nr_channels = 0);
+                        unsigned int nr_channels = 0,
+                        void *ptr = NULL);
 
                     cl::Buffer& get_host_uvw(
                         unsigned int nr_baselines = 0,
-                        unsigned int nr_timesteps = 0);
+                        unsigned int nr_timesteps = 0,
+                        void *ptr = NULL);
 
                 private:
                     cl::Buffer* reuse_memory(
                         uint64_t size,
                         cl::Buffer *buffer,
-                        cl_mem_flags flags);
+                        cl_mem_flags flags,
+                        void *ptr = NULL);
 
                     cl::Buffer *d_grid;
                     cl::Buffer *d_wavenumbers;

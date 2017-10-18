@@ -530,13 +530,14 @@ namespace idg {
             cl::Buffer* InstanceOpenCL::reuse_memory(
                 uint64_t size,
                 cl::Buffer *buffer,
-                cl_mem_flags flags)
+                cl_mem_flags flags,
+                void *ptr)
             {
                 if (buffer && size != buffer->getInfo<CL_MEM_SIZE>()) {
                     delete buffer;
-                    buffer = new cl::Buffer(mContext, flags, size);
-                } else if(!buffer) {
-                    buffer = new cl::Buffer(mContext, flags, size);
+                    buffer = new cl::Buffer(mContext, flags, size, ptr);
+                } else if (!buffer) {
+                    buffer = new cl::Buffer(mContext, flags, size, ptr);
                 }
                 return buffer;
             }
@@ -601,27 +602,31 @@ namespace idg {
             cl::Buffer& InstanceOpenCL::get_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
-                unsigned int nr_channels)
+                unsigned int nr_channels,
+                void *ptr)
             {
                 if (nr_baselines > 0 &&
                     nr_timesteps > 0 &&
                     nr_channels > 0)
                 {
                     auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                    h_visibilities = reuse_memory(size, h_visibilities, CL_MEM_ALLOC_HOST_PTR);
+                    cl_mem_flags mem_flags = (ptr != NULL) ? CL_MEM_USE_HOST_PTR : CL_MEM_ALLOC_HOST_PTR;
+                    h_visibilities = reuse_memory(size, h_visibilities, mem_flags, ptr);
                 }
                 return *h_visibilities;
             }
 
             cl::Buffer& InstanceOpenCL::get_host_uvw(
                 unsigned int nr_baselines,
-                unsigned int nr_timesteps)
+                unsigned int nr_timesteps,
+                void *ptr)
             {
                 if (nr_baselines > 0 &&
                     nr_timesteps > 0)
                 {
                     auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                    h_uvw = reuse_memory(size, h_uvw, CL_MEM_ALLOC_HOST_PTR);
+                    cl_mem_flags mem_flags = (ptr != NULL) ? CL_MEM_USE_HOST_PTR : CL_MEM_ALLOC_HOST_PTR;
+                    h_uvw = reuse_memory(size, h_uvw, mem_flags, ptr);
                 }
                 return *h_uvw;
             }

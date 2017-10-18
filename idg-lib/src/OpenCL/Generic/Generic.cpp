@@ -196,10 +196,8 @@ namespace idg {
                 cl::Context& context        = get_context();
                 InstanceOpenCL& device      = get_device(0);
                 cl::CommandQueue& htodqueue = device.get_htod_queue();
-                cl::Buffer h_visibilities   = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                cl::Buffer h_uvw            = device.get_host_uvw(nr_baselines, nr_timesteps);
-                writeBufferBatched(htodqueue, h_visibilities, CL_FALSE, visibilities.data());
-                writeBufferBatched(htodqueue, h_uvw, CL_FALSE, uvw.data());
+                cl::Buffer h_visibilities   = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                cl::Buffer h_uvw            = device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
                 // Initialize device memory
                 for (int d = 0; d < nr_devices; d++) {
@@ -476,8 +474,8 @@ namespace idg {
                 cl::Context& context        = get_context();
                 InstanceOpenCL& device      = get_device(0);
                 cl::CommandQueue& htodqueue = device.get_htod_queue();
-                cl::Buffer h_uvw            = device.get_host_uvw(nr_baselines, nr_timesteps);
-                writeBufferBatched(htodqueue, h_uvw, CL_FALSE, uvw.data());
+                cl::Buffer h_visibilities   = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                cl::Buffer h_uvw            = device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
                 // Initialize device memory
                 for (int d = 0; d < nr_devices; d++) {
@@ -575,6 +573,7 @@ namespace idg {
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         auto uvw_offset           = first_bl * auxiliary::sizeof_uvw(1, nr_timesteps);
+                        auto visibilities_offset  = first_bl * auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
 
                         #pragma omp critical (lock)
                         {
@@ -614,9 +613,8 @@ namespace idg {
 
                             // Copy visibilities to host
                             dtohqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
-                            dtohqueue.enqueueReadBuffer(d_visibilities, CL_FALSE, 0,
-                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels),
-                                visibilities.data(first_bl, 0, 0));
+                            dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset,
+                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             dtohqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
 
