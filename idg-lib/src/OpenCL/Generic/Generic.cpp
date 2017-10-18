@@ -464,7 +464,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 3;
+                const int nr_streams = 2;
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
