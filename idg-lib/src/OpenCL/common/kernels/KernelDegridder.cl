@@ -168,13 +168,11 @@ void kernel_degridder(
         visibility *= (float8) (1.0f / (nr_pixels));
 
         // Store visibility
-        int idx_time = time_offset_global + time;
-        int idx_vis = index_visibility(NR_CHANNELS, idx_time, chan);
         if (time < nr_timesteps) {
-            visibilities[idx_vis + 0] = visibility.s01;
-            visibilities[idx_vis + 1] = visibility.s23;
-            visibilities[idx_vis + 2] = visibility.s45;
-            visibilities[idx_vis + 3] = visibility.s67;
+            int idx_time = time_offset_global + time;
+            int idx_vis = index_visibility(NR_CHANNELS, idx_time, chan);
+            __global float8 *vis_ptr = (__global float8 *) &visibilities[idx_vis];
+            *vis_ptr = visibility;
         }
     } // end for i (visibilities)
 } // end kernel_degridder

@@ -148,6 +148,51 @@ namespace idg {
                     unsigned int fft_planned_batch;
                     clfftPlanHandle fft_plan;
 
+                public:
+                    // Memory management
+                    cl::Buffer& get_device_grid(
+                        unsigned int grid_size = 0);
+
+                    cl::Buffer& get_device_wavenumbers(
+                        unsigned int nr_channels = 0);
+
+                    cl::Buffer& get_device_aterms(
+                        unsigned int nr_stations  = 0,
+                        unsigned int nr_timeslots = 0,
+                        unsigned int subgrid_size = 0);
+
+                    cl::Buffer& get_device_spheroidal(
+                        unsigned int subgrid_size = 0);
+
+                    cl::Buffer& get_host_grid(
+                        unsigned int grid_size = 0);
+
+                    cl::Buffer& get_host_visibilities(
+                        unsigned int nr_baselines = 0,
+                        unsigned int nr_timesteps = 0,
+                        unsigned int nr_channels = 0,
+                        void *ptr = NULL);
+
+                    cl::Buffer& get_host_uvw(
+                        unsigned int nr_baselines = 0,
+                        unsigned int nr_timesteps = 0,
+                        void *ptr = NULL);
+
+                private:
+                    cl::Buffer* reuse_memory(
+                        uint64_t size,
+                        cl::Buffer *buffer,
+                        cl_mem_flags flags,
+                        void *ptr = NULL);
+
+                    cl::Buffer *d_grid;
+                    cl::Buffer *d_wavenumbers;
+                    cl::Buffer *d_aterms;
+                    cl::Buffer *d_spheroidal;
+                    cl::Buffer *h_grid;
+                    cl::Buffer *h_visibilities;
+                    cl::Buffer *h_uvw;
+
             };
 
             std::ostream& operator<<(std::ostream& os, InstanceOpenCL &d);

@@ -16,25 +16,36 @@ void printDevices(int deviceNumber);
 
 #define BUFFER_BATCH_SIZE 1024 * 1024 * 1024 // 1 Gb
 
-void writeBufferBatched(
+void writeBuffer(
         cl::CommandQueue &queue,
-        cl::Buffer &dst,
-        cl_bool blocking_write,
-        size_t offset,
-        size_t size,
+        cl::Buffer &buffer,
+        cl_bool blocking,
         const void *ptr);
 
-void readBufferBatched(
+void writeBufferBatched(
         cl::CommandQueue &queue,
-        cl::Buffer &src,
-        cl_bool blocking_read,
-        size_t offset,
-        size_t size,
+        cl::Buffer &buffer,
+        cl_bool blocking,
+        const void *ptr);
+
+void readBuffer(
+        cl::CommandQueue &queue,
+        cl::Buffer &buffer,
+        cl_bool blocking,
         void *ptr);
 
 void zeroBuffer(
         cl::CommandQueue &queue,
+        cl::Buffer &buffer);
+
+void* mapBuffer(
+        cl::CommandQueue &queue,
         cl::Buffer &buffer,
-        size_t offset,
-        size_t size);
+        cl_bool blocking,
+        cl_map_flags flags);
+
+void unmapBuffer(
+        cl::CommandQueue &queue,
+        cl::Buffer &buffer,
+        const void *ptr);
 #endif

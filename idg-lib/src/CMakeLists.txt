@@ -5,11 +5,7 @@ set (IDG_OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/common)
 
 # add subfolders
 add_subdirectory(common)
-
-if (BUILD_LIB_CPU)
-    add_subdirectory(fft)
-endif()
-
+add_subdirectory(fft)
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
 endif()
@@ -32,25 +28,29 @@ endif()
 # build libidg-common, containing all common code       #
 # Note: used to access common functionality from python #
 #########################################################
-add_library(idg-common
-  $<TARGET_OBJECTS:common>
+add_library(
+    idg-common
+    $<TARGET_OBJECTS:common>
 )
 
 if(HAVE_POWERSENSOR)
-    target_link_libraries(idg-common
+    target_link_libraries(
+        idg-common
         ${POWERSENSOR_LIBRARY})
 endif()
 
-set_target_properties(idg-common PROPERTIES
-                      PUBLIC_HEADER idg-common.h)
+set_target_properties(
+    idg-common PROPERTIES
+    PUBLIC_HEADER idg-common.h
+)
 
 install(
-  TARGETS idg-common
-  EXPORT idg-targets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
+    TARGETS idg-common
+    EXPORT idg-targets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
 )
 
 
@@ -60,31 +60,32 @@ install(
 # used in the CPU code, the example init code, API code #
 #########################################################
 add_library(idg-fft
-  $<TARGET_OBJECTS:fft>
+    $<TARGET_OBJECTS:fft>
 )
 
-set (LINK_LIRBRARIES ${FFTW3F_LIBRARY} ${FFTW3_LIBRARY} ${FFTW3F_THREADS_LIBRARY} ${FFTW3_THREADS_LIBRARY})
-
-# HACK TO MAKE PYTHON BINDING WORKS WITH MKL (needed?)
-# if (BUILD_WITH_PYTHON)
-#  set (LINK_LIRBRARIES ${LINK_LIRBRARIES} mkl_avx2 mkl_def)
-# endif()
+set(
+    LINK_LIRBRARIES
+    ${FFTW3F_LIBRARY} ${FFTW3_LIBRARY}
+    ${FFTW3F_THREADS_LIBRARY} ${FFTW3_THREADS_LIBRARY}
+)
 
 target_link_libraries(
-  idg-fft
-  ${LINK_LIRBRARIES}
-  )
+    idg-fft
+    ${LINK_LIRBRARIES}
+)
 
-set_target_properties(idg-fft PROPERTIES
-                      PUBLIC_HEADER idg-fft.h)
+set_target_properties(
+    idg-fft PROPERTIES
+    PUBLIC_HEADER idg-fft.h
+)
 
 install(
-  TARGETS idg-fft
-  EXPORT idg-targets
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  PUBLIC_HEADER DESTINATION include
+    TARGETS idg-fft
+    EXPORT idg-targets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
 )
 
 
