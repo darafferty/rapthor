@@ -12,9 +12,9 @@ namespace idg {
 namespace api {
 
     GridderBufferImpl::GridderBufferImpl(
-        Type architecture,
+        proxy::Proxy* proxy,
         size_t bufferTimesteps)
-        : BufferImpl(architecture, bufferTimesteps),
+        : BufferImpl(proxy, bufferTimesteps),
           m_bufferUVW2(0,0),
           m_bufferStationPairs2(0)
     {
@@ -247,40 +247,40 @@ namespace api {
 // Rationale: calling the code from C code and Fortran easier,
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
-extern "C" {
-
-    idg::api::GridderBuffer* GridderBuffer_init(
-        unsigned int type,
-        unsigned int bufferTimesteps)
-    {
-        auto proxytype = idg::api::Type::CPU_REFERENCE;
-        if (type == 0) {
-            proxytype = idg::api::Type::CPU_REFERENCE;
-        } else if (type == 1) {
-            proxytype = idg::api::Type::CPU_OPTIMIZED;
-        }
-        return new idg::api::GridderBufferImpl(proxytype, bufferTimesteps);
-    }
-
-    void GridderBuffer_destroy(idg::api::GridderBuffer* p) {
-       delete p;
-    }
-
-    void GridderBuffer_grid_visibilities(
-        idg::api::GridderBuffer* p,
-        int     timeIndex,
-        int     antenna1,
-        int     antenna2,
-        double* uvwInMeters,
-        float*  visibilities) // size CH x PL x 2
-    {
-        p->grid_visibilities(
-            timeIndex,
-            antenna1,
-            antenna2,
-            uvwInMeters,
-            (complex<float>*) visibilities); // size CH x PL
-    }
+// extern "C" {
+//
+//     idg::api::GridderBuffer* GridderBuffer_init(
+//         unsigned int type,
+//         unsigned int bufferTimesteps)
+//     {
+//         auto proxytype = idg::api::Type::CPU_REFERENCE;
+//         if (type == 0) {
+//             proxytype = idg::api::Type::CPU_REFERENCE;
+//         } else if (type == 1) {
+//             proxytype = idg::api::Type::CPU_OPTIMIZED;
+//         }
+//         return new idg::api::GridderBufferImpl(proxytype, bufferTimesteps);
+//     }
+//
+//     void GridderBuffer_destroy(idg::api::GridderBuffer* p) {
+//        delete p;
+//     }
+//
+//     void GridderBuffer_grid_visibilities(
+//         idg::api::GridderBuffer* p,
+//         int     timeIndex,
+//         int     antenna1,
+//         int     antenna2,
+//         double* uvwInMeters,
+//         float*  visibilities) // size CH x PL x 2
+//     {
+//         p->grid_visibilities(
+//             timeIndex,
+//             antenna1,
+//             antenna2,
+//             uvwInMeters,
+//             (complex<float>*) visibilities); // size CH x PL
+//     }
 
 //     void GridderBuffer_transform_grid(
 //         idg::api::GridderBuffer* p,
@@ -298,4 +298,4 @@ extern "C" {
 //             (complex<double> *) grid);
 //     }
 
-} // extern C
+// } // extern C

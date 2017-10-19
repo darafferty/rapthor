@@ -24,18 +24,23 @@ namespace api {
     public:
 
         static BufferSet* create(
-            Type architecture, 
-            size_t bufferTimesteps, 
-            std::vector<std::vector<double>> bands,
-            int nr_stations,
-            size_t width, 
-            float cellsize, 
-            float max_baseline,
-            float max_w,
-            options_type &options,
-            BufferSetType buffer_set_type);
+            Type architecture);
 
         virtual ~BufferSet() {};
+
+        virtual void init(
+            size_t width,
+            float cellsize,
+            float max_w,
+            options_type &options) = 0;
+
+        virtual void init_buffers(
+            size_t bufferTimesteps,
+            std::vector<std::vector<double>> bands,
+            int nr_stations,
+            float max_baseline,
+            options_type &options,
+            BufferSetType buffer_set_type) = 0;
 
         virtual DegridderBuffer* get_degridder(int i) = 0;
         virtual GridderBuffer* get_gridder(int i) = 0;

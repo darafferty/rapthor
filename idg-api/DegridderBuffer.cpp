@@ -10,9 +10,9 @@ namespace idg {
 namespace api {
 
     DegridderBufferImpl::DegridderBufferImpl(
-        Type architecture,
+        proxy::Proxy* proxy,
         size_t bufferTimesteps)
-        : BufferImpl(architecture, bufferTimesteps),
+        : BufferImpl(proxy, bufferTimesteps),
           m_bufferVisibilities2(0,0,0),
           m_buffer_full(false),
           m_data_read(true)
@@ -241,85 +241,85 @@ namespace api {
 // Rationale: calling the code from C code and Fortran easier,
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
-extern "C" {
-
-    idg::api::DegridderBuffer* DegridderBuffer_init(unsigned int type,
-                                           unsigned int bufferTimesteps)
-    {
-        auto proxytype = idg::api::Type::CPU_REFERENCE;
-        if (type == 0) {
-            proxytype = idg::api::Type::CPU_REFERENCE;
-        } else if (type == 1) {
-            proxytype = idg::api::Type::CPU_OPTIMIZED;
-        }
-        return new idg::api::DegridderBufferImpl(proxytype, bufferTimesteps);
-    }
-
-    void DegridderBuffer_destroy(idg::api::DegridderBuffer* p) {
-       delete p;
-    }
-
-    // void DegridderBuffer_request_visibilities(
-    //     idg::DegridderBuffer* p,
-    //     int timeIndex,
-    //     int antenna1,
-    //     int antenna2,
-    //     double* uvwInMeters)
-    // {
-    //     p->request_visibilities(
-    //         timeIndex,
-    //         antenna1,
-    //         antenna2,
-    //         uvwInMeters);
-    // }
-
-    int DegridderBuffer_request_visibilities_with_rowid(
-        idg::api::DegridderBuffer* p,
-        int rowId,
-        int timeIndex,
-        int antenna1,
-        int antenna2,
-        double* uvwInMeters)
-    {
-        bool data_avail = p->request_visibilities(
-            rowId,
-            timeIndex,
-            antenna1,
-            antenna2,
-            uvwInMeters);
-        if (data_avail) return 1;
-        else return 0;
-    }
-
-//     void DegridderBuffer_read_visibilities(
-//         idg::DegridderBuffer* p,
+// extern "C" {
+//
+//     idg::api::DegridderBuffer* DegridderBuffer_init(unsigned int type,
+//                                            unsigned int bufferTimesteps)
+//     {
+//         auto proxytype = idg::api::Type::CPU_REFERENCE;
+//         if (type == 0) {
+//             proxytype = idg::api::Type::CPU_REFERENCE;
+//         } else if (type == 1) {
+//             proxytype = idg::api::Type::CPU_OPTIMIZED;
+//         }
+//         return new idg::api::DegridderBufferImpl(proxytype, bufferTimesteps);
+//     }
+//
+//     void DegridderBuffer_destroy(idg::api::DegridderBuffer* p) {
+//        delete p;
+//     }
+//
+//     // void DegridderBuffer_request_visibilities(
+//     //     idg::DegridderBuffer* p,
+//     //     int timeIndex,
+//     //     int antenna1,
+//     //     int antenna2,
+//     //     double* uvwInMeters)
+//     // {
+//     //     p->request_visibilities(
+//     //         timeIndex,
+//     //         antenna1,
+//     //         antenna2,
+//     //         uvwInMeters);
+//     // }
+//
+//     int DegridderBuffer_request_visibilities_with_rowid(
+//         idg::api::DegridderBuffer* p,
+//         int rowId,
 //         int timeIndex,
 //         int antenna1,
 //         int antenna2,
-//         void* visibilities) // ptr to complex<float>
+//         double* uvwInMeters)
 //     {
-//         p->read_visibilities(
+//         bool data_avail = p->request_visibilities(
+//             rowId,
 //             timeIndex,
 //             antenna1,
 //             antenna2,
-//             (complex<float>*) visibilities);
+//             uvwInMeters);
+//         if (data_avail) return 1;
+//         else return 0;
 //     }
-
-
-//     void DegridderBuffer_transform_grid(
-//         idg::api::DegridderBuffer* p,
-//         double crop_tolarance,
-//         int nr_polarizations,
-//         int height,
-//         int width,
-//         void *grid)
-//     {
-//         p->transform_grid(
-//             crop_tolarance,
-//             nr_polarizations,
-//             height,
-//             width,
-//             (complex<double> *) grid);
-//     }
-
-} // extern C
+//
+// //     void DegridderBuffer_read_visibilities(
+// //         idg::DegridderBuffer* p,
+// //         int timeIndex,
+// //         int antenna1,
+// //         int antenna2,
+// //         void* visibilities) // ptr to complex<float>
+// //     {
+// //         p->read_visibilities(
+// //             timeIndex,
+// //             antenna1,
+// //             antenna2,
+// //             (complex<float>*) visibilities);
+// //     }
+//
+//
+// //     void DegridderBuffer_transform_grid(
+// //         idg::api::DegridderBuffer* p,
+// //         double crop_tolarance,
+// //         int nr_polarizations,
+// //         int height,
+// //         int width,
+// //         void *grid)
+// //     {
+// //         p->transform_grid(
+// //             crop_tolarance,
+// //             nr_polarizations,
+// //             height,
+// //             width,
+// //             (complex<double> *) grid);
+// //     }
+//
+// } // extern C

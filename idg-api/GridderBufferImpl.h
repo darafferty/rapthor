@@ -54,7 +54,7 @@ namespace api {
     public:
         // Constructors and destructor
         GridderBufferImpl(
-            Type architecture = Type::CPU_REFERENCE,
+            proxy::Proxy* proxy,
             size_t bufferTimesteps = 4096);
 
         virtual ~GridderBufferImpl();
