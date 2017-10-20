@@ -248,7 +248,6 @@ endif(BUILD_LIB_OPENCL)
 
 add_library(idg
     idg.cpp
-    $<TARGET_OBJECTS:common>
     $<TARGET_OBJECTS:fft>
 )
 
