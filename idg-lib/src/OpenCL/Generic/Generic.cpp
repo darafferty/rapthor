@@ -369,9 +369,6 @@ namespace idg {
                 // End timing
                 total_runtime_gridding += omp_get_wtime();
 
-                // Workaround for synchronization bug when using wait() after gridding iteration
-                total_runtime_gridding = total_runtime_gridder + total_runtime_fft + total_runtime_adder;
-
                 // Add grids
                 for (int d = 0; d < nr_devices; d++) {
                     InstanceOpenCL& device = get_device(d);
@@ -654,9 +651,6 @@ namespace idg {
 
                 // End timing
                 total_runtime_degridding += omp_get_wtime();
-
-                // Workaround for synchronization bug when using wait() after degridding iteration
-                total_runtime_degridding = total_runtime_degridder + total_runtime_fft + total_runtime_splitter;
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
