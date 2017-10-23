@@ -4,8 +4,3 @@ project(hybrid)
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
     add_subdirectory(CUDA)
 endif()
-
-if (BUILD_LIB_CPU AND BUILD_LIB_OPENCL)
-    # TODO: reimplement
-    #add_subdirectory(OpenCL)
-endif()
