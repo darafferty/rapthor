@@ -112,6 +112,14 @@ namespace idg{
             }
 
             void update_fft_shift(
+                powersensor::State& startState,
+                powersensor::State& endState)
+            {
+                fft_shift_enabled = true;
+                update(state_fft_shift, startState, endState);
+            }
+
+            void update_fft_shift(
                 double runtime)
             {
                 fft_shift_enabled = true;
