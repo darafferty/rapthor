@@ -44,7 +44,6 @@ namespace idg {
 
                 // Load device
                 InstanceCUDA &device = get_device(0);
-                PowerSensor *devicePowerSensor = device.get_powersensor();
 
                 // Initialize
                 cu::Stream& stream = device.get_execute_stream();
@@ -61,7 +60,7 @@ namespace idg {
                 PowerRecord powerRecords[5];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
-                powerStates[2] = devicePowerSensor->read();
+                powerStates[2] = device.measure();
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
@@ -101,7 +100,7 @@ namespace idg {
                 // End measurements
                 stream.synchronize();
                 powerStates[1] = hostPowerSensor->read();
-                powerStates[3] = devicePowerSensor->read();
+                powerStates[3] = device.measure();
 
                 #if defined(REPORT_TOTAL)
                 report.update_input(powerRecords[0].state, powerRecords[1].state);
@@ -243,7 +242,6 @@ namespace idg {
                     cu::Event outputReady;
 
                     // Power measurement
-                    PowerSensor *devicePowerSensor = device.get_powersensor();
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
                         startStates[nr_devices] = hostPowerSensor->read();
@@ -485,7 +483,6 @@ namespace idg {
                     cu::Event outputFree;
 
                     // Power measurement
-                    PowerSensor *devicePowerSensor = device.get_powersensor();
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
                     }

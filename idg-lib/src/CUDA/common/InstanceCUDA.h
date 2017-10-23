@@ -35,7 +35,6 @@ namespace idg {
 
                     std::string get_compiler_flags();
 
-                    powersensor::PowerSensor* get_powersensor() { return powerSensor; };
                     powersensor::State measure();
                     void measure(PowerRecord &record, cu::Stream &stream);
 
