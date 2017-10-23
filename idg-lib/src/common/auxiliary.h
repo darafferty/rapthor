@@ -135,8 +135,8 @@ namespace idg {
         /*
             Performance reporting
          */
-        const std::string name_gridding("|gridding");
-        const std::string name_degridding("|degridding");
+        const std::string name_gridding("gridding");
+        const std::string name_degridding("degridding");
         const std::string name_adding("|adding");
         const std::string name_splitting("|splitting");
         const std::string name_adder("adder");
@@ -145,6 +145,11 @@ namespace idg {
         const std::string name_degridder("degridder");
         const std::string name_subgrid_fft("sub-fft");
         const std::string name_grid_fft("grid-fft");
+        const std::string name_fft_shift("fft-shift");
+        const std::string name_fft_scale("fft-scale");
+        const std::string name_scaler("scaler");
+        const std::string name_host("host");
+        const std::string name_device("device");
 
         void report(
             const std::string name,
@@ -155,7 +160,7 @@ namespace idg {
             double runtime,
             uint64_t flops,
             uint64_t bytes,
-            double watt=0);
+            double joules=0);
 
         void report(
             const std::string name,

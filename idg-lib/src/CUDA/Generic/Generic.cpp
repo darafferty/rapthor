@@ -57,6 +57,7 @@ namespace idg {
                 cu::HostMemory& h_grid = device.get_host_grid(grid_size, grid.data());
 
                 // Performance measurements
+                Report report(0, 0, grid_size);
                 PowerRecord powerRecords[5];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
@@ -103,25 +104,15 @@ namespace idg {
                 powerStates[3] = devicePowerSensor->read();
 
                 #if defined(REPORT_TOTAL)
-                auxiliary::report("     input",
-                                  0, sizeof_grid,
-                                  devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
-                auxiliary::report("  plan-fft",
-                                  devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state),
-                                  0, 0, 0);
-                auxiliary::report("  grid-fft",
-                                  auxiliary::flops_fft(grid_size, 1), auxiliary::bytes_fft(grid_size, 1),
-                                  devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
-                auxiliary::report("    output",
-                                  0, sizeof_grid,
-                                  devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
-                auxiliary::report("  fftshift", time_shift/2, 0, sizeof_grid * 2, 0);
-                if (direction == FourierDomainToImageDomain) {
-                auxiliary::report("grid-scale", time_scale/2, 0, sizeof_grid * 2, 0);
-                }
-                auxiliary::report("|host", 0, 0, hostPowerSensor, powerStates[0], powerStates[1]);
-                auxiliary::report("|device", 0, 0, devicePowerSensor, powerStates[2], powerStates[3]);
-                std::cout << std::endl;
+                report.update_input(powerRecords[0].state, powerRecords[1].state);
+                report.update_grid_fft(powerRecords[2].state, powerRecords[3].state);
+                report.update_output(powerRecords[3].state, powerRecords[4].state);
+                report.update_fft_shift(time_shift);
+                report.update_fft_scale(time_scale);
+                report.update_host(powerStates[0], powerStates[1]);
+                report.print_total();
+                report.print_device(powerRecords[0].state, powerRecords[4].state);
+                clog << endl;
                 #endif
             } // end transform
 
@@ -170,7 +161,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 2;
+                const int nr_streams = 1;
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
@@ -203,14 +194,9 @@ namespace idg {
                 }
 
                 // Performance measurements
-                double total_runtime_gridder  = 0;
-                double total_runtime_fft      = 0;
-                double total_runtime_scaler   = 0;
-                double total_runtime_adder    = 0;
-                double total_runtime_gridding = 0;
-                State startStates[nr_devices+1];
-                State stopStates[nr_devices+1];
-                startStates[nr_devices] = hostPowerSensor->read();
+                Report report(nr_channels, subgrid_size, 0);
+                vector<State> startStates(nr_devices+1);
+                vector<State> endStates(nr_devices+1);
 
                 // Locks
                 int locks[nr_devices];
@@ -258,14 +244,12 @@ namespace idg {
 
                     // Power measurement
                     PowerSensor *devicePowerSensor = device.get_powersensor();
-                    PowerRecord powerRecords[5];
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
+                        startStates[nr_devices] = hostPowerSensor->read();
                     }
 
                     #pragma omp barrier
-                    #pragma omp single
-                    total_runtime_gridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         unsigned int first_bl, last_bl, current_nr_baselines;
@@ -280,7 +264,7 @@ namespace idg {
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                         // Power measurement
-                        PowerRecord powerRecords[5];
+                        vector<PowerRecord> powerRecords(5);
 
                         #pragma omp critical (lock)
                         {
@@ -321,27 +305,14 @@ namespace idg {
 
                         outputReady.synchronize();
 
-                        #if defined(REPORT_VERBOSE)
-                        auxiliary::report("gridder", auxiliary::flops_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                                     auxiliary::bytes_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                                     devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
-                        auxiliary::report("sub-fft", auxiliary::flops_fft(subgrid_size, current_nr_subgrids),
-                                                     auxiliary::bytes_fft(subgrid_size, current_nr_subgrids),
-                                                     devicePowerSensor, powerRecords[1].state, powerRecords[2].state);
-                        auxiliary::report(" scaler", auxiliary::flops_scaler(current_nr_subgrids, subgrid_size),
-                                                     auxiliary::bytes_scaler(current_nr_subgrids, subgrid_size),
-                                                     devicePowerSensor, powerRecords[2].state, powerRecords[3].state);
-                        auxiliary::report("  adder", auxiliary::flops_adder(current_nr_subgrids, subgrid_size),
-                                                     auxiliary::bytes_adder(current_nr_subgrids, subgrid_size),
-                                                     devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
-                        #endif
-                        #if defined(REPORT_TOTAL)
+                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                         #pragma omp critical
                         {
-                            total_runtime_gridder += devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
-                            total_runtime_fft     += devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
-                            total_runtime_scaler  += devicePowerSensor->seconds(powerRecords[2].state, powerRecords[3].state);
-                            total_runtime_adder   += devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
+                            report.update_gridder(powerRecords[0].state, powerRecords[1].state);
+                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
+                            report.update_scaler(powerRecords[2].state, powerRecords[3].state);
+                            report.update_adder(powerRecords[3].state, powerRecords[4].state);
+                            report.print(current_nr_timesteps, current_nr_subgrids);
                         }
                         #endif
                     } // end for bl
@@ -349,21 +320,23 @@ namespace idg {
                     // Wait for all jobs to finish
                     executestream.synchronize();
 
-                    // End power measurement
+                    // End measurement
                     if (local_id == 0) {
-                        stopStates[device_id] = device.measure();
+                        endStates[device_id] = device.measure();
+                    }
+                    if (global_id == 0) {
+                        endStates[nr_devices] = hostPowerSensor->read();
+                        report.update_host(startStates[nr_devices], endStates[nr_devices]);
                     }
 
                     // Copy grid to host
                     if (local_id == 0) {
                         dtohstream.memcpyDtoHAsync(h_grid, d_grid, auxiliary::sizeof_grid(grid_size));
                     }
-                    dtohstream.synchronize();
-                } // end omp parallel
 
-                // End timing
-                stopStates[nr_devices]  = hostPowerSensor->read();
-                total_runtime_gridding += omp_get_wtime();
+                    dtohstream.synchronize();
+                    endStates[nr_devices] = hostPowerSensor->read();
+                } // end omp parallel
 
                 // Add grids
                 for (int d = 1; d < get_num_devices(); d++) {
@@ -377,39 +350,16 @@ namespace idg {
                 }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceCUDA& device          = get_device(0);
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
                 auto total_nr_visibilities    = plan.get_nr_visibilities();
-                uint64_t total_flops_gridder  = auxiliary::flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_gridder  = auxiliary::bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_fft      = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_bytes_fft      = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_flops_scaler   = auxiliary::flops_scaler(total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_scaler   = auxiliary::bytes_scaler(total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_adder    = auxiliary::flops_adder(total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_adder    = auxiliary::bytes_adder(total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_gridding = total_flops_gridder + total_flops_fft + total_flops_scaler + total_flops_adder;
-                uint64_t total_bytes_gridding = total_bytes_gridder + total_bytes_fft + total_bytes_scaler + total_bytes_adder;
-                auxiliary::report("|gridder", total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-                auxiliary::report("|scaler", total_runtime_scaler, total_flops_scaler, total_bytes_scaler);
-                auxiliary::report("|adder", total_runtime_adder, total_flops_adder, total_bytes_adder);
-                auxiliary::report_visibilities("|gridding", total_runtime_gridding, total_nr_visibilities);
-
-                // Report host power consumption
-                auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
-
-                // Report device power consumption
-                for (int d = 0; d < get_num_devices(); d++) {
-                    PowerSensor* devicePowerSensor = get_device(d).get_powersensor();
-                    stringstream message;
-                    message << "|device" << d;
-                    auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
-                }
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
+                startStates.pop_back(); endStates.pop_back();
+                report.print_devices(startStates, endStates);
+                report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                 clog << endl;
                 #endif
-            } //end gridding
+            } // end gridding
 
 
             void Generic::do_degridding(
@@ -486,13 +436,9 @@ namespace idg {
                 }
 
                 // Performance measurements
-                double total_runtime_degridder  = 0;
-                double total_runtime_fft        = 0;
-                double total_runtime_splitter   = 0;
-                double total_runtime_degridding = 0;
-                State startStates[nr_devices+1];
-                State stopStates[nr_devices+1];
-                startStates[nr_devices] = hostPowerSensor->read();
+                Report report(nr_channels, subgrid_size, 0);
+                vector<State> startStates(nr_devices+1);
+                vector<State> endStates(nr_devices+1);
 
                 // Locks
                 int locks[nr_devices];
@@ -540,14 +486,14 @@ namespace idg {
 
                     // Power measurement
                     PowerSensor *devicePowerSensor = device.get_powersensor();
-                    PowerRecord powerRecords[5];
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
                     }
+                    if (global_id == 0) {
+                        startStates[nr_devices] = hostPowerSensor->read();
+                    }
 
                     #pragma omp barrier
-                    #pragma omp single
-                    total_runtime_degridding = -omp_get_wtime();
                     #pragma omp for schedule(dynamic)
                     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                         unsigned int first_bl, last_bl, current_nr_baselines;
@@ -562,7 +508,7 @@ namespace idg {
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                         // Power measurement
-                        PowerRecord powerRecords[5];
+                        vector<PowerRecord> powerRecords(5);
 
                         #pragma omp critical (lock)
                         {
@@ -605,68 +551,38 @@ namespace idg {
 
                         outputFree.synchronize();
 
-                        double runtime_splitter  = devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
-                        double runtime_fft       = devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
-                        double runtime_degridder = devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
-                        #if defined(REPORT_VERBOSE)
-                        auxiliary::report(" splitter", auxiliary::flops_splitter(current_nr_subgrids, subgrid_size),
-                                                       auxiliary::bytes_splitter(current_nr_subgrids, subgrid_size),
-                                                       devicePowerSensor, powerRecords[0].state, powerRecords[1].state);
-                        auxiliary::report("  sub-fft", auxiliary::flops_fft(subgrid_size, current_nr_subgrids),
-                                                       auxiliary::bytes_fft(subgrid_size, current_nr_subgrids),
-                                                       devicePowerSensor, powerRecords[1].state, powerRecords[2].state);
-                        auxiliary::report("degridder", auxiliary::flops_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                                       auxiliary::bytes_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                                       devicePowerSensor, powerRecords[3].state, powerRecords[4].state);
-                        #endif
-                        #if defined(REPORT_TOTAL)
-                        total_runtime_splitter  += devicePowerSensor->seconds(powerRecords[0].state, powerRecords[1].state);
-                        total_runtime_fft       += devicePowerSensor->seconds(powerRecords[1].state, powerRecords[2].state);
-                        total_runtime_degridder += devicePowerSensor->seconds(powerRecords[3].state, powerRecords[4].state);
+                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                        #pragma omp critical
+                        {
+                            report.update_splitter(powerRecords[0].state, powerRecords[1].state);
+                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
+                            report.update_degridder(powerRecords[3].state, powerRecords[4].state);
+                            report.print(current_nr_timesteps, current_nr_subgrids);
+                        }
                         #endif
                     } // end for bl
 
                     // Wait for all jobs to finish
                     dtohstream.synchronize();
 
-                    // End power measurement
+                    // End measurement
                     if (local_id == 0) {
-                        stopStates[device_id] = device.measure();
+                        endStates[device_id] = device.measure();
                     }
                 } // end omp parallel
 
-                // End timing
-                stopStates[nr_devices]    = hostPowerSensor->read();
-                total_runtime_degridding += omp_get_wtime();
+                // End measurement
+                endStates[nr_devices] = hostPowerSensor->read();
+                report.update_host(startStates[nr_devices], endStates[nr_devices]);
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                InstanceCUDA& device            = get_device(0);
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
                 auto total_nr_timesteps         = plan.get_nr_timesteps();
                 auto total_nr_visibilities      = plan.get_nr_visibilities();
-                uint64_t total_flops_splitter   = auxiliary::flops_splitter(total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_splitter   = auxiliary::bytes_splitter(total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_fft        = auxiliary::flops_fft(subgrid_size, total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_fft        = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_degridder  = auxiliary::flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_degridder  = auxiliary::bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft + total_flops_splitter;
-                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft + total_bytes_splitter;
-                auxiliary::report("|splitter", total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
-                auxiliary::report("|sub-fft", total_runtime_fft, total_flops_fft, total_bytes_fft);
-                auxiliary::report("|degridder", total_runtime_degridder, total_flops_degridder, total_bytes_degridder);
-                auxiliary::report_visibilities("|degridding", total_runtime_degridding, total_nr_visibilities);
-
-                // Report host power consumption
-                auxiliary::report("|host", 0, 0, hostPowerSensor, startStates[nr_devices], stopStates[nr_devices]);
-
-                // Report device power consumption
-                for (int d = 0; d < get_num_devices(); d++) {
-                    PowerSensor* devicePowerSensor = get_device(d).get_powersensor();
-                    stringstream message;
-                    message << "|device" << d;
-                    auxiliary::report(message.str().c_str(), 0, 0, devicePowerSensor, startStates[d], stopStates[d]);
-                }
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
+                startStates.pop_back(); endStates.pop_back();
+                report.print_devices(startStates, endStates);
+                report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                 clog << endl;
                 #endif
             } // end degridding
