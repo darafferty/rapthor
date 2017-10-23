@@ -170,22 +170,10 @@ namespace idg {
             powersensor::State startState,
             powersensor::State endState);
 
-        void report_runtime(
-            double runtime);
-
         void report_visibilities(
             const std::string name,
             double runtime,
     		uint64_t nr_visibilities);
-
-        void report_subgrids(
-            const std::string name,
-            double runtime,
-            uint64_t nr_subgrids);
-
-        void report_subgrids(
-            double runtime,
-            uint64_t nr_subgrids);
 
         /*
             Misc

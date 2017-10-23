@@ -330,14 +330,6 @@ namespace idg {
             return;
        }
 
-        void report_runtime(
-            double runtime)
-        {
-            clog << setw(FW1) << left << "runtime: "
-                 << setw(FW2) << right << scientific << setprecision(4)
-                 << runtime << " s" << endl;
-        }
-
         void report_visibilities(
             string name,
             double runtime,
@@ -347,24 +339,6 @@ namespace idg {
                  << fixed << setprecision(2)
                  << 1e-6 * nr_visibilities / runtime
                  << " Mvisibilities/s" << endl;
-        }
-
-        void report_subgrids(
-            double runtime,
-            uint64_t nr_subgrids)
-        {
-            clog << "throughput: " << 1e-3 * nr_subgrids / runtime
-                 << " Ksubgrids/s" << endl;
-        }
-
-        void report_subgrids(
-            string name,
-            double runtime,
-            uint64_t nr_subgrids)
-        {
-            clog << setw(FW1) << left << string(name) + ": "
-                 << 1e-3 * nr_subgrids / runtime
-                 << " Ksubgrids/s" << endl;
         }
 
         /*
