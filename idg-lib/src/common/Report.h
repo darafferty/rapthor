@@ -160,60 +160,60 @@ namespace idg{
                 auto grid_size    = parameters.grid_size;
 
                 if (gridder_enabled) {
-                auxiliary::report(
-                    prefix + auxiliary::name_gridder,
-                    total ? state_gridder.total_seconds : state_gridder.current_seconds,
-                    auxiliary::flops_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
-                    auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
-                    total ? state_gridder.total_joules : state_gridder.current_joules);
+                    auxiliary::report(
+                        prefix + auxiliary::name_gridder,
+                        total ? state_gridder.total_seconds : state_gridder.current_seconds,
+                        total ? state_gridder.total_joules : state_gridder.current_joules,
+                        auxiliary::flops_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
+                        auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size));
                 }
                 if (degridder_enabled) {
                     auxiliary::report(
                         prefix + auxiliary::name_degridder,
                         total ? state_degridder.total_seconds : state_degridder.current_seconds,
+                        total ? state_degridder.total_joules : state_degridder.current_joules,
                         auxiliary::flops_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
-                        auxiliary::bytes_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
-                        total ? state_degridder.total_joules : state_degridder.current_joules);
+                        auxiliary::bytes_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size));
                 }
                  if (subgrid_fft_enabled) {
                     auxiliary::report(
                         prefix + auxiliary::name_subgrid_fft,
                         total ? state_subgrid_fft.total_seconds : state_subgrid_fft.current_seconds,
+                        total ? state_subgrid_fft.total_joules : state_subgrid_fft.current_joules,
                         auxiliary::flops_fft(subgrid_size, nr_subgrids),
-                        auxiliary::bytes_fft(subgrid_size, nr_subgrids),
-                        total ? state_subgrid_fft.total_joules : state_subgrid_fft.current_joules);
+                        auxiliary::bytes_fft(subgrid_size, nr_subgrids));
                 }
                 if (adder_enabled) {
                     auxiliary::report(
                         prefix + auxiliary::name_adder,
                         total ? state_adder.total_seconds : state_adder.current_seconds,
+                        total ? state_adder.total_joules : state_adder.current_joules,
                         auxiliary::flops_adder(nr_subgrids, subgrid_size),
-                        auxiliary::bytes_adder(nr_subgrids, subgrid_size),
-                        total ? state_adder.total_joules : state_adder.current_joules);
+                        auxiliary::bytes_adder(nr_subgrids, subgrid_size));
                 }
                 if (splitter_enabled) {
                     auxiliary::report(
                         prefix + auxiliary::name_splitter,
                         total ? state_splitter.total_seconds : state_splitter.current_seconds,
+                        total ? state_splitter.total_joules : state_splitter.current_joules,
                         auxiliary::flops_splitter(nr_subgrids, subgrid_size),
-                        auxiliary::bytes_splitter(nr_subgrids, subgrid_size),
-                        total ? state_splitter.total_joules : state_splitter.current_joules);
+                        auxiliary::bytes_splitter(nr_subgrids, subgrid_size));
                 }
                 if (scaler_enabled) {
                     auxiliary::report(
                         prefix + auxiliary::name_scaler,
                         total ? state_scaler.total_seconds : state_scaler.current_seconds,
+                        total ? state_scaler.total_joules : state_scaler.current_joules,
                         auxiliary::flops_scaler(nr_subgrids, subgrid_size),
-                        auxiliary::bytes_scaler(nr_subgrids, subgrid_size),
-                        total ? state_scaler.total_joules : state_scaler.current_joules);
+                        auxiliary::bytes_scaler(nr_subgrids, subgrid_size));
                 }
                 if (grid_fft_enabled) {
                     auxiliary::report(
                         prefix + auxiliary::name_grid_fft,
                         total ? state_grid_fft.total_seconds : state_grid_fft.current_seconds,
+                        total ? state_grid_fft.total_joules : state_grid_fft.current_joules,
                         auxiliary::flops_fft(grid_size, 1),
-                        auxiliary::bytes_fft(grid_size, 1),
-                        total ? state_grid_fft.total_joules : state_grid_fft.current_joules);
+                        auxiliary::bytes_fft(grid_size, 1));
                 }
                 if (fft_shift_enabled) {
                     auxiliary::report(
@@ -231,9 +231,9 @@ namespace idg{
                     auxiliary::report(
                         prefix + auxiliary::name_host,
                         total ? state_host.total_seconds : state_host.current_seconds,
-                        0, 0,
-                        total ? state_host.total_joules : state_host.current_joules);
-                    }
+                        total ? state_host.total_joules : state_host.current_joules,
+                        0, 0);
+                }
             }
 
             void print_total(
@@ -265,7 +265,7 @@ namespace idg{
                     }
                     double seconds = powersensor::DummyPowerSensor::seconds(startState, endState);
                     double joules  = powersensor::DummyPowerSensor::Joules(startState, endState);
-                    auxiliary::report(name.str().c_str(), seconds, 0, 0, joules);
+                    auxiliary::report(name.str().c_str(), seconds, joules, 0, 0);
 
             }
             void print_devices(

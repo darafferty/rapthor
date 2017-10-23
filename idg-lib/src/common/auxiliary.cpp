@@ -266,9 +266,9 @@ namespace idg {
         void report(
             string name,
             double runtime,
+            double joules,
             uint64_t flops,
-            uint64_t bytes,
-            double joules)
+            uint64_t bytes)
         {
             double watt = joules / runtime;
             #pragma omp critical (clog)
