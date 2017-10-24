@@ -1,6 +1,8 @@
 #include "Generic.h"
 #include "InstanceCUDA.h"
 
+#define ENABLE_ZERO_VISIBILITIES 0
+
 using namespace std;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
@@ -518,9 +520,11 @@ namespace idg {
                                 auxiliary::sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
 
+                            #if ENABLE_ZERO_VISIBILITIES
                             // Initialize visibilities to zero
                             d_visibilities.zero(htodstream);
                             htodstream.record(zeroReady);
+                            #endif
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
@@ -536,7 +540,9 @@ namespace idg {
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
+                            #if ENABLE_ZERO_VISIBILITIES
                             executestream.waitEvent(zeroReady);
+                            #endif
                             device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
