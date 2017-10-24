@@ -160,7 +160,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 1;
+                const int nr_streams = 2;
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
@@ -188,7 +188,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_grid, h_grid);
                     } else {
                         cu::HostMemory& h_grid = device.get_host_grid(grid_size);
-                        d_grid.zero();
+                        d_grid.zero(htodstream);
                     }
                 }
 
@@ -481,6 +481,7 @@ namespace idg {
                     cu::Event inputReady;
                     cu::Event outputReady;
                     cu::Event outputFree;
+                    cu::Event zeroReady;
 
                     // Power measurement
                     if (local_id == 0) {
@@ -507,17 +508,19 @@ namespace idg {
                         // Power measurement
                         vector<PowerRecord> powerRecords(5);
 
+
                         #pragma omp critical (lock)
                         {
-                            // Initialize visibilities to zero
-                            d_visibilities.zero();
-
                             // Copy input data to device
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
                                 auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                                 auxiliary::sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
+
+                            // Initialize visibilities to zero
+                            d_visibilities.zero(htodstream);
+                            htodstream.record(zeroReady);
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
@@ -533,6 +536,7 @@ namespace idg {
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
+                            executestream.waitEvent(zeroReady);
                             device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,

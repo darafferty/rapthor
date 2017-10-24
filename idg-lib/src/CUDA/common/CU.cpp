@@ -293,9 +293,14 @@ namespace cu {
         return (void *) (_ptr + offset);
     }
 
-    void DeviceMemory::zero() {
-        cuMemsetD8(_ptr, 0, _size);
+    void DeviceMemory::zero(CUstream stream) {
+        if (stream != NULL) {
+            cuMemsetD8Async(_ptr, 0, _size, stream);
+        } else {
+            cuMemsetD8(_ptr, 0, _size);
+        }
     }
+
 
 
     /*
