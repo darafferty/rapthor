@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.8.0)
 
+# Options
+option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
+
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR} CACHE PATH
