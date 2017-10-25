@@ -23,11 +23,11 @@ namespace powersensor {
 
     static const char *sensor_delimiter = ",";
 
-    #if not defined(HAVE_POWERSENSOR)
+    #if !defined(HAVE_POWERSENSOR)
     class State {
         public:
-            // Timestamp
             double timeAtRead;
+            double joulesAtRead;
     };
  
     class PowerSensor {
@@ -35,7 +35,7 @@ namespace powersensor {
         public:
             virtual ~PowerSensor() {}
     
-           virtual State read() = 0;
+            virtual State read() = 0;
     
             virtual double seconds(const State &firstState, const State &secondState) = 0;
             virtual double Joules(const State &firstState, const State &secondState) = 0;
@@ -46,7 +46,7 @@ namespace powersensor {
         public:
             static DummyPowerSensor* create();
     };
-    #endif // end if not defined(HAVE_POWERSENSOR)
+    #endif // end if !defined(HAVE_POWERSENSOR)
 
     PowerSensor* get_power_sensor(
         const std::string name,
