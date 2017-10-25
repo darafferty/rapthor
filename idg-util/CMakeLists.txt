@@ -77,7 +77,7 @@ configure_file(
 
 install(
     FILES
-    ${PROJECT_BINARY_DIR}/init-environment.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh
     DESTINATION
     ${CMAKE_INSTALL_PREFIX}
 )
