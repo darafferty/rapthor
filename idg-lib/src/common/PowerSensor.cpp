@@ -73,12 +73,13 @@ namespace powersensor {
     }
     
     double DummyPowerSensor_::Joules(const State &firstState, const State &secondState) {
-        return Watt(firstState, secondState) * seconds(firstState, secondState);
+        return secondState.joulesAtRead - firstState.joulesAtRead;
     }
     
     
     double DummyPowerSensor_::Watt(const State &firstState, const State &secondState) {
-        return 0;
+        return Joules(firstState, secondState) /
+               seconds(firstState, secondState);
     }
 
     #endif // end if not defined(HAVE_POWERSENSOR)

@@ -108,7 +108,7 @@ namespace cu {
             size_t size();
             void set(void *in);
             void* get(size_t offset);
-            void zero();
+            void zero(CUstream stream = NULL);
 
             template <typename T> operator T *() {
                 return static_cast<T *>(&_ptr);

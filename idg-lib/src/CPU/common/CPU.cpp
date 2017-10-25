@@ -85,20 +85,16 @@ namespace idg {
                 auto image_size   = cell_size * grid_size;
 
                 try {
-                    double runtime = -omp_get_wtime();
-
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
 
                     // Allocate memory for subgrids
                     Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
-                    runtime += omp_get_wtime();
-                    #if defined (REPORT_TOTAL)
-                    auxiliary::report("init", runtime);
-                    #endif
-
-                    runtime = -omp_get_wtime();
+                    // Performance measurements
+                    Report report(0, 0, 0);
+                    State powerStates[2];
+                    powerStates[0] = powerSensor->read();
 
                     // Run subroutines
                     grid_onto_subgrids(
@@ -119,22 +115,12 @@ namespace idg {
                         subgrids,
                         grid);
 
-                    runtime += omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
 
+                    // Performance report
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    uint64_t flops_gridder  = auxiliary::flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                    uint64_t bytes_gridder  = auxiliary::bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                    uint64_t flops_fft      = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
-                    uint64_t bytes_fft      = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
-                    uint64_t flops_adder    = auxiliary::flops_adder(total_nr_subgrids, subgrid_size);
-                    uint64_t bytes_adder    = auxiliary::bytes_adder(total_nr_subgrids, subgrid_size);
-                    uint64_t flops_gridding = flops_gridder + flops_fft + flops_adder;
-                    uint64_t bytes_gridding = bytes_gridder + bytes_fft + bytes_adder;
-                    auxiliary::report(auxiliary::name_gridding, runtime, flops_gridding, bytes_gridding);
-
                     auto total_nr_visibilities = plan.get_nr_visibilities();
-                    auxiliary::report_visibilities(auxiliary::name_gridding, runtime, total_nr_visibilities);
-                    clog << endl;
+                    report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                     #endif
 
                 } catch (const invalid_argument& e) {
@@ -192,20 +178,16 @@ namespace idg {
                 auto image_size   = cell_size * grid_size;
 
                 try {
-                    double runtime = -omp_get_wtime();
-
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
 
                     // Allocate memory for subgrids
                     Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
-                    runtime += omp_get_wtime();
-                    #if defined (REPORT_TOTAL)
-                    auxiliary::report("init", runtime);
-                    #endif
-
-                    runtime = -omp_get_wtime();
+                    // Performance measurements
+                    Report report(0, 0, 0);
+                    State powerStates[2];
+                    powerStates[0] = powerSensor->read();
 
                     // Run subroutines
                     split_grid_into_subgrids(
@@ -226,22 +208,12 @@ namespace idg {
                         aterms,
                         subgrids);
 
-                    runtime += omp_get_wtime();
+                    powerStates[1] = powerSensor->read();
 
+                    // Report performance
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    uint64_t flops_degridder  = auxiliary::flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                    uint64_t bytes_degridder  = auxiliary::bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                    uint64_t flops_fft        = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
-                    uint64_t bytes_fft        = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
-                    uint64_t flops_splitter   = auxiliary::flops_splitter(total_nr_subgrids, subgrid_size);
-                    uint64_t bytes_splitter   = auxiliary::bytes_splitter(total_nr_subgrids, subgrid_size);
-                    uint64_t flops_degridding = flops_degridder + flops_fft + flops_splitter;
-                    uint64_t bytes_degridding = bytes_degridder + bytes_fft + bytes_splitter;
-                    auxiliary::report(auxiliary::name_degridding, runtime, flops_degridding, bytes_degridding);
-
                     auto total_nr_visibilities = plan.get_nr_visibilities();
-                    auxiliary::report_visibilities(auxiliary::name_degridding, runtime, total_nr_visibilities);
-                    clog << endl;
+                    report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                     #endif
 
                 } catch (const invalid_argument& e) {
@@ -274,33 +246,40 @@ namespace idg {
                     auto grid_size = grid.get_x_dim();
                     auto nr_correlations = mConstants.get_nr_correlations();
 
+                    // Performance measurements
+                    Report report(0, 0, grid_size);
+                    State powerStates[4];
+
                     // FFT shift
+                    powerStates[0] = powerSensor->read();
                     if (direction == FourierDomainToImageDomain) {
                         kernels.shift(grid); // TODO: integrate into adder?
                     } else {
                         kernels.shift(grid); // TODO: remove
                     }
-
-                    // Run FFT
-                    State powerStates[2];
-                    powerStates[0] = powerSensor->read();
-                    kernels.run_fft(grid_size, grid_size, 1, grid.data(), sign);
                     powerStates[1] = powerSensor->read();
 
+                    // Run FFT
+                    kernels.run_fft(grid_size, grid_size, 1, grid.data(), sign);
+
                     // FFT shift
+                    powerStates[2] = powerSensor->read();
                     if (direction == FourierDomainToImageDomain)
                         kernels.shift(grid); // TODO: remove
                     else
                         kernels.shift(grid); // TODO: integrate into splitter?
+                    powerStates[3] = powerSensor->read();
 
                     // Report performance
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                    auxiliary::report(auxiliary::name_grid_fft,
-                                      auxiliary::flops_fft(grid_size, 1),
-                                      auxiliary::bytes_fft(grid_size, 1),
-                                      powerSensor, powerStates[0], powerStates[1]);
+                    report.update_fft_shift(powerStates[0], powerStates[1]);
+                    report.update_grid_fft(powerStates[1], powerStates[2]);
+                    report.update_fft_shift(powerStates[2], powerStates[3]);
+                    report.update_host(powerStates[0], powerStates[3]);
+                    report.print_total();
                     clog << endl;
                     #endif
+
                 } catch (const exception& e) {
                     cerr << __func__ << " caught exception: "
                          << e.what() << endl;
@@ -338,10 +317,8 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
 
                 // Performance measurements
-                double total_runtime_gridding = 0;
-                double total_runtime_gridder  = 0;
-                double total_runtime_fft      = 0;
-                State powerStates[4];
+                Report report(nr_channels, subgrid_size, 0);
+                State powerStates[3];
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -383,39 +360,21 @@ namespace idg {
                     powerStates[1] = powerSensor->read();
 
                     // FFT kernel
-                    powerStates[2] = powerSensor->read();
                     kernels.run_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
-                    powerStates[3] = powerSensor->read();
+                    powerStates[2] = powerSensor->read();
 
                     // Performance reporting
-                    #if defined(REPORT_VERBOSE)
-                    auxiliary::report(auxiliary::name_gridder,
-                                      auxiliary::flops_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                      auxiliary::bytes_gridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                      powerSensor, powerStates[0], powerStates[1]);
-                    auxiliary::report(auxiliary::name_subgrid_fft,
-                                      auxiliary::flops_fft(subgrid_size, current_nr_subgrids),
-                                      auxiliary::bytes_fft(subgrid_size, current_nr_subgrids),
-                                      powerSensor, powerStates[2], powerStates[3]);
-                    #endif
-                    #if defined(REPORT_TOTAL)
-                    double runtime_gridder = powerSensor->seconds(powerStates[0], powerStates[1]);
-                    double runtime_fft     = powerSensor->seconds(powerStates[2], powerStates[3]);
-                    total_runtime_gridder += runtime_gridder;
-                    total_runtime_fft     += runtime_fft;
+                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
+                    report.update_gridder(powerStates[0], powerStates[1]);
+                    report.update_subgrid_fft(powerStates[1], powerStates[2]);
+                    report.print(current_nr_timesteps, current_nr_subgrids);
                     #endif
                 } // end for bl
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                clog << endl;
                 auto total_nr_subgrids  = plan.get_nr_subgrids();
                 auto total_nr_timesteps = plan.get_nr_timesteps();
-                uint64_t total_flops_gridder  = auxiliary::flops_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_gridder  = auxiliary::bytes_gridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_fft      = auxiliary::flops_fft(subgrid_size, total_nr_subgrids);
-                uint64_t total_bytes_fft      = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids);
-                auxiliary::report(auxiliary::name_gridder, total_runtime_gridder, total_flops_gridder, total_bytes_gridder);
-                auxiliary::report(auxiliary::name_subgrid_fft, total_runtime_fft, total_flops_fft, total_bytes_fft);
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
                 clog << endl;
                 #endif
             } // end grid_onto_subgrids
@@ -438,16 +397,14 @@ namespace idg {
                 auto subgrid_size = subgrids.get_y_dim();
 
                 // Performance measurements
-                double total_runtime_adding = 0;
-                double total_runtime_adder  = 0;
-                total_runtime_adding = -omp_get_wtime();
+                Report report(0, subgrid_size, 0);
                 State powerStates[2];
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Number of elements in job
                     int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                    auto nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
@@ -456,34 +413,23 @@ namespace idg {
 
                     powerStates[0] = powerSensor->read();
                     if (w_step == 0.0) {
-                        kernels.run_adder(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                        kernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
                     else {
-                        kernels.run_adder_wstack(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
+                        kernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
                     powerStates[1] = powerSensor->read();
 
-                    #if defined(REPORT_VERBOSE)
-                    auxiliary::report(auxiliary::name_adder,
-                                      auxiliary::flops_adder(nr_subgrids, subgrid_size),
-                                      auxiliary::bytes_adder(nr_subgrids, subgrid_size),
-                                      powerSensor, powerStates[0], powerStates[1]);
-                    #endif
-                    #if defined(REPORT_TOTAL)
-                    double runtime_adder = powerSensor->seconds(powerStates[0], powerStates[1]);
-                    total_runtime_adder += runtime_adder;
+                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
+                    report.update_adder(powerStates[0], powerStates[1]);
+                    report.print(0, current_nr_subgrids);
                     #endif
                 } // end for bl
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_adding += omp_get_wtime();
-                clog << endl;
-                auto nr_subgrids = plan.get_nr_subgrids();
-                uint64_t total_flops_adder = auxiliary::flops_adder(nr_subgrids, subgrid_size);
-                uint64_t total_bytes_adder = auxiliary::bytes_adder(nr_subgrids, subgrid_size);
-                auxiliary::report(auxiliary::name_adder, total_runtime_adder, total_flops_adder, total_bytes_adder);
-                auxiliary::report(auxiliary::name_adding, total_runtime_adding, total_flops_adder, total_bytes_adder);
-                auxiliary::report_subgrids(auxiliary::name_adding, total_runtime_adding, nr_subgrids);
+                auto total_nr_subgrids  = plan.get_nr_subgrids();
+                auto total_nr_timesteps = plan.get_nr_timesteps();
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
                 clog << endl;
                 #endif
             } // end add_subgrids_to_grid
@@ -505,16 +451,14 @@ namespace idg {
                 auto subgrid_size = subgrids.get_y_dim();
 
                 // Performance measurements
-                double total_runtime_splitting = 0;
-                double total_runtime_splitter  = 0;
-                total_runtime_splitting = -omp_get_wtime();
+                Report report(0, subgrid_size, 0);
                 State powerStates[2];
 
                 // Run splitter
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Number of elements in job
                     int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                    auto nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
+                    auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
 
                     // Pointers to the first element in processed batch
                     void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
@@ -523,33 +467,22 @@ namespace idg {
 
                     powerStates[0] = powerSensor->read();
                     if (w_step == 0.0) {
-                       kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                       kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     } else {
-                       kernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                       kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
                     powerStates[1] = powerSensor->read();
 
-                    #if defined(REPORT_VERBOSE)
-                    auxiliary::report(auxiliary::name_splitter,
-                                      auxiliary::flops_splitter(nr_subgrids, subgrid_size),
-                                      auxiliary::bytes_splitter(nr_subgrids, subgrid_size),
-                                      powerSensor, powerStates[0], powerStates[1]);
-                    #endif
-                    #if defined(REPORT_TOTAL)
-                    double runtime_splitter = powerSensor->seconds(powerStates[0], powerStates[1]);
-                    total_runtime_splitter += runtime_splitter;
+                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
+                    report.update_splitter(powerStates[0], powerStates[1]);
+                    report.print(0, current_nr_subgrids);
                     #endif
                 } // end for bl
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                total_runtime_splitting += omp_get_wtime();
-                clog << endl;
-                auto nr_subgrids = plan.get_nr_subgrids();
-                uint64_t total_flops_splitter = auxiliary::flops_splitter(nr_subgrids, subgrid_size);
-                uint64_t total_bytes_splitter = auxiliary::bytes_splitter(nr_subgrids, subgrid_size);
-                auxiliary::report(auxiliary::name_splitter, total_runtime_splitter, total_flops_splitter, total_bytes_splitter);
-                auxiliary::report(auxiliary::name_splitting, total_runtime_splitting, total_flops_splitter, total_bytes_splitter);
-                auxiliary::report_subgrids(auxiliary::name_splitting, total_runtime_splitting, nr_subgrids);
+                auto total_nr_subgrids  = plan.get_nr_subgrids();
+                auto total_nr_timesteps = plan.get_nr_timesteps();
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
                 clog << endl;
                 #endif
             } // end split_grid_into_subgrids
@@ -579,10 +512,8 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
 
                 // Performance measurements
-                double total_runtime_degridding = 0;
-                double total_runtime_degridder  = 0;
-                double total_runtime_fft        = 0;
-                State powerStates[4];
+                Report report(nr_channels, subgrid_size, 0);
+                State powerStates[3];
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -607,7 +538,6 @@ namespace idg {
                     powerStates[1] = powerSensor->read();
 
                     // Degridder kernel
-                    powerStates[2] = powerSensor->read();
                     kernels.run_degridder(
                         current_nr_subgrids,
                         grid_size,
@@ -623,40 +553,20 @@ namespace idg {
                         aterm_ptr,
                         metadata_ptr,
                         subgrids_ptr);
-                    powerStates[3] = powerSensor->read();
+                    powerStates[2] = powerSensor->read();
 
                     // Performance reporting
-                    #if defined(REPORT_VERBOSE)
-                    auxiliary::report(auxiliary::name_degridder,
-                                      auxiliary::flops_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                      auxiliary::bytes_degridder(nr_channels, current_nr_timesteps, current_nr_subgrids, subgrid_size),
-                                      powerSensor, powerStates[2], powerStates[3]);
-                    auxiliary::report(auxiliary::name_subgrid_fft,
-                                      auxiliary::flops_fft(subgrid_size, current_nr_subgrids),
-                                      auxiliary::flops_fft(subgrid_size, current_nr_subgrids),
-                                      powerSensor, powerStates[0], powerStates[1]);
-                    #endif
-                    #if defined(REPORT_TOTAL)
-                    double runtime_fft       = powerSensor->seconds(powerStates[0], powerStates[1]);
-                    double runtime_degridder = powerSensor->seconds(powerStates[2], powerStates[3]);
-                    total_runtime_fft       += runtime_fft;
-                    total_runtime_degridder += runtime_degridder;
+                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
+                    report.update_subgrid_fft(powerStates[0], powerStates[1]);
+                    report.update_degridder(powerStates[1], powerStates[2]);
+                    report.print(current_nr_timesteps, current_nr_subgrids);
                     #endif
                 } // end for bl
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                clog << endl;
                 auto total_nr_subgrids  = plan.get_nr_subgrids();
                 auto total_nr_timesteps = plan.get_nr_timesteps();
-                uint64_t total_flops_degridder  = auxiliary::flops_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_degridder  = auxiliary::bytes_degridder(nr_channels, total_nr_timesteps, total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_fft        = auxiliary::flops_fft(subgrid_size, total_nr_subgrids, subgrid_size);
-                uint64_t total_bytes_fft        = auxiliary::bytes_fft(subgrid_size, total_nr_subgrids, subgrid_size);
-                uint64_t total_flops_degridding = total_flops_degridder + total_flops_fft;
-                uint64_t total_bytes_degridding = total_bytes_degridder + total_bytes_fft;
-                auxiliary::report(auxiliary::name_degridder, total_runtime_degridder,
-                                  total_flops_degridder, total_bytes_degridder);
-                auxiliary::report(auxiliary::name_subgrid_fft, total_runtime_fft, total_flops_fft, total_bytes_fft);
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
                 clog << endl;
                 #endif
             } // end degrid_from_subgrids

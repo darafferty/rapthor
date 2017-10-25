@@ -266,10 +266,11 @@ namespace idg {
         void report(
             string name,
             double runtime,
+            double joules,
             uint64_t flops,
-            uint64_t bytes,
-            double watt)
+            uint64_t bytes)
         {
+            double watt = joules / runtime;
             #pragma omp critical (clog)
             {
                 clog << setw(FW1) << left << string(name) + ": "
@@ -305,6 +306,12 @@ namespace idg {
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << (flops / runtime * 1e-9) / watt << " GFLOPS/W";
                 }
+                if (joules != 0) {
+                    clog << ", ";
+                    clog << setw(FW2) << right  << fixed << setprecision(2)
+                                      << joules << " Joules";
+                }
+
             }
             clog << endl;
         }
@@ -318,59 +325,10 @@ namespace idg {
             powersensor::State endState)
         {
             double seconds = powerSensor->seconds(startState, endState);
-            double watts   = powerSensor->Watt(startState, endState);
             double joules  = powerSensor->Joules(startState, endState);
-            #pragma omp critical (clog)
-            {
-                clog << setw(FW1) << left << string(name) + ": "
-                     << setw(FW2) << right << scientific << setprecision(4)
-                     << seconds << " s";
-                #if defined(REPORT_OPS)
-                if (flops != 0) {
-                    clog << ", ";
-                    double gops = (flops / seconds) * 1e-9;
-                        clog << setw(FW2) << right << fixed << setprecision(2)
-                                          << gops << " GOPS";
-                }
-                #else
-                if (flops != 0) {
-                    clog << ", ";
-                    double gflops = (flops / seconds) * 1e-9;
-                        clog << setw(FW2) << right << fixed << setprecision(2)
-                                          << gflops << " GFLOPS";
-                }
-                #endif
-                if (bytes != 0) {
-                    clog << ", ";
-                    clog << setw(FW2) << right << fixed << setprecision(2)
-                                      << bytes / seconds * 1e-9 << " GB/s";
-                }
-                if (watts != 0) {
-                    clog << ", ";
-                    clog << setw(FW2) << right << fixed << setprecision(2)
-                                      << watts << " Watt";
-                }
-                if (flops != 0 && watts != 0) {
-                    clog << ", ";
-                    clog << setw(FW2) << right << fixed << setprecision(2)
-                                      << (flops / seconds * 1e-9) / watts << " GFLOPS/W";
-                }
-                if (joules != 0) {
-                    clog << ", ";
-                    clog << setw(FW2) << right  << fixed << setprecision(2)
-                                      << joules << " Joule";
-                }
-            }
-            clog << endl;
-        }
-
-        void report_runtime(
-            double runtime)
-        {
-            clog << setw(FW1) << left << "runtime: "
-                 << setw(FW2) << right << scientific << setprecision(4)
-                 << runtime << " s" << endl;
-        }
+            report(name, seconds, flops, bytes, joules);
+            return;
+       }
 
         void report_visibilities(
             string name,
@@ -381,24 +339,6 @@ namespace idg {
                  << fixed << setprecision(2)
                  << 1e-6 * nr_visibilities / runtime
                  << " Mvisibilities/s" << endl;
-        }
-
-        void report_subgrids(
-            double runtime,
-            uint64_t nr_subgrids)
-        {
-            clog << "throughput: " << 1e-3 * nr_subgrids / runtime
-                 << " Ksubgrids/s" << endl;
-        }
-
-        void report_subgrids(
-            string name,
-            double runtime,
-            uint64_t nr_subgrids)
-        {
-            clog << setw(FW1) << left << string(name) + ": "
-                 << 1e-3 * nr_subgrids / runtime
-                 << " Ksubgrids/s" << endl;
         }
 
         /*
