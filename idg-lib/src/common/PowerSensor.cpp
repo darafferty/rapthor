@@ -48,7 +48,7 @@ namespace powersensor {
     }
 
 
-    #if not defined(HAVE_POWERSENSOR)
+    #if !defined(HAVE_POWERSENSOR)
     class DummyPowerSensor_ : public DummyPowerSensor {
         public:
             virtual State read();
@@ -82,6 +82,6 @@ namespace powersensor {
                seconds(firstState, secondState);
     }
 
-    #endif // end if not defined(HAVE_POWERSENSOR)
+    #endif // end if !defined(HAVE_POWERSENSOR)
 
 } // end namespace powersensor
