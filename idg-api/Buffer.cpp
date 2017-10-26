@@ -369,45 +369,6 @@ namespace api {
         flush();
     }
 
-
-    void BufferImpl::fft_grid(
-        size_t nr_polarizations,
-        size_t height,
-        size_t width,
-        complex<float> *grid)
-    {
-        #pragma omp parallel for
-        for (int pol = 0; pol < m_nrPolarizations; pol++) {
-            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
-            fft2f(height, width, &grid[pol*height*width]);
-        }
-    }
-
-
-    void BufferImpl::ifft_grid(
-        size_t nr_polarizations,
-        size_t height,
-        size_t width,
-        complex<float> *grid)
-    {
-//         // Normal case: no arguments -> transform member grid
-//         // Note: the other case is to perform the transform on a copy
-//         // so that the process can be monitored
-//         if (grid == nullptr) {
-//             nr_polarizations = m_nrPolarizations;
-//             height           = m_gridHeight;
-//             width            = m_gridWidth;
-//             grid             = m_grid_double;
-//         }
-// 
-        #pragma omp parallel for
-        for (int pol = 0; pol < m_nrPolarizations; pol++) {
-            ifft2f(height, width, &grid[pol*height*width]);
-            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
-        }
-    }
-
-
     void BufferImpl::copy_grid(
         size_t nr_polarizations,
         size_t height,
@@ -600,18 +561,6 @@ extern "C" {
     int Buffer_get_subgrid_size(idg::api::BufferImpl* p)
     {
         return p->get_subgrid_size();
-    }
-
-
-    void Buffer_ifft_grid(idg::api::BufferImpl* p)
-    {
-        p->ifft_grid();
-    }
-
-
-    void Buffer_fft_grid(idg::api::BufferImpl* p)
-    {
-        p->fft_grid();
     }
 
 

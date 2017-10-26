@@ -39,18 +39,6 @@ namespace api {
         /** \brief Explicitly flush the buffer */
         virtual void flush() = 0;
 
-        virtual void fft_grid(
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<float> *grid = nullptr) = 0;
-
-        virtual void ifft_grid(
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<float> *grid = nullptr) = 0;
-
     protected:
         Buffer() {}
     };

@@ -40,6 +40,20 @@ namespace api {
         virtual void finished();
 
     private:
+
+        virtual void fft_grid(
+            size_t nr_polarizations    = 0,
+            size_t height              = 0,
+            size_t width               = 0,
+            std::complex<float> *grid = nullptr);
+
+        virtual void ifft_grid(
+            size_t nr_polarizations    = 0,
+            size_t height              = 0,
+            size_t width               = 0,
+            std::complex<float> *grid = nullptr);
+
+
         proxy::Proxy* get_proxy(int subgridsize);
         proxy::Proxy* create_proxy(int subgridsize);
 

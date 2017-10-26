@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include "taper.h"
+#include "idg-fft.h"
 
 namespace idg {
 namespace api {
@@ -358,7 +359,7 @@ namespace api {
 
                 }
             }
-            m_degridderbuffers[0]->fft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
+            fft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
         }
 
         runtime += omp_get_wtime();
@@ -385,7 +386,7 @@ namespace api {
         for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
         {
             std::cout << "w_layer: " << w_layer << "/" << nr_w_layers << std::endl;
-            m_gridderbuffers[0]->ifft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
+            ifft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
 
             const float w_offset = (w_layer+0.5)*m_w_step;
             #pragma omp parallel for
@@ -494,6 +495,35 @@ namespace api {
             }
         }
     }
+
+    void BufferSetImpl::fft_grid(
+        size_t nr_polarizations,
+        size_t height,
+        size_t width,
+        std::complex<float> *grid)
+    {
+        #pragma omp parallel for
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+            fft2f(height, width, &grid[pol*height*width]);
+        }
+    }
+
+
+    void BufferSetImpl::ifft_grid(
+        size_t nr_polarizations,
+        size_t height,
+        size_t width,
+        std::complex<float> *grid)
+    {
+        #pragma omp parallel for
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+            ifft2f(height, width, &grid[pol*height*width]);
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+        }
+    }
+
+
 
 } // namespace api
 } // namespace idg

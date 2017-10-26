@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <cmath>
 #include "idg-common.h"
-#include "idg-fft.h"
 #if defined(BUILD_LIB_CPU)
 #include "idg-cpu.h"
 #endif
@@ -112,19 +111,6 @@ namespace api {
             const std::complex<double>* aterm);
 
         void finish_aterm();
-
-        // Methods the fft of the grid
-        void fft_grid(
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<float> *grid = nullptr);
-
-        void ifft_grid(
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<float> *grid = nullptr);
 
         void copy_grid(
             size_t nr_polarizations,
