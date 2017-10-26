@@ -120,6 +120,7 @@ namespace idg {
                     // Performance report
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     auto total_nr_visibilities = plan.get_nr_visibilities();
+                    report.update_host(powerStates[0], powerStates[1]);
                     report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                     #endif
 
@@ -213,6 +214,7 @@ namespace idg {
                     // Report performance
                     #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                     auto total_nr_visibilities = plan.get_nr_visibilities();
+                    report.update_host(powerStates[0], powerStates[1]);
                     report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                     #endif
 
