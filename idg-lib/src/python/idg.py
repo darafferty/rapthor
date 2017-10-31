@@ -5,11 +5,11 @@ from ctypes.util import find_library
 from idgtypes import *
 
 def handle_error(library, e):
-    if "libidg" in e.message:
+    if "libidg" in e.args:
         # cannot load idg library (probably because it is not build)
         pass
     else:
-        print("Error importing %s: %s" % (library, e.message))
+        print("Error importing %s: %s" % (library, e.args))
 
 try:
     import CPU
