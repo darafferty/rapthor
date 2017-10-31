@@ -21,24 +21,16 @@ namespace idg {
             struct Options
             {
                 // w-stacking
-                float w_step;
-                unsigned nr_w_layers;
+                float w_step = 0.0;
+                unsigned nr_w_layers = 1;
 
                 // throw error when visibilities do not fit onto subgrid
-                bool plan_strict;
+                bool plan_strict = false;
 
-                // limit the maximum amount of timesteps per subgri
-                unsigned max_nr_timesteps_per_subgrid;
+                // limit the maximum amount of timesteps per subgrid
+                // zero means no limit
+                unsigned max_nr_timesteps_per_subgrid = 0;
             };
-
-            static Options get_default_options() {
-                Options options;
-                options.w_step = 0.0;
-                options.nr_w_layers = 1;
-                options.plan_strict = false;
-                options.max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max();
-                return options;
-            }
 
             // Constructors
             Plan() {};
@@ -52,7 +44,7 @@ namespace idg {
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array1D<unsigned int>& aterms_offsets,
-                Options options = get_default_options());
+                Options options = Options());
 
             // Destructor
             virtual ~Plan() = default;
