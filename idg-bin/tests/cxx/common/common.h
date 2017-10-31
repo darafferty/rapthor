@@ -183,6 +183,10 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     std::clog << std::endl;
 
+    // Ignore visibilities that are not included in the plan
+    plan.mask_visibilities(visibilities);
+    plan.mask_visibilities(visibilities_ref);
+
     float degrid_error = get_accucary(
         nr_baselines*nr_timesteps*nr_channels*nr_correlations,
         (std::complex<float> *) visibilities.data(),
