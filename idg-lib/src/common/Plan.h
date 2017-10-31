@@ -113,6 +113,10 @@ namespace idg {
                 unsigned int *last_bl,
                 unsigned int *current_nr_baselines) const;
 
+            // set visibilities not used by plan to zero
+            void mask_visibilities(
+                Array3D<Visibility<std::complex<float>>>& visibilities) const;
+
         private:
             std::vector<Metadata> metadata;
             std::vector<int> subgrid_offset;

@@ -478,6 +478,54 @@ namespace idg {
         (*current_nr_baselines_) = last_bl - first_bl;
     }
 
+
+    void Plan::mask_visibilities(
+        Array3D<Visibility<std::complex<float>>>& visibilities) const
+    {
+        // Get visibilities dimensions
+        auto nr_baselines = visibilities.get_z_dim();
+        auto nr_timesteps = visibilities.get_y_dim();
+        auto nr_channels  = visibilities.get_x_dim();
+
+        // The visibility mask is zero
+        const Visibility<std::complex<float>> zero = {0.0f, 0.0f, 0.0f, 0.0f};
+
+        // Sanity check
+        assert(get_nr_baselines() == nr_baselines);
+
+        // Find offset for first subgrid
+        const Metadata& m0 = metadata[0];
+        int baseline_offset_1 = m0.baseline_offset;
+
+        // Iterate all metadata elements
+        int nr_subgrids = get_nr_subgrids();
+        for (int i = 0; i < nr_subgrids; i++) {
+            const Metadata& m_current = metadata[i];
+
+            // Determine which visibilities are used in the plan
+            int current_offset       = (m_current.baseline_offset - baseline_offset_1) + m_current.time_offset;
+            int current_nr_timesteps = m_current.nr_timesteps;
+
+            // Determine which visibilities to mask
+            int first = current_offset + current_nr_timesteps;
+            int last = 0;
+            if (i < nr_subgrids-1) {
+                const Metadata& m_next = metadata[i+1];
+                int next_offset = (m_next.baseline_offset - baseline_offset_1) + m_next.time_offset;
+                last = next_offset;
+            } else {
+                last = nr_baselines * nr_timesteps;
+            }
+
+            // Mask all selected visibilities for all channels
+            for (int t = first; t < last; t++) {
+                for (int c = 0; c < nr_channels; c++) {
+                    visibilities(0, t, c) = zero;
+                }
+            }
+        }
+    }
+
 } // namespace idg
 
 #include "PlanC.h"
