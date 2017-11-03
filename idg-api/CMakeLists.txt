@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 2.8.0)
 project(idg-api)
 
 
+# options
 option (BUILD_STATIC_LIBS "Build static libraries" OFF)
+option (BUILD_WITH_TESTS "Build with tests" OFF)
 
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
@@ -70,6 +72,11 @@ else()
     include_directories (${LAPACK_INCLUDE_DIR})
 endif()
 
+# build all tests
+if (BUILD_WITH_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 
 # sources and header files
