@@ -106,7 +106,7 @@ namespace api {
         if (m_timeindices.size() == 0) return;
 
 
-        Plan::Options options = Plan::get_default_options();
+        Plan::Options options;
 
         options.w_step = m_wStepInLambda;
         options.nr_w_layers = m_nr_w_layers;
