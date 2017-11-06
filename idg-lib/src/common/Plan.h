@@ -20,6 +20,8 @@ namespace idg {
 
             struct Options
             {
+                Options() {}
+
                 // w-stacking
                 float w_step = 0.0;
                 unsigned nr_w_layers = 1;
