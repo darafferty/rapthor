@@ -13,3 +13,6 @@ install(FILES
         Plan.py
         DESTINATION
         ${PYTHON_INSTALL_DIR})
+
+# Python-only proxies
+add_subdirectory(proxies)

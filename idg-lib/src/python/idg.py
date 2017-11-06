@@ -12,6 +12,11 @@ def handle_error(library, e):
         print("Error importing %s: %s" % (library, e.args))
 
 try:
+    import Python
+except OSError as e:
+    handle_error("Python", e)
+
+try:
     import CPU
 except OSError as e:
     handle_error("CPU", e)
