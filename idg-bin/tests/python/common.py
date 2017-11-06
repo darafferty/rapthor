@@ -11,10 +11,10 @@ import random
 _nr_stations      = 3
 _nr_baselines     = _nr_stations*(_nr_stations-1)/2
 _nr_channels      = 1
-_nr_timesteps     = 1024          # samples per baseline
+_nr_timesteps     = 128          # samples per baseline
 _nr_timeslots     = 1             # A-term time slots
-_image_size       = 0.08
-_subgrid_size     = 24
+_image_size       = 0.6
+_subgrid_size     = 32
 _grid_size        = 1024
 _integration_time = 1
 _kernel_size      = (_subgrid_size / 2) + 1
@@ -97,7 +97,7 @@ def gridding(
     #util.plot_grid(grid, scaling='log')
     p.transform(idg.FourierDomainToImageDomain, grid)
     #util.plot_grid(grid)
-    #util.plot_grid(grid, pol=0)
+    util.plot_grid(grid, pol=0)
 
 
 ############
@@ -184,23 +184,25 @@ def main(proxyname):
     # routines
     ######################################################################
     gridding(
-        ref, w_offset, cell_size, kernel_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+        opt, w_offset, cell_size, kernel_size, frequencies, visibilities2,
+        uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        ref, w_offset, cell_size, kernel_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+        opt, w_offset, cell_size, kernel_size, frequencies, visibilities2,
+        uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
 
     gridding(
-        opt, w_offset, cell_size, kernel_size, frequencies, visibilities2,
-        uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
+        ref, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        opt, w_offset, cell_size, kernel_size, frequencies, visibilities2,
-        uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
+        ref, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     ######################################################################
     # plot difference between visibilities
     ######################################################################
-    util.plot_visibilities(visibilities2 - visibilities)
+    #util.plot_visibilities(visibilities2 - visibilities)
+    #util.plot_visibilities(visibilities)
+    #util.plot_visibilities(visibilities2)
     plt.show()
