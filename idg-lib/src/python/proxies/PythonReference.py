@@ -307,6 +307,29 @@ class Reference(Proxy):
                 plan, w_step, subgrids, grid)
 
 
+    def split_grid_into_subgrids(
+        self,
+        plan,
+        w_step,
+        subgrids,
+        grid):
+        pass
+
+
+    def degrid_from_subgrids(
+        self,
+        plan,
+        w_step,
+        grid_size,
+        image_size,
+        wavenumbers,
+        visibilities,
+        uvw,
+        spheroidal,
+        aterms,
+        subgrids):
+        pass
+
 
     def degridding(
         self,
@@ -372,8 +395,37 @@ class Reference(Proxy):
         spheroidal_height            = spheroidal.shape[0]
         spheroidal_width             = spheroidal.shape[1]
 
-        print "Not implemented"
-        pass
+        # convert frequencies into wavenumbers
+        wavenumbers = self.compute_wavenumber(frequencies)
+
+        # check parameters
+        assert(grid_nr_correlations == self.nr_correlations)
+        assert(grid_height == grid_width)
+
+        # get parameters
+        nr_correlations = self.nr_correlations
+        subgrid_size = self.subgrid_size
+        grid_size = grid_height
+        nr_timesteps = visibilities_nr_timesteps
+        image_size = cell_size * grid_size
+
+        # create plan
+        plan = idg.Plan(
+                    kernel_size, subgrid_size, grid_size, cell_size,
+                    frequencies, uvw, baselines, aterms_offsets, nr_timesteps)
+
+        # allocate subgrids
+        nr_subgrids = plan.get_nr_subgrids()
+        subgrids = np.zeros(shape=(nr_subgrids, nr_correlations, subgrid_size, subgrid_size), dtype=idgtypes.gridtype)
+
+        # run subroutines
+        self.split_grid_into_subgrids(
+                plan, w_step, subgrids, grid)
+
+        self.degrid_from_subgrids(
+                plan, w_step, grid_size, image_size,
+                wavenumbers, visibilities, uvw, spheroidal, aterms, subgrids)
+
 
     def transform(
         self,
