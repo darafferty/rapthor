@@ -13,7 +13,7 @@ class Reference(Proxy):
     def compute_wavenumber(
         self,
         frequencies):
-        speed_of_light = 299792458.0;
+        speed_of_light = 299792458.0
         return (frequencies * 2 * np.pi) / speed_of_light
 
     def grid_onto_subgrids(
@@ -51,23 +51,23 @@ class Reference(Proxy):
         # Iterate all subgrids
         for s,m in enumerate(metadata):
             # Load metadata
-            offset       = (m['baseline_offset'] - baseline_offset_1) + m['time_offset'];
-            nr_timesteps = m['nr_timesteps'];
-            aterm_index  = m['aterm_index'];
-            station1     = m['baseline']['station1'];
-            station2     = m['baseline']['station2'];
-            x_coordinate = m['coordinate']['x'];
-            y_coordinate = m['coordinate']['y'];
-            w_offset_in_lambda = w_step * (m['coordinate']['z'] + 0.5);
+            offset       = (m['baseline_offset'] - baseline_offset_1) + m['time_offset']
+            nr_timesteps = m['nr_timesteps']
+            aterm_index  = m['aterm_index']
+            station1     = m['baseline']['station1']
+            station2     = m['baseline']['station2']
+            x_coordinate = m['coordinate']['x']
+            y_coordinate = m['coordinate']['y']
+            w_offset_in_lambda = w_step * (m['coordinate']['z'] + 0.5)
 
             # Derive baseline
             total_nr_timesteps = visibilities.shape[1]
             bl = offset /  total_nr_timesteps
 
             # Compute u and v offset in wavelenghts
-            u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) * (2*np.pi / image_size);
-            v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) * (2*np.pi / image_size);
-            w_offset = 2*np.pi * w_offset_in_lambda;
+            u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) * (2*np.pi / image_size)
+            v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) * (2*np.pi / image_size)
+            w_offset = 2*np.pi * w_offset_in_lambda
 
             # Iterate all pixels in subgrid
             for y in range(subgrid_size):
@@ -76,92 +76,94 @@ class Reference(Proxy):
                     pixels = np.zeros(nr_correlations, dtype=np.complex64)
 
                     # Compute l,m,n
-                    l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                    m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                    # evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
+                    l = np.float32((x+0.5-(subgrid_size/2)) * image_size/subgrid_size)
+                    m = np.float32((y+0.5-(subgrid_size/2)) * image_size/subgrid_size)
+                    # evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m))
                     # accurately for small values of l and m
-                    tmp = (l * l) + (m * m);
-                    n = tmp / (1.0 + np.sqrt(1.0 - tmp));
+                    tmp = np.float32((l * l) + (m * m))
+                    n = np.float32(tmp / (1.0 + np.sqrt(1.0 - tmp)))
 
                     # Iterate all timesteps
                     for time in range(nr_timesteps):
                         # Load UVW coordinates
-                        u = u_[offset + time];
-                        v = v_[offset + time];
-                        w = w_[offset + time];
+                        u = u_[offset + time]
+                        v = v_[offset + time]
+                        w = w_[offset + time]
 
                         # Compute phase index
-                        phase_index = u*l + v*m + w*n;
+                        phase_index = np.float32(u*l + v*m + w*n)
 
                         # Compute phase offset
-                        phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                        phase_offset = np.float32(u_offset*l + v_offset*m + w_offset*n)
 
                         # Update pixel for every channel
                         for chan in range(nr_channels):
                             # Compute phase
-                            phase = phase_offset - (phase_index * wavenumbers[chan]);
+                            phase = np.float32(phase_offset - (phase_index * wavenumbers[chan]))
 
                             # Compute phasor
-                            phasor = np.complex64(complex(np.cos(phase), np.sin(phase)))
+                            phasor_real = np.float32(np.cos(phase))
+                            phasor_imag = np.float32(np.sin(phase))
+                            phasor      = np.complex64(complex(phasor_real, phasor_imag))
 
                             # Update pixel for every polarization
                             for pol in range(nr_correlations):
-                                pixels[pol] += visibilities[bl,time,chan,pol] * phasor;
+                                pixels[pol] += visibilities[bl,time,chan,pol] * phasor
 
                     # Load a term for station1
-                    aXX1 = aterms[aterm_index, station1, y, x, 0];
-                    aXY1 = aterms[aterm_index, station1, y, x, 1];
-                    aYX1 = aterms[aterm_index, station1, y, x, 2];
-                    aYY1 = aterms[aterm_index, station1, y, x, 3];
+                    aXX1 = aterms[aterm_index, station1, y, x, 0]
+                    aXY1 = aterms[aterm_index, station1, y, x, 1]
+                    aYX1 = aterms[aterm_index, station1, y, x, 2]
+                    aYY1 = aterms[aterm_index, station1, y, x, 3]
 
                     # Load aterm for station2
-                    aXX2 = np.conj(aterms[aterm_index, station2, y, x, 0]);
-                    aXY2 = np.conj(aterms[aterm_index, station2, y, x, 1]);
-                    aYX2 = np.conj(aterms[aterm_index, station2, y, x, 2]);
-                    aYY2 = np.conj(aterms[aterm_index, station2, y, x, 3]);
+                    aXX2 = np.conj(aterms[aterm_index, station2, y, x, 0])
+                    aXY2 = np.conj(aterms[aterm_index, station2, y, x, 1])
+                    aYX2 = np.conj(aterms[aterm_index, station2, y, x, 2])
+                    aYY2 = np.conj(aterms[aterm_index, station2, y, x, 3])
 
                     # Apply aterm to subgrid: P*A1
                     # [ pixels[0], pixels[1];    [ aXX1, aXY1;
                     #   pixels[2], pixels[3] ] *   aYX1, aYY1 ]
-                    pixelsXX = pixels[0];
-                    pixelsXY = pixels[1];
-                    pixelsYX = pixels[2];
-                    pixelsYY = pixels[3];
-                    pixels[0]  = (pixelsXX * aXX1);
-                    pixels[0] += (pixelsXY * aYX1);
-                    pixels[1]  = (pixelsXX * aXY1);
-                    pixels[1] += (pixelsXY * aYY1);
-                    pixels[2]  = (pixelsYX * aXX1);
-                    pixels[2] += (pixelsYY * aYX1);
-                    pixels[3]  = (pixelsYX * aXY1);
-                    pixels[3] += (pixelsYY * aYY1);
+                    pixelsXX = pixels[0]
+                    pixelsXY = pixels[1]
+                    pixelsYX = pixels[2]
+                    pixelsYY = pixels[3]
+                    pixels[0]  = (pixelsXX * aXX1)
+                    pixels[0] += (pixelsXY * aYX1)
+                    pixels[1]  = (pixelsXX * aXY1)
+                    pixels[1] += (pixelsXY * aYY1)
+                    pixels[2]  = (pixelsYX * aXX1)
+                    pixels[2] += (pixelsYY * aYX1)
+                    pixels[3]  = (pixelsYX * aXY1)
+                    pixels[3] += (pixelsYY * aYY1)
 
                     # Apply aterm to subgrid: A2^H*P
                     # [ aXX2, aYX1;      [ pixels[0], pixels[1];
                     #   aXY1, aYY2 ]  *    pixels[2], pixels[3] ]
-                    pixelsXX = pixels[0];
-                    pixelsXY = pixels[1];
-                    pixelsYX = pixels[2];
-                    pixelsYY = pixels[3];
-                    pixels[0]  = (pixelsXX * aXX2);
-                    pixels[0] += (pixelsYX * aYX2);
-                    pixels[1]  = (pixelsXY * aXX2);
-                    pixels[1] += (pixelsYY * aYX2);
-                    pixels[2]  = (pixelsXX * aXY2);
-                    pixels[2] += (pixelsYX * aYY2);
-                    pixels[3]  = (pixelsXY * aXY2);
-                    pixels[3] += (pixelsYY * aYY2);
+                    pixelsXX = pixels[0]
+                    pixelsXY = pixels[1]
+                    pixelsYX = pixels[2]
+                    pixelsYY = pixels[3]
+                    pixels[0]  = (pixelsXX * aXX2)
+                    pixels[0] += (pixelsYX * aYX2)
+                    pixels[1]  = (pixelsXY * aXX2)
+                    pixels[1] += (pixelsYY * aYX2)
+                    pixels[2]  = (pixelsXX * aXY2)
+                    pixels[2] += (pixelsYX * aYY2)
+                    pixels[3]  = (pixelsXY * aXY2)
+                    pixels[3] += (pixelsYY * aYY2)
 
                     # Load spheroidal
-                    sph = spheroidal[y, x];
+                    sph = spheroidal[y, x]
 
                     # Compute shifted position in subgrid
-                    x_dst = (x + (subgrid_size/2)) % subgrid_size;
-                    y_dst = (y + (subgrid_size/2)) % subgrid_size;
+                    x_dst = (x + (subgrid_size/2)) % subgrid_size
+                    y_dst = (y + (subgrid_size/2)) % subgrid_size
 
                     # Set subgrid value
                     for pol in range(nr_correlations):
-                        subgrids[s,pol,y_dst,x_dst] = pixels[pol] * sph
+                        subgrids[s,pol,y_dst,x_dst] = np.complex64(pixels[pol] * sph)
 
         # Apply FFT to each subgrid
         subgrids[:] = np.fft.ifft2(subgrids, axes=(2,3))
@@ -182,8 +184,10 @@ class Reference(Proxy):
         phasor = np.zeros(shape=(subgrid_size, subgrid_size), dtype=np.complex64)
         for y in range(subgrid_size):
             for x in range(subgrid_size):
-                phase = np.pi*(x+y-subgrid_size)/subgrid_size
-                phasor[y,x] = np.complex64(complex(np.cos(phase), np.sin(phase)))
+                phase = np.float32(np.pi*(x+y-subgrid_size)/subgrid_size)
+                phasor_real = np.float32(np.cos(phase))
+                phasor_imag = np.float32(np.sin(phase))
+                phasor[y,x] = np.complex64(complex(phasor_real, phasor_imag))
 
         # Get metadata
         nr_subgrids = plan.get_nr_subgrids()
@@ -203,12 +207,12 @@ class Reference(Proxy):
                 for y in range(subgrid_size):
                     for x in range(subgrid_size):
                         # Compute shifted position in subgrid
-                        x_src = (x + (subgrid_size/2)) % subgrid_size;
-                        y_src = (y + (subgrid_size/2)) % subgrid_size;
+                        x_src = (x + (subgrid_size/2)) % subgrid_size
+                        y_src = (y + (subgrid_size/2)) % subgrid_size
 
                         # Add subgrid value to grid
                         for p in range(nr_correlations):
-                            grid[p,grid_y+y,grid_x+x] += subgrids[s,p,y_src,x_src] * phasor[y,x]
+                            grid[p,grid_y+y,grid_x+x] += np.complex64(subgrids[s,p,y_src,x_src] * phasor[y,x])
 
 
     def gridding(
