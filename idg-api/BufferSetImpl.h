@@ -39,6 +39,8 @@ namespace api {
         virtual void get_image(double* image);
         virtual void finished();
 
+        virtual int get_subgridsize() { return m_subgridsize; }
+
     private:
 
         virtual void fft_grid(

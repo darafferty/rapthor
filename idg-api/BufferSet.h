@@ -48,6 +48,8 @@ namespace api {
         virtual void set_image(const double* image) = 0 ;
         virtual void get_image(double* image) = 0;
         virtual void finished() = 0;
+
+        virtual int get_subgridsize() = 0;
     protected:
         BufferSet() {}
     };
