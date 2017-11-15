@@ -74,6 +74,15 @@ namespace api {
             const double* uvwInMeters,
             const std::complex<float>* visibilities);
 
+        /** \brief Sets a new aterm for the buffer
+         *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
+         *                        or 0 <= timeIndex < bufferTimesteps
+         *  \param aterm [in] std::complex<float>[nrStations][subgridsize][subgridsize]
+         */
+        void set_aterm(
+            size_t timeIndex,
+            const std::complex<float>* aterms);
+
         /** \brief Signal that not more visibilies are gridded */
         virtual void finished() override;
 

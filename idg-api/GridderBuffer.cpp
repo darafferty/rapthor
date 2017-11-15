@@ -86,6 +86,33 @@ namespace api {
         }
     }
 
+    void GridderBufferImpl::set_aterm(
+        size_t timeIndex,
+        const complex<float>* aterms)
+    {
+        // delete default a-term or aterms from before flush
+        if (timeIndex==0) {
+          m_aterm_offsets = Array1D<unsigned int>(1);
+          m_aterm_offsets(0) = m_bufferTimesteps;
+          m_aterms = Array4D<Matrix2x2<complex<float>>>(0,0,0,0);
+        }
+
+        // insert new timeIndex before the last element in m_aterm_offsets
+        int n_old_aterms = m_aterms.get_w_dim();
+        m_aterm_offsets.resize(n_old_aterms+2);
+        m_aterm_offsets(n_old_aterms+2-1) = m_bufferTimesteps;
+        m_aterm_offsets(n_old_aterms+2-2) = timeIndex;
+
+        int n_ants = m_aterms.get_z_dim();
+        int subgridsize = m_aterms.get_y_dim();
+
+        // push back new a-term
+        m_aterms.resize(n_old_aterms+1, n_ants, subgridsize, subgridsize);
+        std::copy(aterms,
+                  aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
+                  (complex<float>*) m_aterms.data(n_old_aterms));
+    }
+
     void GridderBufferImpl::flush_thread_worker()
     {
         Plan::Options options;
