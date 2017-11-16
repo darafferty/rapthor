@@ -75,7 +75,7 @@ namespace api {
     public:
         // Constructors and destructor
         DegridderBufferImpl(
-            Type architecture = Type::CPU_REFERENCE,
+            proxy::Proxy* proxy,
             size_t bufferTimesteps = 4096);
 
         virtual ~DegridderBufferImpl();

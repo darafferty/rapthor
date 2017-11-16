@@ -6,26 +6,16 @@
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <stdexcept>
 #include "taper.h"
+#include "idg-fft.h"
 
 namespace idg {
 namespace api {
 
-    BufferSet* BufferSet::create(
-        Type architecture,
-        size_t bufferTimesteps,
-        std::vector<std::vector<double>> bands,
-        int nr_stations,
-        size_t width,
-        float cell_size,
-        float max_baseline,
-        float max_w,
-        options_type &options,
-        BufferSetType buffer_set_type)
+    BufferSet* BufferSet::create(Type architecture)
     {
-        return new BufferSetImpl(
-            architecture, bufferTimesteps, bands, nr_stations, width,
-            cell_size, max_baseline, max_w, options, buffer_set_type);
+        return new BufferSetImpl(architecture);
     }
 
     int nextcomposite(int n)
@@ -43,23 +33,98 @@ namespace api {
     }
 
     BufferSetImpl::BufferSetImpl(
-        Type architecture, 
-        size_t bufferTimesteps, 
-        std::vector<std::vector<double>> bands,
-        int nr_stations,
-        size_t size,
-        float cell_size, 
-        float max_baseline,
-        float max_w,
-        options_type &options,
-        BufferSetType buffer_set_type) :
+        Type architecture) :
+        m_architecture(architecture),
         m_grid(0,0,0,0,0),
-        m_buffer_set_type(buffer_set_type),
-        m_cell_size(cell_size),
-        m_size(size)
+        m_proxy(nullptr)
+    {}
+
+    proxy::Proxy* BufferSetImpl::get_proxy(int subgridsize)
+    {
+        if (m_proxies.count(subgridsize) == 0)
+        {
+            m_proxies[subgridsize] = create_proxy(subgridsize);
+        }
+        return m_proxies[subgridsize];
+    }
+
+    proxy::Proxy* BufferSetImpl::create_proxy(int subgridsize)
+    {
+        proxy::Proxy* proxy;
+        int nr_correlations = 4;
+        CompileConstants constants(nr_correlations, subgridsize);
+
+        if (m_architecture == Type::CPU_REFERENCE) {
+            #if defined(BUILD_LIB_CPU)
+                proxy = new proxy::cpu::Reference(constants);
+            #else
+                throw std::runtime_error("Can not create CPU_REFERENCE proxy. idg-lib was built with BUILD_LIB_CPU=OFF");
+            #endif
+        } else if (m_architecture == Type::CPU_OPTIMIZED) {
+            #if defined(BUILD_LIB_CPU)
+                proxy = new proxy::cpu::Optimized(constants);
+            #else
+                throw std::runtime_error("Can not create CPU_OPTIMIZED proxy. idg-lib was built with BUILD_LIB_CPU=OFF");
+            #endif
+        }
+        if (m_architecture == Type::CUDA_GENERIC) {
+            #if defined(BUILD_LIB_CUDA)
+                proxy = new proxy::cuda::Generic(constants);
+            #else
+                throw std::runtime_error("Can not create CUDA_GENERIC proxy. idg-lib was built with BUILD_LIB_CUDA=OFF");
+            #endif
+        }
+        if (m_architecture == Type::HYBRID_CUDA_CPU_OPTIMIZED) {
+            #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
+                // cpu proxy will be deleted by hybrid proxy destructor
+                proxy::cpu::CPU *cpu_proxy = new proxy::cpu::Optimized(constants);
+                proxy = new proxy::hybrid::HybridCUDA(cpu_proxy, constants);
+                delete proxy;
+                proxy = new proxy::cpu::Optimized(constants);
+            #else
+                throw std::runtime_error(
+                    std::string("Can not create HYBRID_CUDA_CPU_OPTIMIZED proxy.\n") +
+                    std::string("For HYBRID_CUDA_CPU_OPTIMIZED idg-lib needs to be build with BUILD_LIB_CPU=ON and BUILD_LIB_CUDA=ON\n") +
+                    std::string("idg-lib was built with BUILD_LIB_CPU=") +
+                    #if defined(BUILD_LIB_CPU)
+                        std::string("ON")
+                    #else
+                        std::string("OFF")
+                    #endif
+                    + std::string(" and BUILD_LIB_CUDA=") +
+                    #if defined(BUILD_LIB_CUDA)
+                        std::string("ON")
+                    #else
+                        std::string("OFF")
+                    #endif
+                );
+            #endif
+        }
+        if (m_architecture == Type::OPENCL_GENERIC) {
+            #if defined(BUILD_LIB_OPENCL)
+                proxy = new proxy::opencl::Generic(constants);
+            #else
+                throw std::runtime_error("Can not create OPENCL_GENERIC proxy. idg-lib was built with BUILD_LIB_OPENCL=OFF");
+            #endif
+        }
+
+        if (proxy == nullptr)
+            throw std::invalid_argument("Unknown architecture type.");
+
+        return proxy;
+
+    }
+
+    void BufferSetImpl::init(
+        size_t size,
+        float cell_size,
+        float max_w,
+        options_type &options)
     {
         const float taper_kernel_size = 7.0;
         const float a_term_kernel_size = 0.0;
+
+        m_size = size;
 
         int max_nr_w_layers = (options.count("max_nr_w_layers")) ? (int)options["max_nr_w_layers"] : 0;
 
@@ -75,7 +140,8 @@ namespace api {
 
         std::cout << "m_padded_size: " << m_padded_size << std::endl;
         // 
-        m_image_size = cell_size * m_padded_size;
+        m_cell_size = cell_size;
+        m_image_size = m_cell_size * m_padded_size;
 
         // this cuts the w kernel approximately at the 1% level        
         const float max_w_size = max_w * m_image_size * m_image_size;
@@ -94,7 +160,6 @@ namespace api {
         if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
         std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
-        std::cout << "maximum baseline length: " << max_baseline << " (m)" << std::endl;
 
         m_w_step = max_w / nr_w_layers;
         w_kernel_size = 0.5*m_w_step * m_image_size * m_image_size;
@@ -104,64 +169,75 @@ namespace api {
 //         nr_w_layers = 1;
 //         m_w_step = 0.0;
 
-        int max_nr_channels = 0;
-        for (auto band : bands )
-        {
-            max_nr_channels = std::max(max_nr_channels, int(band.size()));
-        }
-
-        float kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
+        m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
         // reserved space in subgrid for time 
-        float uv_span_time = 8.0;
+        m_uv_span_time = 8.0;
 
-        float uv_span_frequency = 24.0;
+        m_uv_span_frequency = 24.0;
 
-        int subgridsize = int(std::ceil((kernel_size + uv_span_time + uv_span_frequency)/8.0))*8;
+        m_subgridsize = int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency)/8.0))*8;
+
+        m_proxy = get_proxy(m_subgridsize);
 
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
 
-        m_taper_subgrid.resize(subgridsize);
+        m_taper_subgrid.resize(m_subgridsize);
         m_taper_grid.resize(m_padded_size);
-        init_optimal_taper_1D(subgridsize, m_padded_size, m_size, taper_kernel_size, m_taper_subgrid.data(), m_taper_grid.data());
+        init_optimal_taper_1D(m_subgridsize, m_padded_size, m_size, taper_kernel_size, m_taper_subgrid.data(), m_taper_grid.data());
+    }
 
+
+    void BufferSetImpl::init_buffers(
+            size_t bufferTimesteps,
+            std::vector<std::vector<double>> bands,
+            int nr_stations,
+            float max_baseline,
+            options_type &options,
+            BufferSetType buffer_set_type)
+    {
+        m_gridderbuffers.resize(0);
+        m_degridderbuffers.resize(0);
+
+        m_buffer_set_type = buffer_set_type;
         std::vector<float> taper;
-        taper.resize(subgridsize * subgridsize);
-        for(int i = 0; i < int(subgridsize); i++)
-            for(int j = 0; j < int(subgridsize); j++)
-                taper[i*subgridsize + j] = m_taper_subgrid[i] * m_taper_subgrid[j];
+        taper.resize(m_subgridsize * m_subgridsize);
+        for(int i = 0; i < int(m_subgridsize); i++)
+            for(int j = 0; j < int(m_subgridsize); j++)
+                taper[i*m_subgridsize + j] = m_taper_subgrid[i] * m_taper_subgrid[j];
 
         for (auto band : bands )
         {
             BufferImpl *buffer;
             if (m_buffer_set_type == BufferSetType::gridding)
             {
-                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(architecture, bufferTimesteps);
+                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(m_proxy, bufferTimesteps);
                 m_gridderbuffers.push_back(std::unique_ptr<GridderBuffer>(gridderbuffer));
                 buffer = gridderbuffer;
             }
             else
             {
-                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(architecture, bufferTimesteps);
+                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(m_proxy, bufferTimesteps);
                 m_degridderbuffers.push_back(std::unique_ptr<DegridderBuffer>(degridderbuffer));
                 buffer = degridderbuffer;
             }
 
 
-            buffer->set_subgrid_size(subgridsize);
+            buffer->set_subgrid_size(m_subgridsize);
 
             buffer->set_frequencies(band);
             buffer->set_stations(nr_stations);
-            buffer->set_cell_size(cell_size, cell_size);
+            buffer->set_cell_size(m_cell_size, m_cell_size);
             buffer->set_w_step(m_w_step);
-            buffer->set_kernel_size(kernel_size);
-            buffer->set_spheroidal(subgridsize, subgridsize, taper.data());
+            buffer->set_kernel_size(m_kernel_size);
+            buffer->set_spheroidal(m_subgridsize, m_subgridsize, taper.data());
             buffer->set_grid(&m_grid);
             buffer->set_max_baseline(max_baseline);
-            buffer->set_uv_span_frequency(uv_span_frequency);
+            buffer->set_uv_span_frequency(m_uv_span_frequency);
             buffer->bake();
         }
     }
+
 
     GridderBuffer* BufferSetImpl::get_gridder(int i)
     {
@@ -283,7 +359,7 @@ namespace api {
 
                 }
             }
-            m_degridderbuffers[0]->fft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
+            fft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
         }
 
         runtime += omp_get_wtime();
@@ -310,7 +386,7 @@ namespace api {
         for(int w_layer=0; w_layer < nr_w_layers; w_layer++)
         {
             std::cout << "w_layer: " << w_layer << "/" << nr_w_layers << std::endl;
-            m_gridderbuffers[0]->ifft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
+            ifft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
 
             const float w_offset = (w_layer+0.5)*m_w_step;
             #pragma omp parallel for
@@ -419,6 +495,35 @@ namespace api {
             }
         }
     }
+
+    void BufferSetImpl::fft_grid(
+        size_t nr_polarizations,
+        size_t height,
+        size_t width,
+        std::complex<float> *grid)
+    {
+        #pragma omp parallel for
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+            fft2f(height, width, &grid[pol*height*width]);
+        }
+    }
+
+
+    void BufferSetImpl::ifft_grid(
+        size_t nr_polarizations,
+        size_t height,
+        size_t width,
+        std::complex<float> *grid)
+    {
+        #pragma omp parallel for
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+            ifft2f(height, width, &grid[pol*height*width]);
+            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+        }
+    }
+
+
 
 } // namespace api
 } // namespace idg

@@ -10,10 +10,8 @@
 #include <vector>
 #include <set>
 #include <algorithm>
-#include <stdexcept>
 #include <cmath>
 #include "idg-common.h"
-#include "idg-fft.h"
 #if defined(BUILD_LIB_CPU)
 #include "idg-cpu.h"
 #endif
@@ -40,7 +38,7 @@ namespace api {
 
         // Constructors and destructor
         BufferImpl(
-            Type architecture = Type::CPU_REFERENCE,
+            proxy::Proxy* proxy,
             size_t bufferTimesteps = 4096);
 
         virtual ~BufferImpl();
@@ -114,19 +112,6 @@ namespace api {
 
         void finish_aterm();
 
-        // Methods the fft of the grid
-        void fft_grid(
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<float> *grid = nullptr);
-
-        void ifft_grid(
-            size_t nr_polarizations    = 0,
-            size_t height              = 0,
-            size_t width               = 0,
-            std::complex<float> *grid = nullptr);
-
         void copy_grid(
             size_t nr_polarizations,
             size_t height,
@@ -153,7 +138,6 @@ namespace api {
         void init_default_aterm();
 
         // Bookkeeping
-        Type   m_architecture;
         size_t m_bufferTimesteps;
         size_t m_timeStartThisBatch;
         size_t m_timeStartNextBatch;

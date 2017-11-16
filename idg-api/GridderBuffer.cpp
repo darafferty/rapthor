@@ -12,9 +12,9 @@ namespace idg {
 namespace api {
 
     GridderBufferImpl::GridderBufferImpl(
-        Type architecture,
+        proxy::Proxy* proxy,
         size_t bufferTimesteps)
-        : BufferImpl(architecture, bufferTimesteps),
+        : BufferImpl(proxy, bufferTimesteps),
           m_bufferUVW2(0,0),
           m_bufferStationPairs2(0)
     {
@@ -84,6 +84,33 @@ namespace api {
                       visibilities + m_channel_groups[i].second * m_nrPolarizations,
                       (complex<float>*) &m_bufferVisibilities[i](local_bl, local_time, 0));
         }
+    }
+
+    void GridderBufferImpl::set_aterm(
+        size_t timeIndex,
+        const complex<float>* aterms)
+    {
+        // delete default a-term or aterms from before flush
+        if (timeIndex==0) {
+          m_aterm_offsets = Array1D<unsigned int>(1);
+          m_aterm_offsets(0) = m_bufferTimesteps;
+          m_aterms = Array4D<Matrix2x2<complex<float>>>(0,0,0,0);
+        }
+
+        // insert new timeIndex before the last element in m_aterm_offsets
+        int n_old_aterms = m_aterms.get_w_dim();
+        m_aterm_offsets.resize(n_old_aterms+2);
+        m_aterm_offsets(n_old_aterms+2-1) = m_bufferTimesteps;
+        m_aterm_offsets(n_old_aterms+2-2) = timeIndex;
+
+        int n_ants = m_aterms.get_z_dim();
+        int subgridsize = m_aterms.get_y_dim();
+
+        // push back new a-term
+        m_aterms.resize(n_old_aterms+1, n_ants, subgridsize, subgridsize);
+        std::copy(aterms,
+                  aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
+                  (complex<float>*) m_aterms.data(n_old_aterms));
     }
 
     void GridderBufferImpl::flush_thread_worker()
@@ -247,40 +274,40 @@ namespace api {
 // Rationale: calling the code from C code and Fortran easier,
 // and bases to create interface to scripting languages such as
 // Python, Julia, Matlab, ...
-extern "C" {
-
-    idg::api::GridderBuffer* GridderBuffer_init(
-        unsigned int type,
-        unsigned int bufferTimesteps)
-    {
-        auto proxytype = idg::api::Type::CPU_REFERENCE;
-        if (type == 0) {
-            proxytype = idg::api::Type::CPU_REFERENCE;
-        } else if (type == 1) {
-            proxytype = idg::api::Type::CPU_OPTIMIZED;
-        }
-        return new idg::api::GridderBufferImpl(proxytype, bufferTimesteps);
-    }
-
-    void GridderBuffer_destroy(idg::api::GridderBuffer* p) {
-       delete p;
-    }
-
-    void GridderBuffer_grid_visibilities(
-        idg::api::GridderBuffer* p,
-        int     timeIndex,
-        int     antenna1,
-        int     antenna2,
-        double* uvwInMeters,
-        float*  visibilities) // size CH x PL x 2
-    {
-        p->grid_visibilities(
-            timeIndex,
-            antenna1,
-            antenna2,
-            uvwInMeters,
-            (complex<float>*) visibilities); // size CH x PL
-    }
+// extern "C" {
+//
+//     idg::api::GridderBuffer* GridderBuffer_init(
+//         unsigned int type,
+//         unsigned int bufferTimesteps)
+//     {
+//         auto proxytype = idg::api::Type::CPU_REFERENCE;
+//         if (type == 0) {
+//             proxytype = idg::api::Type::CPU_REFERENCE;
+//         } else if (type == 1) {
+//             proxytype = idg::api::Type::CPU_OPTIMIZED;
+//         }
+//         return new idg::api::GridderBufferImpl(proxytype, bufferTimesteps);
+//     }
+//
+//     void GridderBuffer_destroy(idg::api::GridderBuffer* p) {
+//        delete p;
+//     }
+//
+//     void GridderBuffer_grid_visibilities(
+//         idg::api::GridderBuffer* p,
+//         int     timeIndex,
+//         int     antenna1,
+//         int     antenna2,
+//         double* uvwInMeters,
+//         float*  visibilities) // size CH x PL x 2
+//     {
+//         p->grid_visibilities(
+//             timeIndex,
+//             antenna1,
+//             antenna2,
+//             uvwInMeters,
+//             (complex<float>*) visibilities); // size CH x PL
+//     }
 
 //     void GridderBuffer_transform_grid(
 //         idg::api::GridderBuffer* p,
@@ -298,4 +325,4 @@ extern "C" {
 //             (complex<double> *) grid);
 //     }
 
-} // extern C
+// } // extern C
