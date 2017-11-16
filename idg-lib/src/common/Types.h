@@ -3,6 +3,7 @@
 
 #include <ostream>
 #include <complex>
+#include <cassert>
 
 namespace idg {
 
@@ -138,6 +139,13 @@ namespace idg {
                 if (m_delete_buffer) free(m_buffer);
             }
 
+            void resize(size_t width)
+            {
+                assert(width >= m_x_dim);
+                m_x_dim = width;
+                m_buffer = (T*) realloc(m_buffer, width*sizeof(T));
+            }
+
             T* data(
                 size_t index=0) const
             {
@@ -225,6 +233,14 @@ namespace idg {
                 if (m_delete_buffer) {
                     free(m_buffer);
                 }
+            }
+
+            void resize(size_t height, size_t width)
+            {
+                assert(height >= m_y_dim && width >= m_x_dim);
+                m_x_dim = width;
+                m_y_dim = height;
+                m_buffer = (T*) realloc(m_buffer, height*width*sizeof(T));
             }
 
             T* data(
@@ -324,6 +340,15 @@ namespace idg {
             }
 
             virtual ~Array3D() { if (m_delete_buffer) free(m_buffer); }
+
+            void resize(size_t depth, size_t height, size_t width)
+            {
+                assert(depth >= m_z_dim && height >= m_y_dim && width >= m_x_dim);
+                m_x_dim = width;
+                m_y_dim = height;
+                m_z_dim = height;
+                m_buffer = (T*) realloc(m_buffer, height*width*depth*sizeof(T));
+            }
 
             T* data(
                 size_t z=0,
@@ -436,6 +461,16 @@ namespace idg {
             }
 
             virtual ~Array4D() { if (m_delete_buffer) free(m_buffer); }
+
+            void resize(size_t w_dim, size_t z_dim, size_t y_dim, size_t x_dim)
+            {
+                assert(w_dim >= m_w_dim && z_dim >= m_z_dim && y_dim >= m_y_dim && x_dim >= m_x_dim);
+                m_x_dim = x_dim;
+                m_y_dim = y_dim;
+                m_z_dim = z_dim;
+                m_w_dim = w_dim;
+                m_buffer = (T*) realloc(m_buffer, w_dim*z_dim*y_dim*x_dim*sizeof(T));
+            }
 
             T* data(
                 size_t w=0,
