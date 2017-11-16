@@ -58,7 +58,7 @@ if (${IDG_OnePackage})
     set (IDG_LIBRARIES idg)
 else()
     find_package(IDG NO_MODULE)
-    include_directories (${IDG_INCLUDE_DIRS})
+    include_directories (${IDG_INCLUDE_DIR})
 endif()
 
 
