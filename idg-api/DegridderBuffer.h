@@ -90,6 +90,15 @@ namespace api {
         /** \brief Signal that the visibilities can be overwritten */
         virtual void finished_reading() = 0;
 
+        /** \brief Sets a new aterm for the buffer
+         *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
+         *                        or 0 <= timeIndex < bufferTimesteps
+         *  \param aterm [in] std::complex<float>[nrStations][subgridsize][subgridsize]
+         */
+        virtual void set_aterm(
+            size_t timeIndex,
+            const std::complex<float>* aterms) = 0;
+
     protected:
         DegridderBuffer() {}
 

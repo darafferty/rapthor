@@ -118,6 +118,15 @@ namespace api {
         /** \brief Signal that the visibilities can be overwritten */
         virtual void finished_reading();
 
+        /** \brief Sets a new aterm for the buffer
+         *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
+         *                        or 0 <= timeIndex < bufferTimesteps
+         *  \param aterm [in] std::complex<float>[nrStations][subgridsize][subgridsize]
+         */
+        void set_aterm(
+            size_t timeIndex,
+            const std::complex<float>* aterms);
+
         /** \brief Alias to call transform_grid()
          * param crop_tolerance [in] ...
          * param nr_polarizations [in] number of correlations (normally 4)
