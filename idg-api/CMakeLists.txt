@@ -55,7 +55,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 if (${IDG_OnePackage})
     include_directories (${CMAKE_BINARY_DIR}/idg-lib/src)
     include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
-    set (IDG_LIBRARIES idg)
+    set (IDG_LIBRARY idg)
 else()
     find_package(IDG NO_MODULE)
     include_directories (${IDG_INCLUDE_DIR})
@@ -98,7 +98,7 @@ set (${PROJECT_NAME}_sources
 )
 
 set (${PROJECT_NAME}_link_libraries
-    ${IDG_LIBRARIES}
+    ${IDG_LIBRARY}
     ${LAPACKE_LIB}
 )
 
