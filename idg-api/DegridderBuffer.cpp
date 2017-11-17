@@ -166,16 +166,17 @@ namespace api {
     {
         // delete default a-term or aterms from before flush
         if (timeIndex==0) {
-          m_aterm_offsets = Array1D<unsigned int>(1);
+          m_aterm_offsets = Array1D<unsigned int>(2);
           m_aterm_offsets(0) = m_bufferTimesteps;
           m_aterms = Array4D<Matrix2x2<complex<float>>>(0,0,0,0);
         }
 
         // insert new timeIndex before the last element in m_aterm_offsets
         int n_old_aterms = m_aterms.get_w_dim();
+        assert(m_aterm_offsets.get_x_dim() == n_old_aterms+1);
         m_aterm_offsets.resize(n_old_aterms+2);
         m_aterm_offsets(n_old_aterms+2-1) = m_bufferTimesteps;
-        m_aterm_offsets(n_old_aterms+2-2) = timeIndex;
+        m_aterm_offsets(n_old_aterms+2-2) = timeIndex - m_timeStartThisBatch;
 
         int n_ants = m_aterms.get_z_dim();
         int subgridsize = m_aterms.get_y_dim();
