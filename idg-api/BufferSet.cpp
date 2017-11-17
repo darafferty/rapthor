@@ -79,8 +79,6 @@ namespace api {
                 // cpu proxy will be deleted by hybrid proxy destructor
                 proxy::cpu::CPU *cpu_proxy = new proxy::cpu::Optimized(constants);
                 proxy = new proxy::hybrid::HybridCUDA(cpu_proxy, constants);
-                delete proxy;
-                proxy = new proxy::cpu::Optimized(constants);
             #else
                 throw std::runtime_error(
                     std::string("Can not create HYBRID_CUDA_CPU_OPTIMIZED proxy.\n") +
