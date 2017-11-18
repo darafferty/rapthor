@@ -156,37 +156,59 @@ namespace api {
         m_timeindices.clear();
 
         set_uvw_to_infinity();
+        reset_aterm();
 
         m_data_read = false;
     }
 
+    // Set the a-term that starts validity at timeIndex
     void DegridderBufferImpl::set_aterm(
         size_t timeIndex,
         const complex<float>* aterms)
     {
-        // delete default a-term or aterms from before flush
-        if (timeIndex - m_timeStartThisBatch == 0) {
-          assert(m_aterms.get_w_dim()==1);
-          m_aterm_offsets = Array1D<unsigned int>(1);
-          m_aterm_offsets(0) = m_bufferTimesteps;
-          m_aterms = Array4D<Matrix2x2<complex<float>>>(0,0,0,0);
-        }
-
-        // insert new timeIndex before the last element in m_aterm_offsets
-        int n_old_aterms = m_aterms.get_w_dim();
-        assert(m_aterm_offsets.get_x_dim() == n_old_aterms+1);
-        m_aterm_offsets.resize(n_old_aterms+2);
-        m_aterm_offsets(n_old_aterms+2-1) = m_bufferTimesteps;
-        m_aterm_offsets(n_old_aterms+2-2) = timeIndex - m_timeStartThisBatch;
-
         int n_ants = m_aterms.get_z_dim();
         int subgridsize = m_aterms.get_y_dim();
+        int local_time = timeIndex - m_timeStartThisBatch;
+        int n_old_aterms = m_aterms.get_w_dim();
+        // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
+        if (local_time == m_aterm_offsets(m_aterm_offsets.get_x_dim()-2)) {
+          std::copy(aterms,
+                    aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
+                    (complex<float>*) m_aterms.data(n_old_aterms));
+        } else {
+          assert(local_time > m_aterm_offsets(m_aterm_offsets.get_x_dim()-2));
 
-        // push back new a-term
-        m_aterms.resize(n_old_aterms+1, n_ants, subgridsize, subgridsize);
-        std::copy(aterms,
-                  aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
-                  (complex<float>*) m_aterms.data(n_old_aterms));
+          // insert new timeIndex before the last element in m_aterm_offsets
+          assert(m_aterm_offsets.get_x_dim() == n_old_aterms+1);
+          m_aterm_offsets.resize(n_old_aterms+2);
+          m_aterm_offsets(n_old_aterms+2-1) = m_bufferTimesteps;
+          m_aterm_offsets(n_old_aterms+2-2) = local_time;
+          // push back new a-term
+          m_aterms.resize(n_old_aterms+1, n_ants, subgridsize, subgridsize);
+          std::copy(aterms,
+                    aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
+                    (complex<float>*) m_aterms.data(n_old_aterms));
+        }
+    }
+
+    // Reset the a-term for a new buffer; copy the last a-term from the
+    // previous buffer;
+    void DegridderBufferImpl::reset_aterm()
+    {
+      if (m_aterms.get_w_dim()==1) {
+        // Nothing to do, there was only one a-term, it remains valid
+        return;
+      } else {
+        // Remember the last a-term as the new a-term for next chunk
+        Array4D<Matrix2x2<std::complex<float>>> new_aterms(1, m_nrStations, m_subgridSize, m_subgridSize);
+        std::copy(m_aterms.data(m_aterms.get_w_dim()-1),
+                  m_aterms.data(m_aterms.get_w_dim()-1)+m_nrStations*m_subgridSize*m_subgridSize*sizeof(Matrix2x2<std::complex<float>>),
+                  new_aterms.data());
+        m_aterms = std::move(new_aterms);
+        m_aterm_offsets = Array1D<unsigned int>(2);
+        m_aterm_offsets(0) = 0;
+        m_aterm_offsets(1) = m_bufferTimesteps;
+      }
     }
 
 //     void DegridderBufferImpl::transform_grid(
