@@ -83,6 +83,9 @@ namespace api {
             size_t timeIndex,
             const std::complex<float>* aterms);
 
+        /** reset_aterm() Resets the new aterm for the next time chunk */
+        void reset_aterm();
+
         /** \brief Signal that not more visibilies are gridded */
         virtual void finished() override;
 
