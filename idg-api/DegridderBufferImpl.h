@@ -127,6 +127,9 @@ namespace api {
             size_t timeIndex,
             const std::complex<float>* aterms);
 
+        /** reset_aterm() Resets the new aterm for the next time chunk */
+        void reset_aterm();
+
         /** \brief Alias to call transform_grid()
          * param crop_tolerance [in] ...
          * param nr_polarizations [in] number of correlations (normally 4)
