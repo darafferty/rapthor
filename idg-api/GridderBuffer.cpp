@@ -91,8 +91,9 @@ namespace api {
         const complex<float>* aterms)
     {
         // delete default a-term or aterms from before flush
-        if (timeIndex==0) {
-          m_aterm_offsets = Array1D<unsigned int>(2);
+        if (timeIndex - m_timeStartThisBatch == 0) {
+          assert(m_aterms.get_w_dim()==1);
+          m_aterm_offsets = Array1D<unsigned int>(1);
           m_aterm_offsets(0) = m_bufferTimesteps;
           m_aterms = Array4D<Matrix2x2<complex<float>>>(0,0,0,0);
         }
@@ -113,6 +114,25 @@ namespace api {
                   aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
                   (complex<float>*) m_aterms.data(n_old_aterms));
     }
+
+    // Reset the a-term for a new buffer; copy the last a-term from the
+    // previous buffer;
+    void GridderBufferImpl::reset_aterm(
+      if (m_aterms.get_w_dim()==1) {
+        // Nothing to do
+        return;
+      } else {
+        // Remember the last a-term as the new a-term for next chunk
+        new_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridSize, m_subgridSize);
+        std::copy(m_aterms.data(m_aterms.get_w_dim()-1),
+                  m_aterms.data(m_aterms.get_w_dim()-1)+m_nrStations*m_subgridSize*m_subgridSize*size_of(Matrix2x2<complex<float>),
+                  new_aterms);
+        m_aterms = new_aterms;
+        m_aterm_offsets = Array1D<unsigned int>(2);
+        m_aterm_offsets(0) = 0;
+        m_aterm_offsets(1) = m_bufferTimesteps;
+      }
+    )
 
     void GridderBufferImpl::flush_thread_worker()
     {
@@ -180,6 +200,7 @@ namespace api {
         m_timeStartThisBatch += m_bufferTimesteps;
         m_timeStartNextBatch += m_bufferTimesteps;
         m_timeindices.clear();
+        reset_aterm();
         set_uvw_to_infinity();
     }
     

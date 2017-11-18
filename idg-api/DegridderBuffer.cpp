@@ -165,8 +165,9 @@ namespace api {
         const complex<float>* aterms)
     {
         // delete default a-term or aterms from before flush
-        if (timeIndex==0) {
-          m_aterm_offsets = Array1D<unsigned int>(2);
+        if (timeIndex - m_timeStartThisBatch == 0) {
+          assert(m_aterms.get_w_dim()==1);
+          m_aterm_offsets = Array1D<unsigned int>(1);
           m_aterm_offsets(0) = m_bufferTimesteps;
           m_aterms = Array4D<Matrix2x2<complex<float>>>(0,0,0,0);
         }
