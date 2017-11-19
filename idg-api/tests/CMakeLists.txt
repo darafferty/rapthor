@@ -11,9 +11,26 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories (${LIBRARY_OUTPUT_PATH})
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
+
+find_library(GSL_LIB NAMES gsl)
+find_path(GSL_INCLUDE_DIR NAMES gsl/gsl_version.h)
+find_library(GSL_CBLAS_LIB NAMES gslcblas)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
+set (${PROJECT_NAME}_link_libraries
+    ${IDG_LIBRARY}
+    idg-api
+    ${LAPACKE_LIB}
+    ${GSL_LIB}
+    ${GSL_CBLAS_LIB}
+)
+
 target_link_libraries (
     ${PROJECT_NAME}
-    ${LINK_LIBRARIES}
+    ${${PROJECT_NAME}_link_libraries}
 )
 
 # install
