@@ -99,7 +99,7 @@ namespace api {
         if (local_time == m_aterm_offsets(m_aterm_offsets.get_x_dim()-2)) {
           std::copy(aterms,
                     aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
-                    (complex<float>*) m_aterms.data(n_old_aterms));
+                    (complex<float>*) m_aterms.data(n_old_aterms-1));
         } else {
           assert(local_time > m_aterm_offsets(m_aterm_offsets.get_x_dim()-2));
 
