@@ -97,6 +97,15 @@ namespace api {
 
         virtual void finished() {}
 
+        /** \brief Sets a new aterm for the buffer
+         *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
+         *                        or 0 <= timeIndex < bufferTimesteps
+         *  \param aterm [in] std::complex<float>[nrStations][subgridsize][subgridsize]
+         */
+        virtual void set_aterm(
+            size_t timeIndex,
+            const std::complex<float>* aterms);
+
         void start_aterm(
             size_t nrStations,
             size_t size,
@@ -136,6 +145,9 @@ namespace api {
         void reset_buffers();
         void set_uvw_to_infinity();
         void init_default_aterm();
+        /** reset_aterm() Resets the new aterm for the next time chunk */
+        void reset_aterm();
+
 
         // Bookkeeping
         size_t m_bufferTimesteps;
