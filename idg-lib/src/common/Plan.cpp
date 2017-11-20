@@ -183,6 +183,9 @@ namespace idg {
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
+        std::clog << "kernel_size  : " << kernel_size << std::endl;
+        std::clog << "subgrid_size : " << subgrid_size << std::endl;
+        std::clog << "grid_size    : " << grid_size << std::endl;
         #endif
 
         // Get options
