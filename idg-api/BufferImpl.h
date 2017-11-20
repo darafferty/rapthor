@@ -172,7 +172,9 @@ namespace api {
         float  m_cellWidth;
         float  m_wStepInLambda;
         float  m_kernel_size;
-        Array1D<unsigned int>  m_aterm_offsets;
+        std::vector<unsigned int>  m_aterm_offsets;
+        std::vector<unsigned int>  m_aterm_offsets2;
+        Array1D<unsigned int> m_aterm_offsets_array;
         proxy::Proxy* m_proxy;
 
         // Buffers

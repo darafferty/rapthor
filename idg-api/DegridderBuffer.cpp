@@ -105,6 +105,7 @@ namespace api {
         // Return if no input in buffer
         if (m_timeindices.size() == 0) return;
 
+        m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets.data(), m_aterm_offsets.size());
 
         Plan::Options options;
 
@@ -123,7 +124,7 @@ namespace api {
                 m_grouped_frequencies[i],
                 m_bufferUVW,
                 m_bufferStationPairs,
-                m_aterm_offsets,
+                m_aterm_offsets_array,
                 options);
 
             m_proxy->degridding(
@@ -137,7 +138,7 @@ namespace api {
                 m_bufferStationPairs,
                 *m_grid,
                 m_aterms,
-                m_aterm_offsets,
+                m_aterm_offsets_array,
                 m_spheroidal);
 
             // copy data from per channel buffer into buffer for all channels

@@ -105,7 +105,7 @@ namespace api {
                 m_grouped_frequencies[i],
                 m_bufferUVW2,
                 m_bufferStationPairs2,
-                m_aterm_offsets,
+                m_aterm_offsets_array,
                 options);
 
             m_proxy->gridding(
@@ -119,9 +119,8 @@ namespace api {
                 m_bufferStationPairs2,
                 std::move(*m_grid),
                 m_aterms,
-                m_aterm_offsets,
+                m_aterm_offsets_array,
                 m_spheroidal);
-
         }
     }
 
@@ -138,7 +137,8 @@ namespace api {
         std::swap(m_bufferUVW, m_bufferUVW2);
         std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
-        //std::swap(m_aterm_offsets, m_aterm_offsets2);
+        std::swap(m_aterm_offsets, m_aterm_offsets2);
+        m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets2.data(), m_aterm_offsets2.size());
         //std::swap(m_aterms, m_aterm2);
 
         m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
