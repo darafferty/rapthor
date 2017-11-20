@@ -98,7 +98,7 @@ namespace idg {
                         int subgrid_size,
                         cu::DeviceMemory& d_subgrid);
 
-
+                    // Memory management per device
                     cu::HostMemory& get_host_grid(
                         unsigned int grid_size);
 
@@ -116,6 +116,33 @@ namespace idg {
                     cu::DeviceMemory& get_device_spheroidal(
                         unsigned int subgrid_size);
 
+                    // Memory management per stream
+                    cu::HostMemory& get_host_subgrids(
+                        unsigned int id,
+                        unsigned int nr_subgrids,
+                        unsigned int subgrid_size);
+
+                    cu::DeviceMemory& get_device_visibilities(
+                        unsigned int id,
+                        unsigned int jobsize,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels);
+
+                    cu::DeviceMemory& get_device_uvw(
+                        unsigned int id,
+                        unsigned int jobsize,
+                        unsigned int nr_timesteps);
+
+                    cu::DeviceMemory& get_device_subgrids(
+                        unsigned int id,
+                        unsigned int nr_subgrids,
+                        unsigned int subgrid_size);
+
+                    cu::DeviceMemory& get_device_metadata(
+                        unsigned int id,
+                        unsigned int nr_subgrids);
+
+                    // Memory management for large (host) buffers
                     cu::HostMemory& get_host_grid(
                         unsigned int grid_size,
                         void *ptr);
@@ -131,15 +158,19 @@ namespace idg {
                         unsigned int nr_timesteps,
                         void *ptr);
 
+                    // Retrieve pre-allocated buffers (per device)
                     cu::HostMemory& get_host_grid() { return *h_grid; }
-
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
-
                     cu::DeviceMemory& get_device_wavenumbers() { return *d_wavenumbers; }
-
                     cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
-
                     cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
+
+                    // Retrieve pre-allocated buffers (per stream)
+                    cu::HostMemory& get_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
+                    cu::DeviceMemory& get_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
+                    cu::DeviceMemory& get_device_uvw(unsigned int id) { return *d_uvw_[id]; }
+                    cu::DeviceMemory& get_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
+                    cu::DeviceMemory& get_device_metadata(unsigned int id) { return *d_metadata_[id]; }
 
                 protected:
                     void compile_kernels();
@@ -165,13 +196,26 @@ namespace idg {
                     cu::Function *function_adder;
                     cu::Function *function_splitter;
                     cu::Function *function_scaler;
-                    cu::HostMemory *h_visibilities;
-                    cu::HostMemory *h_uvw;
-                    cu::HostMemory *h_grid;
+
+                    // One instance per device
                     cu::DeviceMemory *d_grid;
                     cu::DeviceMemory *d_wavenumbers;
                     cu::DeviceMemory *d_aterms;
                     cu::DeviceMemory *d_spheroidal;
+
+                    // One instance per stream
+                    std::vector<cu::HostMemory*> h_subgrids_;
+                    std::vector<cu::DeviceMemory*> d_visibilities_;
+                    std::vector<cu::DeviceMemory*> d_uvw_;
+                    std::vector<cu::DeviceMemory*> d_metadata_;
+                    std::vector<cu::DeviceMemory*> d_subgrids_;
+
+                    // Current instance from h_N_ vector
+                    cu::HostMemory *h_visibilities;
+                    cu::HostMemory *h_uvw;
+                    cu::HostMemory *h_grid;
+
+                    // A configurable number of instances
                     std::vector<cu::HostMemory*> h_visibilities_;
                     std::vector<cu::HostMemory*> h_uvw_;
                     std::vector<cu::HostMemory*> h_grid_;
