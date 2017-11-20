@@ -173,7 +173,7 @@ namespace api {
         // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
         if (local_time == m_aterm_offsets(m_aterm_offsets.get_x_dim()-2)) {
           std::copy(aterms,
-                    aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
+                    aterms + n_ants*subgridsize*subgridsize*4,
                     (complex<float>*) m_aterms.data(n_old_aterms-1));
         } else {
           assert(local_time > m_aterm_offsets(m_aterm_offsets.get_x_dim()-2));
@@ -186,7 +186,7 @@ namespace api {
           // push back new a-term
           m_aterms.resize(n_old_aterms+1, n_ants, subgridsize, subgridsize);
           std::copy(aterms,
-                    aterms + n_ants*subgridsize*subgridsize*sizeof(Matrix2x2<std::complex<float>>),
+                    aterms + n_ants*subgridsize*subgridsize*4,
                     (complex<float>*) m_aterms.data(n_old_aterms));
         }
     }
@@ -202,7 +202,7 @@ namespace api {
         // Remember the last a-term as the new a-term for next chunk
         Array4D<Matrix2x2<std::complex<float>>> new_aterms(1, m_nrStations, m_subgridSize, m_subgridSize);
         std::copy(m_aterms.data(m_aterms.get_w_dim()-1),
-                  m_aterms.data(m_aterms.get_w_dim()-1)+m_nrStations*m_subgridSize*m_subgridSize*sizeof(Matrix2x2<std::complex<float>>),
+                  m_aterms.data(m_aterms.get_w_dim()-1)+m_nrStations*m_subgridSize*m_subgridSize,
                   new_aterms.data());
         m_aterms = std::move(new_aterms);
         m_aterm_offsets = Array1D<unsigned int>(2);
