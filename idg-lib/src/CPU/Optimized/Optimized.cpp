@@ -101,6 +101,8 @@ namespace idg {
                     gnu_flags << " -mavx512f -mavx512pf -mavx512er -mavx512cd";
                 } else if (avx2_supported) {
                     gnu_flags << " -march=core-avx2";
+                } else {
+                    gnu_flags << " -mavx";
                 }
 
                 // Clang compiler
