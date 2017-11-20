@@ -106,21 +106,6 @@ namespace api {
             size_t timeIndex,
             const std::complex<float>* aterms);
 
-        void start_aterm(
-            size_t nrStations,
-            size_t size,
-            size_t nrPolarizations,
-            const std::complex<double>* aterm);
-
-        void start_aterm(
-            size_t nrStations,
-            size_t height,
-            size_t width,
-            size_t nrPolarizations,
-            const std::complex<double>* aterm);
-
-        void finish_aterm();
-
         void copy_grid(
             size_t nr_polarizations,
             size_t height,
@@ -181,7 +166,9 @@ namespace api {
         Array1D<float> m_frequencies;                               // CH
         std::vector<Array1D<float>> m_grouped_frequencies;          // CH
         Array2D<float> m_spheroidal;                                     // SB x SB
-        Array4D<Matrix2x2<std::complex<float>>> m_aterms;                    // ST x SB x SB
+        std::vector<Matrix2x2<std::complex<float>>> m_aterms;
+        std::vector<Matrix2x2<std::complex<float>>> m_aterms2;
+        Array4D<Matrix2x2<std::complex<float>>> m_aterms_array;     // ST x SB x SB
 
         Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs;                         // BL

@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
     for (size_t timestep=0; timestep<nr_timesteps; ++timestep) {
       if (timestep%aterm_steps==0) {
         size_t atermsize = nr_stations*subgridsize*subgridsize*4;
-        //bufferset->get_gridder(0)->set_aterm(timestep,
-        //                                     aterms.data()+timestep/aterm_steps*atermsize);
+        bufferset->get_gridder(0)->set_aterm(timestep,
+                                             aterms.data()+timestep/aterm_steps*atermsize);
       }
 
       for (size_t st1=0; st1<nr_stations; ++st1) {

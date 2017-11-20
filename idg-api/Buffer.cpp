@@ -40,7 +40,7 @@ namespace api {
           m_aterm_offsets_array(2),
           m_frequencies(0),
           m_spheroidal(0,0),
-          m_aterms(0,0,0,0),
+          m_aterms_array(0,0,0,0),
           m_bufferUVW(0,0),
           m_bufferStationPairs(0),
           m_proxy(proxy)
@@ -283,7 +283,7 @@ namespace api {
 
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nrGroups);
         // already done: m_spheroidal.reserve(m_subgridSize, m_subgridSize);
-        m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridSize, m_subgridSize);
+        // m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridSize, m_subgridSize);
     }
 
 
@@ -307,11 +307,17 @@ namespace api {
 
 
     void BufferImpl::init_default_aterm() {
-        for (auto s = 0; s < m_nrStations; ++s)
-            for (auto y = 0; y < m_subgridSize; ++y)
-                for (auto x = 0; x < m_subgridSize; ++x)
-                    m_aterms(0, s, y, x) = {complex<float>(1), complex<float>(0),
-                                         complex<float>(0), complex<float>(1)};
+        m_aterms.resize(1*m_nrStations*m_subgridSize*m_subgridSize);
+        for (auto s = 0; s < m_nrStations; ++s) {
+            for (auto y = 0; y < m_subgridSize; ++y) {
+                for (auto x = 0; x < m_subgridSize; ++x) {
+                    size_t offset = m_subgridSize*m_subgridSize*s +
+                                    m_subgridSize*y + x;
+                    m_aterms[offset] = {complex<float>(1), complex<float>(0),
+                                        complex<float>(0), complex<float>(1)};
+                }
+            }
+        }
     }
 
     // Set the a-term that starts validity at timeIndex
@@ -319,17 +325,13 @@ namespace api {
         size_t timeIndex,
         const complex<float>* aterms)
     {
-        int n_ants = m_aterms.get_z_dim();
-        int subgridsize = m_aterms.get_y_dim();
+        int n_ants = m_nrStations;
+        int subgridsize = m_subgridSize;
         int local_time = timeIndex - m_timeStartThisBatch;
-        int n_old_aterms = m_aterms.get_w_dim();
+        int n_old_aterms = m_aterm_offsets.size()-1;
+        size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
         // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
-        if (local_time == m_aterm_offsets[m_aterm_offsets.size()-2]) {
-          std::cout<<"m_aterms.bytes()="<<m_aterms.bytes()<<std::endl;
-          std::copy(aterms,
-                    aterms + n_ants*subgridsize*subgridsize*4,
-                    (complex<float>*) m_aterms.data(n_old_aterms-1));
-        } else {
+        if (local_time != m_aterm_offsets[m_aterm_offsets.size()-2]) {
           assert(local_time > m_aterm_offsets[m_aterm_offsets.size()-2]);
 
           // insert new timeIndex before the last element in m_aterm_offsets
@@ -338,11 +340,11 @@ namespace api {
           m_aterm_offsets[n_old_aterms+2-1] = m_bufferTimesteps;
           m_aterm_offsets[n_old_aterms+2-2] = local_time;
           // push back new a-term
-          m_aterms.resize(n_old_aterms+1, n_ants, subgridsize, subgridsize);
-          std::copy(aterms,
-                    aterms + n_ants*subgridsize*subgridsize*4,
-                    (complex<float>*) m_aterms.data(n_old_aterms));
+          m_aterms.resize(m_aterms.size()+1);
         }
+        std::copy(aterms,
+                  aterms + atermBlockSize*4,
+                  (complex<float>*) (&m_aterms.back()-atermBlockSize+1));
     }
 
     // Reset the a-term for a new buffer; copy the last a-term from the
@@ -355,17 +357,12 @@ namespace api {
       m_aterm_offsets[0] = 0;
       m_aterm_offsets[1] = m_bufferTimesteps;
 
-      if (m_aterms.get_w_dim()==1) {
-        // Nothing to do, there was only one a-term, it remains valid
-        return;
-      } else {
-        // Remember the last a-term as the new a-term for next chunk
-        Array4D<Matrix2x2<std::complex<float>>> new_aterms(1, m_nrStations, m_subgridSize, m_subgridSize);
-        std::copy(m_aterms.data(m_aterms.get_w_dim()-1),
-                  m_aterms.data(m_aterms.get_w_dim()-1)+m_nrStations*m_subgridSize*m_subgridSize,
-                  new_aterms.data());
-        m_aterms = std::move(new_aterms);
-      }
+      size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
+      m_aterms.resize(atermBlockSize);
+      Array4D<Matrix2x2<complex<float>>> new_aterms(1, m_nrStations, m_subgridSize, m_subgridSize);
+      std::copy(&m_aterms2.back()-atermBlockSize+1,
+                &m_aterms2.back()+1,
+                (Matrix2x2<complex<float>>*) m_aterms.data());
     }
 
 
@@ -381,50 +378,6 @@ namespace api {
         return antenna2 - antenna1 + offset;
     }
 
-
-    void BufferImpl::start_aterm(
-        size_t nrStations,
-        size_t height,
-        size_t width,
-        size_t nrPolarizations,
-        const std::complex<double>* aterm)
-    {
-        if (nrStations != m_nrStations)
-            throw invalid_argument("The number of stations to not match the plan.");
-        if (nrPolarizations != m_nrPolarizations)
-            throw invalid_argument("The number of polarization to not match the plan.");
-
-        // to be implemented
-        // TODO: remove hack to ignore aterm
-        // WARNING: layout does not match the one in the kernel
-        // TODO: Resize to SUBGRIDSIZE x SUBGRIDSIZE on the fly
-        for (auto s = 0; s < m_nrStations; ++s)
-            for (auto y = 0; y < m_subgridSize; ++y)
-                for (auto x = 0; x < m_subgridSize; ++x) {
-                    size_t ind = s*height*width*nrPolarizations +
-                                 y*width*nrPolarizations + x*nrPolarizations;
-                    m_aterms(0, s, y, x) = {complex<float>(aterm[ind + 0]),
-                                         complex<float>(aterm[ind + 1]),
-                                         complex<float>(aterm[ind + 2]),
-                                         complex<float>(aterm[ind + 3])};
-                }
-    }
-
-
-    void BufferImpl::start_aterm(
-        size_t nrStations,
-        size_t size,
-        size_t nrPolarizations,
-        const std::complex<double>* aterm)
-    {
-        start_aterm(nrStations, size, size, nrPolarizations, aterm);
-    }
-
-
-    void BufferImpl::finish_aterm()
-    {
-        flush();
-    }
 
     void BufferImpl::copy_grid(
         size_t nr_polarizations,
@@ -577,29 +530,6 @@ extern "C" {
     void Buffer_bake(idg::api::BufferImpl* p)
     {
         p->bake();
-    }
-
-
-    void Buffer_start_aterm(
-        idg::api::BufferImpl* p,
-        int nrStations,
-        int height,
-        int width,
-        int nrPolarizations,
-        void* aterm)  // ptr to complex double
-    {
-        p->start_aterm(
-            nrStations,
-            height,
-            width,
-            nrPolarizations,
-            (std::complex<double>*) aterm);
-    }
-
-
-    void Buffer_finish_aterm(idg::api::BufferImpl* p)
-    {
-        p->finish_aterm();
     }
 
 
