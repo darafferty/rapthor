@@ -139,7 +139,9 @@ namespace api {
         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
         std::swap(m_aterm_offsets, m_aterm_offsets2);
         m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets2.data(), m_aterm_offsets2.size());
+
         std::swap(m_aterms, m_aterms2);
+        assert(m_aterms2.size()==(m_aterm_offsets_array.get_x_dim()-1)*m_nrStations*m_subgridSize*m_subgridSize);
         m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms2.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridSize, m_subgridSize);
 
         m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);

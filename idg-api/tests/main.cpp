@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     float cellsize = 0.01;
     float max_w = 5;
 
-    unsigned int nr_timesteps = 10;
+    unsigned int nr_timesteps = 9;
     unsigned int aterm_steps = 3; // Change a-term every 3 time steps
     unsigned int nr_aterms = ceil(nr_timesteps/aterm_steps);
 

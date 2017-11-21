@@ -328,11 +328,12 @@ namespace api {
         int n_ants = m_nrStations;
         int subgridsize = m_subgridSize;
         int local_time = timeIndex - m_timeStartThisBatch;
-        int n_old_aterms = m_aterm_offsets.size()-1;
+        size_t n_old_aterms = m_aterm_offsets.size()-1;
         size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
         // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
         if (local_time != m_aterm_offsets[m_aterm_offsets.size()-2]) {
           assert(local_time > m_aterm_offsets[m_aterm_offsets.size()-2]);
+          assert(local_time <= m_bufferTimesteps);
 
           // insert new timeIndex before the last element in m_aterm_offsets
           assert(m_aterm_offsets.size() == n_old_aterms+1);
@@ -340,11 +341,13 @@ namespace api {
           m_aterm_offsets[n_old_aterms+2-1] = m_bufferTimesteps;
           m_aterm_offsets[n_old_aterms+2-2] = local_time;
           // push back new a-term
-          m_aterms.resize(m_aterms.size()+1);
+          m_aterms.resize(m_aterms.size()+atermBlockSize);
+          assert(m_aterms.size()==(n_old_aterms+1)*atermBlockSize);
         }
+        size_t n_new_aterms = m_aterm_offsets.size()-1;
         std::copy(aterms,
                   aterms + atermBlockSize*4,
-                  (complex<float>*) (&m_aterms.back()-atermBlockSize+1));
+                  (complex<float>*) (m_aterms.data()+(n_new_aterms-1)*atermBlockSize));
     }
 
     // Reset the a-term for a new buffer; copy the last a-term from the
@@ -357,11 +360,13 @@ namespace api {
       m_aterm_offsets[0] = 0;
       m_aterm_offsets[1] = m_bufferTimesteps;
 
+      size_t n_old_aterms = m_aterm_offsets2.size()-1; // Nr aterms in previous chunk
+
       size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
       m_aterms.resize(atermBlockSize);
       Array4D<Matrix2x2<complex<float>>> new_aterms(1, m_nrStations, m_subgridSize, m_subgridSize);
-      std::copy(&m_aterms2.back()-atermBlockSize+1,
-                &m_aterms2.back()+1,
+      std::copy(m_aterms2.data()+(n_old_aterms-1)*atermBlockSize,
+                m_aterms2.data()+(n_old_aterms)*atermBlockSize,
                 (Matrix2x2<complex<float>>*) m_aterms.data());
     }
 
