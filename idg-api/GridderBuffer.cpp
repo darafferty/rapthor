@@ -108,13 +108,24 @@ namespace api {
                 m_aterm_offsets_array,
                 options);
 
+            Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
+            auto nr_baselines = visibilities_src.get_z_dim();
+            auto nr_timesteps = visibilities_src.get_y_dim();
+            auto nr_channels  = visibilities_src.get_x_dim();
+            Array3D<Visibility<std::complex<float>>> visibilities_dst(
+                    m_visibilities.data(), nr_baselines, nr_timesteps, nr_channels);
+            memcpy(
+                visibilities_dst.data(),
+                visibilities_src.data(),
+                visibilities_src.bytes());
+
             m_proxy->gridding(
                 plan,
                 m_wStepInLambda,
                 m_cellHeight,
                 m_kernel_size,
                 m_grouped_frequencies[i],
-                m_bufferVisibilities2[i],
+                visibilities_dst,
                 m_bufferUVW2,
                 m_bufferStationPairs2,
                 std::move(*m_grid),
