@@ -43,6 +43,7 @@ namespace api {
           m_aterms_array(0,0,0,0),
           m_bufferUVW(0,0),
           m_bufferStationPairs(0),
+          m_visibilities(0, 0, 0),
           m_proxy(proxy)
     {
         #if defined(DEBUG)
@@ -275,11 +276,17 @@ namespace api {
     {
         m_bufferUVW = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
         m_bufferVisibilities.clear();
+        int max_nr_channels = 0;
         for (auto & channel_group : m_channel_groups)
         {
             int nr_channels = channel_group.second - channel_group.first;
             m_bufferVisibilities.push_back(Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, nr_channels));
+            if (nr_channels > max_nr_channels) {
+                max_nr_channels = nr_channels;
+            }
         }
+
+        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, max_nr_channels);
 
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nrGroups);
         // already done: m_spheroidal.reserve(m_subgridSize, m_subgridSize);
