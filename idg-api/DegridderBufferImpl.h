@@ -134,6 +134,9 @@ namespace api {
         bool is_request_buffer_full() const { return m_buffer_full; }
         bool is_data_marked_as_read() const { return m_data_read; }
 
+        /** reset_aterm() Resets the new aterm for the next time chunk */
+        virtual void reset_aterm();
+
     protected:
         virtual void malloc_buffers();
 

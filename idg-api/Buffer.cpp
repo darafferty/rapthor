@@ -350,29 +350,7 @@ namespace api {
                   (complex<float>*) (m_aterms.data()+(n_new_aterms-1)*atermBlockSize));
     }
 
-    // Reset the a-term for a new buffer; copy the last a-term from the
-    // previous buffer;
-    void BufferImpl::reset_aterm()
-    {
-      if (m_aterm_offsets.size()!=2) {
-        m_aterm_offsets = std::vector<unsigned int>(2, 0);
-      }
-      m_aterm_offsets[0] = 0;
-      m_aterm_offsets[1] = m_bufferTimesteps;
-
-      size_t n_old_aterms = m_aterm_offsets2.size()-1; // Nr aterms in previous chunk
-
-      size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
-      m_aterms.resize(atermBlockSize);
-      Array4D<Matrix2x2<complex<float>>> new_aterms(1, m_nrStations, m_subgridSize, m_subgridSize);
-      std::copy(m_aterms2.data()+(n_old_aterms-1)*atermBlockSize,
-                m_aterms2.data()+(n_old_aterms)*atermBlockSize,
-                (Matrix2x2<complex<float>>*) m_aterms.data());
-    }
-
-
-
-    /* The baseline index is formed such that:
+   /* The baseline index is formed such that:
      *   0 implies antenna1=0, antenna2=1 ;
      *   1 implies antenna1=0, antenna2=2 ;
      * n-1 implies antenna1=1, antenna2=2 etc. */

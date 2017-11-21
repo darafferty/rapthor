@@ -90,7 +90,6 @@ namespace api {
         /** \brief Signal that the visibilities can be overwritten */
         virtual void finished_reading() = 0;
 
-
     protected:
         DegridderBuffer() {}
 

@@ -106,7 +106,7 @@ namespace api {
         if (m_timeindices.size() == 0) return;
 
         m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets.data(), m_aterm_offsets.size());
-        m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms2.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridSize, m_subgridSize);
+        m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridSize, m_subgridSize);
 
         Plan::Options options;
 
@@ -162,6 +162,27 @@ namespace api {
 
         m_data_read = false;
     }
+
+    // Reset the a-term for a new buffer; copy the last a-term from the
+    // previous buffer;
+    void DegridderBufferImpl::reset_aterm()
+    {
+      size_t n_old_aterms = m_aterm_offsets.size()-1; // Nr aterms in previous chunk
+
+      if (m_aterm_offsets.size()!=2) {
+        m_aterm_offsets = std::vector<unsigned int>(2, 0);
+      }
+      m_aterm_offsets[0] = 0;
+      m_aterm_offsets[1] = m_bufferTimesteps;
+
+      size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
+      std::copy(m_aterms.data()+(n_old_aterms-1)*atermBlockSize,
+                m_aterms.data()+(n_old_aterms)*atermBlockSize,
+                (Matrix2x2<complex<float>>*) m_aterms.data());
+      m_aterms.resize(atermBlockSize);
+    }
+
+
 
 
 //     void DegridderBufferImpl::transform_grid(

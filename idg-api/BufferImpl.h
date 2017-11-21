@@ -130,9 +130,6 @@ namespace api {
         void reset_buffers();
         void set_uvw_to_infinity();
         void init_default_aterm();
-        /** reset_aterm() Resets the new aterm for the next time chunk */
-        void reset_aterm();
-
 
         // Bookkeeping
         size_t m_bufferTimesteps;
@@ -167,7 +164,6 @@ namespace api {
         std::vector<Array1D<float>> m_grouped_frequencies;          // CH
         Array2D<float> m_spheroidal;                                     // SB x SB
         std::vector<Matrix2x2<std::complex<float>>> m_aterms;
-        std::vector<Matrix2x2<std::complex<float>>> m_aterms2;
         Array4D<Matrix2x2<std::complex<float>>> m_aterms_array;     // ST x SB x SB
 
         Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI

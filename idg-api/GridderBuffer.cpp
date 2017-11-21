@@ -160,7 +160,27 @@ namespace api {
         reset_aterm();
         set_uvw_to_infinity();
     }
-    
+
+    // Reset the a-term for a new buffer; copy the last a-term from the
+    // previous buffer;
+    void GridderBufferImpl::reset_aterm()
+    {
+      if (m_aterm_offsets.size()!=2) {
+        m_aterm_offsets = std::vector<unsigned int>(2, 0);
+      }
+      m_aterm_offsets[0] = 0;
+      m_aterm_offsets[1] = m_bufferTimesteps;
+
+      size_t n_old_aterms = m_aterm_offsets2.size()-1; // Nr aterms in previous chunk
+
+      size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
+      m_aterms.resize(atermBlockSize);
+      std::copy(m_aterms2.data()+(n_old_aterms-1)*atermBlockSize,
+                m_aterms2.data()+(n_old_aterms)*atermBlockSize,
+                (Matrix2x2<complex<float>>*) m_aterms.data());
+    }
+
+
     void GridderBufferImpl::finished()
     {
         flush();
