@@ -21,7 +21,12 @@ namespace idg {
                 mModules(5),
                 h_visibilities_(),
                 h_uvw_(),
-                h_grid_()
+                h_grid_(),
+                h_subgrids_(),
+                d_visibilities_(),
+                d_uvw_(),
+                d_subgrids_(),
+                d_metadata_()
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -34,8 +39,6 @@ namespace idg {
                 executestream  = new cu::Stream();
                 htodstream     = new cu::Stream();
                 dtohstream     = new cu::Stream();
-                h_visibilities = NULL;
-                h_uvw          = NULL;
                 h_grid         = NULL;
                 d_grid         = NULL;
                 d_wavenumbers  = NULL;
@@ -66,6 +69,10 @@ namespace idg {
                 for (cu::HostMemory* h : h_visibilities_) { delete h; }
                 for (cu::HostMemory* h : h_uvw_) { delete h; }
                 for (cu::HostMemory* h : h_grid_) { delete h; }
+                for (cu::DeviceMemory* d : d_visibilities_) { delete d; }
+                for (cu::DeviceMemory* d : d_uvw_) { delete d; }
+                for (cu::DeviceMemory* d : d_metadata_) { delete d; }
+                for (cu::DeviceMemory* d : d_subgrids_) { delete d; }
                 if (d_grid) { d_grid->~DeviceMemory(); }
                 if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
                 if (d_aterms) { d_aterms->~DeviceMemory(); }
@@ -434,29 +441,34 @@ namespace idg {
                 executestream->launchKernel(*function_scaler, grid, block_scaler, 0, parameters);
             }
 
+
+            /*
+             *  Memory management per device
+             *      Maintain one memory object per data structure
+             */
             template<typename T>
             T* reuse_memory(
                 uint64_t size,
                 T* ptr)
             {
-                if (ptr && size != ptr->size()) {
+                if (ptr && size > ptr->size()) {
                     ptr->~T();
                     ptr = new T(size);
-                } else if(!ptr) {
+                } else if (!ptr) {
                     ptr = new T(size);
                 }
                 return ptr;
             }
 
-           cu::HostMemory& InstanceCUDA::get_host_grid(
-                unsigned int grid_size)
+            cu::HostMemory& InstanceCUDA::get_host_grid(
+                 unsigned int grid_size)
             {
-                auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = reuse_memory(size, h_grid);
-                return *h_grid;
+                 auto size = auxiliary::sizeof_grid(grid_size);
+                 h_grid = reuse_memory(size, h_grid);
+                 return *h_grid;
             }
 
-           cu::DeviceMemory& InstanceCUDA::get_device_grid(
+            cu::DeviceMemory& InstanceCUDA::get_device_grid(
                 unsigned int grid_size)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
@@ -491,6 +503,97 @@ namespace idg {
             }
 
 
+            /*
+             *  Memory management per stream
+             *      Maintain multiple memory objects per structure
+             *      Automatically increases the internal vectors for these objects
+             *      Allows for overprovisioning: allocate  more memory so that
+             *      an subsequent request (for different data, hence different
+             *      jobsize/nr_subgrids) can still reuse the same memory object
+             */
+            template<typename T>
+            T* reuse_memory(
+                std::vector<T*>& memories,
+                unsigned int id,
+                uint64_t size,
+                float overprovisioning = 1.0f)
+            {
+                T* ptr = NULL;
+
+                if (memories.size() <= id) {
+                    memories.push_back(ptr);
+                } else {
+                    ptr = memories[id];
+                }
+
+                if (ptr && size > ptr->size()) {
+                    ptr->~T();
+                    ptr = new T(size * overprovisioning);
+                } else if (!ptr) {
+                    ptr = new T(size * overprovisioning);
+                }
+
+                memories[id] = ptr;
+                return ptr;
+            }
+
+            cu::HostMemory& InstanceCUDA::get_host_subgrids(
+                unsigned int id,
+                unsigned int nr_subgrids,
+                unsigned int subgrid_size)
+            {
+                auto overprovisioning = 1.2;
+                auto size = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+                return *reuse_memory(h_subgrids_, id, size, overprovisioning);
+            }
+
+            cu::DeviceMemory& InstanceCUDA::get_device_visibilities(
+                unsigned int id,
+                unsigned int jobsize,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto overprovisioning = 1.2;
+                auto size = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                return *reuse_memory(d_visibilities_, id, size, overprovisioning);
+            }
+
+            cu::DeviceMemory& InstanceCUDA::get_device_uvw(
+                unsigned int id,
+                unsigned int jobsize,
+                unsigned int nr_timesteps)
+            {
+                auto overprovisioning = 1.2;
+                auto size = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+                return *reuse_memory(d_uvw_, id, size, overprovisioning);
+            }
+
+            cu::DeviceMemory& InstanceCUDA::get_device_subgrids(
+                unsigned int id,
+                unsigned int nr_subgrids,
+                unsigned int subgrid_size)
+            {
+                auto overprovisioning = 1.2;
+                auto size = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+                return *reuse_memory(d_subgrids_, id, size, overprovisioning);
+            }
+
+            cu::DeviceMemory& InstanceCUDA::get_device_metadata(
+                unsigned int id,
+                unsigned int nr_subgrids)
+            {
+                auto overprovisioning = 1.2;
+                auto size = auxiliary::sizeof_metadata(nr_subgrids);
+                return *reuse_memory(d_metadata_, id, size, overprovisioning);
+            }
+
+            /*
+             *  Memory management for large (host) buffers
+             *      Maintains a history of previously allocated
+             *      memory objects so that multiple buffers can be
+             *      used in round-robin fashion without the need
+             *      to re-allocate page-locked memory every invocation
+             */
             template<typename T>
             T* reuse_memory(
                 std::vector<T*>& memories,
@@ -499,7 +602,7 @@ namespace idg {
                 int max_memories)
             {
                 for (T* m : memories) {
-                    if (m->equals(ptr, size)) {
+                    if (ptr == m->get() && size <= m->size()) {
                         return m;
                     }
                 }

@@ -2,7 +2,6 @@ project(cuda)
 
 # resolve dependencies
 find_package(CUDA)
-find_package(CUDAdriver)
 if (${CUDA_FOUND})
 mark_as_advanced (CUDA_TOOLKIT_ROOT_DIR)
 mark_as_advanced (CUDA_BUILD_CUBIN)

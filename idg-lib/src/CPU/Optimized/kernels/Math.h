@@ -282,6 +282,88 @@ inline void compute_reduction_avx2(
 
     *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx2
+#elif defined(__AVX__)
+inline void compute_reduction_avx(
+    int *offset,
+    const int n,
+    const float *input_xx_real,
+    const float *input_xy_real,
+    const float *input_yx_real,
+    const float *input_yy_real,
+    const float *input_xx_imag,
+    const float *input_xy_imag,
+    const float *input_yx_imag,
+    const float *input_yy_imag,
+    const float *phasor_real,
+    const float *phasor_imag,
+    idg::float2 output[NR_POLARIZATIONS])
+{
+    const int vector_length = 8;
+
+    __m256 output_xx_r = _mm256_setzero_ps();
+    __m256 output_xy_r = _mm256_setzero_ps();
+    __m256 output_yx_r = _mm256_setzero_ps();
+    __m256 output_yy_r = _mm256_setzero_ps();
+    __m256 output_xx_i = _mm256_setzero_ps();
+    __m256 output_xy_i = _mm256_setzero_ps();
+    __m256 output_yx_i = _mm256_setzero_ps();
+    __m256 output_yy_i = _mm256_setzero_ps();
+
+    for (int i = *offset; i < (n / vector_length) * vector_length; i += vector_length) {
+        __m256 input_xx, input_xy, input_yx, input_yy;
+        __m256 phasor_r, phasor_i;
+
+        phasor_r  = _mm256_load_ps(&phasor_real[i]);
+        phasor_i  = _mm256_load_ps(&phasor_imag[i]);
+
+        // Load real part of input
+        input_xx = _mm256_load_ps(&input_xx_real[i]);
+        input_xy = _mm256_load_ps(&input_xy_real[i]);
+        input_yx = _mm256_load_ps(&input_yx_real[i]);
+        input_yy = _mm256_load_ps(&input_yy_real[i]);
+
+        // Update output
+        output_xx_r = _mm256_add_ps(output_xx_r, _mm256_mul_ps(input_xx, phasor_r));
+        output_xx_i = _mm256_add_ps(output_xx_i, _mm256_mul_ps(input_xx, phasor_i));
+        output_xy_r = _mm256_add_ps(output_xy_r, _mm256_mul_ps(input_xy, phasor_r));
+        output_xy_i = _mm256_add_ps(output_xy_i, _mm256_mul_ps(input_xy, phasor_i));
+        output_yx_r = _mm256_add_ps(output_yx_r, _mm256_mul_ps(input_yx, phasor_r));
+        output_yx_i = _mm256_add_ps(output_yx_i, _mm256_mul_ps(input_yx, phasor_i));
+        output_yy_r = _mm256_add_ps(output_yy_r, _mm256_mul_ps(input_yy, phasor_r));
+        output_yy_i = _mm256_add_ps(output_yy_i, _mm256_mul_ps(input_yy, phasor_i));
+
+        // Load imag part of input
+        input_xx = _mm256_load_ps(&input_xx_imag[i]);
+        input_xy = _mm256_load_ps(&input_xy_imag[i]);
+        input_yx = _mm256_load_ps(&input_yx_imag[i]);
+        input_yy = _mm256_load_ps(&input_yy_imag[i]);
+
+        // Update output
+        output_xx_r = _mm256_sub_ps(output_xx_r, _mm256_mul_ps(input_xx, phasor_i));
+        output_xx_i = _mm256_add_ps(output_xx_i, _mm256_mul_ps(input_xx, phasor_r));
+        output_xy_r = _mm256_sub_ps(output_xy_r, _mm256_mul_ps(input_xy, phasor_i));
+        output_xy_i = _mm256_add_ps(output_xy_i, _mm256_mul_ps(input_xy, phasor_r));
+        output_yx_r = _mm256_sub_ps(output_yx_r, _mm256_mul_ps(input_yx, phasor_i));
+        output_yx_i = _mm256_add_ps(output_yx_i, _mm256_mul_ps(input_yx, phasor_r));
+        output_yy_r = _mm256_sub_ps(output_yy_r, _mm256_mul_ps(input_yy, phasor_i));
+        output_yy_i = _mm256_add_ps(output_yy_i, _mm256_mul_ps(input_yy, phasor_r));
+    }
+
+    // Reduce all vectors
+    if (n - *offset > 0) {
+        output[0].real += _mm256_reduce_add_ps(output_xx_r);
+        output[1].real += _mm256_reduce_add_ps(output_xy_r);
+        output[2].real += _mm256_reduce_add_ps(output_yx_r);
+        output[3].real += _mm256_reduce_add_ps(output_yy_r);
+        output[0].imag += _mm256_reduce_add_ps(output_xx_i);
+        output[1].imag += _mm256_reduce_add_ps(output_xy_i);
+        output[2].imag += _mm256_reduce_add_ps(output_yx_i);
+        output[3].imag += _mm256_reduce_add_ps(output_yy_i);
+    }
+
+
+    *offset += vector_length * ((n - *offset) / vector_length);
+} // end compute_reduction_avx
 #endif
 
 #if defined(__AVX512F__)
@@ -399,6 +481,14 @@ inline void compute_reduction(
     #if defined(__AVX2__)
     // Vectorized loop, 8-elements, AVX2
     compute_reduction_avx2(
+            &offset, n,
+            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
+            phasor_real, phasor_imag,
+            output);
+    #elif defined(__AVX__)
+    // Vectorized loop, 8-elements, AVX
+    compute_reduction_avx(
             &offset, n,
             input_xx_real, input_xy_real, input_yx_real, input_yy_real,
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,

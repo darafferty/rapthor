@@ -1,6 +1,8 @@
 #include <cuda.h>
 #include <cudaProfiler.h>
 
+#include <algorithm> // max_element
+
 #include "HybridCUDA.h"
 #include "InstanceCUDA.h"
 
@@ -55,6 +57,49 @@ namespace idg {
             } // end transform
 
 
+            void HybridCUDA::initialize_memory(
+                const Plan& plan,
+                const std::vector<int> jobsize,
+                const int nr_streams,
+                const int nr_baselines,
+                const int nr_timesteps,
+                const int nr_channels,
+                const int nr_stations,
+                const int nr_timeslots,
+                const int subgrid_size,
+                void *visibilities,
+                void *uvw)
+            {
+                for (int d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.set_context();
+                    int max_jobsize = * max_element(begin(jobsize), end(jobsize));
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, max_jobsize);
+
+                    // Static memory
+                    cu::Stream&       htodstream    = device.get_htod_stream();
+                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
+                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+
+                    // Dynamic memory (per thread)
+                    for (int t = 0; t < nr_streams; t++) {
+                        device.get_device_visibilities(t, jobsize[d], nr_timesteps, nr_channels);
+                        device.get_device_uvw(t, jobsize[d], nr_timesteps);
+                        device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
+                        device.get_device_metadata(t, max_nr_subgrids);
+                        device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
+                    }
+
+                    // Host memory
+                    if (d == 0) {
+                        device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
+                        device.get_host_uvw(nr_baselines, nr_timesteps, uvw);
+                    }
+                }
+            } // end initialize_memory
+
+
             void HybridCUDA::do_gridding(
                 const Plan& plan,
                 const float w_step, // in lambda
@@ -105,28 +150,14 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Initialize metadata
-                const Metadata *metadata = plan.get_metadata_ptr();
+                const Metadata *metadata  = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize memory
-                for (int d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    device.set_context();
-                    cu::Stream&       htodstream    = device.get_htod_stream();
-
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-
-                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-
-                    if (d == 0) {
-                        device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                        device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-                    }
-                }
+                initialize_memory(
+                    plan, jobsize_, nr_streams,
+                    nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size,
+                    visibilities.data(), uvw.data());
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
@@ -156,18 +187,24 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
+                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
+                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
+                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
+                    cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    // Allocate private memory
-                    cu::HostMemory   h_subgrids(auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size));
-                    cu::DeviceMemory d_visibilities(auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels));
-                    cu::DeviceMemory d_uvw(auxiliary::sizeof_uvw(jobsize, nr_timesteps));
-                    cu::DeviceMemory d_subgrids(auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size));
-                    cu::DeviceMemory d_metadata(auxiliary::sizeof_metadata(max_nr_subgrids));
+                    // Copy static data structures
+                    if (local_id == 0) {
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                        htodstream.synchronize();
+                    }
 
                     // Create FFT plan
                     if (local_id == 0) {
@@ -347,24 +384,10 @@ namespace idg {
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize memory
-                for (int d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    device.set_context();
-                    cu::Stream&       htodstream    = device.get_htod_stream();
-
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-
-                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-
-                    if (d == 0) {
-                        device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                        device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-                    }
-                }
+                initialize_memory(
+                    plan, jobsize_, nr_streams,
+                    nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size,
+                    visibilities.data(), uvw.data());
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
@@ -394,18 +417,24 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
+                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
+                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
+                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
+                    cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    // Allocate private memory
-                    cu::HostMemory   h_subgrids(auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size));
-                    cu::DeviceMemory d_visibilities(auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels));
-                    cu::DeviceMemory d_uvw(auxiliary::sizeof_uvw(jobsize, nr_timesteps));
-                    cu::DeviceMemory d_subgrids(auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size));
-                    cu::DeviceMemory d_metadata(auxiliary::sizeof_metadata(max_nr_subgrids));
+                    // Copy static data structures
+                    if (local_id == 0) {
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                        htodstream.synchronize();
+                    }
 
                     // Create FFT plan
                     if (local_id == 0) {

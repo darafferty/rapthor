@@ -136,7 +136,7 @@ add_library (
 set(
     LINK_LIRBRARIES
     idg-common
-    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
+    ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
 target_link_libraries (
@@ -176,7 +176,7 @@ set (
     LINK_LIRBRARIES
     idg-cpu
     idg-cuda
-    ${CUDA_DRIVER_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
+    ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
 target_link_libraries (
