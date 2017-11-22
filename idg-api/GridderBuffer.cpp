@@ -6,6 +6,8 @@
 
 #include "GridderBufferImpl.h"
 
+#include <mutex>
+
 using namespace std;
 
 namespace idg {
@@ -94,33 +96,77 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = true;
 
-        for (int i = 0; i<m_channel_groups.size(); i++)
-        {
-            std::cout << "gridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
-            Plan plan(
-                m_kernel_size,
-                m_subgridSize,
-                m_gridHeight,
-                m_cellHeight,
-                m_grouped_frequencies[i],
-                m_bufferUVW2,
-                m_bufferStationPairs2,
-                m_aterm_offsets_array,
-                options);
+        const int nr_channel_groups = m_channel_groups.size();
+        Plan* plans[nr_channel_groups];
+        std::mutex plan_mutex;
+        plan_mutex.lock();
+        omp_set_nested(true);
 
-            m_proxy->gridding(
-                plan,
-                m_wStepInLambda,
-                m_cellHeight,
-                m_kernel_size,
-                m_grouped_frequencies[i],
-                m_bufferVisibilities2[i],
-                m_bufferUVW2,
-                m_bufferStationPairs2,
-                std::move(*m_grid),
-                m_aterms_array,
-                m_aterm_offsets_array,
-                m_spheroidal);
+        /*
+         * Start two threads:
+         *  thread 0: create plans
+         *  thread 1: execute these plans
+         */
+        #pragma omp parallel num_threads(2)
+        {
+            // Create plans
+            if (omp_get_thread_num() == 0) {
+                for (int i = 0; i < nr_channel_groups; i++) {
+                    std::cout << "planning channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+                    Plan* plan = new Plan(
+                        m_kernel_size,
+                        m_subgridSize,
+                        m_gridHeight,
+                        m_cellHeight,
+                        m_grouped_frequencies[i],
+                        m_bufferUVW2,
+                        m_bufferStationPairs2,
+                        m_aterm_offsets_array,
+                        options);
+                    if (i > 0) {
+                        plan_mutex.lock();
+                    }
+                    plans[i] = plan;
+                    plan_mutex.unlock();
+                } // end for i
+            } // end create plans
+
+            // Execute plans
+            if (omp_get_thread_num() == 1) {
+                for (int i = 0; i < nr_channel_groups; i++) {
+                    // Wait for plan to become available
+                    plan_mutex.lock();
+                    Plan *plan = plans[i];
+                    plan_mutex.unlock();
+
+                    // Start flush
+                    std::cout << "gridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+                    Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
+                    auto nr_baselines = visibilities_src.get_z_dim();
+                    auto nr_timesteps = visibilities_src.get_y_dim();
+                    auto nr_channels  = visibilities_src.get_x_dim();
+                    Array3D<Visibility<std::complex<float>>> visibilities_dst(
+                            m_visibilities.data(), nr_baselines, nr_timesteps, nr_channels);
+                    memcpy(
+                        visibilities_dst.data(),
+                        visibilities_src.data(),
+                        visibilities_src.bytes());
+
+                    m_proxy->gridding(
+                        *plan,
+                        m_wStepInLambda,
+                        m_cellHeight,
+                        m_kernel_size,
+                        m_grouped_frequencies[i],
+                        visibilities_dst,
+                        m_bufferUVW2,
+                        m_bufferStationPairs2,
+                        std::move(*m_grid),
+                        m_aterms_array,
+                        m_aterm_offsets_array,
+                        m_spheroidal);
+                } // end for i
+            } // end execute plans
         }
     }
 
