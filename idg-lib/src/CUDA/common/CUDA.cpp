@@ -128,10 +128,14 @@ namespace idg {
 
                 // Compute the amount of bytes needed for that job
                 auto bytes_required = 0;
-                bytes_required += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
-                bytes_required += auxiliary::sizeof_uvw(1, nr_timesteps);
-                bytes_required += auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-                bytes_required += auxiliary::sizeof_metadata(max_nr_subgrids);
+                bytes_required += OVERPROVISIONING_VISIBILITIES *
+                    auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
+                bytes_required += OVERPROVISIONING_UVW *
+                    auxiliary::sizeof_uvw(1, nr_timesteps);
+                bytes_required += OVERPROVISIONING_SUBGRIDS *
+                    auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                bytes_required += OVERPROVISIONING_METADATA *
+                    auxiliary::sizeof_metadata(max_nr_subgrids);
                 bytes_required *= nr_streams;
 
                 // Adjust jobsize to amount of available device memory

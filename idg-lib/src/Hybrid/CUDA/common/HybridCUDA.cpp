@@ -481,10 +481,6 @@ namespace idg {
 
                         #pragma omp critical (lock)
                         {
-
-                            // Initialize visibilities to zero
-                            d_visibilities.zero();
-
                             // Copy input data to device
                             htodstream.waitEvent(inputFree);
                             htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids,

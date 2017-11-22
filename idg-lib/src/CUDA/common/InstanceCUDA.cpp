@@ -542,7 +542,7 @@ namespace idg {
                 unsigned int nr_subgrids,
                 unsigned int subgrid_size)
             {
-                auto overprovisioning = 1.2;
+                auto overprovisioning = OVERPROVISIONING_SUBGRIDS;
                 auto size = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
                 return *reuse_memory(h_subgrids_, id, size, overprovisioning);
             }
@@ -553,7 +553,7 @@ namespace idg {
                 unsigned int nr_timesteps,
                 unsigned int nr_channels)
             {
-                auto overprovisioning = 1.2;
+                auto overprovisioning = OVERPROVISIONING_VISIBILITIES;
                 auto size = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
                 return *reuse_memory(d_visibilities_, id, size, overprovisioning);
             }
@@ -563,7 +563,7 @@ namespace idg {
                 unsigned int jobsize,
                 unsigned int nr_timesteps)
             {
-                auto overprovisioning = 1.2;
+                auto overprovisioning = OVERPROVISIONING_UVW;
                 auto size = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
                 return *reuse_memory(d_uvw_, id, size, overprovisioning);
             }
@@ -573,7 +573,7 @@ namespace idg {
                 unsigned int nr_subgrids,
                 unsigned int subgrid_size)
             {
-                auto overprovisioning = 1.2;
+                auto overprovisioning = OVERPROVISIONING_SUBGRIDS;
                 auto size = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
                 return *reuse_memory(d_subgrids_, id, size, overprovisioning);
             }
@@ -582,7 +582,7 @@ namespace idg {
                 unsigned int id,
                 unsigned int nr_subgrids)
             {
-                auto overprovisioning = 1.2;
+                auto overprovisioning = OVERPROVISIONING_METADATA;
                 auto size = auxiliary::sizeof_metadata(nr_subgrids);
                 return *reuse_memory(d_metadata_, id, size, overprovisioning);
             }

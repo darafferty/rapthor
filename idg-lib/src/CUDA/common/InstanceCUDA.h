@@ -7,6 +7,11 @@
 #include "CUFFT.h"
 #include "PowerRecord.h"
 
+#define OVERPROVISIONING_VISIBILITIES 1.1
+#define OVERPROVISIONING_UVW 1.1
+#define OVERPROVISIONING_SUBGRIDS 1.1
+#define OVERPROVISIONING_METADATA 1.1
+
 namespace idg {
     namespace kernel {
         namespace cuda {
