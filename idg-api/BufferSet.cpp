@@ -120,7 +120,7 @@ namespace api {
         options_type &options)
     {
         const float taper_kernel_size = 7.0;
-        const float a_term_kernel_size = 0.0;
+        const float a_term_kernel_size = (options.count("a_term_kernel_size")) ? (float)options["a_term_kernel_size"] : 0.0;
 
         m_size = size;
 
