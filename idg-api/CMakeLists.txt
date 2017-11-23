@@ -100,6 +100,7 @@ set (${PROJECT_NAME}_sources
 set (${PROJECT_NAME}_link_libraries
     ${IDG_LIBRARY}
     ${LAPACKE_LIB}
+    ${MKL_LIBRARIES}
 )
 
 add_library(
