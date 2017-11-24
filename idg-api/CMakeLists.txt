@@ -67,9 +67,17 @@ if (${MKL_FOUND})
     add_definitions(-DHAVE_MKL)  # TODO put define in a config.h.in file
     set (HAVE_MKL TRUE)
     include_directories (${MKL_INCLUDE_DIRS})
+    set (${PROJECT_NAME}_link_libraries
+        ${IDG_LIBRARY}
+        ${MKL_LIBRARIES}
+    )
 else()
     find_package(LAPACKE)
     include_directories (${LAPACK_INCLUDE_DIR})
+    set (${PROJECT_NAME}_link_libraries
+        ${IDG_LIBRARY}
+        ${LAPACKE_LIB}
+    )
 endif()
 
 # build all tests
@@ -95,11 +103,6 @@ set (${PROJECT_NAME}_sources
     GridderBuffer.cpp
     DegridderBuffer.cpp
     taper.cpp
-)
-
-set (${PROJECT_NAME}_link_libraries
-    ${IDG_LIBRARY}
-    ${LAPACKE_LIB}
 )
 
 add_library(
