@@ -50,6 +50,8 @@ namespace api {
         virtual void finished() = 0;
 
         virtual int get_subgridsize() = 0;
+        virtual float get_subgrid_pixelsize() = 0;
+
     protected:
         BufferSet() {}
     };
