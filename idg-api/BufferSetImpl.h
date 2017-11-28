@@ -40,6 +40,7 @@ namespace api {
         virtual void finished();
 
         virtual int get_subgridsize() { return m_subgridsize; }
+        virtual float get_subgrid_pixelsize() { return m_image_size/m_subgridsize; }
 
     private:
 
