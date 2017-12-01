@@ -51,16 +51,11 @@ endif()
 # set cmake module path
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-
-if (${IDG_OnePackage})
-    include_directories (${CMAKE_BINARY_DIR}/idg-lib/src)
-    include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
-    set (IDG_LIBRARY idg)
-else()
+if (NOT IDG_FOUND)
     find_package(IDG NO_MODULE)
-    include_directories (${IDG_INCLUDE_DIR})
 endif()
 
+include_directories (${IDG_INCLUDE_DIR})
 
 find_package(MKL QUIET)
 if (${MKL_FOUND})
