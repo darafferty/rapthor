@@ -8,15 +8,15 @@
 #include "Types.h"
 #include "Math.h"
 
-template<int current_nr_channels>
-void kernel_degridder_(
+extern "C" {
+
+void kernel_degridder(
     const int                        nr_subgrids,
     const int                        grid_size,
     const int                        subgrid_size,
     const float                      image_size,
     const float                      w_step_in_lambda,
     const int                        nr_channels,
-    const int                        channel_offset,
     const int                        nr_stations,
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
@@ -147,13 +147,13 @@ void kernel_degridder_(
             }
 
             // Iterate all channels
-            for (int chan = 0; chan < current_nr_channels; chan++) {
+            for (int chan = 0; chan < nr_channels; chan++) {
                 // Compute phase
                 float phase[nr_pixels];
 
                 for (int i = 0; i < nr_pixels; i++) {
                     // Compute phase
-                    float wavenumber = wavenumbers[channel_offset + chan];
+                    float wavenumber = wavenumbers[chan];
                     phase[i] = (phase_index[i] * wavenumber) - phase_offset[i];
                 }
 
@@ -178,7 +178,7 @@ void kernel_degridder_(
                 // Store visibilities
                 const float scale = 1.0f / nr_pixels;
                 int time_idx = offset + time;
-                int chan_idx = channel_offset + chan;
+                int chan_idx = chan;
                 int dst_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     visibilities[dst_idx+pol] = {scale*sums[pol].real, scale*sums[pol].imag};
@@ -186,55 +186,6 @@ void kernel_degridder_(
             } // end for channel
         } // end for time
     } // end #pragma parallel
-} // end kernel_degridder_
-
-extern "C" {
-
-void kernel_degridder(
-    const int                        nr_subgrids,
-    const int                        grid_size,
-    const int                        subgrid_size,
-    const float                      image_size,
-    const float                      w_offset_in_lambda,
-    const int                        nr_channels,
-    const int                        nr_stations,
-    const idg::UVWCoordinate<float>* uvw,
-    const float*                     wavenumbers,
-          idg::float2*               visibilities,
-    const float*                     spheroidal,
-    const idg::float2*               aterms,
-    const idg::Metadata*             metadata,
-    const idg::float2*               subgrid)
-{
-    int channel_offset = 0;
-
-    for (; (channel_offset + 16) <= nr_channels; channel_offset += 16) {
-        kernel_degridder_<16>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
-        kernel_degridder_<8>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
-        kernel_degridder_<4>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 1) <= nr_channels; channel_offset += 1) {
-        kernel_degridder_<1>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-}
+} // end kernel_degridder
 
 } // end extern "C"
