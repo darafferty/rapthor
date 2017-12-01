@@ -8,15 +8,15 @@
 #include "Types.h"
 #include "Math.h"
 
-template<int current_nr_channels>
-void kernel_gridder_(
+extern "C" {
+
+void kernel_gridder(
     const int                        nr_subgrids,
     const int                        grid_size,
     const int                        subgrid_size,
     const float                      image_size,
     const float                      w_step_in_lambda,
     const int                        nr_channels,
-    const int                        channel_offset,
     const int                        nr_stations,
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
@@ -55,7 +55,7 @@ void kernel_gridder_(
         const float w_offset = 2*M_PI * w_offset_in_lambda;
 
         // Preload visibilities
-        const int nr_visibilities = nr_timesteps * current_nr_channels;
+        const int nr_visibilities = nr_timesteps * nr_channels;
         float vis_xx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
         float vis_xy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
         float vis_yx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
@@ -66,11 +66,11 @@ void kernel_gridder_(
         float vis_yy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
 
         for (int time = 0; time < nr_timesteps; time++) {
-            for (int chan = 0; chan < current_nr_channels; chan++) {
+            for (int chan = 0; chan < nr_channels; chan++) {
                 int time_idx = offset + time;
-                int chan_idx = channel_offset + chan;
+                int chan_idx = chan;
                 size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
-                size_t dst_idx = time * current_nr_channels + chan;
+                size_t dst_idx = time * nr_channels + chan;
 
                 vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
                 vis_xy_real[dst_idx] = visibilities[src_idx + 1].real;
@@ -99,7 +99,7 @@ void kernel_gridder_(
             for (int x = 0; x < subgrid_size; x++) {
 
                 // Compute phase
-                float phase[nr_timesteps*current_nr_channels];
+                float phase[nr_timesteps*nr_channels];
 
                 // Compute l,m,n
                 const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
@@ -123,10 +123,10 @@ void kernel_gridder_(
                     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                     #pragma vector aligned(wavenumbers, phase)
-                    for (int chan = 0; chan < current_nr_channels; chan++) {
+                    for (int chan = 0; chan < nr_channels; chan++) {
                         // Compute phase
-                        float wavenumber = wavenumbers[channel_offset + chan];
-                        phase[time * current_nr_channels + chan] = phase_offset - (phase_index * wavenumber);
+                        float wavenumber = wavenumbers[chan];
+                        phase[time * nr_channels + chan] = phase_offset - (phase_index * wavenumber);
                     }
                 } // end time
 
@@ -174,69 +174,13 @@ void kernel_gridder_(
                 int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
                 // Set subgrid value
-                if (channel_offset == 0) {
-                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        int dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
-                        subgrid[dst_idx] = pixels[pol] * sph;
-                    }
-                } else {
-                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        int dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
-                        subgrid[dst_idx] += pixels[pol] * sph;
-                    }
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    int dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
+                    subgrid[dst_idx] = pixels[pol] * sph;
                 }
             } // end x
         } // end y
     } // end s
-} // end kernel_gridder_
-
-extern "C" {
-
-void kernel_gridder(
-    const int                        nr_subgrids,
-    const int                        grid_size,
-    const int                        subgrid_size,
-    const float                      image_size,
-    const float                      w_offset_in_lambda,
-    const int                        nr_channels,
-    const int                        nr_stations,
-    const idg::UVWCoordinate<float>* uvw,
-    const float*                     wavenumbers,
-    const idg::float2*               visibilities,
-    const float*                     spheroidal,
-    const idg::float2*               aterms,
-    const idg::Metadata*             metadata,
-          idg::float2*               subgrid)
-{
-    int channel_offset = 0;
-
-    for (; (channel_offset + 16) <= nr_channels; channel_offset += 16) {
-        kernel_gridder_<16>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 8) <= nr_channels; channel_offset += 8) {
-        kernel_gridder_<8>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 4) <= nr_channels; channel_offset += 4) {
-        kernel_gridder_<4>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-
-    for (; (channel_offset + 1) <= nr_channels; channel_offset += 1) {
-        kernel_gridder_<1>(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_offset_in_lambda,
-            nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
-    }
-}
+} // end kernel_gridder
 
 } // end extern "C"
