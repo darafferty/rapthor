@@ -4,7 +4,15 @@ project(idg)
 # Set rpath to install directory
 SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 
-set(IDG_OnePackage True)
+set(IDG_FOUND True)
+set(IDG_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/idg-lib/src
+                    ${CMAKE_BINARY_DIR}/idg-lib/src
+                    ${CMAKE_SOURCE_DIR}/idg-util/src
+                    ${CMAKE_BINARY_DIR}/idg-util/src )
+set(IDG_UTIL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/idg-util/src
+                         ${CMAKE_BINARY_DIR}/idg-util/src )
+set(IDG_LIBRARY idg)
+
 enable_testing()
 add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
