@@ -74,18 +74,12 @@ endif()
 
 
 # resolve idg library
-if (${IDG_OnePackage})
-    include_directories (${CMAKE_BINARY_DIR}/idg-lib/src)
-    include_directories (${CMAKE_SOURCE_DIR}/idg-lib/src)
-    include_directories (${CMAKE_BINARY_DIR}/idg-util/src)
-    include_directories (${CMAKE_SOURCE_DIR}/idg-util/src)
-    set (IDG_DIR ${CMAKE_BINARY_DIR}/idg-lib)
-else()
+if (NOT IDG_FOUND)
     find_package(IDG NO_MODULE REQUIRED)
-    include_directories (${IDG_INCLUDE_DIR})
     find_package(IDG_UTIL NO_MODULE REQUIRED)
-    include_directories(${IDG_UTIL_INCLUDE_DIR})
 endif()
+include_directories (${IDG_INCLUDE_DIR})
+include_directories (${IDG_UTIL_INCLUDE_DIR})
 
 # write config file
 configure_file(
