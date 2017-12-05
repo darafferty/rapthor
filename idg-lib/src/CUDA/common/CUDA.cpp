@@ -145,7 +145,7 @@ namespace idg {
                     InstanceCUDA *device = devices[i];
                     cu::Context &context = device->get_context();
                     context.setCurrent();
-                    auto bytes_free = device->get_device().get_free_memory();
+                    auto bytes_free = device->get_device().get_total_memory();
                     jobsize[i] = (bytes_free * 0.9) /  bytes_required;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     #if defined(DEBUG)
