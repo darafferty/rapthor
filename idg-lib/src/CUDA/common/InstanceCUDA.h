@@ -215,15 +215,14 @@ namespace idg {
                     std::vector<cu::DeviceMemory*> d_metadata_;
                     std::vector<cu::DeviceMemory*> d_subgrids_;
 
-                    // Current instance from h_N_ vector
+                    // Current instance from h_misc_ vector
                     cu::HostMemory *h_visibilities;
                     cu::HostMemory *h_uvw;
                     cu::HostMemory *h_grid;
 
                     // A configurable number of instances
-                    std::vector<cu::HostMemory*> h_visibilities_;
-                    std::vector<cu::HostMemory*> h_uvw_;
-                    std::vector<cu::HostMemory*> h_grid_;
+                    const int nr_misc_memories = 6;
+                    std::vector<cu::HostMemory*> h_misc_;
 
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
