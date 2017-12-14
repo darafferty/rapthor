@@ -601,18 +601,37 @@ namespace idg {
                 void* ptr,
                 int max_memories)
             {
-                for (T* m : memories) {
-                    if (ptr == m->get() && size <= m->size()) {
+                // detect whether this pointed is used before
+                for (int i = 0; i < memories.size(); i++) {
+                    T* m = memories[i];
+                    void *m_ptr = m->get();
+                    uint64_t m_size = m->size();
+
+                    // same pointer, smaller or equal size
+                    if (ptr == m_ptr && size <= m_size) {
+                        // the memory can safely be reused
                         return m;
+                    }
+
+                    // check pointer aliasing
+                    if (((ptr + size) < m_ptr) || ptr > (m_ptr + m_size)) {
+                        // pointer outside of current memory
+                    } else {
+                        // overlap between current memory
+                        delete m;
+                        memories.erase(memories.begin() + i);
+                        i--;
                     }
                 }
 
+                // too many memories, forget first
                 if (memories.size() >= max_memories) {
                     delete memories[0];
                     memories.erase(memories.begin());
                 }
 
-                cu::HostMemory* m = new T(ptr, size);
+                // create new memory
+                T* m = new T(ptr, size);
                 memories.push_back(m);
                 return m;
             }
