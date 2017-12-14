@@ -19,9 +19,7 @@ namespace idg {
                 KernelsInstance(constants),
                 mInfo(info),
                 mModules(5),
-                h_visibilities_(),
-                h_uvw_(),
-                h_grid_(),
+                h_misc_(),
                 h_subgrids_(),
                 d_visibilities_(),
                 d_uvw_(),
@@ -66,9 +64,7 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
-                for (cu::HostMemory* h : h_visibilities_) { delete h; }
-                for (cu::HostMemory* h : h_uvw_) { delete h; }
-                for (cu::HostMemory* h : h_grid_) { delete h; }
+                for (cu::HostMemory* h : h_misc_) { delete h; }
                 for (cu::DeviceMemory* d : d_visibilities_) { delete d; }
                 for (cu::DeviceMemory* d : d_uvw_) { delete d; }
                 for (cu::DeviceMemory* d : d_metadata_) { delete d; }
@@ -601,18 +597,37 @@ namespace idg {
                 void* ptr,
                 int max_memories)
             {
-                for (T* m : memories) {
-                    if (ptr == m->get() && size <= m->size()) {
+                // detect whether this pointed is used before
+                for (int i = 0; i < memories.size(); i++) {
+                    T* m = memories[i];
+                    void *m_ptr = m->get();
+                    uint64_t m_size = m->size();
+
+                    // same pointer, smaller or equal size
+                    if (ptr == m_ptr && size <= m_size) {
+                        // the memory can safely be reused
                         return m;
+                    }
+
+                    // check pointer aliasing
+                    if (((ptr + size) < m_ptr) || ptr > (m_ptr + m_size)) {
+                        // pointer outside of current memory
+                    } else {
+                        // overlap between current memory
+                        delete m;
+                        memories.erase(memories.begin() + i);
+                        i--;
                     }
                 }
 
+                // too many memories, forget first
                 if (memories.size() >= max_memories) {
                     delete memories[0];
                     memories.erase(memories.begin());
                 }
 
-                cu::HostMemory* m = new T(ptr, size);
+                // create new memory
+                T* m = new T(ptr, size);
                 memories.push_back(m);
                 return m;
             }
@@ -622,7 +637,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = reuse_memory(h_grid_, size, ptr, 2);
+                h_grid = reuse_memory(h_misc_, size, ptr, nr_misc_memories);
                 return *h_grid;
             }
 
@@ -633,7 +648,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(h_visibilities_, size, ptr, 2);
+                h_visibilities = reuse_memory(h_misc_, size, ptr, nr_misc_memories);
                 return *h_visibilities;
             }
 
@@ -643,7 +658,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(h_uvw_, size, ptr, 2);
+                h_uvw = reuse_memory(h_misc_, size, ptr, nr_misc_memories);
                 return *h_uvw;
             }
 
