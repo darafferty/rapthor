@@ -266,13 +266,10 @@ namespace cu {
         DeviceMemory
     */
     DeviceMemory::DeviceMemory(size_t size) {
+        _capacity = size;
         _size = size;
         checkCudaCall(cuMemAlloc(&_ptr, size));
         free = true;
-    }
-
-    DeviceMemory::DeviceMemory(void *ptr) {
-        cuMemHostGetDevicePointer(&_ptr, ptr, 0);
     }
 
     DeviceMemory::~DeviceMemory() {
@@ -281,16 +278,21 @@ namespace cu {
         }
     }
 
+    size_t DeviceMemory::capacity() {
+        return _capacity;
+    }
+
     size_t DeviceMemory::size() {
         return _size;
     }
 
-    void DeviceMemory::set(void *in) {
-        cuMemcpyHtoD(_ptr, in, _size);
-    }
-
-    void* DeviceMemory::get(size_t offset) {
-        return (void *) (_ptr + offset);
+    void DeviceMemory::resize(size_t size) {
+        if (size <= _capacity) {
+            _size = size;
+        } else {
+            checkCudaCall(cuMemFree(_ptr));
+            checkCudaCall(cuMemAlloc(&_ptr, size));
+        }
     }
 
     void DeviceMemory::zero(CUstream stream) {
