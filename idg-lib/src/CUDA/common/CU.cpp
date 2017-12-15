@@ -212,19 +212,23 @@ namespace cu {
         HostMemory
     */
     HostMemory::HostMemory(size_t size, int flags) {
+        _capacity = size;
         _size = size;
+        _flags = flags;
         checkCudaCall(cuMemHostAlloc(&_ptr, size, flags));
         free = true;
     }
 
     HostMemory::HostMemory(void *ptr, size_t size, int flags) {
+        _capacity = size;
         _size = size;
         _ptr = ptr;
+        _flags = flags;
         checkCudaCall(cuMemHostRegister(ptr, size, flags));
         unregister = true;
     }
 
-    HostMemory::~HostMemory() {
+    void HostMemory::release() {
         if (free) {
             checkCudaCall(cuMemFreeHost(_ptr));
         }
@@ -233,32 +237,39 @@ namespace cu {
         }
     }
 
+    HostMemory::~HostMemory() {
+        release();
+    }
+
+    size_t HostMemory::capacity() {
+        return _capacity;
+    }
+
     size_t HostMemory::size() {
         return _size;
     }
 
-    void HostMemory::set(const void *in) {
-        memcpy(_ptr, in, (size_t) _size);
-    }
+    void HostMemory::resize(size_t size) {
+        _size = size;
+        if (size > _capacity) {
+            release();
 
-    void HostMemory::set(void *in) {
-        memcpy(_ptr, in, (size_t) _size);
-    }
-
-    void HostMemory::set(void *in, size_t bytes) {
-        memcpy(_ptr, in, bytes);
-    }
-
-    void* HostMemory::get(size_t offset) {
-        return (void *) ((size_t) _ptr + offset);
+            if (free) {
+                checkCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
+            }
+            if (unregister) {
+                checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
+            }
+            _capacity = size;
+        }
     }
 
     void HostMemory::zero() {
         memset(_ptr, 0, _size);
     }
 
-    bool HostMemory::equals(void *ptr, size_t size) {
-        return ptr == _ptr && size == _size;
+    void* HostMemory::get(size_t offset) {
+        return (void *) ((size_t) _ptr + offset);
     }
 
 
@@ -269,13 +280,10 @@ namespace cu {
         _capacity = size;
         _size = size;
         checkCudaCall(cuMemAlloc(&_ptr, size));
-        free = true;
     }
 
     DeviceMemory::~DeviceMemory() {
-        if (free) {
-            checkCudaCall(cuMemFree(_ptr));
-        }
+        checkCudaCall(cuMemFree(_ptr));
     }
 
     size_t DeviceMemory::capacity() {
@@ -287,9 +295,8 @@ namespace cu {
     }
 
     void DeviceMemory::resize(size_t size) {
-        if (size <= _capacity) {
-            _size = size;
-        } else {
+        _size = size;
+        if (size > _capacity) {
             checkCudaCall(cuMemFree(_ptr));
             checkCudaCall(cuMemAlloc(&_ptr, size));
         }

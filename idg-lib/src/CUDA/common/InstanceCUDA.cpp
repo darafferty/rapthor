@@ -446,11 +446,10 @@ namespace idg {
                 uint64_t size,
                 T* ptr)
             {
-                if (ptr && size > ptr->size()) {
-                    ptr->~T();
+                if (!ptr) {
                     ptr = new T(size);
-                } else if (!ptr) {
-                    ptr = new T(size);
+                } else {
+                    ptr->resize(size);
                 }
                 return ptr;
             }
