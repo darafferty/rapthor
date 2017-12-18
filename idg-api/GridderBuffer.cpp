@@ -157,6 +157,7 @@ namespace api {
                         m_wStepInLambda,
                         m_cellHeight,
                         m_kernel_size,
+                        m_subgridSize,
                         m_grouped_frequencies[i],
                         visibilities_dst,
                         m_bufferUVW2,
