@@ -52,33 +52,30 @@ namespace api {
     {
         proxy::Proxy* proxy;
         int nr_correlations = 4;
-        CompileConstants constants(nr_correlations, subgridsize);
 
         if (m_architecture == Type::CPU_REFERENCE) {
             #if defined(BUILD_LIB_CPU)
-                proxy = new proxy::cpu::Reference(constants);
+                proxy = new proxy::cpu::Reference();
             #else
                 throw std::runtime_error("Can not create CPU_REFERENCE proxy. idg-lib was built with BUILD_LIB_CPU=OFF");
             #endif
         } else if (m_architecture == Type::CPU_OPTIMIZED) {
             #if defined(BUILD_LIB_CPU)
-                proxy = new proxy::cpu::Optimized(constants);
+                proxy = new proxy::cpu::Optimized();
             #else
                 throw std::runtime_error("Can not create CPU_OPTIMIZED proxy. idg-lib was built with BUILD_LIB_CPU=OFF");
             #endif
         }
         if (m_architecture == Type::CUDA_GENERIC) {
             #if defined(BUILD_LIB_CUDA)
-                proxy = new proxy::cuda::Generic(constants);
+                proxy = new proxy::cuda::Generic();
             #else
                 throw std::runtime_error("Can not create CUDA_GENERIC proxy. idg-lib was built with BUILD_LIB_CUDA=OFF");
             #endif
         }
         if (m_architecture == Type::HYBRID_CUDA_CPU_OPTIMIZED) {
             #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
-                // cpu proxy will be deleted by hybrid proxy destructor
-                proxy::cpu::CPU *cpu_proxy = new proxy::cpu::Optimized(constants);
-                proxy = new proxy::hybrid::HybridCUDA(cpu_proxy, constants);
+                proxy = new proxy::cuda::GenericOptimized();
             #else
                 throw std::runtime_error(
                     std::string("Can not create HYBRID_CUDA_CPU_OPTIMIZED proxy.\n") +
@@ -100,7 +97,7 @@ namespace api {
         }
         if (m_architecture == Type::OPENCL_GENERIC) {
             #if defined(BUILD_LIB_OPENCL)
-                proxy = new proxy::opencl::Generic(constants);
+                proxy = new proxy::opencl::Generic();
             #else
                 throw std::runtime_error("Can not create OPENCL_GENERIC proxy. idg-lib was built with BUILD_LIB_OPENCL=OFF");
             #endif
