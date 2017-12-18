@@ -21,7 +21,6 @@ namespace idg {
                 public:
                     // Constructor
                     InstanceOpenCL(
-                        CompileConstants& constants,
                         cl::Context& context,
                         int device_nr,
                         int device_id);

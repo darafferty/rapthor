@@ -13,9 +13,7 @@ namespace idg {
         namespace opencl {
 
             // Constructor
-            OpenCL::OpenCL(
-                CompileConstants& constants) :
-                Proxy(constants)
+            OpenCL::OpenCL()
             {
 
                 #if defined(DEBUG)
@@ -108,7 +106,7 @@ namespace idg {
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {
                     InstanceOpenCL *device = new InstanceOpenCL(
-                        mConstants, *context, i, device_numbers[i]);
+                        *context, i, device_numbers[i]);
                     devices.push_back(device);
                 }
             }

@@ -21,8 +21,7 @@ namespace idg {
         namespace opencl {
             class OpenCL : public Proxy {
                 public:
-                    OpenCL(
-                        CompileConstants& constants);
+                    OpenCL();
 
                     ~OpenCL();
 

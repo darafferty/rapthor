@@ -25,9 +25,7 @@ namespace idg {
         namespace opencl {
 
             // Constructor
-            Generic::Generic(
-                CompileConstants& constants) :
-                OpenCL(constants)
+            Generic::Generic()
             {
                 #if defined(DEBUG)
                 cout << "Generic::" << __func__ << endl;
@@ -54,7 +52,6 @@ namespace idg {
 
                 // Constants
                 auto grid_size = grid.get_x_dim();
-                auto nr_correlations = mConstants.get_nr_correlations();
 
                 // Load device
                 InstanceOpenCL& device = get_device(0);
@@ -135,6 +132,7 @@ namespace idg {
                 const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
+                const unsigned int subgrid_size,
                 const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
@@ -150,10 +148,6 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                // Proxy constants
-                auto subgrid_size    = mConstants.get_subgrid_size();
-                auto nr_correlations = mConstants.get_nr_correlations();
-
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -164,13 +158,14 @@ namespace idg {
                     grid, aterms, aterms_offsets, spheroidal);
 
                 // Arguments
-                auto nr_baselines = visibilities.get_z_dim();
-                auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_channels  = visibilities.get_x_dim();
-                auto nr_stations  = aterms.get_z_dim();
-                auto nr_timeslots = aterms.get_w_dim();
-                auto grid_size    = grid.get_x_dim();
-                auto image_size   = cell_size * grid_size;
+                auto nr_baselines    = visibilities.get_z_dim();
+                auto nr_timesteps    = visibilities.get_y_dim();
+                auto nr_channels     = visibilities.get_x_dim();
+                auto nr_stations     = aterms.get_z_dim();
+                auto nr_timeslots    = aterms.get_w_dim();
+                auto nr_correlations = grid.get_z_dim();
+                auto grid_size       = grid.get_x_dim();
+                auto image_size      = cell_size * grid_size;
 
                 // Configuration
                 const int nr_devices = get_num_devices();
@@ -376,6 +371,7 @@ namespace idg {
                 const float w_step, // in lambda
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
+                const unsigned int subgrid_size,
                 const Array1D<float>& frequencies,
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
@@ -390,10 +386,6 @@ namespace idg {
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-
-                // Proxy constants
-                auto subgrid_size    = mConstants.get_subgrid_size();
-                auto nr_correlations = mConstants.get_nr_correlations();
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
