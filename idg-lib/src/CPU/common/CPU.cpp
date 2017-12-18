@@ -49,6 +49,7 @@ namespace idg {
                 const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
+                const unsigned int subgrid_size,
                 const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
@@ -63,10 +64,6 @@ namespace idg {
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-
-                // Proxy constants
-                auto subgrid_size     = mConstants.get_subgrid_size();
-                auto nr_polarizations = mConstants.get_nr_correlations();
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
@@ -143,6 +140,7 @@ namespace idg {
                 const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
+                const unsigned int subgrid_size,
                 const Array1D<float>& frequencies,
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
@@ -157,10 +155,6 @@ namespace idg {
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-
-                // Proxy constants
-                auto subgrid_size     = mConstants.get_subgrid_size();
-                auto nr_polarizations = mConstants.get_nr_correlations();
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
@@ -246,7 +240,6 @@ namespace idg {
 
                     // Constants
                     auto grid_size = grid.get_x_dim();
-                    auto nr_correlations = mConstants.get_nr_correlations();
 
                     // Performance measurements
                     Report report(0, 0, grid_size);

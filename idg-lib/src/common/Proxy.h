@@ -45,6 +45,7 @@ namespace idg {
                     const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
+                    const unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -58,6 +59,7 @@ namespace idg {
                     const float w_step,
                     const float cell_size,
                     const unsigned int kernel_size,
+                    const unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -71,6 +73,7 @@ namespace idg {
                     float w_step,
                     float cell_size,
                     unsigned int kernel_size,
+                    unsigned int subgrid_size,
                     float* frequencies,
                     unsigned int nr_channels,
                     std::complex<float>* visibilities,
@@ -106,6 +109,7 @@ namespace idg {
                     const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
+                    const unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -119,6 +123,7 @@ namespace idg {
                     const float w_step,
                     const float cell_size,
                     const unsigned int kernel_size,
+                    const unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -132,6 +137,7 @@ namespace idg {
                     float w_step,
                     float cell_size,
                     unsigned int kernel_size,
+                    unsigned int subgrid_size,
                     float* frequencies,
                     unsigned int nr_channels,
                     std::complex<float>* visibilities,
@@ -174,11 +180,7 @@ namespace idg {
                     unsigned int grid_height,
                     unsigned int grid_width);
 
-                // Auxiliary: set and get methods
-                unsigned int get_nr_correlations() const {
-                    return mConstants.get_nr_correlations(); }
-                unsigned int get_subgrid_size() const {
-                    return mConstants.get_subgrid_size(); }
+                //! Methods for W-stacking
                 bool supports_wstack() {return (supports_wstack_gridding() && supports_wstack_degridding());}
                 virtual bool supports_wstack_gridding() {return false;}
                 virtual bool supports_wstack_degridding() {return false;}
@@ -190,6 +192,7 @@ namespace idg {
                     const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
+                    const unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -204,6 +207,7 @@ namespace idg {
                     const float w_step, // in lambda
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
+                    const unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -256,6 +260,7 @@ namespace idg {
                     const Array1D<float>& frequencies) const;
 
                 CompileConstants mConstants;
+                const unsigned int nr_polarizations = 4;
 
         }; // end class Proxy
 

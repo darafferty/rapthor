@@ -131,7 +131,7 @@ namespace idg {
 
                 // Set compile arguments:
                 stringstream arguments;
-                arguments << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
+                arguments << "-DNR_POLARIZATIONS=" << 4;
                 arguments << " " << flags;
 
                 // Get list of libraries to build

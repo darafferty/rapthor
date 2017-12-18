@@ -32,8 +32,8 @@ namespace idg {
             ~CompileConstants() = default;
 
             // get methods
-            unsigned int get_nr_correlations() const { return nr_correlations; }
-            unsigned int get_subgrid_size() const { return subgrid_size; }
+            //unsigned int get_nr_correlations() const { return nr_correlations; }
+            //unsigned int get_subgrid_size() const { return subgrid_size; }
 
             // set methods
             void set_nr_correlations(unsigned int nr_correlations);
