@@ -6,17 +6,17 @@
 using namespace idg::kernel::opencl;
 using namespace powersensor;
 
+#define NR_CORRELATIONS 4
+
 namespace idg {
     namespace kernel {
         namespace opencl {
 
             // Constructor
             InstanceOpenCL::InstanceOpenCL(
-                CompileConstants& constants,
                 cl::Context& context,
                 int device_nr,
                 int device_id) :
-                KernelsInstance(constants),
                 mContext(context),
                 mPrograms(5)
             {
@@ -148,7 +148,7 @@ namespace idg {
             {
                 // Parameter flags
                 std::stringstream flags_constants;
-                flags_constants << " -DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
+                flags_constants << " -DNR_POLARIZATIONS=" << NR_CORRELATIONS;
 
 				// OpenCL specific flags
                 std::stringstream flags_opencl;
@@ -426,7 +426,7 @@ namespace idg {
                     clfftSetResultLocation(fft_plan, CLFFT_INPLACE);
                     int distance = size*size;
                     clfftSetPlanDistance(fft_plan, distance, distance);
-                    clfftSetPlanBatchSize(fft_plan, batch * mConstants.get_nr_correlations());
+                    clfftSetPlanBatchSize(fft_plan, batch * NR_CORRELATIONS);
 
                     // Update parameters
                     fft_planned_size = size;

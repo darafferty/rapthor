@@ -2,11 +2,10 @@
 
 namespace idg {
     namespace proxy {
-        namespace hybrid {
+        namespace cuda {
 
-            GenericOptimized::GenericOptimized(
-                CompileConstants constants)
-                : HybridCUDA(new idg::proxy::cpu::Optimized(constants), constants)
+            GenericOptimized::GenericOptimized()
+                : HybridCUDA(new idg::proxy::cpu::Optimized())
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -14,7 +13,7 @@ namespace idg {
             }
 
         } // namespace idg
-    } // namespace proxy
+    } // namespace cuda
 } // namespace idg
 
 #include "GenericOptimizedC.h"

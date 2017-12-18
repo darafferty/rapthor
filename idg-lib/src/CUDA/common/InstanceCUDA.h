@@ -20,7 +20,6 @@ namespace idg {
                 public:
                     // Constructor
                     InstanceCUDA(
-                        CompileConstants &constants,
                         ProxyInfo &info,
                         int device_nr = 0,
                         int device_id = 0);

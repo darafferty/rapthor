@@ -14,7 +14,6 @@ namespace idg {
                 public:
                     // Constructor
                     CPU(
-                        CompileConstants constants,
                         Compiler compiler,
                         Compilerflags flags,
                         ProxyInfo info);
@@ -38,6 +37,7 @@ namespace idg {
                         const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
+                        const unsigned int subgrid_size,
                         const Array1D<float>& frequencies,
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
@@ -52,6 +52,7 @@ namespace idg {
                         const float w_step, // in lambda
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
+                        const unsigned int subgrid_size,
                         const Array1D<float>& frequencies,
                         Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,

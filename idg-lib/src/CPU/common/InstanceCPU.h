@@ -18,7 +18,6 @@ namespace idg {
                 public:
                     // Constructor
                     InstanceCPU(
-                        CompileConstants constants,
                         Compiler compiler,
                         Compilerflags flags,
                         ProxyInfo info);

@@ -6,17 +6,18 @@
 using namespace idg::kernel;
 using namespace powersensor;
 
+#define NR_CORRELATIONS 4
+
 namespace idg {
     namespace kernel {
         namespace cuda {
 
             // Constructor
             InstanceCUDA::InstanceCUDA(
-                CompileConstants &constants,
                 ProxyInfo &info,
                 int device_nr,
                 int device_id) :
-                KernelsInstance(constants),
+                KernelsInstance(),
                 mInfo(info),
                 mModules(5),
                 h_misc_(),
@@ -93,7 +94,7 @@ namespace idg {
             std::string InstanceCUDA::get_compiler_flags() {
                 // Constants
                 std::stringstream flags_constants;
-                flags_constants << "-DNR_POLARIZATIONS=" << mConstants.get_nr_correlations();
+                flags_constants << "-DNR_POLARIZATIONS=" << NR_CORRELATIONS;
 
                 // CUDA specific flags
                 std::stringstream flags_cuda;
@@ -347,7 +348,6 @@ namespace idg {
             void InstanceCUDA::plan_fft(
                 int size, int batch)
             {
-                int nr_correlations = mConstants.get_nr_correlations();
                 int stride = 1;
                 int dist = size * size;
 
@@ -358,7 +358,7 @@ namespace idg {
                     }
                     fft_plan_bulk = new cufft::C2C_2D(
                         size, size, stride, dist,
-                        fft_bulk * nr_correlations);
+                        fft_bulk * NR_CORRELATIONS);
                 }
 
                 // Plan remainder fft
@@ -370,7 +370,7 @@ namespace idg {
                     }
                     fft_plan_misc = new cufft::C2C_2D(
                         size, size, stride, dist,
-                        fft_remainder_size * nr_correlations);
+                        fft_remainder_size * NR_CORRELATIONS);
                 }
 
                 // Store parameters
@@ -382,7 +382,6 @@ namespace idg {
                 cu::DeviceMemory& d_data,
                 DomainAtoDomainB direction)
             {
-                int nr_correlations = mConstants.get_nr_correlations();
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
@@ -393,7 +392,7 @@ namespace idg {
                 int s = 0;
                 for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
                     fft_plan_bulk->execute(data_ptr, data_ptr, sign);
-                    data_ptr += fft_size * fft_size * nr_correlations * fft_bulk;
+                    data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
                 }
                 if (s < fft_batch) {
                     fft_plan_misc->setStream(*executestream);

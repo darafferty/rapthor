@@ -9,7 +9,6 @@
 #include "common/Types.h"
 #include "common/Plan.h"
 #include "common/KernelsInstance.h"
-#include "common/CompileConstants.h"
 #include "common/PowerSensor.h"
 #include "common/Report.h"
 

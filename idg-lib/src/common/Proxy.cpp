@@ -11,6 +11,7 @@ namespace idg {
             const float w_step, // in lambda
             const float cell_size, // TODO: unit?
             const unsigned int kernel_size, // full width in pixels
+            const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -23,13 +24,14 @@ namespace idg {
             if ((w_step != 0.0) && (!supports_wstack_gridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
-            do_gridding(plan, w_step, cell_size, kernel_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+            do_gridding(plan, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
 
         void Proxy::gridding(
             const float w_step,
             const float cell_size,
             const unsigned int kernel_size,
+            const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -39,8 +41,6 @@ namespace idg {
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
-            auto subgrid_size     = mConstants.get_subgrid_size();
-            auto nr_polarizations = mConstants.get_nr_correlations();
             auto grid_size        = grid.get_x_dim();
             auto nr_w_layers      = grid.get_w_dim();
 
@@ -64,6 +64,7 @@ namespace idg {
                 w_step,
                 cell_size,
                 kernel_size,
+                subgrid_size,
                 frequencies,
                 visibilities,
                 uvw,
@@ -78,6 +79,7 @@ namespace idg {
             float w_step,
             float cell_size,
             unsigned int kernel_size,
+            unsigned int subgrid_size,
             float* frequencies,
             unsigned int frequencies_nr_channels,
             std::complex<float>* visibilities,
@@ -154,6 +156,7 @@ namespace idg {
                 w_step,
                 cell_size,
                 kernel_size,
+                subgrid_size,
                 frequencies_,
                 visibilities_,
                 uvw_,
@@ -169,7 +172,8 @@ namespace idg {
             const Plan& plan,
             const float w_step, // in lambda
             const float cell_size, // TODO: unit?
-            const unsigned int kernel_size, // full width in pixels
+            unsigned int kernel_size, // full width in pixels
+            unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -182,13 +186,14 @@ namespace idg {
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
             }
-            do_degridding(plan, w_step, cell_size, kernel_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+            do_degridding(plan, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
 
         void Proxy::degridding(
             const float w_step,
             const float cell_size,
             const unsigned int kernel_size,
+            const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -198,8 +203,6 @@ namespace idg {
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
-            auto subgrid_size     = mConstants.get_subgrid_size();
-            auto nr_polarizations = mConstants.get_nr_correlations();
             auto grid_size        = grid.get_x_dim();
             auto nr_w_layers      = grid.get_w_dim();
 
@@ -222,6 +225,7 @@ namespace idg {
                 w_step,
                 cell_size,
                 kernel_size,
+                subgrid_size,
                 frequencies,
                 visibilities,
                 uvw,
@@ -236,6 +240,7 @@ namespace idg {
             float w_step,
             float cell_size,
             unsigned int kernel_size,
+            unsigned int subgrid_size,
             float* frequencies,
             unsigned int frequencies_nr_channels,
             std::complex<float>* visibilities,
@@ -312,6 +317,7 @@ namespace idg {
                 w_step,
                 cell_size,
                 kernel_size,
+                subgrid_size,
                 frequencies_,
                 visibilities_,
                 uvw_,
@@ -436,21 +442,3 @@ namespace idg {
 
     } // end namespace proxy
 } // end namespace idg
-
-// C interface:
-// Rationale: calling the code from C code and Fortran easier,
-// and bases to create interface to scripting languages such as
-// Python, Julia, Matlab, ...
-extern "C" {
-    typedef idg::proxy::Proxy Proxy_t;
-
-    int Proxy_get_nr_correlations(Proxy_t* p)
-    {
-        return p->get_nr_correlations();
-    }
-
-    int Proxy_get_subgrid_size(Proxy_t* p)
-    {
-        return p->get_subgrid_size();
-    }
-} // end extern "C"

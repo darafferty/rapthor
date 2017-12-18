@@ -12,10 +12,6 @@ namespace idg {
         class KernelsInstance
         {
             public:
-                KernelsInstance(
-                    CompileConstants& constants) :
-                    mConstants(constants) {}
-
                 /*
                     Misc math routines
                 */
@@ -25,10 +21,6 @@ namespace idg {
                 void scale(
                     Array3D<std::complex<float>>& data,
                     std::complex<float> scale) const;
-
-
-            protected:
-                CompileConstants mConstants;
 
         }; // end class KernelsInstance
 

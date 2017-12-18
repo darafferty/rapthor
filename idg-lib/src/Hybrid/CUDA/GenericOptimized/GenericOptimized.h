@@ -5,17 +5,16 @@
 
 namespace idg {
     namespace proxy {
-        namespace hybrid {
+        namespace cuda {
 
-            class GenericOptimized : public HybridCUDA {
+            class GenericOptimized : public hybrid::HybridCUDA {
                 public:
                     // Constructor
-                    GenericOptimized(
-                        CompileConstants constants);
+                    GenericOptimized();
 
             }; // class GenericOptimized
 
-        } // namespace hybrid
+        } // namespace cuda
     } // namespace proxy
 } // namespace idg
 

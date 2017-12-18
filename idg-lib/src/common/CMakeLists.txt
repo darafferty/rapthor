@@ -14,7 +14,6 @@ set (${PROJECT_NAME}_headers
     auxiliary.h
     Types.h
     KernelsInstance.h
-    CompileConstants.h
     Proxy.h
 	Plan.h
     PlanC.h
@@ -28,7 +27,6 @@ set (${PROJECT_NAME}_sources
     auxiliary.cpp
     Types.cpp
     KernelsInstance.cpp
-    CompileConstants.cpp
     Proxy.cpp
 	Plan.cpp
     PowerSensor.cpp
