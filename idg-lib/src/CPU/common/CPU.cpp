@@ -16,12 +16,10 @@ namespace idg {
 
             // Constructor
             CPU::CPU(
-                CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info) :
-                Proxy(constants),
-                kernels(constants, compiler, flags, info)
+                kernels(compiler, flags, info)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

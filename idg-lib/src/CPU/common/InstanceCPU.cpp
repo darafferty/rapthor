@@ -13,11 +13,10 @@ namespace idg {
 
             // Constructor
             InstanceCPU::InstanceCPU(
-                CompileConstants constants,
                 Compiler compiler,
                 Compilerflags flags,
                 ProxyInfo info) :
-                KernelsInstance(constants),
+                KernelsInstance(),
                 mInfo(info),
                 function_gridder(nullptr),
                 function_degridder(nullptr),

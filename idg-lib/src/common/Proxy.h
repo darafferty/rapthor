@@ -9,7 +9,6 @@
 
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"
-#include "CompileConstants.h"
 #include "Types.h"
 #include "Plan.h"
 
@@ -30,10 +29,6 @@ namespace idg {
         class Proxy
         {
             public:
-                Proxy(
-                    CompileConstants c
-                ) : mConstants(c) {}
-
                 virtual ~Proxy() {}
 
                 /*
@@ -259,7 +254,6 @@ namespace idg {
                 Array1D<float> compute_wavenumbers(
                     const Array1D<float>& frequencies) const;
 
-                CompileConstants mConstants;
                 const unsigned int nr_polarizations = 4;
 
         }; // end class Proxy

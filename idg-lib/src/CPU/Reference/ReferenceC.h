@@ -1,15 +1,9 @@
 extern "C" {
     typedef idg::proxy::cpu::Reference ProxyType;
 
-    ProxyType* CPU_Reference_init(
-                unsigned int nr_correlations,
-                unsigned int subgrid_size)
+    ProxyType* CPU_Reference_init()
     {
-        idg::CompileConstants c(
-            nr_correlations,
-            subgrid_size);
-
-        return new ProxyType(c);
+        return new ProxyType();
     }
 
     void CPU_Reference_gridding(

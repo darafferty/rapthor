@@ -14,7 +14,6 @@ namespace idg {
                 public:
                     // Constructor
                     CPU(
-                        CompileConstants constants,
                         Compiler compiler,
                         Compilerflags flags,
                         ProxyInfo info);

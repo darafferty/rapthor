@@ -5,11 +5,7 @@ extern "C" {
                 unsigned int nr_correlations,
                 unsigned int subgrid_size)
     {
-        idg::CompileConstants c(
-            nr_correlations,
-            subgrid_size);
-
-        return new ProxyType(c);
+        return new ProxyType();
     }
 
     void CPU_Optimized_gridding(
