@@ -123,8 +123,7 @@ int test01()
 
     // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
-    idg::CompileConstants constants(nr_correlations, subgrid_size);
-    idg::proxy::cpu::Reference proxy(constants);
+    idg::proxy::cpu::Reference proxy;
 
     // Predict visibilities
     clog << ">>> Predict visibilities" << endl;
@@ -132,8 +131,9 @@ int test01()
     proxy.transform(idg::ImageDomainToFourierDomain, grid);
 
     proxy.degridding(
-        w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
-        baselines, grid, aterms, aterms_offsets, spheroidal);
+        w_offset, cell_size, kernel_size, subgrid_size,
+        frequencies, visibilities, uvw, baselines,
+        grid, aterms, aterms_offsets, spheroidal);
 
     clog << endl;
 

@@ -153,8 +153,7 @@ void run()
 
     // Initialize proxy
     clog << ">>> Initialize proxy" << endl;
-    idg::CompileConstants constants(nr_correlations, subgrid_size);
-    ProxyType proxy(constants);
+    ProxyType proxy;
     clog << endl;
 
     // Create plan
@@ -171,8 +170,9 @@ void run()
         clog << ">>> Run gridding" << endl;
         runtimes_gridding[i] = -omp_get_wtime();
         proxy.gridding(
-            plan, w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
-            baselines, grid, aterms, aterms_offsets, spheroidal);
+            plan, w_offset, cell_size, kernel_size, subgrid_size,
+            frequencies, visibilities, uvw, baselines,
+            grid, aterms, aterms_offsets, spheroidal);
         runtimes_gridding[i] += omp_get_wtime();
         clog << endl;
 
@@ -183,8 +183,9 @@ void run()
         clog << ">>> Run degridding" << endl;
         runtimes_degridding[i] = -omp_get_wtime();
         proxy.degridding(
-            plan, w_offset, cell_size, kernel_size, frequencies, visibilities, uvw,
-            baselines, grid, aterms, aterms_offsets, spheroidal);
+            plan, w_offset, cell_size, kernel_size, subgrid_size,
+            frequencies, visibilities, uvw, baselines,
+            grid, aterms, aterms_offsets, spheroidal);
         runtimes_degridding[i] += omp_get_wtime();
         clog << endl;
     }
