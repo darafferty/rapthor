@@ -13,9 +13,7 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             CUDA::CUDA(
-                CompileConstants constants,
                 ProxyInfo info) :
-                Proxy(constants),
                 mInfo(info) {
 
                 #if defined(DEBUG)
@@ -49,7 +47,7 @@ namespace idg {
                 // Create a device instance for every device
                 for (int i = 0; i < device_numbers.size(); i++) {
                     InstanceCUDA *device = new InstanceCUDA(
-                        mConstants, mInfo, i, device_numbers[i]);
+                        mInfo, i, device_numbers[i]);
                     devices.push_back(device);
                 }
             }

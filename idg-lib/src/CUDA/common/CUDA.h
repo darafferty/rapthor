@@ -18,7 +18,6 @@ namespace idg {
             class CUDA : public Proxy {
                 public:
                     CUDA(
-                        CompileConstants constants,
                         ProxyInfo info);
 
                     ~CUDA();

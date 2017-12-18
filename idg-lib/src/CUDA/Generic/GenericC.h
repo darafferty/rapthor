@@ -1,15 +1,9 @@
 extern "C" {
     typedef idg::proxy::cuda::Generic ProxyType;
 
-    ProxyType* CUDA_Generic_init(
-                unsigned int nr_correlations,
-                unsigned int subgrid_size)
+    ProxyType* CUDA_Generic_init()
     {
-        idg::CompileConstants c(
-            nr_correlations,
-            subgrid_size);
-
-        return new ProxyType(c);
+        return new ProxyType();
     }
 
     void CUDA_Generic_gridding(
@@ -17,6 +11,7 @@ extern "C" {
         float w_step,
         const float cell_size,
         unsigned int kernel_size,
+        unsigned int subgrid_size,
         float* frequencies,
         unsigned int nr_channels,
         std::complex<float>* visibilities,
@@ -51,6 +46,7 @@ extern "C" {
             w_step,
             cell_size,
             kernel_size,
+            subgrid_size,
             frequencies,
             nr_channels,
             visibilities,
@@ -88,6 +84,7 @@ extern "C" {
         float w_step,
         const float cell_size,
         unsigned int kernel_size,
+        unsigned int subgrid_size,
         float* frequencies,
         unsigned int nr_channels,
         std::complex<float>* visibilities,
@@ -122,6 +119,7 @@ extern "C" {
             w_step,
             cell_size,
             kernel_size,
+            subgrid_size,
             frequencies,
             nr_channels,
             visibilities,
