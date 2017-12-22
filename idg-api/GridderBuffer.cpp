@@ -98,8 +98,10 @@ namespace api {
 
         const int nr_channel_groups = m_channel_groups.size();
         Plan* plans[nr_channel_groups];
-        std::mutex plan_mutex;
-        plan_mutex.lock();
+        std::mutex locks[nr_channel_groups];
+        for (int i = 0; i < nr_channel_groups; i++) {
+            locks[i].lock();
+        }
         omp_set_nested(true);
 
         /*
@@ -123,11 +125,9 @@ namespace api {
                         m_bufferStationPairs2,
                         m_aterm_offsets_array,
                         options);
-                    if (i > 0) {
-                        plan_mutex.lock();
-                    }
+
                     plans[i] = plan;
-                    plan_mutex.unlock();
+                    locks[i].unlock();
                 } // end for i
             } // end create plans
 
@@ -135,9 +135,8 @@ namespace api {
             if (omp_get_thread_num() == 1) {
                 for (int i = 0; i < nr_channel_groups; i++) {
                     // Wait for plan to become available
-                    plan_mutex.lock();
+                    locks[i].lock();
                     Plan *plan = plans[i];
-                    plan_mutex.unlock();
 
                     // Start flush
                     std::cout << "gridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
@@ -166,9 +165,11 @@ namespace api {
                         m_aterms_array,
                         m_aterm_offsets_array,
                         m_spheroidal);
+
+                    delete plan;
                 } // end for i
             } // end execute plans
-        }
+        } // end omp parallel
     }
 
     // Must be called whenever the buffer is full or no more data added
