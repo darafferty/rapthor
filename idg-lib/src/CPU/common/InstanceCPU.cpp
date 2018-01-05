@@ -32,7 +32,7 @@ namespace idg {
                 cout << "Compiler flags: " << flags << endl;
                 #endif
 
-                compile(compiler, flags);
+                //compile(compiler, flags);
                 load_shared_objects();
                 load_kernel_funcions();
             }
@@ -168,12 +168,21 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                for (auto libname : mInfo.get_lib_names()) {
-                    string lib = mInfo.get_path_to_lib() + "/" + libname;
+                string libdir = auxiliary::get_lib_dir() + "/idg-cpu/Reference";
+                vector<string> lib_names;
+                lib_names.push_back("libcpu-reference-kernel-gridder.so");
+                lib_names.push_back("libcpu-reference-kernel-degridder.so");
+                lib_names.push_back("libcpu-reference-kernel-adder.so");
+                lib_names.push_back("libcpu-reference-kernel-splitter.so");
+                lib_names.push_back("libcpu-reference-kernel-fft.so");
 
-                    #if defined(DEBUG)
+                for (auto libname : lib_names) {
+                    string lib = libdir + "/" + libname;
+
+                    //#if defined(DEBUG)
                     cout << "Loading: " << libname << endl;
-                    #endif
+                    cout << "test: " << lib << endl;
+                    //#endif
 
                     modules.push_back(new runtime::Module(lib.c_str()));
                 }
