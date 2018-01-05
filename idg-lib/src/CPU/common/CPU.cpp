@@ -16,10 +16,8 @@ namespace idg {
 
             // Constructor
             CPU::CPU(
-                Compiler compiler,
-                Compilerflags flags,
-                ProxyInfo info) :
-                kernels(compiler, flags, info)
+                string libdir) :
+                kernels(libdir)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

@@ -13,11 +13,8 @@ namespace idg {
 
             // Constructor
             InstanceCPU::InstanceCPU(
-                Compiler compiler,
-                Compilerflags flags,
-                ProxyInfo info) :
+                string libdir) :
                 KernelsInstance(),
-                mInfo(info),
                 function_gridder(nullptr),
                 function_degridder(nullptr),
                 function_fft(nullptr),
@@ -28,12 +25,9 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
-                cout << "Compiler: " << compiler << endl;
-                cout << "Compiler flags: " << flags << endl;
                 #endif
 
-                //compile(compiler, flags);
-                load_shared_objects();
+                load_shared_objects(libdir);
                 load_kernel_funcions();
             }
 
@@ -57,118 +51,16 @@ namespace idg {
                 delete function_splitter;
                 delete function_adder_wstack;
                 delete function_splitter_wstack;
-
-                // Delete .so files
-                if (mInfo.delete_shared_objects()) {
-                    for (auto libname : mInfo.get_lib_names()) {
-                        string lib = mInfo.get_path_to_lib() + "/" + libname;
-                        remove(lib.c_str());
-                    }
-                    rmdir(mInfo.get_path_to_lib().c_str());
-                }
             }
 
-            string InstanceCPU::make_tempdir()
-            {
-                char _tmpdir[] = "/tmp/idg-XXXXXX";
-                char *tmpdir = mkdtemp(_tmpdir);
-
-                if (tmpdir == NULL) {
-                    throw runtime_error("Cannot create tmp directory");
-                }
-
-                #if defined(DEBUG)
-                cout << "Temporary files will be stored in: " << tmpdir << endl;
-                #endif
-                return tmpdir;
-            }
-
-            ProxyInfo InstanceCPU::default_proxyinfo(
-                string srcdir,
-                string tmpdir)
+            void InstanceCPU::load_shared_objects(
+                    string libdir)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
 
-                ProxyInfo p;
-                p.set_path_to_src(srcdir);
-                p.set_path_to_lib(tmpdir);
-
-                string libgridder = "Gridder.so";
-                string libdegridder = "Degridder.so";
-                string libfft = "FFT.so";
-                string libadder = "Adder.so";
-                string libsplitter = "Splitter.so";
-
-                p.add_lib(libgridder);
-                p.add_lib(libdegridder);
-                p.add_lib(libfft);
-                p.add_lib(libadder);
-                p.add_lib(libsplitter);
-
-                p.add_src_file_to_lib(libgridder, "KernelGridder.cpp");
-                p.add_src_file_to_lib(libdegridder, "KernelDegridder.cpp");
-                p.add_src_file_to_lib(libfft, "KernelFFT.cpp");
-                p.add_src_file_to_lib(libadder, "KernelAdder.cpp");
-                p.add_src_file_to_lib(libadder, "KernelAdderWStack.cpp", true);
-                p.add_src_file_to_lib(libsplitter, "KernelSplitter.cpp");
-                p.add_src_file_to_lib(libsplitter, "KernelSplitterWStack.cpp", true);
-
-                p.set_delete_shared_objects(true);
-
-                return p;
-            }
-
-            void InstanceCPU::compile(
-                Compiler compiler,
-                Compilerflags flags)
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                // Set compile arguments:
-                stringstream arguments;
-                arguments << "-DNR_POLARIZATIONS=" << 4;
-                arguments << " " << flags;
-
-                // Get list of libraries to build
-                vector<string> v = mInfo.get_lib_names();
-
-                // Build all libraries
-                #pragma omp parallel for num_threads(v.size())
-                for (int i = 0; i < v.size(); i++) {
-                    string libname = mInfo.get_lib_names()[i];
-
-                    // create shared object "libname"
-                    string lib = mInfo.get_path_to_lib() + "/" + libname;
-
-                    vector<string> source_files = mInfo.get_source_files(libname);
-
-                    stringstream source;
-                    for (auto src : source_files) {
-                        source << mInfo.get_path_to_src() << "/" << src << " ";
-                    } // source = a.cpp b.cpp c.cpp ...
-
-                    #if defined(DEBUG)
-                    cout << lib << " " << source.str() << " " << endl;
-                    #endif
-
-                    runtime::Source(source.str().c_str()).compile(
-                        compiler.c_str(),
-                        lib.c_str(),
-                        arguments.str().c_str());
-                } // end for each library
-            } // end compile
-
-            void InstanceCPU::load_shared_objects()
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                string libdir = auxiliary::get_lib_dir() + "/idg-cpu/Reference";
+                string full_libdir = auxiliary::get_lib_dir() + "/idg-cpu/" + libdir;
                 vector<string> lib_names;
                 lib_names.push_back("libcpu-reference-kernel-gridder.so");
                 lib_names.push_back("libcpu-reference-kernel-degridder.so");
@@ -177,7 +69,7 @@ namespace idg {
                 lib_names.push_back("libcpu-reference-kernel-fft.so");
 
                 for (auto libname : lib_names) {
-                    string lib = libdir + "/" + libname;
+                    string lib = full_libdir + "/" + libname;
 
                     //#if defined(DEBUG)
                     cout << "Loading: " << libname << endl;

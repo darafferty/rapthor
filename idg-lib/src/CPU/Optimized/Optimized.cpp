@@ -10,51 +10,15 @@ namespace idg {
 
             // Constructor
             Optimized::Optimized(
-                Compiler compiler,
-                Compilerflags flags,
-                ProxyInfo info)
-                : CPU(compiler, flags, info)
+                string libdir)
+                : CPU(libdir)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
             }
 
-            // Runtime compilation
-            ProxyInfo Optimized::default_info()
-            {
-                #if defined(DEBUG)
-                cout << __func__ << endl;
-                #endif
-
-                string srcdir = auxiliary::get_lib_dir() + "/idg-cpu/Optimized";
-
-                #if defined(DEBUG)
-                cout << "Searching for source files in: " << srcdir << endl;
-                #endif
-
-                // Create temp directory
-                string tmpdir = kernel::cpu::InstanceCPU::make_tempdir();
-
-                // Create proxy info
-                ProxyInfo p = kernel::cpu::InstanceCPU::default_proxyinfo(srcdir, tmpdir);
-
-                return p;
-            }
-
-
-            string Optimized::default_compiler()
-            {
-                #if defined(GNU_CXX_COMPILER)
-                return "g++";
-                #elif defined(CLANG_CXX_COMPILER)
-                return "clang++";
-                #else
-                return "icpc";
-                #endif
-            }
-
-
+#if 0
             string Optimized::default_compiler_flags()
             {
                 stringstream flags;
@@ -145,6 +109,7 @@ namespace idg {
 
                 return flags.str();
             }
+#endif
 
         } // namespace cpu
     } // namespace proxy

@@ -18,9 +18,7 @@ namespace idg {
                 public:
                     // Constructor
                     InstanceCPU(
-                        Compiler compiler,
-                        Compilerflags flags,
-                        ProxyInfo info);
+                            std::string libdir);
 
                     // Destructor
                     virtual ~InstanceCPU();
@@ -101,19 +99,13 @@ namespace idg {
 
                     bool has_splitter_wstack() {return (function_splitter_wstack != nullptr);}
 
-                    static std::string make_tempdir();
-                    static ProxyInfo default_proxyinfo(
-                        std::string srcdir,
-                        std::string tmpdir);
-
                 protected:
                     void compile(
                         Compiler compiler,
                         Compilerflags flags);
-                    void load_shared_objects();
+                    void load_shared_objects(std::string libdir);
                     void load_kernel_funcions();
 
-                    ProxyInfo mInfo;
                     std::vector<runtime::Module*> modules;
 
                     runtime::Function *function_gridder;
