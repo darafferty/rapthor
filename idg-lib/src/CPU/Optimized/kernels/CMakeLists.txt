@@ -1,4 +1,4 @@
-project(cpu-reference-kernel)
+project(cpu-optimized-kernel)
 
 # Include directories
 include_directories(
@@ -13,11 +13,12 @@ else()
     add_compile_options("-O3")
 endif()
 
+
 # Compiler options
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    add_compile_options("-qopenmp")
-    add_compile_options("-mkl")
+    add_compile_options("-axCORE-AVX512")
 else()
+    add_compile_options("-march=native")
     add_compile_options("-fopenmp")
     if (BUILD_WITH_MKL)
         add_compile_options("-lmkl")
@@ -36,6 +37,10 @@ add_library(${PROJECT_NAME}-adder     KernelAdder.cpp)
 add_library(${PROJECT_NAME}-splitter  KernelSplitter.cpp)
 add_library(${PROJECT_NAME}-fft       KernelFFT.cpp)
 
+# Add libraries for w-stacking
+add_library(${PROJECT_NAME}-adder-wstack     KernelAdderWStack.cpp)
+add_library(${PROJECT_NAME}-splitter-wstack  KernelSplitterWStack.cpp)
+
 # Copy kernel libraries
 install(
     TARGETS
@@ -44,6 +49,8 @@ install(
     ${PROJECT_NAME}-adder
     ${PROJECT_NAME}-splitter
     ${PROJECT_NAME}-fft
+    ${PROJECT_NAME}-adder-wstack
+    ${PROJECT_NAME}-splitter-wstack
     DESTINATION
-    lib/idg-cpu/Reference
+    lib/idg-cpu/Optimized
 )

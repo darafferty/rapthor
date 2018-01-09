@@ -74,7 +74,9 @@ inline void compute_sincos(
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
+    #if defined(__INTEL_COMPILER)
     #pragma vector aligned(x, sin, cos)
+    #endif
     for (int i = 0; i < n; i++) {
         idg::float2 phasor = compute_sincos(lookup, x[i]);
         cos[i] = phasor.real;
@@ -124,6 +126,7 @@ inline void apply_aterm(
 }
 
 // http://bit.ly/2shIfmP
+#if defined(__AVX__)
 inline float _mm256_reduce_add_ps(__m256 x) {
     /* ( x3+x7, x2+x6, x1+x5, x0+x4 ) */
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(x, 1),
@@ -137,6 +140,7 @@ inline float _mm256_reduce_add_ps(__m256 x) {
     /* Conversion to float is a no-op on x86-64 */
     return _mm_cvtss_f32(x32);
 }
+#endif
 
 inline void compute_reduction_scalar(
     int *offset,
@@ -162,10 +166,12 @@ inline void compute_reduction_scalar(
     float output_yx_imag = 0.0f;
     float output_yy_imag = 0.0f;
 
+    #if defined(__INTEL_COMPILER)
     #pragma omp simd reduction(+:output_xx_real,output_xx_imag, \
                                  output_xy_real,output_xy_imag, \
                                  output_yx_real,output_yx_imag, \
                                  output_yy_real,output_yy_imag)
+    #endif
     for (int i = *offset; i < n; i++) {
         float phasor_real_ = phasor_real[i];
         float phasor_imag_ = phasor_imag[i];

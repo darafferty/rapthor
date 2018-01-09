@@ -18,22 +18,6 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
 
-# Copy kernel source files
-install(
-	FILES
-	kernels/KernelAdder.cpp
-	kernels/KernelAdderWStack.cpp
-	kernels/KernelDegridder.cpp
-	kernels/KernelFFT.cpp
-	kernels/KernelGridder.cpp
-	kernels/KernelSplitter.cpp
-	kernels/KernelSplitterWStack.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../common/Types.h
-	kernels/Math.h
-	DESTINATION
-	lib/idg-cpu/Optimized
-)
-
 # Copy header files
 install(
     FILES
@@ -41,3 +25,6 @@ install(
     DESTINATION
     include/CPU/Optimized
 )
+
+# Add kernels
+add_subdirectory(kernels)

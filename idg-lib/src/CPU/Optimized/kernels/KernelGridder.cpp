@@ -109,7 +109,9 @@ void kernel_gridder(
                 const float tmp = (l * l) + (m * m);
                 const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
 
+                #if defined(__INTEL_COMPILER)
                 #pragma vector aligned(uvw_u, uvw_v, uvw_w)
+                #endif
                 for (int time = 0; time < nr_timesteps; time++) {
                     // Load UVW coordinates
                     float u = uvw_u[time];
@@ -122,7 +124,9 @@ void kernel_gridder(
                     // Compute phase offset
                     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
+                    #if defined(__INTEL_COMPILER)
                     #pragma vector aligned(wavenumbers, phase)
+                    #endif
                     for (int chan = 0; chan < nr_channels; chan++) {
                         // Compute phase
                         float wavenumber = wavenumbers[chan];

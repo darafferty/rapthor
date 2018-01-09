@@ -1,6 +1,8 @@
 #include <cstdint> // unint64_t
 #include <unistd.h> // rmdir
 
+#include <algorithm> // transform
+
 #include "idg-config.h"
 
 #include "InstanceCPU.h"
@@ -60,21 +62,29 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
-                string full_libdir = auxiliary::get_lib_dir() + "/idg-cpu/" + libdir;
+                // Derive kernel prefix from directory name (Reference -> reference)
+                string prefix = libdir;
+                std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::tolower);
+
+                // All libraries
                 vector<string> lib_names;
-                lib_names.push_back("libcpu-reference-kernel-gridder.so");
-                lib_names.push_back("libcpu-reference-kernel-degridder.so");
-                lib_names.push_back("libcpu-reference-kernel-adder.so");
-                lib_names.push_back("libcpu-reference-kernel-splitter.so");
-                lib_names.push_back("libcpu-reference-kernel-fft.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-gridder.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-degridder.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-adder.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-splitter.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-fft.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-adder-wstack.so");
+                lib_names.push_back("libcpu-" + prefix + "-kernel-splitter-wstack.so");
+
+                // Get full path to library directory
+                string full_libdir = auxiliary::get_lib_dir() + "/idg-cpu/" + libdir;
 
                 for (auto libname : lib_names) {
                     string lib = full_libdir + "/" + libname;
 
-                    //#if defined(DEBUG)
-                    cout << "Loading: " << libname << endl;
-                    cout << "test: " << lib << endl;
-                    //#endif
+                    #if defined(DEBUG)
+                    cout << "Loading: " << lib << endl;
+                    #endif
 
                     modules.push_back(new runtime::Module(lib.c_str()));
                 }
