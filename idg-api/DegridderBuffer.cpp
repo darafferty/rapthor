@@ -114,44 +114,78 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = true;
 
-        for (int i = 0; i<m_channel_groups.size(); i++)
-        {
-            std::cout << "degridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
-            Plan plan(
-                m_kernel_size,
-                m_subgridSize,
-                m_gridHeight,
-                m_cellHeight,
-                m_grouped_frequencies[i],
-                m_bufferUVW,
-                m_bufferStationPairs,
-                m_aterm_offsets_array,
-                options);
-
-            m_proxy->degridding(
-                plan,
-                m_wStepInLambda,
-                m_cellHeight,
-                m_kernel_size,
-                m_subgridSize,
-                m_grouped_frequencies[i],
-                m_bufferVisibilities[i],
-                m_bufferUVW,
-                m_bufferStationPairs,
-                *m_grid,
-                m_aterms_array,
-                m_aterm_offsets_array,
-                m_spheroidal);
-
-            // copy data from per channel buffer into buffer for all channels
-            for (int bl = 0; bl < m_nrGroups; bl++) {
-                for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
-                    std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
-                            &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
-                            &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
-                }
-            }
+        const int nr_channel_groups = m_channel_groups.size();
+        Plan* plans[nr_channel_groups];
+        std::mutex locks[nr_channel_groups];
+        for (int i = 0; i < nr_channel_groups; i++) {
+            locks[i].lock();
         }
+        omp_set_nested(true);
+
+        /*
+         * Start two threads:
+         *  thread 0: create plans
+         *  thread 1: execute these plans
+         */
+        #pragma omp parallel num_threads(2)
+        {
+            // Create plans
+            if (omp_get_thread_num() == 0) {
+                for (int i = 0; i < nr_channel_groups; i++) {
+                    std::cout << "planning channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+                    Plan* plan = new Plan(
+                        m_kernel_size,
+                        m_subgridSize,
+                        m_gridHeight,
+                        m_cellHeight,
+                        m_grouped_frequencies[i],
+                        m_bufferUVW,
+                        m_bufferStationPairs,
+                        m_aterm_offsets_array,
+                        options);
+
+                    plans[i] = plan;
+                    locks[i].unlock();
+                } // end for i
+            } // end create plans
+
+            // Execute plans
+            if (omp_get_thread_num() == 1) {
+                for (int i = 0; i < nr_channel_groups; i++) {
+                    // Wait for plan to become available
+                    locks[i].lock();
+                    Plan *plan = plans[i];
+
+                    // Start flush
+                    std::cout << "degridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+                    m_proxy->degridding(
+                        *plan,
+                        m_wStepInLambda,
+                        m_cellHeight,
+                        m_kernel_size,
+                        m_subgridSize,
+                        m_grouped_frequencies[i],
+                        m_bufferVisibilities[i],
+                        m_bufferUVW,
+                        m_bufferStationPairs,
+                        *m_grid,
+                        m_aterms_array,
+                        m_aterm_offsets_array,
+                        m_spheroidal);
+
+                    // copy data from per channel buffer into buffer for all channels
+                    for (int bl = 0; bl < m_nrGroups; bl++) {
+                        for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
+                            std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
+                                    &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
+                                    &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
+                        }
+                    }
+
+                    delete plan;
+                } // end for i
+            } // end execute plans
+        } // end omp parallel
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
