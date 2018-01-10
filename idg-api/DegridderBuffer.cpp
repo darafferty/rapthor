@@ -4,6 +4,8 @@
 
 #include "DegridderBufferImpl.h"
 
+#include <mutex>
+
 using namespace std;
 
 namespace idg {
