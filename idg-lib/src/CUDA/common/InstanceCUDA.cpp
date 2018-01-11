@@ -609,7 +609,7 @@ namespace idg {
                     }
 
                     // check pointer aliasing
-                    if (((ptr + size) < m_ptr) || ptr > (m_ptr + m_size)) {
+                    if ((((size_t) ptr + size) < (size_t) m_ptr) ||(size_t) ptr > ((size_t) m_ptr + m_size)) {
                         // pointer outside of current memory
                     } else {
                         // overlap between current memory
