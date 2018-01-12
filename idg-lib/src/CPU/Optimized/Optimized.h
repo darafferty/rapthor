@@ -11,14 +11,10 @@ namespace idg {
                 public:
                     // Constructor
                     Optimized(
-                        Compiler compiler = default_compiler(),
-                        Compilerflags flags = default_compiler_flags(),
-                        ProxyInfo info = default_info());
+                        std::vector<std::string> libraries = default_libraries());
 
-                    // Default values for runtime compilation
-                    static ProxyInfo default_info();
-                    static std::string default_compiler();
-                    static std::string default_compiler_flags();
+                private:
+                    static std::vector<std::string> default_libraries();
 
             }; // class Optimized
 

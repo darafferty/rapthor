@@ -18,12 +18,8 @@
 #define NR_SAMPLES        TWO_HLF_PI_INT + 1
 #endif
 
-// ALignment
-#if defined(__AVX512F__)
+// Alignment
 #define ALIGNMENT 64
-#else
-#define ALIGNMENT 32
-#endif
 
 inline void compute_sincos(
     const int n,
@@ -74,7 +70,9 @@ inline void compute_sincos(
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
+    #if defined(__INTEL_COMPILER)
     #pragma vector aligned(x, sin, cos)
+    #endif
     for (int i = 0; i < n; i++) {
         idg::float2 phasor = compute_sincos(lookup, x[i]);
         cos[i] = phasor.real;
@@ -124,6 +122,7 @@ inline void apply_aterm(
 }
 
 // http://bit.ly/2shIfmP
+#if defined(__AVX__)
 inline float _mm256_reduce_add_ps(__m256 x) {
     /* ( x3+x7, x2+x6, x1+x5, x0+x4 ) */
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(x, 1),
@@ -137,6 +136,7 @@ inline float _mm256_reduce_add_ps(__m256 x) {
     /* Conversion to float is a no-op on x86-64 */
     return _mm_cvtss_f32(x32);
 }
+#endif
 
 inline void compute_reduction_scalar(
     int *offset,
@@ -162,10 +162,12 @@ inline void compute_reduction_scalar(
     float output_yx_imag = 0.0f;
     float output_yy_imag = 0.0f;
 
+    #if defined(__INTEL_COMPILER)
     #pragma omp simd reduction(+:output_xx_real,output_xx_imag, \
                                  output_xy_real,output_xy_imag, \
                                  output_yx_real,output_yx_imag, \
                                  output_yy_real,output_yy_imag)
+    #endif
     for (int i = *offset; i < n; i++) {
         float phasor_real_ = phasor_real[i];
         float phasor_imag_ = phasor_imag[i];
@@ -200,7 +202,6 @@ inline void compute_reduction_scalar(
     output[3] += {output_yy_real, output_yy_imag};
 } // end compute_reduction_scalar
 
-#if defined(__AVX2__)
 inline void compute_reduction_avx2(
     int *offset,
     const int n,
@@ -216,6 +217,7 @@ inline void compute_reduction_avx2(
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
 {
+#if defined(__AVX2__)
     const int vector_length = 8;
 
     __m256 output_xx_r = _mm256_setzero_ps();
@@ -281,8 +283,9 @@ inline void compute_reduction_avx2(
 
 
     *offset += vector_length * ((n - *offset) / vector_length);
+#endif
 } // end compute_reduction_avx2
-#elif defined(__AVX__)
+
 inline void compute_reduction_avx(
     int *offset,
     const int n,
@@ -364,9 +367,7 @@ inline void compute_reduction_avx(
 
     *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx
-#endif
 
-#if defined(__AVX512F__)
 inline void compute_reduction_avx512(
     int *offset,
     const int n,
@@ -382,6 +383,7 @@ inline void compute_reduction_avx512(
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
 {
+#if defined(__AVX512F__)
     const int vector_length = 16;
 
     __m512 output_xx_r = _mm512_setzero_ps();
@@ -446,8 +448,8 @@ inline void compute_reduction_avx512(
     }
 
     *offset += vector_length * ((n - *offset) / vector_length);
-} // end compute_reduction_avx512
 #endif
+} // end compute_reduction_avx512
 
 inline void compute_reduction(
     const int n,
@@ -468,7 +470,6 @@ inline void compute_reduction(
     // Initialize output to zero
     memset(output, 0, NR_POLARIZATIONS * sizeof(idg::float2));
 
-    #if defined(__AVX512F__)
     // Vectorized loop, 16-elements, AVX512
     compute_reduction_avx512(
             &offset, n,
@@ -476,9 +477,7 @@ inline void compute_reduction(
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
             output);
-    #endif
 
-    #if defined(__AVX2__)
     // Vectorized loop, 8-elements, AVX2
     compute_reduction_avx2(
             &offset, n,
@@ -486,7 +485,7 @@ inline void compute_reduction(
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
             output);
-    #elif defined(__AVX__)
+
     // Vectorized loop, 8-elements, AVX
     compute_reduction_avx(
             &offset, n,
@@ -494,7 +493,6 @@ inline void compute_reduction(
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
             phasor_real, phasor_imag,
             output);
-    #endif
 
     // Remainder loop, scalar
     compute_reduction_scalar(

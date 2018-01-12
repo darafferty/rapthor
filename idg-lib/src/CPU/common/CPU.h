@@ -14,9 +14,7 @@ namespace idg {
                 public:
                     // Constructor
                     CPU(
-                        Compiler compiler,
-                        Compilerflags flags,
-                        ProxyInfo info);
+                        std::vector<std::string> libraries);
 
                     // Disallow assignment and pass-by-value
                     CPU& operator=(const CPU& rhs) = delete;

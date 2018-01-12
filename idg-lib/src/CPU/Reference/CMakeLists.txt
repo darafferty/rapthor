@@ -18,19 +18,6 @@ if (NOT BUILD_STATIC_LIBS)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 endif()
 
-# Copy kernel source files
-install(
-    FILES
-    kernels/KernelAdder.cpp
-    kernels/KernelDegridder.cpp
-    kernels/KernelFFT.cpp
-    kernels/KernelGridder.cpp
-    kernels/KernelSplitter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/Types.h
-    DESTINATION
-    lib/idg-cpu/Reference
-)
-
 # Copy header files
 install(
     FILES
@@ -38,3 +25,6 @@ install(
     DESTINATION
     include/CPU/Reference
 )
+
+# Add kernels
+add_subdirectory(kernels)
