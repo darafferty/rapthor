@@ -100,7 +100,7 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIRBRARIES idg-common idg-fft ${CMAKE_DL_LIBS})
+set(LINK_LIRBRARIES idg-common idg-fft ${CMAKE_DL_LIBS} ${MKL_LIBRARIES})
 target_link_libraries (
   idg-cpu
   ${LINK_LIRBRARIES}

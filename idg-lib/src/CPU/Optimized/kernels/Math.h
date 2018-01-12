@@ -1,6 +1,8 @@
 #include <string.h>
 #include <immintrin.h>
 
+#include "arch.h"
+
 #if defined(USE_LOOKUP)
 // Floating-point PI values
 #define PI     float(M_PI)
@@ -18,7 +20,7 @@
 #define NR_SAMPLES        TWO_HLF_PI_INT + 1
 #endif
 
-// ALignment
+// Alignment
 #if defined(__AVX512F__)
 #define ALIGNMENT 64
 #else
@@ -126,7 +128,6 @@ inline void apply_aterm(
 }
 
 // http://bit.ly/2shIfmP
-#if defined(__AVX__)
 inline float _mm256_reduce_add_ps(__m256 x) {
     /* ( x3+x7, x2+x6, x1+x5, x0+x4 ) */
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(x, 1),
@@ -140,7 +141,6 @@ inline float _mm256_reduce_add_ps(__m256 x) {
     /* Conversion to float is a no-op on x86-64 */
     return _mm_cvtss_f32(x32);
 }
-#endif
 
 inline void compute_reduction_scalar(
     int *offset,
@@ -206,7 +206,6 @@ inline void compute_reduction_scalar(
     output[3] += {output_yy_real, output_yy_imag};
 } // end compute_reduction_scalar
 
-#if defined(__AVX2__)
 inline void compute_reduction_avx2(
     int *offset,
     const int n,
@@ -288,7 +287,7 @@ inline void compute_reduction_avx2(
 
     *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx2
-#elif defined(__AVX__)
+
 inline void compute_reduction_avx(
     int *offset,
     const int n,
@@ -370,9 +369,7 @@ inline void compute_reduction_avx(
 
     *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx
-#endif
 
-#if defined(__AVX512F__)
 inline void compute_reduction_avx512(
     int *offset,
     const int n,
@@ -453,7 +450,6 @@ inline void compute_reduction_avx512(
 
     *offset += vector_length * ((n - *offset) / vector_length);
 } // end compute_reduction_avx512
-#endif
 
 inline void compute_reduction(
     const int n,
@@ -474,33 +470,33 @@ inline void compute_reduction(
     // Initialize output to zero
     memset(output, 0, NR_POLARIZATIONS * sizeof(idg::float2));
 
-    #if defined(__AVX512F__)
-    // Vectorized loop, 16-elements, AVX512
-    compute_reduction_avx512(
-            &offset, n,
-            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
-            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
-            phasor_real, phasor_imag,
-            output);
-    #endif
+    if (has_intel_knl_features()) {
+        // Vectorized loop, 16-elements, AVX512
+        compute_reduction_avx512(
+                &offset, n,
+                input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+                input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
+                phasor_real, phasor_imag,
+                output);
+    }
 
-    #if defined(__AVX2__)
-    // Vectorized loop, 8-elements, AVX2
-    compute_reduction_avx2(
-            &offset, n,
-            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
-            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
-            phasor_real, phasor_imag,
-            output);
-    #elif defined(__AVX__)
-    // Vectorized loop, 8-elements, AVX
-    compute_reduction_avx(
-            &offset, n,
-            input_xx_real, input_xy_real, input_yx_real, input_yy_real,
-            input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
-            phasor_real, phasor_imag,
-            output);
-    #endif
+    if (check_4th_gen_intel_core_features()) {
+        // Vectorized loop, 8-elements, AVX2
+        compute_reduction_avx2(
+                &offset, n,
+                input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+                input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
+                phasor_real, phasor_imag,
+                output);
+    } else {
+        // Vectorized loop, 8-elements, AVX
+        compute_reduction_avx(
+                &offset, n,
+                input_xx_real, input_xy_real, input_yx_real, input_yy_real,
+                input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,
+                phasor_real, phasor_imag,
+                output);
+    }
 
     // Remainder loop, scalar
     compute_reduction_scalar(

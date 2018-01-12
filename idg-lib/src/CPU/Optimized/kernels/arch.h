@@ -2,7 +2,7 @@
 
 #include <immintrin.h>
 
-int has_intel_knl_features()
+inline int has_intel_knl_features()
 {
     const unsigned long knl_features =
         (_FEATURE_AVX512F | _FEATURE_AVX512ER |
@@ -10,7 +10,7 @@ int has_intel_knl_features()
     return _may_i_use_cpu_feature( knl_features );
 }
 
-int check_4th_gen_intel_core_features()
+inline int check_4th_gen_intel_core_features()
 {
     const int the_4th_gen_features =
         (_FEATURE_AVX2 | _FEATURE_FMA | _FEATURE_BMI | _FEATURE_LZCNT | _FEATURE_MOVBE);
@@ -63,10 +63,8 @@ int check_4th_gen_intel_core_features()
     if ( (abcd[2] & fma_movbe_osxsave_mask) != fma_movbe_osxsave_mask )
         return 0;
 
-    #if 0
     if ( ! check_xcr0_ymm() )
         return 0;
-    #endif
 
     /*  CPUID.(EAX=07H, ECX=0H):EBX.AVX2[bit 5]==1  &&
         CPUID.(EAX=07H, ECX=0H):EBX.BMI1[bit 3]==1  &&

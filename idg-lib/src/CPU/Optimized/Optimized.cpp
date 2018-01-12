@@ -1,7 +1,5 @@
 #include "Optimized.h"
 
-#include "arch.h"
-
 using namespace std;
 
 namespace idg {
