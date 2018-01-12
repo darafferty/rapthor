@@ -76,7 +76,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_VERSION
 else()
     find_package(OpenMP REQUIRED)
     if (OPENMP_FOUND)
-        # Prevent Intel 2016.2 compiler warning
         if (INTEL_CXX_COMPILER)
         set (OpenMP_CXX_FLAGS "-qopenmp")
         endif()
@@ -101,20 +100,15 @@ else ()
 endif()
 
 # FFT library
-if (BUILD_WITH_MKL AND NOT INTEL_CXX_COMPILER)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" OR ${BUILD_WITH_MKL})
+# assume MKL is present when using Intel compiler
 find_package(MKL QUIET)
-endif()
-if (${MKL_FOUND})
-    get_filename_component(MKL_LIB_DIR ${MKL_LIBRARIES} PATH)
-    set (HAVE_MKL TRUE)
-    set(FFTW3F_LIBRARY ${MKL_LIBRARIES})
-    set(FFTW3_LIBRARY ${MKL_LIBRARIES})
+set(HAVE_MKL TRUE)
+set(FFTW3_LIBRARIES ${MKL_LIBRARIES})
+set(FFTW3_INCLUDE_DIR "${MKL_INCLUDE_DIRS}/fftw")
 else()
-    unset (MKL_INCLUDE_DIRS CACHE)
-    unset (MKL_LIBRARIES CACHE)
-    find_package(FFTW3 COMPONENTS single double threads)
+find_package(FFTW3 COMPONENTS single double threads)
 endif()
-
 
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
 

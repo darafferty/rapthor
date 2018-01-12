@@ -65,8 +65,7 @@ add_library(idg-fft
 
 set(
     LINK_LIRBRARIES
-    ${FFTW3F_LIBRARY} ${FFTW3_LIBRARY}
-    ${FFTW3F_THREADS_LIBRARY} ${FFTW3_THREADS_LIBRARY}
+    ${FFTW3_LIBRARIES}
 )
 
 target_link_libraries(
@@ -100,7 +99,10 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIRBRARIES idg-common idg-fft ${CMAKE_DL_LIBS} ${MKL_LIBRARIES})
+set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS})
+if(BUILD_WITH_MKL)
+    set(LINK_LIRBRARIES ${LINK_LIRBRARIES} ${MKL_LIBRARIES})
+endif()
 target_link_libraries (
   idg-cpu
   ${LINK_LIRBRARIES}
@@ -248,9 +250,9 @@ endif(BUILD_LIB_OPENCL)
 
 add_library(idg
     idg.cpp
-    $<TARGET_OBJECTS:fft>
 )
 
+set(LINK_LIRBRARIES idg-fft)
 if (BUILD_LIB_CPU)
   set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
 endif()

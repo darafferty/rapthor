@@ -3,6 +3,7 @@ project(cpu-reference-kernel)
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/
+    ${FFTW3_INCLUDE_DIR}
 )
 
 # Build type options
