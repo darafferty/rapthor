@@ -79,21 +79,22 @@ namespace cu {
             HostMemory(void *ptr, size_t size, int flags = 0);
             ~HostMemory();
 
+            size_t capacity();
             size_t size();
-            void set(const void *in);
-            void set(void *in);
-            void set(void *in, size_t bytes);
+            void resize(size_t size);
             void* get(size_t offset = 0);
             void zero();
-            bool equals(void *ptr, size_t size);
 
             template <typename T> operator T *() {
                 return static_cast<T *>(_ptr);
             }
 
         private:
+            void release();
             void *_ptr;
+            size_t _capacity;
             size_t _size;
+            int _flags;
             bool free = false;
             bool unregister = false;
     };
@@ -102,12 +103,11 @@ namespace cu {
     class DeviceMemory  {
         public:
             DeviceMemory(size_t size);
-            DeviceMemory(void *ptr);
             ~DeviceMemory();
 
+            size_t capacity();
             size_t size();
-            void set(void *in);
-            void* get(size_t offset);
+            void resize(size_t size);
             void zero(CUstream stream = NULL);
 
             template <typename T> operator T *() {
@@ -120,8 +120,8 @@ namespace cu {
 
         private:
             CUdeviceptr _ptr;
+            size_t _capacity;
             size_t _size;
-            bool free = false;
     };
 
 
