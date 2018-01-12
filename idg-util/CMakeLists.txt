@@ -23,6 +23,10 @@ else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
 endif()
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    set (CMAKE_SHARED_LINKER_FLAGS "-static-intel")
+endif()
+
 # make sure OpenMP is used
 find_package(OpenMP REQUIRED)
 if (OPENMP_FOUND)
