@@ -16,8 +16,8 @@ namespace idg {
 
             // Constructor
             CPU::CPU(
-                string libdir) :
-                kernels(libdir)
+                std::vector<std::string> libraries):
+                kernels(libraries)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;

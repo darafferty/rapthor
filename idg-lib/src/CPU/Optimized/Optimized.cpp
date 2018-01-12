@@ -8,13 +8,27 @@ namespace idg {
 
             // Constructor
             Optimized::Optimized(
-                string libdir)
-                : CPU(libdir)
+                std::vector<std::string> libraries)
+                : CPU(libraries)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
                 #endif
             }
+
+            std::vector<std::string> Optimized::default_libraries() {
+                std::string prefix = "Optimized/libcpu-optimized-kernel-";
+                std::vector<std::string> libraries;
+                libraries.push_back(prefix + "gridder.so");
+                libraries.push_back(prefix + "degridder.so");
+                libraries.push_back(prefix + "adder.so");
+                libraries.push_back(prefix + "splitter.so");
+                libraries.push_back(prefix + "fft.so");
+                libraries.push_back(prefix + "adder-wstack.so");
+                libraries.push_back(prefix + "splitter-wstack.so");
+                return libraries;
+            }
+
         } // namespace cpu
     } // namespace proxy
 } // namespace idg

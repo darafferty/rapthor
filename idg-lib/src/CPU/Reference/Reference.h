@@ -11,7 +11,10 @@ namespace idg {
                 public:
                     // Constructor
                     Reference(
-                        std::string libdir = "Reference");
+                        std::vector<std::string> libraries = default_libraries());
+
+                private:
+                    static std::vector<std::string> default_libraries();
 
             }; // class Reference
 

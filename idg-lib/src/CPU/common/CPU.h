@@ -14,7 +14,7 @@ namespace idg {
                 public:
                     // Constructor
                     CPU(
-                        std::string libdir);
+                        std::vector<std::string> libraries);
 
                     // Disallow assignment and pass-by-value
                     CPU& operator=(const CPU& rhs) = delete;

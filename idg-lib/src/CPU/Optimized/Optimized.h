@@ -11,7 +11,10 @@ namespace idg {
                 public:
                     // Constructor
                     Optimized(
-                        std::string libdir = "Optimized");
+                        std::vector<std::string> libraries = default_libraries());
+
+                private:
+                    static std::vector<std::string> default_libraries();
 
             }; // class Optimized
 

@@ -18,7 +18,7 @@ namespace idg {
                 public:
                     // Constructor
                     InstanceCPU(
-                            std::string libdir);
+                        std::vector<std::string> libraries);
 
                     // Destructor
                     virtual ~InstanceCPU();
@@ -103,7 +103,8 @@ namespace idg {
                     void compile(
                         Compiler compiler,
                         Compilerflags flags);
-                    void load_shared_objects(std::string libdir);
+                    void load_shared_objects(
+                        std::vector<std::string> libraries);
                     void load_kernel_funcions();
 
                     std::vector<runtime::Module*> modules;
