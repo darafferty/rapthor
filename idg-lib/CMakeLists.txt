@@ -107,7 +107,7 @@ set(HAVE_MKL TRUE)
 set(FFTW3_LIBRARIES ${MKL_LIBRARIES})
 set(FFTW3_INCLUDE_DIR "${MKL_INCLUDE_DIRS}/fftw")
 else()
-find_package(FFTW3 COMPONENTS single double threads)
+find_package(FFTW3 COMPONENTS single threads)
 endif()
 
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)

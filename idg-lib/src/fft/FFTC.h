@@ -28,14 +28,6 @@ extern "C" {
         idg::ifftshift(m, n, (complex<float>*) array);
     }
 
-    void fft2(int m, int n, void* data) {
-        idg::fft2(m, n, (complex<double>*) data);
-    }
-
-    void ifft2(int m, int n, void* data) {
-        idg::ifft2(m, n, (complex<double>*) data);
-    }
-
     void resize2f_r2r(int m_in,  int n_in,  void *data_in,
                       int m_out, int n_out, void *data_out)
     {
@@ -48,20 +40,6 @@ extern "C" {
     {
         idg::resize2f(m_in, n_in, (complex<float>*) data_in,
                       m_out, n_out, (complex<float>*) data_out);
-    }
-
-    void resize2_r2r(int m_in,  int n_in,  void *data_in,
-                     int m_out, int n_out, void *data_out)
-    {
-        idg::resize2(m_in, n_in, (double*) data_in,
-                     m_out, n_out, (double*) data_out);
-    }
-
-    void resize2_c2c(int m_in,  int n_in,  void *data_in,
-                     int m_out, int n_out, void *data_out)
-    {
-        idg::resize2(m_in, n_in, (complex<double>*) data_in,
-                     m_out, n_out, (complex<double>*) data_out);
     }
 
 }
