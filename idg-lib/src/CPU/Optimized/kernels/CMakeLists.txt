@@ -27,8 +27,6 @@ else()
         add_compile_options("-DUSE_VML")
         add_compile_options("-lmkl")
         include_directories(${MKL_INCLUDE_DIRS})
-    else()
-        add_compile_options("-lfftw3f")
     endif()
 endif()
 
@@ -45,9 +43,6 @@ add_library(${PROJECT_NAME}-fft       KernelFFT.cpp)
 # Add libraries for w-stacking
 add_library(${PROJECT_NAME}-adder-wstack     KernelAdderWStack.cpp)
 add_library(${PROJECT_NAME}-splitter-wstack  KernelSplitterWStack.cpp)
-
-# Link libraries
-target_link_libraries(${PROJECT_NAME}-fft ${FFTW3_LIBRARIES})
 
 # Copy kernel libraries
 install(
