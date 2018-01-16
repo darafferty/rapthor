@@ -3,7 +3,7 @@ project(cuda-generic)
 # Set headers
 include_directories (
     ${IDG_CUDA_INCLUDE_DIR}
-    ${CUDA_INCLUDE_DIRS}
+    ${CUDA_INCLUDE_DIR}
 )
 
 # Set headers

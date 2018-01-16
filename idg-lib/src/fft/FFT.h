@@ -37,18 +37,6 @@ namespace idg {
     // complex-to-real 2d-FFT for n-by-n array
     void ifft2f_c2r(int n, std::complex<float> *data_in, float *data_out);
 
-    // in-place 2d-FFT for complex double m-by-n array
-    void fft2(int m, int n, std::complex<double> *data);
-
-    // in-place 2d-FFT for complex double n-by-n array
-    void fft2(int n, std::complex<double> *data);
-
-    // in-place 2d-iFFT for complex double m-by-n arrays
-    void ifft2(int m, int n, std::complex<double> *data);
-
-    // in-place 2d-iFFT for complex double n-by-n array
-    void ifft2(int n, std::complex<double> *data);
-
     // fftshift for m-by-n array of type T
     // TODO: make work for odd dimensions
     template<typename T>

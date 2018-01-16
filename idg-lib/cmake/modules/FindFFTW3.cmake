@@ -1,5 +1,5 @@
 # - Try to find FFTW3.
-# Usage: find_package(FFTW3 [COMPONENTS [single double long-double threads]])
+# Usage: find_package(FFTW3 [COMPONENTS [single double long-double threads omp]])
 #
 # Variables used by this module:
 #  FFTW3_ROOT_DIR             - FFTW3 root directory
@@ -11,6 +11,8 @@
 #  FFTW3[FL]?_LIBRARY         - the FFTW3 library - double, single(F), 
 #                               long-double(L) precision (cached)
 #  FFTW3[FL]?_THREADS_LIBRARY - the threaded FFTW3 library - double, single(F), 
+#                               long-double(L) precision (cached)
+#  FFTW3[FL]?_OMP_LIBRARY     - the OpenMP FFTW3 library - double, single(F), 
 #                               long-double(L) precision (cached)
 #  FFTW3_LIBRARIES            - list of all FFTW3 libraries found
 
@@ -52,9 +54,11 @@ foreach(_comp ${_components})
     list(APPEND _libraries fftw3l)
   elseif(_comp STREQUAL "threads")
     set(_use_threads ON)
+  elseif(_comp STREQUAL "omp")
+    set(_use_omp ON)
   else(_comp STREQUAL "single")
     message(FATAL_ERROR "FindFFTW3: unknown component `${_comp}' specified. "
-      "Valid components are `single', `double', `long-double', and `threads'.")
+      "Valid components are `single', `double', `long-double', `threads' and `omp'.")
   endif(_comp STREQUAL "single")
 endforeach(_comp ${_components})
 
@@ -64,8 +68,23 @@ if(_use_threads)
   foreach(_lib ${_libraries})
     list(APPEND _thread_libs ${_lib}_threads)
   endforeach(_lib ${_libraries})
+endif(_use_threads)
+
+# If using OpenMP, we need to link against OpenMP libraries as well.
+if(_use_omp)
+  set(_omp_libs)
+  foreach(_lib ${_libraries})
+    list(APPEND _omp_libs ${_lib}_omp)
+  endforeach(_lib ${_libraries})
+endif(_use_omp)
+
+# Update list of libraries
+if(_use_threads)
   set(_libraries ${_thread_libs} ${_libraries})
 endif(_use_threads)
+if(_use_omp)
+  set(_libraries ${_omp_libs} ${_libraries})
+endif(_use_omp)
 
 # Keep a list of variable names that we need to pass on to
 # find_package_handle_standard_args().
@@ -75,7 +94,8 @@ set(_check_list)
 foreach(_lib ${_libraries})
   string(TOUPPER ${_lib} _LIB)
   find_library(${_LIB}_LIBRARY ${_lib}
-    HINTS ${FFTW3_ROOT_DIR} PATH_SUFFIXES lib)
+    HINTS ${FFTW3_ROOT_DIR} PATH_SUFFIXES lib
+    HINTS ENV FFTW3_ROOT_DIR)
   mark_as_advanced(${_LIB}_LIBRARY)
   list(APPEND FFTW3_LIBRARIES ${${_LIB}_LIBRARY})
   list(APPEND _check_list ${_LIB}_LIBRARY)
@@ -83,8 +103,9 @@ endforeach(_lib ${_libraries})
 
 # Search for the header file.
 find_path(FFTW3_INCLUDE_DIR fftw3.h 
-  HINTS ${FFTW3_ROOT_DIR} PATH_SUFFIXES include)
-mark_as_advanced(FFTW3_INCLUDE_DIR)
+  HINTS ${FFTW3_ROOT_DIR} PATH_SUFFIXES include
+  HINTS ENV FFTW3_ROOT_DIR PATH_SUFFIXES include)
+  mark_as_advanced(FFTW3_INCLUDE_DIR)
 list(APPEND _check_list FFTW3_INCLUDE_DIR)
 
 # Handle the QUIETLY and REQUIRED arguments and set FFTW_FOUND to TRUE if
