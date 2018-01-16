@@ -178,7 +178,6 @@ set (
     LINK_LIRBRARIES
     idg-cpu
     idg-cuda
-    ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
 target_link_libraries (
