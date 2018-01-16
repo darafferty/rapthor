@@ -32,6 +32,8 @@ inline void compute_sincos(
     #else
     for (int i = 0; i < n; i++) {
             sin[i] = sinf(x[i]);
+    }
+    for (int i = 0; i < n; i++) {
             cos[i] = cosf(x[i]);
     }
     #endif

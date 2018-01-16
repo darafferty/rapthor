@@ -12,6 +12,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_options("-DDEBUG")
 else()
     add_compile_options("-O3")
+    add_compile_options("-ffast-math")
 endif()
 
 
