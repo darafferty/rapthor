@@ -447,15 +447,29 @@ namespace idg {
              */
             template<typename T>
             T* reuse_memory(
+                void *ptr,
                 uint64_t size,
-                T* ptr)
+                T* memory)
             {
-                if (!ptr) {
-                    ptr = new T(size);
+                if (!memory) {
+                    memory = new T(ptr, size);
                 } else {
-                    ptr->resize(size);
+                    memory->resize(size);
                 }
-                return ptr;
+                return memory;
+            }
+
+            template<typename T>
+            T* reuse_memory(
+                uint64_t size,
+                T* memory)
+            {
+                if (!memory) {
+                    memory = new T(size);
+                } else {
+                    memory->resize(size);
+                }
+                return memory;
             }
 
             cu::HostMemory& InstanceCUDA::get_host_visibilities(
@@ -484,7 +498,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = reuse_memory(size, h_grid);
+                h_grid = reuse_memory(ptr, size, h_grid);
                 return *h_grid;
             }
 
