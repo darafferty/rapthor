@@ -28,6 +28,8 @@ else()
         add_compile_options("-DUSE_VML")
         add_compile_options("-lmkl")
         include_directories(${MKL_INCLUDE_DIRS})
+    else()
+        link_libraries(${FFTW3_LIBRARIES})
     endif()
 endif()
 
