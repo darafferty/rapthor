@@ -474,6 +474,11 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
+                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
+                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
+                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
+                    cu::HostMemory&   h_grid         = device.get_host_grid();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
 
                     // Load streams
@@ -481,11 +486,14 @@ namespace idg {
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    // Allocate private memory
-                    cu::DeviceMemory d_visibilities(auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels));
-                    cu::DeviceMemory d_uvw(auxiliary::sizeof_uvw(jobsize, nr_timesteps));
-                    cu::DeviceMemory d_subgrids(auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size));
-                    cu::DeviceMemory d_metadata(auxiliary::sizeof_metadata(max_nr_subgrids));
+                    // Copy static data structures
+                    if (local_id == 0) {
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                        htodstream.memcpyHtoDAsync(d_grid, h_grid);
+                        htodstream.synchronize();
+                    }
 
                     // Create FFT plan
                     if (local_id == 0) {
@@ -521,7 +529,6 @@ namespace idg {
 
                         // Power measurement
                         vector<PowerRecord> powerRecords(5);
-
 
                         #pragma omp critical (lock)
                         {
