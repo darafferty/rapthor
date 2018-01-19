@@ -7,11 +7,6 @@
 #include "CUFFT.h"
 #include "PowerRecord.h"
 
-#define OVERPROVISIONING_VISIBILITIES 1.1
-#define OVERPROVISIONING_UVW 1.1
-#define OVERPROVISIONING_SUBGRIDS 1.1
-#define OVERPROVISIONING_METADATA 1.1
-
 namespace idg {
     namespace kernel {
         namespace cuda {
@@ -104,7 +99,8 @@ namespace idg {
 
                     // Memory management per device
                     cu::HostMemory& get_host_grid(
-                        unsigned int grid_size);
+                        unsigned int grid_size,
+                        void *ptr = NULL);
 
                     cu::DeviceMemory& get_device_grid(
                         unsigned int grid_size);
@@ -147,10 +143,6 @@ namespace idg {
                         unsigned int nr_subgrids);
 
                     // Memory management for large (host) buffers
-                    cu::HostMemory& get_host_grid(
-                        unsigned int grid_size,
-                        void *ptr);
-
                     cu::HostMemory& get_host_visibilities(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps,
@@ -202,10 +194,13 @@ namespace idg {
                     cu::Function *function_scaler;
 
                     // One instance per device
-                    cu::DeviceMemory *d_grid;
                     cu::DeviceMemory *d_wavenumbers;
                     cu::DeviceMemory *d_aterms;
                     cu::DeviceMemory *d_spheroidal;
+                    cu::DeviceMemory *d_grid;
+                    cu::HostMemory *h_visibilities;
+                    cu::HostMemory *h_uvw;
+                    cu::HostMemory *h_grid;
 
                     // One instance per stream
                     std::vector<cu::HostMemory*> h_subgrids_;
@@ -213,15 +208,6 @@ namespace idg {
                     std::vector<cu::DeviceMemory*> d_uvw_;
                     std::vector<cu::DeviceMemory*> d_metadata_;
                     std::vector<cu::DeviceMemory*> d_subgrids_;
-
-                    // Current instance from h_misc_ vector
-                    cu::HostMemory *h_visibilities;
-                    cu::HostMemory *h_uvw;
-                    cu::HostMemory *h_grid;
-
-                    // A configurable number of instances
-                    const int nr_misc_memories = 6;
-                    std::vector<cu::HostMemory*> h_misc_;
 
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
