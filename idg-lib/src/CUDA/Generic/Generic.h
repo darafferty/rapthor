@@ -24,6 +24,21 @@ namespace idg {
                     ~Generic();
 
                 private:
+                    void initialize_memory(
+                        const Plan& plan,
+                        const std::vector<int> jobsize,
+                        const int nr_streams,
+                        const int nr_baselines,
+                        const int nr_timesteps,
+                        const int nr_channels,
+                        const int nr_stations,
+                        const int nr_timeslots,
+                        const int subgrid_size,
+                        const int grid_size,
+                        void *visibilities,
+                        void *uvw,
+                        void *grid);
+
                     virtual void do_gridding(
                         const Plan& plan,
                         const float w_step, // in lambda

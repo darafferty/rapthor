@@ -23,7 +23,7 @@ else()
     if (BUILD_WITH_MKL)
         add_compile_options("-lmkl")
     else()
-        add_compile_options("-lfftw3f")
+        link_libraries(${FFTW3_LIBRARIES})
     endif()
 endif()
 
