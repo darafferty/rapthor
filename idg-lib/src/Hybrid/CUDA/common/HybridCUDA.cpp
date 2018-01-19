@@ -176,7 +176,6 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
-                    InstanceCUDA& device0 = get_device(0);
                     InstanceCUDA& device  = get_device(device_id);
                     device.set_context();
 
@@ -375,7 +374,7 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Initialize metadata
-                const Metadata *metadata = plan.get_metadata_ptr();
+                const Metadata *metadata  = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize memory
@@ -404,7 +403,6 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
-                    InstanceCUDA& device0 = get_device(0);
                     InstanceCUDA& device  = get_device(device_id);
                     device.set_context();
 
