@@ -88,10 +88,10 @@ def plot_metadata(
 # gridding
 ##########
 def gridding(
-        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.gridding(
-        w_offset, cell_size, kernel_size,
+        w_offset, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_grid(grid, scaling='log')
@@ -104,11 +104,11 @@ def gridding(
 # degridding
 ############
 def degridding(
-        p, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.transform(idg.ImageDomainToFourierDomain, grid)
     p.degridding(
-        w_offset, cell_size, kernel_size,
+        w_offset, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_visibilities(visibilities)
@@ -184,19 +184,19 @@ def main(proxyname):
     # routines
     ######################################################################
     gridding(
-        opt, w_offset, cell_size, kernel_size, frequencies, visibilities2,
+        opt, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
         uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        opt, w_offset, cell_size, kernel_size, frequencies, visibilities2,
+        opt, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
         uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
 
     gridding(
-        ref, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        ref, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        ref, w_offset, cell_size, kernel_size, frequencies, visibilities,
+        ref, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     ######################################################################
