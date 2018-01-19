@@ -281,6 +281,10 @@ namespace idg {
                 os << "\tMem bus width : " << mem_bus_width << " bit" << std::endl;
                 os << "\tMem bandwidth : " << 2 * (mem_bus_width / 8) * mem_frequency / 1000 << " GB/s" << std::endl;
                 os << "\tCapability    : " << d.get_device().get_capability() << std::endl;
+                auto supports_unified_addressing = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING>();
+                auto supports_device_use_host_pointer = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CAN_USE_HOST_POINTER_FOR_REGISTERED_MEM>();
+                os << "\tUnified memory : " << supports_unified_addressing << std::endl;
+                os << "\tHost adressing : " << supports_device_use_host_pointer << std::endl;
                 os << std::endl;
                 return os;
             }
