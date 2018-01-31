@@ -25,7 +25,7 @@ inline float FUNCTION_ATTRIBUTES compute_n(
     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
     // accurately for small values of l and m
     const float tmp = (l * l) + (m * m);
-    return tmp / (1.0f + sqrtf(1.0f - tmp));
+    return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
 }
 
 template <typename T> FUNCTION_ATTRIBUTES inline void apply_aterm(
