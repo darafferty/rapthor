@@ -1,6 +1,8 @@
 #include <string.h>
 #include <immintrin.h>
 
+#include "common/Math.h"
+
 #if defined(USE_LOOKUP)
 // Floating-point PI values
 #define PI     float(M_PI)

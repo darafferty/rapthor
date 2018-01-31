@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "Types.h"
+#include "Math.h"
 
 
 extern "C" {
@@ -144,12 +145,9 @@ extern "C" {
                         for (int x = 0; x < subgridsize; x++) {
 
                             // Compute l,m,n
-                            const float l = (x+0.5-(subgridsize/2)) * imagesize/subgridsize;
-                            const float m = (y+0.5-(subgridsize/2)) * imagesize/subgridsize;
-                            // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-                            // accurately for small values of l and m
-                            const float tmp = (l * l) + (m * m);
-                            const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                            const float l = compute_l(x, subgridsize, imagesize);
+                            const float m = compute_m(y, subgridsize, imagesize);
+                            const float n = compute_n(l, m);
 
                             // Compute phase index
                             float phase_index = u*l + v*m + w*n;

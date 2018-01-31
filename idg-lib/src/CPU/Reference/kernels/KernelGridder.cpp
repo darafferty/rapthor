@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "Types.h"
+#include "Math.h"
 
 
 extern "C" {
@@ -55,12 +56,9 @@ extern "C" {
                     memset(pixels, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
 
                     // Compute l,m,n
-                    const float l = (x+0.5-(subgridsize/2)) * imagesize/subgridsize;
-                    const float m = (y+0.5-(subgridsize/2)) * imagesize/subgridsize;
-                    // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-                    // accurately for small values of l and m
-                    const float tmp = (l * l) + (m * m);
-                    const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                    const float l = compute_l(x, subgridsize, imagesize);
+                    const float m = compute_m(y, subgridsize, imagesize);
+                    const float n = compute_n(l, m);
 
                     // Iterate all timesteps
                     for (int time = 0; time < nr_timesteps; time++) {
