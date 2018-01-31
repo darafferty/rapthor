@@ -76,19 +76,29 @@ extern "C" {
                     int y_src = (y + (subgridsize/2)) % subgridsize;
 
                     // Load uv values
-                    std::complex<float> pixelsXX = sph * subgrid[
+                    std::complex<float> pixels_[NR_POLARIZATIONS];
+                    pixels_[0] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         0 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    std::complex<float> pixelsXY = sph * subgrid[
+                    pixels_[1] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         1 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    std::complex<float> pixelsYX = sph * subgrid[
+                    pixels_[2] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         2 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    std::complex<float> pixelsYY = sph * subgrid[
+                    pixels_[3] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         3 * subgridsize * subgridsize + y_src * subgridsize + x_src];
 
+                    apply_aterm(
+                        aXX1, aXY1, aYX1, aYY1,
+                        aXX2, aXY2, aYX2, aYY2,
+                        pixels_);
+
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        pixels[y][x][pol] = pixels_[pol];
+                    }
+#if 0
                     // Apply aterm to subgrid: P*A1^H
                     // [ pixels[0], pixels[1];    [ conj(aXX1), conj(aYX1);
                     //   pixels[2], pixels[3] ] *   conj(aXY1), conj(aYY1) ]
@@ -116,6 +126,7 @@ extern "C" {
                     pixels[y][x][2] += pixelsYX * aYY2;
                     pixels[y][x][3]  = pixelsXY * aYX2;
                     pixels[y][x][3] += pixelsYY * aYY2;
+#endif
                 } // end x
             } // end y
 
