@@ -484,7 +484,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(size, h_visibilities);
+                h_visibilities = reuse_memory(ptr, size, h_visibilities);
                 return *h_visibilities;
             }
 
@@ -494,7 +494,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(size, h_uvw);
+                h_uvw = reuse_memory(ptr, size, h_uvw);
                 return *h_uvw;
             }
 
