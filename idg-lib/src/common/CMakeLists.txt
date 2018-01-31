@@ -19,6 +19,7 @@ set (${PROJECT_NAME}_headers
     PlanC.h
     PowerSensor.h
     Report.h
+    Math.h
 )
 
 set (${PROJECT_NAME}_sources

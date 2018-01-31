@@ -122,10 +122,9 @@ __device__ void
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-            float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-            float tmp = (l * l) + (m * m);
-            float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+            const float l = compute_l(x, subgrid_size, image_size);;
+            const float m = compute_l(y, subgrid_size, image_size);;
+            const float n = compute_n(l, m);
 
             // Iterate all timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
