@@ -139,10 +139,9 @@ kernel_degridder(
                 _pix[1][j] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
 
                 // Compute l,m,n and phase offset
-                const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                const float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                const float tmp = (l * l) + (m * m);
-                const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                const float l = compute_l(x, subgrid_size, image_size);;
+                const float m = compute_l(y, subgrid_size, image_size);;
+                const float n = compute_n(l, m);
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                 _lmn_phaseoffset[j] = make_float4(l, m, n, phase_offset);
             } // end for j (pixels)

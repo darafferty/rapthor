@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "Types.h"
+#include "Math.h"
 
 
 extern "C" {
@@ -75,19 +76,29 @@ extern "C" {
                     int y_src = (y + (subgridsize/2)) % subgridsize;
 
                     // Load uv values
-                    std::complex<float> pixelsXX = sph * subgrid[
+                    std::complex<float> pixels_[NR_POLARIZATIONS];
+                    pixels_[0] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         0 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    std::complex<float> pixelsXY = sph * subgrid[
+                    pixels_[1] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         1 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    std::complex<float> pixelsYX = sph * subgrid[
+                    pixels_[2] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         2 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    std::complex<float> pixelsYY = sph * subgrid[
+                    pixels_[3] = sph * subgrid[
                         s * NR_POLARIZATIONS * subgridsize * subgridsize +
                         3 * subgridsize * subgridsize + y_src * subgridsize + x_src];
 
+                    apply_aterm(
+                        aXX1, aXY1, aYX1, aYY1,
+                        aXX2, aXY2, aYX2, aYY2,
+                        pixels_);
+
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        pixels[y][x][pol] = pixels_[pol];
+                    }
+#if 0
                     // Apply aterm to subgrid: P*A1^H
                     // [ pixels[0], pixels[1];    [ conj(aXX1), conj(aYX1);
                     //   pixels[2], pixels[3] ] *   conj(aXY1), conj(aYY1) ]
@@ -115,6 +126,7 @@ extern "C" {
                     pixels[y][x][2] += pixelsYX * aYY2;
                     pixels[y][x][3]  = pixelsXY * aYX2;
                     pixels[y][x][3] += pixelsYY * aYY2;
+#endif
                 } // end x
             } // end y
 
@@ -144,12 +156,9 @@ extern "C" {
                         for (int x = 0; x < subgridsize; x++) {
 
                             // Compute l,m,n
-                            const float l = (x+0.5-(subgridsize/2)) * imagesize/subgridsize;
-                            const float m = (y+0.5-(subgridsize/2)) * imagesize/subgridsize;
-                            // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-                            // accurately for small values of l and m
-                            const float tmp = (l * l) + (m * m);
-                            const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                            const float l = compute_l(x, subgridsize, imagesize);
+                            const float m = compute_m(y, subgridsize, imagesize);
+                            const float n = compute_n(l, m);
 
                             // Compute phase index
                             float phase_index = u*l + v*m + w*n;

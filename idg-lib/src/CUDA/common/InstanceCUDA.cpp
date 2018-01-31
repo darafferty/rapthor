@@ -111,10 +111,15 @@ namespace idg {
                 flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder.x;
                 flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
 
+                // Include flags
+                std::stringstream flags_includes;
+                flags_includes << "-I" << IDG_INSTALL_DIR << "/include";
+
                 // Combine flags
                 std::string flags = " " + flags_cuda.str() +
                                     " " + flags_device.str() +
-                                    " " + flags_constants.str();
+                                    " " + flags_constants.str() +
+                                    " " + flags_includes.str();
                 return flags;
             }
 
