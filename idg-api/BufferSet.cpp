@@ -337,7 +337,7 @@ namespace api {
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
-                    const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                    const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
 
                     float phase = 2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
@@ -395,7 +395,7 @@ namespace api {
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
-                    const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                    const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
 
                     float phase = -2*M_PI*n*w_offset;
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
