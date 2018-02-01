@@ -132,12 +132,9 @@ void kernel_degridder(
                 int x = i % subgrid_size;
 
                 // Compute l,m,n
-                const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                const float m = (y+0.5-(subgrid_size/2)) * image_size/subgrid_size;
-                // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-                // accurately for small values of l and m
-                const float tmp = (l * l) + (m * m);
-                const float n = tmp / (1.0f + sqrtf(1.0f - tmp));
+                const float l = compute_l(x, subgrid_size, image_size);
+                const float m = compute_m(y, subgrid_size, image_size);
+                const float n = compute_n(l, m);
 
                 // Compute phase index
                 phase_index[i] = u*l + v*m + w*n;

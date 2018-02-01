@@ -449,7 +449,7 @@ namespace cu {
 
     void Source::compile(const char *output_file_name, const char *compiler_options) {
         std::stringstream command_line;
-        command_line << "nvcc -ptx ";
+        command_line << "nvcc -cubin ";
         command_line << compiler_options;
         command_line << " -o ";
         command_line << output_file_name;

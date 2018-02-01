@@ -122,8 +122,8 @@ __device__ void
             float2 uvYY = make_float2(0, 0);
 
             // Compute l,m,n
-            const float l = compute_l(x, subgrid_size, image_size);;
-            const float m = compute_l(y, subgrid_size, image_size);;
+            const float l = compute_l(x, subgrid_size, image_size);
+            const float m = compute_m(y, subgrid_size, image_size);
             const float n = compute_n(l, m);
 
             // Iterate all timesteps
@@ -144,7 +144,7 @@ __device__ void
                 for (int chan = 0; chan < current_nr_channels; chan++) {
                     float wavenumber = wavenumbers_[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
-                    float2 phasor = make_float2(cos(phase), sin(phase));
+                    float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                     // Load visibilities from shared memory
                     float4 a = visibilities_[0][time*current_nr_channels+chan];
