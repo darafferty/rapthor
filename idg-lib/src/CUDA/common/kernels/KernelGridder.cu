@@ -144,7 +144,7 @@ __device__ void
                 for (int chan = 0; chan < current_nr_channels; chan++) {
                     float wavenumber = wavenumbers_[chan];
                     float phase = phase_offset - (phase_index * wavenumber);
-                    float2 phasor = make_float2(cos(phase), sin(phase));
+                    float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                     // Load visibilities from shared memory
                     float4 a = visibilities_[0][time*current_nr_channels+chan];
