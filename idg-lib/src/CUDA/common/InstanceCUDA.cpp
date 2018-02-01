@@ -152,21 +152,21 @@ namespace idg {
                 src.push_back("KernelAdder.cu");
                 src.push_back("KernelSplitter.cu");
 
-                // Create vector of ptx filenames
-                std::vector<std::string> ptx;
-                ptx.push_back("Gridder.ptx");
-                ptx.push_back("Degridder.ptx");
-                ptx.push_back("Scaler.ptx");
-                ptx.push_back("Adder.ptx");
-                ptx.push_back("Splitter.ptx");
+                // Create vector of cubin filenames
+                std::vector<std::string> cubin;
+                cubin.push_back("Gridder.cubin");
+                cubin.push_back("Degridder.cubin");
+                cubin.push_back("Scaler.cubin");
+                cubin.push_back("Adder.cubin");
+                cubin.push_back("Splitter.cubin");
 
                 // Compile all kernels
                 #pragma omp parallel for
                 for (int i = 0; i < src.size(); i++) {
                     context->setCurrent();
 
-                    // Create a string with the full path to the ptx file "kernel.ptx"
-                    std::string lib = mInfo.get_path_to_lib() + "/" + ptx[i];
+                    // Create a string with the full path to the cubin file "kernel.cubin"
+                    std::string lib = mInfo.get_path_to_lib() + "/" + cubin[i];
 
                     // Create a string for all sources that are combined
                     std::string source = mInfo.get_path_to_src() + "/" + src[i];
