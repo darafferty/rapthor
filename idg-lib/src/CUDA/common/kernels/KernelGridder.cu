@@ -3,6 +3,8 @@
 #include "Types.h"
 #include "math.cu"
 
+#include <assert.h>
+
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
 #define BLOCK_SIZE GRIDDER_BLOCK_SIZE
 
