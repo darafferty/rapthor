@@ -87,6 +87,12 @@ else()
     endif()
 endif()
 
+# detect architecture
+execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
+if (${ARCHITECTURE} STREQUAL "ppc64le")
+  set(POWER_ARCHITECTURE TRUE)
+endif()
+
 # resolve dependencies
 if (BUILD_WITH_POWERSENSOR)
 find_package(PowerSensor QUIET)
