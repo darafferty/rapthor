@@ -248,6 +248,18 @@ namespace idg {
             return 1ULL * subgrid_size * subgrid_size * sizeof(float);
         }
 
+        uint64_t sizeof_baselines(
+            unsigned int nr_baselines)
+        {
+            return 1ULL * 2 * nr_baselines * sizeof(unsigned int);
+        }
+
+        uint64_t sizeof_aterms_offsets(
+            unsigned int nr_timeslots)
+        {
+            return 1ULL * (nr_timeslots + 1) * sizeof(unsigned int);
+        }
+
         /*
             Performance reporting
          */
