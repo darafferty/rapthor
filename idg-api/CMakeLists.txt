@@ -77,6 +77,10 @@ else()
     )
 endif()
 
+if (NOT ${LAPACK_FOUND} AND NOT ${MKL_FOUND})
+message(STATUS "Could NOT find math libraries required for idg-api, skipping build.")
+else()
+
 # build all tests
 if (BUILD_WITH_TESTS)
     enable_testing()
@@ -152,4 +156,4 @@ install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfig.cmake"
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
-
+endif()
