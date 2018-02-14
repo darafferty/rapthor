@@ -29,7 +29,7 @@ namespace idg {
         class Proxy
         {
             public:
-                virtual ~Proxy() {}
+                virtual ~Proxy();
 
                 /*
                     High level routines
@@ -183,6 +183,7 @@ namespace idg {
                 //! Methods for memory management
                 virtual void *allocate_memory(long bytes);
                 virtual void free_memory(void *ptr);
+                virtual void free_memory();
 
             private:
                 //! Degrid the visibilities from a uniform grid

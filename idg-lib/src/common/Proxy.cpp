@@ -5,6 +5,10 @@
 
 namespace idg {
     namespace proxy {
+        Proxy::~Proxy() {
+            free_memory();
+        }
+
         void Proxy::gridding(
             const Plan& plan,
             const float w_step, // in lambda
@@ -459,6 +463,13 @@ namespace idg {
                     break;
                 }
             }
+        }
+
+        void Proxy::free_memory() {
+            for (int i = 0; i < memory.size(); i++) {
+                free(memory[i]);
+            }
+            memory.clear();
         }
 
     } // end namespace proxy
