@@ -1,5 +1,7 @@
 #include <string.h>
+#if defined(__x86_64__)
 #include <immintrin.h>
+#endif
 
 #include "common/Math.h"
 
@@ -86,6 +88,7 @@ inline void compute_sincos(
 #endif
 
 // http://bit.ly/2shIfmP
+#if defined(__AVX__)
 inline float _mm256_reduce_add_ps(__m256 x) {
     /* ( x3+x7, x2+x6, x1+x5, x0+x4 ) */
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(x, 1),
@@ -99,6 +102,7 @@ inline float _mm256_reduce_add_ps(__m256 x) {
     /* Conversion to float is a no-op on x86-64 */
     return _mm_cvtss_f32(x32);
 }
+#endif
 
 inline void compute_reduction_scalar(
     int *offset,
@@ -263,6 +267,7 @@ inline void compute_reduction_avx(
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
 {
+#if defined(__AVX__)
     const int vector_length = 8;
 
     __m256 output_xx_r = _mm256_setzero_ps();
@@ -328,6 +333,7 @@ inline void compute_reduction_avx(
 
 
     *offset += vector_length * ((n - *offset) / vector_length);
+#endif
 } // end compute_reduction_avx
 
 inline void compute_reduction_avx512(
