@@ -122,26 +122,25 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
     idg::Array1D<float> frequencies =
-        idg::get_example_frequencies(nr_channels);
+        idg::get_example_frequencies(optimized, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+        idg::get_example_visibilities(optimized, nr_baselines, nr_timesteps, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
-        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+        idg::get_example_visibilities(reference, nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
-        idg::get_example_baselines(nr_stations, nr_baselines);
+        idg::get_example_baselines(optimized, nr_stations, nr_baselines);
     idg::Array2D<idg::UVWCoordinate<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-        idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        idg::get_identity_aterms(optimized, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
-        idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+        idg::get_example_aterms_offsets(optimized, nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Grid grid =
         optimized.get_grid(1, nr_correlations, grid_size, grid_size);
     idg::Grid grid_ref =
         reference.get_grid(1, nr_correlations, grid_size, grid_size);
-
     clog << endl;
 
     // Create plan
