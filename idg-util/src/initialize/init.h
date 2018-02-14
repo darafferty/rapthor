@@ -38,6 +38,59 @@
 
 namespace idg {
 
+    /*
+     * Memory-allocation is handled by Proxy
+     */
+    Array1D<float> get_example_frequencies(
+        proxy::Proxy& proxy,
+        unsigned int nr_channels,
+        float start_frequency = START_FREQUENCY,
+        float frequency_increment = FREQUENCY_INCREMENT);
+
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_timesteps,
+        unsigned int nr_channels);
+
+    Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_baselines);
+
+    Array2D<UVWCoordinate<float>> get_example_uvw(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        float integration_time = INTEGRATION_TIME);
+
+    Array3D<std::complex<float>> get_zero_grid(
+        proxy::Proxy& proxy,
+        unsigned int nr_correlations,
+        unsigned int height,
+        unsigned int width);
+
+    Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_stations,
+        unsigned int height,
+        unsigned int width);
+
+    Array1D<unsigned int> get_example_aterms_offsets(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_timesteps);
+
+    Array2D<float> get_example_spheroidal(
+        proxy::Proxy& proxy,
+        unsigned int height,
+        unsigned int width);
+
+    /*
+     * Default memory allocation
+     */
     Array1D<float> get_example_frequencies(
         unsigned int nr_channels,
         float start_frequency = START_FREQUENCY,
