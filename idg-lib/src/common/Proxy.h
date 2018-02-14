@@ -180,6 +180,10 @@ namespace idg {
                 virtual bool supports_wstack_gridding() {return false;}
                 virtual bool supports_wstack_degridding() {return false;}
 
+                //! Methods for memory management
+                virtual void *allocate_memory(long bytes);
+                virtual void free_memory(void *ptr);
+
             private:
                 //! Degrid the visibilities from a uniform grid
                 virtual void do_gridding(
@@ -255,6 +259,7 @@ namespace idg {
                     const Array1D<float>& frequencies) const;
 
                 const unsigned int nr_polarizations = 4;
+                std::vector<void*> memory;
 
         }; // end class Proxy
 

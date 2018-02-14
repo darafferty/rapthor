@@ -5,7 +5,6 @@
 
 namespace idg {
     namespace proxy {
-
         void Proxy::gridding(
             const Plan& plan,
             const float w_step, // in lambda
@@ -438,6 +437,28 @@ namespace idg {
             }
 
             return wavenumbers;
+        }
+
+        /*
+         * Methods for memory management
+         */
+        void* Proxy::allocate_memory(
+            long bytes)
+        {
+            void* ptr = malloc(bytes);
+            memory.push_back(ptr);
+            return ptr;
+        }
+
+        void Proxy::free_memory(void *ptr)
+        {
+            free(ptr);
+            for (int i = 0; i < memory.size(); i++) {
+                if (memory[i] == ptr) {
+                    memory.erase(memory.begin() + i);
+                    break;
+                }
+            }
         }
 
     } // end namespace proxy
