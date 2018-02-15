@@ -295,8 +295,6 @@ namespace cu {
     UnifiedMemory::UnifiedMemory(size_t size, unsigned flags) {
         _size = size;
         checkCudaCall(cudaMallocManaged(&_ptr, _size, flags));
-        checkCudaCall(cudaDeviceSynchronize());
-        printf("allocated memory: %p, size: %d\n", _ptr, size);
     }
 
     UnifiedMemory::~UnifiedMemory() {

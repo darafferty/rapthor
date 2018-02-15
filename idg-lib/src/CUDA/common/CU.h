@@ -134,9 +134,8 @@ namespace cu {
             UnifiedMemory(size_t size, unsigned flags = cudaMemAttachGlobal);
             ~UnifiedMemory();
 
-            template <typename T> operator T *() {
-                return static_cast<T *>(_ptr);
-            }
+            void* ptr() { return _ptr; }
+            size_t size() { return _size; }
 
         private:
             void* _ptr;

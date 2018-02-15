@@ -133,6 +133,7 @@ add_library (
     idg-cuda
     $<TARGET_OBJECTS:cuda-common>
     $<TARGET_OBJECTS:cuda-generic>
+    $<TARGET_OBJECTS:cuda-unified>
 )
 
 set(
