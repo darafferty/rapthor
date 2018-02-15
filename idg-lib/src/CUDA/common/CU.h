@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <cuda.h>
+#include <cuda_runtime.h>
 
 struct dim3;
 
@@ -13,19 +14,18 @@ namespace cu {
 
     void init(unsigned flags = 0);
 
+    template<typename T>
     class Error : public std::exception {
         public:
-            Error(CUresult result):
+            Error(T result):
             _result(result) {}
 
-            virtual const char *what() const throw();
-
-            operator CUresult() const {
+            operator T() const {
                 return _result;
             }
 
         private:
-            CUresult _result;
+            T _result;
     };
 
 
@@ -128,6 +128,20 @@ namespace cu {
             size_t _size;
     };
 
+
+    class UnifiedMemory {
+        public:
+            UnifiedMemory(size_t size, unsigned flags = cudaMemAttachGlobal);
+            ~UnifiedMemory();
+
+            template <typename T> operator T *() {
+                return static_cast<T *>(_ptr);
+            }
+
+        private:
+            void* _ptr;
+            size_t _size;
+    };
 
     class Array {
         public:
