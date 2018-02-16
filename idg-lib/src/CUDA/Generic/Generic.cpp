@@ -70,6 +70,8 @@ namespace idg {
                         device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
                         device.get_host_uvw(nr_baselines, nr_timesteps, uvw);
                         device.get_host_grid(grid_size, grid);
+                    } else {
+                        device.get_host_grid(grid_size);
                     }
                 }
 

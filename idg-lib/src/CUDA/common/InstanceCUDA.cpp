@@ -503,7 +503,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = reuse_memory(ptr, size, h_grid);
+                h_grid = ptr == NULL ? reuse_memory(size, h_grid) : reuse_memory(ptr, size, h_grid);
                 return *h_grid;
             }
 
