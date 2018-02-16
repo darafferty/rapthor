@@ -49,7 +49,7 @@ namespace idg {
 
     Array3D<Visibility<std::complex<float>>> get_example_visibilities(
         proxy::Proxy& proxy,
-        unsigned int nr_stations,
+        unsigned int nr_baselines,
         unsigned int nr_timesteps,
         unsigned int nr_channels);
 
@@ -97,7 +97,7 @@ namespace idg {
         float frequency_increment = FREQUENCY_INCREMENT);
 
     Array3D<Visibility<std::complex<float>>> get_example_visibilities(
-        unsigned int nr_stations,
+        unsigned int nr_baselines,
         unsigned int nr_timesteps,
         unsigned int nr_channels);
 
