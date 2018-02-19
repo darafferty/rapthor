@@ -41,8 +41,7 @@ namespace idg {
                         const int subgrid_size,
                         const int grid_size,
                         void *visibilities,
-                        void *uvw,
-                        void *grid);
+                        void *uvw);
 
                     virtual void do_gridding(
                         const Plan& plan,

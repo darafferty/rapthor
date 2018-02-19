@@ -407,6 +407,28 @@ namespace idg {
                 }
             }
 
+             void InstanceCUDA::launch_fft_unified(
+                void *data,
+                DomainAtoDomainB direction)
+            {
+                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(data);
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                if (fft_plan_bulk) {
+                    fft_plan_bulk->setStream(*executestream);
+                }
+
+                int s = 0;
+                for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
+                    fft_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
+                }
+                if (s < fft_batch) {
+                    fft_plan_misc->setStream(*executestream);
+                    fft_plan_misc->execute(data_ptr, data_ptr, sign);
+                }
+            }
+
             void InstanceCUDA::launch_adder(
                 int nr_subgrids,
                 int grid_size,
@@ -420,6 +442,19 @@ namespace idg {
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
             }
 
+            void InstanceCUDA::launch_adder_unified(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                void *u_grid)
+            {
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+            }
+
             void InstanceCUDA::launch_splitter(
                 int nr_subgrids,
                 int grid_size,
@@ -429,6 +464,19 @@ namespace idg {
                 cu::DeviceMemory& d_grid)
             {
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_splitter_unified(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                void *u_grid)
+            {
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
             }

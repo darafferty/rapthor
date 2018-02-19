@@ -42,8 +42,7 @@ namespace idg {
                 const int subgrid_size,
                 const int grid_size,
                 void *visibilities,
-                void *uvw,
-                void *grid)
+                void *uvw)
             {
                 for (int d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
@@ -56,7 +55,6 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
                     cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
                     cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_grid        = device.get_device_grid(grid_size);
 
                     // Dynamic memory (per thread)
                     for (int t = 0; t < nr_streams; t++) {
@@ -70,11 +68,11 @@ namespace idg {
                     if (d == 0) {
                         device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
                         device.get_host_uvw(nr_baselines, nr_timesteps, uvw);
-                        device.get_host_grid(grid_size, grid);
                     }
                 }
 
             } // end initialize_memory
+
 
             /* High level routines */
             void Unified::do_transform(
@@ -97,12 +95,6 @@ namespace idg {
                 cu::Stream& stream = device.get_execute_stream();
                 device.set_context();
 
-                // Device memory
-                cu::DeviceMemory& d_grid = device.get_device_grid(grid_size);
-
-                // Host memory
-                cu::HostMemory& h_grid = device.get_host_grid(grid_size, grid.data());
-
                 // Performance measurements
                 Report report(0, 0, grid_size);
                 PowerRecord powerRecords[5];
@@ -115,20 +107,13 @@ namespace idg {
                 device.shift(grid);
                 time_shift += omp_get_wtime();
 
-                // Copy grid to device
-                auto sizeof_grid = auxiliary::sizeof_grid(grid_size);
-                device.measure(powerRecords[0], stream);
-                stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid);
-                device.measure(powerRecords[1], stream);
-
                 // Execute fft
                 device.plan_fft(grid_size, 1);
                 device.measure(powerRecords[2], stream);
-                device.launch_fft(d_grid, direction);
+                device.launch_fft_unified(grid.data(), direction);
                 device.measure(powerRecords[3], stream);
 
                 // Copy grid to host
-                stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid);
                 device.measure(powerRecords[4], stream);
                 stream.synchronize();
 
@@ -151,9 +136,7 @@ namespace idg {
                 powerStates[3] = device.measure();
 
                 #if defined(REPORT_TOTAL)
-                report.update_input(powerRecords[0].state, powerRecords[1].state);
                 report.update_grid_fft(powerRecords[2].state, powerRecords[3].state);
-                report.update_output(powerRecords[3].state, powerRecords[4].state);
                 report.update_fft_shift(time_shift);
                 report.update_fft_scale(time_scale);
                 report.update_host(powerStates[0], powerStates[1]);
@@ -216,7 +199,7 @@ namespace idg {
                 initialize_memory(
                     plan, jobsize_, nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
-                    visibilities.data(), uvw.data(), grid.data());
+                    visibilities.data(), uvw.data());
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
@@ -245,10 +228,8 @@ namespace idg {
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
-                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
-                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
-                    cu::HostMemory&   h_grid         = device.get_host_grid();
-                    cu::DeviceMemory& d_grid         = device.get_device_grid();
+                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id, max_nr_subgrids, subgrid_size);
+                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id, max_nr_subgrids);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -261,11 +242,6 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                         htodstream.synchronize();
-                        if (device_id == 0) {
-                            htodstream.memcpyHtoDAsync(d_grid, h_grid);
-                        } else {
-                            d_grid.zero(htodstream);
-                        }
                     }
 
                     // Create FFT plan
@@ -329,9 +305,9 @@ namespace idg {
                             device.measure(powerRecords[3], executestream);
 
                             // Launch adder kernel
-                            device.launch_adder(
+                            device.launch_adder_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, d_grid);
+                                d_metadata, d_subgrids, grid.data());
 
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
@@ -363,25 +339,9 @@ namespace idg {
                         report.update_host(startStates[nr_devices], endStates[nr_devices]);
                     }
 
-                    // Copy grid to host
-                    if (local_id == 0) {
-                        dtohstream.memcpyDtoHAsync(h_grid, d_grid, auxiliary::sizeof_grid(grid_size));
-                    }
-
                     dtohstream.synchronize();
                     endStates[nr_devices] = hostPowerSensor->read();
                 } // end omp parallel
-
-                // Add grids
-                for (int d = 1; d < get_num_devices(); d++) {
-                    float2 *grid_src = (float2 *) get_device(d).get_host_grid();
-                    float2 *grid_dst = (float2 *) grid.data();
-
-                    #pragma omp parallel for
-                    for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
-                        grid_dst[i] += grid_src[i];
-                    }
-                }
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
@@ -448,7 +408,7 @@ namespace idg {
                 initialize_memory(
                     plan, jobsize_, nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
-                    visibilities.data(), uvw.data(), grid.data());
+                    visibilities.data(), uvw.data());
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
@@ -479,8 +439,6 @@ namespace idg {
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
-                    cu::HostMemory&   h_grid         = device.get_host_grid();
-                    cu::DeviceMemory& d_grid         = device.get_device_grid();
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -492,7 +450,6 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        htodstream.memcpyHtoDAsync(d_grid, h_grid);
                         htodstream.synchronize();
                     }
 
@@ -546,9 +503,9 @@ namespace idg {
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
                             device.measure(powerRecords[0], executestream);
-                            device.launch_splitter(
+                            device.launch_splitter_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, d_grid);
+                                d_metadata, d_subgrids, grid.data());
                             device.measure(powerRecords[1], executestream);
 
                             // Launch FFT

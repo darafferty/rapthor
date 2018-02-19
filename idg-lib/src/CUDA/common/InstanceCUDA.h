@@ -76,6 +76,10 @@ namespace idg {
                         cu::DeviceMemory& d_data,
                         DomainAtoDomainB direction);
 
+                    void launch_fft_unified(
+                        void *data,
+                        DomainAtoDomainB direction);
+
                     void launch_adder(
                         int nr_subgrids,
                         int grid_size,
@@ -83,6 +87,14 @@ namespace idg {
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
                         cu::DeviceMemory& d_grid);
+
+                    void launch_adder_unified(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid,
+                        void *u_grid);
 
                     void launch_splitter(
                         int nr_subgrids,
@@ -92,10 +104,23 @@ namespace idg {
                         cu::DeviceMemory& d_subgrid,
                         cu::DeviceMemory& d_grid);
 
+                    void launch_splitter_unified(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid,
+                        void *u_grid);
+
                     void launch_scaler(
                         int nr_subgrids,
                         int subgrid_size,
                         cu::DeviceMemory& d_subgrid);
+
+                    void launch_scaler(
+                        int nr_subgrids,
+                        int subgrid_size,
+                        void *u_subgrid);
 
                     // Memory management per device
                     cu::HostMemory& get_host_grid(

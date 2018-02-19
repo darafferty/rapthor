@@ -135,7 +135,6 @@ namespace cu {
             ~UnifiedMemory();
 
             void* ptr() { return _ptr; }
-            size_t size() { return _size; }
 
         private:
             void* _ptr;
