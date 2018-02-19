@@ -308,17 +308,17 @@ namespace idg {
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << bytes / runtime * 1e-9 << " GB/s";
                 }
-                if (watt > 0) {
+                if (watt > 1) {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << watt << " Watt";
                 }
-                if (flops != 0 && watt > 0) {
+                if (flops != 0 && watt > 1) {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << (flops / runtime * 1e-9) / watt << " GFLOPS/W";
                 }
-                if (joules > 0) {
+                if (joules > 1) {
                     clog << ", ";
                     clog << setw(FW2) << right  << fixed << setprecision(2)
                                       << joules << " Joules";
