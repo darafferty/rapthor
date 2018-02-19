@@ -11,6 +11,9 @@
 
 namespace cu {
 
+    /*
+        Error checking
+    */
     inline void __checkCudaCall(
         CUresult result,
         char const *const func,
@@ -281,6 +284,7 @@ namespace cu {
         }
     }
 
+
     /*
         UnifiedMemory
      */
@@ -293,82 +297,10 @@ namespace cu {
         checkCudaCall(cuMemFree(_ptr));
     }
 
-    /*
-        Array
-    */
-    Array::Array(unsigned width, CUarray_format format, unsigned numChannels) {
-        Array(width, 0, format, numChannels);
-    }
-
-    Array::Array(unsigned width, unsigned height, CUarray_format format, unsigned numChannels) {
-        CUDA_ARRAY_DESCRIPTOR descriptor;
-        descriptor.Width       = width;
-        descriptor.Height      = height;
-        descriptor.Format      = format;
-        descriptor.NumChannels = numChannels;
-        checkCudaCall(cuArrayCreate(&_array, &descriptor));
-    }
-
-    Array::Array(unsigned width, unsigned height, unsigned depth, CUarray_format format, unsigned numChannels) {
-        CUDA_ARRAY3D_DESCRIPTOR descriptor;
-        descriptor.Width       = width;
-        descriptor.Height      = height;
-        descriptor.Depth       = depth;
-        descriptor.Format      = format;
-        descriptor.NumChannels = numChannels;
-        descriptor.Flags       = 0;
-        checkCudaCall(cuArray3DCreate(&_array, &descriptor));
-    }
-
-    Array::~Array() {
-        checkCudaCall(cuArrayDestroy(_array));
-    }
-
-    Array::operator CUarray() {
-        return _array;
-    }
-
-
-    /*
-        TexRef
-    */
-    TexRef::TexRef(CUtexref texref):
-        _texref(texref)
-    {}
-
-    void TexRef::setAddress(size_t &byte_offset, DeviceMemory &memory, size_t size) {
-        checkCudaCall(cuTexRefSetAddress(&byte_offset, _texref, memory, size));
-    }
-
-    void TexRef::setArray(Array &array, unsigned flags) {
-        checkCudaCall(cuTexRefSetArray(_texref, array, flags));
-    }
-
-    void TexRef::setAddressMode(int dim, CUaddress_mode am) {
-        checkCudaCall(cuTexRefSetAddressMode(_texref, dim, am));
-    }
-
-    void TexRef::setFilterMode(CUfilter_mode fm) {
-        checkCudaCall(cuTexRefSetFilterMode(_texref, fm));
-    }
-
-    void TexRef::setFlags(int flags) {
-        checkCudaCall(cuTexRefSetFlags(_texref, flags));
-    }
-
-    void TexRef::setFormat(CUarray_format fmt, int numPackedComponents) {
-        checkCudaCall(cuTexRefSetFormat(_texref, fmt, numPackedComponents));
-    }
-
-    TexRef::operator CUtexref() {
-        return _texref;
-    }
-
 
     /*
         Source
     */
-
     Source::Source(const char *input_file_name):
         input_file_name(input_file_name)
         {}
@@ -410,12 +342,6 @@ namespace cu {
         checkCudaCall(cuModuleUnload(_module));
     }
 
-    TexRef Module::getTexRef(const char *name) {
-        CUtexref texref;
-        checkCudaCall(cuModuleGetTexRef(&texref, _module, name));
-        return TexRef(texref);
-    }
-
     Module::operator CUmodule() {
         return _module;
     }
@@ -442,10 +368,6 @@ namespace cu {
         checkCudaCall(cuFuncSetCacheConfig(_function, config));
     }
 
-    void Function::paramSetTexRef(TexRef &texref) {
-        checkCudaCall(cuParamSetTexRef(_function, CU_PARAM_TR_DEFAULT, texref));
-    }
-
     Function::operator CUfunction() {
         return _function;
     }
@@ -454,27 +376,27 @@ namespace cu {
     /*
         Event
     */
-        Event::Event(int flags) {
-            checkCudaCall(cuEventCreate(&_event, flags));
-        }
+    Event::Event(int flags) {
+        checkCudaCall(cuEventCreate(&_event, flags));
+    }
 
-        Event::~Event() {
-            checkCudaCall(cuEventDestroy(_event));
-        }
+    Event::~Event() {
+        checkCudaCall(cuEventDestroy(_event));
+    }
 
-        void Event::synchronize() {
-            checkCudaCall(cuEventSynchronize(_event));
-        }
+    void Event::synchronize() {
+        checkCudaCall(cuEventSynchronize(_event));
+    }
 
-        float Event::elapsedTime(Event &second) {
-            float ms;
-            checkCudaCall(cuEventElapsedTime(&ms, second, _event));
-            return ms;
-        }
+    float Event::elapsedTime(Event &second) {
+        float ms;
+        checkCudaCall(cuEventElapsedTime(&ms, second, _event));
+        return ms;
+    }
 
-        Event::operator CUevent() {
-            return _event;
-        }
+    Event::operator CUevent() {
+        return _event;
+    }
 
 
     /*

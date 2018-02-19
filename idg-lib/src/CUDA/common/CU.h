@@ -140,37 +140,6 @@ namespace cu {
             size_t _size;
     };
 
-    class Array {
-        public:
-            Array(unsigned width, CUarray_format format, unsigned numChannels);
-            Array(unsigned width, unsigned height, CUarray_format format, unsigned numChannels);
-            Array(unsigned width, unsigned height, unsigned depth, CUarray_format format, unsigned numChannels);
-            ~Array();
-
-            operator CUarray();
-
-        private:
-            CUarray _array;
-    };
-
-
-    class TexRef {
-        public:
-            TexRef(CUtexref texref);
-
-            void setAddress(size_t &byte_offset, DeviceMemory &memory, size_t size);
-            void setArray(Array &array, unsigned flags = CU_TRSA_OVERRIDE_FORMAT);
-            void setAddressMode(int dim, CUaddress_mode am);
-            void setFilterMode(CUfilter_mode fm);
-            void setFlags(int flags);
-            void setFormat(CUarray_format fmt, int numPackedComponents);
-
-            operator CUtexref();
-
-        private:
-            CUtexref _texref;
-    };
-
 
     class Source {
         public:
@@ -189,8 +158,6 @@ namespace cu {
             Module(const void *data);
             ~Module();
 
-            TexRef getTexRef(const char *name);
-
             operator CUmodule();
 
         private:
@@ -205,7 +172,6 @@ namespace cu {
 
             int getAttribute(CUfunction_attribute attribute);
             void setCacheConfig(CUfunc_cache config);
-            void paramSetTexRef(TexRef &texref);
 
             operator CUfunction();
 
