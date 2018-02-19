@@ -6,7 +6,6 @@
 #include <vector>
 
 #include <cuda.h>
-#include <cuda_runtime.h>
 
 struct dim3;
 

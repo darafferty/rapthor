@@ -12,22 +12,6 @@
 namespace cu {
 
     inline void __checkCudaCall(
-        cudaError_t result,
-        char const *const func,
-        const char *const file,
-        int const line)
-    {
-        if (result != cudaSuccess) {
-            std::cerr << "CUDA Error at " << file;
-            std::cerr << ":" << line;
-            std::cerr << " in function " << func;
-            std::cerr << ": " << cudaGetErrorString(result);
-            std::cerr << std::endl;
-            throw Error<cudaError_t>(result);
-        }
-    }
-
-    inline void __checkCudaCall(
         CUresult result,
         char const *const func,
         const char *const file,
