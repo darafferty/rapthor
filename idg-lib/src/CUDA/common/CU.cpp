@@ -302,11 +302,11 @@ namespace cu {
      */
     UnifiedMemory::UnifiedMemory(size_t size, unsigned flags) {
         _size = size;
-        checkCudaCall(cudaMallocManaged(&_ptr, _size, flags));
+        checkCudaCall(cuMemAllocManaged(&_ptr, _size, flags));
     }
 
     UnifiedMemory::~UnifiedMemory() {
-        checkCudaCall(cudaFree(_ptr));
+        checkCudaCall(cuMemFree(_ptr));
     }
 
     /*

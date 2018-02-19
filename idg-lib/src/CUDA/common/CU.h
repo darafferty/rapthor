@@ -131,13 +131,13 @@ namespace cu {
 
     class UnifiedMemory {
         public:
-            UnifiedMemory(size_t size, unsigned flags = cudaMemAttachGlobal);
+            UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
             ~UnifiedMemory();
 
-            void* ptr() { return _ptr; }
+            void* ptr() { return (void *) _ptr; }
 
         private:
-            void* _ptr;
+            CUdeviceptr _ptr;
             size_t _size;
     };
 
