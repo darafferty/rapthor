@@ -24,9 +24,11 @@ namespace idg {
                     ~Unified();
 
                     // Methods for memory management
-                    void *allocate_memory(long bytes);
-                    void free_memory(void *ptr);
-                    void free_memory();
+                    Grid get_grid(
+                    size_t nr_w_layers,
+                    size_t nr_correlations,
+                    size_t height,
+                    size_t width);
 
                 private:
                     void initialize_memory(
@@ -80,6 +82,9 @@ namespace idg {
                     powersensor::PowerSensor *hostPowerSensor;
 
                 private:
+                    void* allocate_memory(size_t bytes);
+                    void free_memory(void *ptr);
+                    void free_memory();
                     std::vector<cu::UnifiedMemory*> memory;
             }; // class Unified
 

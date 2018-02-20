@@ -45,7 +45,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Grid&& grid,
+                    Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
@@ -59,7 +59,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Grid&& grid,
+                    Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
@@ -181,9 +181,11 @@ namespace idg {
                 virtual bool supports_wstack_degridding() {return false;}
 
                 //! Methods for memory management
-                virtual void *allocate_memory(long bytes);
-                virtual void free_memory(void *ptr);
-                virtual void free_memory();
+                virtual Grid get_grid(
+                    size_t nr_w_layers,
+                    size_t nr_correlations,
+                    size_t height,
+                    size_t width);
 
             private:
                 //! Degrid the visibilities from a uniform grid
@@ -260,7 +262,6 @@ namespace idg {
                     const Array1D<float>& frequencies) const;
 
                 const unsigned int nr_polarizations = 4;
-                std::vector<void*> memory;
 
         }; // end class Proxy
 

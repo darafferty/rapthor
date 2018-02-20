@@ -27,6 +27,7 @@ namespace idg {
 
             // Destructor
             Unified::~Unified() {
+                free_memory();
                 delete hostPowerSensor;
             }
 
@@ -305,9 +306,9 @@ namespace idg {
                             device.measure(powerRecords[3], executestream);
 
                             // Launch adder kernel
-                            //device.launch_adder_unified(
-                            //    current_nr_subgrids, grid_size, subgrid_size,
-                            //    d_metadata, d_subgrids, grid.data());
+                            device.launch_adder_unified(
+                                current_nr_subgrids, grid_size, subgrid_size,
+                                d_metadata, d_subgrids, grid.data());
 
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
@@ -570,7 +571,7 @@ namespace idg {
              * Methods for memory management
              */
             void* Unified::allocate_memory(
-                long bytes)
+                size_t bytes)
             {
                 cu::UnifiedMemory* m = new cu::UnifiedMemory(bytes);
                 memory.push_back(m);
@@ -596,6 +597,17 @@ namespace idg {
                 memory.clear();
             }
 
+            Grid Unified::get_grid(
+                size_t nr_w_layers,
+                size_t nr_correlations,
+                size_t height,
+                size_t width)
+            {
+                assert(height == width);
+                size_t bytes = nr_w_layers * auxiliary::sizeof_grid(height, nr_correlations);
+                std::complex<float>* ptr = (std::complex<float> *) allocate_memory(bytes);
+                return Grid(ptr, nr_w_layers, nr_correlations, height, width);
+            }
 
         } // namespace cuda
     } // namespace proxy

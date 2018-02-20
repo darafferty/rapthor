@@ -203,14 +203,6 @@ namespace cu {
             register_memory = false;
         }
 
-        // detect whether this pointer is managed
-        bool managed;
-        checkCudaCall(cuPointerGetAttribute(&managed, CU_POINTER_ATTRIBUTE_IS_MANAGED, (CUdeviceptr) ptr));
-        if (managed) {
-            _ptr = ptr;
-            register_memory = false;
-        }
-
         // detect whether this pointer is already registered
         for (int i = 0; i < registered_memory.size(); i++) {
             HostMemory* m = registered_memory[i];

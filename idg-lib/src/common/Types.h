@@ -4,6 +4,7 @@
 #include <ostream>
 #include <complex>
 #include <cassert>
+#include <cstring>
 
 namespace idg {
 
@@ -555,6 +556,10 @@ namespace idg {
                     size_t x_dim) :
                     Array4D<std::complex<float>>(w_dim, z_dim, y_dim, x_dim)
                 {}
+
+                void zero() {
+                    memset(m_buffer, 0, bytes());
+                }
     };
 
 
