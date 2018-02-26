@@ -25,10 +25,10 @@ namespace idg {
 
                     // Methods for memory management
                     Grid get_grid(
-                    size_t nr_w_layers,
-                    size_t nr_correlations,
-                    size_t height,
-                    size_t width);
+                        size_t nr_w_layers,
+                        size_t nr_correlations,
+                        size_t height,
+                        size_t width);
 
                 private:
                     void initialize_memory(
