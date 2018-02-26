@@ -5,7 +5,7 @@
 
 namespace idg {
     namespace proxy {
-        namespace cuda {
+        namespace hybrid {
 
             class GenericOptimized : public hybrid::HybridCUDA {
                 public:
@@ -14,7 +14,7 @@ namespace idg {
 
             }; // class GenericOptimized
 
-        } // namespace cuda
+        } // namespace hybrid
     } // namespace proxy
 } // namespace idg
 

@@ -1,5 +1,5 @@
 extern "C" {
-    typedef idg::proxy::cuda::GenericOptimized ProxyType;
+    typedef idg::proxy::hybrid::GenericOptimized ProxyType;
 
     ProxyType* HybridCUDA_GenericOptimized_init()
     {
