@@ -102,6 +102,7 @@ template <typename ProxyType>
 void run()
 {
     // Constants
+    unsigned int nr_w_layers = 1;
     unsigned int nr_correlations = 4;
     float w_offset = 0;
     unsigned int nr_stations;
@@ -131,6 +132,11 @@ void run()
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         image_size, grid_size, subgrid_size, kernel_size);
 
+    // Initialize proxy
+    clog << ">>> Initialize proxy" << endl;
+    ProxyType proxy;
+    clog << endl;
+
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
     idg::Array1D<float> frequencies =
@@ -141,19 +147,14 @@ void run()
         idg::get_example_baselines(nr_stations, nr_baselines);
     idg::Array2D<idg::UVWCoordinate<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
-    idg::Array3D<std::complex<float>> grid =
-        idg::get_zero_grid(nr_correlations, grid_size, grid_size);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
         idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
-    clog << endl;
-
-    // Initialize proxy
-    clog << ">>> Initialize proxy" << endl;
-    ProxyType proxy;
+    idg::Grid grid =
+        proxy.get_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
     clog << endl;
 
     // Create plan
@@ -177,7 +178,10 @@ void run()
         clog << endl;
 
         clog << ">>> Run fft" << endl;
-        proxy.transform(idg::FourierDomainToImageDomain, grid);
+        for (int w = 0; w < nr_w_layers; w++) {
+            idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
+            proxy.transform(idg::FourierDomainToImageDomain, grid_);
+        }
         clog << endl;
 
         clog << ">>> Run degridding" << endl;
