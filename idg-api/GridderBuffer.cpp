@@ -161,7 +161,7 @@ namespace api {
                         visibilities_dst,
                         m_bufferUVW2,
                         m_bufferStationPairs2,
-                        std::move(*m_grid),
+                        *m_grid,
                         m_aterms_array,
                         m_aterm_offsets_array,
                         m_spheroidal);
