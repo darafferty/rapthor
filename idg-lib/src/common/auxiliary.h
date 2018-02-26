@@ -132,6 +132,12 @@ namespace idg {
         uint64_t sizeof_spheroidal(
             unsigned int subgrid_size);
 
+        uint64_t sizeof_baselines(
+            unsigned int nr_baselines);
+
+        uint64_t sizeof_aterms_offsets(
+            unsigned int nr_timeslots);
+
         /*
             Performance reporting
          */

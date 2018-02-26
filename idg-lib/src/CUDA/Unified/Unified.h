@@ -1,22 +1,34 @@
-#ifndef IDG_HYBRID_CUDA_H_
-#define IDG_HYBRID_CUDA_H_
+#ifndef IDG_CUDA_UNIFIED_H_
+#define IDG_CUDA_UNIFIED_H_
 
-#include "idg-cpu.h"
 #include "idg-cuda.h"
+
+namespace cu {
+    class UnifiedMemory;
+}
+
+namespace powersensor {
+    class PowerSensor;
+}
 
 namespace idg {
     namespace proxy {
-        namespace hybrid {
-            class HybridCUDA : public cuda::CUDA {
-
+        namespace cuda {
+            class Unified : public CUDA {
                 public:
-                    HybridCUDA(
-                        idg::proxy::cpu::CPU* cpuProxy);
+                    // Constructor
+                    Unified(
+                        ProxyInfo info = default_info());
 
-                    ~HybridCUDA();
+                    // Destructor
+                    ~Unified();
 
-                    virtual bool supports_wstack_gridding() {return cpuProxy->supports_wstack_gridding();}
-                    virtual bool supports_wstack_degridding() {return cpuProxy->supports_wstack_degridding();}
+                    // Methods for memory management
+                    Grid get_grid(
+                        size_t nr_w_layers,
+                        size_t nr_correlations,
+                        size_t height,
+                        size_t width);
 
                 private:
                     void initialize_memory(
@@ -29,6 +41,7 @@ namespace idg {
                         const int nr_stations,
                         const int nr_timeslots,
                         const int subgrid_size,
+                        const int grid_size,
                         void *visibilities,
                         void *uvw);
 
@@ -66,13 +79,16 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                protected:
-                    powersensor::PowerSensor* hostPowerSensor;
-                    idg::proxy::cpu::CPU* cpuProxy;
+                    powersensor::PowerSensor *hostPowerSensor;
 
-            }; // class HybridCUDA
-        } // namespace hybrid
+                private:
+                    void* allocate_memory(size_t bytes);
+                    void free_memory(void *ptr);
+                    void free_memory();
+                    std::vector<cu::UnifiedMemory*> memory;
+            }; // class Unified
+
+        } // namespace cuda
     } // namespace proxy
 } // namespace idg
-
 #endif

@@ -13,19 +13,18 @@ namespace cu {
 
     void init(unsigned flags = 0);
 
+    template<typename T>
     class Error : public std::exception {
         public:
-            Error(CUresult result):
+            Error(T result):
             _result(result) {}
 
-            virtual const char *what() const throw();
-
-            operator CUresult() const {
+            operator T() const {
                 return _result;
             }
 
         private:
-            CUresult _result;
+            T _result;
     };
 
 
@@ -129,35 +128,16 @@ namespace cu {
     };
 
 
-    class Array {
+    class UnifiedMemory {
         public:
-            Array(unsigned width, CUarray_format format, unsigned numChannels);
-            Array(unsigned width, unsigned height, CUarray_format format, unsigned numChannels);
-            Array(unsigned width, unsigned height, unsigned depth, CUarray_format format, unsigned numChannels);
-            ~Array();
+            UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
+            ~UnifiedMemory();
 
-            operator CUarray();
+            void* ptr() { return (void *) _ptr; }
 
         private:
-            CUarray _array;
-    };
-
-
-    class TexRef {
-        public:
-            TexRef(CUtexref texref);
-
-            void setAddress(size_t &byte_offset, DeviceMemory &memory, size_t size);
-            void setArray(Array &array, unsigned flags = CU_TRSA_OVERRIDE_FORMAT);
-            void setAddressMode(int dim, CUaddress_mode am);
-            void setFilterMode(CUfilter_mode fm);
-            void setFlags(int flags);
-            void setFormat(CUarray_format fmt, int numPackedComponents);
-
-            operator CUtexref();
-
-        private:
-            CUtexref _texref;
+            CUdeviceptr _ptr;
+            size_t _size;
     };
 
 
@@ -178,8 +158,6 @@ namespace cu {
             Module(const void *data);
             ~Module();
 
-            TexRef getTexRef(const char *name);
-
             operator CUmodule();
 
         private:
@@ -194,7 +172,6 @@ namespace cu {
 
             int getAttribute(CUfunction_attribute attribute);
             void setCacheConfig(CUfunc_cache config);
-            void paramSetTexRef(TexRef &texref);
 
             operator CUfunction();
 

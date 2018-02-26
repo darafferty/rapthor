@@ -6,4 +6,6 @@
 #include "idg-cuda.h"
 #include "Hybrid/CUDA/common/HybridCUDA.h"
 #include "Hybrid/CUDA/GenericOptimized/GenericOptimized.h"
+#include "Hybrid/CUDA/UnifiedOptimized/UnifiedOptimized.h"
+
 #endif

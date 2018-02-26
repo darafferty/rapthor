@@ -248,6 +248,18 @@ namespace idg {
             return 1ULL * subgrid_size * subgrid_size * sizeof(float);
         }
 
+        uint64_t sizeof_baselines(
+            unsigned int nr_baselines)
+        {
+            return 1ULL * 2 * nr_baselines * sizeof(unsigned int);
+        }
+
+        uint64_t sizeof_aterms_offsets(
+            unsigned int nr_timeslots)
+        {
+            return 1ULL * (nr_timeslots + 1) * sizeof(unsigned int);
+        }
+
         /*
             Performance reporting
          */
@@ -296,17 +308,17 @@ namespace idg {
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << bytes / runtime * 1e-9 << " GB/s";
                 }
-                if (watt > 0) {
+                if (watt > 1) {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << watt << " Watt";
                 }
-                if (flops != 0 && watt > 0) {
+                if (flops != 0 && watt > 1) {
                     clog << ", ";
                     clog << setw(FW2) << right << fixed << setprecision(2)
                                       << (flops / runtime * 1e-9) / watt << " GFLOPS/W";
                 }
-                if (joules > 0) {
+                if (joules > 1) {
                     clog << ", ";
                     clog << setw(FW2) << right  << fixed << setprecision(2)
                                       << joules << " Joules";

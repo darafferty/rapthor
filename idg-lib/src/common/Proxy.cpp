@@ -5,6 +5,7 @@
 
 namespace idg {
     namespace proxy {
+        Proxy::~Proxy() {};
 
         void Proxy::gridding(
             const Plan& plan,
@@ -16,7 +17,7 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid&& grid,
+            Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
@@ -36,7 +37,7 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid&& grid,
+            Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
@@ -69,7 +70,7 @@ namespace idg {
                 visibilities,
                 uvw,
                 baselines,
-                std::move(grid),
+                grid,
                 aterms,
                 aterms_offsets,
                 spheroidal);
@@ -161,7 +162,7 @@ namespace idg {
                 visibilities_,
                 uvw_,
                 baselines_,
-                std::move(grid_),
+                grid_,
                 aterms_,
                 aterms_offsets_,
                 spheroidal_);
@@ -438,6 +439,17 @@ namespace idg {
             }
 
             return wavenumbers;
+        }
+
+         Grid Proxy::get_grid(
+            size_t nr_w_layers,
+            size_t nr_correlations,
+            size_t height,
+            size_t width)
+        {
+            Grid grid = Grid(nr_w_layers, nr_correlations, height, width);
+            grid.zero();
+            return grid;
         }
 
     } // end namespace proxy

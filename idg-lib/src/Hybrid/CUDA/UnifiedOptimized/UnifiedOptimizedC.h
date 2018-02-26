@@ -1,12 +1,12 @@
 extern "C" {
-    typedef idg::proxy::hybrid::GenericOptimized ProxyType;
+    typedef idg::proxy::hybrid::UnifiedOptimized ProxyType;
 
-    ProxyType* HybridCUDA_GenericOptimized_init()
+    ProxyType* HybridCUDA_UnifiedOptimized_init()
     {
         return new ProxyType();
     }
 
-    void HybridCUDA_GenericOptimized_gridding(
+    void HybridCUDA_UnifiedOptimized_gridding(
         ProxyType* p,
         float w_offset,
         const float cell_size,
@@ -79,7 +79,7 @@ extern "C" {
         );
     }
 
-     void HybridCUDA_GenericOptimized_degridding(
+     void HybridCUDA_UnifiedOptimized_degridding(
         ProxyType* p,
         float w_offset,
         const float cell_size,
@@ -152,7 +152,7 @@ extern "C" {
         );
     }
 
-    void HybridCUDA_GenericOptimized_transform(
+    void HybridCUDA_UnifiedOptimized_transform(
         ProxyType* p,
         int direction,
         std::complex<float>* grid,
@@ -176,7 +176,7 @@ extern "C" {
         }
     }
 
-    void HybridCUDA_GenericOptimized_destroy(ProxyType* p) {
+    void HybridCUDA_UnifiedOptimized_destroy(ProxyType* p) {
        delete p;
     }
 } // end extern "C"

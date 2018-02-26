@@ -29,7 +29,7 @@ namespace idg {
         class Proxy
         {
             public:
-                virtual ~Proxy() {}
+                virtual ~Proxy();
 
                 /*
                     High level routines
@@ -45,7 +45,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Grid&& grid,
+                    Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
@@ -59,7 +59,7 @@ namespace idg {
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    Grid&& grid,
+                    Grid& grid,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
@@ -179,6 +179,13 @@ namespace idg {
                 bool supports_wstack() {return (supports_wstack_gridding() && supports_wstack_degridding());}
                 virtual bool supports_wstack_gridding() {return false;}
                 virtual bool supports_wstack_degridding() {return false;}
+
+                //! Methods for memory management
+                virtual Grid get_grid(
+                    size_t nr_w_layers,
+                    size_t nr_correlations,
+                    size_t height,
+                    size_t width);
 
             private:
                 //! Degrid the visibilities from a uniform grid

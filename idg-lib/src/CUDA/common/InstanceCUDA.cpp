@@ -286,10 +286,8 @@ namespace idg {
                 os << "\tMem bus width : " << mem_bus_width << " bit" << std::endl;
                 os << "\tMem bandwidth : " << 2 * (mem_bus_width / 8) * mem_frequency / 1000 << " GB/s" << std::endl;
                 os << "\tCapability    : " << d.get_device().get_capability() << std::endl;
-                auto supports_unified_addressing = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING>();
-                auto supports_device_use_host_pointer = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CAN_USE_HOST_POINTER_FOR_REGISTERED_MEM>();
-                os << "\tUnified memory : " << supports_unified_addressing << std::endl;
-                os << "\tHost adressing : " << supports_device_use_host_pointer << std::endl;
+                auto supports_managed_memory = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY>();
+                os << "\tUnified memory : " << supports_managed_memory << std::endl;
                 os << std::endl;
                 return os;
             }
@@ -409,6 +407,28 @@ namespace idg {
                 }
             }
 
+             void InstanceCUDA::launch_fft_unified(
+                void *data,
+                DomainAtoDomainB direction)
+            {
+                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(data);
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                if (fft_plan_bulk) {
+                    fft_plan_bulk->setStream(*executestream);
+                }
+
+                int s = 0;
+                for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
+                    fft_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
+                }
+                if (s < fft_batch) {
+                    fft_plan_misc->setStream(*executestream);
+                    fft_plan_misc->execute(data_ptr, data_ptr, sign);
+                }
+            }
+
             void InstanceCUDA::launch_adder(
                 int nr_subgrids,
                 int grid_size,
@@ -422,6 +442,19 @@ namespace idg {
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
             }
 
+            void InstanceCUDA::launch_adder_unified(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                void *u_grid)
+            {
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+            }
+
             void InstanceCUDA::launch_splitter(
                 int nr_subgrids,
                 int grid_size,
@@ -431,6 +464,19 @@ namespace idg {
                 cu::DeviceMemory& d_grid)
             {
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid };
+                dim3 grid(nr_subgrids);
+                executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_splitter_unified(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                void *u_grid)
+            {
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
             }
