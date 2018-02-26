@@ -75,7 +75,7 @@ namespace api {
         }
         if (m_architecture == Type::HYBRID_CUDA_CPU_OPTIMIZED) {
             #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
-                proxy = new proxy::cuda::GenericOptimized();
+                proxy = new proxy::hybrid::GenericOptimized();
             #else
                 throw std::runtime_error(
                     std::string("Can not create HYBRID_CUDA_CPU_OPTIMIZED proxy.\n") +
