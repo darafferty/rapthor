@@ -66,7 +66,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                private:
+                protected:
                     powersensor::PowerSensor* hostPowerSensor;
                     idg::proxy::cpu::CPU* cpuProxy;
 
