@@ -46,7 +46,7 @@ kernel_size      = (subgrid_size / 2) + 1
 nr_polarizations = 4
 
 # dummy data
-wavenumbers = idg.utils.get_example_wavenumbers(nr_channels)
+frequencies = idg.utils.get_example_frequencies(nr_channels)
 baselines = numpy.zeros(shape=(nr_baselines), dtype=idg.baselinetype)
 baselines[0]['station1'] = 0
 baselines[0]['station2'] = 1
@@ -114,7 +114,7 @@ for plane in range(len(uv)):
     # grid visibilities
     w_offset = float(plane)
     p.grid_visibilities(
-        visibilities, uvw, wavenumbers, baselines, grid,
+        visibilities, uvw, frequencies, baselines, grid,
         w_offset, kernel_size, aterms, aterms_offset, spheroidal)
 
     # create image
