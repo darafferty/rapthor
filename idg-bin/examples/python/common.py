@@ -73,7 +73,7 @@ def init_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels):
 ###########
 def plot_metadata(
         kernel_size, subgrid_size, grid_size, cell_size, image_size,
-        frequencies, uvw, baselines, aterms_offsets, wavenumbers,
+        frequencies, uvw, baselines, aterms_offsets,
         max_nr_timesteps = numpy.iinfo(numpy.int32).max):
     plan = idg.Plan(
         kernel_size, subgrid_size, grid_size, cell_size,
@@ -81,7 +81,7 @@ def plot_metadata(
     nr_subgrids = plan.get_nr_subgrids()
     metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
     plan.copy_metadata(metadata)
-    util.plot_metadata(metadata, uvw, wavenumbers, grid_size, subgrid_size, image_size)
+    util.plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size, image_size)
 
 
 ##########
@@ -159,7 +159,6 @@ def main(proxyname):
     ######################################################################
     uvw            = util.get_example_uvw(
                         nr_baselines, nr_timesteps, integration_time)
-    wavenumbers    = util.get_example_wavenumbers(nr_channels)
     frequencies    = util.get_example_frequencies(nr_channels)
     baselines      = util.get_example_baselines(nr_baselines)
     grid           = util.get_example_grid(
@@ -171,18 +170,18 @@ def main(proxyname):
     spheroidal     = util.get_identity_spheroidal(subgrid_size)
     visibilities   = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
-                        image_size, grid_size, uvw, wavenumbers)
+                        image_size, grid_size, uvw, frequencies)
 
     ######################################################################
     # plot data
     ######################################################################
     # util.plot_uvw(uvw)
-    # util.plot_wavenumbers(wavenumbers)
+    # util.plot_frequencies(frequencies)
     # util.plot_spheroidal(spheroidal)
     # util.plot_visibilities(visibilities)
     # plot_metadata(
     #     kernel_size, subgrid_size, grid_size, cell_size, image_size,
-    #     frequencies, uvw, baselines, aterms_offsets, wavenumbers)
+    #     frequencies, uvw, baselines, aterms_offsets)
 
     ######################################################################
     # routines
