@@ -238,22 +238,6 @@ namespace idg {
         return frequencies;
     }
 
-    Array1D<float> get_example_wavenumbers(
-        unsigned int nr_channels,
-        float start_frequency,
-        float frequency_increment)
-    {
-        Array1D<float> frequencies = get_example_frequencies(nr_channels);
-        Array1D<float> wavenumbers(nr_channels);
-
-        const double speed_of_light = 299792458.0;
-        for (int i = 0; i < nr_channels; i++) {
-            wavenumbers(i) =  2 * M_PI * frequencies(i) / speed_of_light;
-        }
-
-        return wavenumbers;
-    }
-
     Array3D<Visibility<std::complex<float>>> get_example_visibilities(
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
@@ -411,7 +395,7 @@ namespace idg {
     void add_pt_src(
         Array3D<Visibility<std::complex<float>>> &visibilities,
         Array2D<UVWCoordinate<float>> &uvw,
-        Array1D<float> &wavenumbers,
+        Array1D<float> &frequencies,
         float image_size,
         int   grid_size,
         float x,
@@ -431,8 +415,8 @@ namespace idg {
         for (int b = 0; b < nr_baselines; b++) {
             for (int t = 0; t < nr_timesteps; t++) {
                 for (int c = 0; c < nr_channels; c++) {
-                    float u = wavenumbers(c) * uvw(b,t).u / (2 * M_PI);
-                    float v = wavenumbers(c) * uvw(b,t).v / (2 * M_PI);
+                    float u = frequencies(c) * uvw(b,t).u / (SPEED_OF_LIGHT);
+                    float v = frequencies(c) * uvw(b,t).v / (SPEED_OF_LIGHT);
                     std::complex<float> value = amplitude *
                         std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
                     visibilities(b,t,c).xx += value;

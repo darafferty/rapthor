@@ -43,11 +43,6 @@ namespace idg {
         float start_frequency = START_FREQUENCY,
         float frequency_increment = FREQUENCY_INCREMENT);
 
-    Array1D<float> get_example_wavenumbers(
-        unsigned int nr_channels,
-        float start_frequency = START_FREQUENCY,
-        float frequency_increment = FREQUENCY_INCREMENT);
-
     Array3D<Visibility<std::complex<float>>> get_example_visibilities(
         unsigned int nr_stations,
         unsigned int nr_timesteps,
@@ -91,7 +86,7 @@ namespace idg {
     void add_pt_src(
         Array3D<Visibility<std::complex<float>>> &visibilities,
         Array2D<UVWCoordinate<float>> &uvw,
-        Array1D<float> &wavenumbers,
+        Array1D<float> &frequencies,
         float image_size,
         int   grid_size,
         float x,

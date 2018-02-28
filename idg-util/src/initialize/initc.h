@@ -26,11 +26,11 @@ extern "C" {
             nr_time, integration_time);
     }
 
-    void utils_init_example_wavenumbers(void *ptr, int nr_channels)
+    void utils_init_example_frequencies(void *ptr, int nr_channels)
     {
-        idg::Array1D<float> wavenumbers =
-            idg::get_example_wavenumbers(nr_channels);
-        memcpy(ptr, wavenumbers.data(), wavenumbers.bytes());
+        idg::Array1D<float> frequencies =
+            idg::get_example_frequencies(nr_channels);
+        memcpy(ptr, frequencies.data(), frequencies.bytes());
     }
 
     void utils_init_example_visibilities(
@@ -56,15 +56,15 @@ extern "C" {
         float image_size,
         int grid_size,
         void *uvw,
-        void *wavenumbers,
+        void *frequencies,
         void *visibilities)
     {
         typedef idg::Matrix2x2<std::complex<float>> VisibilityType;
         typedef idg::UVWCoordinate<float> UVWType;
         idg::Array3D<VisibilityType> visibilities_((VisibilityType *) visibilities, nr_baselines, nr_timesteps, nr_channels);
         idg::Array2D<UVWType> uvw_((UVWType *) uvw, nr_baselines, nr_timesteps);
-        idg::Array1D<float> wavenumbers_((float *) wavenumbers, nr_channels);
-        idg::add_pt_src(visibilities_, uvw_, wavenumbers_, image_size, grid_size, x, y, amplitude);
+        idg::Array1D<float> frequencies((float *) frequencies, nr_channels);
+        idg::add_pt_src(visibilities_, uvw_, frequencies, image_size, grid_size, x, y, amplitude);
     }
 
     void utils_init_identity_aterms(
