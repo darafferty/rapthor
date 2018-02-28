@@ -63,8 +63,8 @@ extern "C" {
         typedef idg::UVWCoordinate<float> UVWType;
         idg::Array3D<VisibilityType> visibilities_((VisibilityType *) visibilities, nr_baselines, nr_timesteps, nr_channels);
         idg::Array2D<UVWType> uvw_((UVWType *) uvw, nr_baselines, nr_timesteps);
-        idg::Array1D<float> frequencies((float *) frequencies, nr_channels);
-        idg::add_pt_src(visibilities_, uvw_, frequencies, image_size, grid_size, x, y, amplitude);
+        idg::Array1D<float> frequencies_((float *) frequencies, nr_channels);
+        idg::add_pt_src(visibilities_, uvw_, frequencies_, image_size, grid_size, x, y, amplitude);
     }
 
     void utils_init_identity_aterms(
