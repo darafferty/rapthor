@@ -104,7 +104,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_delete_buffer(width > 0),
-                m_buffer((T*) malloc(width*sizeof(T)))
+                m_buffer(new T[width])
             {}
 
             Array1D(
@@ -128,7 +128,7 @@ namespace idg {
 
             Array1D& operator=(Array1D&& other)
             {
-                if (m_delete_buffer) free(m_buffer);
+                if (m_delete_buffer) delete m_buffer;
                 m_x_dim = other.m_x_dim;
                 m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
@@ -137,7 +137,7 @@ namespace idg {
 
             virtual ~Array1D()
             {
-                if (m_delete_buffer) free(m_buffer);
+                if (m_delete_buffer) delete m_buffer;
             }
 
             void resize(size_t width)
@@ -168,8 +168,9 @@ namespace idg {
             }
 
             void init(const T& a) {
-                for (unsigned int i = 0; i < get_x_dim(); ++i) {
-                    (*this)(i) = a;
+                const unsigned int n = m_x_dim;
+                for (unsigned int i = 0; i < n; ++i) {
+                    m_buffer[i] = a;
                 }
             }
 
@@ -193,7 +194,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_delete_buffer((height*width) > 0),
-                m_buffer((T*) malloc(height*width*sizeof(T)))
+                m_buffer(new T[height*width])
             {}
 
             Array2D(
@@ -221,7 +222,7 @@ namespace idg {
             // move assignment operator
             Array2D& operator=(Array2D&& other)
             {
-                if (m_delete_buffer) free(m_buffer);
+                if (m_delete_buffer) delete m_buffer;
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
                 m_delete_buffer = other.m_delete_buffer;
@@ -232,7 +233,7 @@ namespace idg {
             virtual ~Array2D()
             {
                 if (m_delete_buffer) {
-                    free(m_buffer);
+                    delete m_buffer;
                 }
             }
 
@@ -269,10 +270,9 @@ namespace idg {
             }
 
             void init(const T& a) {
-                for (unsigned int y = 0; y < get_y_dim(); ++y) {
-                    for (unsigned int x = 0; x < get_x_dim(); ++x) {
-                        (*this)(y, x) = a;
-                    }
+                const unsigned int n = m_x_dim*m_y_dim;
+                for (unsigned int i = 0; i < n; ++i) {
+                    m_buffer[i] = a;
                 }
             }
 
@@ -300,7 +300,7 @@ namespace idg {
                 m_y_dim(height),
                 m_z_dim(depth),
                 m_delete_buffer((width*height*depth) > 0),
-                m_buffer((T*) malloc(height*width*depth*sizeof(T)))
+                m_buffer(new T[height*width*depth])
             {}
 
             Array3D(
@@ -331,7 +331,7 @@ namespace idg {
             // move assignment operator
             Array3D& operator=(Array3D&& other)
             {
-                if (m_delete_buffer) free(m_buffer);
+                if (m_delete_buffer) delete m_buffer;
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
                 m_z_dim = other.m_z_dim;
@@ -340,7 +340,7 @@ namespace idg {
                 other.m_buffer = nullptr;
             }
 
-            virtual ~Array3D() { if (m_delete_buffer) free(m_buffer); }
+            virtual ~Array3D() { if (m_delete_buffer) delete m_buffer; }
 
             void resize(size_t depth, size_t height, size_t width)
             {
@@ -380,13 +380,9 @@ namespace idg {
             }
 
             void init(const T& a) {
-                for (unsigned int z = 0; z < get_z_dim(); ++z) {
-                    for (unsigned int y = 0; y < get_y_dim(); ++y) {
-                        for (unsigned int x = 0; x < get_x_dim(); ++x) {
-                            (*this)(z, y, x) = a;
-                        }
-                    }
-
+                const unsigned int n = m_x_dim*m_y_dim*m_z_dim;
+                for (unsigned int i = 0; i < n; ++i) {
+                    m_buffer[i] = a;
                 }
             }
 
@@ -417,7 +413,7 @@ namespace idg {
                 m_z_dim(z_dim),
                 m_w_dim(w_dim),
                 m_delete_buffer((w_dim*x_dim*y_dim*z_dim) > 0),
-                m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)))
+                m_buffer(new T[w_dim*z_dim*y_dim*x_dim])
             {}
 
             Array4D(
@@ -451,7 +447,7 @@ namespace idg {
             // move assignment operator
             Array4D& operator=(Array4D&& other)
             {
-                if (m_delete_buffer) free(m_buffer);
+                if (m_delete_buffer) delete m_buffer;
                 m_w_dim = other.m_w_dim;
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
@@ -461,7 +457,7 @@ namespace idg {
                 other.m_buffer = nullptr;
             }
 
-            virtual ~Array4D() { if (m_delete_buffer) free(m_buffer); }
+            virtual ~Array4D() { if (m_delete_buffer) delete m_buffer; }
 
             void resize(size_t w_dim, size_t z_dim, size_t y_dim, size_t x_dim)
             {
@@ -506,14 +502,9 @@ namespace idg {
             }
 
             void init(const T& a) {
-                for (unsigned int w = 0; w < get_w_dim(); ++w) {
-                    for (unsigned int z = 0; z < get_z_dim(); ++z) {
-                        for (unsigned int y = 0; y < get_y_dim(); ++y) {
-                            for (unsigned int x = 0; x < get_x_dim(); ++x) {
-                                (*this)(w, z, y, x) = a;
-                            }
-                        }
-                    }
+                const unsigned int n = m_x_dim*m_y_dim*m_z_dim*m_w_dim;
+                for (unsigned int i = 0; i < n; ++i) {
+                    m_buffer[i] = a;
                 }
             }
 
