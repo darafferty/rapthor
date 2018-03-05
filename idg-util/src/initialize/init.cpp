@@ -1,3 +1,6 @@
+#include <ctime> // time
+#include <algorithm> // random_shuffle
+
 #include "init.h"
 
 #include "uvwsim.h"
@@ -428,6 +431,183 @@ namespace idg {
         }
     }
 
+    /*
+     * Class Data
+     */
+    Data::Data(
+        unsigned int grid_size,
+        unsigned int nr_stations_limit,
+        unsigned int baseline_length_limit,
+        std::string layout_file,
+        float start_frequency_
+    ) {
+
+        // Set station_coordinates
+        set_station_coordinates(layout_file, nr_stations_limit);
+
+        // Set baselines anx max_baseline_length
+        set_baselines(station_coordinates, baseline_length_limit);
+
+        // Set derived parameters
+        start_frequency = start_frequency_;
+        image_size = (grid_size * pixel_padding) / max_baseline_length * (start_frequency / SPEED_OF_LIGHT);
+        frequency_increment = SPEED_OF_LIGHT / (max_baseline_length * image_size);
+    }
+
+    void Data::set_station_coordinates(
+        std::string layout_file = "SKA1_low_ecef",
+        unsigned int nr_stations_limit)
+    {
+        // Check whether layout file exists
+        std::string filename = std::string(IDG_DATA_DIR) + "/" + layout_file;
+        if (!uvwsim_file_exists(filename.c_str())) {
+            std::cerr << "Failed to find specified layout file: "
+                      << filename << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        // Get number of stations
+        int nr_stations = uvwsim_get_num_stations(filename.c_str());
+        if (nr_stations < 0) {
+            std::cerr << "Failed to read any stations from layout file" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        // Allocate memory for station coordinates
+        double* x = (double *) malloc(nr_stations * sizeof(double));
+        double* y = (double *) malloc(nr_stations * sizeof(double));
+        double* z = (double *) malloc(nr_stations * sizeof(double));
+
+        // Load the antenna coordinates
+        if (uvwsim_load_station_coords(filename.c_str(), nr_stations, x, y, z) != nr_stations) {
+            std::cerr << "Failed to read antenna coordinates." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        // Pick random station indices
+        std::srand(0);
+        std::vector<unsigned> station_indices(nr_stations);
+        for (unsigned i = 0; i < nr_stations; i++) {
+            station_indices[i] = i;
+        }
+        std::random_shuffle(station_indices.begin(), station_indices.end());
+
+        // Limit number of stations
+        if (nr_stations_limit > 0 && nr_stations_limit < nr_stations) {
+            nr_stations = nr_stations_limit;
+        }
+
+        // Create vector of shuffled station indices
+        for (int i = 0; i < nr_stations; i++) {
+            unsigned station_index = station_indices[i];
+            Data::StationCoordinate coordinate = { x[station_index], y[station_index], z[station_index] };
+            station_coordinates.push_back(coordinate);
+        }
+
+        // Free memory
+        free(x); free(y); free(z);
+    }
+
+
+    void Data::set_baselines(
+        std::vector<StationCoordinate>& station_coordinates,
+        unsigned int baseline_length_limit)
+    {
+        // Compute (maximum) baseline length and select baselines
+        int nr_stations = station_coordinates.size();
+        max_baseline_length = 0;
+        for (unsigned station1 = 0; station1 < nr_stations; station1++) {
+            for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
+                double x1 = station_coordinates[station1].x;
+                double y1 = station_coordinates[station1].y;
+                double z1 = station_coordinates[station1].z;
+                double x2 = station_coordinates[station2].x;
+                double y2 = station_coordinates[station2].y;
+                double z2 = station_coordinates[station2].z;
+                double x_distance = abs(x1 - x2);
+                double y_distance = abs(y1 - y2);
+                double z_distance = abs(z1 - z2);
+                double baseline_length = sqrt(x_distance*x_distance + y_distance*y_distance + z_distance*z_distance);
+                if (baseline_length < baseline_length_limit) {
+                    baselines.push_back({station1, station2});
+                    if (baseline_length > max_baseline_length) {
+                        max_baseline_length = baseline_length;
+                    }
+                }
+            }
+        }
+    }
+
+
+    void Data::get_frequencies(
+        Array1D<float>& frequencies,
+        unsigned int channel_offset) const
+    {
+        auto nr_channels = frequencies.get_x_dim();
+
+        for (int chan = 0; chan < nr_channels; chan++) {
+            frequencies(chan) = start_frequency + frequency_increment * (chan + channel_offset);
+        }
+    }
+
+    void Data::get_uvw(
+        Array2D<UVWCoordinate<float>>& uvw,
+        unsigned int baseline_offset,
+        unsigned int time_offset,
+        float integration_time) const
+    {
+        unsigned int nr_baselines_total = baselines.size();
+        unsigned int nr_baselines = uvw.get_y_dim();
+        unsigned int nr_timesteps = uvw.get_x_dim();
+
+        if (baseline_offset + nr_baselines > nr_baselines_total) {
+            std::cerr << "Out-of-range baselines selected: "
+                      << baseline_offset + " + " + nr_baselines
+                      << " > " << nr_baselines_total << std::endl;
+        }
+
+        // Compute observation start time
+        unsigned int year     = observation_year;
+        unsigned int month    = observation_month;
+        unsigned int day      = observation_day;
+        unsigned int hour     = observation_hour;
+        unsigned int minute   = observation_minute;
+        unsigned int seconds  = observation_seconds + time_offset * integration_time;
+        double start_time_mjd = uvwsim_datetime_to_mjd(year, month, day, hour, minute, seconds);
+
+        // Define observation parameters
+        double ra0  = observation_ra;
+        double dec0 = observation_dec;
+
+        // Evaluate uvw per baseline
+        double runtime = -omp_get_wtime();
+        #pragma omp parallel for
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            Baseline baseline = baselines[baseline_offset + bl];
+            unsigned station1 = baseline.station1;
+            unsigned station2 = baseline.station2;
+            double x1 = station_coordinates[station1].x;
+            double y1 = station_coordinates[station1].y;
+            double z1 = station_coordinates[station1].z;
+            double x2 = station_coordinates[station2].x;
+            double y2 = station_coordinates[station2].y;
+            double z2 = station_coordinates[station2].z;
+            double x[2] = {x1, x2};
+            double y[2] = {y1, y2};
+            double z[2] = {z1, z2};
+            double u, v, w;
+
+            for (int time = 0; time < nr_timesteps; time++) {
+                double seconds_ = observation_seconds + ((time_offset + time) * integration_time);
+                double time_mjd = uvwsim_datetime_to_mjd(year, month, day, hour, minute, seconds_);
+
+                uvwsim_evaluate_baseline_uvw(
+                        &u, &v, &w,
+                        2, x, y, z, ra0, dec0, time_mjd);
+                uvw(bl, time) = {(float) u, (float) v, (float) w};
+            } // end for time
+        } // end for bl
+    }
 
 } // namespace idg
 
