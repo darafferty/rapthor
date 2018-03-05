@@ -4,7 +4,6 @@ visibilitiestype = numpy.complex64
 uvwtype = numpy.dtype([('u', numpy.float32),
                        ('v', numpy.float32),
                        ('w', numpy.float32)])
-wavenumberstype = numpy.float32
 frequenciestype = numpy.float32
 gridtype = numpy.complex64
 baselinetype = numpy.dtype([('station1', numpy.intc),
