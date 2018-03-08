@@ -9,7 +9,7 @@ extern "C" {
     Kernel
 */
 __global__ void kernel_splitter(
-    const int                    grid_size,
+    const long                   grid_size,
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     float2*         __restrict__ subgrid,
@@ -43,8 +43,8 @@ __global__ void kernel_splitter(
             // Set grid value to subgrid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int src_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
-                int dst_idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
+                long src_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                long dst_idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
                 subgrid[dst_idx] = phasor * grid[src_idx];
             }
         }

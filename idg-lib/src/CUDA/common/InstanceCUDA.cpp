@@ -431,7 +431,7 @@ namespace idg {
 
             void InstanceCUDA::launch_adder(
                 int nr_subgrids,
-                int grid_size,
+                long grid_size,
                 int subgrid_size,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
@@ -444,7 +444,7 @@ namespace idg {
 
             void InstanceCUDA::launch_adder_unified(
                 int nr_subgrids,
-                int grid_size,
+                long grid_size,
                 int subgrid_size,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
@@ -457,7 +457,7 @@ namespace idg {
 
             void InstanceCUDA::launch_splitter(
                 int nr_subgrids,
-                int grid_size,
+                long grid_size,
                 int subgrid_size,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
@@ -470,7 +470,7 @@ namespace idg {
 
             void InstanceCUDA::launch_splitter_unified(
                 int nr_subgrids,
-                int grid_size,
+                long grid_size,
                 int subgrid_size,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
