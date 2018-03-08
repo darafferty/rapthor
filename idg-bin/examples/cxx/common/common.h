@@ -343,17 +343,6 @@ void run()
                             runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
                             clog << endl;
 
-                            // Run fft
-                            clog << ">>> Run fft" << endl;
-                            double runtime_fft = -omp_get_wtime();
-                            for (int w = 0; w < nr_w_layers; w++) {
-                                idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
-                                proxy.transform(idg::FourierDomainToImageDomain, grid_);
-                                proxy.transform(idg::ImageDomainToFourierDomain, grid_);
-                            }
-                            runtimes_fft.push_back(runtime_fft + omp_get_wtime());
-                            clog << endl;
-
                             // Run degridding
                             clog << ">>> Run degridding" << endl;
                             double runtime_degridding = -omp_get_wtime();
@@ -363,6 +352,22 @@ void run()
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
                             clog << endl;
+
+                            // Run fft only after processing all visibilities in cycle
+                            if ((bl_offset + current_nr_baselines >= total_nr_baselines) &&
+                                (time_offset + nr_timesteps >= total_nr_timesteps) &&
+                                channel_offset + nr_channels >= total_nr_channels)
+                            {
+                                clog << ">>> Run fft" << endl;
+                                double runtime_fft = -omp_get_wtime();
+                                for (int w = 0; w < nr_w_layers; w++) {
+                                    idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
+                                    proxy.transform(idg::FourierDomainToImageDomain, grid_);
+                                    proxy.transform(idg::ImageDomainToFourierDomain, grid_);
+                                }
+                                runtimes_fft.push_back(runtime_fft + omp_get_wtime());
+                                clog << endl;
+                            }
 
                             // End imaging
                             runtimes_imaging.push_back(runtime_imaging + omp_get_wtime());
