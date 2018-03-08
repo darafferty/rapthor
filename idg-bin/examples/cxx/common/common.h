@@ -396,17 +396,11 @@ void run()
     double runtime_fft            = accumulate(runtimes_fft.begin(), runtimes_fft.end(), 0.0);
     double runtime_imaging        = accumulate(runtimes_imaging.begin(), runtimes_imaging.end(), 0.0);
 
-    // Compute runtime for one cycle, excluding the slowest (if any)
-    if (nr_cycles > 1) {
-        runtime_gridding   -= max_runtime_gridding;
-        runtime_degridding -= max_runtime_degridding;
-        runtime_fft        -= max_runtime_fft;
-        runtime_imaging    -= max_runtime_imaging;
-        runtime_gridding   /= (nr_cycles - 1);
-        runtime_degridding /= (nr_cycles - 1);
-        runtime_imaging    /= (nr_cycles - 1);
-        runtime_imaging    /= (nr_cycles - 1);
-    }
+    // Compute runtime for one cycle
+    runtime_gridding   /= nr_cycles;
+    runtime_degridding /= nr_cycles;
+    runtime_imaging    /= nr_cycles;
+    runtime_imaging    /= nr_cycles;
 
     // Report runtime
     idg::auxiliary::report("gridding", runtime_gridding);
