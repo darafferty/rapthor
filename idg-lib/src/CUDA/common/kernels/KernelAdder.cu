@@ -9,7 +9,7 @@ extern "C" {
     Kernel
 */
 __global__ void kernel_adder(
-    const int                    grid_size,
+    const long                   grid_size,
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     const float2*   __restrict__ subgrid,
@@ -43,8 +43,8 @@ __global__ void kernel_adder(
             // Add subgrid value to grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int dst_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
-                int src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                long dst_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 atomicAdd(&(grid[dst_idx]), phasor * subgrid[src_idx]);
             }
         }

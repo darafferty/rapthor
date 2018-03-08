@@ -17,6 +17,9 @@ namespace idg {
     namespace proxy {
         namespace hybrid {
 
+            // The maximum number of CUDA streams in any routine
+            const int max_nr_streams = 3;
+
             // Constructor
             HybridCUDA::HybridCUDA(
                 CPU* cpuProxy) :
@@ -148,7 +151,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata  = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory
                 initialize_memory(
@@ -375,7 +378,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata  = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory
                 initialize_memory(
