@@ -64,13 +64,13 @@ add_library(idg-fft
 )
 
 set(
-    LINK_LIRBRARIES
+    LINK_LIBRARIES
     ${FFTW3_LIBRARIES}
 )
 
 target_link_libraries(
     idg-fft
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 set_target_properties(
@@ -99,13 +99,13 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIRBRARIES idg-common ${CMAKE_DL_LIBS})
+set(LINK_LIBRARIES idg-common ${CMAKE_DL_LIBS})
 if(BUILD_WITH_MKL)
-    set(LINK_LIRBRARIES ${LINK_LIRBRARIES} ${MKL_LIBRARIES})
+    set(LINK_LIBRARIES ${LINK_LIBRARIES} ${MKL_LIBRARIES})
 endif()
 target_link_libraries (
   idg-cpu
-  ${LINK_LIRBRARIES}
+  ${LINK_LIBRARIES}
 )
 
 set_target_properties(idg-cpu PROPERTIES
@@ -137,14 +137,14 @@ add_library (
 )
 
 set(
-    LINK_LIRBRARIES
+    LINK_LIBRARIES
     idg-common
     ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
 )
 
 target_link_libraries (
     idg-cuda
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 set_target_properties(
@@ -177,14 +177,14 @@ add_library (
 )
 
 set (
-    LINK_LIRBRARIES
+    LINK_LIBRARIES
     idg-cpu
     idg-cuda
 )
 
 target_link_libraries (
     idg-hybrid-cuda
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 set_target_properties (
@@ -216,7 +216,7 @@ add_library(
 )
 
 set(
-    LINK_LIRBRARIES
+    LINK_LIBRARIES
     idg-common
     ${OPENCL_LIBRARIES}
     ${CLFFT_LIBRARIES}
@@ -224,7 +224,7 @@ set(
 
 target_link_libraries(
     idg-opencl
-    ${LINK_LIRBRARIES}
+    ${LINK_LIBRARIES}
 )
 
 set_target_properties(
@@ -253,20 +253,20 @@ add_library(idg
     idg.cpp
 )
 
-set(LINK_LIRBRARIES idg-fft)
+set(LINK_LIBRARIES idg-fft)
 if (BUILD_LIB_CPU)
-  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cpu)
+  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cpu)
 endif()
 if (BUILD_LIB_CUDA)
-  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-cuda idg-hybrid-cuda)
+  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cuda idg-hybrid-cuda)
 endif()
 if (BUILD_LIB_OPENCL)
-  set(LINK_LIRBRARIES ${LINK_LIRBRARIES} idg-opencl)
+  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-opencl)
 endif()
 
 target_link_libraries (
   idg
-  ${LINK_LIRBRARIES}
+  ${LINK_LIBRARIES}
 )
 
 set_target_properties(idg PROPERTIES
