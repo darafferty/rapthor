@@ -80,6 +80,12 @@ namespace idg {
                         void *data,
                         DomainAtoDomainB direction);
 
+                    void launch_fft_unified(
+                        int size,
+                        int batch,
+                        Array3D<std::complex<float>>& grid,
+                        DomainAtoDomainB direction);
+
                     void launch_adder(
                         int nr_subgrids,
                         long grid_size,

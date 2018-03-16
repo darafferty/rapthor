@@ -429,6 +429,31 @@ namespace idg {
                 }
             }
 
+            void InstanceCUDA::launch_fft_unified(
+                int size,
+                int batch,
+                Array3D<std::complex<float>>& grid,
+                DomainAtoDomainB direction)
+            {
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+                cufft::C2C_1D fft_plan_row(size, 1, 1, 1);
+                cufft::C2C_1D fft_plan_col(size, size, 1, 1);
+
+                for (int i = 0; i < batch; i++) {
+                    // Execute 1D FFT over all columns
+                    for (int col = 0; col < size; col++) {
+                        cufftComplex *ptr = (cufftComplex *) grid.data(i, col, 0);
+                        fft_plan_row.execute(ptr, ptr, sign);
+                    }
+
+                    // Execute 1D FFT over all rows
+                    for (int row = 0; row < size; row++) {
+                        cufftComplex *ptr = (cufftComplex *) grid.data(i, 0, row);
+                        fft_plan_col.execute(ptr, ptr, sign);
+                    }
+                }
+            }
+
             void InstanceCUDA::launch_adder(
                 int nr_subgrids,
                 long grid_size,
