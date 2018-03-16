@@ -263,6 +263,9 @@ namespace idg {
 
                 const unsigned int nr_polarizations = 4;
 
+            private:
+                std::complex<float>* grid_ptr = NULL;
+
         }; // end class Proxy
 
     } // namespace proxy

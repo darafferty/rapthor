@@ -5,7 +5,11 @@
 
 namespace idg {
     namespace proxy {
-        Proxy::~Proxy() {};
+        Proxy::~Proxy() {
+            if (grid_ptr != NULL) {
+                delete grid_ptr;
+            }
+        }
 
         void Proxy::gridding(
             const Plan& plan,
@@ -447,10 +451,16 @@ namespace idg {
             size_t height,
             size_t width)
         {
-            Grid grid = Grid(nr_w_layers, nr_correlations, height, width);
+            if (grid_ptr != NULL) {
+                delete grid_ptr;
+            }
+            grid_ptr = new std::complex<float>[nr_w_layers*nr_correlations*height*width];
+            Grid grid(grid_ptr, nr_w_layers, nr_correlations, height, width);
             grid.zero();
             return grid;
         }
 
     } // end namespace proxy
 } // end namespace idg
+
+#include "ProxyC.h"
