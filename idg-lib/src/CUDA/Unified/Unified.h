@@ -30,6 +30,9 @@ namespace idg {
                         size_t height,
                         size_t width);
 
+                    void free_grid(
+                        Grid& grid);
+
                 private:
                     void initialize_memory(
                         const Plan& plan,
