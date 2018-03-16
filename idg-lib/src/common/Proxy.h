@@ -186,6 +186,8 @@ namespace idg {
                     size_t nr_correlations,
                     size_t height,
                     size_t width);
+                virtual void free_grid(
+                    Grid& grid);
 
             private:
                 //! Degrid the visibilities from a uniform grid

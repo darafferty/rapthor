@@ -460,6 +460,13 @@ namespace idg {
             return grid;
         }
 
+        void Proxy::free_grid(
+            Grid& grid)
+        {
+            assert(grid_ptr == grid.data());
+            delete grid_ptr;
+        }
+
     } // end namespace proxy
 } // end namespace idg
 
