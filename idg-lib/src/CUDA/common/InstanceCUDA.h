@@ -199,6 +199,10 @@ namespace idg {
                     cu::DeviceMemory& get_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
                     cu::DeviceMemory& get_device_metadata(unsigned int id) { return *d_metadata_[id]; }
 
+                    // Misc
+                    void free_device_memory();
+                    void reset();
+
                 protected:
                     void compile_kernels();
                     void load_kernels();

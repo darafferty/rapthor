@@ -66,14 +66,7 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
-                for (cu::DeviceMemory* d : d_visibilities_) { delete d; }
-                for (cu::DeviceMemory* d : d_uvw_) { delete d; }
-                for (cu::DeviceMemory* d : d_metadata_) { delete d; }
-                for (cu::DeviceMemory* d : d_subgrids_) { delete d; }
-                if (d_grid) { d_grid->~DeviceMemory(); }
-                if (d_wavenumbers) { d_wavenumbers->~DeviceMemory(); }
-                if (d_aterms) { d_aterms->~DeviceMemory(); }
-                if (d_spheroidal) { d_spheroidal->~DeviceMemory(); }
+                free_device_memory();
                 for (cu::Module *module : mModules) { delete module; }
                 if (fft_plan_bulk) { delete fft_plan_bulk; }
                 if (fft_plan_misc) { delete fft_plan_misc; }
@@ -682,6 +675,47 @@ namespace idg {
             {
                 auto size = auxiliary::sizeof_metadata(nr_subgrids);
                 return *reuse_memory(d_metadata_, id, size);
+            }
+
+            /*
+             * Device memory destructor
+             */
+            void InstanceCUDA::free_device_memory() {
+                d_visibilities_.clear();
+                d_uvw_.clear();
+                d_metadata_.clear();
+                d_subgrids_.clear();
+                if (d_grid != NULL) {
+                    delete d_grid;
+                    d_grid = NULL;
+                }
+                if (d_wavenumbers != NULL) {
+                    delete d_wavenumbers;
+                    d_wavenumbers = NULL;
+                }
+                if (d_aterms != NULL) {
+                    delete d_aterms;
+                    d_aterms = NULL;
+                }
+                if (d_spheroidal != NULL) {
+                    delete d_spheroidal;
+                    d_spheroidal = NULL;
+                }
+            }
+
+            /*
+             * Reset device
+             */
+            void InstanceCUDA::reset() {
+                delete executestream;
+                delete htodstream;
+                delete dtohstream;
+                context->reset();
+                context = new cu::Context(*device);
+                context->setCurrent();
+                executestream  = new cu::Stream();
+                htodstream     = new cu::Stream();
+                dtohstream     = new cu::Stream();
             }
 
         } // end namespace cuda
