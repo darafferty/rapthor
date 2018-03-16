@@ -369,3 +369,7 @@ class Unified(Proxy):
             ctypes.c_int(nr_correlations),
             ctypes.c_int(height),
             ctypes.c_int(width))
+
+    def __del__(self):
+        """Destroy"""
+        lib.CUDA_Unified_destroy(self.obj)
