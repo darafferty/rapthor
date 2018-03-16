@@ -92,7 +92,8 @@ namespace cu {
         _context = NULL;
     }
 
-    Context::Context(Device device, int flags) {
+    Context::Context(Device& device, int flags) {
+        _device = device;
         checkCudaCall(cuCtxCreate(&_context, flags, device));
     }
 
@@ -114,6 +115,10 @@ namespace cu {
 
     void Context::synchronize() {
         checkCudaCall(cuCtxSynchronize());
+    }
+
+    void Context::reset() {
+        checkCudaCall(cuDevicePrimaryCtxReset(_device));
     }
 
     Context::operator CUcontext() {

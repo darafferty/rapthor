@@ -59,17 +59,19 @@ namespace cu {
     class Context {
         public:
             Context();
-            Context(Device device, int flags = 0);
+            Context(Device& device, int flags = 0);
             ~Context();
             void setCurrent() const;
             void setCacheConfig(CUfunc_cache config);
             void setSharedMemConfig(CUsharedconfig config);
             void synchronize();
+            void reset();
 
             operator CUcontext();
 
         private:
             CUcontext _context;
+            CUdevice _device;
     };
 
 
