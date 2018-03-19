@@ -688,7 +688,7 @@ namespace idg {
         int x)
     {
         // subgrid: [nr_subgrids][nr_polarizations][subgrid_size][subgrid_size]
-       return s * nr_polarizations * subgrid_size * subgrid_size +
+        return s * nr_polarizations * subgrid_size * subgrid_size +
               pol * subgrid_size * subgrid_size +
               y * subgrid_size +
               x;
