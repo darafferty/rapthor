@@ -116,7 +116,8 @@ namespace idg {
                 const unsigned int nr_channels,
                 const unsigned int subgrid_size,
                 const unsigned int nr_streams,
-                const unsigned int grid_size)
+                const unsigned int grid_size,
+                const float fraction_reserved)
             {
                 // Read maximum jobsize from environment
                 char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
@@ -140,7 +141,6 @@ namespace idg {
                 std::clog << "Bytes required for grid: " << bytes_grid << std::endl;
                 std::clog << "Bytes required for jobs: " << bytes_required << std::endl;
 
-
                 // Adjust jobsize to amount of available device memory
                 int nr_devices = devices.size();
                 std::vector<int> jobsize(nr_devices);
@@ -154,9 +154,14 @@ namespace idg {
                         std::clog << "GPU " << i << ", ";
                     }
 
-                    // Get amount of memory free on device
+                    // Get amount of memory available on device
                     auto bytes_free = device->get_device().get_total_memory();
                     std::clog << "Bytes free: " << bytes_free << std::endl;
+
+                    // Print reserved memory
+                    if (fraction_reserved > 0) {
+                        std::clog << "Bytes reserved: " << (long) (bytes_free * fraction_reserved) << std::endl;
+                    }
 
                     // Check whether the grid and minimal jobs fit at all
                     if (bytes_free < (bytes_grid + bytes_required)) {
@@ -169,7 +174,7 @@ namespace idg {
                     bytes_free -= bytes_grid;
 
                     // Compute actual jobsize
-                    jobsize[i] = (bytes_free * 0.9) /  bytes_required;
+                    jobsize[i] = (bytes_free * (1 - fraction_reserved)) /  bytes_required;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
 
                     // Print jobsize
