@@ -8,14 +8,6 @@ using namespace idg::kernel::cuda;
 using namespace powersensor;
 
 
-/*
- * Option to enable/disable advise
- * for prefered memory location for the
- * grid in either host or device memory
- */
-#define ENABLE_MEM_ADVISE 0
-
-
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -108,9 +100,7 @@ namespace idg {
                 device.free_device_memory();
 
                 // Get UnifiedMemory object for grid data
-                #if ENABLE_MEM_ADVISE
                 cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
-                #endif
 
                 // Initialize
                 cu::Stream& stream = device.get_execute_stream();
@@ -125,21 +115,15 @@ namespace idg {
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-                #if ENABLE_MEM_ADVISE
-                u_grid.set_cpu_access();
-                #endif
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY);
                 device.shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Execute fft
                 device.measure(powerRecords[0], stream);
-                #if ENABLE_MEM_ADVISE
-                u_grid.set_gpu_access(device.get_device());
-                #endif
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
                 device.launch_fft_unified(grid_size, nr_correlations, grid, direction);
-                #if ENABLE_MEM_ADVISE
-                u_grid.set_cpu_access();
-                #endif
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY);
                 device.measure(powerRecords[1], stream);
                 stream.synchronize();
 

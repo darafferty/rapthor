@@ -137,8 +137,8 @@ namespace cu {
             ~UnifiedMemory();
 
             void* ptr() { return (void *) _ptr; }
-            void set_gpu_access(Device& device);
-            void set_cpu_access();
+            void set_advice(CUmem_advise advise);
+            void set_advice(CUmem_advise advise, Device& device);
 
         private:
             CUdeviceptr _ptr;
