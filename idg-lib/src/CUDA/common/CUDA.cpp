@@ -115,7 +115,8 @@ namespace idg {
                 const unsigned int nr_timesteps,
                 const unsigned int nr_channels,
                 const unsigned int subgrid_size,
-                const unsigned int nr_streams)
+                const unsigned int nr_streams,
+                const unsigned int grid_size)
             {
                 // Read maximum jobsize from environment
                 char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
@@ -132,6 +133,14 @@ namespace idg {
                 bytes_required += auxiliary::sizeof_metadata(max_nr_subgrids);
                 bytes_required *= nr_streams;
 
+                // Compute the amount of bytes needed for the grid
+                auto bytes_grid = auxiliary::sizeof_grid(grid_size);
+
+                // Print amount of bytes required
+                std::clog << "Bytes required for grid: " << bytes_grid << std::endl;
+                std::clog << "Bytes required for jobs: " << bytes_required << std::endl;
+
+
                 // Adjust jobsize to amount of available device memory
                 int nr_devices = devices.size();
                 std::vector<int> jobsize(nr_devices);
@@ -139,14 +148,32 @@ namespace idg {
                     InstanceCUDA *device = devices[i];
                     cu::Context &context = device->get_context();
                     context.setCurrent();
+
+                    // Print device number
+                    if (nr_devices > 1) {
+                        std::clog << "GPU " << i << ", ";
+                    }
+
+                    // Get amount of memory free on device
                     auto bytes_free = device->get_device().get_total_memory();
+                    std::clog << "Bytes free: " << bytes_free << std::endl;
+
+                    // Check whether the grid and minimal jobs fit at all
+                    if (bytes_free < (bytes_grid + bytes_required)) {
+                        std::cerr << "Error! Not enough (free) memory on device to continue.";
+                        std::cerr << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+
+                    // Subtract the space for the grid from the amount of free memory
+                    bytes_free -= bytes_grid;
+
+                    // Compute actual jobsize
                     jobsize[i] = (bytes_free * 0.9) /  bytes_required;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
-                    #if defined(DEBUG)
-                    printf("Bytes required: %lu\n", bytes_required);
-                    printf("Bytes free:     %lu\n", bytes_free);
+
+                    // Print jobsize
                     printf("Jobsize: %d\n", jobsize[i]);
-                    #endif
                 }
 
                 return jobsize;
