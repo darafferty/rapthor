@@ -13,8 +13,8 @@ typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
 /*
     Index methods
 */
-inline __device__ int index_grid(
-        int grid_size,
+inline __device__ long index_grid(
+        long grid_size,
         int pol,
         int y,
         int x)
@@ -25,7 +25,7 @@ inline __device__ int index_grid(
            x;
 }
 
-inline __device__ int index_subgrid(
+inline __device__ long index_subgrid(
     int subgrid_size, 
     int s,
     int pol,
