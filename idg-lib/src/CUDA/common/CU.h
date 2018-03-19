@@ -59,17 +59,19 @@ namespace cu {
     class Context {
         public:
             Context();
-            Context(Device device, int flags = 0);
+            Context(Device& device, int flags = 0);
             ~Context();
             void setCurrent() const;
             void setCacheConfig(CUfunc_cache config);
             void setSharedMemConfig(CUsharedconfig config);
             void synchronize();
+            void reset();
 
             operator CUcontext();
 
         private:
             CUcontext _context;
+            CUdevice _device;
     };
 
 
@@ -130,14 +132,18 @@ namespace cu {
 
     class UnifiedMemory {
         public:
+            UnifiedMemory(void* ptr, size_t size);
             UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
             ~UnifiedMemory();
 
             void* ptr() { return (void *) _ptr; }
+            void set_gpu_access(Device& device);
+            void set_cpu_access();
 
         private:
             CUdeviceptr _ptr;
             size_t _size;
+            bool free = false;
     };
 
 

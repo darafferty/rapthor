@@ -80,6 +80,12 @@ namespace idg {
                         void *data,
                         DomainAtoDomainB direction);
 
+                    void launch_fft_unified(
+                        int size,
+                        int batch,
+                        Array3D<std::complex<float>>& grid,
+                        DomainAtoDomainB direction);
+
                     void launch_adder(
                         int nr_subgrids,
                         long grid_size,
@@ -192,6 +198,10 @@ namespace idg {
                     cu::DeviceMemory& get_device_uvw(unsigned int id) { return *d_uvw_[id]; }
                     cu::DeviceMemory& get_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
                     cu::DeviceMemory& get_device_metadata(unsigned int id) { return *d_metadata_[id]; }
+
+                    // Misc
+                    void free_device_memory();
+                    void reset();
 
                 protected:
                     void compile_kernels();

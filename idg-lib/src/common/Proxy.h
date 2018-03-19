@@ -186,6 +186,8 @@ namespace idg {
                     size_t nr_correlations,
                     size_t height,
                     size_t width);
+                virtual void free_grid(
+                    Grid& grid);
 
             private:
                 //! Degrid the visibilities from a uniform grid
@@ -262,6 +264,9 @@ namespace idg {
                     const Array1D<float>& frequencies) const;
 
                 const unsigned int nr_polarizations = 4;
+
+            private:
+                std::complex<float>* grid_ptr = NULL;
 
         }; // end class Proxy
 

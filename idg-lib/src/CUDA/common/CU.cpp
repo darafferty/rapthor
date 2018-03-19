@@ -92,7 +92,8 @@ namespace cu {
         _context = NULL;
     }
 
-    Context::Context(Device device, int flags) {
+    Context::Context(Device& device, int flags) {
+        _device = device;
         checkCudaCall(cuCtxCreate(&_context, flags, device));
     }
 
@@ -114,6 +115,10 @@ namespace cu {
 
     void Context::synchronize() {
         checkCudaCall(cuCtxSynchronize());
+    }
+
+    void Context::reset() {
+        checkCudaCall(cuDevicePrimaryCtxReset(_device));
     }
 
     Context::operator CUcontext() {
@@ -280,13 +285,29 @@ namespace cu {
     /*
         UnifiedMemory
      */
+    UnifiedMemory::UnifiedMemory(void *ptr, size_t size) {
+        _ptr = (CUdeviceptr) ptr;
+        _size = size;
+    }
+
     UnifiedMemory::UnifiedMemory(size_t size, unsigned flags) {
         _size = size;
+        free = true;
         checkCudaCall(cuMemAllocManaged(&_ptr, _size, flags));
     }
 
     UnifiedMemory::~UnifiedMemory() {
-        checkCudaCall(cuMemFree(_ptr));
+        if (free) {
+            checkCudaCall(cuMemFree(_ptr));
+        }
+    }
+
+    void UnifiedMemory::set_gpu_access(Device& device) {
+        checkCudaCall(cuMemAdvise(_ptr, _size, CU_MEM_ADVISE_SET_ACCESSED_BY, device));
+    }
+
+    void UnifiedMemory::set_cpu_access() {
+        checkCudaCall(cuMemAdvise(_ptr, _size, CU_MEM_ADVISE_SET_ACCESSED_BY, CU_DEVICE_CPU));
     }
 
 

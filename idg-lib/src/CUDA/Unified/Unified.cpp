@@ -7,6 +7,15 @@ using namespace std;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
+
+/*
+ * Option to enable/disable advise
+ * for prefered memory location for the
+ * grid in either host or device memory
+ */
+#define ENABLE_MEM_ADVISE 0
+
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -95,30 +104,43 @@ namespace idg {
                 // Load device
                 InstanceCUDA &device = get_device(0);
 
+                // Free device memory
+                device.free_device_memory();
+
+                // Get UnifiedMemory object for grid data
+                #if ENABLE_MEM_ADVISE
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
+                #endif
+
                 // Initialize
                 cu::Stream& stream = device.get_execute_stream();
                 device.set_context();
 
                 // Performance measurements
                 Report report(0, 0, grid_size);
-                PowerRecord powerRecords[5];
+                PowerRecord powerRecords[2];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
                 powerStates[2] = device.measure();
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
+                #if ENABLE_MEM_ADVISE
+                u_grid.set_cpu_access();
+                #endif
                 device.shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Execute fft
-                device.plan_fft(grid_size, 1);
-                device.measure(powerRecords[2], stream);
-                device.launch_fft_unified(grid.data(), direction);
-                device.measure(powerRecords[3], stream);
-
-                // Copy grid to host
-                device.measure(powerRecords[4], stream);
+                device.measure(powerRecords[0], stream);
+                #if ENABLE_MEM_ADVISE
+                u_grid.set_gpu_access(device.get_device());
+                #endif
+                device.launch_fft_unified(grid_size, nr_correlations, grid, direction);
+                #if ENABLE_MEM_ADVISE
+                u_grid.set_cpu_access();
+                #endif
+                device.measure(powerRecords[1], stream);
                 stream.synchronize();
 
                 // Perform fft shift
@@ -140,12 +162,11 @@ namespace idg {
                 powerStates[3] = device.measure();
 
                 #if defined(REPORT_TOTAL)
-                report.update_grid_fft(powerRecords[2].state, powerRecords[3].state);
+                report.update_grid_fft(powerRecords[0].state, powerRecords[1].state);
                 report.update_fft_shift(time_shift);
                 report.update_fft_scale(time_scale);
-                report.update_host(powerStates[0], powerStates[1]);
                 report.print_total();
-                report.print_device(powerRecords[0].state, powerRecords[4].state);
+                report.print_device(powerStates[2], powerStates[3]);
                 clog << endl;
                 #endif
             } // end transform
@@ -612,6 +633,14 @@ namespace idg {
                 return Grid(ptr, nr_w_layers, nr_correlations, height, width);
             }
 
+            void Unified::free_grid(
+                Grid& grid)
+            {
+                free_memory(grid.data());
+            }
+
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
+
+#include "UnifiedC.h"

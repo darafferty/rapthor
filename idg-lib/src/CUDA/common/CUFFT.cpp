@@ -73,6 +73,11 @@ namespace cufft {
     	checkCuFFTcall(cufftPlan1d(&plan, n, CUFFT_C2C, count));
     }
 
+    C2C_1D::C2C_1D(unsigned n, unsigned stride, unsigned dist, unsigned count)
+    {
+        checkCuFFTcall(cufftPlanMany(&plan, 1, (int *) &n, (int *) &n, stride, dist, (int *) &n, stride, dist, CUFFT_C2C, count));
+    }
+
     C2C_1D::~C2C_1D()
     {
     	checkCuFFTcall(cufftDestroy(plan));

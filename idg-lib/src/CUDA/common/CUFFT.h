@@ -27,6 +27,7 @@ namespace cufft {
 	class C2C_1D {
 		public:
 			C2C_1D(unsigned n, unsigned count);
+			C2C_1D(unsigned n, unsigned stride, unsigned dist, unsigned count);
 			~C2C_1D();
 			void setStream(CUstream stream);
 			void execute(cufftComplex *in, cufftComplex *out, int direction = CUFFT_FORWARD);
