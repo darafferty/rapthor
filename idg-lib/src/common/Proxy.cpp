@@ -5,8 +5,12 @@
 
 namespace idg {
     namespace proxy {
+        Proxy::Proxy() {
+            grid_ptr = NULL;
+        }
+
         Proxy::~Proxy() {
-            if (free_grid) {
+            if (grid_ptr != NULL) {
                 delete grid_ptr;
             }
         }
@@ -465,7 +469,6 @@ namespace idg {
         {
             assert(grid_ptr == grid.data());
             delete grid_ptr;
-            free_grid = false;
         }
 
     } // end namespace proxy
