@@ -19,7 +19,7 @@ namespace idg {
                 int device_id) :
                 KernelsInstance(),
                 mInfo(info),
-                mModules(5),
+                mModules(6),
                 h_subgrids_(),
                 d_visibilities_(),
                 d_uvw_(),
@@ -103,6 +103,7 @@ namespace idg {
                 flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
                 flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder.x;
                 flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
+                flags_device << " -DADDER_TILE_SIZE="      << tile_size_adder;
 
                 // Include flags
                 std::stringstream flags_includes;
@@ -144,6 +145,7 @@ namespace idg {
                 src.push_back("KernelScaler.cu");
                 src.push_back("KernelAdder.cu");
                 src.push_back("KernelSplitter.cu");
+                src.push_back("KernelAdderTiled.cu");
 
                 // Create vector of cubin filenames
                 std::vector<std::string> cubin;
@@ -152,6 +154,7 @@ namespace idg {
                 cubin.push_back("Scaler.cubin");
                 cubin.push_back("Adder.cubin");
                 cubin.push_back("Splitter.cubin");
+                cubin.push_back("AdderTiled.cubin");
 
                 // Compile all kernels
                 #pragma omp parallel for
@@ -191,6 +194,9 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
                     function_splitter = new cu::Function(function); found++;
                 }
+                if (cuModuleGetFunction(&function, *mModules[5], name_adder_tiled.c_str()) == CUDA_SUCCESS) {
+                    function_adder_tiled = new cu::Function(function); found++;
+                }
 
                 if (found != mModules.size()) {
                     std::cerr << "Incorrect number of functions found: " << found << " != " << mModules.size() << std::endl;
@@ -206,6 +212,8 @@ namespace idg {
                 block_scaler     = dim3(128);
                 batch_gridder    = 56;
                 batch_degridder  = 128;
+                block_adder_tiled = dim3(64);
+                tile_size_adder = 64;
             }
 
             void InstanceCUDA::set_parameters_maxwell() {
@@ -216,6 +224,8 @@ namespace idg {
                 block_scaler     = dim3(128);
                 batch_gridder    = 256;
                 batch_degridder  = 128;
+                block_adder_tiled = dim3(64);
+                tile_size_adder = 64;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
@@ -226,6 +236,8 @@ namespace idg {
                 block_scaler     = dim3(128);
                 batch_gridder    = 256;
                 batch_degridder  = 128;
+                block_adder_tiled = dim3(64);
+                tile_size_adder = 64;
             }
 
             void InstanceCUDA::set_parameters() {
@@ -471,6 +483,21 @@ namespace idg {
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+            }
+
+            void InstanceCUDA::launch_adder_tiled_unified(
+                int nr_subgrids,
+                long grid_size,
+                int subgrid_size,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                void *u_grid)
+            {
+                const int tile_size = tile_size_adder;
+                int n = (grid_size / tile_size) + 1;
+                const void *parameters[] = { &nr_subgrids, &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
+                dim3 grid(n, n);
+                executestream->launchKernel(*function_adder_tiled, grid, block_adder, 0, parameters);
             }
 
             void InstanceCUDA::launch_splitter(

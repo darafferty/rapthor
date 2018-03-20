@@ -102,6 +102,14 @@ namespace idg {
                         cu::DeviceMemory& d_subgrid,
                         void *u_grid);
 
+                    void launch_adder_tiled_unified(
+                        int nr_subgrids,
+                        long grid_size,
+                        int subgrid_size,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid,
+                        void *u_grid);
+
                     void launch_splitter(
                         int nr_subgrids,
                         long grid_size,
@@ -227,6 +235,7 @@ namespace idg {
                     cu::Function *function_adder;
                     cu::Function *function_splitter;
                     cu::Function *function_scaler;
+                    cu::Function *function_adder_tiled;
 
                     // One instance per device
                     cu::DeviceMemory *d_wavenumbers;
@@ -256,11 +265,11 @@ namespace idg {
                     dim3 block_adder;
                     dim3 block_splitter;
                     dim3 block_scaler;
+                    dim3 block_adder_tiled;
 
-
-                    // (De)gridder kernel
                     int batch_gridder;
                     int batch_degridder;
+                    int tile_size_adder;
 
                     // FFT kernel
                     const int fft_bulk = 1024;
@@ -280,6 +289,7 @@ namespace idg {
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
             static const std::string name_scaler    = "kernel_scaler";
+            static const std::string name_adder_tiled = "kernel_adder_tiled";
 
         } // end namespace cuda
     } // end namespace kernel
