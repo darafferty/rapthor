@@ -337,7 +337,6 @@ class Proxy(object):
             self.obj,
             ctypes.c_int(nr_correlations),
             ctypes.c_int(grid_size))
-        print "Python: ", hex(ptr)
 
         # Get float pointer to grid data
         ptr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_float))
@@ -347,9 +346,6 @@ class Proxy(object):
         length = np.prod(shape[:])*2
         grid = np.ctypeslib.as_array(ptr, shape=(length,)).view(np.complex64)
         grid = grid.reshape(shape)
-
-        print grid.shape
-        print grid.dtype
 
         # Return grid
         return grid
