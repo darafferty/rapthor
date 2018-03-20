@@ -320,7 +320,7 @@ namespace idg {
                             device.measure(powerRecords[3], executestream);
 
                             // Launch adder kernel
-                            device.launch_adder_unified(
+                            device.launch_adder_tiled_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, grid.data());
 
