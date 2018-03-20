@@ -469,6 +469,7 @@ namespace idg {
         {
             assert(grid_ptr == grid.data());
             delete grid_ptr;
+            grid_ptr == NULL;
         }
 
     } // end namespace proxy
