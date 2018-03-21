@@ -8,6 +8,13 @@ using namespace idg::kernel::cuda;
 using namespace powersensor;
 
 
+/*
+ * Option to enable/disable the
+ * alternative tiled adder kernel
+ * in the do_gridding routine
+ */
+#define USE_ADDER_TILED 0
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -320,7 +327,11 @@ namespace idg {
                             device.measure(powerRecords[3], executestream);
 
                             // Launch adder kernel
+							#if USE_ADDER_TILED
                             device.launch_adder_tiled_unified(
+							#else
+                            device.launch_adder_unified(
+							#endif
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, grid.data());
 
