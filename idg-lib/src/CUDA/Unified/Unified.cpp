@@ -9,11 +9,12 @@ using namespace powersensor;
 
 
 /*
- * Option to enable/disable advise
- * for prefered memory location for the
- * grid in either host or device memory
+ * Option to enable/disable reordering of the grid
+ * to the host grid format, rather than the tiled
+ * format used in the adder and splitter kernels.
  */
-#define ENABLE_MEM_ADVISE 0
+#define ENABLE_UNDO_TILING 0
+
 
 namespace idg {
     namespace proxy {
@@ -372,6 +373,21 @@ namespace idg {
                     dtohstream.synchronize();
                     endStates[nr_devices] = hostPowerSensor->read();
                 } // end omp parallel
+
+                #if ENABLE_UNDO_TILING
+                // Undo tiling
+                const int tile_size = get_device(0).get_tile_size_grid();
+                std::complex<float> *grid_tiled = (std::complex<float> *) malloc(grid.bytes());
+                memcpy((void *) grid_tiled, grid.data(), grid.bytes());
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    for (int y = 0; y < grid_size; y++) {
+                        for (int x = 0; x < grid_size; x++) {
+                            long src_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
+                            grid(0, pol, y, x) = grid_tiled[src_idx];
+                        }
+                    }
+                }
+                #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids        = plan.get_nr_subgrids();

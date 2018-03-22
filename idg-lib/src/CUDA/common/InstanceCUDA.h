@@ -202,6 +202,7 @@ namespace idg {
                     // Misc
                     void free_device_memory();
                     void reset();
+                    int get_tile_size_grid() const { return tile_size_grid; };
 
                 protected:
                     void compile_kernels();

@@ -667,6 +667,30 @@ namespace idg {
                x;
     }
 
+    inline long index_grid_tiling(
+            int tile_size,
+            int nr_correlations,
+            long grid_size,
+            int pol,
+            int y,
+            int x)
+    {
+        // grid: [NR_TILES][NR_TILES][NR_POLARIZATIONS][TILE_SIZE][TILE_SIZE]
+        assert(grid_size % tile_size == 0);
+        const int NR_TILES  = grid_size / tile_size;
+        long idx_tile_y = y / tile_size;
+        long idx_tile_x = x / tile_size;
+        long tile_y = y % tile_size;
+        long tile_x = x % tile_size;
+
+        return
+               idx_tile_y * NR_TILES * nr_correlations * tile_size * tile_size +
+               idx_tile_x * nr_correlations * tile_size * tile_size +
+               pol * tile_size * tile_size +
+               tile_y * tile_size +
+               tile_x;
+    }
+
     inline long index_grid(
             long grid_size,
             int pol,
