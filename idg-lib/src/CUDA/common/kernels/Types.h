@@ -13,6 +13,7 @@ typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
 /*
     Index methods
 */
+
 inline __device__ long index_grid(
         long grid_size,
         int pol,
@@ -23,6 +24,27 @@ inline __device__ long index_grid(
     return pol * grid_size * grid_size +
            y * grid_size +
            x;
+}
+
+inline __device__ long index_grid_tiled(
+        long grid_size,
+        int pol,
+        int y,
+        int x)
+{
+    // grid: [NR_TILES][NR_TILES][NR_POLARIZATIONS][TILE_SIZE][TILE_SIZE]
+    const int TILE_SIZE = TILE_SIZE_GRID;
+    const int NR_TILES  = grid_size / TILE_SIZE;
+    long idx_tile_y = y / TILE_SIZE;
+    long idx_tile_x = x / TILE_SIZE;
+    long tile_y = y % TILE_SIZE;
+    long tile_x = x % TILE_SIZE;
+
+    return idx_tile_y * NR_TILES * NR_POLARIZATIONS * TILE_SIZE * TILE_SIZE +
+           idx_tile_x * NR_POLARIZATIONS * TILE_SIZE * TILE_SIZE +
+           pol * TILE_SIZE * TILE_SIZE +
+           tile_y * TILE_SIZE +
+           tile_x;
 }
 
 inline __device__ long index_subgrid(
