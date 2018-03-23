@@ -13,7 +13,8 @@ __global__ void kernel_splitter(
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     float2*         __restrict__ subgrid,
-    const float2*   __restrict__ grid)
+    const float2*   __restrict__ grid,
+    const bool                   enable_tiling)
 {
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -43,7 +44,9 @@ __global__ void kernel_splitter(
             // Set grid value to subgrid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                long src_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                long src_idx = enable_tiling ?
+                    index_grid_tiled(grid_size, pol, grid_y + y, grid_x + x) :
+                    index_grid(grid_size, pol, grid_y + y, grid_x + x);
                 long dst_idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
                 subgrid[dst_idx] = phasor * grid[src_idx];
             }

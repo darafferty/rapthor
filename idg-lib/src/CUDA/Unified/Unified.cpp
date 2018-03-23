@@ -9,11 +9,11 @@ using namespace powersensor;
 
 
 /*
- * Option to enable/disable advise
- * for prefered memory location for the
- * grid in either host or device memory
+ * Option to enable/disable reordering of the grid
+ * to the host grid format, rather than the tiled
+ * format used in the adder and splitter kernels.
  */
-#define ENABLE_MEM_ADVISE 0
+#define ENABLE_UNDO_TILING 0
 
 
 namespace idg {
@@ -108,9 +108,7 @@ namespace idg {
                 device.free_device_memory();
 
                 // Get UnifiedMemory object for grid data
-                #if ENABLE_MEM_ADVISE
                 cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
-                #endif
 
                 // Initialize
                 cu::Stream& stream = device.get_execute_stream();
@@ -125,21 +123,21 @@ namespace idg {
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-                #if ENABLE_MEM_ADVISE
-                u_grid.set_cpu_access();
-                #endif
+				#if ENABLE_MEM_ADVISE
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY);
+				#endif
                 device.shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Execute fft
                 device.measure(powerRecords[0], stream);
-                #if ENABLE_MEM_ADVISE
-                u_grid.set_gpu_access(device.get_device());
-                #endif
+				#if ENABLE_MEM_ADVISE
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
+				#endif
                 device.launch_fft_unified(grid_size, nr_correlations, grid, direction);
-                #if ENABLE_MEM_ADVISE
-                u_grid.set_cpu_access();
-                #endif
+				#if ENABLE_MEM_ADVISE
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY);
+				#endif
                 device.measure(powerRecords[1], stream);
                 stream.synchronize();
 
@@ -193,6 +191,14 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
+                // Set prefered grid location
+				#if ENABLE_MEM_ADVISE
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
+                InstanceCUDA& device  = get_device(0);
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
+                u_grid.set_advice(CU_MEM_ADVISE_UNSET_READ_MOSTLY, device.get_device());
+				#endif
+
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -218,7 +224,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, 0, 0.4);
 
                 // Initialize memory
                 initialize_memory(
@@ -368,6 +374,21 @@ namespace idg {
                     endStates[nr_devices] = hostPowerSensor->read();
                 } // end omp parallel
 
+                #if ENABLE_UNDO_TILING
+                // Undo tiling
+                const int tile_size = get_device(0).get_tile_size_grid();
+                std::complex<float> *grid_tiled = (std::complex<float> *) malloc(grid.bytes());
+                memcpy((void *) grid_tiled, grid.data(), grid.bytes());
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    for (int y = 0; y < grid_size; y++) {
+                        for (int x = 0; x < grid_size; x++) {
+                            long src_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
+                            grid(0, pol, y, x) = grid_tiled[src_idx];
+                        }
+                    }
+                }
+                #endif
+
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
@@ -402,6 +423,14 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
+                // Set prefered grid location
+				#if ENABLE_MEM_ADVISE
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
+                InstanceCUDA& device  = get_device(0);
+                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
+                u_grid.set_advice(CU_MEM_ADVISE_SET_READ_MOSTLY, device.get_device());
+				#endif
+
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -427,7 +456,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, 0, 0.4);
 
                 // Initialize memory
                 initialize_memory(

@@ -302,12 +302,12 @@ namespace cu {
         }
     }
 
-    void UnifiedMemory::set_gpu_access(Device& device) {
-        checkCudaCall(cuMemAdvise(_ptr, _size, CU_MEM_ADVISE_SET_ACCESSED_BY, device));
+    void UnifiedMemory::set_advice(CUmem_advise advice) {
+        checkCudaCall(cuMemAdvise(_ptr, _size, advice, CU_DEVICE_CPU));
     }
 
-    void UnifiedMemory::set_cpu_access() {
-        checkCudaCall(cuMemAdvise(_ptr, _size, CU_MEM_ADVISE_SET_ACCESSED_BY, CU_DEVICE_CPU));
+    void UnifiedMemory::set_advice(CUmem_advise advice, Device& device) {
+        checkCudaCall(cuMemAdvise(_ptr, _size, advice, device));
     }
 
 

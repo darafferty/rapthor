@@ -29,6 +29,7 @@ namespace idg {
         class Proxy
         {
             public:
+                Proxy();
                 virtual ~Proxy();
 
                 /*

@@ -284,11 +284,7 @@ namespace idg {
                         #pragma omp critical (CPU)
                         {
                             powerStates[0]  = hostPowerSensor->read();
-                            if (w_step != 0.0) {
-                                cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
-                            } else {
-                                cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
-                            }
+                            cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
                             powerStates[1]  = hostPowerSensor->read();
                         }
 
@@ -468,11 +464,7 @@ namespace idg {
 
                         // Extract subgrid from grid
                         powerStates[0] = hostPowerSensor->read();
-                        if (w_step != 0.0) {
-                            cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
-                        } else {
-                            cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
-                        }
+                        cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
                         powerStates[1] = hostPowerSensor->read();
 
                         #pragma omp critical (lock)

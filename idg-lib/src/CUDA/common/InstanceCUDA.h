@@ -202,6 +202,7 @@ namespace idg {
                     // Misc
                     void free_device_memory();
                     void reset();
+                    int get_tile_size_grid() const { return tile_size_grid; };
 
                 protected:
                     void compile_kernels();
@@ -257,10 +258,9 @@ namespace idg {
                     dim3 block_splitter;
                     dim3 block_scaler;
 
-
-                    // (De)gridder kernel
                     int batch_gridder;
                     int batch_degridder;
+                    int tile_size_grid;
 
                     // FFT kernel
                     const int fft_bulk = 1024;

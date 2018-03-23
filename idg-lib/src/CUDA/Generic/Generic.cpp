@@ -215,7 +215,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, grid_size);
 
                 // Initialize memory
                 initialize_memory(
@@ -447,7 +447,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, grid_size);
 
                 // Initialize memory
                 initialize_memory(

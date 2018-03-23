@@ -103,6 +103,7 @@ namespace idg {
                 flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
                 flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder.x;
                 flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
+                flags_device << " -DTILE_SIZE_GRID="       << tile_size_grid;
 
                 // Include flags
                 std::stringstream flags_includes;
@@ -206,6 +207,7 @@ namespace idg {
                 block_scaler     = dim3(128);
                 batch_gridder    = 56;
                 batch_degridder  = 128;
+                tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_maxwell() {
@@ -216,6 +218,7 @@ namespace idg {
                 block_scaler     = dim3(128);
                 batch_gridder    = 256;
                 batch_degridder  = 128;
+                tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
@@ -226,6 +229,7 @@ namespace idg {
                 block_scaler     = dim3(128);
                 batch_gridder    = 256;
                 batch_degridder  = 128;
+                tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters() {
@@ -455,7 +459,8 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid,
                 cu::DeviceMemory& d_grid)
             {
-                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid };
+                const bool enable_tiling = false;
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
             }
@@ -468,7 +473,8 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid,
                 void *u_grid)
             {
-                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
+                const bool enable_tiling = true;
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
             }
@@ -481,7 +487,8 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid,
                 cu::DeviceMemory& d_grid)
             {
-                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid };
+                const bool enable_tiling = false;
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
             }
@@ -494,7 +501,8 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid,
                 void *u_grid)
             {
-                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid };
+                const bool enable_tiling = true;
+                const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
             }
