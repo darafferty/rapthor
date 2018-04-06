@@ -10,6 +10,15 @@ using namespace std;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
+
+/*
+ * Option to enable/disable reordering of the grid
+ * to the host grid format, rather than the tiled
+ * format used in the adder and splitter kernels.
+ */
+#define ENABLE_TILING 1
+
+
 namespace idg {
     namespace proxy {
         namespace hybrid {
@@ -302,6 +311,14 @@ namespace idg {
                     endStates[nr_devices] = hostPowerSensor->read();
                 } // end omp parallel
 
+                // Undo tiling
+                #if ENABLE_TILING
+                const int tile_size = get_device(0).get_tile_size_grid();
+                Grid grid_copy(1, nr_correlations, grid_size, grid_size);
+                memcpy((void *) grid_copy.data(), grid.data(), grid.bytes());
+                get_device(0).tile_backward(tile_size, grid_copy, grid);
+                #endif
+
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
@@ -354,6 +371,14 @@ namespace idg {
                 auto nr_correlations = grid.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
                 auto image_size      = cell_size * grid_size;
+
+                // Apply tiling
+                #if ENABLE_TILING
+                const int tile_size = get_device(0).get_tile_size_grid();
+                Grid grid_tiled(1, nr_correlations, grid_size, grid_size);
+                get_device(0).tile_forward(tile_size, grid, grid_tiled);
+                memcpy(grid.data(), grid_tiled.data(), grid.bytes());
+                #endif
 
                 // Configuration
                 const int nr_devices = get_num_devices();
@@ -511,6 +536,12 @@ namespace idg {
                 // End measurement
                 endStates[nr_devices] = hostPowerSensor->read();
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
+
+                // Undo tiling
+                #if ENABLE_TILING
+                get_device(0).tile_backward(tile_size, grid, grid_tiled);
+                memcpy(grid.data(), grid_tiled.data(), grid.bytes());
+                #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
