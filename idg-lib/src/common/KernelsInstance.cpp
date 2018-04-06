@@ -70,6 +70,7 @@ namespace idg {
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
+            #pragma omp parallel for
             for (int pol = 0; pol < nr_correlations; pol++) {
                 for (int y = 0; y < grid_size; y++) {
                     for (int x = 0; x < grid_size; x++) {
@@ -97,6 +98,7 @@ namespace idg {
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
+            #pragma omp parallel for
             for (int pol = 0; pol < nr_correlations; pol++) {
                 for (int y = 0; y < grid_size; y++) {
                     for (int x = 0; x < grid_size; x++) {
