@@ -22,6 +22,16 @@ namespace idg {
                     Array3D<std::complex<float>>& data,
                     std::complex<float> scale) const;
 
+                void tile_backward(
+                    const int tile_size,
+                    const Grid& grid_src,
+                          Grid& grid_dst) const;
+
+                void tile_forward(
+                    const int tile_size,
+                    const Grid& grid_src,
+                          Grid& grid_dst) const;
+
         }; // end class KernelsInstance
 
     } // namespace kernel
