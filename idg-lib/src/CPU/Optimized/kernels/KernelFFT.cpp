@@ -15,6 +15,10 @@ void kernel_fft_grid(
     fftwf_complex *_data,
     int sign    // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
     ) {
+    // Use multiple threads for each polarization
+    fftwf_plan_with_nthreads(4);
+
+    // Execute FFT for all polarizations in parallel
     #pragma omp parallel for
 	for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
 		fftwf_complex *data = (fftwf_complex *) _data + pol * (size * size);
@@ -76,6 +80,7 @@ void kernel_fft_subgrid(
 
     // Create plan
     fftwf_plan plan;
+    fftwf_plan_with_nthreads(1);
     plan = fftwf_plan_many_dft(
         rank, n, NR_POLARIZATIONS, _data, n,
         istride, idist, _data, n,
