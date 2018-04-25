@@ -49,6 +49,35 @@ namespace idg {
         fftwf_destroy_plan(plan);
     }
 
+    void ifft2f(int batch, int m, int n, complex<float> *data)
+    {
+        if (batch == 1) {
+            ifft2f(m, n, data);
+            return;
+        }
+
+        fftwf_complex *tmp = (fftwf_complex *) data;
+        fftwf_plan plan;
+
+        #pragma omp critical
+        {
+        fftwf_plan_with_nthreads(1);
+        plan = fftwf_plan_dft_2d(m, n,
+                                 tmp, tmp,
+                                 FFTW_BACKWARD,
+                                 FFTW_ESTIMATE);
+        }
+
+        #pragma omp parallel for private(tmp)
+	    for (int i = 0; i < batch; i++) {
+            tmp = (fftwf_complex *) data + i * m * n;
+            fftwf_execute_dft(plan, tmp, tmp);
+            ifftshift(m, n, tmp);
+        }
+
+        fftwf_destroy_plan(plan);
+    }
+
 
     void ifft2f(int n, complex<float> *data)
     {
