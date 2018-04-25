@@ -256,106 +256,75 @@ namespace api {
     {
         double runtime = -omp_get_wtime();
 
-        //Convert from stokes to linear into w plane 0
-
-        m_grid.init(0.0);
-
         const int nr_w_layers = m_grid.get_w_dim();
-        const size_t i0 = (m_padded_size-m_size)/2;
-        const size_t j0 = (m_padded_size-m_size)/2;
+        const size_t y0 = (m_padded_size-m_size)/2;
+        const size_t x0 = (m_padded_size-m_size)/2;
 
-        // Stokes I
-        #pragma omp parallel for
-        for(size_t i=0; i < m_size; i++)
-        {
-            #pragma omp simd
-            for(size_t j=0; j < m_size; j++)
-            {
-                m_grid(0,0,i+i0,j+j0) = image[m_size*i+j];
-                m_grid(0,3,i+i0,j+j0) = image[m_size*i+j];
-            }
-        }
-
-        // Stokes Q
-        #pragma omp parallel for
-        for(size_t i=0; i < m_size; i++)
-        {
-            #pragma omp simd
-            for(size_t j=0; j < m_size; j++)
-            {
-                m_grid(0,0,i+i0,j+j0) += image[m_size*m_size + m_size*i+j];
-                m_grid(0,3,i+i0,j+j0) -= image[m_size*m_size + m_size*i+j];
-            }
-        }
-
-        // Stokes U
-        #pragma omp parallel for
-        for(size_t i=0; i < m_size; i++)
-        {
-            #pragma omp simd
-            for(size_t j=0; j < m_size; j++)
-            {
-                m_grid(0,1,i+i0,j+j0) = image[2*m_size*m_size + m_size*i+j];
-                m_grid(0,2,i+i0,j+j0) = image[2*m_size*m_size + m_size*i+j];
-            }
-        }
-
-        // Stokes V
-        #pragma omp parallel for
-        for(size_t i=0; i < m_size; i++)
-        {
-            #pragma omp simd
-            for(size_t j=0; j < m_size; j++)
-            {
-                m_grid(0,1,i+i0,j+j0).imag(image[3*m_size*m_size + m_size*i+j]);
-                m_grid(0,2,i+i0,j+j0).imag(-image[3*m_size*m_size + m_size*i+j]);
-            }
-        }
-
-        //Copy to other w planes and multiply by w term
-
+        // Compute inverse spheroidal
         std::vector<float> inv_spheroidal(m_size, 0.0);
-
-        for(size_t i=0; i < m_size ; ++i)
-        {
-            float y = m_taper_grid[i+i0];
+        for (int i = 0; i < m_size; i++) {
+            float y = m_taper_grid[i+y0];
             inv_spheroidal[i] = 1.0/y;
         }
 
-        for(int w_layer=nr_w_layers - 1; w_layer >= 0; w_layer--)
-        {
-            std::cout << "w_layer: " << w_layer << std::endl;
-            const float w_offset = (w_layer+0.5)*m_w_step;
+        // Convert from stokes to linear into w plane 0
+        std::cout << "set grid" << std::endl;
+        m_grid.init(0.0);
+        #pragma omp parallel for
+        for (int y = 0; y < m_size; y++) {
+            for (int x = 0; x < m_size; x++) {
+                // Stokes I
+                m_grid(0,0,y+y0,x+x0) = image[m_size*y+x];
+                m_grid(0,3,y+y0,x+x0) = image[m_size*y+x];
+                // Stokes Q
+                m_grid(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
+                m_grid(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
+                // Stokes U
+                m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
+                m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
+                // Stokes V
+                m_grid(0,1,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
+                m_grid(0,2,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
+            } // end for x
+        } // end for y
+
+        // Copy to other w planes and multiply by w term
+        for (int w = nr_w_layers - 1; w >= 0; w--) {
+            std::cout << "copying w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
+
             #pragma omp parallel for
-            for(int i=0; i < m_size; i++)
-            {
-                #pragma omp simd
-                for(int j=0; j < m_size; j++)
-                {
-                    const float l = (i-((int)m_size/2)) * m_cell_size;
-                    const float m = (j-((int)m_size/2)) * m_cell_size;
+            for(int y = 0; y < m_size; y++) {
+                for(int x = 0; x < m_size; x++) {
+                    // Compute phase
+                    const float w_offset = (w+0.5)*m_w_step;
+                    const float l = (y-((int)m_size/2)) * m_cell_size;
+                    const float m = (x-((int)m_size/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
                     const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
-
                     float phase = 2*M_PI*n*w_offset;
+
+                    // Compute phasor
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
-                    float inv_spheroidal2 = inv_spheroidal[i] * inv_spheroidal[j];
 
-//                     for(int pol=0; pol<4; pol++)
-//                     {
-//                         m_grid(w_layer, pol, i+i0, j+j0) = m_grid(0, pol, i+i0, j+j0) * inv_spheroidal2 * phasor;
-//                     }
-                    m_grid(w_layer, 0, i+i0, j+j0) = m_grid(0, 0, i+i0, j+j0) * inv_spheroidal2 * phasor;
-                    m_grid(w_layer, 1, i+i0, j+j0) = m_grid(0, 1, i+i0, j+j0) * inv_spheroidal2 * phasor;
-                    m_grid(w_layer, 2, i+i0, j+j0) = m_grid(0, 2, i+i0, j+j0) * inv_spheroidal2 * phasor;
-                    m_grid(w_layer, 3, i+i0, j+j0) = m_grid(0, 3, i+i0, j+j0) * inv_spheroidal2 * phasor;
+                    // Compute inverse spheroidal
+                    float inv_spheroidal2 = inv_spheroidal[y] * inv_spheroidal[x];
 
-                }
-            }
-            fft_grid(4, m_padded_size, m_padded_size, &m_grid(w_layer,0,0,0));
-        }
+                    // Set to current w-plane
+                    #pragma unroll
+                    for (int pol = 0; pol < 4; pol++) {
+                        m_grid(w, pol, y+y0, x+x0) = m_grid(0, pol, y+y0, x+x0) * inv_spheroidal2 * phasor;
+                    }
+                } // end for x
+            } // end for y
+        } // end for w
+
+        // Fourier transform w layers
+        std::cout << "ifft w_layers" << std::endl;
+        int batch = nr_w_layers * 4;
+        fftshift(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
+        fft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
 
         runtime += omp_get_wtime();
         std::cout << "runtime " << __func__ << ": " << std::setprecision(3) << runtime << std::endl;
@@ -379,8 +348,8 @@ namespace api {
         // Fourier transform w layers
         std::cout << "ifft w_layers" << std::endl;
         int batch = nr_w_layers * 4;
-        ifft2f(batch, m_size, m_size, &m_grid(0,0,0,0));
-        fftshift(batch, m_size, m_size, &m_grid(0,0,0,0));
+        ifft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
+        fftshift(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
 
         // Correct w layers
         for (int w = 0; w < nr_w_layers; w++) {
