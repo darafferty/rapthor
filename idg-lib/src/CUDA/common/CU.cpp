@@ -193,58 +193,6 @@ namespace cu {
         return (void *) ((size_t) _ptr + offset);
     }
 
-//    std::vector<cu::HostMemory*> cu::HostMemory::registered_memory = std::vector<cu::HostMemory*>();
-//
-//    void HostMemory::register_memory(
-//        uint64_t size,
-//        int flags,
-//        void* ptr)
-//    {
-//        bool register_memory = true;
-//
-//        if (ptr == NULL) {
-//            // allocate new memory
-//            checkCudaCall(cuMemHostAlloc(&_ptr, size, flags));
-//
-//            // cuMemHostAlloc already registers the memory
-//            register_memory = false;
-//        }
-//
-//        // detect whether this pointer is already registered
-//        for (int i = 0; i < registered_memory.size(); i++) {
-//            HostMemory* m = registered_memory[i];
-//            auto *m_ptr = m->get();
-//            auto m_size = m->size();
-//            assert(m_ptr != NULL);
-//
-//            // same pointer, smaller or equal size
-//            if (ptr == m_ptr && size <= m_size) {
-//                // the memory can safely be reused
-//                return;
-//            }
-//
-//            // check pointer aliasing
-//            if ((((size_t) ptr + size) < (size_t) m_ptr) ||(size_t) ptr > ((size_t) m_ptr + m_size)) {
-//                // pointer outside of current memory
-//            } else {
-//                // overlap between current memory
-//                delete m;
-//                registered_memory.erase(registered_memory.begin() + i);
-//                i--;
-//            }
-//        }
-//
-//        if (register_memory) {
-//            // register current memory
-//            _ptr = ptr;
-//            checkCudaCall(cuMemHostRegister(_ptr, size, flags));
-//        }
-//
-//        // store the new memory
-//        registered_memory.push_back(this);
-//        assert(_ptr != NULL);
-//    }
-
 
     /*
         DeviceMemory
