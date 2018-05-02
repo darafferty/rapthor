@@ -92,14 +92,13 @@ namespace cu {
             }
 
         private:
-            //void release();
+            void release();
             void *_ptr;
             size_t _capacity;
             size_t _size;
             int _flags;
-            //bool free = false;
             bool allocated = false;
-            //bool unregister = false;
+            bool registered = false;
 
             //void register_memory(uint64_t size, int flags, void* ptr = NULL);
             //static std::vector<HostMemory*> registered_memory;
