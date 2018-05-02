@@ -75,7 +75,7 @@ namespace idg {
     void fftshift(int batch, int m, int n, T *array)
     {
         #pragma omp parallel for
-        for (int i = 0; i < batch; i++) {
+        for (size_t i = 0; i < batch; i++) {
             fftshift(m, n, &array[i*m*n]);
         }
     }

@@ -51,7 +51,7 @@ namespace idg {
         }
 
         #pragma omp parallel for private(tmp)
-	    for (int i = 0; i < batch; i++) {
+	    for (size_t i = 0; i < batch; i++) {
             tmp = (fftwf_complex *) data + i * m * n;
             fftwf_execute_dft(plan, tmp, tmp);
             ifftshift(m, n, tmp);
@@ -98,7 +98,7 @@ namespace idg {
         }
 
         #pragma omp parallel for private(tmp)
-	    for (int i = 0; i < batch; i++) {
+	    for (size_t i = 0; i < batch; i++) {
             tmp = (fftwf_complex *) data + i * m * n;
             ifftshift(m, n, tmp);
             fftwf_execute_dft(plan, tmp, tmp);
