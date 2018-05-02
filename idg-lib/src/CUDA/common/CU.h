@@ -97,11 +97,8 @@ namespace cu {
             size_t _capacity;
             size_t _size;
             int _flags;
-            bool free = false;
-            bool unregister = false;
-
-            void register_memory(uint64_t size, int flags, void* ptr = NULL);
-            static std::vector<HostMemory*> registered_memory;
+            bool allocated = false;
+            bool registered = false;
     };
 
 

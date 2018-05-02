@@ -133,8 +133,8 @@ namespace cu {
         _capacity = size;
         _size = size;
         _flags = flags;
-        register_memory(size, flags);
-        free = true;
+        checkCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
+        allocated = true;
     }
 
     HostMemory::HostMemory(void *ptr, size_t size, int flags) {
@@ -142,22 +142,39 @@ namespace cu {
         _size = size;
         _flags = flags;
         assert(ptr != NULL);
-        register_memory(size, flags, ptr);
-        assert(_ptr == ptr);
-        unregister = true;
-    }
-
-    void HostMemory::release() {
-        if (free) {
-            checkCudaCall(cuMemFreeHost(_ptr));
-        }
-        if (unregister) {
-            checkCudaCall(cuMemHostUnregister(_ptr));
-        }
+        checkCudaCall(cuMemHostRegister(ptr, size, _flags));
+        _ptr = ptr;
+        registered = true;
     }
 
     HostMemory::~HostMemory() {
         release();
+    }
+
+    void HostMemory::resize(size_t size) {
+        assert(size > 0);
+        if (size < _capacity) {
+            _size = size;
+        } else if (size > _capacity) {
+            release();
+            if (allocated) {
+                checkCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
+            }
+            if (registered) {
+                checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
+            }
+            _size = size;
+            _capacity = size;
+        }
+    }
+
+    void HostMemory::release() {
+        if (allocated) {
+            checkCudaCall(cuMemFreeHost(_ptr));
+        }
+        if (registered) {
+            checkCudaCall(cuMemHostUnregister(_ptr));
+        }
     }
 
     size_t HostMemory::capacity() {
@@ -168,79 +185,12 @@ namespace cu {
         return _size;
     }
 
-    void HostMemory::resize(size_t size) {
-        _size = size;
-        if (size > _capacity) {
-            release();
-
-            if (free) {
-                checkCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
-            }
-            if (unregister) {
-                checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
-            }
-            _capacity = size;
-        }
-    }
-
     void HostMemory::zero() {
         memset(_ptr, 0, _size);
     }
 
     void* HostMemory::get(size_t offset) {
         return (void *) ((size_t) _ptr + offset);
-    }
-
-    std::vector<cu::HostMemory*> cu::HostMemory::registered_memory = std::vector<cu::HostMemory*>();
-
-    void HostMemory::register_memory(
-        uint64_t size,
-        int flags,
-        void* ptr)
-    {
-        bool register_memory = true;
-
-        if (ptr == NULL) {
-            // allocate new memory
-            checkCudaCall(cuMemHostAlloc(&_ptr, size, flags));
-
-            // cuMemHostAlloc already registers the memory
-            register_memory = false;
-        }
-
-        // detect whether this pointer is already registered
-        for (int i = 0; i < registered_memory.size(); i++) {
-            HostMemory* m = registered_memory[i];
-            auto *m_ptr = m->get();
-            auto m_size = m->size();
-            assert(m_ptr != NULL);
-
-            // same pointer, smaller or equal size
-            if (ptr == m_ptr && size <= m_size) {
-                // the memory can safely be reused
-                return;
-            }
-
-            // check pointer aliasing
-            if ((((size_t) ptr + size) < (size_t) m_ptr) ||(size_t) ptr > ((size_t) m_ptr + m_size)) {
-                // pointer outside of current memory
-            } else {
-                // overlap between current memory
-                delete m;
-                registered_memory.erase(registered_memory.begin() + i);
-                i--;
-            }
-        }
-
-        if (register_memory) {
-            // register current memory
-            _ptr = ptr;
-            checkCudaCall(cuMemHostRegister(_ptr, size, flags));
-        }
-
-        // store the new memory
-        registered_memory.push_back(this);
-        assert(_ptr != NULL);
     }
 
 

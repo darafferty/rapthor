@@ -530,6 +530,9 @@ namespace idg {
             {
                 if (!memory) {
                     memory = new T(ptr, size);
+                } else if (memory->get() != ptr) {
+                    delete memory;
+                    memory = new T(ptr, size);
                 } else {
                     memory->resize(size);
                 }
