@@ -255,6 +255,7 @@ namespace api {
     void BufferSetImpl::set_image(const double* image) 
     {
         double runtime = -omp_get_wtime();
+        std::cout << std::setprecision(3);
 
         const int nr_w_layers = m_grid.get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
@@ -268,7 +269,8 @@ namespace api {
         }
 
         // Convert from stokes to linear into w plane 0
-        std::cout << "set grid" << std::endl;
+        std::cout << "set grid from image";
+        double runtime_copy = -omp_get_wtime();
         m_grid.init(0.0);
         #pragma omp parallel for
         for (int y = 0; y < m_size; y++) {
@@ -287,10 +289,13 @@ namespace api {
                 m_grid(0,2,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
             } // end for x
         } // end for y
+        runtime_copy += omp_get_wtime();
+        std::cout << ", runtime:" << runtime_copy << std::endl;
 
         // Copy to other w planes and multiply by w term
+        double runtime_stacking = -omp_get_wtime();
         for (int w = nr_w_layers - 1; w >= 0; w--) {
-            std::cout << "copying w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
+            std::cout << "unstacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
 
             #pragma omp parallel for
             for(int y = 0; y < m_size; y++) {
@@ -319,20 +324,27 @@ namespace api {
                 } // end for x
             } // end for y
         } // end for w
+        runtime_stacking += omp_get_wtime();
+        std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
 
         // Fourier transform w layers
-        std::cout << "ifft w_layers" << std::endl;
+        std::cout << "fft w_layers";
         int batch = nr_w_layers * 4;
+        double runtime_fft = -omp_get_wtime();
         fftshift(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         fft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
+        runtime_fft += omp_get_wtime();
+        std::cout << ", runtime: " << runtime_fft << std::endl;
 
+        // Report overall runtime
         runtime += omp_get_wtime();
-        std::cout << "runtime " << __func__ << ": " << std::setprecision(3) << runtime << std::endl;
+        std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
     };
 
     void BufferSetImpl::get_image(double* image) 
     {
         double runtime = -omp_get_wtime();
+        std::cout << std::setprecision(3);
 
         const int nr_w_layers = m_grid.get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
@@ -346,12 +358,16 @@ namespace api {
         }
 
         // Fourier transform w layers
-        std::cout << "ifft w_layers" << std::endl;
+        std::cout << "ifft w_layers";
         int batch = nr_w_layers * 4;
+        double runtime_fft = -omp_get_wtime();
         ifft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         fftshift(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
+        runtime_fft += omp_get_wtime();
+        std::cout << ", runtime: " << runtime_fft << std::endl;
 
-        // Correct w layers
+        // Stack w layers
+        double runtime_stacking = -omp_get_wtime();
         for (int w = 0; w < nr_w_layers; w++) {
             std::cout << "stacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
             #pragma omp parallel for
@@ -389,9 +405,13 @@ namespace api {
                 } // end for x
             } // end for y
         } // end for w
+        runtime_stacking += omp_get_wtime();
+        std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
 
-        // Set image
-        std::cout << "set image" << std::endl;
+
+        // Copy grid to image
+        std::cout << "set image from grid";
+        double runtime_copy = -omp_get_wtime();
         #pragma omp parallel for
         for (int y = 0; y < m_size; y++) {
             for (int x = 0; x < m_size; x++) {
@@ -405,7 +425,10 @@ namespace api {
             image[3*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).imag() - m_grid(0,2,y+y0,x+x0).imag());
             } // end for x
         } // end for y
+        runtime_copy += omp_get_wtime();
+        std::cout << ", runtime: " << runtime_copy << std::endl;
 
+        // Report overall runtime
         runtime += omp_get_wtime();
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
     }
