@@ -57,7 +57,8 @@ namespace api {
             size_t antenna1,
             size_t antenna2,
             const double* uvwInMeters,
-            const std::complex<float>* visibilities) = 0;
+            std::complex<float>* visibilities,
+            const float* weights) = 0;
 
 
     protected:

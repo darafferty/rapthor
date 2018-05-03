@@ -35,6 +35,7 @@ namespace api {
     BufferSetImpl::BufferSetImpl(
         Type architecture) :
         m_architecture(architecture),
+        m_avg_aterm_correction(0,0,0,0),
         m_grid(0,0,0,0,0),
         m_proxy(create_proxy())
     {}
@@ -164,6 +165,19 @@ namespace api {
 
         m_subgridsize = int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency)/8.0))*8;
 
+        m_avg_aterm_correction = Array4D<std::complex<float>>(m_subgridsize, m_subgridsize, 4, 4);
+        m_avg_aterm_correction.init(0.0);
+        for (size_t i = 0; i < m_subgridsize; i++)
+        {
+            for (size_t j = 0; j < m_subgridsize; j++)
+            {
+                for (size_t k = 0; k < 4; k++)
+                {
+                    m_avg_aterm_correction(i,j,k,k) = 1.0;
+                }
+            }
+        }
+
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
 
         m_taper_subgrid.resize(m_subgridsize);
@@ -195,17 +209,20 @@ namespace api {
             BufferImpl *buffer;
             if (m_buffer_set_type == BufferSetType::gridding)
             {
-                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(m_proxy, bufferTimesteps);
+                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(this, m_proxy, bufferTimesteps);
                 m_gridderbuffers.push_back(std::unique_ptr<GridderBuffer>(gridderbuffer));
                 buffer = gridderbuffer;
             }
             else
             {
-                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(m_proxy, bufferTimesteps);
+                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(this, m_proxy, bufferTimesteps);
                 m_degridderbuffers.push_back(std::unique_ptr<DegridderBuffer>(degridderbuffer));
                 buffer = degridderbuffer;
             }
 
+
+            // TODO: maybe just give the Buffers a pointer to their parent BufferSet and make them friends of BufferSet
+            // so this list of parameters does not need to passed along to the Buffers
 
             buffer->set_subgrid_size(m_subgridsize);
 
@@ -467,7 +484,18 @@ namespace api {
         }
     }
 
+    void BufferSetImpl::init_compute_avg_beam(compute_flags flag)
+    {
+        m_do_compute_avg_beam = true;
+        m_do_gridding = (flag != compute_flags::compute_only);
+        m_average_beam = std::vector<std::complex<float>>(m_subgridsize*m_subgridsize*16, 0.0);
+    }
 
+
+    void BufferSetImpl::finalize_compute_avg_beam()
+    {
+        m_matrix_beam = std::make_shared<std::vector<std::complex<float>>>(m_average_beam);
+    }
 
 } // namespace api
 } // namespace idg

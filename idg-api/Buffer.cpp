@@ -4,6 +4,8 @@
  */
 
 #include "BufferImpl.h"
+#include "BufferSetImpl.h"
+
 
 using namespace std;
 
@@ -19,19 +21,21 @@ namespace api {
 
     // Constructors and destructor
     BufferImpl::BufferImpl(
+        BufferSetImpl* bufferset,
         proxy::Proxy* proxy,
         size_t bufferTimesteps)
-        : m_max_baseline(0.0),
+        : m_bufferset(bufferset),
+          m_max_baseline(0.0),
           m_uv_span_frequency(0.0),
           m_bufferTimesteps(bufferTimesteps),
           m_timeStartThisBatch(0),
           m_timeStartNextBatch(bufferTimesteps),
           m_nrStations(0),
-          m_nrGroups(0),
+          m_nr_baselines(0),
           m_nrPolarizations(4),
           m_gridHeight(0),
           m_gridWidth(0),
-          m_subgridSize(0),
+          m_subgridsize(bufferset->m_subgridsize),
           m_wStepInLambda(0.0f),
           m_cellHeight(0.0f),
           m_cellWidth(0.0f),
@@ -43,7 +47,6 @@ namespace api {
           m_aterms_array(0,0,0,0),
           m_bufferUVW(0,0),
           m_bufferStationPairs(0),
-          m_visibilities(0, 0, 0),
           m_proxy(proxy)
     {
         #if defined(DEBUG)
@@ -66,7 +69,7 @@ namespace api {
     void BufferImpl::set_stations(const size_t nrStations)
     {
         m_nrStations = nrStations;
-        m_nrGroups = ((nrStations - 1) * nrStations) / 2;
+        m_nr_baselines = ((nrStations - 1) * nrStations) / 2;
     }
 
 
@@ -116,13 +119,13 @@ namespace api {
 
     void BufferImpl::set_subgrid_size(const size_t size)
     {
-        m_subgridSize = size;
+        m_subgridsize = size;
     }
 
 
     size_t BufferImpl::get_subgrid_size() const
     {
-        return m_subgridSize;
+        return m_subgridsize;
     }
 
 
@@ -163,11 +166,12 @@ namespace api {
 
 
     void BufferImpl::set_frequencies(
-        size_t channelCount,
+        size_t nr_channels,
         const double* frequencyList)
     {
-        m_frequencies = Array1D<float>(channelCount);
-        for (int i=0; i<channelCount; i++) {
+        m_nr_channels = nr_channels;
+        m_frequencies = Array1D<float>(m_nr_channels);
+        for (int i=0; i<m_nr_channels; i++) {
             m_frequencies(i) = frequencyList[i];
         }
     }
@@ -175,9 +179,9 @@ namespace api {
     void BufferImpl::set_frequencies(
         const std::vector<double> &frequency_list)
     {
-        const int channelCount = frequency_list.size();
-        m_frequencies = Array1D<float>(channelCount);
-        for (int i=0; i<channelCount; i++) {
+        m_nr_channels = frequency_list.size();
+        m_frequencies = Array1D<float>(m_nr_channels);
+        for (int i=0; i<m_nr_channels; i++) {
             m_frequencies(i) = frequency_list[i];
         }
     }
@@ -274,23 +278,17 @@ namespace api {
 
     void BufferImpl::malloc_buffers()
     {
-        m_bufferUVW = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
+        m_bufferUVW = Array2D<UVWCoordinate<float>>(m_nr_baselines, m_bufferTimesteps);
         m_bufferVisibilities.clear();
-        int max_nr_channels = 0;
         for (auto & channel_group : m_channel_groups)
         {
             int nr_channels = channel_group.second - channel_group.first;
-            m_bufferVisibilities.push_back(Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, nr_channels));
-            if (nr_channels > max_nr_channels) {
-                max_nr_channels = nr_channels;
-            }
+            m_bufferVisibilities.push_back(Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, nr_channels));
         }
 
-        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, max_nr_channels);
-
-        m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nrGroups);
-        // already done: m_spheroidal.reserve(m_subgridSize, m_subgridSize);
-        // m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridSize, m_subgridSize);
+        m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
+        // already done: m_spheroidal.reserve(m_subgridsize, m_subgridsize);
+        // m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridsize, m_subgridsize);
     }
 
 
@@ -314,12 +312,12 @@ namespace api {
 
 
     void BufferImpl::init_default_aterm() {
-        m_aterms.resize(1*m_nrStations*m_subgridSize*m_subgridSize);
+        m_aterms.resize(1*m_nrStations*m_subgridsize*m_subgridsize);
         for (auto s = 0; s < m_nrStations; ++s) {
-            for (auto y = 0; y < m_subgridSize; ++y) {
-                for (auto x = 0; x < m_subgridSize; ++x) {
-                    size_t offset = m_subgridSize*m_subgridSize*s +
-                                    m_subgridSize*y + x;
+            for (auto y = 0; y < m_subgridsize; ++y) {
+                for (auto x = 0; x < m_subgridsize; ++x) {
+                    size_t offset = m_subgridsize*m_subgridsize*s +
+                                    m_subgridsize*y + x;
                     m_aterms[offset] = {complex<float>(1), complex<float>(0),
                                         complex<float>(0), complex<float>(1)};
                 }
@@ -333,10 +331,10 @@ namespace api {
         const complex<float>* aterms)
     {
         int n_ants = m_nrStations;
-        int subgridsize = m_subgridSize;
+        int subgridsize = m_subgridsize;
         int local_time = timeIndex - m_timeStartThisBatch;
         size_t n_old_aterms = m_aterm_offsets.size()-1;
-        size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
+        size_t atermBlockSize = m_nrStations*m_subgridsize*m_subgridsize;
         // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
         if (local_time != m_aterm_offsets[m_aterm_offsets.size()-2]) {
           assert(local_time > m_aterm_offsets[m_aterm_offsets.size()-2]);

@@ -49,13 +49,16 @@
 namespace idg {
 namespace api {
 
+    class BufferSetImpl;
+
     class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl
     {
     public:
         // Constructors and destructor
         GridderBufferImpl(
+            BufferSetImpl *bufferset,
             proxy::Proxy* proxy,
-            size_t bufferTimesteps = 4096);
+            size_t bufferTimesteps);
 
         virtual ~GridderBufferImpl();
 
@@ -72,7 +75,8 @@ namespace api {
             size_t antenna1,
             size_t antenna2,
             const double* uvwInMeters,
-            const std::complex<float>* visibilities);
+            std::complex<float>* visibilities,
+            const float* weights);
 
         /** \brief Signal that not more visibilies are gridded */
         virtual void finished() override;
@@ -104,9 +108,19 @@ namespace api {
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs2;                         // BL
         std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities2;   // BL x TI x CH
         std::vector<Matrix2x2<std::complex<float>>> m_aterms2; // ST x SB x SB
+        std::vector<Matrix2x2<std::complex<float>>> m_aterms_squared2; // ST x SB x SB
+        Array4D<float> m_buffer_weights;   // BL x TI x NR_CHANNELS x NR_POLARIZATIONS
+        Array4D<float> m_buffer_weights2;   // BL x TI x NR_CHANNELS x NR_POLARIZATIONS
+
 
         std::thread m_flush_thread;
         void flush_thread_worker();
+
+        // references to members of parent BufferSet
+        std::vector<std::complex<float>> &m_average_beam;
+        Array4D<std::complex<float>> &m_avg_aterm_correction;
+        bool &m_do_gridding;
+        bool &m_do_compute_avg_beam;
     };
 
 } // namespace api

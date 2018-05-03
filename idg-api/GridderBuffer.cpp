@@ -5,6 +5,7 @@
 
 
 #include "GridderBufferImpl.h"
+#include "BufferSetImpl.h"
 
 #include <mutex>
 
@@ -14,11 +15,18 @@ namespace idg {
 namespace api {
 
     GridderBufferImpl::GridderBufferImpl(
+        BufferSetImpl* bufferset,
         proxy::Proxy* proxy,
         size_t bufferTimesteps)
-        : BufferImpl(proxy, bufferTimesteps),
+        : BufferImpl(bufferset, proxy, bufferTimesteps),
           m_bufferUVW2(0,0),
-          m_bufferStationPairs2(0)
+          m_bufferStationPairs2(0),
+          m_buffer_weights(0,0,0,0),
+          m_buffer_weights2(0,0,0,0),
+          m_avg_aterm_correction(bufferset->m_avg_aterm_correction),
+          m_average_beam(bufferset->m_average_beam),
+          m_do_gridding(bufferset->m_do_gridding),
+          m_do_compute_avg_beam(bufferset->m_do_compute_avg_beam)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
@@ -40,10 +48,20 @@ namespace api {
         size_t antenna1,
         size_t antenna2,
         const double* uvwInMeters,
-        const complex<float>* visibilities)
+        complex<float>* visibilities,
+        const float* weights)
     {
         // exclude auto-correlations
         if (antenna1 == antenna2) return;
+
+        for(int ch=0; ch < get_frequencies_size(); ch++)
+        {
+            #pragma omp simd
+            for(int pol = 0; pol < 4; pol++)
+            {
+                visibilities[ch*4+pol] = visibilities[ch*4+pol] * weights[ch*4+pol];
+            }
+        }
 
         int    local_time = timeIndex - m_timeStartThisBatch;
         size_t local_bl   = baseline_index(antenna1, antenna2);
@@ -86,10 +104,86 @@ namespace api {
                       visibilities + m_channel_groups[i].second * m_nrPolarizations,
                       (complex<float>*) &m_bufferVisibilities[i](local_bl, local_time, 0));
         }
+        std::copy(weights, weights + m_nr_channels*4, &m_buffer_weights(local_bl, local_time, 0, 0));
     }
 
     void GridderBufferImpl::flush_thread_worker()
     {
+
+        if (m_do_compute_avg_beam)
+        {
+            std::vector<Matrix2x2<std::complex<float>>> aterms_squared(m_subgridsize * m_subgridsize * m_nrStations);
+            for (int n = 0; n < m_aterm_offsets2.size() - 1; n++)
+            {
+                int time_start = m_aterm_offsets2[n];
+                int time_end = m_aterm_offsets2[n+1];
+                // TODO compute aterm_squared
+
+                size_t offset = m_subgridsize * m_subgridsize * m_nrStations * n;
+
+                for (size_t i = 0; i < m_subgridsize * m_subgridsize * m_nrStations; i++)
+                {
+                    aterms_squared[i].xx = conj(m_aterms2[offset + i].xx)*m_aterms2[offset + i].xx + conj(m_aterms2[offset + i].yx)*m_aterms2[offset + i].yx;
+                    aterms_squared[i].xy = conj(m_aterms2[offset + i].xx)*m_aterms2[offset + i].xy + conj(m_aterms2[offset + i].yx)*m_aterms2[offset + i].yy;
+                    aterms_squared[i].yx = conj(m_aterms2[offset + i].xy)*m_aterms2[offset + i].xx + conj(m_aterms2[offset + i].yy)*m_aterms2[offset + i].yx;
+                    aterms_squared[i].yy = conj(m_aterms2[offset + i].xy)*m_aterms2[offset + i].xy + conj(m_aterms2[offset + i].yy)*m_aterms2[offset + i].yy;
+                }
+
+
+                // loop over baselines
+                for (size_t bl = 0; bl < m_nr_baselines; bl++)
+                {
+                    unsigned int antenna1 = m_bufferStationPairs2(bl).first;
+                    unsigned int antenna2 = m_bufferStationPairs2(bl).second;
+
+                    float sum_of_weights[4] {};
+                    for(size_t t=time_start; t < time_end; t++)
+                    {
+                        if (std::isinf(m_bufferUVW2(bl,t).u)) continue;
+
+                        for(int ch=0; ch < get_frequencies_size(); ch++)
+                        {
+                            for(int pol = 0; pol < 4; pol++)
+                            {
+                                sum_of_weights[pol] += m_buffer_weights2(bl, t, ch, pol);
+                            }
+                        }
+                    }
+
+                    // add kronkecker product to average beam
+
+                    size_t offset1 = antenna1 * m_subgridsize * m_subgridsize;
+                    size_t offset2 = antenna2 * m_subgridsize * m_subgridsize;
+                    for (size_t i = 0; i < (m_subgridsize * m_subgridsize); i++)
+                    {
+                        /// Kronecker product of m_aterm_squared[offset2 + i]^T and m_aterm_squared[offset1 + i]
+
+                        m_average_beam[i*16     ] += sum_of_weights[0] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].xx);
+                        m_average_beam[i*16 +  1] += sum_of_weights[1] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].xy);
+                        m_average_beam[i*16 +  4] += sum_of_weights[0] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].yx);
+                        m_average_beam[i*16 +  5] += sum_of_weights[1] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].yy);
+
+                        m_average_beam[i*16 +  2] += sum_of_weights[2] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].xx);
+                        m_average_beam[i*16 +  3] += sum_of_weights[3] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].xy);
+                        m_average_beam[i*16 +  6] += sum_of_weights[2] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].yx);
+                        m_average_beam[i*16 +  7] += sum_of_weights[3] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].yy);
+
+                        m_average_beam[i*16 +  8] += sum_of_weights[0] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].xx);
+                        m_average_beam[i*16 +  9] += sum_of_weights[1] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].xy);
+                        m_average_beam[i*16 + 12] += sum_of_weights[0] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].yx);
+                        m_average_beam[i*16 + 13] += sum_of_weights[1] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].yy);
+
+                        m_average_beam[i*16 + 10] += sum_of_weights[2] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].xx);
+                        m_average_beam[i*16 + 11] += sum_of_weights[3] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].xy);
+                        m_average_beam[i*16 + 14] += sum_of_weights[2] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].yx);
+                        m_average_beam[i*16 + 15] += sum_of_weights[3] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].yy);
+                    }
+                }
+            }
+        }
+
+        if (!m_do_gridding) return;
+
         Plan::Options options;
 
         options.w_step = m_wStepInLambda;
@@ -117,7 +211,7 @@ namespace api {
                     std::cout << "planning channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
                     Plan* plan = new Plan(
                         m_kernel_size,
-                        m_subgridSize,
+                        m_subgridsize,
                         m_gridHeight,
                         m_cellHeight,
                         m_grouped_frequencies[i],
@@ -175,9 +269,9 @@ namespace api {
                         m_wStepInLambda,
                         m_cellHeight,
                         m_kernel_size,
-                        m_subgridSize,
+                        m_subgridsize,
                         m_grouped_frequencies[i],
-                        visibilities_dst,
+                        m_bufferVisibilities2[i],
                         m_bufferUVW2,
                         m_bufferStationPairs2,
                         *m_grid,
@@ -211,21 +305,15 @@ namespace api {
         std::swap(m_bufferUVW, m_bufferUVW2);
         std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
+        std::swap(m_buffer_weights, m_buffer_weights2);
         std::swap(m_aterm_offsets, m_aterm_offsets2);
         m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets2.data(), m_aterm_offsets2.size());
 
         std::swap(m_aterms, m_aterms2);
-        assert(m_aterms2.size()==(m_aterm_offsets_array.get_x_dim()-1)*m_nrStations*m_subgridSize*m_subgridSize);
-        m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms2.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridSize, m_subgridSize);
+        assert(m_aterms2.size()==(m_aterm_offsets_array.get_x_dim()-1)*m_nrStations*m_subgridsize*m_subgridsize);
+        m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms2.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridsize, m_subgridsize);
 
         m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
-
-        // Temporary fix: wait for thread and swap buffers back
-        // Needed because the proxy needs to be called each time with the same buffers
-//         m_flush_thread.join();
-//         std::swap(m_bufferUVW, m_bufferUVW2);
-//         std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
-//         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
@@ -247,7 +335,7 @@ namespace api {
 
       size_t n_old_aterms = m_aterm_offsets2.size()-1; // Nr aterms in previous chunk
 
-      size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
+      size_t atermBlockSize = m_nrStations*m_subgridsize*m_subgridsize;
       m_aterms.resize(atermBlockSize);
       std::copy(m_aterms2.data()+(n_old_aterms-1)*atermBlockSize,
                 m_aterms2.data()+(n_old_aterms)*atermBlockSize,
@@ -300,8 +388,8 @@ namespace api {
 //         // Note: float, because m_spheroidal is in float to match the
 //         // lower level API
 // //         Grid2D<float> spheroidal_grid(height, width);
-// //         resize2f(static_cast<int>(m_subgridSize),
-// //                  static_cast<int>(m_subgridSize),
+// //         resize2f(static_cast<int>(m_subgridsize),
+// //                  static_cast<int>(m_subgridsize),
 // //                  m_spheroidal.data(),
 // //                  static_cast<int>(height),
 // //                  static_cast<int>(width),
@@ -326,14 +414,16 @@ namespace api {
     {
         BufferImpl::malloc_buffers();
         
-        m_bufferUVW2 = Array2D<UVWCoordinate<float>>(m_nrGroups, m_bufferTimesteps);
+        m_bufferUVW2 = Array2D<UVWCoordinate<float>>(m_nr_baselines, m_bufferTimesteps);
         m_bufferVisibilities2.clear();
         for (auto & channel_group : m_channel_groups)
         {
             int nr_channels = channel_group.second - channel_group.first;
-            m_bufferVisibilities2.push_back(Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, nr_channels));
+            m_bufferVisibilities2.push_back(Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, nr_channels));
         }
-        m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nrGroups);
+        m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
+        m_buffer_weights = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
+        m_buffer_weights2 = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
     }
 
 

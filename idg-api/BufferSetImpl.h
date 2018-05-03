@@ -12,8 +12,13 @@
 namespace idg {
 namespace api {
 
+    class BufferImpl;
+    class GridderBufferImpl;
+    class DegridderBufferImpl;
+
     class BufferSetImpl : public virtual BufferSet {
     public:
+
         BufferSetImpl(Type architecture);
 
         virtual ~BufferSetImpl() {};
@@ -39,8 +44,15 @@ namespace api {
         virtual void get_image(double* image);
         virtual void finished();
 
-        virtual int get_subgridsize() { return m_subgridsize; }
+        virtual size_t get_subgridsize() { return m_subgridsize; }
         virtual float get_subgrid_pixelsize() { return m_image_size/m_subgridsize; }
+        virtual void set_apply_aterm(bool do_apply) { m_apply_aterm = do_apply; }
+        virtual void init_compute_avg_beam(compute_flags flag);
+        virtual void finalize_compute_avg_beam();
+        virtual std::shared_ptr<std::vector<std::complex<float>>> get_avg_scalar_beam() const {}
+        virtual std::shared_ptr<std::vector<std::complex<float>>> get_avg_matrix_beam() const {return m_matrix_beam;}
+        virtual void set_avg_scalar_beam(std::shared_ptr<std::complex<float>>) {}
+        virtual void set_avg_matrix_beam(std::shared_ptr<std::complex<float>>) {}
 
     private:
 
@@ -67,8 +79,11 @@ namespace api {
         std::vector<std::unique_ptr<DegridderBuffer>> m_degridderbuffers;
         std::vector<float> m_taper_subgrid;
         std::vector<float> m_taper_grid;
+        std::vector<std::complex<float>> m_average_beam;
+        std::shared_ptr<std::vector<std::complex<float>>> m_matrix_beam;
+        Array4D<std::complex<float>> m_avg_aterm_correction;
         Grid m_grid;
-        int m_subgridsize;
+        size_t m_subgridsize;
         float m_image_size;
         float m_cell_size;
         float m_w_step;
@@ -77,6 +92,14 @@ namespace api {
         float m_kernel_size;
         float m_uv_span_time;
         float m_uv_span_frequency;
+        bool m_apply_aterm = false;
+        bool m_do_gridding = true;
+        bool m_do_compute_avg_beam = false;
+
+        friend BufferImpl;
+        friend GridderBufferImpl;
+        friend DegridderBufferImpl;
+
     };
 
 } // namespace api

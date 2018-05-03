@@ -12,9 +12,10 @@ namespace idg {
 namespace api {
 
     DegridderBufferImpl::DegridderBufferImpl(
+        BufferSetImpl *bufferset,
         proxy::Proxy* proxy,
         size_t bufferTimesteps)
-        : BufferImpl(proxy, bufferTimesteps),
+        : BufferImpl(bufferset, proxy, bufferTimesteps),
           m_bufferVisibilities2(0,0,0),
           m_buffer_full(false),
           m_data_read(true)
@@ -108,7 +109,7 @@ namespace api {
         if (m_timeindices.size() == 0) return;
 
         m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets.data(), m_aterm_offsets.size());
-        m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridSize, m_subgridSize);
+        m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridsize, m_subgridsize);
 
         Plan::Options options;
 
@@ -137,7 +138,7 @@ namespace api {
                     std::cout << "planning channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
                     Plan* plan = new Plan(
                         m_kernel_size,
-                        m_subgridSize,
+                        m_subgridsize,
                         m_gridHeight,
                         m_cellHeight,
                         m_grouped_frequencies[i],
@@ -184,7 +185,7 @@ namespace api {
                         m_wStepInLambda,
                         m_cellHeight,
                         m_kernel_size,
-                        m_subgridSize,
+                        m_subgridsize,
                         m_grouped_frequencies[i],
                         m_bufferVisibilities[i],
                         m_bufferUVW,
@@ -240,7 +241,7 @@ namespace api {
       m_aterm_offsets[0] = 0;
       m_aterm_offsets[1] = m_bufferTimesteps;
 
-      size_t atermBlockSize = m_nrStations*m_subgridSize*m_subgridSize;
+      size_t atermBlockSize = m_nrStations*m_subgridsize*m_subgridsize;
       std::copy(m_aterms.data()+(n_old_aterms-1)*atermBlockSize,
                 m_aterms.data()+(n_old_aterms)*atermBlockSize,
                 (Matrix2x2<complex<float>>*) m_aterms.data());
@@ -274,8 +275,8 @@ namespace api {
 // 
 //         // // TODO: Apply spheroidal here as well?
 //         // Grid2D<float> spheroidal_grid(height, width);
-//         // resize2f(static_cast<int>(m_subgridSize),
-//         //          static_cast<int>(m_subgridSize),
+//         // resize2f(static_cast<int>(m_subgridsize),
+//         //          static_cast<int>(m_subgridsize),
 //         //          m_spheroidal.data(),
 //         //          static_cast<int>(height),
 //         //          static_cast<int>(width),
@@ -318,7 +319,7 @@ namespace api {
     void DegridderBufferImpl::malloc_buffers()
     {
         BufferImpl::malloc_buffers();
-        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nrGroups, m_bufferTimesteps, get_frequencies_size());
+        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, get_frequencies_size());
     }
 
 } // namespace api
