@@ -220,6 +220,7 @@ namespace cu {
         if (size > _capacity) {
             checkCudaCall(cuMemFree(_ptr));
             checkCudaCall(cuMemAlloc(&_ptr, size));
+            _capacity = size;
         }
     }
 
