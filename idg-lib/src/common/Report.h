@@ -19,14 +19,15 @@ namespace idg{
 
         public:
             Report(
-                const int nr_channels,
-                const int subgrid_size,
-                const int grid_size)
+                const int nr_channels  = 0,
+                const int subgrid_size = 0,
+                const int grid_size    = 0)
             {
                 parameters.nr_channels  = nr_channels;
                 parameters.subgrid_size = subgrid_size;
-                parameters.grid_size = grid_size;
-                dummy =  powersensor::DummyPowerSensor::create();
+                parameters.grid_size    = grid_size;
+                dummy                   = powersensor::DummyPowerSensor::create();
+                reset();
             }
 
             ~Report()
@@ -284,26 +285,55 @@ namespace idg{
                 }
             }
 
+            void reset() {
+                host_enabled        = false;
+                gridder_enabled     = false;
+                degridder_enabled   = false;
+                adder_enabled       = false;
+                splitter_enabled    = false;
+                scaler_enabled      = false;
+                subgrid_fft_enabled = false;
+                grid_fft_enabled    = false;
+                fft_shift_enabled   = false;
+                fft_scale_enabled   = false;
+                input_enabled       = false;
+                output_enabled      = false;
+
+                State state_host        = state_zero;
+                State state_gridder     = state_zero;
+                State state_degridder   = state_zero;
+                State state_adder       = state_zero;
+                State state_splitter    = state_zero;
+                State state_scaler      = state_zero;
+                State state_subgrid_fft = state_zero;
+                State state_grid_fft    = state_zero;
+                State state_fft_shift   = state_zero;
+                State state_fft_scale   = state_zero;
+                State state_input       = state_zero;
+                State state_output      = state_zero;
+            }
+
         private:
             powersensor::DummyPowerSensor* dummy;
 
             const std::string prefix = "|";
 
-            bool host_enabled        = false;
-            bool gridder_enabled     = false;
-            bool degridder_enabled   = false;
-            bool adder_enabled       = false;
-            bool splitter_enabled    = false;
-            bool scaler_enabled      = false;
-            bool subgrid_fft_enabled = false;
-            bool grid_fft_enabled       = false;
-            bool fft_shift_enabled = false;
-            bool fft_scale_enabled = false;
-            bool input_enabled  = false;
-            bool output_enabled = false;
+            bool host_enabled;
+            bool gridder_enabled;
+            bool degridder_enabled;
+            bool adder_enabled;
+            bool splitter_enabled;
+            bool scaler_enabled;
+            bool subgrid_fft_enabled;
+            bool grid_fft_enabled;
+            bool fft_shift_enabled;
+            bool fft_scale_enabled;
+            bool input_enabled;
+            bool output_enabled;
 
             Parameters parameters;
 
+            const State state_zero;
             State state_host;
             State state_gridder;
             State state_degridder;
