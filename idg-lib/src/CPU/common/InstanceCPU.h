@@ -118,7 +118,7 @@ namespace idg {
                     runtime::Function *function_splitter_wstack;
 
                 private:
-                    Report* report;
+                    Report* report = NULL;
                     powersensor::PowerSensor* powerSensor;
                     powersensor::State state_adder[2];
                     powersensor::State state_splitter[2];
