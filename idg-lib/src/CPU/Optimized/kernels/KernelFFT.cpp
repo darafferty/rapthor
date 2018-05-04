@@ -8,6 +8,8 @@
 
 #include "Types.h"
 
+#include "idg-config.h"
+
 
 extern "C" {
 void kernel_fft_grid(
@@ -16,7 +18,9 @@ void kernel_fft_grid(
     int sign    // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
     ) {
     // Use multiple threads for each polarization
+    #if not defined(HAVE_MKL)
     fftwf_plan_with_nthreads(4);
+    #endif
 
     // Execute FFT for all polarizations in parallel
     #pragma omp parallel for
