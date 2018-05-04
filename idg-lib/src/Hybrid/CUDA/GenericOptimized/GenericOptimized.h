@@ -13,8 +13,8 @@ namespace idg {
                     GenericOptimized();
                     ~GenericOptimized();
 
-                    virtual bool supports_wstack_gridding() {return cpuProxy->supports_wstack_gridding();}
-                    virtual bool supports_wstack_degridding() {return cpuProxy->supports_wstack_degridding();}
+                    virtual bool supports_wstack_gridding()   { return cpuProxy->supports_wstack_gridding(); }
+                    virtual bool supports_wstack_degridding() { return cpuProxy->supports_wstack_degridding(); }
 
                 private:
                     void initialize_memory(
