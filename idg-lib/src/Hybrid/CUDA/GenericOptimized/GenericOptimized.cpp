@@ -23,14 +23,15 @@ namespace idg {
             const int max_nr_streams = 3;
 
             // Constructor
-            HybridCUDA::HybridCUDA(
-                CPU* cpuProxy) :
-                cpuProxy(cpuProxy),
+            HybridCUDA::HybridCUDA() :
                 CUDA(default_info())
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
+
+                // Initialize cpu proxy
+                cpuProxy = new idg::proxy::cpu::Optimized();
 
                 // Initialize host PowerSensor
                 hostPowerSensor = get_power_sensor(sensor_host);
@@ -542,8 +543,7 @@ namespace idg {
             } // end degridding
 
 
-            GenericOptimized::GenericOptimized()
-                : HybridCUDA(new idg::proxy::cpu::Optimized())
+            GenericOptimized::GenericOptimized() : HybridCUDA()
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;

@@ -10,8 +10,7 @@ namespace idg {
             class HybridCUDA : public cuda::CUDA {
 
                 public:
-                    HybridCUDA(
-                        idg::proxy::cpu::CPU* cpuProxy);
+                    HybridCUDA();
 
                     ~HybridCUDA();
 
