@@ -29,6 +29,7 @@ namespace idg {
                 cout << __func__ << endl;
                 #endif
 
+                powerSensor = powersensor::get_power_sensor(powersensor::sensor_host);
                 load_shared_objects(libraries);
                 load_kernel_funcions();
             }
@@ -53,6 +54,9 @@ namespace idg {
                 delete function_splitter;
                 delete function_adder_wstack;
                 delete function_splitter_wstack;
+
+                // Delete power sensor
+                delete powerSensor;
             }
 
             void InstanceCPU::load_shared_objects(
@@ -175,7 +179,10 @@ namespace idg {
                 void *subgrid,
                 void *grid)
             {
+                state_adder[0] = powerSensor->read();
                 (sig_adder (void *) *function_adder)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
+                state_adder[1] = powerSensor->read();
+                if (report) { report->update_adder(state_adder[0], state_adder[1]); }
             }
 
             void InstanceCPU::run_splitter(
@@ -198,7 +205,10 @@ namespace idg {
                 void *subgrid,
                 void *grid)
             {
+                state_adder[0] = powerSensor->read();
                 (sig_adder_wstack (void *) *function_adder_wstack)(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata, subgrid, grid);
+                state_adder[1] = powerSensor->read();
+                if (report) { report->update_adder(state_adder[0], state_adder[1]); }
             }
 
             void InstanceCPU::run_splitter_wstack(
