@@ -239,7 +239,7 @@ namespace idg {
 
                         // Power measurement
                         PowerRecord powerRecords[4];
-                        State powerStates[2];
+                        cpuKernels.set_report(report);
 
                         #pragma omp critical (lock)
                         {
@@ -285,9 +285,7 @@ namespace idg {
                         // Add subgrids to grid
                         #pragma omp critical (CPU)
                         {
-                            powerStates[0]  = hostPowerSensor->read();
                             cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
-                            powerStates[1]  = hostPowerSensor->read();
                         }
 
                         #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
@@ -296,7 +294,6 @@ namespace idg {
                             report.update_gridder(powerRecords[0].state, powerRecords[1].state);
                             report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
                             report.update_scaler(powerRecords[2].state, powerRecords[3].state);
-                            report.update_adder(powerStates[0], powerStates[1]);
                             report.print(current_nr_timesteps, current_nr_subgrids);
                         }
                         #endif
@@ -462,12 +459,10 @@ namespace idg {
 
                         // Power measurement
                         PowerRecord powerRecords[5];
-                        State powerStates[2];
+                        cpuKernels.set_report(report);
 
                         // Extract subgrid from grid
-                        powerStates[0] = hostPowerSensor->read();
                         cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
-                        powerStates[1] = hostPowerSensor->read();
 
                         #pragma omp critical (lock)
                         {
@@ -508,7 +503,6 @@ namespace idg {
                         #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
                         #pragma omp critical
                         {
-                            report.update_splitter(powerStates[0], powerStates[1]);
                             report.update_subgrid_fft(powerRecords[0].state, powerRecords[1].state);
                             report.update_degridder(powerRecords[2].state, powerRecords[3].state);
                             report.print(current_nr_timesteps, current_nr_subgrids);
