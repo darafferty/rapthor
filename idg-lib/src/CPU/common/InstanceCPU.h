@@ -62,6 +62,13 @@ namespace idg {
                         void *data,
                         int direction);
 
+                     void run_subgrid_fft(
+                        int grid_size,
+                        int size,
+                        int batch,
+                        void *data,
+                        int direction);
+
                     void run_adder(
                         int nr_subgrids,
                         int grid_size,
@@ -120,6 +127,10 @@ namespace idg {
                 private:
                     Report* report = NULL;
                     powersensor::PowerSensor* powerSensor;
+                    powersensor::State state_gridder[2];
+                    powersensor::State state_degridder[2];
+                    powersensor::State state_subgrid_fft[2];
+                    powersensor::State state_grid_fft[2];
                     powersensor::State state_adder[2];
                     powersensor::State state_splitter[2];
 

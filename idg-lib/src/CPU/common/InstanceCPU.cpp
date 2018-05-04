@@ -136,9 +136,12 @@ namespace idg {
                 void *metadata,
                 void *subgrid)
             {
-                  (sig_gridder (void *) *function_gridder)(
+                state_gridder[0] = powerSensor->read();
+                (sig_gridder (void *) *function_gridder)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+                state_gridder[1] = powerSensor->read();
+                if (report) { report->update_gridder(state_gridder[0], state_gridder[1]); }
             }
 
             void InstanceCPU::run_degridder(
@@ -157,9 +160,12 @@ namespace idg {
                 void *metadata,
                 void *subgrid)
             {
-                  (sig_degridder (void *) *function_degridder)(
+                state_degridder[0] = powerSensor->read();
+                (sig_degridder (void *) *function_degridder)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+                state_degridder[1] = powerSensor->read();
+                if (report) { report->update_degridder(state_degridder[0], state_degridder[1]); }
             }
 
             void InstanceCPU::run_fft(
@@ -169,7 +175,23 @@ namespace idg {
                 void *data,
                 int direction)
             {
+                state_grid_fft[0] = powerSensor->read();
                 (sig_fft (void *) *function_fft)(grid_size, size, batch, data, direction);
+                state_grid_fft[1] = powerSensor->read();
+                if (report) { report->update_grid_fft(state_grid_fft[0], state_grid_fft[1]); }
+            }
+
+             void InstanceCPU::run_subgrid_fft(
+                int grid_size,
+                int size,
+                int batch,
+                void *data,
+                int direction)
+            {
+                state_subgrid_fft[0] = powerSensor->read();
+                (sig_fft (void *) *function_fft)(grid_size, size, batch, data, direction);
+                state_subgrid_fft[1] = powerSensor->read();
+                if (report) { report->update_subgrid_fft(state_subgrid_fft[0], state_subgrid_fft[1]); }
             }
 
             void InstanceCPU::run_adder(
