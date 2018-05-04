@@ -7,7 +7,6 @@
 
 #include "InstanceCUDA.h"
 
-using namespace std;
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
@@ -54,8 +53,8 @@ namespace idg {
                 Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << "Transform direction: " << direction << endl;
+                std::cout << __func__ << std::endl;
+                std::cout << "Transform direction: " << direction << std::endl;
                 #endif
 
                 cpuProxy->transform(direction, grid);
@@ -121,7 +120,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
@@ -130,7 +129,7 @@ namespace idg {
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
-                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
 
                 check_dimensions(
@@ -164,8 +163,8 @@ namespace idg {
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
-                vector<State> startStates(nr_devices+1);
-                vector<State> endStates(nr_devices+1);
+                std::vector<State> startStates(nr_devices+1);
+                std::vector<State> endStates(nr_devices+1);
                 startStates[nr_devices] = hostPowerSensor->read();
 
                 // Locks
@@ -324,7 +323,7 @@ namespace idg {
                 startStates.pop_back(); endStates.pop_back();
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
-                clog << endl;
+                std::clog << std::endl;
                 #endif
             } // end gridding
 
@@ -345,7 +344,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
@@ -354,7 +353,7 @@ namespace idg {
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
-                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
 
                 check_dimensions(
@@ -387,8 +386,8 @@ namespace idg {
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
-                vector<State> startStates(nr_devices+1);
-                vector<State> endStates(nr_devices+1);
+                std::vector<State> startStates(nr_devices+1);
+                std::vector<State> endStates(nr_devices+1);
                 startStates[nr_devices] = hostPowerSensor->read();
 
                 // Locks
@@ -538,7 +537,7 @@ namespace idg {
                 startStates.pop_back(); endStates.pop_back();
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
-                clog << endl;
+                std::clog << std::endl;
                 #endif
             } // end degridding
 
