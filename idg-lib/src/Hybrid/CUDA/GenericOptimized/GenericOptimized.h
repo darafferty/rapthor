@@ -7,12 +7,11 @@ namespace idg {
     namespace proxy {
         namespace hybrid {
 
-            class HybridCUDA : public cuda::CUDA {
+            class GenericOptimized : public cuda::CUDA {
 
                 public:
-                    HybridCUDA();
-
-                    ~HybridCUDA();
+                    GenericOptimized();
+                    ~GenericOptimized();
 
                     virtual bool supports_wstack_gridding() {return cpuProxy->supports_wstack_gridding();}
                     virtual bool supports_wstack_degridding() {return cpuProxy->supports_wstack_degridding();}
@@ -68,13 +67,6 @@ namespace idg {
                 protected:
                     powersensor::PowerSensor* hostPowerSensor;
                     idg::proxy::cpu::CPU* cpuProxy;
-
-            }; // class HybridCUDA
-
-            class GenericOptimized : public hybrid::HybridCUDA {
-                public:
-                    // Constructor
-                    GenericOptimized();
 
             }; // class GenericOptimized
 

@@ -23,7 +23,7 @@ namespace idg {
             const int max_nr_streams = 3;
 
             // Constructor
-            HybridCUDA::HybridCUDA() :
+            GenericOptimized::GenericOptimized() :
                 CUDA(default_info())
             {
                 #if defined(DEBUG)
@@ -42,14 +42,14 @@ namespace idg {
             }
 
             // Destructor
-            HybridCUDA::~HybridCUDA() {
+            GenericOptimized::~GenericOptimized() {
                 delete cpuProxy;
                 delete hostPowerSensor;
                 cuProfilerStop();
             }
 
             /* High level routines */
-            void HybridCUDA::do_transform(
+            void GenericOptimized::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)
             {
@@ -62,7 +62,7 @@ namespace idg {
             } // end transform
 
 
-            void HybridCUDA::initialize_memory(
+            void GenericOptimized::initialize_memory(
                 const Plan& plan,
                 const std::vector<int> jobsize,
                 const int nr_streams,
@@ -105,7 +105,7 @@ namespace idg {
             } // end initialize_memory
 
 
-            void HybridCUDA::do_gridding(
+            void GenericOptimized::do_gridding(
                 const Plan& plan,
                 const float w_step, // in lambda
                 const float cell_size,
@@ -329,7 +329,7 @@ namespace idg {
             } // end gridding
 
 
-            void HybridCUDA::do_degridding(
+            void GenericOptimized::do_degridding(
                 const Plan& plan,
                 const float w_step, // in lambda
                 const float cell_size,
@@ -541,14 +541,6 @@ namespace idg {
                 clog << endl;
                 #endif
             } // end degridding
-
-
-            GenericOptimized::GenericOptimized() : HybridCUDA()
-            {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-            }
 
         } // namespace hybrid
     } // namespace proxy
