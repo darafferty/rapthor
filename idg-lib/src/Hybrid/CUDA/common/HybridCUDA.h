@@ -7,6 +7,7 @@
 namespace idg {
     namespace proxy {
         namespace hybrid {
+#if 0
             class HybridCUDA : public cuda::CUDA {
 
                 public:
@@ -71,6 +72,7 @@ namespace idg {
                     idg::proxy::cpu::CPU* cpuProxy;
 
             }; // class HybridCUDA
+#endif
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg

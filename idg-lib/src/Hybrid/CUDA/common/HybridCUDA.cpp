@@ -17,6 +17,7 @@ namespace idg {
     namespace proxy {
         namespace hybrid {
 
+#if 0            
             // The maximum number of CUDA streams in any routine
             const int max_nr_streams = 3;
 
@@ -539,6 +540,7 @@ namespace idg {
                 #endif
             } // end degridding
 
+#endif
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
