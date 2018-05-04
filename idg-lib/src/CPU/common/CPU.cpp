@@ -111,7 +111,7 @@ namespace idg {
                     powerStates[1] = powerSensor->read();
 
                     // Performance report
-                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    #if defined(REPORT_TOTAL)
                     auto total_nr_visibilities = plan.get_nr_visibilities();
                     report.update_host(powerStates[0], powerStates[1]);
                     report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
@@ -202,7 +202,7 @@ namespace idg {
                     powerStates[1] = powerSensor->read();
 
                     // Report performance
-                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    #if defined(REPORT_TOTAL)
                     auto total_nr_visibilities = plan.get_nr_visibilities();
                     report.update_host(powerStates[0], powerStates[1]);
                     report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
@@ -239,6 +239,7 @@ namespace idg {
 
                     // Performance measurements
                     Report report(0, 0, grid_size);
+                    kernels.set_report(report);
                     State powerStates[4];
 
                     // FFT shift
@@ -262,9 +263,8 @@ namespace idg {
                     powerStates[3] = powerSensor->read();
 
                     // Report performance
-                    #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                    #if defined(REPORT_TOTAL)
                     report.update_fft_shift(powerStates[0], powerStates[1]);
-                    report.update_grid_fft(powerStates[1], powerStates[2]);
                     report.update_fft_shift(powerStates[2], powerStates[3]);
                     report.update_host(powerStates[0], powerStates[3]);
                     report.print_total();
@@ -309,7 +309,7 @@ namespace idg {
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
-                State powerStates[3];
+                kernels.set_report(report);
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -329,8 +329,6 @@ namespace idg {
                     void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
 
                     // Gridder kernel
-                    powerStates[0] = powerSensor->read();
-
                     kernels.run_gridder(
                         current_nr_subgrids,
                         grid_size,
@@ -348,16 +346,11 @@ namespace idg {
                         subgrids_ptr
                         );
 
-                    powerStates[1] = powerSensor->read();
-
                     // FFT kernel
-                    kernels.run_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
-                    powerStates[2] = powerSensor->read();
+                    kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
 
                     // Performance reporting
-                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                    report.update_gridder(powerStates[0], powerStates[1]);
-                    report.update_subgrid_fft(powerStates[1], powerStates[2]);
+                    #if defined(REPORT_VERBOSE)
                     report.print(current_nr_timesteps, current_nr_subgrids);
                     #endif
                 } // end for bl
@@ -389,7 +382,7 @@ namespace idg {
 
                 // Performance measurements
                 Report report(0, subgrid_size, 0);
-                State powerStates[2];
+                kernels.set_report(report);
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -402,17 +395,14 @@ namespace idg {
                     void *subgrids_ptr = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
                     void *grid_ptr     = grid.data();
 
-                    powerStates[0] = powerSensor->read();
                     if (w_step == 0.0) {
                         kernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
                     else {
                         kernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
-                    powerStates[1] = powerSensor->read();
 
-                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                    report.update_adder(powerStates[0], powerStates[1]);
+                    #if defined(REPORT_VERBOSE)
                     report.print(0, current_nr_subgrids);
                     #endif
                 } // end for bl
@@ -465,7 +455,6 @@ namespace idg {
                     powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                    report.update_splitter(powerStates[0], powerStates[1]);
                     report.print(0, current_nr_subgrids);
                     #endif
                 } // end for bl
@@ -504,7 +493,7 @@ namespace idg {
 
                 // Performance measurements
                 Report report(nr_channels, subgrid_size, 0);
-                State powerStates[3];
+                kernels.set_report(report);
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -524,9 +513,7 @@ namespace idg {
                     void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
 
                     // FFT kernel
-                    powerStates[0] = powerSensor->read();
-                    kernels.run_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
-                    powerStates[1] = powerSensor->read();
+                    kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
 
                     // Degridder kernel
                     kernels.run_degridder(
@@ -544,12 +531,9 @@ namespace idg {
                         aterm_ptr,
                         metadata_ptr,
                         subgrids_ptr);
-                    powerStates[2] = powerSensor->read();
 
                     // Performance reporting
-                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                    report.update_subgrid_fft(powerStates[0], powerStates[1]);
-                    report.update_degridder(powerStates[1], powerStates[2]);
+                    #if defined(REPORT_VERBOSE)
                     report.print(current_nr_timesteps, current_nr_subgrids);
                     #endif
                 } // end for bl
