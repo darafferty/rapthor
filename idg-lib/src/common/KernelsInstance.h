@@ -3,6 +3,9 @@
 
 #include <cassert>
 
+#include "PowerSensor.h"
+#include "Report.h"
+
 #include "idg-common.h"
 
 
@@ -32,8 +35,25 @@ namespace idg {
                     const Grid& grid_src,
                           Grid& grid_dst) const;
 
+                /*
+                    Performance reporting
+                */
+            public:
+                void set_report(Report& report_) { report = &report_; }
+
+            protected:
+                Report* report = NULL;
+                powersensor::PowerSensor* powerSensor;
+                powersensor::State state_gridder[2];
+                powersensor::State state_degridder[2];
+                powersensor::State state_subgrid_fft[2];
+                powersensor::State state_grid_fft[2];
+                powersensor::State state_adder[2];
+                powersensor::State state_splitter[2];
+
         }; // end class KernelsInstance
 
     } // namespace kernel
 } // namespace idg
+
 #endif

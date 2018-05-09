@@ -1,4 +1,12 @@
-namespace idg{
+#ifndef IDG_REPORT_H_
+#define IDG_REPORT_H_
+
+#include <vector>
+#include <sstream>
+
+#include "auxiliary.h"
+
+namespace idg {
 
     class Report
     {
@@ -349,3 +357,5 @@ namespace idg{
     };
 
 } // end namespace idg
+
+#endif

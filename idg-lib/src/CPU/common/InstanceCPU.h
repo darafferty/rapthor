@@ -123,19 +123,6 @@ namespace idg {
                     runtime::Function *function_splitter;
                     runtime::Function *function_adder_wstack;
                     runtime::Function *function_splitter_wstack;
-
-                private:
-                    Report* report = NULL;
-                    powersensor::PowerSensor* powerSensor;
-                    powersensor::State state_gridder[2];
-                    powersensor::State state_degridder[2];
-                    powersensor::State state_subgrid_fft[2];
-                    powersensor::State state_grid_fft[2];
-                    powersensor::State state_adder[2];
-                    powersensor::State state_splitter[2];
-
-                public:
-                    void set_report(Report& report_) { report = &report_; }
             };
 
             // Jobsize
