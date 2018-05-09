@@ -24,6 +24,7 @@ namespace idg {
                 #endif
 
                 powerSensor = get_power_sensor(sensor_host);
+                kernels.set_report(report);
             }
 
             // Destructor
@@ -84,10 +85,10 @@ namespace idg {
                     // Allocate memory for subgrids
                     Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
-                    // Performance measurements
-                    Report report(0, 0, 0);
-                    State powerStates[2];
-                    powerStates[0] = powerSensor->read();
+                    // Performance measurement
+                    report.initialize(nr_channels, subgrid_size, grid_size);
+                    State states[2];
+                    states[0] = powerSensor->read();
 
                     // Run subroutines
                     grid_onto_subgrids(
@@ -108,12 +109,13 @@ namespace idg {
                         subgrids,
                         grid);
 
-                    powerStates[1] = powerSensor->read();
+                    states[1] = powerSensor->read();
+                    report.update_host(states[0], states[1]);
 
                     // Performance report
                     #if defined(REPORT_TOTAL)
+                    report.print_total(total_nr_timesteps, total_nr_subgrids);
                     auto total_nr_visibilities = plan.get_nr_visibilities();
-                    report.update_host(powerStates[0], powerStates[1]);
                     report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                     #endif
 
@@ -175,10 +177,10 @@ namespace idg {
                     // Allocate memory for subgrids
                     Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
-                    // Performance measurements
-                    Report report(0, 0, 0);
-                    State powerStates[2];
-                    powerStates[0] = powerSensor->read();
+                    // Performance measurement
+                    report.initialize(nr_channels, subgrid_size, grid_size);
+                    State states[2];
+                    states[0] = powerSensor->read();
 
                     // Run subroutines
                     split_grid_into_subgrids(
@@ -199,12 +201,13 @@ namespace idg {
                         aterms,
                         subgrids);
 
-                    powerStates[1] = powerSensor->read();
+                    states[1] = powerSensor->read();
+                    report.update_host(states[0], states[1]);
 
                     // Report performance
                     #if defined(REPORT_TOTAL)
+                    report.print_total(total_nr_timesteps, total_nr_subgrids);
                     auto total_nr_visibilities = plan.get_nr_visibilities();
-                    report.update_host(powerStates[0], powerStates[1]);
                     report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                     #endif
 
@@ -237,36 +240,33 @@ namespace idg {
                     // Constants
                     auto grid_size = grid.get_x_dim();
 
-                    // Performance measurements
-                    Report report(0, 0, grid_size);
-                    kernels.set_report(report);
-                    State powerStates[4];
+                    // Performance measurement
+                    report.initialize(0, 0, grid_size);
+                    State states[2];
+                    states[0] = powerSensor->read();
 
                     // FFT shift
-                    powerStates[0] = powerSensor->read();
                     if (direction == FourierDomainToImageDomain) {
                         kernels.shift(grid); // TODO: integrate into adder?
                     } else {
                         kernels.shift(grid); // TODO: remove
                     }
-                    powerStates[1] = powerSensor->read();
 
                     // Run FFT
                     kernels.run_fft(grid_size, grid_size, 1, grid.data(), sign);
 
                     // FFT shift
-                    powerStates[2] = powerSensor->read();
                     if (direction == FourierDomainToImageDomain)
                         kernels.shift(grid); // TODO: remove
                     else
                         kernels.shift(grid); // TODO: integrate into splitter?
-                    powerStates[3] = powerSensor->read();
+
+                    // End measurement
+                    states[1] = powerSensor->read();
+                    report.update_host(states[0], states[1]);
 
                     // Report performance
                     #if defined(REPORT_TOTAL)
-                    report.update_fft_shift(powerStates[0], powerStates[1]);
-                    report.update_fft_shift(powerStates[2], powerStates[3]);
-                    report.update_host(powerStates[0], powerStates[3]);
                     report.print_total();
                     clog << endl;
                     #endif
@@ -306,10 +306,6 @@ namespace idg {
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
                 auto nr_stations  = aterms.get_z_dim();
-
-                // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
-                kernels.set_report(report);
 
                 // Start gridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -354,13 +350,6 @@ namespace idg {
                     report.print(current_nr_timesteps, current_nr_subgrids);
                     #endif
                 } // end for bl
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auto total_nr_subgrids  = plan.get_nr_subgrids();
-                auto total_nr_timesteps = plan.get_nr_timesteps();
-                report.print_total(total_nr_timesteps, total_nr_subgrids);
-                clog << endl;
-                #endif
             } // end grid_onto_subgrids
 
             void CPU::add_subgrids_to_grid(
@@ -379,10 +368,6 @@ namespace idg {
                 auto nr_w_layers  = grid.get_w_dim();
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
-
-                // Performance measurements
-                Report report(0, subgrid_size, 0);
-                kernels.set_report(report);
 
                 // Run adder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -406,13 +391,6 @@ namespace idg {
                     report.print(0, current_nr_subgrids);
                     #endif
                 } // end for bl
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auto total_nr_subgrids  = plan.get_nr_subgrids();
-                auto total_nr_timesteps = plan.get_nr_timesteps();
-                report.print_total(total_nr_timesteps, total_nr_subgrids);
-                clog << endl;
-                #endif
             } // end add_subgrids_to_grid
 
             void CPU::split_grid_into_subgrids(
@@ -431,10 +409,6 @@ namespace idg {
                 auto nr_baselines = plan.get_nr_baselines();
                 auto subgrid_size = subgrids.get_y_dim();
 
-                // Performance measurements
-                Report report(0, subgrid_size, 0);
-                State powerStates[2];
-
                 // Run splitter
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     // Number of elements in job
@@ -446,25 +420,16 @@ namespace idg {
                     void *subgrids_ptr = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
                     void *grid_ptr     = grid.data();
 
-                    powerStates[0] = powerSensor->read();
                     if (w_step == 0.0) {
                        kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     } else {
                        kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
-                    powerStates[1] = powerSensor->read();
 
                     #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
                     report.print(0, current_nr_subgrids);
                     #endif
                 } // end for bl
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auto total_nr_subgrids  = plan.get_nr_subgrids();
-                auto total_nr_timesteps = plan.get_nr_timesteps();
-                report.print_total(total_nr_timesteps, total_nr_subgrids);
-                clog << endl;
-                #endif
             } // end split_grid_into_subgrids
 
             void CPU::degrid_from_subgrids(
@@ -490,10 +455,6 @@ namespace idg {
                 auto nr_channels  = visibilities.get_x_dim();
                 auto subgrid_size = subgrids.get_y_dim();
                 auto nr_stations  = aterms.get_z_dim();
-
-                // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
-                kernels.set_report(report);
 
                 // Start degridder
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -537,13 +498,6 @@ namespace idg {
                     report.print(current_nr_timesteps, current_nr_subgrids);
                     #endif
                 } // end for bl
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auto total_nr_subgrids  = plan.get_nr_subgrids();
-                auto total_nr_timesteps = plan.get_nr_timesteps();
-                report.print_total(total_nr_timesteps, total_nr_subgrids);
-                clog << endl;
-                #endif
             } // end degrid_from_subgrids
 
 

@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "auxiliary.h"
+#include "PowerSensor.h"
 
 namespace idg {
 
@@ -41,6 +42,17 @@ namespace idg {
             ~Report()
             {
                 delete dummy;
+            }
+
+            void initialize(
+                const int nr_channels  = 0,
+                const int subgrid_size = 0,
+                const int grid_size    = 0)
+            {
+                parameters.nr_channels  = nr_channels;
+                parameters.subgrid_size = subgrid_size;
+                parameters.grid_size    = grid_size;
+                reset();
             }
 
             void update(
@@ -343,18 +355,18 @@ namespace idg {
                 input_updated       = false;
                 output_updated      = false;
 
-                State state_host        = state_zero;
-                State state_gridder     = state_zero;
-                State state_degridder   = state_zero;
-                State state_adder       = state_zero;
-                State state_splitter    = state_zero;
-                State state_scaler      = state_zero;
-                State state_subgrid_fft = state_zero;
-                State state_grid_fft    = state_zero;
-                State state_fft_shift   = state_zero;
-                State state_fft_scale   = state_zero;
-                State state_input       = state_zero;
-                State state_output      = state_zero;
+                state_host        = state_zero;
+                state_gridder     = state_zero;
+                state_degridder   = state_zero;
+                state_adder       = state_zero;
+                state_splitter    = state_zero;
+                state_scaler      = state_zero;
+                state_subgrid_fft = state_zero;
+                state_grid_fft    = state_zero;
+                state_fft_shift   = state_zero;
+                state_fft_scale   = state_zero;
+                state_input       = state_zero;
+                state_output      = state_zero;
             }
 
         private:
