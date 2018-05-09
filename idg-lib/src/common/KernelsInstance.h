@@ -19,7 +19,7 @@ namespace idg {
                     Misc math routines
                 */
                 void shift(
-                    Array3D<std::complex<float>>& data) const;
+                    Array3D<std::complex<float>>& data);
 
                 void scale(
                     Array3D<std::complex<float>>& data,
@@ -48,6 +48,7 @@ namespace idg {
                 powersensor::State state_degridder[2];
                 powersensor::State state_subgrid_fft[2];
                 powersensor::State state_grid_fft[2];
+                powersensor::State state_fft_shift[2];
                 powersensor::State state_adder[2];
                 powersensor::State state_splitter[2];
 
