@@ -162,7 +162,7 @@ namespace idg {
                     visibilities.data(), uvw.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 std::vector<State> startStates(nr_devices+1);
                 std::vector<State> endStates(nr_devices+1);
                 startStates[nr_devices] = hostPowerSensor->read();
@@ -183,6 +183,7 @@ namespace idg {
                     // Initialize device
                     InstanceCUDA& device  = get_device(device_id);
                     device.set_context();
+                    device.set_report(report);
 
                     // Load memory objects
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
@@ -238,7 +239,6 @@ namespace idg {
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                         // Power measurement
-                        PowerRecord powerRecords[4];
                         cpuKernels.set_report(report);
 
                         #pragma omp critical (lock)
@@ -256,20 +256,16 @@ namespace idg {
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
                             executestream.waitEvent(outputFree);
-                            device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                            device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
-                            device.measure(powerRecords[2], executestream);
 
                             // Launch scaler kernel
                             device.launch_scaler(
                                 current_nr_subgrids, subgrid_size, d_subgrids);
-                            device.measure(powerRecords[3], executestream);
                             executestream.record(outputReady);
                             executestream.record(inputFree);
 
@@ -291,9 +287,6 @@ namespace idg {
                         #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
                         #pragma omp critical
                         {
-                            report.update_gridder(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_scaler(powerRecords[2].state, powerRecords[3].state);
                             report.print(current_nr_timesteps, current_nr_subgrids);
                         }
                         #endif
@@ -382,7 +375,7 @@ namespace idg {
                     visibilities.data(), uvw.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 std::vector<State> startStates(nr_devices+1);
                 std::vector<State> endStates(nr_devices+1);
                 startStates[nr_devices] = hostPowerSensor->read();
@@ -458,7 +451,6 @@ namespace idg {
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                         // Power measurement
-                        PowerRecord powerRecords[5];
                         cpuKernels.set_report(report);
 
                         // Extract subgrid from grid
@@ -477,18 +469,14 @@ namespace idg {
                             htodstream.record(inputReady);
 
                             // Launch FFT
-                            device.measure(powerRecords[0], executestream);
                             executestream.waitEvent(inputReady);
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
-                            device.measure(powerRecords[1], executestream);
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
-                            device.measure(powerRecords[2], executestream);
                             device.launch_degridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                            device.measure(powerRecords[3], executestream);
                             executestream.record(outputReady);
                             executestream.record(inputFree);
 
@@ -503,8 +491,6 @@ namespace idg {
                         #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
                         #pragma omp critical
                         {
-                            report.update_subgrid_fft(powerRecords[0].state, powerRecords[1].state);
-                            report.update_degridder(powerRecords[2].state, powerRecords[3].state);
                             report.print(current_nr_timesteps, current_nr_subgrids);
                         }
                         #endif

@@ -269,6 +269,19 @@ namespace idg {
                     cufft::C2C_2D *fft_plan_bulk;
                     cufft::C2C_2D *fft_plan_misc;
 
+                    // Performance reporting
+                    static void report_gridder(CUstream, CUresult, void *userData);
+                    static void report_degridder(CUstream, CUresult, void *userData);
+                    static void report_subgrid_fft(CUstream, CUresult, void *userData);
+                    static void report_adder(CUstream, CUresult, void *userData);
+                    static void report_splitter(CUstream, CUresult, void *userData);
+                    static void report_scaler(CUstream, CUresult, void *userData);
+                    PowerRecord *records_gridder[2];
+                    PowerRecord *records_degridder[2];
+                    PowerRecord *records_subgrid_fft[2];
+                    PowerRecord *records_adder[2];
+                    PowerRecord *records_splitter[2];
+                    PowerRecord *records_scaler[2];
             };
 
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d);

@@ -58,6 +58,16 @@ namespace idg {
 
                 // Initialize power sensor
                 powerSensor = get_power_sensor(sensor_device, device_nr);
+
+                // Initialize power records
+                for (int i = 0; i < 2; i++) {
+                    records_gridder[i] = new PowerRecord();
+                    records_degridder[i] = new PowerRecord();
+                    records_subgrid_fft[i] = new PowerRecord();
+                    records_adder[i] = new PowerRecord();
+                    records_splitter[i] = new PowerRecord();
+                    records_scaler[i] = new PowerRecord();
+                }
             }
 
             // Destructor
@@ -75,6 +85,14 @@ namespace idg {
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
+                for (int i = 0; i < 2; i++) {
+                    delete records_gridder[i];
+                    delete records_degridder[i];
+                    delete records_subgrid_fft[i];
+                    delete records_adder[i];
+                    delete records_splitter[i];
+                    delete records_scaler[i];
+                }
                 delete device;
                 delete context;
                 delete powerSensor;
@@ -299,6 +317,60 @@ namespace idg {
                 record.enqueue(stream);
             }
 
+            void InstanceCUDA::report_gridder(CUstream, CUresult, void *userData)
+            {
+                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
+                PowerRecord* start = instance->records_gridder[0];
+                PowerRecord* end   = instance->records_gridder[1];
+                Report *report     = instance->report;
+                report->update_gridder(start->state, end->state);
+            }
+
+            void InstanceCUDA::report_degridder(CUstream, CUresult, void *userData)
+            {
+                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
+                PowerRecord* start = instance->records_degridder[0];
+                PowerRecord* end   = instance->records_degridder[1];
+                Report *report     = instance->report;
+                report->update_degridder(start->state, end->state);
+            }
+
+            void InstanceCUDA::report_adder(CUstream, CUresult, void *userData)
+            {
+                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
+                PowerRecord* start = instance->records_adder[0];
+                PowerRecord* end   = instance->records_adder[1];
+                Report *report     = instance->report;
+                report->update_adder(start->state, end->state);
+            }
+
+            void InstanceCUDA::report_splitter(CUstream, CUresult, void *userData)
+            {
+                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
+                PowerRecord* start = instance->records_splitter[0];
+                PowerRecord* end   = instance->records_splitter[1];
+                Report *report     = instance->report;
+                report->update_splitter(start->state, end->state);
+            }
+
+            void InstanceCUDA::report_scaler(CUstream, CUresult, void *userData)
+            {
+                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
+                PowerRecord* start = instance->records_scaler[0];
+                PowerRecord* end   = instance->records_scaler[1];
+                Report *report     = instance->report;
+                report->update_scaler(start->state, end->state);
+            }
+
+            void InstanceCUDA::report_subgrid_fft(CUstream, CUresult, void *userData)
+            {
+                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
+                PowerRecord* start = instance->records_subgrid_fft[0];
+                PowerRecord* end   = instance->records_subgrid_fft[1];
+                Report *report     = instance->report;
+                report->update_subgrid_fft(start->state, end->state);
+            }
+
             void InstanceCUDA::launch_gridder(
                 int nr_subgrids,
                 int grid_size,
@@ -321,7 +393,10 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
+                measure(*records_gridder[0], *executestream);
                 executestream->launchKernel(*function_gridder, grid, block_gridder, 0, parameters);
+                measure(*records_gridder[1], *executestream);
+                executestream->addCallback((CUstreamCallback) &report_gridder, this);
             }
 
             void InstanceCUDA::launch_degridder(
@@ -346,7 +421,10 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
+                measure(*records_degridder[0], *executestream);
                 executestream->launchKernel(*function_degridder, grid, block_degridder, 0, parameters);
+                measure(*records_degridder[1], *executestream);
+                executestream->addCallback((CUstreamCallback) &report_degridder, this);
             }
 
             void InstanceCUDA::plan_fft(
@@ -386,6 +464,8 @@ namespace idg {
                 cu::DeviceMemory& d_data,
                 DomainAtoDomainB direction)
             {
+                measure(*records_subgrid_fft[0], *executestream);
+
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
@@ -402,6 +482,9 @@ namespace idg {
                     fft_plan_misc->setStream(*executestream);
                     fft_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
+
+                measure(*records_subgrid_fft[1], *executestream);
+                executestream->addCallback((CUstreamCallback) &report_subgrid_fft, this);
             }
 
              void InstanceCUDA::launch_fft_unified(
