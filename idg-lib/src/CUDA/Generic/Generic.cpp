@@ -109,8 +109,9 @@ namespace idg {
                 cu::HostMemory& h_grid = device.get_host_grid(grid_size, grid.data());
 
                 // Performance measurements
-                Report report(0, 0, grid_size);
-                PowerRecord powerRecords[5];
+                report.initialize(0, 0, grid_size);
+                device.set_report(report);
+                PowerRecord powerRecords[4];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
                 powerStates[2] = device.measure();
@@ -127,14 +128,12 @@ namespace idg {
                 device.measure(powerRecords[1], stream);
 
                 // Execute fft
-                device.plan_fft(grid_size, 1);
-                device.measure(powerRecords[2], stream);
-                device.launch_fft(d_grid, direction);
-                device.measure(powerRecords[3], stream);
+                device.launch_grid_fft(d_grid, grid_size, direction);
 
                 // Copy grid to host
+                device.measure(powerRecords[2], stream);
                 stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid);
-                device.measure(powerRecords[4], stream);
+                device.measure(powerRecords[3], stream);
                 stream.synchronize();
 
                 // Perform fft shift
@@ -157,13 +156,12 @@ namespace idg {
 
                 #if defined(REPORT_TOTAL)
                 report.update_input(powerRecords[0].state, powerRecords[1].state);
-                report.update_grid_fft(powerRecords[2].state, powerRecords[3].state);
-                report.update_output(powerRecords[3].state, powerRecords[4].state);
+                report.update_output(powerRecords[2].state, powerRecords[3].state);
                 report.update_fft_shift(time_shift);
                 report.update_fft_scale(time_scale);
                 report.update_host(powerStates[0], powerStates[1]);
                 report.print_total();
-                report.print_device(powerRecords[0].state, powerRecords[4].state);
+                report.print_device(powerRecords[0].state, powerRecords[3].state);
                 clog << endl;
                 #endif
             } // end transform
@@ -215,7 +213,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, grid_size);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, grid_size, 0.1);
 
                 // Initialize memory
                 initialize_memory(
@@ -224,7 +222,7 @@ namespace idg {
                     visibilities.data(), uvw.data(), grid.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -262,6 +260,7 @@ namespace idg {
 
                     // Copy static data structures
                     if (local_id == 0) {
+                        device.set_report(report);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
@@ -447,7 +446,7 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, grid_size);
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, grid_size, 0.1);
 
                 // Initialize memory
                 initialize_memory(
@@ -456,7 +455,7 @@ namespace idg {
                     visibilities.data(), uvw.data(), grid.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -494,6 +493,7 @@ namespace idg {
 
                     // Copy static data structures
                     if (local_id == 0) {
+                        device.set_report(report);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());

@@ -69,6 +69,11 @@ namespace idg {
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
+                    void launch_grid_fft(
+                        cu::DeviceMemory& d_data,
+                        int size,
+                        DomainAtoDomainB direction);
+
                     void plan_fft(
                         int size, int batch);
 
@@ -248,9 +253,6 @@ namespace idg {
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
 
-                    // Power sensor private to this InstanceCUDA
-                    powersensor::PowerSensor *powerSensor;
-
                 protected:
                     dim3 block_gridder;
                     dim3 block_degridder;
@@ -262,7 +264,11 @@ namespace idg {
                     int batch_degridder;
                     int tile_size_grid;
 
-                    // FFT kernel
+                    // Grid FFT
+                    int fft_grid_size;
+                    cufft::C2C_2D *fft_plan_grid;
+
+                    // Subgrid FFT
                     const int fft_bulk = 1024;
                     int fft_batch;
                     int fft_size;
@@ -273,6 +279,7 @@ namespace idg {
                     static void report_gridder(CUstream, CUresult, void *userData);
                     static void report_degridder(CUstream, CUresult, void *userData);
                     static void report_subgrid_fft(CUstream, CUresult, void *userData);
+                    static void report_grid_fft(CUstream, CUresult, void *userData);
                     static void report_adder(CUstream, CUresult, void *userData);
                     static void report_splitter(CUstream, CUresult, void *userData);
                     static void report_scaler(CUstream, CUresult, void *userData);

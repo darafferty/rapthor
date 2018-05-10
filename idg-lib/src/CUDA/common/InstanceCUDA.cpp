@@ -46,6 +46,7 @@ namespace idg {
                 d_grid         = NULL;
                 fft_plan_bulk  = NULL;
                 fft_plan_misc  = NULL;
+                fft_plan_grid  = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -70,6 +71,7 @@ namespace idg {
                 for (cu::Module *module : mModules) { delete module; }
                 if (fft_plan_bulk) { delete fft_plan_bulk; }
                 if (fft_plan_misc) { delete fft_plan_misc; }
+                if (fft_plan_grid) { delete fft_plan_grid; }
                 delete function_gridder;
                 delete function_degridder;
                 delete function_scaler;
@@ -376,6 +378,16 @@ namespace idg {
                 delete start; delete end; delete data;
             }
 
+            void InstanceCUDA::report_grid_fft(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_grid_fft(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
             void InstanceCUDA::launch_gridder(
                 int nr_subgrids,
                 int grid_size,
@@ -432,6 +444,41 @@ namespace idg {
                 executestream->launchKernel(*function_degridder, grid, block_degridder, 0, parameters);
                 data->end->enqueue(*executestream);
                 executestream->addCallback((CUstreamCallback) &report_degridder, data);
+            }
+
+            void InstanceCUDA::launch_grid_fft(
+                cu::DeviceMemory& d_data,
+                int grid_size,
+                DomainAtoDomainB direction)
+            {
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                // Plan FFT
+                if (grid_size != fft_grid_size) {
+                    if (fft_plan_grid) {
+                        delete fft_plan_grid;
+                    }
+                    fft_grid_size = grid_size;
+                    fft_plan_grid = new cufft::C2C_2D(grid_size, grid_size);
+                    fft_plan_grid->setStream(*executestream);
+                }
+
+                // Get arguments
+                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
+
+                // Enqueue start of measurement
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
+
+                // Enqueue fft for every correlation
+                for (int i = 0; i < NR_CORRELATIONS; i++) {
+                    fft_plan_grid->execute(data_ptr, data_ptr, sign);
+                    data_ptr += grid_size * grid_size;
+                }
+
+                // Enqueue end of measurement
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_grid_fft, data);
             }
 
             void InstanceCUDA::plan_fft(
