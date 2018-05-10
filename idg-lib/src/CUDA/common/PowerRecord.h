@@ -13,6 +13,9 @@ namespace idg {
 
             class PowerRecord {
                 public:
+                    PowerRecord();
+                    PowerRecord(powersensor::PowerSensor *sensor);
+
                     void enqueue(cu::Stream &stream);
                     static void getPower(CUstream, CUresult, void *userData);
                     powersensor::PowerSensor *sensor;
