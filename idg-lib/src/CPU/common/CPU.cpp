@@ -242,6 +242,7 @@ namespace idg {
 
                     // Performance measurement
                     report.initialize(0, 0, grid_size);
+                    kernels.set_report(report);
                     State states[2];
                     states[0] = powerSensor->read();
 
