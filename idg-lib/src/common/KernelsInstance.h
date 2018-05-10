@@ -44,13 +44,6 @@ namespace idg {
             protected:
                 Report* report = NULL;
                 powersensor::PowerSensor* powerSensor;
-                powersensor::State state_gridder[2];
-                powersensor::State state_degridder[2];
-                powersensor::State state_subgrid_fft[2];
-                powersensor::State state_grid_fft[2];
-                powersensor::State state_fft_shift[2];
-                powersensor::State state_adder[2];
-                powersensor::State state_splitter[2];
 
         }; // end class KernelsInstance
 

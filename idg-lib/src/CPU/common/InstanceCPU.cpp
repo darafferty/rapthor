@@ -136,12 +136,13 @@ namespace idg {
                 void *metadata,
                 void *subgrid)
             {
-                state_gridder[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_gridder (void *) *function_gridder)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-                state_gridder[1] = powerSensor->read();
-                if (report) { report->update_gridder(state_gridder[0], state_gridder[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_gridder(states[0], states[1]); }
             }
 
             void InstanceCPU::run_degridder(
@@ -160,12 +161,13 @@ namespace idg {
                 void *metadata,
                 void *subgrid)
             {
-                state_degridder[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_degridder (void *) *function_degridder)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
-                state_degridder[1] = powerSensor->read();
-                if (report) { report->update_degridder(state_degridder[0], state_degridder[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_degridder(states[0], states[1]); }
             }
 
             void InstanceCPU::run_fft(
@@ -175,10 +177,11 @@ namespace idg {
                 void *data,
                 int direction)
             {
-                state_grid_fft[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_fft (void *) *function_fft)(grid_size, size, batch, data, direction);
-                state_grid_fft[1] = powerSensor->read();
-                if (report) { report->update_grid_fft(state_grid_fft[0], state_grid_fft[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_grid_fft(states[0], states[1]); }
             }
 
              void InstanceCPU::run_subgrid_fft(
@@ -188,10 +191,11 @@ namespace idg {
                 void *data,
                 int direction)
             {
-                state_subgrid_fft[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_fft (void *) *function_fft)(grid_size, size, batch, data, direction);
-                state_subgrid_fft[1] = powerSensor->read();
-                if (report) { report->update_subgrid_fft(state_subgrid_fft[0], state_subgrid_fft[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_subgrid_fft(states[0], states[1]); }
             }
 
             void InstanceCPU::run_adder(
@@ -202,10 +206,11 @@ namespace idg {
                 void *subgrid,
                 void *grid)
             {
-                state_adder[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_adder (void *) *function_adder)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
-                state_adder[1] = powerSensor->read();
-                if (report) { report->update_adder(state_adder[0], state_adder[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_adder(states[0], states[1]); }
             }
 
             void InstanceCPU::run_splitter(
@@ -216,10 +221,11 @@ namespace idg {
                 void *subgrid,
                 void *grid)
             {
-                state_splitter[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_splitter (void *) *function_splitter)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
-                state_splitter[1] = powerSensor->read();
-                if (report) { report->update_splitter(state_splitter[0], state_splitter[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_splitter(states[0], states[1]); }
             }
 
             void InstanceCPU::run_adder_wstack(
@@ -231,10 +237,11 @@ namespace idg {
                 void *subgrid,
                 void *grid)
             {
-                state_adder[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_adder_wstack (void *) *function_adder_wstack)(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata, subgrid, grid);
-                state_adder[1] = powerSensor->read();
-                if (report) { report->update_adder(state_adder[0], state_adder[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_adder(states[0], states[1]); }
             }
 
             void InstanceCPU::run_splitter_wstack(
@@ -245,10 +252,11 @@ namespace idg {
                 void *subgrid,
                 void *grid)
             {
-                state_splitter[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_splitter_wstack (void *) *function_splitter_wstack)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
-                state_splitter[1] = powerSensor->read();
-                if (report) { report->update_splitter(state_splitter[0], state_splitter[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_splitter(states[0], states[1]); }
             }
 
         } // namespace cpu

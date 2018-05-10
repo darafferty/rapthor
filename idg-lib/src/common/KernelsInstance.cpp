@@ -11,7 +11,8 @@ namespace idg {
             int width = data.get_x_dim();
             assert(height == width);
 
-            state_fft_shift[0] = powerSensor->read();
+            powersensor::State states[2];
+            states[0] = powerSensor->read();
 
             std::complex<float> tmp13, tmp24;
 
@@ -35,8 +36,8 @@ namespace idg {
                 }
             }
 
-            state_fft_shift[1] = powerSensor->read();
-            report->update_fft_shift(state_fft_shift[0], state_fft_shift[1]);
+            states[1] = powerSensor->read();
+            report->update_fft_shift(states[0], states[1]);
         }
 
         void KernelsInstance::scale(
