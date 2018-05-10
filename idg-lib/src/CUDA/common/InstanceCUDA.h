@@ -276,12 +276,13 @@ namespace idg {
                     static void report_adder(CUstream, CUresult, void *userData);
                     static void report_splitter(CUstream, CUresult, void *userData);
                     static void report_scaler(CUstream, CUresult, void *userData);
-                    PowerRecord *records_gridder[2];
-                    PowerRecord *records_degridder[2];
-                    PowerRecord *records_subgrid_fft[2];
-                    PowerRecord *records_adder[2];
-                    PowerRecord *records_splitter[2];
-                    PowerRecord *records_scaler[2];
+                    static void report_job(CUstream, CUresult, void *userData);
+
+                public:
+                    void enqueue_report(
+                        cu::Stream &stream,
+                        int nr_timesteps,
+                        int nr_subgrids);
             };
 
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d);

@@ -199,6 +199,7 @@ namespace idg {
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
+                    cu::Stream  reportStream;
 
                     // Copy static data structures
                     if (local_id == 0) {
@@ -218,6 +219,7 @@ namespace idg {
                     cu::Event inputReady;
                     cu::Event outputFree;
                     cu::Event outputReady;
+                    cu::Event adderFinished;
 
                     // Power measurement
                     if (local_id == 0) {
@@ -274,6 +276,8 @@ namespace idg {
                             dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids,
                                 auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size));
                             dtohstream.record(outputFree);
+
+                            device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
                         }
 
                         outputFree.synchronize();
@@ -284,12 +288,7 @@ namespace idg {
                             cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids, grid.data());
                         }
 
-                        #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
+                        dtohstream.record(adderFinished);
                     } // end for bl
 
                     // Wait for all jobs to finish
@@ -484,16 +483,11 @@ namespace idg {
         					dtohstream.waitEvent(outputReady);
                             dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
         					dtohstream.record(outputFree);
+
+                            device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
                         }
 
                         outputFree.synchronize();
-
-                        #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish

@@ -58,16 +58,6 @@ namespace idg {
 
                 // Initialize power sensor
                 powerSensor = get_power_sensor(sensor_device, device_nr);
-
-                // Initialize power records
-                for (int i = 0; i < 2; i++) {
-                    records_gridder[i] = new PowerRecord();
-                    records_degridder[i] = new PowerRecord();
-                    records_subgrid_fft[i] = new PowerRecord();
-                    records_adder[i] = new PowerRecord();
-                    records_splitter[i] = new PowerRecord();
-                    records_scaler[i] = new PowerRecord();
-                }
             }
 
             // Destructor
@@ -85,14 +75,6 @@ namespace idg {
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
-                for (int i = 0; i < 2; i++) {
-                    delete records_gridder[i];
-                    delete records_degridder[i];
-                    delete records_subgrid_fft[i];
-                    delete records_adder[i];
-                    delete records_splitter[i];
-                    delete records_scaler[i];
-                }
                 delete device;
                 delete context;
                 delete powerSensor;
@@ -317,58 +299,81 @@ namespace idg {
                 record.enqueue(stream);
             }
 
+            typedef struct {
+                PowerRecord *start;
+                PowerRecord *end;
+                Report *report;
+            } UpdateData;
+
+            UpdateData* get_update_data(
+                PowerSensor *sensor,
+                Report *report)
+            {
+                UpdateData *data = new UpdateData();
+                data->start      = new PowerRecord(sensor);
+                data->end        = new PowerRecord(sensor);
+                data->report     = report;
+                return data;
+            }
+
             void InstanceCUDA::report_gridder(CUstream, CUresult, void *userData)
             {
-                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
-                PowerRecord* start = instance->records_gridder[0];
-                PowerRecord* end   = instance->records_gridder[1];
-                Report *report     = instance->report;
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
                 report->update_gridder(start->state, end->state);
+                delete start; delete end; delete data;
             }
 
             void InstanceCUDA::report_degridder(CUstream, CUresult, void *userData)
             {
-                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
-                PowerRecord* start = instance->records_degridder[0];
-                PowerRecord* end   = instance->records_degridder[1];
-                Report *report     = instance->report;
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
                 report->update_degridder(start->state, end->state);
+                delete start; delete end; delete data;
             }
 
             void InstanceCUDA::report_adder(CUstream, CUresult, void *userData)
             {
-                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
-                PowerRecord* start = instance->records_adder[0];
-                PowerRecord* end   = instance->records_adder[1];
-                Report *report     = instance->report;
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
                 report->update_adder(start->state, end->state);
+                delete start; delete end; delete data;
             }
 
             void InstanceCUDA::report_splitter(CUstream, CUresult, void *userData)
             {
-                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
-                PowerRecord* start = instance->records_splitter[0];
-                PowerRecord* end   = instance->records_splitter[1];
-                Report *report     = instance->report;
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
                 report->update_splitter(start->state, end->state);
+                delete start; delete end; delete data;
             }
 
             void InstanceCUDA::report_scaler(CUstream, CUresult, void *userData)
             {
-                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
-                PowerRecord* start = instance->records_scaler[0];
-                PowerRecord* end   = instance->records_scaler[1];
-                Report *report     = instance->report;
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
                 report->update_scaler(start->state, end->state);
+                delete start; delete end; delete data;
             }
 
             void InstanceCUDA::report_subgrid_fft(CUstream, CUresult, void *userData)
             {
-                InstanceCUDA *instance = static_cast<InstanceCUDA*>(userData);
-                PowerRecord* start = instance->records_subgrid_fft[0];
-                PowerRecord* end   = instance->records_subgrid_fft[1];
-                Report *report     = instance->report;
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
                 report->update_subgrid_fft(start->state, end->state);
+                delete start; delete end; delete data;
             }
 
             void InstanceCUDA::launch_gridder(
@@ -393,10 +398,11 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
-                measure(*records_gridder[0], *executestream);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_gridder, grid, block_gridder, 0, parameters);
-                measure(*records_gridder[1], *executestream);
-                executestream->addCallback((CUstreamCallback) &report_gridder, this);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_gridder, data);
             }
 
             void InstanceCUDA::launch_degridder(
@@ -421,10 +427,11 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
-                measure(*records_degridder[0], *executestream);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_degridder, grid, block_degridder, 0, parameters);
-                measure(*records_degridder[1], *executestream);
-                executestream->addCallback((CUstreamCallback) &report_degridder, this);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_degridder, data);
             }
 
             void InstanceCUDA::plan_fft(
@@ -464,7 +471,8 @@ namespace idg {
                 cu::DeviceMemory& d_data,
                 DomainAtoDomainB direction)
             {
-                measure(*records_subgrid_fft[0], *executestream);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
 
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
@@ -483,8 +491,8 @@ namespace idg {
                     fft_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
 
-                measure(*records_subgrid_fft[1], *executestream);
-                executestream->addCallback((CUstreamCallback) &report_subgrid_fft, this);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_subgrid_fft, data);
             }
 
              void InstanceCUDA::launch_fft_unified(
@@ -597,7 +605,39 @@ namespace idg {
             {
                 const void *parameters[] = { &subgrid_size, d_subgrid };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_scaler, grid, block_scaler, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_scaler, data);
+            }
+
+            typedef struct {
+                int nr_timesteps;
+                int nr_subgrids;
+                Report *report;
+            } ReportData;
+
+            void InstanceCUDA::report_job(CUstream, CUresult, void *userData)
+            {
+                ReportData *data = static_cast<ReportData*>(userData);
+                int nr_timesteps = data->nr_timesteps;
+                int nr_subgrids = data->nr_subgrids;
+                Report *report = data->report;
+                report->print(nr_timesteps, nr_subgrids);
+                delete data;
+            }
+
+            void InstanceCUDA::enqueue_report(
+                cu::Stream &stream,
+                int nr_timesteps,
+                int nr_subgrids)
+            {
+                ReportData *data = new ReportData();
+                data->nr_timesteps = nr_timesteps;
+                data->nr_subgrids = nr_subgrids;
+                data->report = report;
+                stream.addCallback((CUstreamCallback) &report_job, data);
             }
 
 
