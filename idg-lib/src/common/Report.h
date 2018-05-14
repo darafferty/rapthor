@@ -26,6 +26,13 @@ namespace idg {
             int grid_size;
         };
 
+        struct Counters
+        {
+            int total_nr_subgrids     = 0;
+            int total_nr_timesteps    = 0;
+            int total_nr_visibilities = 0;
+        };
+
         public:
             Report(
                 const int nr_channels  = 0,
@@ -189,6 +196,38 @@ namespace idg {
                 update(state_output, startState, endState);
             }
 
+            void update_device(
+                powersensor::State& startState,
+                powersensor::State& endState,
+                int id = 0)
+            {
+                if (states_device.size() <= id) {
+                    State state;
+                    states_device.push_back(state);
+                }
+                update(states_device[id], startState, endState);
+            }
+
+            void update_devices(
+                std::vector<powersensor::State> start,
+                std::vector<powersensor::State> end)
+            {
+                assert(start.size() == end.size());
+                for (int d = 0; d < start.size(); d++) {
+                    update_device(start[d], end[d], d);
+                }
+            }
+
+            void update_total(
+                int nr_subgrids,
+                int nr_timesteps,
+                int nr_visibilities)
+            {
+                counters.total_nr_subgrids     += nr_subgrids;
+                counters.total_nr_timesteps    += nr_timesteps;
+                counters.total_nr_visibilities += nr_visibilities;
+            }
+
             void print(
                 int nr_timesteps,
                 int nr_subgrids,
@@ -290,13 +329,22 @@ namespace idg {
                 int nr_timesteps = 0,
                 int nr_subgrids = 0)
             {
+                if (nr_timesteps == 0) {
+                    nr_timesteps = counters.total_nr_timesteps;
+                }
+                if (nr_subgrids == 0) {
+                    nr_subgrids = counters.total_nr_subgrids;
+                }
                 print(nr_timesteps, nr_subgrids, true, prefix);
             }
 
             void print_visibilities(
                 const std::string name,
-                int nr_visibilities)
+                int nr_visibilities = 0)
             {
+                if (nr_visibilities == 0) {
+                    nr_visibilities = counters.total_nr_visibilities;
+                }
                 auxiliary::report_visibilities(
                     prefix + name,
                     state_host.total_seconds,
@@ -325,6 +373,19 @@ namespace idg {
                 assert(start.size() == end.size());
                 for (int i = 0; i < start.size(); i++) {
                     print_device(start[i], end[i], i);
+                }
+            }
+
+            void print_devices()
+            {
+                for (int i = 0; i < states_device.size(); i++) {
+                    State state = states_device[i];
+                    std::stringstream name;
+                    name << prefix << auxiliary::name_device;
+                    if (states_device.size() > 1) {
+                       name <<  i;
+                    }
+                    auxiliary::report(name.str().c_str(), state.total_seconds, state.total_joules, 0, 0);
                 }
             }
 
@@ -367,6 +428,11 @@ namespace idg {
                 state_fft_scale   = state_zero;
                 state_input       = state_zero;
                 state_output      = state_zero;
+                states_device.clear();
+
+                counters.total_nr_subgrids     = 0;
+                counters.total_nr_timesteps    = 0;
+                counters.total_nr_visibilities = 0;
             }
 
         private:
@@ -415,6 +481,9 @@ namespace idg {
             State state_fft_scale;
             State state_input;
             State state_output;
+            std::vector<State> states_device;
+
+            Counters counters;
     };
 
 } // end namespace idg

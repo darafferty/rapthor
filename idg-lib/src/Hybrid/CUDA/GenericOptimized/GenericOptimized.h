@@ -17,19 +17,6 @@ namespace idg {
                     virtual bool supports_wstack_degridding() { return cpuProxy->supports_wstack_degridding(); }
 
                 private:
-                    void initialize_memory(
-                        const Plan& plan,
-                        const std::vector<int> jobsize,
-                        const int nr_streams,
-                        const int nr_baselines,
-                        const int nr_timesteps,
-                        const int nr_channels,
-                        const int nr_stations,
-                        const int nr_timeslots,
-                        const int subgrid_size,
-                        void *visibilities,
-                        void *uvw);
-
                     virtual void do_gridding(
                         const Plan& plan,
                         const float w_step, // in lambda
@@ -63,6 +50,44 @@ namespace idg {
                     virtual void do_transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
+
+                    void initialize_memory(
+                        const Plan& plan,
+                        const std::vector<int> jobsize,
+                        const int nr_streams,
+                        const int nr_baselines,
+                        const int nr_timesteps,
+                        const int nr_channels,
+                        const int nr_stations,
+                        const int nr_timeslots,
+                        const int subgrid_size,
+                        void *visibilities,
+                        void *uvw);
+
+                    void initialize_gridding(
+                        const float cell_size,
+                        const unsigned int kernel_size,
+                        const unsigned int subgrid_size,
+                        const Array1D<float>& frequencies,
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        Grid& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal);
+
+                    void run_gridding(
+                        const Plan& plan,
+                        const float w_step,
+                        const float cell_size,
+                        const unsigned int subgrid_size,
+                        const unsigned int nr_stations,
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        Grid& grid);
+
+                    void finish_gridding();
 
                 protected:
                     powersensor::PowerSensor* hostPowerSensor;

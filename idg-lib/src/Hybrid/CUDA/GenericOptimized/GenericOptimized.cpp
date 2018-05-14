@@ -104,11 +104,9 @@ namespace idg {
             } // end initialize_memory
 
 
-            void GenericOptimized::do_gridding(
-                const Plan& plan,
-                const float w_step, // in lambda
+            void GenericOptimized::initialize_gridding(
                 const float cell_size,
-                const unsigned int kernel_size, // full width in pixels
+                const unsigned int kernel_size,
                 const unsigned int subgrid_size,
                 const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
@@ -119,12 +117,6 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
-                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Checks arguments
@@ -147,6 +139,68 @@ namespace idg {
                 auto nr_w_layers     = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
 
+                // Initialize devices
+                for (int d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.set_context();
+                    device.set_report(report);
+
+                    // Device memory
+                    cu::Stream&       htodstream    = device.get_htod_stream();
+                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
+                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
+                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+
+                    // Host memory
+                    device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                    device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                }
+
+                // Initialize report
+                report.initialize(nr_channels, subgrid_size, grid_size);
+                cpuProxy->get_kernels().set_report(report);
+            }
+
+            void GenericOptimized::finish_gridding() {
+                for (int d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.get_htod_stream().synchronize();
+                    device.get_execute_stream().synchronize();
+                    device.get_dtoh_stream().synchronize();
+                }
+
+                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                report.print_total();
+                report.print_devices();
+                report.print_visibilities(auxiliary::name_gridding);
+                std::clog << std::endl;
+                #endif
+                report.reset();
+            }
+
+            void GenericOptimized::run_gridding(
+                const Plan& plan,
+                const float w_step,
+                const float cell_size,
+                const unsigned int subgrid_size,
+                const unsigned int nr_stations,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                Grid& grid)
+            {
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+
+                // Arguments
+                auto nr_baselines    = visibilities.get_z_dim();
+                auto nr_timesteps    = visibilities.get_y_dim();
+                auto nr_channels     = visibilities.get_x_dim();
+                auto grid_size       = grid.get_x_dim();
+                auto nr_w_layers     = grid.get_z_dim();
+                auto image_size      = cell_size * grid_size;
+
                 // Configuration
                 const int nr_devices = get_num_devices();
                 const int nr_streams = 3;
@@ -155,14 +209,23 @@ namespace idg {
                 const Metadata *metadata  = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
-                // Initialize memory
-                initialize_memory(
-                    plan, jobsize_, nr_streams,
-                    nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size,
-                    visibilities.data(), uvw.data());
+                // Initialize memory/fft
+                for (int d = 0; d < nr_devices; d++) {
+                    InstanceCUDA& device  = get_device(d);
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d]);
+
+                    for (int t = 0; t < nr_streams; t++) {
+                        device.get_device_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
+                        device.get_device_uvw(t, jobsize_[d], nr_timesteps);
+                        device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
+                        device.get_device_metadata(t, max_nr_subgrids);
+                        device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
+                    }
+
+                    device.plan_fft(subgrid_size, max_nr_subgrids);
+                }
 
                 // Performance measurements
-                report.initialize(nr_channels, subgrid_size, grid_size);
                 std::vector<State> startStates(nr_devices+1);
                 std::vector<State> endStates(nr_devices+1);
                 startStates[nr_devices] = hostPowerSensor->read();
@@ -183,7 +246,6 @@ namespace idg {
                     // Initialize device
                     InstanceCUDA& device  = get_device(device_id);
                     device.set_context();
-                    device.set_report(report);
 
                     // Load memory objects
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
@@ -200,19 +262,6 @@ namespace idg {
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
                     cu::Stream  reportStream;
-
-                    // Copy static data structures
-                    if (local_id == 0) {
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        htodstream.synchronize();
-                    }
-
-                    // Create FFT plan
-                    if (local_id == 0) {
-                        device.plan_fft(subgrid_size, max_nr_subgrids);
-                    }
 
                     // Events
                     cu::Event inputFree;
@@ -239,9 +288,6 @@ namespace idg {
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
-
-                        // Power measurement
-                        cpuKernels.set_report(report);
 
                         #pragma omp critical (lock)
                         {
@@ -302,18 +348,62 @@ namespace idg {
 
                 // End timing
                 endStates[nr_devices] = hostPowerSensor->read();
-                report.update_host(startStates[nr_devices], endStates[nr_devices]);
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auto total_nr_subgrids        = plan.get_nr_subgrids();
-                auto total_nr_timesteps       = plan.get_nr_timesteps();
-                auto total_nr_visibilities    = plan.get_nr_visibilities();
-                report.print_total(total_nr_timesteps, total_nr_subgrids);
+                // Update report
+                report.update_host(startStates[nr_devices], endStates[nr_devices]);
                 startStates.pop_back(); endStates.pop_back();
-                report.print_devices(startStates, endStates);
-                report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
-                std::clog << std::endl;
+                report.update_devices(startStates, endStates);
+                auto total_nr_subgrids     = plan.get_nr_subgrids();
+                auto total_nr_timesteps    = plan.get_nr_timesteps();
+                auto total_nr_visibilities = plan.get_nr_visibilities();
+                report.update_total(total_nr_subgrids, total_nr_timesteps, total_nr_visibilities);
+            }
+
+            void GenericOptimized::do_gridding(
+                const Plan& plan,
+                const float w_step, // in lambda
+                const float cell_size,
+                const unsigned int kernel_size, // full width in pixels
+                const unsigned int subgrid_size,
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                Grid& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
+            {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
                 #endif
+
+                auto nr_stations = aterms.get_z_dim();
+
+                initialize_gridding(
+                    cell_size,
+                    kernel_size,
+                    subgrid_size,
+                    frequencies,
+                    visibilities,
+                    uvw,
+                    baselines,
+                    grid,
+                    aterms,
+                    aterms_offsets,
+                    spheroidal);
+
+                run_gridding(
+                        plan,
+                        w_step,
+                        cell_size,
+                        subgrid_size,
+                        nr_stations,
+                        visibilities,
+                        uvw,
+                        grid);
+
+                finish_gridding();
             } // end gridding
 
 
