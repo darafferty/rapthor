@@ -54,15 +54,6 @@ namespace api {
         // exclude auto-correlations
         if (antenna1 == antenna2) return;
 
-        for(int ch=0; ch < get_frequencies_size(); ch++)
-        {
-            #pragma omp simd
-            for(int pol = 0; pol < 4; pol++)
-            {
-                visibilities[ch*4+pol] = visibilities[ch*4+pol] * weights[ch*4+pol];
-            }
-        }
-
         int    local_time = timeIndex - m_timeStartThisBatch;
         size_t local_bl   = baseline_index(antenna1, antenna2);
 

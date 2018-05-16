@@ -495,6 +495,8 @@ namespace api {
     void BufferSetImpl::finalize_compute_avg_beam()
     {
         m_matrix_beam = std::make_shared<std::vector<std::complex<float>>>(m_average_beam);
+        m_do_compute_avg_beam = false;
+        m_do_gridding = true;
     }
 
 } // namespace api
