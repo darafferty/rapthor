@@ -381,7 +381,7 @@ namespace api {
                     // accurately for small values of l and m
                     const float tmp = (l * l) + (m * m);
                     const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
-                    const float phase = 2*M_PI*n*w_offset;
+                    const float phase = -2*M_PI*n*w_offset;
 
                     // Compute phasor
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
