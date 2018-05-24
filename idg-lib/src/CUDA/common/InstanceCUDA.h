@@ -250,6 +250,9 @@ namespace idg {
                     std::vector<cu::DeviceMemory*> d_metadata_;
                     std::vector<cu::DeviceMemory*> d_subgrids_;
 
+                    // Misc host memory
+                    std::vector<cu::HostMemory*> h_misc_;
+
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
 
