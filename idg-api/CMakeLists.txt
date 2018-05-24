@@ -57,6 +57,8 @@ endif()
 
 include_directories (${IDG_INCLUDE_DIR})
 
+include_directories(external)
+
 # Use LAPACK headers
 find_package(LAPACKE)
 include_directories (${LAPACK_INCLUDE_DIR})

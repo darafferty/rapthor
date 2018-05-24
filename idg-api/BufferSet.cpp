@@ -7,8 +7,23 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+
+#if defined(HAVE_MKL)
+    #include <mkl_lapacke.h>
+#else
+    // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
+    #include <complex.h>
+    #define lapack_complex_float    float _Complex
+    #define lapack_complex_double   double _Complex
+    // End workaround
+    #include <lapacke.h>
+#endif
+
 #include "taper.h"
 #include "idg-fft.h"
+#include "npy.hpp"
+
+
 
 namespace idg {
 namespace api {
@@ -165,18 +180,18 @@ namespace api {
 
         m_subgridsize = int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency)/8.0))*8;
 
-        m_avg_aterm_correction = Array4D<std::complex<float>>(m_subgridsize, m_subgridsize, 4, 4);
-        m_avg_aterm_correction.init(0.0);
-        for (size_t i = 0; i < m_subgridsize; i++)
-        {
-            for (size_t j = 0; j < m_subgridsize; j++)
-            {
-                for (size_t k = 0; k < 4; k++)
-                {
-                    m_avg_aterm_correction(i,j,k,k) = 1.0;
-                }
-            }
-        }
+//         m_avg_aterm_correction = Array4D<std::complex<float>>(m_subgridsize, m_subgridsize, 4, 4);
+//         m_avg_aterm_correction.init(0.0);
+//         for (size_t i = 0; i < m_subgridsize; i++)
+//         {
+//             for (size_t j = 0; j < m_subgridsize; j++)
+//             {
+//                 for (size_t k = 0; k < 4; k++)
+//                 {
+//                     m_avg_aterm_correction(i,j,k,k) = 1.0;
+//                 }
+//             }
+//         }
 
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
 
@@ -495,9 +510,35 @@ namespace api {
     void BufferSetImpl::finalize_compute_avg_beam()
     {
         m_matrix_beam = std::make_shared<std::vector<std::complex<float>>>(m_average_beam);
+        std::cout << "m_average_beam.data(): " << m_average_beam.data() << std::endl;
+        std::cout << "m_matrix_beam.data(): " << m_matrix_beam->data() << std::endl;
+
         m_do_compute_avg_beam = false;
         m_do_gridding = true;
+
+        const long unsigned leshape [] = {m_subgridsize, m_subgridsize,4,4};
+
+        npy::SaveArrayAsNumpy("beam.npy", false, 4, leshape, *m_matrix_beam);
+        for (int i = 0; i < m_subgridsize * m_subgridsize; i++)
+        {
+            std::complex<float> *data = m_matrix_beam->data() + i*16;
+            int ipiv[4];
+            LAPACKE_cgetrf( LAPACK_COL_MAJOR, 4, 4, (lapack_complex_float*) data, 4, ipiv);
+            LAPACKE_cgetri( LAPACK_COL_MAJOR, 4, (lapack_complex_float*) data, 4, ipiv);
+        }
+
+        m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
+
+        npy::SaveArrayAsNumpy("beam_inv.npy", false, 4, leshape, *m_matrix_beam);
+
     }
+
+    void BufferSetImpl::set_matrix_beam(std::shared_ptr<std::vector<std::complex<float>>> matrix_beam)
+    {
+        m_matrix_beam = matrix_beam;
+        m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
+    }
+
 
 } // namespace api
 } // namespace idg

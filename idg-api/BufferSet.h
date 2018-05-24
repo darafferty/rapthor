@@ -63,10 +63,10 @@ namespace api {
 
         virtual void init_compute_avg_beam(compute_flags flag) = 0;
         virtual void finalize_compute_avg_beam() = 0;
-        virtual std::shared_ptr<std::vector<std::complex<float>>> get_avg_scalar_beam() const = 0;
-        virtual std::shared_ptr<std::vector<std::complex<float>>> get_avg_matrix_beam() const = 0;
-        virtual void set_avg_scalar_beam(std::shared_ptr<std::complex<float>>) = 0;
-        virtual void set_avg_matrix_beam(std::shared_ptr<std::complex<float>>) = 0;
+        virtual std::shared_ptr<std::vector<float>> get_scalar_beam() const = 0;
+        virtual std::shared_ptr<std::vector<std::complex<float>>> get_matrix_beam() const = 0;
+        virtual void set_scalar_beam(std::shared_ptr<std::vector<float>>) = 0;
+        virtual void set_matrix_beam(std::shared_ptr<std::vector<std::complex<float>>>) = 0;
 
 
     protected:

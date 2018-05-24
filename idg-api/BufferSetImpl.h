@@ -49,10 +49,10 @@ namespace api {
         virtual void set_apply_aterm(bool do_apply) { m_apply_aterm = do_apply; }
         virtual void init_compute_avg_beam(compute_flags flag);
         virtual void finalize_compute_avg_beam();
-        virtual std::shared_ptr<std::vector<std::complex<float>>> get_avg_scalar_beam() const {}
-        virtual std::shared_ptr<std::vector<std::complex<float>>> get_avg_matrix_beam() const {return m_matrix_beam;}
-        virtual void set_avg_scalar_beam(std::shared_ptr<std::complex<float>>) {}
-        virtual void set_avg_matrix_beam(std::shared_ptr<std::complex<float>>) {}
+        virtual std::shared_ptr<std::vector<float>> get_scalar_beam() const {return m_scalar_beam;}
+        virtual std::shared_ptr<std::vector<std::complex<float>>> get_matrix_beam() const {return m_matrix_beam;}
+        virtual void set_scalar_beam(std::shared_ptr<std::vector<float>> scalar_beam) {m_scalar_beam = scalar_beam;}
+        virtual void set_matrix_beam(std::shared_ptr<std::vector<std::complex<float>>> matrix_beam);
 
     private:
 
@@ -80,6 +80,7 @@ namespace api {
         std::vector<float> m_taper_subgrid;
         std::vector<float> m_taper_grid;
         std::vector<std::complex<float>> m_average_beam;
+        std::shared_ptr<std::vector<float>> m_scalar_beam;
         std::shared_ptr<std::vector<std::complex<float>>> m_matrix_beam;
         Array4D<std::complex<float>> m_avg_aterm_correction;
         Grid m_grid;
