@@ -89,6 +89,9 @@ namespace idg {
             // number of timesteps for baselines b1 to b1+n-1
             int get_nr_timesteps(int baseline, int n) const;
 
+            // max number of timesteps for 1 baseline
+            int get_max_nr_timesteps() const;
+
             // total number of visibilities
             int get_nr_visibilities() const;
 
