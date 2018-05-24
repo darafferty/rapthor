@@ -24,7 +24,8 @@ namespace idg {
                 d_visibilities_(),
                 d_uvw_(),
                 d_subgrids_(),
-                d_metadata_()
+                d_metadata_(),
+                h_misc_()
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -46,6 +47,7 @@ namespace idg {
                 d_grid         = NULL;
                 fft_plan_bulk  = NULL;
                 fft_plan_misc  = NULL;
+                fft_plan_grid  = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -67,9 +69,11 @@ namespace idg {
                 delete htodstream;
                 delete dtohstream;
                 free_device_memory();
+                for (cu::HostMemory *memory : h_misc_) { delete memory; }
                 for (cu::Module *module : mModules) { delete module; }
                 if (fft_plan_bulk) { delete fft_plan_bulk; }
                 if (fft_plan_misc) { delete fft_plan_misc; }
+                if (fft_plan_grid) { delete fft_plan_grid; }
                 delete function_gridder;
                 delete function_degridder;
                 delete function_scaler;
@@ -299,6 +303,93 @@ namespace idg {
                 record.enqueue(stream);
             }
 
+            typedef struct {
+                PowerRecord *start;
+                PowerRecord *end;
+                Report *report;
+            } UpdateData;
+
+            UpdateData* get_update_data(
+                PowerSensor *sensor,
+                Report *report)
+            {
+                UpdateData *data = new UpdateData();
+                data->start      = new PowerRecord(sensor);
+                data->end        = new PowerRecord(sensor);
+                data->report     = report;
+                return data;
+            }
+
+            void InstanceCUDA::report_gridder(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_gridder(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
+            void InstanceCUDA::report_degridder(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_degridder(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
+            void InstanceCUDA::report_adder(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_adder(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
+            void InstanceCUDA::report_splitter(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_splitter(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
+            void InstanceCUDA::report_scaler(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_scaler(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
+            void InstanceCUDA::report_subgrid_fft(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_subgrid_fft(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
+            void InstanceCUDA::report_grid_fft(CUstream, CUresult, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                report->update_grid_fft(start->state, end->state);
+                delete start; delete end; delete data;
+            }
+
             void InstanceCUDA::launch_gridder(
                 int nr_subgrids,
                 int grid_size,
@@ -321,7 +412,11 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_gridder, grid, block_gridder, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_gridder, data);
             }
 
             void InstanceCUDA::launch_degridder(
@@ -346,7 +441,46 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_degridder, grid, block_degridder, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_degridder, data);
+            }
+
+            void InstanceCUDA::launch_grid_fft(
+                cu::DeviceMemory& d_data,
+                int grid_size,
+                DomainAtoDomainB direction)
+            {
+                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                // Plan FFT
+                if (grid_size != fft_grid_size) {
+                    if (fft_plan_grid) {
+                        delete fft_plan_grid;
+                    }
+                    fft_grid_size = grid_size;
+                    fft_plan_grid = new cufft::C2C_2D(grid_size, grid_size);
+                    fft_plan_grid->setStream(*executestream);
+                }
+
+                // Get arguments
+                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
+
+                // Enqueue start of measurement
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
+
+                // Enqueue fft for every correlation
+                for (int i = 0; i < NR_CORRELATIONS; i++) {
+                    fft_plan_grid->execute(data_ptr, data_ptr, sign);
+                    data_ptr += grid_size * grid_size;
+                }
+
+                // Enqueue end of measurement
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_grid_fft, data);
             }
 
             void InstanceCUDA::plan_fft(
@@ -386,6 +520,9 @@ namespace idg {
                 cu::DeviceMemory& d_data,
                 DomainAtoDomainB direction)
             {
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
+
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
@@ -402,6 +539,9 @@ namespace idg {
                     fft_plan_misc->setStream(*executestream);
                     fft_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
+
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_subgrid_fft, data);
             }
 
              void InstanceCUDA::launch_fft_unified(
@@ -514,7 +654,39 @@ namespace idg {
             {
                 const void *parameters[] = { &subgrid_size, d_subgrid };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_scaler, grid, block_scaler, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_scaler, data);
+            }
+
+            typedef struct {
+                int nr_timesteps;
+                int nr_subgrids;
+                Report *report;
+            } ReportData;
+
+            void InstanceCUDA::report_job(CUstream, CUresult, void *userData)
+            {
+                ReportData *data = static_cast<ReportData*>(userData);
+                int nr_timesteps = data->nr_timesteps;
+                int nr_subgrids = data->nr_subgrids;
+                Report *report = data->report;
+                report->print(nr_timesteps, nr_subgrids);
+                delete data;
+            }
+
+            void InstanceCUDA::enqueue_report(
+                cu::Stream &stream,
+                int nr_timesteps,
+                int nr_subgrids)
+            {
+                ReportData *data = new ReportData();
+                data->nr_timesteps = nr_timesteps;
+                data->nr_subgrids = nr_subgrids;
+                data->report = report;
+                stream.addCallback((CUstreamCallback) &report_job, data);
             }
 
 
@@ -550,36 +722,6 @@ namespace idg {
                     memory->resize(size);
                 }
                 return memory;
-            }
-
-            cu::HostMemory& InstanceCUDA::get_host_visibilities(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                unsigned int nr_channels,
-                void *ptr)
-            {
-                auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(ptr, size, h_visibilities);
-                return *h_visibilities;
-            }
-
-            cu::HostMemory& InstanceCUDA::get_host_uvw(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                void *ptr)
-            {
-                auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(ptr, size, h_uvw);
-                return *h_uvw;
-            }
-
-            cu::HostMemory& InstanceCUDA::get_host_grid(
-                unsigned int grid_size,
-                void *ptr)
-            {
-                auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = ptr == NULL ? reuse_memory(size, h_grid) : reuse_memory(ptr, size, h_grid);
-                return *h_grid;
             }
 
             cu::DeviceMemory& InstanceCUDA::get_device_grid(
@@ -686,6 +828,76 @@ namespace idg {
             {
                 auto size = auxiliary::sizeof_metadata(nr_subgrids);
                 return *reuse_memory(d_metadata_, id, size);
+            }
+
+           /*
+             *  Memory management for large (host) buffers
+             *      Maintains a history of previously allocated
+             *      memory objects so that multiple buffers can be
+             *      used in round-robin fashion without the need
+             *      to re-allocate page-locked memory every invocation
+             */
+            template<typename T>
+            T* reuse_memory(
+                std::vector<T*>& memories,
+                uint64_t size,
+                void* ptr)
+            {
+                // detect whether this pointer is used before
+                for (int i = 0; i < memories.size(); i++) {
+                    T* m = memories[i];
+                    void *m_ptr = m->get();
+                    uint64_t m_size = m->size();
+
+                    // same pointer, smaller or equal size
+                    if (ptr == m_ptr && size <= m_size) {
+                        // the memory can safely be reused
+                        return m;
+                    }
+
+                    // check pointer aliasing
+                    if ((((size_t) ptr + size) < (size_t) m_ptr) || (size_t) ptr > ((size_t) m_ptr + m_size)) {
+                        // pointer outside of current memory
+                    } else {
+                        // overlap between current memory
+                        throw std::runtime_error("pointer aliasing detected");
+                    }
+                }
+
+                // create new memory
+                T* m = new T(ptr, size);
+                memories.push_back(m);
+                return m;
+            }
+
+            cu::HostMemory& InstanceCUDA::get_host_grid(
+                unsigned int grid_size,
+                void *ptr)
+            {
+                auto size = auxiliary::sizeof_grid(grid_size);
+                h_grid = ptr == NULL ? reuse_memory(size, h_grid) : reuse_memory(h_misc_, size, ptr);
+                return *h_grid;
+            }
+
+            cu::HostMemory& InstanceCUDA::get_host_visibilities(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels,
+                void *ptr)
+            {
+                auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                h_visibilities = reuse_memory(h_misc_, size, ptr);
+                return *h_visibilities;
+            }
+
+            cu::HostMemory& InstanceCUDA::get_host_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                void *ptr)
+            {
+                auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
+                h_uvw = reuse_memory(h_misc_, size, ptr);
+                return *h_uvw;
             }
 
             /*

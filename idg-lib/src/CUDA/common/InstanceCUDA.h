@@ -69,6 +69,11 @@ namespace idg {
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
+                    void launch_grid_fft(
+                        cu::DeviceMemory& d_data,
+                        int size,
+                        DomainAtoDomainB direction);
+
                     void plan_fft(
                         int size, int batch);
 
@@ -245,11 +250,11 @@ namespace idg {
                     std::vector<cu::DeviceMemory*> d_metadata_;
                     std::vector<cu::DeviceMemory*> d_subgrids_;
 
+                    // Misc host memory
+                    std::vector<cu::HostMemory*> h_misc_;
+
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
-
-                    // Power sensor private to this InstanceCUDA
-                    powersensor::PowerSensor *powerSensor;
 
                 protected:
                     dim3 block_gridder;
@@ -262,13 +267,32 @@ namespace idg {
                     int batch_degridder;
                     int tile_size_grid;
 
-                    // FFT kernel
+                    // Grid FFT
+                    int fft_grid_size;
+                    cufft::C2C_2D *fft_plan_grid;
+
+                    // Subgrid FFT
                     const int fft_bulk = 1024;
                     int fft_batch;
                     int fft_size;
                     cufft::C2C_2D *fft_plan_bulk;
                     cufft::C2C_2D *fft_plan_misc;
 
+                    // Performance reporting
+                    static void report_gridder(CUstream, CUresult, void *userData);
+                    static void report_degridder(CUstream, CUresult, void *userData);
+                    static void report_subgrid_fft(CUstream, CUresult, void *userData);
+                    static void report_grid_fft(CUstream, CUresult, void *userData);
+                    static void report_adder(CUstream, CUresult, void *userData);
+                    static void report_splitter(CUstream, CUresult, void *userData);
+                    static void report_scaler(CUstream, CUresult, void *userData);
+                    static void report_job(CUstream, CUresult, void *userData);
+
+                public:
+                    void enqueue_report(
+                        cu::Stream &stream,
+                        int nr_timesteps,
+                        int nr_subgrids);
             };
 
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d);

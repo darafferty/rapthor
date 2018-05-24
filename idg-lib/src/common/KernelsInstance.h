@@ -3,6 +3,9 @@
 
 #include <cassert>
 
+#include "PowerSensor.h"
+#include "Report.h"
+
 #include "idg-common.h"
 
 
@@ -16,7 +19,7 @@ namespace idg {
                     Misc math routines
                 */
                 void shift(
-                    Array3D<std::complex<float>>& data) const;
+                    Array3D<std::complex<float>>& data);
 
                 void scale(
                     Array3D<std::complex<float>>& data,
@@ -32,8 +35,19 @@ namespace idg {
                     const Grid& grid_src,
                           Grid& grid_dst) const;
 
+                /*
+                    Performance reporting
+                */
+            public:
+                void set_report(Report& report_) { report = &report_; }
+
+            protected:
+                Report* report = NULL;
+                powersensor::PowerSensor* powerSensor;
+
         }; // end class KernelsInstance
 
     } // namespace kernel
 } // namespace idg
+
 #endif

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert> // assert
+#include <algorithm> // max_element
 #include <memory.h> // memcpy
 
 #include "Plan.h"
@@ -426,6 +427,12 @@ namespace idg {
             baseline);
         auto end   = next(begin, n);
         return accumulate(begin, end, 0);
+    }
+
+    int Plan::get_max_nr_timesteps() const {
+        return *max_element(
+            total_nr_timesteps_per_baseline.begin(),
+            total_nr_timesteps_per_baseline.end());
     }
 
     int Plan::get_nr_visibilities() const {

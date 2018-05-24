@@ -115,7 +115,8 @@ namespace idg {
                 device.set_context();
 
                 // Performance measurements
-                Report report(0, 0, grid_size);
+                report.initialize(0, 0, grid_size);
+                device.set_report(report);
                 PowerRecord powerRecords[2];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
@@ -233,7 +234,7 @@ namespace idg {
                     visibilities.data(), uvw.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -273,6 +274,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                         htodstream.synchronize();
+                        device.set_report(report);
                     }
 
                     // Create FFT plan
@@ -466,7 +468,7 @@ namespace idg {
                     visibilities.data(), uvw.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -506,6 +508,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                         htodstream.synchronize();
+                        device.set_report(report);
                     }
 
                     // Create FFT plan

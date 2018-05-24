@@ -62,6 +62,13 @@ namespace idg {
                         void *data,
                         int direction);
 
+                     void run_subgrid_fft(
+                        int grid_size,
+                        int size,
+                        int batch,
+                        void *data,
+                        int direction);
+
                     void run_adder(
                         int nr_subgrids,
                         int grid_size,
@@ -116,7 +123,6 @@ namespace idg {
                     runtime::Function *function_splitter;
                     runtime::Function *function_adder_wstack;
                     runtime::Function *function_splitter_wstack;
-
             };
 
             // Jobsize

@@ -138,8 +138,10 @@ namespace idg {
                 auto bytes_grid = auxiliary::sizeof_grid(grid_size);
 
                 // Print amount of bytes required
+                #if defined(DEBUG)
                 std::clog << "Bytes required for grid: " << bytes_grid << std::endl;
                 std::clog << "Bytes required for jobs: " << bytes_required << std::endl;
+                #endif
 
                 // Adjust jobsize to amount of available device memory
                 int nr_devices = devices.size();
@@ -151,16 +153,22 @@ namespace idg {
 
                     // Print device number
                     if (nr_devices > 1) {
+                        #if defined(DEBUG)
                         std::clog << "GPU " << i << ", ";
+                        #endif
                     }
 
                     // Get amount of memory available on device
                     auto bytes_free = device->get_device().get_total_memory();
+                    #if defined(DEBUG)
                     std::clog << "Bytes free: " << bytes_free << std::endl;
+                    #endif
 
                     // Print reserved memory
                     if (fraction_reserved > 0) {
+                        #if defined(DEBUG)
                         std::clog << "Bytes reserved: " << (long) (bytes_free * fraction_reserved) << std::endl;
+                        #endif
                     }
 
                     // Check whether the grid and minimal jobs fit at all
@@ -178,7 +186,9 @@ namespace idg {
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
 
                     // Print jobsize
+                    #if defined(DEBUG)
                     printf("Jobsize: %d\n", jobsize[i]);
+                    #endif
                 }
 
                 return jobsize;

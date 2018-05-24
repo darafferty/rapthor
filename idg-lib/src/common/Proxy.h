@@ -11,6 +11,7 @@
 #include "ProxyInfo.h"
 #include "Types.h"
 #include "Plan.h"
+#include "Report.h"
 
 namespace idg {
     enum DomainAtoDomainB {
@@ -268,6 +269,9 @@ namespace idg {
 
             private:
                 std::complex<float>* grid_ptr = NULL;
+
+            protected:
+                Report report;
 
         }; // end class Proxy
 

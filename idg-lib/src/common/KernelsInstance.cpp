@@ -4,12 +4,15 @@ namespace idg {
     namespace kernel {
 
         void KernelsInstance::shift(
-            Array3D<std::complex<float>>& data) const
+            Array3D<std::complex<float>>& data)
         {
             int nr_polarizations = data.get_z_dim();
             int height = data.get_y_dim();
             int width = data.get_x_dim();
             assert(height == width);
+
+            powersensor::State states[2];
+            states[0] = powerSensor->read();
 
             std::complex<float> tmp13, tmp24;
 
@@ -32,6 +35,9 @@ namespace idg {
                      }
                 }
             }
+
+            states[1] = powerSensor->read();
+            report->update_fft_shift(states[0], states[1]);
         }
 
         void KernelsInstance::scale(

@@ -4,6 +4,12 @@ namespace idg {
     namespace kernel {
         namespace cuda {
 
+            PowerRecord::PowerRecord() {};
+
+            PowerRecord::PowerRecord(
+                powersensor::PowerSensor *sensor) :
+                sensor(sensor) {}
+
             void PowerRecord::enqueue(cu::Stream &stream) {
                 stream.record(event);
                 stream.addCallback((CUstreamCallback) &PowerRecord::getPower, this);
