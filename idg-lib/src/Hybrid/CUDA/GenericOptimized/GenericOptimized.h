@@ -3,6 +3,11 @@
 
 #include "idg-hybrid-cuda.h"
 
+namespace cu {
+    class Stream;
+    class Event;
+}
+
 namespace idg {
     namespace proxy {
         namespace hybrid {
@@ -65,16 +70,14 @@ namespace idg {
                         void *uvw);
 
                     void initialize_gridding(
+                        const Plan& plan,
                         const float cell_size,
                         const unsigned int kernel_size,
                         const unsigned int subgrid_size,
+                        const unsigned int grid_size,
                         const Array1D<float>& frequencies,
-                        const Array3D<Visibility<std::complex<float>>>& visibilities,
-                        const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                        const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal);
 
                     void run_gridding(
@@ -83,6 +86,7 @@ namespace idg {
                         const float cell_size,
                         const unsigned int subgrid_size,
                         const unsigned int nr_stations,
+                        const Array1D<float>& wavenumbers,
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
                         Grid& grid);
@@ -92,6 +96,19 @@ namespace idg {
                 protected:
                     powersensor::PowerSensor* hostPowerSensor;
                     idg::proxy::cpu::CPU* cpuProxy;
+                    cu::Stream* hostStream;
+
+                    /*
+                     * Asynchronous gridding state
+                     */
+                    std::vector<cu::Event*> inputFree;
+                    std::vector<cu::Event*> inputReady;
+                    std::vector<cu::Event*> outputFree;
+                    std::vector<cu::Event*> outputReady;
+                    std::vector<cu::Event*> adderFinished;
+                    int global_id = 0;
+                    std::vector<int> planned_max_nr_subgrids;
+                    powersensor::State hostStartState;
 
             }; // class GenericOptimized
 
