@@ -30,6 +30,13 @@ find_library(
     HINTS ENV LD_LIBRARY_PATH
 )
 
+# CUDA NVTX
+find_library(
+    CUDA_NVTX_LIBRARY
+    NAMES nvToolsExt
+    HINTS ENV LD_LIBRARY_PATH
+)
+
 # Find CUDA include directory
 get_filename_component(CUDA_LIB_DIR ${CUDA_CUDART_LIBRARY} PATH)
 get_filename_component(_CUDA_INCLUDE_DIR ${CUDA_LIB_DIR}/../include ABSOLUTE)

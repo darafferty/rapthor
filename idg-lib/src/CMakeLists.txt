@@ -139,7 +139,7 @@ add_library (
 set(
     LINK_LIBRARIES
     idg-common
-    ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY} ${NVML_LIBRARY}
+    ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY} ${CUDA_NVTX_LIBRARY}
 )
 
 target_link_libraries (
