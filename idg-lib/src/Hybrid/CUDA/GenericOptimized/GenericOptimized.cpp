@@ -172,7 +172,6 @@ namespace idg {
                 State hostEndState = hostPowerSensor->read();
                 report.update_host(hostStartState, hostEndState);
 
-
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 report.print_total();
                 report.print_devices();
@@ -470,19 +469,17 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                for (int i = 0; i < 5; i++) {
-                    printf("### Run gridding\n");
-                    run_gridding(
-                            plan,
-                            w_step,
-                            cell_size,
-                            subgrid_size,
-                            nr_stations,
-                            wavenumbers,
-                            visibilities,
-                            uvw,
-                            grid);
-                }
+                printf("### Run gridding\n");
+                run_gridding(
+                        plan,
+                        w_step,
+                        cell_size,
+                        subgrid_size,
+                        nr_stations,
+                        wavenumbers,
+                        visibilities,
+                        uvw,
+                        grid);
 
                 printf("### Finish gridding\n");
                 finish_gridding();
