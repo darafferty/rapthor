@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include <cudaProfiler.h>
+#include <nvToolsExt.h>
 
 #include <algorithm> // max_element
 
@@ -48,7 +49,7 @@ namespace idg {
                     inputReady.push_back(new cu::Event());
                     outputFree.push_back(new cu::Event());
                     outputReady.push_back(new cu::Event());
-                    adderFinished.push_back(new cu::Event());
+                    hostFinished.push_back(new cu::Event());
                 }
             }
 
@@ -79,7 +80,7 @@ namespace idg {
             /*
              * Gridding
              */
-            void GenericOptimized::initialize_gridding(
+            void GenericOptimized::initialize(
                 const Plan& plan,
                 const float cell_size,
                 const unsigned int kernel_size,
@@ -156,9 +157,10 @@ namespace idg {
 
                 // Host power measurement
                 hostStartState = hostPowerSensor->read();
-            } // end initialize_gridding
+            } // end initialize
 
-            void GenericOptimized::finish_gridding()
+            void GenericOptimized::finish(
+                std::string name)
             {
                 for (int d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
@@ -175,7 +177,7 @@ namespace idg {
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 report.print_total();
                 report.print_devices();
-                report.print_visibilities(auxiliary::name_gridding);
+                report.print_visibilities(name);
                 std::clog << std::endl;
                 #endif
                 report.reset();
@@ -191,16 +193,18 @@ namespace idg {
                 void *subgrids;
                 void *grid;
                 InstanceCPU *cpuKernels;
-            } AdderData;
+            } HostData;
 
             void run_adder(CUstream, CUresult, void *userData)
             {
-                AdderData *data = static_cast<AdderData*>(userData);
+                HostData *data = static_cast<HostData*>(userData);
 
                 // Add subgrids to grid
+                nvtxRangePushA("run_adder_wstack");
                 data->cpuKernels->run_adder_wstack(
-                        data->nr_subgrids, data->grid_size, data->subgrid_size, data->nr_w_layers,
-                        data->metadata, data->subgrids, data->grid);
+                    data->nr_subgrids, data->grid_size, data->subgrid_size, data->nr_w_layers,
+                    data->metadata, data->subgrids, data->grid);
+                nvtxRangePop();
 
                 // Delete state
                 delete data;
@@ -217,30 +221,61 @@ namespace idg {
                 void *subgrids_ptr,
                 void *grid_ptr)
             {
-                // Copy metadata
-                auto sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids);
-                void *metadata_copy = malloc(sizeof_metadata);
-                memcpy(metadata_copy, metadata_ptr, sizeof_metadata);
-
-                // Copy subgrids
-                auto sizeof_subgrids = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size, NR_CORRELATIONS);
-                void *subgrids_copy = malloc(sizeof_subgrids);
-                memcpy(subgrids_copy, subgrids_ptr, sizeof_subgrids);
-
-                // Fill AdderData struct
-                AdderData *data  = new AdderData();
+                // Fill HostData struct
+                HostData *data     = new HostData();
                 data->nr_subgrids  = nr_subgrids;
                 data->grid_size    = grid_size;
                 data->subgrid_size = subgrid_size;
                 data->nr_w_layers  = nr_w_layers;
-                data->metadata     = metadata_copy;
+                data->metadata     = metadata_ptr;
                 data->subgrids     = subgrids_ptr;
                 data->grid         = grid_ptr;
                 data->cpuKernels   = cpuKernels;
 
                 // Enqueue adder kernel
                 stream->addCallback((CUstreamCallback) &run_adder, data);
+            } // end enqueue_adder
+
+            void run_splitter(CUstream, CUresult, void *userData)
+            {
+                HostData *data = static_cast<HostData*>(userData);
+
+                // Extract subgrids from grid
+                nvtxRangePushA("run_splitter_wstack");
+                data->cpuKernels->run_splitter_wstack(
+                    data->nr_subgrids, data->grid_size, data->subgrid_size,
+                    data->metadata, data->subgrids, data->grid);
+                nvtxRangePop();
+
+                // Delete state
+                delete data;
             }
+
+            void enqueue_splitter(
+                cu::Stream *stream,
+                InstanceCPU *cpuKernels,
+                const int nr_subgrids,
+                const int grid_size,
+                const int subgrid_size,
+                const int nr_w_layers,
+                void *metadata_ptr,
+                void *subgrids_ptr,
+                void *grid_ptr)
+            {
+                // Fill HostData struct
+                HostData *data     = new HostData();
+                data->nr_subgrids  = nr_subgrids;
+                data->grid_size    = grid_size;
+                data->subgrid_size = subgrid_size;
+                data->nr_w_layers  = nr_w_layers;
+                data->metadata     = metadata_ptr;
+                data->subgrids     = subgrids_ptr;
+                data->grid         = grid_ptr;
+                data->cpuKernels   = cpuKernels;
+
+                // Enqueue splitter kernel
+                stream->addCallback((CUstreamCallback) &run_splitter, data);
+            } // end enqueue_splitter
 
             typedef struct {
                 Report *report;
@@ -320,7 +355,7 @@ namespace idg {
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
                 for (int d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
-                            jobsize_[d] *= 0.9;
+                        jobsize_[d] *= 0.9;
                     }
                 }
 
@@ -340,7 +375,7 @@ namespace idg {
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
-                    jobsize   = jobsize_[device_id];
+                    jobsize       = jobsize_[device_id];
 
                     unsigned int first_bl, last_bl, current_nr_baselines;
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
@@ -364,7 +399,7 @@ namespace idg {
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    // Wait for previous (any) work to finish
+                    // Wait for previous work (if any) to finish
                     htodstream.synchronize();
 
                     // Initialize iteration
@@ -411,7 +446,7 @@ namespace idg {
                     // Launch adder on cpu
                     hostStream->waitEvent(*outputFree[global_id]);
                     enqueue_adder(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids.get(), grid.data());
-                    hostStream->record(*adderFinished[global_id]);
+                    hostStream->record(*hostFinished[global_id]);
 
                     global_id = global_id < (nr_devices * nr_streams) - 1 ? global_id + 1 : 0;
                 } // end for bl
@@ -456,7 +491,7 @@ namespace idg {
                     grid, aterms, aterms_offsets, spheroidal);
 
                 printf("### Initialize gridding\n");
-                initialize_gridding(
+                initialize(
                     plan,
                     cell_size,
                     kernel_size,
@@ -471,65 +506,170 @@ namespace idg {
 
                 printf("### Run gridding\n");
                 run_gridding(
-                        plan,
-                        w_step,
-                        cell_size,
-                        subgrid_size,
-                        nr_stations,
-                        wavenumbers,
-                        visibilities,
-                        uvw,
-                        grid);
+                    plan,
+                    w_step,
+                    cell_size,
+                    subgrid_size,
+                    nr_stations,
+                    wavenumbers,
+                    visibilities,
+                    uvw,
+                    grid);
 
                 printf("### Finish gridding\n");
                 finish_gridding();
-            } // end gridding
+            } // end do_gridding
 
 
             /*
              * Degridding
              */
-            void GenericOptimized::initialize_memory(
+            void GenericOptimized::run_degridding(
                 const Plan& plan,
-                const std::vector<int> jobsize,
-                const int nr_streams,
-                const int nr_baselines,
-                const int nr_timesteps,
-                const int nr_channels,
-                const int nr_stations,
-                const int nr_timeslots,
-                const int subgrid_size,
-                void *visibilities,
-                void *uvw)
+                const float w_step,
+                const float cell_size,
+                const unsigned int subgrid_size,
+                const unsigned int nr_stations,
+                const Array1D<float>& wavenumbers,
+                Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Grid& grid)
             {
-                for (int d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    device.set_context();
-                    int max_jobsize = * max_element(begin(jobsize), end(jobsize));
-                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, max_jobsize);
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
-                    // Static memory
+                // Arguments
+                auto nr_baselines    = visibilities.get_z_dim();
+                auto nr_timesteps    = visibilities.get_y_dim();
+                auto nr_channels     = visibilities.get_x_dim();
+                auto grid_size       = grid.get_x_dim();
+                auto nr_w_layers     = grid.get_z_dim();
+                auto image_size      = cell_size * grid_size;
+
+                // Configuration
+                const int nr_devices = get_num_devices();
+                const int nr_streams = 3;
+
+                // Initialize metadata
+                const Metadata *metadata  = plan.get_metadata_ptr();
+                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+
+                // Page-lock host memory
+                InstanceCUDA& device = get_device(0);
+                device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+
+                // Copy wavenumbers
+                for (int d = 0; d < nr_devices; d++) {
+                    InstanceCUDA& device            = get_device(d);
                     cu::Stream&       htodstream    = device.get_htod_stream();
                     cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                }
 
-                    // Dynamic memory (per thread)
-                    for (int t = 0; t < nr_streams; t++) {
-                        device.get_device_visibilities(t, jobsize[d], nr_timesteps, nr_channels);
-                        device.get_device_uvw(t, jobsize[d], nr_timesteps);
-                        device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
-                        device.get_device_metadata(t, max_nr_subgrids);
-                        device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
-                    }
-
-                    // Host memory
-                    if (d == 0) {
-                        device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
-                        device.get_host_uvw(nr_baselines, nr_timesteps, uvw);
+                // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
+                for (int d = 0; d < nr_devices; d++) {
+                    while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
+                        jobsize_[d] *= 0.9;
                     }
                 }
-            } // end initialize_memory
+
+                // Performance measurements
+                StateData *stateData = new StateData();
+                stateData->report = (Report *) &report;
+                for (int d = 0; d < nr_devices; d++) {
+                    stateData->devices.push_back(&get_device(d));
+                }
+
+                // Enqueue start device measurement
+                hostStream->addCallback((CUstreamCallback) &start_device_measurement, stateData);
+
+                int jobsize = jobsize_[0];
+
+                // Iterate all jobs
+                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                    int device_id = global_id / nr_streams;
+                    int local_id  = global_id % nr_streams;
+                    jobsize       = jobsize_[device_id];
+
+                    unsigned int first_bl, last_bl, current_nr_baselines;
+                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                    if (current_nr_baselines == 0) continue;
+
+                    // Load device
+                    InstanceCUDA& device  = get_device(device_id);
+
+                    // Load memory objects
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                    cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
+                    cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
+                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
+                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
+                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
+                    cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
+
+                    // Load streams
+                    cu::Stream& executestream = device.get_execute_stream();
+                    cu::Stream& htodstream    = device.get_htod_stream();
+                    cu::Stream& dtohstream    = device.get_dtoh_stream();
+
+                    // Wait for previous work (if any) to finish
+                    outputFree[global_id]->synchronize();
+
+                    // Initialize iteration
+                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                    void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
+                    void *uvw_ptr             = uvw.data(first_bl, 0);
+                    void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
+
+                    // Launch splitter on cpu
+                    hostStream->waitEvent(*inputFree[global_id]);
+                    enqueue_splitter(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids.get(), grid.data());
+                    hostStream->record(*hostFinished[global_id]);
+
+                    // Copy input data to device
+                    htodstream.waitEvent(*inputFree[global_id]);
+                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
+                        auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
+                    htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
+                        auxiliary::sizeof_metadata(current_nr_subgrids));
+                    htodstream.waitEvent(*hostFinished[global_id]);
+                    htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids,
+                        auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size));
+                    htodstream.record(*inputReady[global_id]);
+
+                    // Launch FFT
+                    executestream.waitEvent(*inputReady[global_id]);
+                    device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+
+                    // Launch degridder kernel
+                    executestream.waitEvent(*outputFree[global_id]);
+                    device.launch_degridder(
+                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                    executestream.record(*outputReady[global_id]);
+                    executestream.record(*inputFree[global_id]);
+
+                    // Copy visibilities to host
+                    dtohstream.waitEvent(*outputReady[global_id]);
+                    dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                    dtohstream.record(*outputFree[global_id]);
+
+                    device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
+
+                    global_id = global_id < (nr_devices * nr_streams) - 1 ? global_id + 1 : 0;
+                } // end for bl
+
+                // Enqueue end device measurement
+                hostStream->addCallback((CUstreamCallback) &end_device_measurement, stateData);
+
+                // Update report
+                auto total_nr_subgrids     = plan.get_nr_subgrids();
+                auto total_nr_timesteps    = plan.get_nr_timesteps();
+                auto total_nr_visibilities = plan.get_nr_visibilities();
+                report.update_total(total_nr_subgrids, total_nr_timesteps, total_nr_visibilities);
+            } // end run_degridding
 
             void GenericOptimized::do_degridding(
                 const Plan& plan,
@@ -550,184 +690,45 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
-                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-
-                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-
-                // Checks arguments
-                if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
-                    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
-                }
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = visibilities.get_x_dim();
+                auto nr_stations  = aterms.get_z_dim();
+                auto grid_size    = grid.get_x_dim();
 
                 check_dimensions(
                     frequencies, visibilities, uvw, baselines,
                     grid, aterms, aterms_offsets, spheroidal);
 
-                // Arguments
-                auto nr_baselines    = visibilities.get_z_dim();
-                auto nr_timesteps    = visibilities.get_y_dim();
-                auto nr_channels     = visibilities.get_x_dim();
-                auto nr_stations     = aterms.get_z_dim();
-                auto nr_timeslots    = aterms.get_w_dim();
-                auto nr_correlations = grid.get_z_dim();
-                auto grid_size       = grid.get_x_dim();
-                auto image_size      = cell_size * grid_size;
+                printf("### Initialize degridding\n");
+                initialize(
+                    plan,
+                    cell_size,
+                    kernel_size,
+                    subgrid_size,
+                    grid_size,
+                    frequencies,
+                    baselines,
+                    aterms,
+                    spheroidal);
 
-                // Configuration
-                const int nr_devices = get_num_devices();
-                const int nr_streams = 3;
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                // Initialize metadata
-                const Metadata *metadata  = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                printf("### Run degridding\n");
+                run_degridding(
+                    plan,
+                    w_step,
+                    cell_size,
+                    subgrid_size,
+                    nr_stations,
+                    wavenumbers,
+                    visibilities,
+                    uvw,
+                    grid);
 
-                // Initialize memory
-                initialize_memory(
-                    plan, jobsize_, nr_streams,
-                    nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size,
-                    visibilities.data(), uvw.data());
-
-                // Performance measurements
-                report.initialize(nr_channels, subgrid_size, grid_size);
-                std::vector<State> startStates(nr_devices+1);
-                std::vector<State> endStates(nr_devices+1);
-                startStates[nr_devices] = hostPowerSensor->read();
-
-                // Locks
-                int locks[nr_devices];
-
-                omp_set_nested(true);
-                #pragma omp parallel num_threads(nr_devices * nr_streams)
-                {
-                    int global_id = omp_get_thread_num();
-                    int device_id = global_id / nr_streams;
-                    int local_id  = global_id % nr_streams;
-                    int jobsize   = jobsize_[device_id];
-                    int lock      = locks[device_id];
-                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-
-                    // Initialize device
-                    InstanceCUDA& device  = get_device(device_id);
-                    device.set_context();
-
-                    // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                    cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
-                    cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
-                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
-                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
-                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
-                    cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
-
-                    // Load streams
-                    cu::Stream& executestream = device.get_execute_stream();
-                    cu::Stream& htodstream    = device.get_htod_stream();
-                    cu::Stream& dtohstream    = device.get_dtoh_stream();
-
-                    // Copy static data structures
-                    if (local_id == 0) {
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        htodstream.synchronize();
-                    }
-
-                    // Create FFT plan
-                    if (local_id == 0) {
-                        device.plan_fft(subgrid_size, max_nr_subgrids);
-                    }
-
-                    // Events
-                    cu::Event inputFree;
-                    cu::Event outputFree;
-                    cu::Event inputReady;
-                    cu::Event outputReady;
-
-                    // Power measurement
-                    if (local_id == 0) {
-                        startStates[device_id] = device.measure();
-                    }
-
-                    #pragma omp barrier
-                    #pragma omp for schedule(dynamic)
-                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                        unsigned int first_bl, last_bl, current_nr_baselines;
-                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
-                        if (current_nr_baselines == 0) continue;
-
-                        // Initialize iteration
-                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                        void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
-                        void *uvw_ptr             = uvw.data(first_bl, 0);
-                        void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
-
-                        // Power measurement
-                        cpuKernels.set_report(report);
-
-                        // Extract subgrid from grid
-                        cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
-
-                        #pragma omp critical (lock)
-                        {
-                            // Copy input data to device
-                            htodstream.waitEvent(inputFree);
-                            htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids,
-                                auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size));
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
-                                auxiliary::sizeof_metadata(current_nr_subgrids));
-                            htodstream.record(inputReady);
-
-                            // Launch FFT
-                            executestream.waitEvent(inputReady);
-                            device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
-
-                            // Launch degridder kernel
-                            executestream.waitEvent(outputFree);
-                            device.launch_degridder(
-                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                            executestream.record(outputReady);
-                            executestream.record(inputFree);
-
-        					// Copy visibilities to host
-        					dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
-        					dtohstream.record(outputFree);
-
-                            device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
-                        }
-
-                        outputFree.synchronize();
-                    } // end for bl
-
-                    // Wait for all jobs to finish
-                    dtohstream.synchronize();
-
-                    // End power measurement
-                    if (local_id == 0) {
-                        endStates[device_id] = device.measure();
-                    }
-                } // end omp parallel
-
-                // End timing
-                endStates[nr_devices] = hostPowerSensor->read();
-                report.update_host(startStates[nr_devices], endStates[nr_devices]);
-
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                auto total_nr_subgrids          = plan.get_nr_subgrids();
-                auto total_nr_timesteps         = plan.get_nr_timesteps();
-                auto total_nr_visibilities      = plan.get_nr_visibilities();
-                report.print_total(total_nr_timesteps, total_nr_subgrids);
-                startStates.pop_back(); endStates.pop_back();
-                report.print_devices(startStates, endStates);
-                report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
-                std::clog << std::endl;
-                #endif
-            } // end degridding
+                printf("### Finish degridding\n");
+                finish_degridding();
+            } // end do_degridding
 
         } // namespace hybrid
     } // namespace proxy
