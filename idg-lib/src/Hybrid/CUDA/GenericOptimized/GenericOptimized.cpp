@@ -534,7 +534,7 @@ namespace idg {
                     spheroidal);
 
                 printf("### Finish gridding\n");
-                finish_gridding(grid);
+                finish_gridding();
             } // end do_gridding
 
 
@@ -755,7 +755,7 @@ namespace idg {
                     spheroidal);
 
                 printf("### Finish degridding\n");
-                finish_degridding(visibilities);
+                finish_degridding();
             } // end do_degridding
 
         } // namespace hybrid

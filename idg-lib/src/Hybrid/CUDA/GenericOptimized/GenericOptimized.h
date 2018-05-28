@@ -103,12 +103,10 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void finish_gridding(
-                        Grid& grid) override
+                    virtual void finish_gridding() override
                     { finish(auxiliary::name_gridding); };
 
-                    virtual void finish_degridding(
-                        Array3D<Visibility<std::complex<float>>>& visibilities) override
+                    virtual void finish_degridding() override
                     { finish(auxiliary::name_degridding); };
 
                 private:

@@ -244,12 +244,10 @@ namespace idg {
                     const Array2D<float>& spheroidal);
 
                 //! Dummy method
-                virtual void finish_gridding(
-                    Grid& grid) {};
+                virtual void finish_gridding() {};
 
                 //! Dummy method
-                virtual void finish_degridding(
-                    Array3D<Visibility<std::complex<float>>>& visibilities) {};
+                virtual void finish_degridding() {};
 
             private:
                 //! Degrid the visibilities from a uniform grid
