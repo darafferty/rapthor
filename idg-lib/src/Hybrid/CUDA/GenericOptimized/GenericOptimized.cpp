@@ -400,7 +400,7 @@ namespace idg {
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
                     // Wait for previous work (if any) to finish
-                    htodstream.synchronize();
+                    outputFree[global_id]->synchronize();
 
                     // Initialize iteration
                     auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
@@ -644,7 +644,6 @@ namespace idg {
                     device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
                     // Launch degridder kernel
-                    executestream.waitEvent(*outputFree[global_id]);
                     device.launch_degridder(
                         current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
