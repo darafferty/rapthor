@@ -146,6 +146,25 @@ namespace api {
                         m_aterm_offsets_array,
                         options);
 
+                    if (i == 0) {
+                        Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities[i];
+
+                        m_proxy->initialize(
+                            *plan,
+                            m_wStepInLambda,
+                            m_cellHeight,
+                            m_kernel_size,
+                            m_subgridSize,
+                            m_grouped_frequencies[i],
+                            visibilities_src,
+                            m_bufferUVW,
+                            m_bufferStationPairs,
+                            *m_grid,
+                            m_aterms_array,
+                            m_aterm_offsets_array,
+                            m_spheroidal);
+                    }
+
                     plans[i] = plan;
                     locks[i].unlock();
                 } // end for i
@@ -160,7 +179,7 @@ namespace api {
 
                     // Start flush
                     std::cout << "degridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
-                    m_proxy->degridding(
+                    m_proxy->run_degridding(
                         *plan,
                         m_wStepInLambda,
                         m_cellHeight,
@@ -183,11 +202,17 @@ namespace api {
                                     &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
                         }
                     }
-
-                    delete plan;
                 } // end for i
             } // end execute plans
         } // end omp parallel
+
+        // Wait for all plans to be executed
+        m_proxy->finish_degridding();
+
+        // Cleanup plans
+        for (int i = 0; i < nr_channel_groups; i++) {
+            delete plans[i];
+        }
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
