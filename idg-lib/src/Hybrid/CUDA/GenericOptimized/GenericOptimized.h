@@ -56,20 +56,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    void initialize_memory(
-                        const Plan& plan,
-                        const std::vector<int> jobsize,
-                        const int nr_streams,
-                        const int nr_baselines,
-                        const int nr_timesteps,
-                        const int nr_channels,
-                        const int nr_stations,
-                        const int nr_timeslots,
-                        const int subgrid_size,
-                        void *visibilities,
-                        void *uvw);
-
-                    void initialize_gridding(
+                    void initialize(
                         const Plan& plan,
                         const float cell_size,
                         const unsigned int kernel_size,
@@ -91,23 +78,38 @@ namespace idg {
                         const Array2D<UVWCoordinate<float>>& uvw,
                         Grid& grid);
 
-                    void finish_gridding();
+                    void run_degridding(
+                        const Plan& plan,
+                        const float w_step,
+                        const float cell_size,
+                        const unsigned int subgrid_size,
+                        const unsigned int nr_stations,
+                        const Array1D<float>& wavenumbers,
+                        Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Grid& grid);
+
+                    void finish_gridding() { finish(auxiliary::name_gridding); };
+                    void finish_degridding() { finish(auxiliary::name_degridding); };
+
+                private:
+                    void finish(std::string name);
 
                 protected:
                     powersensor::PowerSensor* hostPowerSensor;
                     idg::proxy::cpu::CPU* cpuProxy;
-                    cu::Stream* hostStream;
 
                     /*
-                     * Asynchronous gridding state
+                     * Asynchronous (de)gridding state
                      */
                     std::vector<cu::Event*> inputFree;
                     std::vector<cu::Event*> inputReady;
                     std::vector<cu::Event*> outputFree;
                     std::vector<cu::Event*> outputReady;
-                    std::vector<cu::Event*> adderFinished;
+                    std::vector<cu::Event*> hostFinished;
                     int global_id = 0;
                     std::vector<int> planned_max_nr_subgrids;
+                    cu::Stream* hostStream;
                     powersensor::State hostStartState;
 
             }; // class GenericOptimized
