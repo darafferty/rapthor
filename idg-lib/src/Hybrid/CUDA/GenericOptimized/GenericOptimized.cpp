@@ -82,13 +82,17 @@ namespace idg {
              */
             void GenericOptimized::initialize(
                 const Plan& plan,
+                const float w_step,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
-                const unsigned int grid_size,
-                const Array1D<float>& wavenumbers,
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
                 // Checks arguments
@@ -97,11 +101,12 @@ namespace idg {
                 }
 
                 // Arguments
-                auto nr_channels  = wavenumbers.get_x_dim();
+                auto nr_channels  = frequencies.get_x_dim();
                 auto nr_stations  = aterms.get_z_dim();
                 auto nr_timeslots = aterms.get_w_dim();
-                auto nr_baselines = plan.get_nr_baselines();
-                auto nr_timesteps = plan.get_max_nr_timesteps();
+                auto grid_size    = grid.get_x_dim();
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
 
                 // Initialize report
                 report.initialize(nr_channels, subgrid_size, grid_size);
@@ -314,12 +319,16 @@ namespace idg {
                 const Plan& plan,
                 const float w_step,
                 const float cell_size,
+                const unsigned int kernel_size,
                 const unsigned int subgrid_size,
-                const unsigned int nr_stations,
-                const Array1D<float>& wavenumbers,
+                const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
-                Grid& grid)
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                Grid& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
             {
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
@@ -327,6 +336,7 @@ namespace idg {
                 auto nr_baselines    = visibilities.get_z_dim();
                 auto nr_timesteps    = visibilities.get_y_dim();
                 auto nr_channels     = visibilities.get_x_dim();
+                auto nr_stations     = aterms.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
                 auto nr_w_layers     = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
@@ -345,6 +355,7 @@ namespace idg {
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
                 // Copy wavenumbers
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
                 for (int d = 0; d < nr_devices; d++) {
                     InstanceCUDA& device            = get_device(d);
                     cu::Stream&       htodstream    = device.get_htod_stream();
@@ -493,31 +504,37 @@ namespace idg {
                 printf("### Initialize gridding\n");
                 initialize(
                     plan,
+                    w_step,
                     cell_size,
                     kernel_size,
                     subgrid_size,
-                    grid_size,
                     frequencies,
+                    visibilities,
+                    uvw,
                     baselines,
+                    grid,
                     aterms,
+                    aterms_offsets,
                     spheroidal);
-
-                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 printf("### Run gridding\n");
                 run_gridding(
                     plan,
                     w_step,
                     cell_size,
+                    kernel_size,
                     subgrid_size,
-                    nr_stations,
-                    wavenumbers,
+                    frequencies,
                     visibilities,
                     uvw,
-                    grid);
+                    baselines,
+                    grid,
+                    aterms,
+                    aterms_offsets,
+                    spheroidal);
 
                 printf("### Finish gridding\n");
-                finish_gridding();
+                finish_gridding(grid);
             } // end do_gridding
 
 
@@ -528,12 +545,16 @@ namespace idg {
                 const Plan& plan,
                 const float w_step,
                 const float cell_size,
+                const unsigned int kernel_size,
                 const unsigned int subgrid_size,
-                const unsigned int nr_stations,
-                const Array1D<float>& wavenumbers,
+                const Array1D<float>& frequencies,
                 Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVWCoordinate<float>>& uvw,
-                const Grid& grid)
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Grid& grid,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal)
             {
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
@@ -541,6 +562,7 @@ namespace idg {
                 auto nr_baselines    = visibilities.get_z_dim();
                 auto nr_timesteps    = visibilities.get_y_dim();
                 auto nr_channels     = visibilities.get_x_dim();
+                auto nr_stations     = aterms.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
                 auto nr_w_layers     = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
@@ -559,6 +581,7 @@ namespace idg {
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
                 // Copy wavenumbers
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
                 for (int d = 0; d < nr_devices; d++) {
                     InstanceCUDA& device            = get_device(d);
                     cu::Stream&       htodstream    = device.get_htod_stream();
@@ -702,31 +725,37 @@ namespace idg {
                 printf("### Initialize degridding\n");
                 initialize(
                     plan,
+                    w_step,
                     cell_size,
                     kernel_size,
                     subgrid_size,
-                    grid_size,
                     frequencies,
+                    visibilities,
+                    uvw,
                     baselines,
+                    grid,
                     aterms,
+                    aterms_offsets,
                     spheroidal);
-
-                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 printf("### Run degridding\n");
                 run_degridding(
                     plan,
                     w_step,
                     cell_size,
+                    kernel_size,
                     subgrid_size,
-                    nr_stations,
-                    wavenumbers,
+                    frequencies,
                     visibilities,
                     uvw,
-                    grid);
+                    baselines,
+                    grid,
+                    aterms,
+                    aterms_offsets,
+                    spheroidal);
 
                 printf("### Finish degridding\n");
-                finish_degridding();
+                finish_degridding(visibilities);
             } // end do_degridding
 
         } // namespace hybrid

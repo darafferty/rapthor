@@ -56,41 +56,60 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    void initialize(
+                    virtual void initialize(
                         const Plan& plan,
+                        const float w_step,
                         const float cell_size,
                         const unsigned int kernel_size,
                         const unsigned int subgrid_size,
-                        const unsigned int grid_size,
                         const Array1D<float>& frequencies,
-                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                        const Array2D<float>& spheroidal);
-
-                    void run_gridding(
-                        const Plan& plan,
-                        const float w_step,
-                        const float cell_size,
-                        const unsigned int subgrid_size,
-                        const unsigned int nr_stations,
-                        const Array1D<float>& wavenumbers,
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
-                        Grid& grid);
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Grid& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
 
-                    void run_degridding(
+
+                    virtual void run_gridding(
                         const Plan& plan,
                         const float w_step,
                         const float cell_size,
+                        const unsigned int kernel_size,
                         const unsigned int subgrid_size,
-                        const unsigned int nr_stations,
-                        const Array1D<float>& wavenumbers,
+                        const Array1D<float>& frequencies,
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        Grid& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
+
+
+                    virtual void run_degridding(
+                        const Plan& plan,
+                        const float w_step,
+                        const float cell_size,
+                        const unsigned int kernel_size,
+                        const unsigned int subgrid_size,
+                        const Array1D<float>& frequencies,
                         Array3D<Visibility<std::complex<float>>>& visibilities,
                         const Array2D<UVWCoordinate<float>>& uvw,
-                        const Grid& grid);
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Grid& grid,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal) override;
 
-                    void finish_gridding() { finish(auxiliary::name_gridding); };
-                    void finish_degridding() { finish(auxiliary::name_degridding); };
+                    virtual void finish_gridding(
+                        Grid& grid) override
+                    { finish(auxiliary::name_gridding); };
+
+                    virtual void finish_degridding(
+                        Array3D<Visibility<std::complex<float>>>& visibilities) override
+                    { finish(auxiliary::name_degridding); };
 
                 private:
                     void finish(std::string name);
