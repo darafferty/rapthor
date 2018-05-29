@@ -19,6 +19,7 @@ namespace idg {
                                  FFTW_FORWARD,
                                  FFTW_ESTIMATE);
         }
+        ifftshift(m, n, data);
         fftwf_execute(plan);
         fftshift(m, n, data);
         fftwf_destroy_plan(plan);
@@ -53,8 +54,9 @@ namespace idg {
         #pragma omp parallel for private(tmp)
 	    for (size_t i = 0; i < batch; i++) {
             tmp = (fftwf_complex *) data + i * m * n;
-            fftwf_execute_dft(plan, tmp, tmp);
             ifftshift(m, n, tmp);
+            fftwf_execute_dft(plan, tmp, tmp);
+            fftshift(m, n, tmp);
         }
 
         fftwf_destroy_plan(plan);
@@ -75,6 +77,7 @@ namespace idg {
         }
         ifftshift(m, n, data);
         fftwf_execute(plan);
+        fftshift(m, n, data);
         fftwf_destroy_plan(plan);
     }
 
@@ -102,6 +105,7 @@ namespace idg {
             tmp = (fftwf_complex *) data + i * m * n;
             ifftshift(m, n, tmp);
             fftwf_execute_dft(plan, tmp, tmp);
+            fftshift(m, n, tmp);
         }
 
         fftwf_destroy_plan(plan);
@@ -123,7 +127,9 @@ namespace idg {
         plan = fftwf_plan_dft_r2c_2d(m, n,
                                      data_in, tmp,
                                      FFTW_ESTIMATE);
+        ifftshift(m, n, tmp);
         fftwf_execute(plan);
+        fftshift(m, n, tmp);
         fftwf_destroy_plan(plan);
     }
 
@@ -143,7 +149,9 @@ namespace idg {
         plan = fftwf_plan_dft_c2r_2d(m, n,
                                      tmp, data_out,
                                      FFTW_ESTIMATE);
+        ifftshift(m, n, tmp);
         fftwf_execute(plan);
+        fftshift(m, n, tmp);
         fftwf_destroy_plan(plan);
     }
 
