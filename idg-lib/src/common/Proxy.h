@@ -191,6 +191,64 @@ namespace idg {
                 virtual void free_grid(
                     Grid& grid);
 
+
+                /*
+                    High level asynchronous routines
+                */
+                //! Dummy method, does nothing
+                virtual void initialize(
+                    const Plan& plan,
+                    const float w_step,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const unsigned int subgrid_size,
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) {};
+
+                //! Dummy method, calls gridding()
+                virtual void run_gridding(
+                    const Plan& plan,
+                    const float w_step,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const unsigned int subgrid_size,
+                    const Array1D<float>& frequencies,
+                    const Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
+
+                //! Dummy method, calls degridding()
+                virtual void run_degridding(
+                    const Plan& plan,
+                    const float w_step,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const unsigned int subgrid_size,
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
+
+                //! Dummy method
+                virtual void finish_gridding() {};
+
+                //! Dummy method
+                virtual void finish_degridding() {};
+
             private:
                 //! Degrid the visibilities from a uniform grid
                 virtual void do_gridding(
