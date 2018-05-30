@@ -126,6 +126,25 @@ namespace api {
                         m_aterm_offsets_array,
                         options);
 
+                    if (i == 0) {
+                        Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
+
+                        m_proxy->initialize(
+                            *plan,
+                            m_wStepInLambda,
+                            m_cellHeight,
+                            m_kernel_size,
+                            m_subgridSize,
+                            m_grouped_frequencies[i],
+                            visibilities_src,
+                            m_bufferUVW2,
+                            m_bufferStationPairs2,
+                            *m_grid,
+                            m_aterms_array,
+                            m_aterm_offsets_array,
+                            m_spheroidal);
+                    }
+
                     plans[i] = plan;
                     locks[i].unlock();
                 } // end for i
@@ -151,7 +170,7 @@ namespace api {
                         visibilities_src.data(),
                         visibilities_src.bytes());
 
-                    m_proxy->gridding(
+                    m_proxy->run_gridding(
                         *plan,
                         m_wStepInLambda,
                         m_cellHeight,
@@ -165,11 +184,18 @@ namespace api {
                         m_aterms_array,
                         m_aterm_offsets_array,
                         m_spheroidal);
-
-                    delete plan;
                 } // end for i
             } // end execute plans
+
         } // end omp parallel
+
+        // Wait for all plans to be executed
+        m_proxy->finish_gridding();
+
+        // Cleanup plans
+        for (int i = 0; i < nr_channel_groups; i++) {
+            delete plans[i];
+        }
     }
 
     // Must be called whenever the buffer is full or no more data added
