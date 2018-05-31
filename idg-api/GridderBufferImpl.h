@@ -108,9 +108,9 @@ namespace api {
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs2;                         // BL
         std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities2;   // BL x TI x CH
         std::vector<Matrix2x2<std::complex<float>>> m_aterms2; // ST x SB x SB
-        std::vector<Matrix2x2<std::complex<float>>> m_aterms_squared2; // ST x SB x SB
         Array4D<float> m_buffer_weights;   // BL x TI x NR_CHANNELS x NR_POLARIZATIONS
         Array4D<float> m_buffer_weights2;   // BL x TI x NR_CHANNELS x NR_POLARIZATIONS
+        std::vector<unsigned int>  m_aterm_offsets2;
 
 
         std::thread m_flush_thread;
@@ -118,9 +118,11 @@ namespace api {
 
         // references to members of parent BufferSet
         std::vector<std::complex<float>> &m_average_beam;
+        Array4D<std::complex<float>> &m_default_aterm_correction;
         Array4D<std::complex<float>> &m_avg_aterm_correction;
         bool &m_do_gridding;
         bool &m_do_compute_avg_beam;
+        bool &m_apply_aterm;
     };
 
 } // namespace api

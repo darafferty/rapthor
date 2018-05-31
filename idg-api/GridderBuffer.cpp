@@ -23,14 +23,17 @@ namespace api {
           m_bufferStationPairs2(0),
           m_buffer_weights(0,0,0,0),
           m_buffer_weights2(0,0,0,0),
+          m_default_aterm_correction(bufferset->m_default_aterm_correction),
           m_avg_aterm_correction(bufferset->m_avg_aterm_correction),
           m_average_beam(bufferset->m_average_beam),
           m_do_gridding(bufferset->m_do_gridding),
-          m_do_compute_avg_beam(bufferset->m_do_compute_avg_beam)
+          m_do_compute_avg_beam(bufferset->m_do_compute_avg_beam),
+          m_apply_aterm(bufferset->m_apply_aterm)
     {
         #if defined(DEBUG)
         cout << __func__ << endl;
         #endif
+        m_aterm_offsets2 = m_default_aterm_offsets;
     }
 
 
@@ -100,8 +103,6 @@ namespace api {
 
     void GridderBufferImpl::flush_thread_worker()
     {
-        std::cout << "m_avg_aterm_correction: " << m_avg_aterm_correction(0,0,0,0) << std::endl;
-
         if (m_do_compute_avg_beam)
         {
             for (int n = 0; n < m_aterm_offsets2.size() - 1; n++)
@@ -169,32 +170,24 @@ namespace api {
                                     sum_of_weights[3] * conj(kp[ii+12]) * kp[jj+12];
                             }
                         }
-
-//                         m_average_beam[i*16     ] += sum_of_weights[0] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].xx);
-//                         m_average_beam[i*16 +  1] += sum_of_weights[1] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].xy);
-//                         m_average_beam[i*16 +  4] += sum_of_weights[0] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].yx);
-//                         m_average_beam[i*16 +  5] += sum_of_weights[1] * (aterms_squared[offset2 + i].xx * aterms_squared[offset1 + i].yy);
-//
-//                         m_average_beam[i*16 +  2] += sum_of_weights[2] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].xx);
-//                         m_average_beam[i*16 +  3] += sum_of_weights[3] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].xy);
-//                         m_average_beam[i*16 +  6] += sum_of_weights[2] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].yx);
-//                         m_average_beam[i*16 +  7] += sum_of_weights[3] * (aterms_squared[offset2 + i].yx * aterms_squared[offset1 + i].yy);
-//
-//                         m_average_beam[i*16 +  8] += sum_of_weights[0] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].xx);
-//                         m_average_beam[i*16 +  9] += sum_of_weights[1] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].xy);
-//                         m_average_beam[i*16 + 12] += sum_of_weights[0] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].yx);
-//                         m_average_beam[i*16 + 13] += sum_of_weights[1] * (aterms_squared[offset2 + i].xy * aterms_squared[offset1 + i].yy);
-//
-//                         m_average_beam[i*16 + 10] += sum_of_weights[2] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].xx);
-//                         m_average_beam[i*16 + 11] += sum_of_weights[3] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].xy);
-//                         m_average_beam[i*16 + 14] += sum_of_weights[2] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].yx);
-//                         m_average_beam[i*16 + 15] += sum_of_weights[3] * (aterms_squared[offset2 + i].yy * aterms_squared[offset1 + i].yy);
                     }
                 }
             }
         }
 
         if (!m_do_gridding) return;
+
+        Array4D<std::complex<float>> *aterm_correction;
+        if (m_apply_aterm)
+        {
+            aterm_correction = &m_avg_aterm_correction;
+        }
+        else
+        {
+            m_aterm_offsets_array = Array1D<unsigned int>(m_default_aterm_offsets.data(), m_default_aterm_offsets.size());
+            m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_default_aterms.data(), m_default_aterm_offsets.size()-1, m_nrStations, m_subgridsize, m_subgridsize);
+            aterm_correction = &m_default_aterm_correction;
+        }
 
         Plan::Options options;
 

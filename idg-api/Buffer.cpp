@@ -40,8 +40,8 @@ namespace api {
           m_cellHeight(0.0f),
           m_cellWidth(0.0f),
           m_kernel_size(0),
-          m_aterm_offsets(2),
-          m_aterm_offsets_array(2),
+          m_default_aterm_offsets(2),
+          m_aterm_offsets_array(0),
           m_frequencies(0),
           m_spheroidal(0,0),
           m_aterms_array(0,0,0,0),
@@ -52,9 +52,9 @@ namespace api {
         #if defined(DEBUG)
         cout << __func__ << endl;
         #endif
-        m_aterm_offsets[0] = 0;
-        m_aterm_offsets[1] = bufferTimesteps;
-        m_aterm_offsets2 = m_aterm_offsets;
+        m_default_aterm_offsets[0] = 0;
+        m_default_aterm_offsets[1] = bufferTimesteps;
+        m_aterm_offsets = m_default_aterm_offsets;
     }
 
     BufferImpl::~BufferImpl()
@@ -312,17 +312,18 @@ namespace api {
 
 
     void BufferImpl::init_default_aterm() {
-        m_aterms.resize(1*m_nrStations*m_subgridsize*m_subgridsize);
+        m_default_aterms.resize(1*m_nrStations*m_subgridsize*m_subgridsize);
         for (auto s = 0; s < m_nrStations; ++s) {
             for (auto y = 0; y < m_subgridsize; ++y) {
                 for (auto x = 0; x < m_subgridsize; ++x) {
                     size_t offset = m_subgridsize*m_subgridsize*s +
                                     m_subgridsize*y + x;
-                    m_aterms[offset] = {complex<float>(1), complex<float>(0),
-                                        complex<float>(0), complex<float>(1)};
+                    m_default_aterms[offset] = {complex<float>(1), complex<float>(0),
+                                                complex<float>(0), complex<float>(1)};
                 }
             }
         }
+        m_aterms = m_default_aterms;
     }
 
     // Set the a-term that starts validity at timeIndex
@@ -331,7 +332,6 @@ namespace api {
         const complex<float>* aterms)
     {
         int n_ants = m_nrStations;
-        int subgridsize = m_subgridsize;
         int local_time = timeIndex - m_timeStartThisBatch;
         size_t n_old_aterms = m_aterm_offsets.size()-1;
         size_t atermBlockSize = m_nrStations*m_subgridsize*m_subgridsize;

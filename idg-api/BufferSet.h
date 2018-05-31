@@ -52,7 +52,7 @@ namespace api {
         virtual DegridderBuffer* get_degridder(int i) = 0;
         virtual GridderBuffer* get_gridder(int i) = 0;
 
-        virtual void set_image(const double* image) = 0 ;
+        virtual void set_image(const double* image, bool do_scale = false) = 0 ;
         virtual void get_image(double* image) = 0;
         virtual void finished() = 0;
 
@@ -64,9 +64,9 @@ namespace api {
         virtual void init_compute_avg_beam(compute_flags flag) = 0;
         virtual void finalize_compute_avg_beam() = 0;
         virtual std::shared_ptr<std::vector<float>> get_scalar_beam() const = 0;
-        virtual std::shared_ptr<std::vector<std::complex<float>>> get_matrix_beam() const = 0;
+        virtual std::shared_ptr<std::vector<std::complex<float>>> get_matrix_inverse_beam() const = 0;
         virtual void set_scalar_beam(std::shared_ptr<std::vector<float>>) = 0;
-        virtual void set_matrix_beam(std::shared_ptr<std::vector<std::complex<float>>>) = 0;
+        virtual void set_matrix_inverse_beam(std::shared_ptr<std::vector<std::complex<float>>>) = 0;
 
 
     protected:

@@ -159,8 +159,8 @@ namespace api {
         float  m_cellWidth;
         float  m_wStepInLambda;
         float  m_kernel_size;
+        std::vector<unsigned int>  m_default_aterm_offsets;
         std::vector<unsigned int>  m_aterm_offsets;
-        std::vector<unsigned int>  m_aterm_offsets2;
         Array1D<unsigned int> m_aterm_offsets_array;
         proxy::Proxy* m_proxy;
 
@@ -169,6 +169,7 @@ namespace api {
         std::vector<Array1D<float>> m_grouped_frequencies;          // CH
         Array2D<float> m_spheroidal;                                     // SB x SB
         std::vector<Matrix2x2<std::complex<float>>> m_aterms;
+        std::vector<Matrix2x2<std::complex<float>>> m_default_aterms;
         Array4D<Matrix2x2<std::complex<float>>> m_aterms_array;     // ST x SB x SB
 
         Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
