@@ -860,7 +860,17 @@ namespace idg {
                         // pointer outside of current memory
                     } else {
                         // overlap between current memory
+                        #if 0
                         throw std::runtime_error("pointer aliasing detected");
+                        #else
+                        std::cerr << "pointer aliasing detected!" << std::endl;
+                        std::cerr << "  ptr: " << ptr << ", size: " << size << std::endl;
+                        std::cerr << "m_ptr: " << m_ptr << ", size: " << m_size << std::endl;
+                        std::cerr << "registering pointer without page-locking" << std::endl;
+                        T* m = new T(ptr, size, 0, false);
+                        memories.push_back(m);
+                        return m;
+                        #endif
                     }
                 }
 
