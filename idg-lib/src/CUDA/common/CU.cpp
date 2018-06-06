@@ -145,8 +145,8 @@ namespace cu {
         _ptr = ptr;
         if (register_memory) {
             checkCudaCall(cuMemHostRegister(ptr, size, _flags));
-            registered = false;
         }
+        registered = register_memory;
     }
 
     HostMemory::~HostMemory() {
