@@ -7,6 +7,8 @@
 
 #include <cuda.h>
 
+#include "idg-config.h"
+
 struct dim3;
 
 namespace cu {
