@@ -78,7 +78,7 @@ namespace cu {
     class HostMemory {
         public:
             HostMemory(size_t size, int flags = 0);
-            HostMemory(void *ptr, size_t size, int flags = 0);
+            HostMemory(void *ptr, size_t size, int flags = 0, bool register_memory = true);
             ~HostMemory();
 
             size_t capacity();

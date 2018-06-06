@@ -137,14 +137,16 @@ namespace cu {
         allocated = true;
     }
 
-    HostMemory::HostMemory(void *ptr, size_t size, int flags) {
+    HostMemory::HostMemory(void *ptr, size_t size, int flags, bool register_memory) {
         _capacity = size;
         _size = size;
         _flags = flags;
         assert(ptr != NULL);
-        checkCudaCall(cuMemHostRegister(ptr, size, _flags));
         _ptr = ptr;
-        registered = true;
+        if (register_memory) {
+            checkCudaCall(cuMemHostRegister(ptr, size, _flags));
+            registered = false;
+        }
     }
 
     HostMemory::~HostMemory() {
