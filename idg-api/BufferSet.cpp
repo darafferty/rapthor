@@ -314,8 +314,8 @@ namespace api {
                     m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
                     m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
                     // Stokes V
-                    m_grid(0,1,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
-                    m_grid(0,2,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
+                    m_grid(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
+                    m_grid(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
                 } // end for x
             } // end for y
         }
@@ -334,8 +334,8 @@ namespace api {
                     m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
                     m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
                     // Stokes V
-                    m_grid(0,1,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
-                    m_grid(0,2,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
+                    m_grid(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
+                    m_grid(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
                 } // end for x
             } // end for y
         }
@@ -463,7 +463,7 @@ namespace api {
             // Stokes U
             image[2*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).real() + m_grid(0,2,y+y0,x+x0).real());
             // Stokes V
-            image[3*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).imag() - m_grid(0,2,y+y0,x+x0).imag());
+            image[3*m_size*m_size + m_size*y+x] = 0.5 * (-m_grid(0,1,y+y0,x+x0).imag() + m_grid(0,2,y+y0,x+x0).imag());
             } // end for x
         } // end for y
         runtime_copy += omp_get_wtime();
