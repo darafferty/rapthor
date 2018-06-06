@@ -36,19 +36,10 @@ namespace api {
         Type architecture) :
         m_architecture(architecture),
         m_grid(0,0,0,0,0),
-        m_proxy(nullptr)
+        m_proxy(create_proxy())
     {}
 
-    proxy::Proxy* BufferSetImpl::get_proxy(int subgridsize)
-    {
-        if (m_proxies.count(subgridsize) == 0)
-        {
-            m_proxies[subgridsize] = create_proxy(subgridsize);
-        }
-        return m_proxies[subgridsize];
-    }
-
-    proxy::Proxy* BufferSetImpl::create_proxy(int subgridsize)
+    proxy::Proxy* BufferSetImpl::create_proxy()
     {
         proxy::Proxy* proxy;
         int nr_correlations = 4;
@@ -172,8 +163,6 @@ namespace api {
         m_uv_span_frequency = 24.0;
 
         m_subgridsize = int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency)/8.0))*8;
-
-        m_proxy = get_proxy(m_subgridsize);
 
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
 

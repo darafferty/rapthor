@@ -57,8 +57,7 @@ namespace api {
             std::complex<float> *grid = nullptr);
 
 
-        proxy::Proxy* get_proxy(int subgridsize);
-        proxy::Proxy* create_proxy(int subgridsize);
+        proxy::Proxy* create_proxy();
 
         Type m_architecture;
         proxy::Proxy* m_proxy;
