@@ -866,10 +866,10 @@ namespace idg {
                         std::cerr << "pointer aliasing detected!" << std::endl;
                         std::cerr << "  ptr: " << ptr << ", size: " << size << std::endl;
                         std::cerr << "m_ptr: " << m_ptr << ", size: " << m_size << std::endl;
-                        std::cerr << "registering pointer without page-locking" << std::endl;
-                        T* m = new T(ptr, size, 0, false);
-                        memories.push_back(m);
-                        return m;
+                        std::cerr << "unregistering offending pointer" << std::endl;
+                        delete m;
+                        memories.erase(memories.begin() + i);
+                        i--;
                         #endif
                     }
                 }
