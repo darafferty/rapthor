@@ -696,23 +696,6 @@ namespace idg {
              */
             template<typename T>
             T* reuse_memory(
-                void *ptr,
-                uint64_t size,
-                T* memory)
-            {
-                if (!memory) {
-                    memory = new T(ptr, size);
-                } else if (memory->get() != ptr) {
-                    delete memory;
-                    memory = new T(ptr, size);
-                } else {
-                    memory->resize(size);
-                }
-                return memory;
-            }
-
-            template<typename T>
-            T* reuse_memory(
                 uint64_t size,
                 T* memory)
             {
@@ -885,7 +868,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = ptr == NULL ? reuse_memory(size, h_grid) : reuse_memory(h_misc_, size, ptr);
+                h_grid = reuse_memory(h_misc_, size, ptr);
                 return *h_grid;
             }
 
