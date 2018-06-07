@@ -875,7 +875,7 @@ namespace idg {
                 }
 
                 // create new memory
-                T* m = new T(ptr, size);
+                T* m = ptr == NULL ? new T(size) : new T(ptr, size);
                 memories.push_back(m);
                 return m;
             }
