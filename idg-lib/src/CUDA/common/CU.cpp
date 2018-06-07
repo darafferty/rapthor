@@ -143,6 +143,9 @@ namespace cu {
         _flags = flags;
         assert(ptr != NULL);
         _ptr = ptr;
+        #if !defined(ENABLE_HOST_REGISTER)
+        register_memory = false;
+        #endif
         if (register_memory) {
             checkCudaCall(cuMemHostRegister(ptr, size, _flags));
         }
