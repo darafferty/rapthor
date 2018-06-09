@@ -82,11 +82,11 @@ void kernel_adder_wstack(
 
                     // Add subgrid value to grid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        int pol_idx = index_pol[pol];
+                        int pol_dst = index_pol[pol];
                         long dst_idx = index_grid(
-                            NR_POLARIZATIONS, grid_size, subgrid_w, pol_idx, y_dst, x_dst);
+                            NR_POLARIZATIONS, grid_size, subgrid_w, pol_dst, y_dst, x_dst);
                         long src_idx = index_subgrid(
-                            NR_POLARIZATIONS, subgrid_size, s, pol_idx, y_src, x_src);
+                            NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
                         idg::float2 value = phasor * subgrid[src_idx];
                         value = negative_w ? conj(value) : value;
                         grid[dst_idx] += value;
