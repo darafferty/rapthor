@@ -110,6 +110,7 @@ namespace idg {
                     { finish(auxiliary::name_degridding); };
 
                 private:
+                    void synchronize();
                     void finish(std::string name);
 
                 protected:

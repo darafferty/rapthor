@@ -80,6 +80,17 @@ namespace idg {
             /*
              * Gridding
              */
+            void GenericOptimized::synchronize() {
+                for (int d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.get_htod_stream().synchronize();
+                    device.get_execute_stream().synchronize();
+                    device.get_dtoh_stream().synchronize();
+                }
+
+                hostStream->synchronize();
+            }
+
             void GenericOptimized::initialize(
                 const Plan& plan,
                 const float w_step,
@@ -99,6 +110,8 @@ namespace idg {
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
+
+                synchronize();
 
                 // Arguments
                 auto nr_channels  = frequencies.get_x_dim();
@@ -167,14 +180,7 @@ namespace idg {
             void GenericOptimized::finish(
                 std::string name)
             {
-                for (int d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    device.get_htod_stream().synchronize();
-                    device.get_execute_stream().synchronize();
-                    device.get_dtoh_stream().synchronize();
-                }
-
-                hostStream->synchronize();
+                synchronize();
 
                 State hostEndState = hostPowerSensor->read();
                 report.update_host(hostStartState, hostEndState);
