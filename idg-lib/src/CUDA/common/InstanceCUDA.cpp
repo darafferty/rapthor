@@ -20,6 +20,8 @@ namespace idg {
                 KernelsInstance(),
                 mInfo(info),
                 mModules(5),
+                h_visibilities_(),
+                h_uvw_(),
                 h_subgrids_(),
                 d_visibilities_(),
                 d_uvw_(),
@@ -777,7 +779,26 @@ namespace idg {
                 return *reuse_memory(h_subgrids_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_visibilities(
+            cu::HostMemory& InstanceCUDA::get_host_visibilities(
+                unsigned int id,
+                unsigned int jobsize,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto size = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                return *reuse_memory(h_visibilities_, id, size);
+            }
+
+            cu::HostMemory& InstanceCUDA::get_host_uvw(
+                unsigned int id,
+                unsigned int jobsize,
+                unsigned int nr_timesteps)
+            {
+                auto size = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+                return *reuse_memory(h_uvw_, id, size);
+            }
+
+             cu::DeviceMemory& InstanceCUDA::get_device_visibilities(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps,

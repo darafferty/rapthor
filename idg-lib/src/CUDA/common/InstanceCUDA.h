@@ -158,6 +158,17 @@ namespace idg {
                         unsigned int nr_subgrids,
                         unsigned int subgrid_size);
 
+                    cu::HostMemory& get_host_visibilities(
+                        unsigned int id,
+                        unsigned int jobsize,
+                        unsigned int nr_timesteps,
+                        unsigned int nr_channels);
+
+                    cu::HostMemory& get_host_uvw(
+                        unsigned int id,
+                        unsigned int jobsize,
+                        unsigned int nr_timesteps);
+
                     cu::DeviceMemory& get_device_visibilities(
                         unsigned int id,
                         unsigned int jobsize,
@@ -199,6 +210,8 @@ namespace idg {
 
                     // Retrieve pre-allocated buffers (per stream)
                     cu::HostMemory& get_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
+                    cu::HostMemory& get_host_visibilities(unsigned int id) { return *h_visibilities_[id]; }
+                    cu::HostMemory& get_host_uvw(unsigned int id) { return *h_uvw_[id]; }
                     cu::DeviceMemory& get_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
                     cu::DeviceMemory& get_device_uvw(unsigned int id) { return *d_uvw_[id]; }
                     cu::DeviceMemory& get_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
@@ -244,6 +257,8 @@ namespace idg {
                     cu::HostMemory *h_grid;
 
                     // One instance per stream
+                    std::vector<cu::HostMemory*> h_visibilities_;
+                    std::vector<cu::HostMemory*> h_uvw_;
                     std::vector<cu::HostMemory*> h_subgrids_;
                     std::vector<cu::DeviceMemory*> d_visibilities_;
                     std::vector<cu::DeviceMemory*> d_uvw_;
