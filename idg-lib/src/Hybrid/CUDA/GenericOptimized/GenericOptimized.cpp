@@ -15,6 +15,13 @@ using namespace idg::kernel::cuda;
 using namespace powersensor;
 
 
+/*
+ * Option to enable/disable safe memory copies
+ * to make sure that CUDA is able to copy
+ * from and to device using page-locked memory
+ */
+#define ENABLE_SAFE_MEMORY 1
+
 namespace idg {
     namespace proxy {
         namespace hybrid {
@@ -80,6 +87,17 @@ namespace idg {
             /*
              * Gridding
              */
+            void GenericOptimized::synchronize() {
+                for (int d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.get_htod_stream().synchronize();
+                    device.get_execute_stream().synchronize();
+                    device.get_dtoh_stream().synchronize();
+                }
+
+                hostStream->synchronize();
+            }
+
             void GenericOptimized::initialize(
                 const Plan& plan,
                 const float w_step,
@@ -99,6 +117,8 @@ namespace idg {
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
+
+                synchronize();
 
                 // Arguments
                 auto nr_channels  = frequencies.get_x_dim();
@@ -150,6 +170,10 @@ namespace idg {
                         device.get_device_uvw(t, jobsize_[d], nr_timesteps);
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_device_metadata(t, max_nr_subgrids);
+                        #if ENABLE_SAFE_MEMORY
+                        device.get_host_visibilities(t, nr_baselines, nr_timesteps, nr_channels);
+                        device.get_host_uvw(t, nr_baselines, nr_timesteps);
+                        #endif
                         device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
                     }
 
@@ -167,14 +191,7 @@ namespace idg {
             void GenericOptimized::finish(
                 std::string name)
             {
-                for (int d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    device.get_htod_stream().synchronize();
-                    device.get_execute_stream().synchronize();
-                    device.get_dtoh_stream().synchronize();
-                }
-
-                hostStream->synchronize();
+                synchronize();
 
                 State hostEndState = hostPowerSensor->read();
                 report.update_host(hostStartState, hostEndState);
@@ -283,6 +300,37 @@ namespace idg {
             } // end enqueue_splitter
 
             typedef struct {
+                void *dst;
+                void *src;
+                size_t bytes;
+            } MemData;
+
+            void copy_memory(CUstream, CUresult, void *userData)
+            {
+                MemData *data = static_cast<MemData*>(userData);
+                nvtxRangePushA("memcpy");
+                memcpy(data->dst, data->src, data->bytes);
+                nvtxRangePop();
+                delete data;
+            }
+
+            void enqueue_copy(
+                cu::Stream& stream,
+                void *dst,
+                void *src,
+                size_t bytes)
+            {
+                // Fill MemData struct
+                MemData *data = new MemData();
+                data->dst     = dst;
+                data->src     = src;
+                data->bytes   = bytes;
+
+                // Enqueue memory copy
+                stream.addCallback((CUstreamCallback) &copy_memory, data);
+            } // end enqueue_copy
+
+            typedef struct {
                 Report *report;
                 std::vector<InstanceCUDA*> devices;
                 std::vector<State> startStates;
@@ -351,8 +399,10 @@ namespace idg {
 
                 // Page-lock host memory
                 InstanceCUDA& device = get_device(0);
+                #if !ENABLE_SAFE_MEMORY
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                #endif
 
                 // Copy wavenumbers
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -403,6 +453,10 @@ namespace idg {
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
+                    #if ENABLE_SAFE_MEMORY
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
+                    cu::HostMemory&   h_uvw          = device.get_host_uvw(local_id);
+                    #endif
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
 
                     // Load streams
@@ -421,11 +475,18 @@ namespace idg {
                     void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                     // Copy input data to device memory
+                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                    auto sizeof_uvw = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     htodstream.waitEvent(*inputFree[global_id]);
-                    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
-                        auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
-                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                        auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
+                    #if ENABLE_SAFE_MEMORY
+                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
+                    enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
+                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
+                    htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
+                    #else
+                    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
+                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                    #endif
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                         auxiliary::sizeof_metadata(current_nr_subgrids));
                     htodstream.record(*inputReady[global_id]);
@@ -577,8 +638,10 @@ namespace idg {
 
                 // Page-lock host memory
                 InstanceCUDA& device = get_device(0);
+                #if !ENABLE_SAFE_MEMORY
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                #endif
 
                 // Copy wavenumbers
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -629,6 +692,10 @@ namespace idg {
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
+                    #if ENABLE_SAFE_MEMORY
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
+                    cu::HostMemory&   h_uvw          = device.get_host_uvw(local_id);
+                    #endif
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
 
                     // Load streams
@@ -652,9 +719,14 @@ namespace idg {
                     hostStream->record(*hostFinished[global_id]);
 
                     // Copy input data to device
+                    auto sizeof_uvw = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     htodstream.waitEvent(*inputFree[global_id]);
-                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                        auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
+                    #if ENABLE_SAFE_MEMORY
+                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
+                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
+                    #else
+                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                    #endif
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                         auxiliary::sizeof_metadata(current_nr_subgrids));
                     htodstream.waitEvent(*hostFinished[global_id]);
@@ -675,7 +747,13 @@ namespace idg {
 
                     // Copy visibilities to host
                     dtohstream.waitEvent(*outputReady[global_id]);
-                    dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                    #if ENABLE_SAFE_MEMORY
+                    dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
+                    enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
+                    #else
+                    dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
+                    #endif
                     dtohstream.record(*outputFree[global_id]);
 
                     device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);

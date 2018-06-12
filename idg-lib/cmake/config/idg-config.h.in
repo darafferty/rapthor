@@ -16,7 +16,6 @@
 #cmakedefine REPORT_TOTAL
 #cmakedefine REPORT_OPS
 #cmakedefine COMPILE_VERBOSE
-#cmakedefine ENABLE_HOST_REGISTER
 
 #cmakedefine CLANG_CXX_COMPILER
 #cmakedefine GNU_CXX_COMPILER
