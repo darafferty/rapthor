@@ -105,38 +105,39 @@ namespace api {
     {
         if (m_do_compute_avg_beam)
         {
-            for (int n = 0; n < m_aterm_offsets2.size() - 1; n++)
+            #pragma omp parallel for
+            for (size_t i = 0; i < (m_subgridsize * m_subgridsize); i++)
             {
-                int time_start = m_aterm_offsets2[n];
-                int time_end = m_aterm_offsets2[n+1];
-
-                // loop over baselines
-                for (size_t bl = 0; bl < m_nr_baselines; bl++)
+                for (int n = 0; n < m_aterm_offsets2.size() - 1; n++)
                 {
-                    unsigned int antenna1 = m_bufferStationPairs2(bl).first;
-                    unsigned int antenna2 = m_bufferStationPairs2(bl).second;
+                    int time_start = m_aterm_offsets2[n];
+                    int time_end = m_aterm_offsets2[n+1];
 
-                    float sum_of_weights[4] = {};
-                    for(size_t t=time_start; t < time_end; t++)
+                    // loop over baselines
+                    for (size_t bl = 0; bl < m_nr_baselines; bl++)
                     {
-                        if (std::isinf(m_bufferUVW2(bl,t).u)) continue;
+                        unsigned int antenna1 = m_bufferStationPairs2(bl).first;
+                        unsigned int antenna2 = m_bufferStationPairs2(bl).second;
 
-                        for(int ch=0; ch < get_frequencies_size(); ch++)
+                        float sum_of_weights[4] = {};
+                        for(size_t t=time_start; t < time_end; t++)
                         {
-                            for(int pol = 0; pol < 4; pol++)
+                            if (std::isinf(m_bufferUVW2(bl,t).u)) continue;
+
+                            for(int ch=0; ch < get_frequencies_size(); ch++)
                             {
-                                sum_of_weights[pol] += m_buffer_weights2(bl, t, ch, pol);
+                                for(int pol = 0; pol < 4; pol++)
+                                {
+                                    sum_of_weights[pol] += m_buffer_weights2(bl, t, ch, pol);
+                                }
                             }
                         }
-                    }
 
-                    // add kronecker product to average beam
+                        // add kronecker product to average beam
 
-                    size_t offset = m_subgridsize * m_subgridsize * m_nrStations * n;
-                    size_t offset1 = offset + antenna1 * m_subgridsize * m_subgridsize;
-                    size_t offset2 = offset + antenna2 * m_subgridsize * m_subgridsize;
-                    for (size_t i = 0; i < (m_subgridsize * m_subgridsize); i++)
-                    {
+                        size_t offset = m_subgridsize * m_subgridsize * m_nrStations * n;
+                        size_t offset1 = offset + antenna1 * m_subgridsize * m_subgridsize;
+                        size_t offset2 = offset + antenna2 * m_subgridsize * m_subgridsize;
 
                         std::complex<float> kp[16] = {};
                         kp[0] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].xx;
