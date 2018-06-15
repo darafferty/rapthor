@@ -169,7 +169,7 @@ void kernel_gridder(
                     conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
                     pixels);
 
-                apply_avg_aterm_correction(avg_aterm_correction + (y*subgrid_size + x)*16, pixels);
+                if (avg_aterm_correction) apply_avg_aterm_correction(avg_aterm_correction + (y*subgrid_size + x)*16, pixels);
 
                 // Load spheroidal
                 float sph = spheroidal[y * subgrid_size + x];
