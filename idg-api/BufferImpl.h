@@ -175,6 +175,7 @@ namespace api {
         Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs;                         // BL
         std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities;   // BL x TI x CH
+        Array3D<Visibility<std::complex<float>>> m_visibilities;   // BL * TI * CH
 
         Grid* m_grid; // pointer grid
 
