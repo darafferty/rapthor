@@ -613,6 +613,7 @@ namespace api {
         }
 
         m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
+        m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
 
         {
             const long unsigned leshape [] = {m_subgridsize, m_subgridsize,4,4};
@@ -625,6 +626,7 @@ namespace api {
     {
         m_matrix_inverse_beam = matrix_inverse_beam;
         m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
+        m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
     }
 
 
