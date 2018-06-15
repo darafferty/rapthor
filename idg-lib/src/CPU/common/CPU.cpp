@@ -5,8 +5,6 @@
 
 #include "CPU.h"
 
-using namespace std;
-using namespace idg;
 using namespace idg::kernel;
 using namespace powersensor;
 
@@ -20,7 +18,7 @@ namespace idg {
                 kernels(libraries)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 powerSensor = get_power_sensor(sensor_host);
@@ -31,7 +29,7 @@ namespace idg {
             CPU::~CPU()
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Delete power sensor
@@ -54,18 +52,17 @@ namespace idg {
                 Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
-                const Array4D<std::complex<float>>& avg_aterm_correction,
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
-                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
 
                 // Arguments
@@ -116,16 +113,16 @@ namespace idg {
                     report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                     #endif
 
-                } catch (const invalid_argument& e) {
-                    cerr << __func__ << ": invalid argument: "
-                         << e.what() << endl;
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << __func__ << ": invalid argument: "
+                         << e.what() << std::endl;
                     exit(1);
-                } catch (const exception& e) {
-                    cerr << __func__ << ": caught exception: "
-                         << e.what() << endl;
+                } catch (const std::exception& e) {
+                    std::cerr << __func__ << ": caught exception: "
+                         << e.what() << std::endl;
                     exit(2);
                 } catch (...) {
-                    cerr << __func__ << ": caught unknown exception" << endl;
+                    std::cerr << __func__ << ": caught unknown exception" << std::endl;
                     exit(3);
                 }
             } // end gridding
@@ -146,14 +143,14 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
-                    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+                    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
 
                 // Arguments
@@ -204,16 +201,16 @@ namespace idg {
                     report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                     #endif
 
-                } catch (const invalid_argument& e) {
-                    cerr << __func__ << ": invalid argument: "
-                         << e.what() << endl;
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << __func__ << ": invalid argument: "
+                         << e.what() << std::endl;
                     exit(1);
-                } catch (const exception& e) {
-                    cerr << __func__ << ": caught exception: "
-                         << e.what() << endl;
+                } catch (const std::exception& e) {
+                    std::cerr << __func__ << ": caught exception: "
+                         << e.what() << std::endl;
                     exit(2);
                 } catch (...) {
-                    cerr << __func__ << ": caught unknown exception" << endl;
+                    std::cerr << __func__ << ": caught unknown exception" << std::endl;
                     exit(3);
                 }
             } // end degridding
@@ -223,8 +220,8 @@ namespace idg {
                 Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << "FFT (direction: " << direction << ")" << endl;
+                std::cout << __func__ << std::endl;
+                std::cout << "FFT (direction: " << direction << ")" << std::endl;
                 #endif
 
                 try {
@@ -262,14 +259,14 @@ namespace idg {
                     // Report performance
                     #if defined(REPORT_TOTAL)
                     report.print_total();
-                    clog << endl;
+                    std::clog << std::endl;
                     #endif
 
-                } catch (const exception& e) {
-                    cerr << __func__ << " caught exception: "
-                         << e.what() << endl;
+                } catch (const std::exception& e) {
+                    std::cerr << __func__ << " caught exception: "
+                         << e.what() << std::endl;
                 } catch (...) {
-                    cerr << __func__ << " caught unknown exception" << endl;
+                    std::cerr << __func__ << " caught unknown exception" << std::endl;
                 }
             } // end transform
 
@@ -290,7 +287,7 @@ namespace idg {
                 Array4D<std::complex<float>>& subgrids)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Constants
@@ -355,7 +352,7 @@ namespace idg {
                 Grid& grid)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Constants
@@ -396,7 +393,7 @@ namespace idg {
                 const Grid& grid)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Constants
@@ -441,7 +438,7 @@ namespace idg {
                 const Array4D<std::complex<float>>& subgrids)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Constants
