@@ -1,7 +1,5 @@
-#include <cuComplex.h>
-
-#include "Types.h"
 #include "math.cu"
+#include "Types.h"
 
 #include <assert.h>
 
