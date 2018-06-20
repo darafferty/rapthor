@@ -346,8 +346,25 @@ namespace idg {
                 aterms_offsets_,
                 spheroidal_);
         }
-        
-        
+
+        void Proxy::set_avg_aterm_correction(
+            const Array4D<std::complex<float>>& avg_aterm_correction)
+        {
+            if (!supports_avg_aterm_correction())
+            {
+                throw exception::NotImplemented("This proxy does not support average aterm correction");
+            }
+
+//             check_dimensions_avg_aterm_correction();
+            std::complex<float> *data = avg_aterm_correction.data();
+            size_t size = avg_aterm_correction.get_x_dim() *
+                            avg_aterm_correction.get_y_dim() *
+                            avg_aterm_correction.get_z_dim() *
+                            avg_aterm_correction.get_w_dim();
+            m_avg_aterm_correction.resize(size);
+            std::copy(data, data+size, m_avg_aterm_correction.begin());
+        }
+
         void Proxy::transform(
             DomainAtoDomainB direction, 
             Array3D<std::complex<float>>& grid)
