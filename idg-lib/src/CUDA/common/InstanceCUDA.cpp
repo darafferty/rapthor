@@ -46,6 +46,7 @@ namespace idg {
                 h_grid         = NULL;
                 d_aterms       = NULL;
                 d_spheroidal   = NULL;
+                d_avg_aterm_correction = NULL;
                 d_grid         = NULL;
                 fft_plan_bulk  = NULL;
                 fft_plan_misc  = NULL;
@@ -405,13 +406,14 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities,
                 cu::DeviceMemory& d_spheroidal,
                 cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_avg_aterm_correction,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+                    d_spheroidal, d_aterm, d_avg_aterm_correction, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
                 UpdateData *data = get_update_data(powerSensor, report);
@@ -741,6 +743,13 @@ namespace idg {
                 return *d_spheroidal;
             }
 
+            cu::DeviceMemory& InstanceCUDA::get_device_avg_aterm_correction(
+                unsigned int subgrid_size)
+            {
+                auto size = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
+                d_avg_aterm_correction = reuse_memory(size, d_avg_aterm_correction);
+                return *d_avg_aterm_correction;
+            }
 
             /*
              *  Memory management per stream
@@ -939,6 +948,10 @@ namespace idg {
                 if (d_aterms != NULL) {
                     delete d_aterms;
                     d_aterms = NULL;
+                }
+                if (d_avg_aterm_correction != NULL) {
+                    delete d_avg_aterm_correction;
+                    d_avg_aterm_correction = NULL;
                 }
                 if (d_spheroidal != NULL) {
                     delete d_spheroidal;

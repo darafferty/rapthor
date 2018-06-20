@@ -1,5 +1,3 @@
-#include <cuComplex.h>
-
 #include "Types.h"
 #include "math.cu"
 
@@ -106,10 +104,10 @@ kernel_degridder(
 
                 // Load aterm for station2
                 int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-                float2 aXX2 = cuConjf(aterm[station2_idx + 0]);
-                float2 aXY2 = cuConjf(aterm[station2_idx + 1]);
-                float2 aYX2 = cuConjf(aterm[station2_idx + 2]);
-                float2 aYY2 = cuConjf(aterm[station2_idx + 3]);
+                float2 aXX2 = aterm[station2_idx + 0];
+                float2 aXY2 = aterm[station2_idx + 1];
+                float2 aYX2 = aterm[station2_idx + 2];
+                float2 aYY2 = aterm[station2_idx + 3];
 
                 // Load spheroidal
                 float spheroidal_ = spheroidal[y * subgrid_size + x];

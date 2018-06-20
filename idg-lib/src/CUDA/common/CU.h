@@ -104,6 +104,7 @@ namespace cu {
 
 
     class DeviceMemory  {
+
         public:
             DeviceMemory(size_t size);
             ~DeviceMemory();
@@ -114,17 +115,32 @@ namespace cu {
             void zero(CUstream stream = NULL);
 
             template <typename T> operator T *() {
-                return static_cast<T *>(&_ptr);
+                if (_size)
+                {
+                    return static_cast<T *>(&_ptr);
+                }
+                else
+                {
+                    return static_cast<T *>(&_nullptr);
+                }
             }
 
             template <typename T> operator T () {
-                return static_cast<T>(_ptr);
+                if (_size)
+                {
+                    return static_cast<T>(_ptr);
+                }
+                else
+                {
+                    return static_cast<T>(_nullptr);
+                }
             }
 
         private:
             CUdeviceptr _ptr;
             size_t _capacity;
             size_t _size;
+            static const CUdeviceptr _nullptr = 0;
     };
 
 

@@ -50,6 +50,7 @@ namespace idg {
                         cu::DeviceMemory& d_visibilities,
                         cu::DeviceMemory& d_spheroidal,
                         cu::DeviceMemory& d_aterm,
+                        cu::DeviceMemory& d_avg_aterm_correction,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
@@ -152,6 +153,9 @@ namespace idg {
                     cu::DeviceMemory& get_device_spheroidal(
                         unsigned int subgrid_size);
 
+                    cu::DeviceMemory& get_device_avg_aterm_correction(
+                        unsigned int subgrid_size);
+
                     // Memory management per stream
                     cu::HostMemory& get_host_subgrids(
                         unsigned int id,
@@ -210,6 +214,7 @@ namespace idg {
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
                     cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
+                    cu::DeviceMemory& get_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
                     // Retrieve pre-allocated buffers (per stream)
                     cu::HostMemory& get_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
@@ -252,6 +257,7 @@ namespace idg {
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
+                    cu::DeviceMemory *d_avg_aterm_correction;
                     cu::DeviceMemory *d_spheroidal;
                     cu::DeviceMemory *d_grid;
                     cu::HostMemory *h_visibilities;
