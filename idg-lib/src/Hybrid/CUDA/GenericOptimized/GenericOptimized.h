@@ -20,6 +20,7 @@ namespace idg {
 
                     virtual bool supports_wstack_gridding()   { return cpuProxy->supports_wstack_gridding(); }
                     virtual bool supports_wstack_degridding() { return cpuProxy->supports_wstack_degridding(); }
+                    virtual bool supports_avg_aterm_correction() {return true;}
 
                 private:
                     virtual void do_gridding(
