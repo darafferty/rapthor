@@ -310,7 +310,7 @@ namespace idg {
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
-                    void *avg_aterm_ptr    = NULL; // avg_aterm_correction.data();
+                    void *avg_aterm_ptr    = m_avg_aterm_correction.size() ? m_avg_aterm_correction.data() : nullptr;
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
                     void *uvw_ptr          = uvw.data(first_bl, 0);
                     void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
@@ -492,8 +492,6 @@ namespace idg {
                     #endif
                 } // end for bl
             } // end degrid_from_subgrids
-
-
         } // namespace cpu
     } // namespace proxy
 } // namespace idg

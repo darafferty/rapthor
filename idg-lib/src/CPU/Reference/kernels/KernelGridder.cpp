@@ -20,6 +20,7 @@ extern "C" {
         const std::complex<float>*       visibilities,
         const float*                     spheroidal,
         const std::complex<float>*       aterms,
+        const std::complex<float>*       avg_aterm_correction,
         const idg::Metadata*             metadata,
               std::complex<float>*       subgrid)
     {
@@ -114,6 +115,11 @@ extern "C" {
                         aXX1, aXY1, aYX1, aYY1,
                         aXX2, aXY2, aYX2, aYY2,
                         pixels);
+
+                    if (avg_aterm_correction)
+                    {
+                        apply_avg_aterm_correction(avg_aterm_correction + (y*subgridsize + x)*16, pixels);
+                    }
 
                     // Load spheroidal
                     float sph = spheroidal[y * subgridsize + x];

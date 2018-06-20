@@ -25,7 +25,8 @@ namespace idg {
 
                     virtual bool supports_wstack_gridding() {return kernels.has_adder_wstack();}
                     virtual bool supports_wstack_degridding() {return kernels.has_splitter_wstack();}
-                    
+                    virtual bool supports_avg_aterm_correction() {return true;}
+
                     kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
 
                 private:
@@ -99,7 +100,6 @@ namespace idg {
                         const Array2D<float>& spheroidal,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array4D<std::complex<float>>& subgrids);
-
 
                 protected:
                     kernel::cpu::InstanceCPU kernels;
