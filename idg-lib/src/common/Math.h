@@ -98,12 +98,33 @@ template <typename T> FUNCTION_ATTRIBUTES inline void apply_avg_aterm_correction
 template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm(
     const T aXX1, const T aXY1, const T aYX1, const T aYY1,
     const T aXX2, const T aXY2, const T aYX2, const T aYY2,
-          T &uvXX,      T &uvXY,      T &uvYX,      T &uvYY
-) {
+          T &uvXX,      T &uvXY,      T &uvYX,      T &uvYY)
+{
     T uv[NR_POLARIZATIONS] = {uvXX, uvXY, uvYX, uvYY};
 
-    return apply_aterm(
-            aXX1, aXY1, aYX1, aYY1,
-            aXX2, aXY2, aYX2, aYY2,
-            uv);
+    apply_aterm(
+        aXX1, aXY1, aYX1, aYY1,
+        aXX2, aXY2, aYX2, aYY2,
+        uv);
+
+    uvXX = uv[0];
+    uvXY = uv[1];
+    uvYX = uv[2];
+    uvYY = uv[3];
+
+}
+
+template <typename T> inline FUNCTION_ATTRIBUTES void apply_avg_aterm_correction(
+    const T C[16],
+          T &uvXX,      T &uvXY,      T &uvYX,      T &uvYY)
+{
+    T uv[NR_POLARIZATIONS] = {uvXX, uvXY, uvYX, uvYY};
+
+    apply_avg_aterm_correction(C, uv);
+
+    uvXX = uv[0];
+    uvXY = uv[1];
+    uvYX = uv[2];
+    uvYY = uv[3];
+
 }

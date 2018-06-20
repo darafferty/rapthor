@@ -248,6 +248,13 @@ namespace idg {
             return 1ULL * subgrid_size * subgrid_size * sizeof(float);
         }
 
+        uint64_t sizeof_avg_aterm_correction(
+            unsigned int subgrid_size,
+            uint64_t nr_correlations)
+        {
+            return 1ULL * subgrid_size * subgrid_size * nr_correlations * nr_correlations * sizeof(std::complex<float>);
+        }
+
         uint64_t sizeof_baselines(
             unsigned int nr_baselines)
         {
