@@ -505,6 +505,7 @@ namespace idg {
 
                     // Copy subgrid to host
                     dtohstream.waitEvent(*outputReady[global_id]);
+                    dtohstream.waitEvent(*hostFinished[global_id]);
                     dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids,
                         auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size));
                     dtohstream.record(*outputFree[global_id]);
