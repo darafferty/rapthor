@@ -303,6 +303,25 @@ namespace idg {
                     static void report_scaler(CUstream, CUresult, void *userData);
                     static void report_job(CUstream, CUresult, void *userData);
 
+                private:
+                    // Memory allocation/reuse methods
+                    template<typename T>
+                    T* reuse_memory(
+                        uint64_t size,
+                        T* memory);
+
+                    template<typename T>
+                    T* reuse_memory(
+                        std::vector<T*>& memories,
+                        unsigned int id,
+                        uint64_t size);
+
+                    template<typename T>
+                    T* reuse_memory(
+                        std::vector<T*>& memories,
+                        uint64_t size,
+                        void* ptr);
+
                 public:
                     void enqueue_report(
                         cu::Stream &stream,

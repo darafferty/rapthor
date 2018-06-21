@@ -697,7 +697,7 @@ namespace idg {
              *      Maintain one memory object per data structure
              */
             template<typename T>
-            T* reuse_memory(
+            T* InstanceCUDA::reuse_memory(
                 uint64_t size,
                 T* memory)
             {
@@ -750,7 +750,7 @@ namespace idg {
              *      Automatically increases the internal vectors for these objects
              */
             template<typename T>
-            T* reuse_memory(
+            T* InstanceCUDA::reuse_memory(
                 std::vector<T*>& memories,
                 unsigned int id,
                 uint64_t size)
@@ -834,7 +834,7 @@ namespace idg {
                 return *reuse_memory(d_metadata_, id, size);
             }
 
-           /*
+            /*
              *  Memory management for large (host) buffers
              *      Maintains a history of previously allocated
              *      memory objects so that multiple buffers can be
@@ -842,7 +842,7 @@ namespace idg {
              *      to re-allocate page-locked memory every invocation
              */
             template<typename T>
-            T* reuse_memory(
+            T* InstanceCUDA::reuse_memory(
                 std::vector<T*>& memories,
                 uint64_t size,
                 void* ptr)
