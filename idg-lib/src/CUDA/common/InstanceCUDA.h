@@ -142,7 +142,7 @@ namespace idg {
                         unsigned int grid_size);
 
                     cu::DeviceMemory& get_device_wavenumbers(
-                        unsigned int nr_channels);
+                        unsigned int nr_channels = 0);
 
                     cu::DeviceMemory& get_device_aterms(
                         unsigned int nr_stations,
@@ -168,6 +168,10 @@ namespace idg {
                         unsigned int id,
                         unsigned int jobsize,
                         unsigned int nr_timesteps);
+
+                    cu::DeviceMemory& get_device_wavenumbers(
+                        unsigned int id,
+                        unsigned int nr_channels);
 
                     cu::DeviceMemory& get_device_visibilities(
                         unsigned int id,
@@ -204,7 +208,6 @@ namespace idg {
                     // Retrieve pre-allocated buffers (per device)
                     cu::HostMemory& get_host_grid() { return *h_grid; }
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
-                    cu::DeviceMemory& get_device_wavenumbers() { return *d_wavenumbers; }
                     cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
 
@@ -248,7 +251,6 @@ namespace idg {
                     cu::Function *function_scaler;
 
                     // One instance per device
-                    cu::DeviceMemory *d_wavenumbers;
                     cu::DeviceMemory *d_aterms;
                     cu::DeviceMemory *d_spheroidal;
                     cu::DeviceMemory *d_grid;
@@ -260,6 +262,7 @@ namespace idg {
                     std::vector<cu::HostMemory*> h_visibilities_;
                     std::vector<cu::HostMemory*> h_uvw_;
                     std::vector<cu::HostMemory*> h_subgrids_;
+                    std::vector<cu::DeviceMemory*> d_wavenumbers_;
                     std::vector<cu::DeviceMemory*> d_visibilities_;
                     std::vector<cu::DeviceMemory*> d_uvw_;
                     std::vector<cu::DeviceMemory*> d_metadata_;
@@ -328,7 +331,6 @@ namespace idg {
                         int nr_timesteps,
                         int nr_subgrids);
             };
-
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d);
 
             // Kernel names
