@@ -166,6 +166,7 @@ namespace idg {
 
                     // Initialize memory
                     for (int t = 0; t < max_nr_streams; t++) {
+                        device.get_device_wavenumbers(t, nr_channels);
                         device.get_device_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
                         device.get_device_uvw(t, jobsize_[d], nr_timesteps);
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
@@ -380,6 +381,8 @@ namespace idg {
             {
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
                 // Arguments
                 auto nr_baselines    = visibilities.get_z_dim();
                 auto nr_timesteps    = visibilities.get_y_dim();
@@ -403,15 +406,6 @@ namespace idg {
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
-
-                // Copy wavenumbers
-                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-                for (int d = 0; d < nr_devices; d++) {
-                    InstanceCUDA& device            = get_device(d);
-                    cu::Stream&       htodstream    = device.get_htod_stream();
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                }
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
                 for (int d = 0; d < nr_devices; d++) {
@@ -446,7 +440,7 @@ namespace idg {
                     InstanceCUDA& device  = get_device(device_id);
 
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id);
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
@@ -475,6 +469,7 @@ namespace idg {
                     void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                     // Copy input data to device memory
+                    auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                     auto sizeof_uvw = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     htodstream.waitEvent(*inputFree[global_id]);
@@ -487,6 +482,7 @@ namespace idg {
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                     #endif
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                         auxiliary::sizeof_metadata(current_nr_subgrids));
                     htodstream.record(*inputReady[global_id]);
@@ -619,6 +615,8 @@ namespace idg {
             {
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
                 // Arguments
                 auto nr_baselines    = visibilities.get_z_dim();
                 auto nr_timesteps    = visibilities.get_y_dim();
@@ -642,15 +640,6 @@ namespace idg {
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
-
-                // Copy wavenumbers
-                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-                for (int d = 0; d < nr_devices; d++) {
-                    InstanceCUDA& device            = get_device(d);
-                    cu::Stream&       htodstream    = device.get_htod_stream();
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                }
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
                 for (int d = 0; d < nr_devices; d++) {
@@ -685,7 +674,7 @@ namespace idg {
                     InstanceCUDA& device  = get_device(device_id);
 
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id);
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
@@ -719,6 +708,7 @@ namespace idg {
                     hostStream->record(*hostFinished[global_id]);
 
                     // Copy input data to device
+                    auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
                     auto sizeof_uvw = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     htodstream.waitEvent(*inputFree[global_id]);
                     #if ENABLE_SAFE_MEMORY
@@ -727,6 +717,7 @@ namespace idg {
                     #else
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                     #endif
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                         auxiliary::sizeof_metadata(current_nr_subgrids));
                     htodstream.waitEvent(*hostFinished[global_id]);
