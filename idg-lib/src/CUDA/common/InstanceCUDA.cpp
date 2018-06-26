@@ -23,6 +23,7 @@ namespace idg {
                 h_visibilities_(),
                 h_uvw_(),
                 h_subgrids_(),
+                d_wavenumbers_(),
                 d_visibilities_(),
                 d_uvw_(),
                 d_subgrids_(),
@@ -43,7 +44,6 @@ namespace idg {
                 h_visibilities = NULL;
                 h_uvw          = NULL;
                 h_grid         = NULL;
-                d_wavenumbers  = NULL;
                 d_aterms       = NULL;
                 d_spheroidal   = NULL;
                 d_grid         = NULL;
@@ -697,7 +697,7 @@ namespace idg {
              *      Maintain one memory object per data structure
              */
             template<typename T>
-            T* reuse_memory(
+            T* InstanceCUDA::reuse_memory(
                 uint64_t size,
                 T* memory)
             {
@@ -720,9 +720,7 @@ namespace idg {
             cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
                 unsigned int nr_channels)
             {
-                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
-                d_wavenumbers = reuse_memory(size, d_wavenumbers);
-                return *d_wavenumbers;
+                return get_device_wavenumbers(0, nr_channels);
             }
 
             cu::DeviceMemory& InstanceCUDA::get_device_aterms(
@@ -750,7 +748,7 @@ namespace idg {
              *      Automatically increases the internal vectors for these objects
              */
             template<typename T>
-            T* reuse_memory(
+            T* InstanceCUDA::reuse_memory(
                 std::vector<T*>& memories,
                 unsigned int id,
                 uint64_t size)
@@ -798,6 +796,17 @@ namespace idg {
                 return *reuse_memory(h_uvw_, id, size);
             }
 
+             cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
+                unsigned int id,
+                unsigned int nr_channels)
+            {
+                if (nr_channels == 0) {
+                    return *d_wavenumbers_[id];
+                }
+                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
+                return *reuse_memory(d_wavenumbers_, id, size);
+            }
+
              cu::DeviceMemory& InstanceCUDA::get_device_visibilities(
                 unsigned int id,
                 unsigned int jobsize,
@@ -834,7 +843,7 @@ namespace idg {
                 return *reuse_memory(d_metadata_, id, size);
             }
 
-           /*
+            /*
              *  Memory management for large (host) buffers
              *      Maintains a history of previously allocated
              *      memory objects so that multiple buffers can be
@@ -842,7 +851,7 @@ namespace idg {
              *      to re-allocate page-locked memory every invocation
              */
             template<typename T>
-            T* reuse_memory(
+            T* InstanceCUDA::reuse_memory(
                 std::vector<T*>& memories,
                 uint64_t size,
                 void* ptr)
@@ -918,6 +927,7 @@ namespace idg {
              * Device memory destructor
              */
             void InstanceCUDA::free_device_memory() {
+                d_wavenumbers_.clear();
                 d_visibilities_.clear();
                 d_uvw_.clear();
                 d_metadata_.clear();
@@ -925,10 +935,6 @@ namespace idg {
                 if (d_grid != NULL) {
                     delete d_grid;
                     d_grid = NULL;
-                }
-                if (d_wavenumbers != NULL) {
-                    delete d_wavenumbers;
-                    d_wavenumbers = NULL;
                 }
                 if (d_aterms != NULL) {
                     delete d_aterms;
