@@ -194,14 +194,6 @@ namespace api {
                         m_aterm_offsets_array,
                         m_spheroidal);
 
-                    // copy data from per channel buffer into buffer for all channels
-                    for (int bl = 0; bl < m_nrGroups; bl++) {
-                        for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
-                            std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
-                                    &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
-                                    &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
-                        }
-                    }
                 } // end for i
             } // end execute plans
         } // end omp parallel
@@ -212,6 +204,17 @@ namespace api {
         // Cleanup plans
         for (int i = 0; i < nr_channel_groups; i++) {
             delete plans[i];
+        }
+
+        // copy data from per channel buffer into buffer for all channels
+        for (int i = 0; i < nr_channel_groups; i++) {
+            for (int bl = 0; bl < m_nrGroups; bl++) {
+                for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
+                    std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
+                            &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
+                            &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
+                }
+            }
         }
 
         // Prepare next batch
