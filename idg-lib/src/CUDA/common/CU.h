@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <cuda.h>
+#include <nvToolsExt.h>
 
 struct dim3;
 
@@ -219,6 +220,19 @@ namespace cu {
 
         private:
             CUstream _stream;
+    };
+
+    class Marker {
+        public:
+            Marker(
+                const char *message,
+                unsigned color = 0xff00ff00);
+            void start();
+            void end();
+
+        private:
+            nvtxEventAttributes_t _attributes;
+            nvtxRangeId_t _id;
     };
 
 } // end namespace cu
