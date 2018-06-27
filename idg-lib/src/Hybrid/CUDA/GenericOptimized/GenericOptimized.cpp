@@ -440,7 +440,7 @@ namespace idg {
                     InstanceCUDA& device  = get_device(device_id);
 
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id);
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id, 0);
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
@@ -675,7 +675,7 @@ namespace idg {
                     InstanceCUDA& device  = get_device(device_id);
 
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id);
+                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id, 0);
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
