@@ -2,7 +2,6 @@
 
 #include <cuda.h>
 #include <cudaProfiler.h>
-#include <nvToolsExt.h>
 
 #include <algorithm> // max_element
 
@@ -223,11 +222,12 @@ namespace idg {
                 HostData *data = static_cast<HostData*>(userData);
 
                 // Add subgrids to grid
-                nvtxRangePushA("run_adder_wstack");
+                cu::Marker marker("run_adder_wstack");
+                marker.start();
                 data->cpuKernels->run_adder_wstack(
                     data->nr_subgrids, data->grid_size, data->subgrid_size, data->nr_w_layers,
                     data->metadata, data->subgrids, data->grid);
-                nvtxRangePop();
+                marker.end();
 
                 // Delete state
                 delete data;
@@ -264,11 +264,12 @@ namespace idg {
                 HostData *data = static_cast<HostData*>(userData);
 
                 // Extract subgrids from grid
-                nvtxRangePushA("run_splitter_wstack");
+                cu::Marker marker("run_splitter_wstack");
+                marker.start();
                 data->cpuKernels->run_splitter_wstack(
                     data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
-                nvtxRangePop();
+                marker.end();
 
                 // Delete state
                 delete data;
@@ -309,9 +310,12 @@ namespace idg {
             void copy_memory(CUstream, CUresult, void *userData)
             {
                 MemData *data = static_cast<MemData*>(userData);
-                nvtxRangePushA("memcpy");
+                char message[80];
+                snprintf(message, 80, "memcpy(%p, %p, %d)", data->dst, data->src, data->bytes);
+                cu::Marker marker(message, 0xffff0000);
+                marker.start();
                 memcpy(data->dst, data->src, data->bytes);
-                nvtxRangePop();
+                marker.end();
                 delete data;
             }
 
