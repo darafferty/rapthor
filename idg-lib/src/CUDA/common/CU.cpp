@@ -424,4 +424,28 @@ namespace cu {
         return _stream;
     }
 
+    Marker::Marker(
+        const char *message,
+        unsigned color)
+    {
+        _attributes = {0};
+        _attributes.version = NVTX_VERSION;
+        _attributes.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+        _attributes.colorType = NVTX_COLOR_ARGB;
+        _attributes.color = color;
+        _attributes.messageType = NVTX_MESSAGE_TYPE_ASCII;
+        _attributes.message.ascii = message;
+    }
+
+    void Marker::start()
+    {
+        _id = nvtxRangeStartEx(&_attributes);
+    }
+
+    void Marker::end()
+    {
+        nvtxRangeEnd(_id);
+    }
+
+
 } // end namespace cu
