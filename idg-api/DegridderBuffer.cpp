@@ -209,7 +209,7 @@ namespace api {
 
         // copy data from per channel buffer into buffer for all channels
         for (int i = 0; i < nr_channel_groups; i++) {
-            for (int bl = 0; bl < m_nrGroups; bl++) {
+            for (int bl = 0; bl < m_nr_baselines; bl++) {
                 for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
                     std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
                             &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
