@@ -171,8 +171,8 @@ namespace idg {
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_device_metadata(t, max_nr_subgrids);
                         #if ENABLE_SAFE_MEMORY
-                        device.get_host_visibilities(t, nr_baselines, nr_timesteps, nr_channels);
-                        device.get_host_uvw(t, nr_baselines, nr_timesteps);
+                        device.get_host_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
+                        device.get_host_uvw(t, jobsize_[d], nr_timesteps);
                         #endif
                         device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
                     }
@@ -411,7 +411,7 @@ namespace idg {
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
-                // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
+                // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (int d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
                         jobsize_[d] *= 0.9;
@@ -478,10 +478,10 @@ namespace idg {
                     auto sizeof_uvw = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     htodstream.waitEvent(*inputFree[global_id]);
                     #if ENABLE_SAFE_MEMORY
-                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
                     enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
-                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
+                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
                     htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
+                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
                     #else
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
@@ -646,7 +646,7 @@ namespace idg {
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
-                // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
+                // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (int d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
                         jobsize_[d] *= 0.9;
