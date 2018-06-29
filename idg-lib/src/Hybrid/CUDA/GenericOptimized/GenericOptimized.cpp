@@ -411,7 +411,7 @@ namespace idg {
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
-                // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
+                // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (int d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
                         jobsize_[d] *= 0.9;
@@ -646,7 +646,7 @@ namespace idg {
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
-                // Reduce jobsize when the maximum number of subgrids for the current plan exceecd the planned number
+                // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (int d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
                         jobsize_[d] *= 0.9;
