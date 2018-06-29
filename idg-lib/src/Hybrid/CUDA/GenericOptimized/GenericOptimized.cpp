@@ -171,8 +171,8 @@ namespace idg {
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_device_metadata(t, max_nr_subgrids);
                         #if ENABLE_SAFE_MEMORY
-                        device.get_host_visibilities(t, nr_baselines, nr_timesteps, nr_channels);
-                        device.get_host_uvw(t, nr_baselines, nr_timesteps);
+                        device.get_host_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
+                        device.get_host_uvw(t, jobsize_[d], nr_timesteps);
                         #endif
                         device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
                     }
