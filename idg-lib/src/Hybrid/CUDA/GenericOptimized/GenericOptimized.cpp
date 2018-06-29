@@ -478,10 +478,10 @@ namespace idg {
                     auto sizeof_uvw = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     htodstream.waitEvent(*inputFree[global_id]);
                     #if ENABLE_SAFE_MEMORY
-                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
                     enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
-                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
+                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
                     htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
+                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
                     #else
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
