@@ -521,7 +521,10 @@ namespace api {
             int ipiv[4];
             LAPACKE_cgetrf( LAPACK_COL_MAJOR, 4, 4, (lapack_complex_float*) data, 4, ipiv);
             LAPACKE_cgetri( LAPACK_COL_MAJOR, 4, (lapack_complex_float*) data, 4, ipiv);
+
+            // NOTE: there is a sign flip between the idg subgrids and the master image
             scalar_beam_subgrid[m_subgridsize*m_subgridsize-i-1] = 1.0/sqrt(data[0].real() + data[3].real() + data[12].real() + data[15].real());
+
             #pragma omp simd
             for(size_t j=0; j<16; j++)
             {
