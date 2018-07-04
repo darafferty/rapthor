@@ -8,22 +8,28 @@
 #include <iomanip>
 #include <stdexcept>
 
-#if defined(HAVE_MKL)
-    #include <mkl_lapacke.h>
-#else
-    // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
-    #include <complex.h>
-    #define lapack_complex_float    float _Complex
-    #define lapack_complex_double   double _Complex
-    // End workaround
-    #include <lapacke.h>
-#endif
+// #if defined(HAVE_MKL)
+//     #include <mkl_lapacke.h>
+// #else
+//     // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
+//     #include <complex.h>
+//     #define lapack_complex_float    float _Complex
+//     #define lapack_complex_double   double _Complex
+//     // End workaround
+//     #include <lapacke.h>
+// #endif
 
 #include "taper.h"
 #include "idg-fft.h"
 #include "npy.hpp"
 
 
+extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
+                    int* lda, int* ipiv, int *info );
+
+extern "C" void cgetri_( int* n, std::complex<float>* a, int* lda,
+                    const int* ipiv, std::complex<float>* work,
+                    int* lwork, int *info );
 
 namespace idg {
 namespace api {
@@ -517,10 +523,30 @@ namespace api {
 
         for (int i = 0; i < m_subgridsize * m_subgridsize; i++)
         {
+
+//             LAPACKE_cgetrf( LAPACK_COL_MAJOR, 4, 4, (lapack_complex_float*) data, 4, ipiv);
+//             extern void cgetrf( int* m, int* n, std::complex<float>* a,
+//                     int* lda, int* ipiv, int *info );
+
+
             std::complex<float> *data = m_matrix_inverse_beam->data() + i*16;
+            int n = 4;
+            int info;
             int ipiv[4];
-            LAPACKE_cgetrf( LAPACK_COL_MAJOR, 4, 4, (lapack_complex_float*) data, 4, ipiv);
-            LAPACKE_cgetri( LAPACK_COL_MAJOR, 4, (lapack_complex_float*) data, 4, ipiv);
+            cgetrf_( &n, &n, data, &n, ipiv, &info );
+
+
+//             LAPACKE_cgetri( LAPACK_COL_MAJOR, 4, (lapack_complex_float*) data, 4, ipiv);
+//             extern void cgetri( int* n, std::complex<float>* a, int* lda,
+//                                 const int* ipiv, std::complex<float>* work,
+//                                 int* lwork, int *info );
+
+            int lwork = -1;
+            std::complex<float> wkopt;
+            cgetri_(&n, data, &n, ipiv, &wkopt, &lwork, &info );
+            lwork = int(wkopt.real());
+            std::vector<std::complex<float>> work(lwork);
+            cgetri_(&n, data, &n, ipiv, work.data(), &lwork, &info );
 
             // NOTE: there is a sign flip between the idg subgrids and the master image
             scalar_beam_subgrid[m_subgridsize*m_subgridsize-i-1] = 1.0/sqrt(data[0].real() + data[3].real() + data[12].real() + data[15].real());

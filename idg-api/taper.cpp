@@ -1,17 +1,26 @@
 #include "taper.h"
 
 #include <cmath>
+#include <vector>
 
-#if defined(HAVE_MKL)
-    #include <mkl_lapacke.h>
-#else
-    // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
-    #include <complex.h>
-    #define lapack_complex_float    float _Complex
-    #define lapack_complex_double   double _Complex
-    // End workaround
-    #include <lapacke.h>
-#endif
+
+// #if defined(HAVE_MKL)
+//     #include <mkl_lapacke.h>
+// #else
+//     // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
+//     #include <complex.h>
+//     #define lapack_complex_float    float _Complex
+//     #define lapack_complex_double   double _Complex
+//     // End workaround
+//     #include <lapacke.h>
+// #endif
+
+
+/* DGESVD prototype */
+extern "C" void dgesvd_( char* jobu, char* jobvt, int* m, int* n, double* a,
+                int* lda, double* s, double* u, int* ldu, double* vt, int* ldvt,
+                double* work, int* lwork, int* info );
+
 
 void init_optimal_taper_1D(int subgridsize, int padded_size, int size, float kernelsize, float* taper_subgrid, float* taper_grid)
 {
@@ -114,8 +123,33 @@ void init_optimal_taper_1D(int subgridsize, int padded_size, int size, float ker
             }
         }
 
-        LAPACKE_dgesvd( LAPACK_COL_MAJOR, 'A', 'A', N/2, N/2, (double*) R, N/2, (double*) S1, (double*) U1, N/2, (double*) V1T, N/2, (double*) superb );
-        
+//         LAPACKE_dgesvd( LAPACK_COL_MAJOR, 'A', 'A', N/2, N/2, (double*) R, N/2, (double*) S1, (double*) U1, N/2, (double*) V1T, N/2, (double*) superb );
+
+        int lwork = -1;
+        int m = N/2;
+        int n = N/2;
+
+
+        int lda = N/2;
+        int ldu = N/2;
+        int ldvt = N/2;
+        int info;
+        double wkopt;
+        /* Local arrays */
+        double *s = (double*)S1;
+        double *u = (double*)U1;
+        double *vt = (double*)V1T;
+        double *a = (double*)R;
+
+        char job = 'A';
+
+        /* Query and allocate the optimal workspace */
+        dgesvd_( &job, &job, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+        lwork = (int)wkopt;
+        std::vector<double> work(lwork);
+        /* Compute SVD */
+        dgesvd_( &job, &job, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info );
+
 //         std::cout << "U:" << std::endl;
         for(int i = 0; i < N/2; i++) 
         {
@@ -214,7 +248,32 @@ void init_optimal_gridding_taper_1D(int subgridsize, int gridsize, float kernels
     double VT[N/2][N/2];
     double superb[N/2-1];
     
-    LAPACKE_dgesvd( LAPACK_COL_MAJOR, 'A', 'A', N/2, N/2, (double*) R, N/2, (double*) S, (double*) U, N/2, (double*) VT, N/2, (double*) superb );
+//     LAPACKE_dgesvd( LAPACK_COL_MAJOR, 'A', 'A', N/2, N/2, (double*) R, N/2, (double*) S, (double*) U, N/2, (double*) VT, N/2, (double*) superb );
+
+    int lwork = -1;
+    int m = N/2;
+    int n = N/2;
+
+
+    int lda = N/2;
+    int ldu = N/2;
+    int ldvt = N/2;
+    int info;
+    double wkopt;
+    /* Local arrays */
+    double *s = (double*)S;
+    double *u = (double*)U;
+    double *vt = (double*)VT;
+    double *a = (double*)R;
+
+    char job = 'A';
+
+    /* Query and allocate the optimal workspace */
+    dgesvd_( &job, &job, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+    lwork = (int)wkopt;
+    std::vector<double> work(lwork);
+    /* Compute SVD */
+    dgesvd_( &job, &job, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info );
 
 //     std::cout << "U:" << std::endl;
 //     std::cout << std::endl;
