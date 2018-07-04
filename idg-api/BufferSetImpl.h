@@ -53,6 +53,7 @@ namespace api {
         virtual std::shared_ptr<std::vector<std::complex<float>>> get_matrix_inverse_beam() const {return m_matrix_inverse_beam;}
         virtual void set_scalar_beam(std::shared_ptr<std::vector<float>> scalar_beam) {m_scalar_beam = scalar_beam;}
         virtual void set_matrix_inverse_beam(std::shared_ptr<std::vector<std::complex<float>>> matrix_inverse_beam);
+        virtual void unset_matrix_inverse_beam();
 
     private:
 

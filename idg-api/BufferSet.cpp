@@ -658,6 +658,13 @@ namespace api {
         m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
     }
 
+    void BufferSetImpl::unset_matrix_inverse_beam()
+    {
+        m_matrix_inverse_beam.reset();
+        m_avg_aterm_correction = Array4D<std::complex<float>>(0,0,0,0);
+        m_proxy->unset_avg_aterm_correction();
+    }
+
 
 } // namespace api
 } // namespace idg
