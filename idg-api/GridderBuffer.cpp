@@ -194,7 +194,7 @@ namespace api {
 
         options.w_step = m_wStepInLambda;
         options.nr_w_layers = m_nr_w_layers;
-        options.plan_strict = true;
+        options.plan_strict = false;
 
         const int nr_channel_groups = m_channel_groups.size();
         Plan* plans[nr_channel_groups];
