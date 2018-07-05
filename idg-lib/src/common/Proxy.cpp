@@ -365,6 +365,11 @@ namespace idg {
             std::copy(data, data+size, m_avg_aterm_correction.begin());
         }
 
+        void Proxy::unset_avg_aterm_correction()
+        {
+            m_avg_aterm_correction.resize(0);
+        }
+
         void Proxy::transform(
             DomainAtoDomainB direction, 
             Array3D<std::complex<float>>& grid)

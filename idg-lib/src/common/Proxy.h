@@ -186,6 +186,7 @@ namespace idg {
                 virtual bool supports_avg_aterm_correction() {return false;}
 
                 void set_avg_aterm_correction(const Array4D<std::complex<float>>& avg_aterm_correction);
+                void unset_avg_aterm_correction();
 
                 //! Methods for memory management
                 virtual Grid get_grid(
