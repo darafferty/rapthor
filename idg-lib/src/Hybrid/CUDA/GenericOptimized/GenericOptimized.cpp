@@ -149,7 +149,7 @@ namespace idg {
                 // Set host report
                 cpuProxy->get_kernels().set_report(report);
 
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory/fft
                 for (int d = 0; d < get_num_devices(); d++) {
@@ -402,7 +402,6 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata  = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Page-lock host memory
                 InstanceCUDA& device = get_device(0);
@@ -637,7 +636,6 @@ namespace idg {
 
                 // Initialize metadata
                 const Metadata *metadata  = plan.get_metadata_ptr();
-                std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Page-lock host memory
                 InstanceCUDA& device = get_device(0);
