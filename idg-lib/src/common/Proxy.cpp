@@ -1,4 +1,4 @@
-#include <cassert> // assert
+#include <ThrowAssert.hpp> // assert
 #include <cmath> // M_PI
 
 #include "Proxy.h"
@@ -352,8 +352,8 @@ namespace idg {
             unsigned int grid_height,
             unsigned int grid_width)
         {
-            assert(grid_height == grid_width); // TODO: remove restriction
-            assert(grid_nr_correlations == 1 || grid_nr_correlations == 4);
+            throw_assert(grid_height == grid_width, ""); // TODO: remove restriction
+            throw_assert(grid_nr_correlations == 1 || grid_nr_correlations == 4, "");
 
             Array3D<std::complex<float>> grid_(
                 grid, grid_nr_correlations, grid_height, grid_width);
@@ -384,20 +384,19 @@ namespace idg {
             unsigned int spheroidal_height,
             unsigned int spheroidal_width) const
         {
-            assert(frequencies_nr_channels > 0);
-            assert(frequencies_nr_channels == visibilities_nr_channels);
-            assert(visibilities_nr_baselines == uvw_nr_baselines);
-            assert(visibilities_nr_baselines == baselines_nr_baselines);
-            assert(visibilities_nr_timesteps == uvw_nr_timesteps);
-            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
-            assert(visibilities_nr_correlations == grid_nr_correlations);
-            assert(visibilities_nr_correlations == aterms_nr_correlations);
-            assert(uvw_nr_coordinates == 3);
-            assert(baselines_two == 2);
-            assert(grid_height == grid_width); // TODO: remove restriction
-            assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one);
-            assert(aterms_aterm_height == aterms_aterm_width); // TODO: remove restriction
-            assert(spheroidal_height == spheroidal_width); // TODO: remove restriction
+            throw_assert(frequencies_nr_channels > 0, "");
+            throw_assert(frequencies_nr_channels == visibilities_nr_channels, "");
+            throw_assert(visibilities_nr_baselines == uvw_nr_baselines, "");
+            throw_assert(visibilities_nr_baselines == baselines_nr_baselines, "");
+            throw_assert(visibilities_nr_timesteps == uvw_nr_timesteps, "");
+            throw_assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4, "");
+            throw_assert(visibilities_nr_correlations == grid_nr_correlations, "");
+            throw_assert(visibilities_nr_correlations == aterms_nr_correlations, "");
+            throw_assert(uvw_nr_coordinates == 3, "");
+            throw_assert(baselines_two == 2, "");
+            throw_assert(grid_height == grid_width, ""); // TODO: remove restriction
+            throw_assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one, "");
+            throw_assert(aterms_aterm_height == aterms_aterm_width, ""); // TODO: remove restriction
         }
 
 
