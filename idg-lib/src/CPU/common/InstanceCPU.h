@@ -36,6 +36,7 @@ namespace idg {
                         void *visibilities,
                         void *spheroidal,
                         void *aterm,
+                        void *avg_aterm,
                         void *metadata,
                         void *subgrid);
 

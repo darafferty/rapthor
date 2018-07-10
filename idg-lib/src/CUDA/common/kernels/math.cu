@@ -1,5 +1,7 @@
-#define FUNCTION_ATTRIBUTES __device__
-#include "common/Math.h"
+#include <cuComplex.h>
+inline __device__ float2 conj(float2 a) {
+    return cuConjf(a);
+}
 
 inline __device__ float2 operator+(float2 a, float2 b) {
     return make_float2(a.x + b.x, a.y + b.y);
@@ -32,3 +34,6 @@ inline  __device__ void atomicAdd(float2 *a, float2 b) {
     atomicAdd(&a->x, b.x);
     atomicAdd(&a->y, b.y);
 }
+
+#define FUNCTION_ATTRIBUTES __device__
+#include "common/Math.h"

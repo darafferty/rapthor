@@ -132,6 +132,10 @@ namespace idg {
         uint64_t sizeof_spheroidal(
             unsigned int subgrid_size);
 
+        uint64_t sizeof_avg_aterm_correction(
+            unsigned int subgrid_size,
+            uint64_t nr_correlations = 4);
+
         uint64_t sizeof_baselines(
             unsigned int nr_baselines);
 

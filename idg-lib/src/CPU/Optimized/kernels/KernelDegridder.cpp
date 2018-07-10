@@ -75,10 +75,10 @@ void kernel_degridder(
 
             // Load aterm for station2
             int station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
-            idg::float2 aXX2 = conj(aterms[station2_idx + 0]);
-            idg::float2 aXY2 = conj(aterms[station2_idx + 1]);
-            idg::float2 aYX2 = conj(aterms[station2_idx + 2]);
-            idg::float2 aYY2 = conj(aterms[station2_idx + 3]);
+            idg::float2 aXX2 = aterms[station2_idx + 0];
+            idg::float2 aXY2 = aterms[station2_idx + 1];
+            idg::float2 aYX2 = aterms[station2_idx + 2];
+            idg::float2 aYY2 = aterms[station2_idx + 3];
 
             // Load spheroidal
             float _spheroidal = spheroidal[y * subgrid_size + x];

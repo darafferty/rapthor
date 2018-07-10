@@ -12,6 +12,8 @@
 #include "Types.h"
 #include "Plan.h"
 #include "Report.h"
+#include "Exception.h"
+
 
 namespace idg {
     enum DomainAtoDomainB {
@@ -181,6 +183,10 @@ namespace idg {
                 bool supports_wstack() {return (supports_wstack_gridding() && supports_wstack_degridding());}
                 virtual bool supports_wstack_gridding() {return false;}
                 virtual bool supports_wstack_degridding() {return false;}
+                virtual bool supports_avg_aterm_correction() {return false;}
+
+                void set_avg_aterm_correction(const Array4D<std::complex<float>>& avg_aterm_correction);
+                void unset_avg_aterm_correction();
 
                 //! Methods for memory management
                 virtual Grid get_grid(
@@ -288,6 +294,7 @@ namespace idg {
 
             protected:
                 void check_dimensions(
+                    unsigned int subgrid_size,
                     unsigned int frequencies_nr_channels,
                     unsigned int visibilities_nr_baselines,
                     unsigned int visibilities_nr_timesteps,
@@ -311,6 +318,7 @@ namespace idg {
                     unsigned int spheroidal_width) const;
 
                 void check_dimensions(
+                    unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,
@@ -324,6 +332,8 @@ namespace idg {
                     const Array1D<float>& frequencies) const;
 
                 const unsigned int nr_polarizations = 4;
+
+                std::vector<std::complex<float>> m_avg_aterm_correction;
 
             private:
                 std::complex<float>* grid_ptr = NULL;

@@ -199,14 +199,23 @@ namespace cu {
     /*
         DeviceMemory
     */
+
+    // Ensure the static const member _nullptr is not only declared but also defined
+    // otherwise it has no address
+
+    const CUdeviceptr DeviceMemory::_nullptr;
+
     DeviceMemory::DeviceMemory(size_t size) {
         _capacity = size;
         _size = size;
-        checkCudaCall(cuMemAlloc(&_ptr, size));
+        if (size)
+        {
+            checkCudaCall(cuMemAlloc(&_ptr, size));
+        }
     }
 
     DeviceMemory::~DeviceMemory() {
-        checkCudaCall(cuMemFree(_ptr));
+        if (_capacity) checkCudaCall(cuMemFree(_ptr));
     }
 
     size_t DeviceMemory::capacity() {
@@ -220,17 +229,20 @@ namespace cu {
     void DeviceMemory::resize(size_t size) {
         _size = size;
         if (size > _capacity) {
-            checkCudaCall(cuMemFree(_ptr));
+            if (_capacity) checkCudaCall(cuMemFree(_ptr));
             checkCudaCall(cuMemAlloc(&_ptr, size));
             _capacity = size;
         }
     }
 
     void DeviceMemory::zero(CUstream stream) {
-        if (stream != NULL) {
-            cuMemsetD8Async(_ptr, 0, _size, stream);
-        } else {
-            cuMemsetD8(_ptr, 0, _size);
+        if (_size)
+        {
+            if (stream != NULL) {
+                cuMemsetD8Async(_ptr, 0, _size, stream);
+            } else {
+                cuMemsetD8(_ptr, 0, _size);
+            }
         }
     }
 

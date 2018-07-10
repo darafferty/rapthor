@@ -9,6 +9,7 @@ endif()
 
 # sources and header files
 set (${PROJECT_NAME}_headers
+    Exception.h
     ProxyInfo.h
     RuntimeWrapper.h
     auxiliary.h

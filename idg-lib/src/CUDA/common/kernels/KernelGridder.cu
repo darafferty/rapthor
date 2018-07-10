@@ -1,7 +1,5 @@
-#include <cuComplex.h>
-
-#include "Types.h"
 #include "math.cu"
+#include "Types.h"
 
 #include <assert.h>
 
@@ -32,6 +30,7 @@ __device__ void
     const float2*          __restrict__ visibilities,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterm,
+    const float2*          __restrict__ avg_aterm_correction,
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid)
 {
@@ -49,9 +48,9 @@ __device__ void
 			int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
 			int idx_yy = index_subgrid(subgrid_size, s, 3, 0, i);
 			subgrid[idx_xx] = make_float2(0, 0);
-			subgrid[idx_xy] = make_float2(0, 0);
-			subgrid[idx_yx] = make_float2(0, 0);
-			subgrid[idx_yy] = make_float2(0, 0);
+ 			subgrid[idx_xy] = make_float2(0, 0);
+ 			subgrid[idx_yx] = make_float2(0, 0);
+ 			subgrid[idx_yy] = make_float2(0, 0);
 		}
 	}
 
@@ -188,16 +187,21 @@ __device__ void
 
             // Get aterm for station2
             int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-            float2 aXX2 = cuConjf(aterm[station2_idx + 0]);
-            float2 aXY2 = cuConjf(aterm[station2_idx + 1]);
-            float2 aYX2 = cuConjf(aterm[station2_idx + 2]);
-            float2 aYY2 = cuConjf(aterm[station2_idx + 3]);
+            float2 aXX2 = aterm[station2_idx + 0];
+            float2 aXY2 = aterm[station2_idx + 1];
+            float2 aYX2 = aterm[station2_idx + 2];
+            float2 aYY2 = aterm[station2_idx + 3];
 
-            // Apply aterm
+            // Apply the conjugate transpose of the A-term
             apply_aterm(
-                aXX1, aXY1, aYX1, aYY1,
-                aXX2, aXY2, aYX2, aYY2,
+                conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
+                conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
                 uvXX, uvXY, uvYX, uvYY);
+
+            if (avg_aterm_correction)
+            {
+                apply_avg_aterm_correction(avg_aterm_correction + (y*subgrid_size + x)*16, uvXX, uvXY, uvYX, uvYY);
+            }
 
             // Load spheroidal
             float spheroidal_ = spheroidal[y * subgrid_size + x];
@@ -223,7 +227,7 @@ __device__ void
     for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
         kernel_gridder_<current_nr_channels>( \
             grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
+            uvw, wavenumbers, visibilities, spheroidal, aterm, avg_aterm_correction, metadata, subgrid); \
     }
 
 extern "C" {
@@ -242,6 +246,7 @@ __launch_bounds__(BLOCK_SIZE)
     const float2*          __restrict__ visibilities,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterm,
+    const float2*          __restrict__ avg_aterm_correction,
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid)
 {

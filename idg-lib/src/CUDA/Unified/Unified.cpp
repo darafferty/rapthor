@@ -205,10 +205,6 @@ namespace idg {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
 
-                check_dimensions(
-                    frequencies, visibilities, uvw, baselines,
-                    grid, aterms, aterms_offsets, spheroidal);
-
                 // Arguments
                 auto nr_baselines    = visibilities.get_z_dim();
                 auto nr_timesteps    = visibilities.get_y_dim();
@@ -258,6 +254,7 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id, max_nr_subgrids, subgrid_size);
@@ -325,7 +322,7 @@ namespace idg {
                             device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
@@ -430,10 +427,6 @@ namespace idg {
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
-
-                check_dimensions(
-                    frequencies, visibilities, uvw, baselines,
-                    grid, aterms, aterms_offsets, spheroidal);
 
                 // Arguments
                 auto nr_baselines    = visibilities.get_z_dim();

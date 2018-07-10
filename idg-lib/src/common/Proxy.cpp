@@ -1,4 +1,4 @@
-#include <cassert> // assert
+#include <ThrowAssert.hpp> // assert
 #include <cmath> // M_PI
 
 #include "Proxy.h"
@@ -30,6 +30,10 @@ namespace idg {
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
+            check_dimensions(
+                subgrid_size, frequencies, visibilities, uvw, baselines,
+                grid, aterms, aterms_offsets, spheroidal);
+
             if ((w_step != 0.0) && (!supports_wstack_gridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
@@ -120,6 +124,7 @@ namespace idg {
             unsigned int spheroidal_width)
         {
             check_dimensions(
+                subgrid_size,
                 frequencies_nr_channels,
                 visibilities_nr_baselines,
                 visibilities_nr_timesteps,
@@ -192,6 +197,10 @@ namespace idg {
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
+            check_dimensions(
+                subgrid_size, frequencies, visibilities, uvw, baselines,
+                grid, aterms, aterms_offsets, spheroidal);
+
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
             }
@@ -281,6 +290,7 @@ namespace idg {
             unsigned int spheroidal_width)
         {
             check_dimensions(
+                subgrid_size,
                 frequencies_nr_channels,
                 visibilities_nr_baselines,
                 visibilities_nr_timesteps,
@@ -336,8 +346,30 @@ namespace idg {
                 aterms_offsets_,
                 spheroidal_);
         }
-        
-        
+
+        void Proxy::set_avg_aterm_correction(
+            const Array4D<std::complex<float>>& avg_aterm_correction)
+        {
+            if (!supports_avg_aterm_correction())
+            {
+                throw exception::NotImplemented("This proxy does not support average aterm correction");
+            }
+
+//             check_dimensions_avg_aterm_correction();
+            std::complex<float> *data = avg_aterm_correction.data();
+            size_t size = avg_aterm_correction.get_x_dim() *
+                            avg_aterm_correction.get_y_dim() *
+                            avg_aterm_correction.get_z_dim() *
+                            avg_aterm_correction.get_w_dim();
+            m_avg_aterm_correction.resize(size);
+            std::copy(data, data+size, m_avg_aterm_correction.begin());
+        }
+
+        void Proxy::unset_avg_aterm_correction()
+        {
+            m_avg_aterm_correction.resize(0);
+        }
+
         void Proxy::transform(
             DomainAtoDomainB direction, 
             Array3D<std::complex<float>>& grid)
@@ -352,8 +384,8 @@ namespace idg {
             unsigned int grid_height,
             unsigned int grid_width)
         {
-            assert(grid_height == grid_width); // TODO: remove restriction
-            assert(grid_nr_correlations == 1 || grid_nr_correlations == 4);
+            throw_assert(grid_height == grid_width, ""); // TODO: remove restriction
+            throw_assert(grid_nr_correlations == 1 || grid_nr_correlations == 4, "");
 
             Array3D<std::complex<float>> grid_(
                 grid, grid_nr_correlations, grid_height, grid_width);
@@ -362,6 +394,7 @@ namespace idg {
         }
 
         void Proxy::check_dimensions(
+            unsigned int subgrid_size,
             unsigned int frequencies_nr_channels,
             unsigned int visibilities_nr_baselines,
             unsigned int visibilities_nr_timesteps,
@@ -384,24 +417,25 @@ namespace idg {
             unsigned int spheroidal_height,
             unsigned int spheroidal_width) const
         {
-            assert(frequencies_nr_channels > 0);
-            assert(frequencies_nr_channels == visibilities_nr_channels);
-            assert(visibilities_nr_baselines == uvw_nr_baselines);
-            assert(visibilities_nr_baselines == baselines_nr_baselines);
-            assert(visibilities_nr_timesteps == uvw_nr_timesteps);
-            assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4);
-            assert(visibilities_nr_correlations == grid_nr_correlations);
-            assert(visibilities_nr_correlations == aterms_nr_correlations);
-            assert(uvw_nr_coordinates == 3);
-            assert(baselines_two == 2);
-            assert(grid_height == grid_width); // TODO: remove restriction
-            assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one);
-            assert(aterms_aterm_height == aterms_aterm_width); // TODO: remove restriction
-            assert(spheroidal_height == spheroidal_width); // TODO: remove restriction
+            throw_assert(frequencies_nr_channels > 0, "");
+            throw_assert(frequencies_nr_channels == visibilities_nr_channels, "");
+            throw_assert(visibilities_nr_baselines == uvw_nr_baselines, "");
+            throw_assert(visibilities_nr_baselines == baselines_nr_baselines, "");
+            throw_assert(visibilities_nr_timesteps == uvw_nr_timesteps, "");
+            throw_assert(visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4, "");
+            throw_assert(visibilities_nr_correlations == grid_nr_correlations, "");
+            throw_assert(visibilities_nr_correlations == aterms_nr_correlations, "");
+            throw_assert(uvw_nr_coordinates == 3, "");
+            throw_assert(baselines_two == 2, "");
+            throw_assert(grid_height == grid_width, ""); // TODO: remove restriction
+            throw_assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one, "");
+            throw_assert(aterms_aterm_height == aterms_aterm_width, ""); // TODO: remove restriction
+            throw_assert(spheroidal_height == subgrid_size, "");
+            throw_assert(spheroidal_height == subgrid_size, "");
         }
 
-
         void Proxy::check_dimensions(
+            unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -412,6 +446,7 @@ namespace idg {
             const Array2D<float>& spheroidal) const
         {
             check_dimensions(
+                subgrid_size,
                 frequencies.get_x_dim(),
                 visibilities.get_z_dim(),
                 visibilities.get_y_dim(),

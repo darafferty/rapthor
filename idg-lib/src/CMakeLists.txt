@@ -3,6 +3,8 @@ project(idg)
 set (IDG_CUDA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/CUDA/common)
 set (IDG_OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/common)
 
+include_directories(external)
+
 # add subfolders
 add_subdirectory(common)
 add_subdirectory(fft)
