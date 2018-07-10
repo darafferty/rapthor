@@ -5,6 +5,7 @@
 #include <complex>
 #include <cassert>
 #include <cstring>
+#include <memory>
 
 namespace idg {
 
@@ -140,13 +141,6 @@ namespace idg {
                 if (m_delete_buffer) delete m_buffer;
             }
 
-            void resize(size_t width)
-            {
-                assert(width >= m_x_dim);
-                m_x_dim = width;
-                m_buffer = (T*) realloc(m_buffer, width*sizeof(T));
-            }
-
             T* data(
                 size_t index=0) const
             {
@@ -235,14 +229,6 @@ namespace idg {
                 if (m_delete_buffer) {
                     delete m_buffer;
                 }
-            }
-
-            void resize(size_t height, size_t width)
-            {
-                assert(height >= m_y_dim && width >= m_x_dim);
-                m_x_dim = width;
-                m_y_dim = height;
-                m_buffer = (T*) realloc(m_buffer, height*width*sizeof(T));
             }
 
             T* data(
@@ -342,15 +328,6 @@ namespace idg {
 
             virtual ~Array3D() { if (m_delete_buffer) delete m_buffer; }
 
-            void resize(size_t depth, size_t height, size_t width)
-            {
-                assert(depth >= m_z_dim && height >= m_y_dim && width >= m_x_dim);
-                m_x_dim = width;
-                m_y_dim = height;
-                m_z_dim = height;
-                m_buffer = (T*) realloc(m_buffer, height*width*depth*sizeof(T));
-            }
-
             T* data(
                 size_t z=0,
                 size_t y=0,
@@ -412,8 +389,20 @@ namespace idg {
                 m_y_dim(y_dim),
                 m_z_dim(z_dim),
                 m_w_dim(w_dim),
-                m_delete_buffer((w_dim*x_dim*y_dim*z_dim) > 0),
-                m_buffer(new T[w_dim*z_dim*y_dim*x_dim])
+                m_buffer( new T[w_dim*z_dim*y_dim*x_dim], std::default_delete<T[]>() )  // shared_ptr with custom deleter that deletes an array
+            {}
+
+            Array4D(
+                std::shared_ptr<T> data,
+                size_t w_dim,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                m_x_dim(x_dim),
+                m_y_dim(y_dim),
+                m_z_dim(z_dim),
+                m_w_dim(w_dim),
+                m_buffer(data)
             {}
 
             Array4D(
@@ -426,8 +415,7 @@ namespace idg {
                 m_y_dim(y_dim),
                 m_z_dim(z_dim),
                 m_w_dim(w_dim),
-                m_delete_buffer(false),
-                m_buffer(data)
+                m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
             {}
 
             Array4D(const Array4D& other) = delete;
@@ -438,7 +426,6 @@ namespace idg {
                   m_y_dim(other.m_y_dim),
                   m_z_dim(other.m_z_dim),
                   m_w_dim(other.m_w_dim),
-                  m_delete_buffer(other.m_delete_buffer),
                   m_buffer(other.m_buffer)
             {
                 other.m_buffer = nullptr;
@@ -447,27 +434,15 @@ namespace idg {
             // move assignment operator
             Array4D& operator=(Array4D&& other)
             {
-                if (m_delete_buffer) delete m_buffer;
                 m_w_dim = other.m_w_dim;
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
                 m_z_dim = other.m_z_dim;
-                m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
             }
 
-            virtual ~Array4D() { if (m_delete_buffer) delete m_buffer; }
-
-            void resize(size_t w_dim, size_t z_dim, size_t y_dim, size_t x_dim)
-            {
-                assert(w_dim >= m_w_dim && z_dim >= m_z_dim && y_dim >= m_y_dim && x_dim >= m_x_dim);
-                m_x_dim = x_dim;
-                m_y_dim = y_dim;
-                m_z_dim = z_dim;
-                m_w_dim = w_dim;
-                m_buffer = (T*) realloc(m_buffer, w_dim*z_dim*y_dim*x_dim*sizeof(T));
-            }
+            virtual ~Array4D() {}
 
             T* data(
                 size_t w=0,
@@ -475,7 +450,7 @@ namespace idg {
                 size_t y=0,
                 size_t x=0) const
             {
-                return &m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+                return &m_buffer.get()[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
             }
 
             size_t get_x_dim() const { return m_x_dim; }
@@ -489,7 +464,7 @@ namespace idg {
                 size_t y,
                 size_t x) const
             {
-                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+                return m_buffer.get()[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
             }
 
             T& operator()(
@@ -498,13 +473,13 @@ namespace idg {
                 size_t y,
                 size_t x)
             {
-                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+                return m_buffer.get()[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
             }
 
             void init(const T& a) {
                 const unsigned int n = m_x_dim*m_y_dim*m_z_dim*m_w_dim;
                 for (unsigned int i = 0; i < n; ++i) {
-                    m_buffer[i] = a;
+                    m_buffer.get()[i] = a;
                 }
             }
 
@@ -513,13 +488,16 @@ namespace idg {
                        get_y_dim() * get_x_dim() * sizeof(T);
             }
 
+            // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
+            // Need to return a copy in that case.
+            const std::shared_ptr<const T> get() const {return m_buffer;}
+
         protected:
             size_t m_x_dim;
             size_t m_y_dim;
             size_t m_z_dim;
             size_t m_w_dim;
-            bool   m_delete_buffer;
-            T*     m_buffer;
+            std::shared_ptr<T> m_buffer;
     };
 
     class Grid : public Array4D<std::complex<float>> {
@@ -549,7 +527,7 @@ namespace idg {
                 {}
 
                 void zero() {
-                    memset(m_buffer, 0, bytes());
+                    memset(m_buffer.get(), 0, bytes());
                 }
     };
 
