@@ -57,29 +57,25 @@ endif()
 
 include_directories (${IDG_INCLUDE_DIR})
 
-# Use LAPACK headers
-find_package(LAPACKE)
-include_directories (${LAPACK_INCLUDE_DIR})
+include_directories(external)
 
 # Try to use MKL libraries
 find_package(MKL QUIET)
 if (${MKL_FOUND})
-    include_directories (${MKL_INCLUDE_DIRS})
     set (${PROJECT_NAME}_link_libraries
         ${IDG_LIBRARY}
         ${MKL_LIBRARIES}
     )
 else()
     # Fallback to LAPACK libraries
+    # Use LAPACK headers
+    find_package(LAPACK REQUIRED)
+
     set (${PROJECT_NAME}_link_libraries
         ${IDG_LIBRARY}
         ${LAPACK_LIBRARIES}
     )
 endif()
-
-if (NOT ${LAPACK_FOUND} AND NOT ${MKL_FOUND})
-message(STATUS "Could NOT find math libraries required for idg-api, skipping build.")
-else()
 
 # build all tests
 if (BUILD_WITH_TESTS)
@@ -156,4 +152,3 @@ install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfig.cmake"
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
-endif()

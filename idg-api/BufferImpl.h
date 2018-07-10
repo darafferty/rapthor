@@ -30,7 +30,9 @@
 
 
 namespace idg {
-namespace api {    
+namespace api {
+
+    class BufferSetImpl;
 
     class BufferImpl : public virtual Buffer
     {
@@ -38,6 +40,7 @@ namespace api {
 
         // Constructors and destructor
         BufferImpl(
+            BufferSetImpl* bufferset,
             proxy::Proxy* proxy,
             size_t bufferTimesteps = 4096);
 
@@ -131,6 +134,8 @@ namespace api {
         void set_uvw_to_infinity();
         void init_default_aterm();
 
+        BufferSetImpl *m_bufferset; // pointer to parent BufferSet
+
         // Bookkeeping
         size_t m_bufferTimesteps;
         size_t m_timeStartThisBatch;
@@ -144,18 +149,18 @@ namespace api {
 
         // Parameters for proxy
         size_t m_nrStations;
-        size_t m_nrGroups;
+        size_t m_nr_channels;
+        size_t m_nr_baselines;
         size_t m_nrPolarizations;
         size_t m_gridHeight;
         size_t m_gridWidth;
         size_t m_nr_w_layers;
-        size_t m_subgridSize;
         float  m_cellHeight;
         float  m_cellWidth;
         float  m_wStepInLambda;
         float  m_kernel_size;
+        std::vector<unsigned int>  m_default_aterm_offsets;
         std::vector<unsigned int>  m_aterm_offsets;
-        std::vector<unsigned int>  m_aterm_offsets2;
         Array1D<unsigned int> m_aterm_offsets_array;
         proxy::Proxy* m_proxy;
 
@@ -164,6 +169,7 @@ namespace api {
         std::vector<Array1D<float>> m_grouped_frequencies;          // CH
         Array2D<float> m_spheroidal;                                     // SB x SB
         std::vector<Matrix2x2<std::complex<float>>> m_aterms;
+        std::vector<Matrix2x2<std::complex<float>>> m_default_aterms;
         Array4D<Matrix2x2<std::complex<float>>> m_aterms_array;     // ST x SB x SB
 
         Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
@@ -172,6 +178,10 @@ namespace api {
         Array3D<Visibility<std::complex<float>>> m_visibilities;   // BL * TI * CH
 
         Grid* m_grid; // pointer grid
+
+        // references to members of parent BufferSet
+        size_t &m_subgridsize;
+
     };
 
 } // namespace api

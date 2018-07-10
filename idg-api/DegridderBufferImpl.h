@@ -75,6 +75,7 @@ namespace api {
     public:
         // Constructors and destructor
         DegridderBufferImpl(
+            BufferSetImpl *bufferset,
             proxy::Proxy* proxy,
             size_t bufferTimesteps = 4096);
 

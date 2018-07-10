@@ -7,8 +7,29 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+
+// #if defined(HAVE_MKL)
+//     #include <mkl_lapacke.h>
+// #else
+//     // Workaround: Prevent c-linkage of templated complex<double> in lapacke.h
+//     #include <complex.h>
+//     #define lapack_complex_float    float _Complex
+//     #define lapack_complex_double   double _Complex
+//     // End workaround
+//     #include <lapacke.h>
+// #endif
+
 #include "taper.h"
 #include "idg-fft.h"
+#include "npy.hpp"
+
+
+extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
+                    int* lda, int* ipiv, int *info );
+
+extern "C" void cgetri_( int* n, std::complex<float>* a, int* lda,
+                    const int* ipiv, std::complex<float>* work,
+                    int* lwork, int *info );
 
 namespace idg {
 namespace api {
@@ -35,6 +56,8 @@ namespace api {
     BufferSetImpl::BufferSetImpl(
         Type architecture) :
         m_architecture(architecture),
+        m_default_aterm_correction(0,0,0,0),
+        m_avg_aterm_correction(0,0,0,0),
         m_grid(0,0,0,0,0),
         m_proxy(create_proxy())
     {}
@@ -164,11 +187,35 @@ namespace api {
 
         m_subgridsize = int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency)/8.0))*8;
 
+        m_default_aterm_correction = Array4D<std::complex<float>>(m_subgridsize, m_subgridsize, 4, 4);
+        m_default_aterm_correction.init(0.0);
+        for (size_t i = 0; i < m_subgridsize; i++)
+        {
+            for (size_t j = 0; j < m_subgridsize; j++)
+            {
+                for (size_t k = 0; k < 4; k++)
+                {
+                    m_default_aterm_correction(i,j,k,k) = 1.0;
+                }
+            }
+        }
+
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
 
         m_taper_subgrid.resize(m_subgridsize);
         m_taper_grid.resize(m_padded_size);
+
         init_optimal_taper_1D(m_subgridsize, m_padded_size, m_size, taper_kernel_size, m_taper_subgrid.data(), m_taper_grid.data());
+        // Compute inverse taper
+        m_inv_taper.resize(m_size);
+        size_t offset = (m_padded_size-m_size)/2;
+
+        for (int i = 0; i < m_size; i++)
+        {
+            float y = m_taper_grid[i+offset];
+            m_inv_taper[i] = 1.0/y;
+        }
+
     }
 
 
@@ -195,17 +242,20 @@ namespace api {
             BufferImpl *buffer;
             if (m_buffer_set_type == BufferSetType::gridding)
             {
-                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(m_proxy, bufferTimesteps);
+                GridderBufferImpl *gridderbuffer = new GridderBufferImpl(this, m_proxy, bufferTimesteps);
                 m_gridderbuffers.push_back(std::unique_ptr<GridderBuffer>(gridderbuffer));
                 buffer = gridderbuffer;
             }
             else
             {
-                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(m_proxy, bufferTimesteps);
+                DegridderBufferImpl *degridderbuffer = new DegridderBufferImpl(this, m_proxy, bufferTimesteps);
                 m_degridderbuffers.push_back(std::unique_ptr<DegridderBuffer>(degridderbuffer));
                 buffer = degridderbuffer;
             }
 
+
+            // TODO: maybe just give the Buffers a pointer to their parent BufferSet and make them friends of BufferSet
+            // so this list of parameters does not need to passed along to the Buffers
 
             buffer->set_subgrid_size(m_subgridsize);
 
@@ -241,7 +291,7 @@ namespace api {
         return m_degridderbuffers[i].get();
     }
 
-    void BufferSetImpl::set_image(const double* image) 
+    void BufferSetImpl::set_image(const double* image, bool do_scale)
     {
         double runtime = -omp_get_wtime();
         std::cout << std::setprecision(3);
@@ -250,36 +300,53 @@ namespace api {
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
-        // Compute inverse spheroidal
-        std::vector<float> inv_spheroidal(m_size, 0.0);
-        for (int i = 0; i < m_size; i++) {
-            float y = m_taper_grid[i+y0];
-            inv_spheroidal[i] = 1.0/y;
-        }
-
         // Convert from stokes to linear into w plane 0
-        std::cout << "set grid from image";
+        std::cout << "set grid from image" << std::endl;
         double runtime_copy = -omp_get_wtime();
         m_grid.init(0.0);
-        #pragma omp parallel for
-        for (int y = 0; y < m_size; y++) {
-            for (int x = 0; x < m_size; x++) {
-                // Stokes I
-                m_grid(0,0,y+y0,x+x0) = image[m_size*y+x];
-                m_grid(0,3,y+y0,x+x0) = image[m_size*y+x];
-                // Stokes Q
-                m_grid(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
-                m_grid(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
-                // Stokes U
-                m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                // Stokes V
-                m_grid(0,1,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
-                m_grid(0,2,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
-            } // end for x
-        } // end for y
+        if (do_scale)
+        {
+            std::cout << "scale: " << (*m_scalar_beam)[0] << std::endl;
+            #pragma omp parallel for
+            for (int y = 0; y < m_size; y++) {
+                for (int x = 0; x < m_size; x++) {
+                    // Stokes I
+                    m_grid(0,0,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    m_grid(0,3,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    // Stokes Q
+                    m_grid(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    m_grid(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    // Stokes U
+                    m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    // Stokes V
+                    m_grid(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
+                    m_grid(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
+                } // end for x
+            } // end for y
+        }
+        else
+        {
+            #pragma omp parallel for
+            for (int y = 0; y < m_size; y++) {
+                for (int x = 0; x < m_size; x++) {
+                    // Stokes I
+                    m_grid(0,0,y+y0,x+x0) = image[m_size*y+x];
+                    m_grid(0,3,y+y0,x+x0) = image[m_size*y+x];
+                    // Stokes Q
+                    m_grid(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
+                    m_grid(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
+                    // Stokes U
+                    m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
+                    m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
+                    // Stokes V
+                    m_grid(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
+                    m_grid(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
+                } // end for x
+            } // end for y
+        }
         runtime_copy += omp_get_wtime();
-        std::cout << ", runtime:" << runtime_copy << std::endl;
+        std::cout << "runtime:" << runtime_copy << std::endl;
 
         // Copy to other w planes and multiply by w term
         double runtime_stacking = -omp_get_wtime();
@@ -303,12 +370,12 @@ namespace api {
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
 
                     // Compute inverse spheroidal
-                    float inv_spheroidal2 = inv_spheroidal[y] * inv_spheroidal[x];
+                    float inv_taper = m_inv_taper[y] * m_inv_taper[x];
 
                     // Set to current w-plane
                     #pragma unroll
                     for (int pol = 0; pol < 4; pol++) {
-                        m_grid(w, pol, y+y0, x+x0) = m_grid(0, pol, y+y0, x+x0) * inv_spheroidal2 * phasor;
+                        m_grid(w, pol, y+y0, x+x0) = m_grid(0, pol, y+y0, x+x0) * inv_taper * phasor;
                     }
                 } // end for x
             } // end for y
@@ -320,7 +387,6 @@ namespace api {
         std::cout << "fft w_layers";
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
-        fftshift(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         fft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         runtime_fft += omp_get_wtime();
         std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -339,19 +405,11 @@ namespace api {
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
-        // Compute inverse spheroidal
-        std::vector<float> inv_spheroidal(m_size, 0.0);
-        for (int i = 0; i < m_size; i++) {
-            float y = m_taper_grid[i+(m_padded_size-m_size)/2];
-            inv_spheroidal[i] = 1.0/y;
-        }
-
         // Fourier transform w layers
         std::cout << "ifft w_layers";
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
         ifft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
-        fftshift(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         runtime_fft += omp_get_wtime();
         std::cout << ", runtime: " << runtime_fft << std::endl;
 
@@ -376,13 +434,13 @@ namespace api {
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
 
                     // Compute inverse spheroidal
-                    float inv_spheroidal2 = inv_spheroidal[y] * inv_spheroidal[x];
+                    float inv_taper = m_inv_taper[y] * m_inv_taper[x];
 
                     // Apply correction
-                    m_grid(w, 0, y+y0, x+x0) = m_grid(w, 0, y+y0, x+x0) * inv_spheroidal2 * phasor;
-                    m_grid(w, 1, y+y0, x+x0) = m_grid(w, 1, y+y0, x+x0) * inv_spheroidal2 * phasor;
-                    m_grid(w, 2, y+y0, x+x0) = m_grid(w, 2, y+y0, x+x0) * inv_spheroidal2 * phasor;
-                    m_grid(w, 3, y+y0, x+x0) = m_grid(w, 3, y+y0, x+x0) * inv_spheroidal2 * phasor;
+                    m_grid(w, 0, y+y0, x+x0) = m_grid(w, 0, y+y0, x+x0) * inv_taper * phasor;
+                    m_grid(w, 1, y+y0, x+x0) = m_grid(w, 1, y+y0, x+x0) * inv_taper * phasor;
+                    m_grid(w, 2, y+y0, x+x0) = m_grid(w, 2, y+y0, x+x0) * inv_taper * phasor;
+                    m_grid(w, 3, y+y0, x+x0) = m_grid(w, 3, y+y0, x+x0) * inv_taper * phasor;
 
                     // Add to first w-plane
                     if (w > 0) {
@@ -411,7 +469,7 @@ namespace api {
             // Stokes U
             image[2*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).real() + m_grid(0,2,y+y0,x+x0).real());
             // Stokes V
-            image[3*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).imag() - m_grid(0,2,y+y0,x+x0).imag());
+            image[3*m_size*m_size + m_size*y+x] = 0.5 * (-m_grid(0,1,y+y0,x+x0).imag() + m_grid(0,2,y+y0,x+x0).imag());
             } // end for x
         } // end for y
         runtime_copy += omp_get_wtime();
@@ -440,33 +498,172 @@ namespace api {
         }
     }
 
-    void BufferSetImpl::fft_grid(
-        size_t nr_polarizations,
-        size_t height,
-        size_t width,
-        std::complex<float> *grid)
+    void BufferSetImpl::init_compute_avg_beam(compute_flags flag)
     {
-        #pragma omp parallel for
-        for (int pol = 0; pol < nr_polarizations; pol++) {
-            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
-            fft2f(height, width, &grid[pol*height*width]);
-        }
+        m_do_compute_avg_beam = true;
+        m_do_gridding = (flag != compute_flags::compute_only);
+        m_average_beam = std::vector<std::complex<float>>(m_subgridsize*m_subgridsize*16, 0.0);
     }
 
 
-    void BufferSetImpl::ifft_grid(
-        size_t nr_polarizations,
-        size_t height,
-        size_t width,
-        std::complex<float> *grid)
+    void BufferSetImpl::finalize_compute_avg_beam()
     {
-        #pragma omp parallel for
-        for (int pol = 0; pol < nr_polarizations; pol++) {
-            ifft2f(height, width, &grid[pol*height*width]);
-            fftshift(height, width, &grid[pol*height*width]); // TODO: remove shift here
+        m_matrix_inverse_beam = std::make_shared<std::vector<std::complex<float>>>(m_average_beam);
+        m_scalar_beam = std::make_shared<std::vector<float>>(m_size * m_size);
+        std::vector<std::complex<float>> scalar_beam_subgrid (m_subgridsize*m_subgridsize, 1.0);
+        std::vector<std::complex<float>> scalar_beam_padded (m_padded_size*m_padded_size, 0.0);
+
+        m_do_compute_avg_beam = false;
+        m_do_gridding = true;
+
+        {
+            const long unsigned leshape [] = {m_subgridsize, m_subgridsize,4,4};
+            npy::SaveArrayAsNumpy("beam.npy", false, 4, leshape, *m_matrix_inverse_beam);
         }
+
+        for (int i = 0; i < m_subgridsize * m_subgridsize; i++)
+        {
+
+//             LAPACKE_cgetrf( LAPACK_COL_MAJOR, 4, 4, (lapack_complex_float*) data, 4, ipiv);
+//             extern void cgetrf( int* m, int* n, std::complex<float>* a,
+//                     int* lda, int* ipiv, int *info );
+
+
+            std::complex<float> *data = m_matrix_inverse_beam->data() + i*16;
+            int n = 4;
+            int info;
+            int ipiv[4];
+            cgetrf_( &n, &n, data, &n, ipiv, &info );
+
+
+//             LAPACKE_cgetri( LAPACK_COL_MAJOR, 4, (lapack_complex_float*) data, 4, ipiv);
+//             extern void cgetri( int* n, std::complex<float>* a, int* lda,
+//                                 const int* ipiv, std::complex<float>* work,
+//                                 int* lwork, int *info );
+
+            int lwork = -1;
+            std::complex<float> wkopt;
+            cgetri_(&n, data, &n, ipiv, &wkopt, &lwork, &info );
+            lwork = int(wkopt.real());
+            std::vector<std::complex<float>> work(lwork);
+            cgetri_(&n, data, &n, ipiv, work.data(), &lwork, &info );
+
+            // NOTE: there is a sign flip between the idg subgrids and the master image
+            scalar_beam_subgrid[m_subgridsize*m_subgridsize-i-1] = 1.0/sqrt(data[0].real() + data[3].real() + data[12].real() + data[15].real());
+
+            #pragma omp simd
+            for(size_t j=0; j<16; j++)
+            {
+                data[j] *= scalar_beam_subgrid[m_subgridsize*m_subgridsize-i-1];
+            }
+        }
+
+
+        // Interpolate scalar beam:
+        //     1. multiply by taper
+        //     2. fft
+        //     3. multiply by phase gradient for half pixel shift
+        //     4. zero pad
+        //     5. ifft
+        //     6. divide out taper and normalize
+
+        // 1. multiply by taper
+        for(int i = 0; i < int(m_subgridsize); i++)
+        {
+            for(int j = 0; j < int(m_subgridsize); j++)
+            {
+                scalar_beam_subgrid[i*m_subgridsize + j] *= m_taper_subgrid[i] * m_taper_subgrid[j];
+            }
+        }
+
+        // 2. fft
+        fft2f(m_subgridsize, scalar_beam_subgrid.data());
+
+        // 3. multiply by phase gradient for half pixel shift
+        for(size_t i=0; i<m_subgridsize; i++)
+        {
+            for(size_t j=0; j<m_subgridsize; j++)
+            {
+                float phase = -M_PI*((float(i)+float(j))/m_subgridsize-1.0);
+
+                // Compute phasor
+                std::complex<float> phasor(std::cos(phase), std::sin(phase));
+
+                scalar_beam_subgrid[i*m_subgridsize+j] *= phasor/float(m_subgridsize*m_subgridsize);
+
+            }
+        }
+
+        // 4. zero pad
+        {
+            size_t offset = (m_padded_size - m_subgridsize)/2;
+            for(size_t i=0; i<m_subgridsize; i++)
+            {
+                for(size_t j=0; j<m_subgridsize; j++)
+                {
+                    scalar_beam_padded[(i+offset)*m_padded_size+(j+offset)] = scalar_beam_subgrid[i*m_subgridsize+j];
+                }
+            }
+        }
+
+        // 5. ifft
+        ifft2f(m_padded_size, scalar_beam_padded.data());
+
+        // 6. divide out taper and normalize
+        {
+            size_t offset = (m_padded_size - m_size)/2;
+            float x_center = m_size/2;
+            float y_center = m_size/2;
+            float center_value = scalar_beam_padded[(y_center+offset)*m_padded_size + x_center + offset].real() * m_inv_taper[x_center] * m_inv_taper[y_center];
+            float normalization = 1.0/center_value;
+            for (size_t y = 0; y < m_size; y++)
+            {
+                for (size_t x = 0; x < m_size; x++)
+                {
+                    (*m_scalar_beam)[m_size*y+x] = scalar_beam_padded[(y+offset)*m_padded_size + x + offset].real() * m_inv_taper[x] * m_inv_taper[y] * normalization;
+                }
+            }
+
+            // normalize matrix beam as well
+            for (int i = 0; i < m_subgridsize * m_subgridsize; i++)
+            {
+                std::complex<float> *data = m_matrix_inverse_beam->data() + i*16;
+                #pragma omp simd
+                for(size_t j=0; j<16; j++)
+                {
+                    data[j] *= normalization;
+                }
+            }
+        }
+
+        {
+            const long unsigned leshape [] = {m_size, m_size};
+            npy::SaveArrayAsNumpy("scalar_beam.npy", false, 2, leshape, *m_scalar_beam);
+        }
+
+        m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
+        m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
+
+        {
+            const long unsigned leshape [] = {m_subgridsize, m_subgridsize,4,4};
+            npy::SaveArrayAsNumpy("beam_inv.npy", false, 4, leshape, *m_matrix_inverse_beam);
+        }
+
     }
 
+    void BufferSetImpl::set_matrix_inverse_beam(std::shared_ptr<std::vector<std::complex<float>>> matrix_inverse_beam)
+    {
+        m_matrix_inverse_beam = matrix_inverse_beam;
+        m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
+        m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
+    }
+
+    void BufferSetImpl::unset_matrix_inverse_beam()
+    {
+        m_matrix_inverse_beam.reset();
+        m_avg_aterm_correction = Array4D<std::complex<float>>(0,0,0,0);
+        m_proxy->unset_avg_aterm_correction();
+    }
 
 
 } // namespace api
