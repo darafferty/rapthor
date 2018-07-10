@@ -226,6 +226,19 @@ namespace api {
                         m_aterm_offsets_array,
                         options);
 
+
+                    plans[i] = plan;
+                    locks[i].unlock();
+                } // end for i
+            } // end create plans
+
+            // Execute plans
+            if (omp_get_thread_num() == 1) {
+                for (int i = 0; i < nr_channel_groups; i++) {
+                    // Wait for plan to become available
+                    locks[i].lock();
+                    Plan *plan = plans[i];
+
                     if (i == 0) {
                         Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
 
@@ -244,18 +257,6 @@ namespace api {
                             m_aterm_offsets_array,
                             m_spheroidal);
                     }
-
-                    plans[i] = plan;
-                    locks[i].unlock();
-                } // end for i
-            } // end create plans
-
-            // Execute plans
-            if (omp_get_thread_num() == 1) {
-                for (int i = 0; i < nr_channel_groups; i++) {
-                    // Wait for plan to become available
-                    locks[i].lock();
-                    Plan *plan = plans[i];
 
                     // Start flush
                     std::cout << "gridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
@@ -285,12 +286,11 @@ namespace api {
                         m_aterm_offsets_array,
                         m_spheroidal);
                 } // end for i
+                // Wait for all plans to be executed
+                m_proxy->finish_gridding();
             } // end execute plans
 
         } // end omp parallel
-
-        // Wait for all plans to be executed
-        m_proxy->finish_gridding();
 
         // Cleanup plans
         for (int i = 0; i < nr_channel_groups; i++) {
