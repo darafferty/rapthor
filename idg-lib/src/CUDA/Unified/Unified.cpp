@@ -205,10 +205,6 @@ namespace idg {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
 
-                check_dimensions(
-                    frequencies, visibilities, uvw, baselines,
-                    grid, aterms, aterms_offsets, spheroidal);
-
                 // Arguments
                 auto nr_baselines    = visibilities.get_z_dim();
                 auto nr_timesteps    = visibilities.get_y_dim();
@@ -430,10 +426,6 @@ namespace idg {
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
                 }
-
-                check_dimensions(
-                    frequencies, visibilities, uvw, baselines,
-                    grid, aterms, aterms_offsets, spheroidal);
 
                 // Arguments
                 auto nr_baselines    = visibilities.get_z_dim();

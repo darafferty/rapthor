@@ -558,10 +558,6 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
                 auto grid_size    = grid.get_x_dim();
 
-                check_dimensions(
-                    frequencies, visibilities, uvw, baselines,
-                    grid, aterms, aterms_offsets, spheroidal);
-
                 printf("### Initialize gridding\n");
                 initialize(
                     plan,
@@ -789,10 +785,6 @@ namespace idg {
                 auto nr_channels  = visibilities.get_x_dim();
                 auto nr_stations  = aterms.get_z_dim();
                 auto grid_size    = grid.get_x_dim();
-
-                check_dimensions(
-                    frequencies, visibilities, uvw, baselines,
-                    grid, aterms, aterms_offsets, spheroidal);
 
                 printf("### Initialize degridding\n");
                 initialize(

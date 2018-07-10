@@ -286,8 +286,10 @@ namespace idg {
                     DomainAtoDomainB direction,
                     Array3D<std::complex<float>>& grid) = 0;
 
+
             protected:
                 void check_dimensions(
+                    unsigned int subgrid_size,
                     unsigned int frequencies_nr_channels,
                     unsigned int visibilities_nr_baselines,
                     unsigned int visibilities_nr_timesteps,
@@ -311,6 +313,7 @@ namespace idg {
                     unsigned int spheroidal_width) const;
 
                 void check_dimensions(
+                    unsigned int subgrid_size,
                     const Array1D<float>& frequencies,
                     const Array3D<Visibility<std::complex<float>>>& visibilities,
                     const Array2D<UVWCoordinate<float>>& uvw,

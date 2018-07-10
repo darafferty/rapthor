@@ -30,6 +30,10 @@ namespace idg {
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
+            check_dimensions(
+                subgrid_size, frequencies, visibilities, uvw, baselines,
+                grid, aterms, aterms_offsets, spheroidal);
+
             if ((w_step != 0.0) && (!supports_wstack_gridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
@@ -120,6 +124,7 @@ namespace idg {
             unsigned int spheroidal_width)
         {
             check_dimensions(
+                subgrid_size,
                 frequencies_nr_channels,
                 visibilities_nr_baselines,
                 visibilities_nr_timesteps,
@@ -192,6 +197,10 @@ namespace idg {
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
+            check_dimensions(
+                subgrid_size, frequencies, visibilities, uvw, baselines,
+                grid, aterms, aterms_offsets, spheroidal);
+
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
             }
@@ -281,6 +290,7 @@ namespace idg {
             unsigned int spheroidal_width)
         {
             check_dimensions(
+                subgrid_size,
                 frequencies_nr_channels,
                 visibilities_nr_baselines,
                 visibilities_nr_timesteps,
@@ -362,6 +372,7 @@ namespace idg {
         }
 
         void Proxy::check_dimensions(
+            unsigned int subgrid_size,
             unsigned int frequencies_nr_channels,
             unsigned int visibilities_nr_baselines,
             unsigned int visibilities_nr_timesteps,
@@ -397,10 +408,12 @@ namespace idg {
             throw_assert(grid_height == grid_width, ""); // TODO: remove restriction
             throw_assert(aterms_nr_timeslots + 1 == aterms_offsets_nr_timeslots_plus_one, "");
             throw_assert(aterms_aterm_height == aterms_aterm_width, ""); // TODO: remove restriction
+            throw_assert(spheroidal_height == subgrid_size, "");
+            throw_assert(spheroidal_height == subgrid_size, "");
         }
 
-
         void Proxy::check_dimensions(
+            unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVWCoordinate<float>>& uvw,
@@ -411,6 +424,7 @@ namespace idg {
             const Array2D<float>& spheroidal) const
         {
             check_dimensions(
+                subgrid_size,
                 frequencies.get_x_dim(),
                 visibilities.get_z_dim(),
                 visibilities.get_y_dim(),
