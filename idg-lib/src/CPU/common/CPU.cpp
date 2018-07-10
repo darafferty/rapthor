@@ -54,6 +54,7 @@ namespace idg {
                 Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
+                const Array4D<std::complex<float>>& avg_aterm_correction,
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
@@ -312,6 +313,7 @@ namespace idg {
                     void *wavenumbers_ptr  = wavenumbers.data();
                     void *spheroidal_ptr   = spheroidal.data();
                     void *aterm_ptr        = aterms.data();
+                    void *avg_aterm_ptr    = NULL; // avg_aterm_correction.data();
                     void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
                     void *uvw_ptr          = uvw.data(first_bl, 0);
                     void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
@@ -331,6 +333,7 @@ namespace idg {
                         visibilities_ptr,
                         spheroidal_ptr,
                         aterm_ptr,
+                        avg_aterm_ptr,
                         metadata_ptr,
                         subgrids_ptr
                         );

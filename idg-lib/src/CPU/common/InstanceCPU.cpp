@@ -111,7 +111,7 @@ namespace idg {
             } // end load_kernel_funcions
 
             // Function signatures
-            #define sig_gridder         (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_gridder         (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder       (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_fft		        (void (*)(long,long,long,void*,int))
             #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
@@ -133,6 +133,7 @@ namespace idg {
                 void *visibilities,
                 void *spheroidal,
                 void *aterm,
+                void *avg_aterm,
                 void *metadata,
                 void *subgrid)
             {
@@ -140,7 +141,7 @@ namespace idg {
                 states[0] = powerSensor->read();
                 (sig_gridder (void *) *function_gridder)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                  uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+                  uvw, wavenumbers, visibilities, spheroidal, aterm, avg_aterm, metadata, subgrid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_gridder(states[0], states[1]); }
             }
