@@ -183,7 +183,7 @@ namespace api {
         // reserved space in subgrid for time 
         m_uv_span_time = 8.0;
 
-        m_uv_span_frequency = 24.0;
+        m_uv_span_frequency = 8.0;
 
         m_subgridsize = int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency)/8.0))*8;
 
