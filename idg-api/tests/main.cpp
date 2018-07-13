@@ -64,10 +64,12 @@ int main(int argc, char *argv[])
         for (size_t st2=st1; st2<nr_stations; ++st2) {
           vector<double> uvw = {1., 1., 1.};
           vector<complex<float>> data(4 * bands[0].size(), 0.);
+          vector<float> weights(data.size(), 1.);
           bufferset->get_gridder(0)->grid_visibilities(timestep,
                                                        st1, st2,
                                                        uvw.data(),
-                                                       data.data());
+                                                       data.data(),
+                                                       weights.data());
         }
       }
     }
