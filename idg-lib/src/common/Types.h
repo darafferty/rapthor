@@ -531,7 +531,7 @@ namespace idg {
                 {}
 
                 void zero() {
-                    memset(m_buffer.get(), 0, bytes());
+                    memset((void *) m_buffer.get(), 0, bytes());
                 }
     };
 
