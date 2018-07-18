@@ -61,6 +61,9 @@ namespace idg {
                     cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                     cu::DeviceMemory& d_grid        = device.get_device_grid(grid_size);
 
+                    unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
+                    cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction(avg_aterm_correction_subgrid_size);
+
                     // Dynamic memory (per thread)
                     for (int t = 0; t < nr_streams; t++) {
                         device.get_device_visibilities(t, jobsize[d], nr_timesteps, nr_channels);
