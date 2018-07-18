@@ -1,13 +1,13 @@
 extern "C" {
 
-    void* utils_init_identity_spheroidal(void *ptr, int subgrid_size)
+    void utils_init_identity_spheroidal(void *ptr, int subgrid_size)
     {
         idg::Array2D<float> spheroidal =
             idg::get_identity_spheroidal(subgrid_size, subgrid_size);
         memcpy(ptr, spheroidal.data(), spheroidal.bytes());
     }
 
-    void* utils_init_example_spheroidal(void *ptr, int subgrid_size)
+    void utils_init_example_spheroidal(void *ptr, int subgrid_size)
     {
         idg::Array2D<float> spheroidal =
             idg::get_example_spheroidal(subgrid_size, subgrid_size);
