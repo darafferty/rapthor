@@ -134,6 +134,7 @@ namespace idg {
                 m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
+				return *this;
             }
 
             virtual ~Array1D()
@@ -222,6 +223,7 @@ namespace idg {
                 m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
+				return *this;
             }
 
             virtual ~Array2D()
@@ -324,6 +326,7 @@ namespace idg {
                 m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
+				return *this;
             }
 
             virtual ~Array3D() { if (m_delete_buffer) delete m_buffer; }
@@ -440,6 +443,7 @@ namespace idg {
                 m_z_dim = other.m_z_dim;
                 m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
+				return *this;
             }
 
             virtual ~Array4D() {}
