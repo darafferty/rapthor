@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <stdexcept>
 
+#include <omp.h>
+
 // #if defined(HAVE_MKL)
 //     #include <mkl_lapacke.h>
 // #else
@@ -134,6 +136,12 @@ namespace api {
         const float a_term_kernel_size = (options.count("a_term_kernel_size")) ? (float)options["a_term_kernel_size"] : 0.0;
 
         m_size = size;
+
+        int max_threads = (options.count("max_threads")) ? (int)options["max_threads"] : 0;
+        if (max_threads > 0)
+        {
+            omp_set_num_threads(max_threads);
+        }
 
         int max_nr_w_layers = (options.count("max_nr_w_layers")) ? (int)options["max_nr_w_layers"] : 0;
 
