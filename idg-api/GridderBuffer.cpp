@@ -101,79 +101,84 @@ namespace api {
         std::copy(weights, weights + m_nr_channels*4, &m_buffer_weights(local_bl, local_time, 0, 0));
     }
 
-    void GridderBufferImpl::flush_thread_worker()
+    void GridderBufferImpl::compute_avg_beam()
     {
-        if (m_do_compute_avg_beam)
+        #pragma omp parallel for
+        for (size_t i = 0; i < (m_subgridsize * m_subgridsize); i++)
         {
-            #pragma omp parallel for
-            for (size_t i = 0; i < (m_subgridsize * m_subgridsize); i++)
+            for (int n = 0; n < m_aterm_offsets2.size() - 1; n++)
             {
-                for (int n = 0; n < m_aterm_offsets2.size() - 1; n++)
+                int time_start = m_aterm_offsets2[n];
+                int time_end = m_aterm_offsets2[n+1];
+
+                // loop over baselines
+                for (size_t bl = 0; bl < m_nr_baselines; bl++)
                 {
-                    int time_start = m_aterm_offsets2[n];
-                    int time_end = m_aterm_offsets2[n+1];
+                    unsigned int antenna1 = m_bufferStationPairs2(bl).first;
+                    unsigned int antenna2 = m_bufferStationPairs2(bl).second;
 
-                    // loop over baselines
-                    for (size_t bl = 0; bl < m_nr_baselines; bl++)
+                    float sum_of_weights[4] = {};
+                    for(size_t t=time_start; t < time_end; t++)
                     {
-                        unsigned int antenna1 = m_bufferStationPairs2(bl).first;
-                        unsigned int antenna2 = m_bufferStationPairs2(bl).second;
+                        if (std::isinf(m_bufferUVW2(bl,t).u)) continue;
 
-                        float sum_of_weights[4] = {};
-                        for(size_t t=time_start; t < time_end; t++)
+                        for(int ch=0; ch < get_frequencies_size(); ch++)
                         {
-                            if (std::isinf(m_bufferUVW2(bl,t).u)) continue;
-
-                            for(int ch=0; ch < get_frequencies_size(); ch++)
+                            for(int pol = 0; pol < 4; pol++)
                             {
-                                for(int pol = 0; pol < 4; pol++)
-                                {
-                                    sum_of_weights[pol] += m_buffer_weights2(bl, t, ch, pol);
-                                }
+                                sum_of_weights[pol] += m_buffer_weights2(bl, t, ch, pol);
                             }
                         }
+                    }
 
-                        // add kronecker product to average beam
+                    // add kronecker product to average beam
 
-                        size_t offset = m_subgridsize * m_subgridsize * m_nrStations * n;
-                        size_t offset1 = offset + antenna1 * m_subgridsize * m_subgridsize;
-                        size_t offset2 = offset + antenna2 * m_subgridsize * m_subgridsize;
+                    size_t offset = m_subgridsize * m_subgridsize * m_nrStations * n;
+                    size_t offset1 = offset + antenna1 * m_subgridsize * m_subgridsize;
+                    size_t offset2 = offset + antenna2 * m_subgridsize * m_subgridsize;
 
-                        std::complex<float> kp[16] = {};
-                        kp[0] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].xx;
-                        kp[1] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].xy;
-                        kp[2] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].xx;
-                        kp[3] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].xy;
+                    std::complex<float> kp[16] = {};
+                    kp[0] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].xx;
+                    kp[1] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].xy;
+                    kp[2] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].xx;
+                    kp[3] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].xy;
 
-                        kp[4] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].yx;
-                        kp[5] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].yy;
-                        kp[6] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].yx;
-                        kp[7] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].yy;
+                    kp[4] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].yx;
+                    kp[5] = conj(m_aterms2[offset2 + i].xx)*m_aterms2[offset1 + i].yy;
+                    kp[6] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].yx;
+                    kp[7] = conj(m_aterms2[offset2 + i].xy)*m_aterms2[offset1 + i].yy;
 
-                        kp[ 8] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].xx;
-                        kp[ 9] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].xy;
-                        kp[10] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].xx;
-                        kp[11] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].xy;
+                    kp[ 8] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].xx;
+                    kp[ 9] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].xy;
+                    kp[10] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].xx;
+                    kp[11] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].xy;
 
-                        kp[12] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].yx;
-                        kp[13] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].yy;
-                        kp[14] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].yx;
-                        kp[15] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].yy;
+                    kp[12] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].yx;
+                    kp[13] = conj(m_aterms2[offset2 + i].yx)*m_aterms2[offset1 + i].yy;
+                    kp[14] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].yx;
+                    kp[15] = conj(m_aterms2[offset2 + i].yy)*m_aterms2[offset1 + i].yy;
 
-                        for(size_t ii = 0; ii < 4; ii++)
+                    for(size_t ii = 0; ii < 4; ii++)
+                    {
+                        for(size_t jj = 0; jj < 4; jj++)
                         {
-                            for(size_t jj = 0; jj < 4; jj++)
-                            {
-                                m_average_beam[i*16 + ii*4 + jj] +=
-                                    sum_of_weights[0] * conj(kp[ii  ]) * kp[jj  ] +
-                                    sum_of_weights[1] * conj(kp[ii+4]) * kp[jj+4] +
-                                    sum_of_weights[2] * conj(kp[ii+8]) * kp[jj+8] +
-                                    sum_of_weights[3] * conj(kp[ii+12]) * kp[jj+12];
-                            }
+                            m_average_beam[i*16 + ii*4 + jj] +=
+                                sum_of_weights[0] * conj(kp[ii  ]) * kp[jj  ] +
+                                sum_of_weights[1] * conj(kp[ii+4]) * kp[jj+4] +
+                                sum_of_weights[2] * conj(kp[ii+8]) * kp[jj+8] +
+                                sum_of_weights[3] * conj(kp[ii+12]) * kp[jj+12];
                         }
                     }
                 }
             }
+        }
+    }
+
+    void GridderBufferImpl::flush_thread_worker()
+    {
+        if (m_do_compute_avg_beam)
+        {
+            compute_avg_beam();
         }
 
         if (!m_do_gridding) return;
