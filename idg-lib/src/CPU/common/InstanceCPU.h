@@ -128,8 +128,7 @@ namespace idg {
 
             // Jobsize
             static const int jobsize_gridding   = 1024;
-            static const int  jobsize_degridder = 1024;
-            static const int  jobsize_splitter  = 1024;
+            static const int jobsize_degridding = 1024;
 
             // Kernel names
             static const std::string name_gridder         = "kernel_gridder";
