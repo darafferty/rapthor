@@ -65,24 +65,6 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    void grid_onto_subgrids(
-                        const Plan& plan,
-                        const float w_step,
-                        const unsigned int grid_size,
-                        const float image_size,
-                        const Array1D<float>& wavenumbers,
-                        const Array3D<Visibility<std::complex<float>>>& visibilities,
-                        const Array2D<UVWCoordinate<float>>& uvw,
-                        const Array2D<float>& spheroidal,
-                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                        Array4D<std::complex<float>>& subgrids);
-
-                    virtual void add_subgrids_to_grid(
-                        const Plan& plan,
-                        const float w_step,
-                        const Array4D<std::complex<float>>& subgrids,
-                        Grid& grid);
-
                     virtual void split_grid_into_subgrids(
                         const Plan& plan,
                         const float w_step,
