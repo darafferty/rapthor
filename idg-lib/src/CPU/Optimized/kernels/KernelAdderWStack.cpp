@@ -11,7 +11,6 @@ void kernel_adder_wstack(
     const long           nr_subgrids,
     const long           grid_size,
     const int            subgrid_size,
-    const int            nr_w_layers,
     const idg::Metadata* metadata,
     const idg::float2*   subgrid,
           idg::float2*   grid)

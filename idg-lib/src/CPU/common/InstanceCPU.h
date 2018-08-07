@@ -90,7 +90,6 @@ namespace idg {
                         int nr_subgrids,
                         int grid_size,
                         int subgrid_size,
-                        int nr_w_layers,
                         void *metadata,
                         void *subgrid,
                         void *grid);

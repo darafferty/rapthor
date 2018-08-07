@@ -220,7 +220,6 @@ namespace idg {
                 int nr_subgrids;
                 int grid_size;
                 int subgrid_size;
-                int nr_w_layers;
                 void *metadata;
                 void *subgrids;
                 void *grid;
@@ -235,7 +234,7 @@ namespace idg {
                 cu::Marker marker("run_adder_wstack");
                 marker.start();
                 data->cpuKernels->run_adder_wstack(
-                    data->nr_subgrids, data->grid_size, data->subgrid_size, data->nr_w_layers,
+                    data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
                 marker.end();
 
@@ -249,7 +248,6 @@ namespace idg {
                 const int nr_subgrids,
                 const int grid_size,
                 const int subgrid_size,
-                const int nr_w_layers,
                 void *metadata_ptr,
                 void *subgrids_ptr,
                 void *grid_ptr)
@@ -259,7 +257,6 @@ namespace idg {
                 data->nr_subgrids  = nr_subgrids;
                 data->grid_size    = grid_size;
                 data->subgrid_size = subgrid_size;
-                data->nr_w_layers  = nr_w_layers;
                 data->metadata     = metadata_ptr;
                 data->subgrids     = subgrids_ptr;
                 data->grid         = grid_ptr;
@@ -291,7 +288,6 @@ namespace idg {
                 const int nr_subgrids,
                 const int grid_size,
                 const int subgrid_size,
-                const int nr_w_layers,
                 void *metadata_ptr,
                 void *subgrids_ptr,
                 void *grid_ptr)
@@ -301,7 +297,6 @@ namespace idg {
                 data->nr_subgrids  = nr_subgrids;
                 data->grid_size    = grid_size;
                 data->subgrid_size = subgrid_size;
-                data->nr_w_layers  = nr_w_layers;
                 data->metadata     = metadata_ptr;
                 data->subgrids     = subgrids_ptr;
                 data->grid         = grid_ptr;
@@ -403,7 +398,6 @@ namespace idg {
                 auto nr_channels     = visibilities.get_x_dim();
                 auto nr_stations     = aterms.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
-                auto nr_w_layers     = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
 
                 // Configuration
@@ -528,7 +522,7 @@ namespace idg {
 
                     // Launch adder on cpu
                     hostStream->waitEvent(*outputFree[global_id]);
-                    enqueue_adder(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids.get(), grid.data());
+                    enqueue_adder(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids.get(), grid.data());
                     hostStream->record(*hostFinished[global_id]);
 
                     global_id = global_id < (nr_devices * nr_streams) - 1 ? global_id + 1 : 0;
@@ -634,7 +628,6 @@ namespace idg {
                 auto nr_channels     = visibilities.get_x_dim();
                 auto nr_stations     = aterms.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
-                auto nr_w_layers     = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
 
                 // Configuration
@@ -714,7 +707,7 @@ namespace idg {
 
                     // Launch splitter on cpu
                     hostStream->waitEvent(*inputFree[global_id]);
-                    enqueue_splitter(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, h_subgrids.get(), grid.data());
+                    enqueue_splitter(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids.get(), grid.data());
                     hostStream->record(*hostFinished[global_id]);
 
                     // Copy input data to device

@@ -70,7 +70,6 @@ namespace idg {
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
-                auto nr_w_layers  = grid.get_w_dim();
                 auto image_size   = cell_size * grid_size;
                 auto nr_stations  = aterms.get_z_dim();
 
@@ -123,7 +122,7 @@ namespace idg {
                                 metadata_ptr, subgrids_ptr, grid_ptr);
                         } else {
                             kernels.run_adder_wstack(
-                                current_nr_subgrids, grid_size, subgrid_size, nr_w_layers,
+                                current_nr_subgrids, grid_size, subgrid_size,
                                 metadata_ptr, subgrids_ptr, grid_ptr);
                         }
 
