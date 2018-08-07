@@ -116,7 +116,7 @@ namespace idg {
             #define sig_fft		        (void (*)(long,long,long,void*,int))
             #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
             #define sig_splitter        (void (*)(long,long,int,void*,void*,void*))
-            #define sig_adder_wstack    (void (*)(long,long,int,int,void*,void*,void*))
+            #define sig_adder_wstack    (void (*)(long,long,int,void*,void*,void*))
             #define sig_splitter_wstack (void (*)(long,long,int,void*,void*,void*))
 
 
@@ -233,14 +233,13 @@ namespace idg {
                 int nr_subgrids,
                 int grid_size,
                 int subgrid_size,
-                int nr_w_layers,
                 void *metadata,
                 void *subgrid,
                 void *grid)
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
-                (sig_adder_wstack (void *) *function_adder_wstack)(nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata, subgrid, grid);
+                (sig_adder_wstack (void *) *function_adder_wstack)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_adder(states[0], states[1]); }
             }

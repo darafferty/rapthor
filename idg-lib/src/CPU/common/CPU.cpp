@@ -71,37 +71,66 @@ namespace idg {
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
+                auto nr_stations  = aterms.get_z_dim();
 
                 try {
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
+                    auto jobsize            = kernel::cpu::jobsize_gridding;
 
                     // Allocate memory for subgrids
-                    Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
                     // Performance measurement
                     report.initialize(nr_channels, subgrid_size, grid_size);
                     State states[2];
                     states[0] = powerSensor->read();
 
-                    // Run subroutines
-                    grid_onto_subgrids(
-                        plan,
-                        w_step,
-                        grid_size,
-                        image_size,
-                        wavenumbers,
-                        visibilities,
-                        uvw,
-                        spheroidal,
-                        aterms,
-                        subgrids);
+                    // Start gridder
+                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                        unsigned int first_bl, last_bl, current_nr_baselines;
+                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                        if (current_nr_baselines == 0) continue;
 
-                    add_subgrids_to_grid(
-                        plan,
-                        w_step,
-                        subgrids,
-                        grid);
+                        // Initialize iteration
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        void *wavenumbers_ptr  = wavenumbers.data();
+                        void *spheroidal_ptr   = spheroidal.data();
+                        void *aterm_ptr        = aterms.data();
+                        void *avg_aterm_ptr    = m_avg_aterm_correction.size() ? m_avg_aterm_correction.data() : nullptr;
+                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
+                        void *uvw_ptr          = uvw.data(first_bl, 0);
+                        void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
+                        void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
+                        void *grid_ptr         = grid.data();
+
+                        // Gridder kernel
+                        kernels.run_gridder(
+                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                            uvw_ptr, wavenumbers_ptr, visibilities_ptr, spheroidal_ptr, aterm_ptr, avg_aterm_ptr,
+                            metadata_ptr, subgrids_ptr);
+
+                        // FFT kernel
+                        kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
+
+                        // Adder kernel
+                        if (w_step == 0.0) {
+                            kernels.run_adder(
+                                current_nr_subgrids, grid_size, subgrid_size,
+                                metadata_ptr, subgrids_ptr, grid_ptr);
+                        } else {
+                            kernels.run_adder_wstack(
+                                current_nr_subgrids, grid_size, subgrid_size,
+                                metadata_ptr, subgrids_ptr, grid_ptr);
+                        }
+
+                        // Performance reporting
+                        #if defined(REPORT_VERBOSE)
+                        report.print(current_nr_timesteps, current_nr_subgrids);
+                        #endif
+                    } // end for bl
 
                     states[1] = powerSensor->read();
                     report.update_host(states[0], states[1]);
@@ -159,10 +188,12 @@ namespace idg {
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
+                auto nr_stations  = aterms.get_z_dim();
 
                 try {
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
+                    auto jobsize            = kernel::cpu::jobsize_degridding;
 
                     // Allocate memory for subgrids
                     Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
@@ -173,23 +204,51 @@ namespace idg {
                     states[0] = powerSensor->read();
 
                     // Run subroutines
-                    split_grid_into_subgrids(
-                         plan,
-                         w_step,
-                         subgrids,
-                         grid);
+                    for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                        unsigned int first_bl, last_bl, current_nr_baselines;
+                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                        if (current_nr_baselines == 0) continue;
 
-                    degrid_from_subgrids(
-                        plan,
-                        w_step,
-                        grid_size,
-                        image_size,
-                        wavenumbers,
-                        visibilities,
-                        uvw,
-                        spheroidal,
-                        aterms,
-                        subgrids);
+                        // Initialize iteration
+                        auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        void *wavenumbers_ptr  = wavenumbers.data();
+                        void *spheroidal_ptr   = spheroidal.data();
+                        void *aterm_ptr        = aterms.data();
+                        void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
+                        void *uvw_ptr          = uvw.data(first_bl, 0);
+                        void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
+                        void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
+                        void *grid_ptr         = grid.data();
+
+                        // Splitter kernel
+                        if (w_step == 0.0) {
+                           kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                        } else {
+                           kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                        }
+
+                        // FFT kernel
+                        kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
+
+                        // Degridder kernel
+                        kernels.run_degridder(
+                            current_nr_subgrids,
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            nr_channels,
+                            nr_stations,
+                            uvw_ptr,
+                            wavenumbers_ptr,
+                            visibilities_ptr,
+                            spheroidal_ptr,
+                            aterm_ptr,
+                            metadata_ptr,
+                            subgrids_ptr);
+
+                    }
 
                     states[1] = powerSensor->read();
                     report.update_host(states[0], states[1]);
@@ -270,228 +329,6 @@ namespace idg {
                 }
             } // end transform
 
-
-            /*
-                Low level routines
-            */
-            void CPU::grid_onto_subgrids(
-                const Plan& plan,
-                const float w_step,
-                const unsigned int grid_size,
-                const float image_size,
-                const Array1D<float>& wavenumbers,
-                const Array3D<Visibility<std::complex<float>>>& visibilities,
-                const Array2D<UVWCoordinate<float>>& uvw,
-                const Array2D<float>& spheroidal,
-                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                Array4D<std::complex<float>>& subgrids)
-            {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
-                // Constants
-                auto nr_baselines = visibilities.get_z_dim();
-                auto jobsize      = kernel::cpu::jobsize_gridder;
-                auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_channels  = visibilities.get_x_dim();
-                auto subgrid_size = subgrids.get_y_dim();
-                auto nr_stations  = aterms.get_z_dim();
-
-                // Start gridder
-                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    unsigned int first_bl, last_bl, current_nr_baselines;
-                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
-                    if (current_nr_baselines == 0) continue;
-
-                    // Initialize iteration
-                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                    void *wavenumbers_ptr  = wavenumbers.data();
-                    void *spheroidal_ptr   = spheroidal.data();
-                    void *aterm_ptr        = aterms.data();
-                    void *avg_aterm_ptr    = m_avg_aterm_correction.size() ? m_avg_aterm_correction.data() : nullptr;
-                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
-                    void *uvw_ptr          = uvw.data(first_bl, 0);
-                    void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
-                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
-
-                    // Gridder kernel
-                    kernels.run_gridder(
-                        current_nr_subgrids,
-                        grid_size,
-                        subgrid_size,
-                        image_size,
-                        w_step,
-                        nr_channels,
-                        nr_stations,
-                        uvw_ptr,
-                        wavenumbers_ptr,
-                        visibilities_ptr,
-                        spheroidal_ptr,
-                        aterm_ptr,
-                        avg_aterm_ptr,
-                        metadata_ptr,
-                        subgrids_ptr
-                        );
-
-                    // FFT kernel
-                    kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
-
-                    // Performance reporting
-                    #if defined(REPORT_VERBOSE)
-                    report.print(current_nr_timesteps, current_nr_subgrids);
-                    #endif
-                } // end for bl
-            } // end grid_onto_subgrids
-
-            void CPU::add_subgrids_to_grid(
-                const Plan& plan,
-                const float w_step,
-                const Array4D<std::complex<float>>& subgrids,
-                Grid& grid)
-            {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
-                // Constants
-                auto jobsize      = kernel::cpu::jobsize_adder;
-                auto grid_size    = grid.get_x_dim();
-                auto nr_w_layers  = grid.get_w_dim();
-                auto nr_baselines = plan.get_nr_baselines();
-                auto subgrid_size = subgrids.get_y_dim();
-
-                // Run adder
-                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Number of elements in job
-                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                    auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
-
-                    // Pointers to the first element in processed batch
-                    void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
-                    void *grid_ptr     = grid.data();
-
-                    if (w_step == 0.0) {
-                        kernels.run_adder(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
-                    }
-                    else {
-                        kernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size, nr_w_layers, metadata_ptr, subgrids_ptr, grid_ptr);
-                    }
-
-                    #if defined(REPORT_VERBOSE)
-                    report.print(0, current_nr_subgrids);
-                    #endif
-                } // end for bl
-            } // end add_subgrids_to_grid
-
-            void CPU::split_grid_into_subgrids(
-                const Plan& plan,
-                const float w_step,
-                Array4D<std::complex<float>>& subgrids,
-                const Grid& grid)
-            {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
-                // Constants
-                auto jobsize      = kernel::cpu::jobsize_splitter;
-                auto grid_size    = grid.get_x_dim();
-                auto nr_baselines = plan.get_nr_baselines();
-                auto subgrid_size = subgrids.get_y_dim();
-
-                // Run splitter
-                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    // Number of elements in job
-                    int current_nr_baselines = bl + jobsize > nr_baselines ? nr_baselines - bl : jobsize;
-                    auto current_nr_subgrids = plan.get_nr_subgrids(bl, current_nr_baselines);
-
-                    // Pointers to the first element in processed batch
-                    void *metadata_ptr = (void *) plan.get_metadata_ptr(bl);
-                    void *subgrids_ptr = subgrids.data(plan.get_subgrid_offset(bl), 0, 0, 0);
-                    void *grid_ptr     = grid.data();
-
-                    if (w_step == 0.0) {
-                       kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
-                    } else {
-                       kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
-                    }
-
-                    #if defined(REPORT_VERBOSE) | defined(REPORT_TOTAL)
-                    report.print(0, current_nr_subgrids);
-                    #endif
-                } // end for bl
-            } // end split_grid_into_subgrids
-
-            void CPU::degrid_from_subgrids(
-                const Plan& plan,
-                const float w_step,
-                const unsigned int grid_size,
-                const float image_size,
-                const Array1D<float>& wavenumbers,
-                Array3D<Visibility<std::complex<float>>>& visibilities,
-                const Array2D<UVWCoordinate<float>>& uvw,
-                const Array2D<float>& spheroidal,
-                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array4D<std::complex<float>>& subgrids)
-            {
-                #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
-                #endif
-
-                // Constants
-                auto nr_baselines = visibilities.get_z_dim();
-                auto jobsize      = kernel::cpu::jobsize_degridder;
-                auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_channels  = visibilities.get_x_dim();
-                auto subgrid_size = subgrids.get_y_dim();
-                auto nr_stations  = aterms.get_z_dim();
-
-                // Start degridder
-                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    unsigned int first_bl, last_bl, current_nr_baselines;
-                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
-                    if (current_nr_baselines == 0) continue;
-
-                    // Initialize iteration
-                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                    void *wavenumbers_ptr  = wavenumbers.data();
-                    void *spheroidal_ptr   = spheroidal.data();
-                    void *aterm_ptr        = aterms.data();
-                    void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
-                    void *uvw_ptr          = uvw.data(first_bl, 0);
-                    void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
-                    void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
-
-                    // FFT kernel
-                    kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_FORWARD);
-
-                    // Degridder kernel
-                    kernels.run_degridder(
-                        current_nr_subgrids,
-                        grid_size,
-                        subgrid_size,
-                        image_size,
-                        w_step,
-                        nr_channels,
-                        nr_stations,
-                        uvw_ptr,
-                        wavenumbers_ptr,
-                        visibilities_ptr,
-                        spheroidal_ptr,
-                        aterm_ptr,
-                        metadata_ptr,
-                        subgrids_ptr);
-
-                    // Performance reporting
-                    #if defined(REPORT_VERBOSE)
-                    report.print(current_nr_timesteps, current_nr_subgrids);
-                    #endif
-                } // end for bl
-            } // end degrid_from_subgrids
         } // namespace cpu
     } // namespace proxy
 } // namespace idg
