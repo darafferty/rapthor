@@ -105,7 +105,7 @@ namespace api {
     {
         const unsigned int subgrid_size    = m_subgridsize;
         const unsigned int nr_correlations = 4;
-        const unsigned int nr_aterms       = m_aterm_offsets2.size();
+        const unsigned int nr_aterms       = m_aterm_offsets2.size() - 1;
         const unsigned int nr_antennas     = m_nrStations;
         const unsigned int nr_baselines    = m_bufferStationPairs2.get_x_dim();
         const unsigned int nr_timesteps    = m_bufferUVW2.get_x_dim();
@@ -114,7 +114,7 @@ namespace api {
         // Define multidimensional types
         typedef std::complex<float> AverageBeam[subgrid_size*subgrid_size][nr_correlations][nr_correlations];
         typedef std::complex<float> ATerms[nr_aterms][nr_antennas][subgrid_size][subgrid_size][nr_correlations];
-        typedef unsigned int* ATermOffsets;
+        typedef unsigned int ATermOffsets[nr_aterms+1];
         typedef unsigned int StationPairs[nr_baselines][2];
         typedef float UVW[nr_baselines][nr_timesteps][3];
         typedef float Weights[nr_baselines][nr_timesteps][nr_channels][nr_correlations];
@@ -122,7 +122,7 @@ namespace api {
         // Cast class members to multidimensional types used in this method
         ATerms       *aterms        = (ATerms *) m_aterms2.data();
         AverageBeam  *average_beam  = (AverageBeam *) m_average_beam.data();
-        ATermOffsets *aterm_offsets = (ATermOffsets *) m_aterm_offsets.data();
+        ATermOffsets *aterm_offsets = (ATermOffsets *) m_aterm_offsets2.data();
         StationPairs *station_pairs = (StationPairs *) m_bufferStationPairs2.data();
         UVW          *uvw           = (UVW *) m_bufferUVW2.data();
         Weights      *weights       = (Weights *) m_buffer_weights2.data();
@@ -133,7 +133,7 @@ namespace api {
 
         // Compute sum of weights
         #pragma omp parallel for
-        for (int n = 0; n < nr_aterms - 1; n++) {
+        for (int n = 0; n < nr_aterms; n++) {
             int time_start = (*aterm_offsets)[n];
             int time_end = (*aterm_offsets)[n+1];
 
@@ -163,7 +163,7 @@ namespace api {
             std::complex<double> sum[nr_correlations][nr_correlations];
 
             // Loop over aterms
-            for (int n = 0; n < nr_aterms - 1; n++) {
+            for (int n = 0; n < nr_aterms; n++) {
                 // Loop over baselines
                 for (int bl = 0; bl < nr_baselines; bl++) {
                     unsigned int antenna1 = (*station_pairs)[bl][0];
