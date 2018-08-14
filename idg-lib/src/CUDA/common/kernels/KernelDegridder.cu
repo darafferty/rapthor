@@ -5,6 +5,8 @@
 #define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
+#define MAX_NR_CHANNELS 8
+
 
 extern "C" {
 /*
@@ -58,25 +60,26 @@ kernel_degridder(
     __syncthreads();
 
     // Iterate visibilities
-    for (int i = tid; i < ALIGN(nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-        int time = i / nr_channels;
-        int chan = i % nr_channels;
+    for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
+        float2 visXX[MAX_NR_CHANNELS];
+        float2 visXY[MAX_NR_CHANNELS];
+        float2 visYX[MAX_NR_CHANNELS];
+        float2 visYY[MAX_NR_CHANNELS];
 
-        float2 visXX, visXY, visYX, visYY;
+        for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
+            visXX[chan] = make_float2(0, 0);
+            visXY[chan] = make_float2(0, 0);
+            visYX[chan] = make_float2(0, 0);
+            visYY[chan] = make_float2(0, 0);
+        }
+
         float u, v, w;
-        float wavenumber;
 
         if (time < nr_timesteps) {
-            visXX = make_float2(0, 0);
-            visXY = make_float2(0, 0);
-            visYX = make_float2(0, 0);
-            visYY = make_float2(0, 0);
 
             u = uvw[time_offset_global + time].u;
             v = uvw[time_offset_global + time].v;
             w = uvw[time_offset_global + time].w;
-
-            wavenumber = wavenumbers[chan];
         }
 
         __syncthreads();
@@ -148,6 +151,12 @@ kernel_degridder(
 
             // Iterate current batch of pixels
             for (int k = 0; k < current_nr_pixels; k++) {
+                // Load pixels from shared memory
+                float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
+                float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
+                float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
+                float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
+
                 // Load l,m,n
                 float l = _lmn_phaseoffset[k].x;
                 float m = _lmn_phaseoffset[k].y;
@@ -159,54 +168,55 @@ kernel_degridder(
                 // Compute phase index
                 float phase_index = u * l + v * m + w * n;
 
-                // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = make_float2(cosf(phase), sinf(phase));
+                for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
+                    // Load wavenumber
+                    float wavenumber = wavenumbers[chan];
 
-                // Load pixels from shared memory
-                float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
-                float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
-                float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
-                float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
+                    // Compute phasor
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(cosf(phase), sinf(phase));
 
-                // Multiply pixels by phasor
-                visXX.x += phasor.x * apXX.x;
-                visXX.y += phasor.x * apXX.y;
-                visXX.x -= phasor.y * apXX.y;
-                visXX.y += phasor.y * apXX.x;
+                    // Multiply pixels by phasor
+                    visXX[chan].x += phasor.x * apXX.x;
+                    visXX[chan].y += phasor.x * apXX.y;
+                    visXX[chan].x -= phasor.y * apXX.y;
+                    visXX[chan].y += phasor.y * apXX.x;
 
-                visXY.x += phasor.x * apXY.x;
-                visXY.y += phasor.x * apXY.y;
-                visXY.x -= phasor.y * apXY.y;
-                visXY.y += phasor.y * apXY.x;
+                    visXY[chan].x += phasor.x * apXY.x;
+                    visXY[chan].y += phasor.x * apXY.y;
+                    visXY[chan].x -= phasor.y * apXY.y;
+                    visXY[chan].y += phasor.y * apXY.x;
 
-                visYX.x += phasor.x * apYX.x;
-                visYX.y += phasor.x * apYX.y;
-                visYX.x -= phasor.y * apYX.y;
-                visYX.y += phasor.y * apYX.x;
+                    visYX[chan].x += phasor.x * apYX.x;
+                    visYX[chan].y += phasor.x * apYX.y;
+                    visYX[chan].x -= phasor.y * apYX.y;
+                    visYX[chan].y += phasor.y * apYX.x;
 
-                visYY.x += phasor.x * apYY.x;
-                visYY.y += phasor.x * apYY.y;
-                visYY.x -= phasor.y * apYY.y;
-                visYY.y += phasor.y * apYY.x;
+                    visYY[chan].x += phasor.x * apYY.x;
+                    visYY[chan].y += phasor.x * apYY.y;
+                    visYY[chan].x -= phasor.y * apYY.y;
+                    visYY[chan].y += phasor.y * apYY.x;
+                } // end for chan
             } // end for k (batch)
         } // end for j (pixels)
 
-        // Store visibility
-        const float scale = 1.0f / (nr_pixels);
-        int idx_time = time_offset_global + time;
-        int idx_xx = index_visibility(nr_channels, idx_time, chan, 0);
-        int idx_xy = index_visibility(nr_channels, idx_time, chan, 1);
-        int idx_yx = index_visibility(nr_channels, idx_time, chan, 2);
-        int idx_yy = index_visibility(nr_channels, idx_time, chan, 3);
+        for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
+            // Store visibility
+            const float scale = 1.0f / (nr_pixels);
+            int idx_time = time_offset_global + time;
+            int idx_xx = index_visibility(nr_channels, idx_time, chan, 0);
+            int idx_xy = index_visibility(nr_channels, idx_time, chan, 1);
+            int idx_yx = index_visibility(nr_channels, idx_time, chan, 2);
+            int idx_yy = index_visibility(nr_channels, idx_time, chan, 3);
 
-        if (time < nr_timesteps) {
-            visibilities[idx_xx] = visXX * scale;
-            visibilities[idx_xy] = visXY * scale;
-            visibilities[idx_yx] = visYX * scale;
-            visibilities[idx_yy] = visYY * scale;
-        }
-    } // end for i (visibilities)
+            if (time < nr_timesteps) {
+                visibilities[idx_xx] = visXX[chan] * scale;
+                visibilities[idx_xy] = visXY[chan] * scale;
+                visibilities[idx_yx] = visYX[chan] * scale;
+                visibilities[idx_yy] = visYY[chan] * scale;
+            }
+        } // end for chan
+    } // end for time
 
 } // end kernel_degridder
 } // end extern "C"
