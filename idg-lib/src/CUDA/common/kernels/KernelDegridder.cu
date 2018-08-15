@@ -8,18 +8,17 @@
 #define MAX_NR_CHANNELS 8
 
 
-extern "C" {
 /*
     Kernel
 */
-__global__ void
-__launch_bounds__(BLOCK_SIZE)
-kernel_degridder(
+template<int current_nr_channels>
+__device__ void kernel_degridder_(
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
     const int                         nr_channels,
+    const int                         channel_offset,
     const int                         nr_stations,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -61,12 +60,12 @@ kernel_degridder(
 
     // Iterate visibilities
     for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
-        float2 visXX[MAX_NR_CHANNELS];
-        float2 visXY[MAX_NR_CHANNELS];
-        float2 visYX[MAX_NR_CHANNELS];
-        float2 visYY[MAX_NR_CHANNELS];
+        float2 visXX[current_nr_channels];
+        float2 visXY[current_nr_channels];
+        float2 visYX[current_nr_channels];
+        float2 visYY[current_nr_channels];
 
-        for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
+        for (int chan = 0; chan < current_nr_channels; chan++) {
             visXX[chan] = make_float2(0, 0);
             visXY[chan] = make_float2(0, 0);
             visYX[chan] = make_float2(0, 0);
@@ -76,7 +75,6 @@ kernel_degridder(
         float u, v, w;
 
         if (time < nr_timesteps) {
-
             u = uvw[time_offset_global + time].u;
             v = uvw[time_offset_global + time].v;
             w = uvw[time_offset_global + time].w;
@@ -168,9 +166,9 @@ kernel_degridder(
                 // Compute phase index
                 float phase_index = u * l + v * m + w * n;
 
-                for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
+                for (int chan = 0; chan < current_nr_channels; chan++) {
                     // Load wavenumber
-                    float wavenumber = wavenumbers[chan];
+                    float wavenumber = wavenumbers[channel_offset + chan];
 
                     // Compute phasor
                     float  phase  = (phase_index * wavenumber) - phase_offset;
@@ -200,14 +198,15 @@ kernel_degridder(
             } // end for k (batch)
         } // end for j (pixels)
 
-        for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
+        for (int chan = 0; chan < current_nr_channels; chan++) {
             // Store visibility
             const float scale = 1.0f / (nr_pixels);
             int idx_time = time_offset_global + time;
-            int idx_xx = index_visibility(nr_channels, idx_time, chan, 0);
-            int idx_xy = index_visibility(nr_channels, idx_time, chan, 1);
-            int idx_yx = index_visibility(nr_channels, idx_time, chan, 2);
-            int idx_yy = index_visibility(nr_channels, idx_time, chan, 3);
+            int idx_chan = channel_offset + chan;
+            int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
+            int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
+            int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
+            int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
 
             if (time < nr_timesteps) {
                 visibilities[idx_xx] = visXX[chan] * scale;
@@ -217,6 +216,39 @@ kernel_degridder(
             }
         } // end for chan
     } // end for time
+} // end kernel_degridder_
 
-} // end kernel_degridder
+#define KERNEL_DEGRIDDER_TEMPLATE(current_nr_channels) \
+    for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
+        kernel_degridder_<current_nr_channels>( \
+            grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
+    }
+
+extern "C" {
+__global__ void
+__launch_bounds__(BLOCK_SIZE)
+    kernel_degridder(
+    const int                         grid_size,
+    const int                         subgrid_size,
+    const float                       image_size,
+    const float                       w_step,
+    const int                         nr_channels,
+    const int                         nr_stations,
+    const UVW*           __restrict__ uvw,
+    const float*         __restrict__ wavenumbers,
+          float2*        __restrict__ visibilities,
+    const float*         __restrict__ spheroidal,
+    const float2*        __restrict__ aterm,
+    const Metadata*      __restrict__ metadata,
+    const float2*        __restrict__ subgrid)
+{
+	int channel_offset = 0;
+	assert(MAX_NR_CHANNELS == 8);
+	KERNEL_DEGRIDDER_TEMPLATE(8);
+	KERNEL_DEGRIDDER_TEMPLATE(4);
+	KERNEL_DEGRIDDER_TEMPLATE(2);
+	KERNEL_DEGRIDDER_TEMPLATE(1);
+}
+
 } // end extern "C"
