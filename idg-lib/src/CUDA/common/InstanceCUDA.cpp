@@ -606,7 +606,11 @@ namespace idg {
                 const bool enable_tiling = false;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_adder, data);
             }
 
             void InstanceCUDA::launch_adder_unified(
@@ -620,7 +624,11 @@ namespace idg {
                 const bool enable_tiling = true;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_adder, data);
             }
 
             void InstanceCUDA::launch_splitter(
@@ -634,7 +642,11 @@ namespace idg {
                 const bool enable_tiling = false;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_splitter, data);
             }
 
             void InstanceCUDA::launch_splitter_unified(
@@ -648,7 +660,11 @@ namespace idg {
                 const bool enable_tiling = true;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_splitter, data);
             }
 
             void InstanceCUDA::launch_scaler(
