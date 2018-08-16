@@ -10,7 +10,7 @@
 #define UNROLL_PIXELS   2
 
 __shared__ float4 visibilities_[2][BATCH_SIZE];
-__shared__ float4 uvw_[BATCH_SIZE];
+__shared__ float4 uvw_[BATCH_SIZE / MAX_NR_CHANNELS];
 __shared__ float wavenumbers_[MAX_NR_CHANNELS];
 
 /*
@@ -81,7 +81,7 @@ __device__ void
 	}
 
 	// Iterate timesteps
-    int current_nr_timesteps = BATCH_SIZE / current_nr_channels;
+    int current_nr_timesteps = BATCH_SIZE / MAX_NR_CHANNELS;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
         current_nr_timesteps = nr_timesteps - time_offset_local < current_nr_timesteps ?
                                nr_timesteps - time_offset_local : current_nr_timesteps;
