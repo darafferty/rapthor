@@ -238,13 +238,17 @@ namespace idg {
                 auto subgrid_size = parameters.subgrid_size;
                 auto grid_size    = parameters.grid_size;
 
+                // Do not report short measurements, unless reporting total runtime
+                bool ignore_short = !total;
+
                 if (total && gridder_enabled || gridder_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_gridder,
                         total ? state_gridder.total_seconds : state_gridder.current_seconds,
                         total ? state_gridder.total_joules : state_gridder.current_joules,
                         auxiliary::flops_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
-                        auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size));
+                        auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
+                        ignore_short);
                     gridder_updated = false;
                 }
                 if (total && degridder_enabled || degridder_updated) {
@@ -253,7 +257,8 @@ namespace idg {
                         total ? state_degridder.total_seconds : state_degridder.current_seconds,
                         total ? state_degridder.total_joules : state_degridder.current_joules,
                         auxiliary::flops_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
-                        auxiliary::bytes_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size));
+                        auxiliary::bytes_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
+                        ignore_short);
                     degridder_updated = false;
                 }
                 if (total && subgrid_fft_enabled || subgrid_fft_updated) {
@@ -262,7 +267,8 @@ namespace idg {
                         total ? state_subgrid_fft.total_seconds : state_subgrid_fft.current_seconds,
                         total ? state_subgrid_fft.total_joules : state_subgrid_fft.current_joules,
                         auxiliary::flops_fft(subgrid_size, nr_subgrids),
-                        auxiliary::bytes_fft(subgrid_size, nr_subgrids));
+                        auxiliary::bytes_fft(subgrid_size, nr_subgrids),
+                        ignore_short);
                     subgrid_fft_updated = false;
                 }
                 if (total && adder_enabled || adder_updated) {
@@ -271,7 +277,8 @@ namespace idg {
                         total ? state_adder.total_seconds : state_adder.current_seconds,
                         total ? state_adder.total_joules : state_adder.current_joules,
                         auxiliary::flops_adder(nr_subgrids, subgrid_size),
-                        auxiliary::bytes_adder(nr_subgrids, subgrid_size));
+                        auxiliary::bytes_adder(nr_subgrids, subgrid_size),
+                        ignore_short);
                     adder_updated = false;
                 }
                 if (total && splitter_enabled || splitter_updated) {
@@ -280,7 +287,8 @@ namespace idg {
                         total ? state_splitter.total_seconds : state_splitter.current_seconds,
                         total ? state_splitter.total_joules : state_splitter.current_joules,
                         auxiliary::flops_splitter(nr_subgrids, subgrid_size),
-                        auxiliary::bytes_splitter(nr_subgrids, subgrid_size));
+                        auxiliary::bytes_splitter(nr_subgrids, subgrid_size),
+                        ignore_short);
                     splitter_updated = false;
                 }
                 if (total && scaler_enabled || scaler_updated) {
@@ -289,7 +297,8 @@ namespace idg {
                         total ? state_scaler.total_seconds : state_scaler.current_seconds,
                         total ? state_scaler.total_joules : state_scaler.current_joules,
                         auxiliary::flops_scaler(nr_subgrids, subgrid_size),
-                        auxiliary::bytes_scaler(nr_subgrids, subgrid_size));
+                        auxiliary::bytes_scaler(nr_subgrids, subgrid_size),
+                        ignore_short);
                     scaler_updated = false;
                 }
                 if (total && grid_fft_updated || grid_fft_updated) {
@@ -298,21 +307,22 @@ namespace idg {
                         total ? state_grid_fft.total_seconds : state_grid_fft.current_seconds,
                         total ? state_grid_fft.total_joules : state_grid_fft.current_joules,
                         auxiliary::flops_fft(grid_size, 1),
-                        auxiliary::bytes_fft(grid_size, 1));
+                        auxiliary::bytes_fft(grid_size, 1),
+                        ignore_short);
                     grid_fft_updated = false;
                 }
                 if (total && fft_shift_enabled || fft_shift_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_fft_shift,
                         total ? state_fft_shift.total_seconds : state_fft_shift.current_seconds,
-                        0, 0, 0);
+                        0, 0, 0, ignore_short);
                     fft_shift_updated = false;
                 }
                 if (total && fft_scale_enabled || fft_scale_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_fft_scale,
                         total ? state_fft_scale.total_seconds : state_fft_scale.current_seconds,
-                        0, 0, 0);
+                        0, 0, 0, ignore_short);
                     fft_scale_updated = false;
                 }
                 if (total && host_enabled || host_updated) {
@@ -320,7 +330,7 @@ namespace idg {
                         prefix + auxiliary::name_host,
                         total ? state_host.total_seconds : state_host.current_seconds,
                         total ? state_host.total_joules : state_host.current_joules,
-                        0, 0);
+                        0, 0, ignore_short);
                     host_updated = false;
                 }
             }
