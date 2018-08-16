@@ -70,6 +70,11 @@ __device__ void
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
 
+    // Compute u,v,w offset in wavelenghts
+    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
+
 	// Load wavenumbers
 	for (int chan = tid; chan < current_nr_channels; chan += nr_threads) {
 		wavenumbers_[chan] = wavenumbers[channel_offset + chan];
@@ -107,11 +112,6 @@ __device__ void
 
         __syncthreads();
 
-        // Compute u and v offset in wavelenghts
-        const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-        const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-        const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
-
         // Iterate all pixels in subgrid
         for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads * UNROLL_PIXELS) {
             // Private pixels
@@ -127,10 +127,11 @@ __device__ void
                 uvYY[j] = make_float2(0, 0);
             }
 
-            // Compute l,m,n
+            // Compute l,m,n, phase_offset
             float l[UNROLL_PIXELS];
             float m[UNROLL_PIXELS];
             float n[UNROLL_PIXELS];
+            float phase_offset[UNROLL_PIXELS];
 
             for (int j = 0; j < UNROLL_PIXELS; j++) {
                 int i_ = i + j * nr_threads;
@@ -139,6 +140,7 @@ __device__ void
                 l[j] = compute_l(x, subgrid_size, image_size);
                 m[j] = compute_m(y, subgrid_size, image_size);
                 n[j] = compute_n(l[j], m[j]);
+                phase_offset[j] = u_offset*l[j] + v_offset*m[j] + w_offset*n[j];
             }
 
             // Iterate all timesteps
@@ -150,11 +152,9 @@ __device__ void
 
                 // Compute phase index and phase offset
                 float phase_index[UNROLL_PIXELS];
-                float phase_offset[UNROLL_PIXELS];
 
                 for (int j = 0; j < UNROLL_PIXELS; j++) {
                     phase_index[j]  = u*l[j] + v*m[j] + w*n[j];
-                    phase_offset[j] = u_offset*l[j] + v_offset*m[j] + w_offset*n[j];
                 }
 
                 #pragma unroll
