@@ -5,6 +5,7 @@
 
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
 #define BLOCK_SIZE GRIDDER_BLOCK_SIZE
+#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 #define MAX_NR_CHANNELS 8
 #define UNROLL_PIXELS   2
@@ -79,70 +80,70 @@ __device__ void
 		wavenumbers_[chan] = wavenumbers[channel_offset + chan];
 	}
 
-	// Iterate timesteps
-    int current_nr_timesteps = BATCH_SIZE / MAX_NR_CHANNELS;
-    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        current_nr_timesteps = nr_timesteps - time_offset_local < current_nr_timesteps ?
-                               nr_timesteps - time_offset_local : current_nr_timesteps;
+    // Iterate all pixels in subgrid
+    for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, nr_threads); i += nr_threads * UNROLL_PIXELS) {
+        // Private pixels
+        float2 uvXX[UNROLL_PIXELS];
+        float2 uvXY[UNROLL_PIXELS];
+        float2 uvYX[UNROLL_PIXELS];
+        float2 uvYY[UNROLL_PIXELS];
 
-        __syncthreads();
-
-        // Load UVW
-        for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
-            UVW a = uvw[time_offset_global + time_offset_local + time];
-            shared[2][time] = make_float4(a.u, a.v, a.w, 0);
+        for (int j = 0; j < UNROLL_PIXELS; j++) {
+            uvXX[j] = make_float2(0, 0);
+            uvXY[j] = make_float2(0, 0);
+            uvYX[j] = make_float2(0, 0);
+            uvYY[j] = make_float2(0, 0);
         }
 
-        // Load visibilities
-        for (int i = tid; i < current_nr_timesteps*current_nr_channels; i += nr_threads) {
-            int idx_time = time_offset_global + time_offset_local + (i / current_nr_channels);
-            int idx_chan = channel_offset + (i % current_nr_channels);
-            int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
-            int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
-            int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
-            int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
-            float2 a = visibilities[idx_xx];
-            float2 b = visibilities[idx_xy];
-            float2 c = visibilities[idx_yx];
-            float2 d = visibilities[idx_yy];
-            shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
-            shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
+        // Compute l,m,n, phase_offset
+        float l[UNROLL_PIXELS];
+        float m[UNROLL_PIXELS];
+        float n[UNROLL_PIXELS];
+        float phase_offset[UNROLL_PIXELS];
+
+        for (int j = 0; j < UNROLL_PIXELS; j++) {
+            int i_ = i + j * nr_threads;
+            int y = i_ / subgrid_size;
+            int x = i_ % subgrid_size;
+            l[j] = compute_l(x, subgrid_size, image_size);
+            m[j] = compute_m(y, subgrid_size, image_size);
+            n[j] = compute_n(l[j], m[j]);
+            phase_offset[j] = u_offset*l[j] + v_offset*m[j] + w_offset*n[j];
         }
 
-        __syncthreads();
+        // Iterate timesteps
+        int current_nr_timesteps = BATCH_SIZE / MAX_NR_CHANNELS;
+        for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+            current_nr_timesteps = nr_timesteps - time_offset_local < current_nr_timesteps ?
+                                   nr_timesteps - time_offset_local : current_nr_timesteps;
 
-        // Iterate all pixels in subgrid
-        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads * UNROLL_PIXELS) {
-            // Private pixels
-            float2 uvXX[UNROLL_PIXELS];
-            float2 uvXY[UNROLL_PIXELS];
-            float2 uvYX[UNROLL_PIXELS];
-            float2 uvYY[UNROLL_PIXELS];
+            __syncthreads();
 
-            for (int j = 0; j < UNROLL_PIXELS; j++) {
-                uvXX[j] = make_float2(0, 0);
-                uvXY[j] = make_float2(0, 0);
-                uvYX[j] = make_float2(0, 0);
-                uvYY[j] = make_float2(0, 0);
+            // Load UVW
+            for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
+                UVW a = uvw[time_offset_global + time_offset_local + time];
+                shared[2][time] = make_float4(a.u, a.v, a.w, 0);
             }
 
-            // Compute l,m,n, phase_offset
-            float l[UNROLL_PIXELS];
-            float m[UNROLL_PIXELS];
-            float n[UNROLL_PIXELS];
-            float phase_offset[UNROLL_PIXELS];
-
-            for (int j = 0; j < UNROLL_PIXELS; j++) {
-                int i_ = i + j * nr_threads;
-                int y = i_ / subgrid_size;
-                int x = i_ % subgrid_size;
-                l[j] = compute_l(x, subgrid_size, image_size);
-                m[j] = compute_m(y, subgrid_size, image_size);
-                n[j] = compute_n(l[j], m[j]);
-                phase_offset[j] = u_offset*l[j] + v_offset*m[j] + w_offset*n[j];
+            // Load visibilities
+            for (int i = tid; i < current_nr_timesteps*current_nr_channels; i += nr_threads) {
+                int idx_time = time_offset_global + time_offset_local + (i / current_nr_channels);
+                int idx_chan = channel_offset + (i % current_nr_channels);
+                int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
+                int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
+                int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
+                float2 a = visibilities[idx_xx];
+                float2 b = visibilities[idx_xy];
+                float2 c = visibilities[idx_yx];
+                float2 d = visibilities[idx_yy];
+                shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
+                shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
             }
 
-            // Iterate all timesteps
+            __syncthreads();
+
+            // Iterate current batch of timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
                 float u = shared[2][time].x;
@@ -196,30 +197,30 @@ __device__ void
                     }
                 }
             } // end for time
+        } // end for time_offset_local
 
-            for (int j = 0; j < UNROLL_PIXELS; j++) {
-                int i_ = i + j * nr_threads;
-                if (i_ < subgrid_size * subgrid_size) {
-                    int y = i_ / subgrid_size;
-                    int x = i_ % subgrid_size;
+        for (int j = 0; j < UNROLL_PIXELS; j++) {
+            int i_ = i + j * nr_threads;
+            if (i_ < subgrid_size * subgrid_size) {
+                int y = i_ / subgrid_size;
+                int x = i_ % subgrid_size;
 
-                    // Compute shifted position in subgrid
-                    int x_dst = (x + (subgrid_size/2)) % subgrid_size;
-                    int y_dst = (y + (subgrid_size/2)) % subgrid_size;
+                // Compute shifted position in subgrid
+                int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+                int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
-                    // Set subgrid value
-                    int idx_xx = index_subgrid(subgrid_size, s, 0, y_dst, x_dst);
-                    int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
-                    int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
-                    int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
-                    subgrid[idx_xx] += uvXX[j];
-                    subgrid[idx_xy] += uvXY[j];
-                    subgrid[idx_yx] += uvYX[j];
-                    subgrid[idx_yy] += uvYY[j];
-                }
+                // Set subgrid value
+                int idx_xx = index_subgrid(subgrid_size, s, 0, y_dst, x_dst);
+                int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
+                int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
+                int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
+                subgrid[idx_xx] += uvXX[j];
+                subgrid[idx_xy] += uvXY[j];
+                subgrid[idx_yx] += uvYX[j];
+                subgrid[idx_yy] += uvYY[j];
             }
-        } // end for i (pixels)
-    } // end for time_offset_local
+        }
+    } // end for i (pixels)
 
     __syncthreads();
 
