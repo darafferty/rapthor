@@ -205,6 +205,35 @@ __device__ void
                 int y = i_ / subgrid_size;
                 int x = i_ % subgrid_size;
 
+                // Get aterm for station1
+                int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
+                float2 aXX1 = aterm[station1_idx + 0];
+                float2 aXY1 = aterm[station1_idx + 1];
+                float2 aYX1 = aterm[station1_idx + 2];
+                float2 aYY1 = aterm[station1_idx + 3];
+
+                // Get aterm for station2
+                int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
+                float2 aXX2 = aterm[station2_idx + 0];
+                float2 aXY2 = aterm[station2_idx + 1];
+                float2 aYX2 = aterm[station2_idx + 2];
+                float2 aYY2 = aterm[station2_idx + 3];
+
+                // Apply the conjugate transpose of the A-term
+                apply_aterm(
+                    conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
+                    conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
+                    uvXX[j], uvXY[j], uvYX[j], uvYY[j]);
+
+                if (avg_aterm_correction) {
+                    apply_avg_aterm_correction(
+                        avg_aterm_correction + i*16,
+                        uvXX[j], uvXY[j], uvYX[j], uvYY[j]);
+                }
+
+                // Load spheroidal
+                float spheroidal_ = spheroidal[y * subgrid_size + x];
+
                 // Compute shifted position in subgrid
                 int x_dst = (x + (subgrid_size/2)) % subgrid_size;
                 int y_dst = (y + (subgrid_size/2)) % subgrid_size;
@@ -214,70 +243,13 @@ __device__ void
                 int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
                 int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
                 int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
-                subgrid[idx_xx] += uvXX[j];
-                subgrid[idx_xy] += uvXY[j];
-                subgrid[idx_yx] += uvYX[j];
-                subgrid[idx_yy] += uvYY[j];
+                subgrid[idx_xx] += uvXX[j] * spheroidal_;
+                subgrid[idx_xy] += uvXY[j] * spheroidal_;
+                subgrid[idx_yx] += uvYX[j] * spheroidal_;
+                subgrid[idx_yy] += uvYY[j] * spheroidal_;
             }
         }
     } // end for i (pixels)
-
-    __syncthreads();
-
-    // Apply aterm and spheroidal
-	if (channel_offset + current_nr_channels == nr_channels) {
-		for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
-            int y = i / subgrid_size;
-            int x = i % subgrid_size;
-            int x_ = (x + (subgrid_size/2)) % subgrid_size;
-            int y_ = (y + (subgrid_size/2)) % subgrid_size;
-
-            // Load pixels
-            int idx_xx = index_subgrid(subgrid_size, s, 0, y, x);
-            int idx_xy = index_subgrid(subgrid_size, s, 1, y, x);
-            int idx_yx = index_subgrid(subgrid_size, s, 2, y, x);
-            int idx_yy = index_subgrid(subgrid_size, s, 3, y, x);
-            float2 pixelsXX = subgrid[idx_xx];
-            float2 pixelsXY = subgrid[idx_xy];
-            float2 pixelsYX = subgrid[idx_yx];
-            float2 pixelsYY = subgrid[idx_yy];
-
-            // Get aterm for station1
-            int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y_, x_);
-            float2 aXX1 = aterm[station1_idx + 0];
-            float2 aXY1 = aterm[station1_idx + 1];
-            float2 aYX1 = aterm[station1_idx + 2];
-            float2 aYY1 = aterm[station1_idx + 3];
-
-            // Get aterm for station2
-            int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y_, x_);
-            float2 aXX2 = aterm[station2_idx + 0];
-            float2 aXY2 = aterm[station2_idx + 1];
-            float2 aYX2 = aterm[station2_idx + 2];
-            float2 aYY2 = aterm[station2_idx + 3];
-
-            // Apply the conjugate transpose of the A-term
-            apply_aterm(
-                conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
-                conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
-                pixelsXX, pixelsXY, pixelsYX, pixelsYY);
-
-            if (avg_aterm_correction) {
-                apply_avg_aterm_correction(
-                    avg_aterm_correction + i*16,
-                    pixelsXX, pixelsXY, pixelsYX, pixelsYY);
-            }
-
-            // Load spheroidal
-            float spheroidal_ = spheroidal[y_ * subgrid_size + x_];
-
-            // Store pixels
-            subgrid[idx_xx] = pixelsXX * spheroidal_;
-            subgrid[idx_xy] = pixelsXY * spheroidal_;
-            subgrid[idx_yx] = pixelsYX * spheroidal_;
-            subgrid[idx_yy] = pixelsYY * spheroidal_;
-		}
-	}
 } // end kernel_gridder_
 
 #define KERNEL_GRIDDER_TEMPLATE(current_nr_channels) \
