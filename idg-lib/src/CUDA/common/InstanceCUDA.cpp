@@ -208,11 +208,11 @@ namespace idg {
 
             void InstanceCUDA::set_parameters_kepler() {
                 block_gridder    = dim3(384);
-                block_degridder  = dim3(128);
+                block_degridder  = dim3(192);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 56;
+                batch_gridder    = 384;
                 batch_degridder  = 128;
                 tile_size_grid   = 128;
             }
