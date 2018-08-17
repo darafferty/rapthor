@@ -552,13 +552,13 @@ namespace idg {
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
+                            device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                             executestream.record(outputReady);
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
                             dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
         					dtohstream.record(outputFree);
-                            device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
                         }
 
                         outputFree.synchronize();
