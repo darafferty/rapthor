@@ -7,6 +7,7 @@
 
 #define MAX_NR_CHANNELS 8
 
+__shared__ float4 shared[3][BATCH_SIZE];
 
 /*
     Kernel
@@ -51,12 +52,6 @@ __device__ void kernel_degridder_(
     const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
-
-    // Shared data
-    __shared__ float4 _pix[NR_POLARIZATIONS/2][BATCH_SIZE];
-    __shared__ float4 _lmn_phaseoffset[BATCH_SIZE];
-
-    __syncthreads();
 
     // Iterate visibilities
     for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
@@ -133,16 +128,16 @@ __device__ void kernel_degridder_(
                     aXX2, aXY2, aYX2, aYY2,
                     pixelsXX, pixelsXY, pixelsYX, pixelsYY);
 
-                // Store pixels
-                _pix[0][j] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
-                _pix[1][j] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
-
                 // Compute l,m,n and phase offset
                 const float l = compute_l(x, subgrid_size, image_size);
                 const float m = compute_m(y, subgrid_size, image_size);
                 const float n = compute_n(l, m);
                 float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                _lmn_phaseoffset[j] = make_float4(l, m, n, phase_offset);
+
+                // Store values in shared memory
+                shared[0][j] = make_float4(pixelsXX.x, pixelsXX.y, pixelsXY.x, pixelsXY.y);
+                shared[1][j] = make_float4(pixelsYX.x, pixelsYX.y, pixelsYY.x, pixelsYY.y);
+                shared[2][j] = make_float4(l, m, n, phase_offset);
             } // end for j (pixels)
 
              __syncthreads();
@@ -150,18 +145,18 @@ __device__ void kernel_degridder_(
             // Iterate current batch of pixels
             for (int k = 0; k < current_nr_pixels; k++) {
                 // Load pixels from shared memory
-                float2 apXX = make_float2(_pix[0][k].x, _pix[0][k].y);
-                float2 apXY = make_float2(_pix[0][k].z, _pix[0][k].w);
-                float2 apYX = make_float2(_pix[1][k].x, _pix[1][k].y);
-                float2 apYY = make_float2(_pix[1][k].z, _pix[1][k].w);
+                float2 apXX = make_float2(shared[0][k].x, shared[0][k].y);
+                float2 apXY = make_float2(shared[0][k].z, shared[0][k].w);
+                float2 apYX = make_float2(shared[1][k].x, shared[1][k].y);
+                float2 apYY = make_float2(shared[1][k].z, shared[1][k].w);
 
                 // Load l,m,n
-                float l = _lmn_phaseoffset[k].x;
-                float m = _lmn_phaseoffset[k].y;
-                float n = _lmn_phaseoffset[k].z;
+                float l = shared[2][k].x;
+                float m = shared[2][k].y;
+                float n = shared[2][k].z;
 
                 // Load phase offset
-                float phase_offset = _lmn_phaseoffset[k].w;
+                float phase_offset = shared[2][k].w;
 
                 // Compute phase index
                 float phase_index = u * l + v * m + w * n;
