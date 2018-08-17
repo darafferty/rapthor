@@ -208,34 +208,45 @@ namespace idg {
 
             void InstanceCUDA::set_parameters_kepler() {
                 block_gridder    = dim3(384);
-                block_degridder  = dim3(128);
+                block_degridder  = dim3(192);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 56;
-                batch_degridder  = 128;
+                batch_gridder    = 384;
+                batch_degridder  = 1024;
                 tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_maxwell() {
                 block_gridder    = dim3(128);
-                block_degridder  = dim3(256);
+                block_degridder  = dim3(128);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 256;
-                batch_degridder  = 128;
+                batch_gridder    = 384;
+                batch_degridder  = 512;
                 tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
                 block_gridder    = dim3(128);
-                block_degridder  = dim3(256);
+                block_degridder  = dim3(128);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 256;
-                batch_degridder  = 128;
+                batch_gridder    = 384;
+                batch_degridder  = 512;
+                tile_size_grid   = 128;
+            }
+
+            void InstanceCUDA::set_parameters_volta() {
+                block_gridder    = dim3(128);
+                block_degridder  = dim3(128);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 128;
+                batch_degridder  = 256;
                 tile_size_grid   = 128;
             }
 
@@ -246,7 +257,9 @@ namespace idg {
 
                 int capability = (*device).get_capability();
 
-                if (capability >= 60) {
+                if (capability >= 70) {
+                    set_parameters_volta();
+                } else if (capability >= 60) {
                     set_parameters_pascal();
                 } else if (capability >= 50) {
                     set_parameters_maxwell();
@@ -606,7 +619,11 @@ namespace idg {
                 const bool enable_tiling = false;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_adder, data);
             }
 
             void InstanceCUDA::launch_adder_unified(
@@ -620,7 +637,11 @@ namespace idg {
                 const bool enable_tiling = true;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_adder, data);
             }
 
             void InstanceCUDA::launch_splitter(
@@ -634,7 +655,11 @@ namespace idg {
                 const bool enable_tiling = false;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, d_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_splitter, data);
             }
 
             void InstanceCUDA::launch_splitter_unified(
@@ -648,7 +673,11 @@ namespace idg {
                 const bool enable_tiling = true;
                 const void *parameters[] = { &grid_size, &subgrid_size, d_metadata, d_subgrid, &u_grid, &enable_tiling };
                 dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report);
+                data->start->enqueue(*executestream);
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
+                data->end->enqueue(*executestream);
+                executestream->addCallback((CUstreamCallback) &report_splitter, data);
             }
 
             void InstanceCUDA::launch_scaler(

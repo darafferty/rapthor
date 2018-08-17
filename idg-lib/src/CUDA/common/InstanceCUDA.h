@@ -237,6 +237,7 @@ namespace idg {
                     void set_parameters_kepler();
                     void set_parameters_maxwell();
                     void set_parameters_pascal();
+                    void set_parameters_volta();
 
                 protected:
                     // Variables shared by all InstanceCUDA instances

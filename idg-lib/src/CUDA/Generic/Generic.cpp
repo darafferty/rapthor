@@ -336,23 +336,12 @@ namespace idg {
                             device.launch_adder(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
-
                             device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
+                            device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                         }
 
                         outputReady.synchronize();
-
-                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.update_gridder(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_scaler(powerRecords[2].state, powerRecords[3].state);
-                            report.update_adder(powerRecords[3].state, powerRecords[4].state);
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish
@@ -563,6 +552,7 @@ namespace idg {
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
                             device.measure(powerRecords[4], executestream);
+                            device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                             executestream.record(outputReady);
 
         					// Copy visibilities to host
@@ -572,16 +562,6 @@ namespace idg {
                         }
 
                         outputFree.synchronize();
-
-                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.update_splitter(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_degridder(powerRecords[3].state, powerRecords[4].state);
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish

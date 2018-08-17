@@ -170,7 +170,8 @@ namespace idg {
             double runtime,
             double joules,
             uint64_t flops,
-            uint64_t bytes);
+            uint64_t bytes,
+            bool ignore_short = false);
 
         void report(
             const std::string name,

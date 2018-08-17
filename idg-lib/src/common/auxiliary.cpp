@@ -287,8 +287,14 @@ namespace idg {
             double runtime,
             double joules,
             uint64_t flops,
-            uint64_t bytes)
+            uint64_t bytes,
+            bool ignore_short)
         {
+            // Ignore very short measurements
+            if (ignore_short && runtime < 1e-1) {
+                return;
+            }
+
             double watt = joules / runtime;
             #pragma omp critical (clog)
             {
