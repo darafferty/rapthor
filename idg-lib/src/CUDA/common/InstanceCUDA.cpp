@@ -213,7 +213,7 @@ namespace idg {
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
                 batch_gridder    = 384;
-                batch_degridder  = 128;
+                batch_degridder  = 1024;
                 tile_size_grid   = 128;
             }
 
