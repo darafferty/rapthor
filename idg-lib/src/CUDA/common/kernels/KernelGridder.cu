@@ -9,8 +9,7 @@
 #define MAX_NR_CHANNELS 8
 #define UNROLL_PIXELS   2
 
-__shared__ float4 visibilities_[2][BATCH_SIZE];
-__shared__ float4 uvw_[BATCH_SIZE / MAX_NR_CHANNELS];
+__shared__ float4 shared[3][BATCH_SIZE];
 __shared__ float wavenumbers_[MAX_NR_CHANNELS];
 
 /*
@@ -91,7 +90,7 @@ __device__ void
         // Load UVW
         for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
             UVW a = uvw[time_offset_global + time_offset_local + time];
-            uvw_[time] = make_float4(a.u, a.v, a.w, 0);
+            shared[2][time] = make_float4(a.u, a.v, a.w, 0);
         }
 
         // Load visibilities
@@ -106,8 +105,8 @@ __device__ void
             float2 b = visibilities[idx_xy];
             float2 c = visibilities[idx_yx];
             float2 d = visibilities[idx_yy];
-            visibilities_[0][i] = make_float4(a.x, a.y, b.x, b.y);
-            visibilities_[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
+            shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
         }
 
         __syncthreads();
@@ -146,9 +145,9 @@ __device__ void
             // Iterate all timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
-                float u = uvw_[time].x;
-                float v = uvw_[time].y;
-                float w = uvw_[time].z;
+                float u = shared[2][time].x;
+                float v = shared[2][time].y;
+                float w = shared[2][time].z;
 
                 // Compute phase index and phase offset
                 float phase_index[UNROLL_PIXELS];
@@ -162,8 +161,8 @@ __device__ void
                     float wavenumber = wavenumbers_[chan];
 
                     // Load visibilities from shared memory
-                    float4 a = visibilities_[0][time*current_nr_channels+chan];
-                    float4 b = visibilities_[1][time*current_nr_channels+chan];
+                    float4 a = shared[0][time*current_nr_channels+chan];
+                    float4 b = shared[1][time*current_nr_channels+chan];
                     float2 visXX = make_float2(a.x, a.y);
                     float2 visXY = make_float2(a.z, a.w);
                     float2 visYX = make_float2(b.x, b.y);
