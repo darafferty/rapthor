@@ -219,12 +219,12 @@ namespace idg {
 
             void InstanceCUDA::set_parameters_maxwell() {
                 block_gridder    = dim3(128);
-                block_degridder  = dim3(256);
+                block_degridder  = dim3(128);
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                batch_gridder    = 256;
-                batch_degridder  = 128;
+                batch_gridder    = 384;
+                batch_degridder  = 512;
                 tile_size_grid   = 128;
             }
 
