@@ -239,6 +239,17 @@ namespace idg {
                 tile_size_grid   = 128;
             }
 
+            void InstanceCUDA::set_parameters_volta() {
+                block_gridder    = dim3(128);
+                block_degridder  = dim3(128);
+                block_adder      = dim3(128);
+                block_splitter   = dim3(128);
+                block_scaler     = dim3(128);
+                batch_gridder    = 128;
+                batch_degridder  = 256;
+                tile_size_grid   = 128;
+            }
+
             void InstanceCUDA::set_parameters() {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -246,7 +257,9 @@ namespace idg {
 
                 int capability = (*device).get_capability();
 
-                if (capability >= 60) {
+                if (capability >= 70) {
+                    set_parameters_volta();
+                } else if (capability >= 60) {
                     set_parameters_pascal();
                 } else if (capability >= 50) {
                     set_parameters_maxwell();
