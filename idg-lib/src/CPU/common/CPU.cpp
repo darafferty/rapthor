@@ -103,7 +103,7 @@ namespace idg {
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr          = uvw.data(first_bl, 0);
                         void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
-                        void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
+                        void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
 
                         // Gridder kernel
@@ -196,7 +196,8 @@ namespace idg {
                     auto jobsize            = kernel::cpu::jobsize_degridding;
 
                     // Allocate memory for subgrids
-                    Array4D<std::complex<float>> subgrids(total_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
+                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
                     // Performance measurement
                     report.initialize(nr_channels, subgrid_size, grid_size);
@@ -218,7 +219,7 @@ namespace idg {
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr          = uvw.data(first_bl, 0);
                         void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
-                        void *subgrids_ptr     = subgrids.data(plan.get_subgrid_offset(first_bl), 0, 0, 0);
+                        void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
 
                         // Splitter kernel
