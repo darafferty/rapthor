@@ -806,7 +806,7 @@ namespace idg {
              */
             template<typename T>
             T* InstanceCUDA::reuse_memory(
-                std::vector<T*>& memories,
+                std::vector<std::unique_ptr<T>>& memories,
                 unsigned int id,
                 uint64_t size)
             {
@@ -815,9 +815,9 @@ namespace idg {
                 if (memories.size() <= id) {
                     ptr = new T(size);
 
-                    memories.push_back(ptr);
+                    memories.push_back(std::unique_ptr<T>(ptr));
                 } else {
-                    ptr = memories[id];
+                    ptr = memories[id].get();
                 }
 
                 ptr->resize(size);
@@ -909,13 +909,13 @@ namespace idg {
              */
             template<typename T>
             T* InstanceCUDA::reuse_memory(
-                std::vector<T*>& memories,
+                std::vector<std::unique_ptr<T>>& memories,
                 uint64_t size,
                 void* ptr)
             {
                 // detect whether this pointer is used before
                 for (int i = 0; i < memories.size(); i++) {
-                    T* m = memories[i];
+                    T* m = memories[i].get();
                     void *m_ptr = m->get();
                     uint64_t m_size = m->size();
 
@@ -946,7 +946,7 @@ namespace idg {
 
                 // create new memory
                 T* m = ptr == NULL ? new T(size) : new T(ptr, size);
-                memories.push_back(m);
+                memories.push_back(std::unique_ptr<T>(m));
                 return m;
             }
 
@@ -981,35 +981,24 @@ namespace idg {
             }
 
             /*
-             * Destructor helper
-             */
-            template<typename T>
-            void free_vector(std::vector<T*> &vector) {
-                for (T* t : vector) {
-                    delete t;
-                }
-                vector.clear();
-            }
-
-            /*
              * Host memory destructor
              */
             void InstanceCUDA::free_host_memory() {
-                free_vector(h_misc_);
-                free_vector(h_visibilities_);
-                free_vector(h_uvw_);
-                free_vector(h_subgrids_);
+                h_misc_.clear();
+                h_visibilities_.clear();
+                h_uvw_.clear();
+                h_subgrids_.clear();
             }
 
             /*
              * Device memory destructor
              */
             void InstanceCUDA::free_device_memory() {
-                free_vector(d_wavenumbers_);
-                free_vector(d_visibilities_);
-                free_vector(d_uvw_);
-                free_vector(d_metadata_);
-                free_vector(d_subgrids_);
+                d_wavenumbers_.clear();
+                d_visibilities_.clear();
+                d_uvw_.clear();
+                d_metadata_.clear();
+                d_subgrids_.clear();
                 if (d_grid != NULL) {
                     delete d_grid;
                     d_grid = NULL;

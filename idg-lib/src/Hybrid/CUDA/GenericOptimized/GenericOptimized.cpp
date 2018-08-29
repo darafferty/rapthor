@@ -214,6 +214,10 @@ namespace idg {
                 #endif
                 report.reset();
                 planned_max_nr_subgrids.clear();
+
+                for (int d = 0; d < get_num_devices(); d++) {
+                    get_device(d).free_device_memory();
+                }
             } // end finish_gridding
 
             typedef struct {

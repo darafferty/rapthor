@@ -1,6 +1,8 @@
 #ifndef IDG_CUDA_INSTANCE_H_
 #define IDG_CUDA_INSTANCE_H_
 
+#include <memory>
+
 #include "idg-common.h"
 
 #include "CU.h"
@@ -267,17 +269,17 @@ namespace idg {
                     cu::HostMemory *h_grid;
 
                     // One instance per stream
-                    std::vector<cu::HostMemory*> h_visibilities_;
-                    std::vector<cu::HostMemory*> h_uvw_;
-                    std::vector<cu::HostMemory*> h_subgrids_;
-                    std::vector<cu::DeviceMemory*> d_wavenumbers_;
-                    std::vector<cu::DeviceMemory*> d_visibilities_;
-                    std::vector<cu::DeviceMemory*> d_uvw_;
-                    std::vector<cu::DeviceMemory*> d_metadata_;
-                    std::vector<cu::DeviceMemory*> d_subgrids_;
+                    std::vector<std::unique_ptr<cu::HostMemory>> h_visibilities_;
+                    std::vector<std::unique_ptr<cu::HostMemory>> h_uvw_;
+                    std::vector<std::unique_ptr<cu::HostMemory>> h_subgrids_;
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_wavenumbers_;
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
 
                     // Misc host memory
-                    std::vector<cu::HostMemory*> h_misc_;
+                    std::vector<std::unique_ptr<cu::HostMemory>> h_misc_;
 
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
@@ -323,13 +325,13 @@ namespace idg {
 
                     template<typename T>
                     T* reuse_memory(
-                        std::vector<T*>& memories,
+                        std::vector<std::unique_ptr<T>>& memories,
                         unsigned int id,
                         uint64_t size);
 
                     template<typename T>
                     T* reuse_memory(
-                        std::vector<T*>& memories,
+                        std::vector<std::unique_ptr<T>>& memories,
                         uint64_t size,
                         void* ptr);
 
