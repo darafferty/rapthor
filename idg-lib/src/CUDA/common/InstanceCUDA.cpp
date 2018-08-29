@@ -72,7 +72,6 @@ namespace idg {
                 delete htodstream;
                 delete dtohstream;
                 free_device_memory();
-                for (cu::HostMemory *memory : h_misc_) { delete memory; }
                 for (cu::Module *module : mModules) { delete module; }
                 if (fft_plan_bulk) { delete fft_plan_bulk; }
                 if (fft_plan_misc) { delete fft_plan_misc; }
@@ -787,7 +786,7 @@ namespace idg {
              */
             template<typename T>
             T* InstanceCUDA::reuse_memory(
-                std::vector<T*>& memories,
+                std::vector<std::unique_ptr<T>>& memories,
                 unsigned int id,
                 uint64_t size)
             {
@@ -796,9 +795,9 @@ namespace idg {
                 if (memories.size() <= id) {
                     ptr = new T(size);
 
-                    memories.push_back(ptr);
+                    memories.push_back(std::unique_ptr<T>(ptr));
                 } else {
-                    ptr = memories[id];
+                    ptr = memories[id].get();
                 }
 
                 ptr->resize(size);
@@ -890,13 +889,13 @@ namespace idg {
              */
             template<typename T>
             T* InstanceCUDA::reuse_memory(
-                std::vector<T*>& memories,
+                std::vector<std::unique_ptr<T>>& memories,
                 uint64_t size,
                 void* ptr)
             {
                 // detect whether this pointer is used before
                 for (int i = 0; i < memories.size(); i++) {
-                    T* m = memories[i];
+                    T* m = memories[i].get();
                     void *m_ptr = m->get();
                     uint64_t m_size = m->size();
 
@@ -927,7 +926,7 @@ namespace idg {
 
                 // create new memory
                 T* m = ptr == NULL ? new T(size) : new T(ptr, size);
-                memories.push_back(m);
+                memories.push_back(std::unique_ptr<T>(m));
                 return m;
             }
 
