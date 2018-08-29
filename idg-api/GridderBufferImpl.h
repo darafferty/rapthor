@@ -78,6 +78,10 @@ namespace api {
             std::complex<float>* visibilities,
             const float* weights);
 
+        /** \brief Computes average beam
+         */
+        void compute_avg_beam();
+
         /** \brief Signal that not more visibilies are gridded */
         virtual void finished() override;
 
