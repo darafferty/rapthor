@@ -150,14 +150,14 @@ void kernel_gridder(
                     phasor_real, phasor_imag, pixels);
 
                 // Load a term for station1
-                int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
+                size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
                 idg::float2 aXX1 = aterms[station1_idx + 0];
                 idg::float2 aXY1 = aterms[station1_idx + 1];
                 idg::float2 aYX1 = aterms[station1_idx + 2];
                 idg::float2 aYY1 = aterms[station1_idx + 3];
 
                 // Load aterm for station2
-                int station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+                size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
                 idg::float2 aXX2 = aterms[station2_idx + 0];
                 idg::float2 aXY2 = aterms[station2_idx + 1];
                 idg::float2 aYX2 = aterms[station2_idx + 2];
@@ -180,7 +180,7 @@ void kernel_gridder(
 
                 // Set subgrid value
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    int dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
+                    size_t dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
                     subgrid[dst_idx] = pixels[pol] * sph;
                 }
             } // end x
