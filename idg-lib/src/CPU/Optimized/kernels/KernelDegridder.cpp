@@ -67,14 +67,14 @@ void kernel_degridder(
             int x = i % subgrid_size;
 
             // Load aterm for station1
-            int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
+            size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
             idg::float2 aXX1 = aterms[station1_idx + 0];
             idg::float2 aXY1 = aterms[station1_idx + 1];
             idg::float2 aYX1 = aterms[station1_idx + 2];
             idg::float2 aYY1 = aterms[station1_idx + 3];
 
             // Load aterm for station2
-            int station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+            size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
             idg::float2 aXX2 = aterms[station2_idx + 0];
             idg::float2 aXY2 = aterms[station2_idx + 1];
             idg::float2 aYX2 = aterms[station2_idx + 2];
@@ -90,7 +90,7 @@ void kernel_degridder(
             // Load pixel values and apply spheroidal
             idg::float2 pixels[NR_POLARIZATIONS];
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                int src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                size_t src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
                 pixels[pol] = _spheroidal * subgrid[src_idx];
             }
 
@@ -176,7 +176,7 @@ void kernel_degridder(
                 const float scale = 1.0f / nr_pixels;
                 int time_idx = offset + time;
                 int chan_idx = chan;
-                int dst_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                size_t dst_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     visibilities[dst_idx+pol] = {scale*sums[pol].real, scale*sums[pol].imag};
                 }

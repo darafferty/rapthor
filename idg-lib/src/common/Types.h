@@ -625,7 +625,7 @@ namespace idg {
 } // end namespace idg
 
     /* Index methods */
-    inline long index_grid(
+    inline size_t index_grid(
             int nr_polarizations,
             long grid_size,
             int w_layer,
@@ -634,16 +634,16 @@ namespace idg {
             int x)
     {
         // grid: [nr_w_layers][nr_polarizations][grid_size][grid_size]
-        return w_layer * nr_polarizations * grid_size * grid_size +
-               pol * grid_size * grid_size +
-               y * grid_size +
-               x;
+        return static_cast<size_t>(w_layer) * nr_polarizations * grid_size * grid_size +
+               static_cast<size_t>(pol) * grid_size * grid_size +
+               static_cast<size_t>(y) * grid_size +
+               static_cast<size_t>(x);
     }
 
-    inline long index_grid_tiling(
+    inline size_t index_grid_tiling(
             int tile_size,
             int nr_correlations,
-            long grid_size,
+            size_t grid_size,
             int pol,
             int y,
             int x)
@@ -651,10 +651,10 @@ namespace idg {
         // grid: [NR_TILES][NR_TILES][NR_POLARIZATIONS][TILE_SIZE][TILE_SIZE]
         assert(grid_size % tile_size == 0);
         const int NR_TILES  = grid_size / tile_size;
-        long idx_tile_y = y / tile_size;
-        long idx_tile_x = x / tile_size;
-        long tile_y = y % tile_size;
-        long tile_x = x % tile_size;
+        size_t idx_tile_y = y / tile_size;
+        size_t idx_tile_x = x / tile_size;
+        size_t tile_y = y % tile_size;
+        size_t tile_x = x % tile_size;
 
         return
                idx_tile_y * NR_TILES * nr_correlations * tile_size * tile_size +
@@ -664,8 +664,8 @@ namespace idg {
                tile_x;
     }
 
-    inline long index_grid(
-            long grid_size,
+    inline size_t index_grid(
+            size_t grid_size,
             int pol,
             int y,
             int x)
@@ -676,7 +676,7 @@ namespace idg {
                x;
     }
 
-    inline long index_subgrid(
+    inline size_t index_subgrid(
         int nr_polarizations,
         int subgrid_size,
         int s,
@@ -685,13 +685,13 @@ namespace idg {
         int x)
     {
         // subgrid: [nr_subgrids][nr_polarizations][subgrid_size][subgrid_size]
-        return s * nr_polarizations * subgrid_size * subgrid_size +
-              pol * subgrid_size * subgrid_size +
-              y * subgrid_size +
-              x;
+        return static_cast<size_t>(s) * nr_polarizations * subgrid_size * subgrid_size +
+               static_cast<size_t>(pol) * subgrid_size * subgrid_size +
+               static_cast<size_t>(y) * subgrid_size +
+               static_cast<size_t>(x);
     }
 
-    inline int index_visibility(
+    inline size_t index_visibility(
         int nr_channels,
         int nr_polarizations,
         int time,
@@ -699,12 +699,12 @@ namespace idg {
         int pol)
     {
         // visibilities: [nr_time][nr_channels][nr_polarizations]
-        return time * nr_channels * nr_polarizations +
-               chan * nr_polarizations +
-               pol;
+        return static_cast<size_t>(time) * nr_channels * nr_polarizations +
+               static_cast<size_t>(chan) * nr_polarizations +
+               static_cast<size_t>(pol);
     }
 
-    inline int index_aterm(
+    inline size_t index_aterm(
         int subgrid_size,
         int nr_polarizations,
         int nr_stations,
@@ -714,10 +714,10 @@ namespace idg {
         int x)
     {
         // aterm: [nr_aterms][subgrid_size][subgrid_size][nr_polarizations]
-        int aterm_nr = (aterm_index * nr_stations + station);
-        return aterm_nr * subgrid_size * subgrid_size * nr_polarizations +
-               y * subgrid_size * nr_polarizations +
-               x * nr_polarizations;
+        size_t aterm_nr = (aterm_index * nr_stations + station);
+        return static_cast<size_t>(aterm_nr) * subgrid_size * subgrid_size * nr_polarizations +
+               static_cast<size_t>(y) * subgrid_size * nr_polarizations +
+               static_cast<size_t>(x) * nr_polarizations;
     }
 
 #endif

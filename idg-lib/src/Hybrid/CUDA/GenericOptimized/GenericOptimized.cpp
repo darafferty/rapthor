@@ -134,6 +134,14 @@ namespace idg {
                 for (int d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
 
+                    // TODO
+                    // The current way the device memory is managed frequently leads to an out of device memory error
+                    // even if there is sufficient memory available
+                    // This is probably due to fragmentation
+                    // For now we free all device memory in advance even though this disables the reuse of memory in InstanceCUDA
+                    // When memory management has been improved to line below needs to be removed.
+                    device.free_device_memory();
+
                     // Set device report
                     device.set_context();
                     device.set_report(report);
