@@ -41,7 +41,7 @@ namespace cu {
             size_t get_total_memory() const;
 
             template <CUdevice_attribute attribute>
-            int getAttribute() const {
+            int get_attribute() const {
                 int value;
                 if (cuDeviceGetAttribute(&value, attribute, _device) != CUDA_SUCCESS) {
                     std::cerr << "CUDA Error: could not get attribute: " << attribute << std::endl;
@@ -190,7 +190,7 @@ namespace cu {
             Function(Module &module, const char *name);
             Function(CUfunction function);
 
-            int getAttribute(CUfunction_attribute attribute);
+            int get_attribute(CUfunction_attribute attribute);
             void setCacheConfig(CUfunc_cache config);
 
             operator CUfunction();

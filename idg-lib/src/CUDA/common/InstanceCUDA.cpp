@@ -298,30 +298,30 @@ namespace idg {
                    << device_memory_total << " Mb (free / total)" << std::endl;
 
                 // Shared memory
-                auto shared_memory   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>(); // Bytes
+                auto shared_memory   = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>(); // Bytes
                 os << "\tShared memory : " << shared_memory / (float) 1024 << " Kb"<< std::endl;
 
                 // Frequencies
-                auto clock_frequency = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000; // Mhz
+                auto clock_frequency = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000; // Mhz
                 os << "\tClk frequency : " << clock_frequency << " Ghz" << std::endl;
-                auto mem_frequency   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE>() / 1000; // Mhz
+                auto mem_frequency   = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE>() / 1000; // Mhz
                 os << "\tMem frequency : " << mem_frequency << " Ghz" << std::endl;
 
                 // Cores/bus
-                auto nr_sm           = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT>();
-                auto mem_bus_width   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH>(); // Bits
+                auto nr_sm           = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT>();
+                auto mem_bus_width   = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH>(); // Bits
                 os << "\tNumber of SM  : " << nr_sm << std::endl;
                 os << "\tMem bus width : " << mem_bus_width << " bit" << std::endl;
                 os << "\tMem bandwidth : " << 2 * (mem_bus_width / 8) * mem_frequency / 1000 << " GB/s" << std::endl;
 
-                auto nr_threads = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR>();
+                auto nr_threads = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR>();
                 os << "\tNumber of threads  : " << nr_threads << std::endl;
 
                 // Misc
                 os << "\tCapability    : " << d.get_device().get_capability() << std::endl;
 
                 // Unified memory
-                auto supports_managed_memory = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY>();
+                auto supports_managed_memory = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY>();
                 os << "\tUnified memory : " << supports_managed_memory << std::endl;
 
                 os << std::endl;
