@@ -112,6 +112,8 @@ namespace idg {
 
             std::vector<int> CUDA::compute_jobsize(
                 const Plan &plan,
+                const unsigned int nr_stations,
+                const unsigned int nr_timeslots,
                 const unsigned int nr_timesteps,
                 const unsigned int nr_channels,
                 const unsigned int subgrid_size,
@@ -127,20 +129,22 @@ namespace idg {
                 int max_nr_subgrids = plan.get_max_nr_subgrids();
 
                 // Compute the amount of bytes needed for that job
-                auto bytes_required = 0;
-                bytes_required += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
-                bytes_required += auxiliary::sizeof_uvw(1, nr_timesteps);
-                bytes_required += auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-                bytes_required += auxiliary::sizeof_metadata(max_nr_subgrids);
-                bytes_required *= nr_streams;
+                auto bytes_jobs = 0;
+                bytes_jobs += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
+                bytes_jobs += auxiliary::sizeof_uvw(1, nr_timesteps);
+                bytes_jobs += auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                bytes_jobs += auxiliary::sizeof_metadata(max_nr_subgrids);
+                bytes_jobs *= nr_streams;
 
-                // Compute the amount of bytes needed for the grid
-                auto bytes_grid = auxiliary::sizeof_grid(grid_size);
+                // Compute the amount of memory needed for data that is identical for all jobs
+                auto bytes_static = 0;
+                bytes_static += auxiliary::sizeof_grid(grid_size);
+                bytes_static += auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
 
                 // Print amount of bytes required
                 #if defined(DEBUG)
-                std::clog << "Bytes required for grid: " << bytes_grid << std::endl;
-                std::clog << "Bytes required for jobs: " << bytes_required << std::endl;
+                std::clog << "Bytes required for static data: " << bytes_static << std::endl;
+                std::clog << "Bytes required for job data: "    << bytes_jobs << std::endl;
                 #endif
 
                 // Adjust jobsize to amount of available device memory
@@ -171,18 +175,18 @@ namespace idg {
                         #endif
                     }
 
-                    // Check whether the grid and minimal jobs fit at all
-                    if (bytes_free < (bytes_grid + bytes_required)) {
+                    // Check whether the static data and job data fits at all
+                    if (bytes_free < (bytes_static + bytes_jobs)) {
                         std::cerr << "Error! Not enough (free) memory on device to continue.";
                         std::cerr << std::endl;
                         exit(EXIT_FAILURE);
                     }
 
                     // Subtract the space for the grid from the amount of free memory
-                    bytes_free -= bytes_grid;
+                    bytes_free -= bytes_static;
 
                     // Compute actual jobsize
-                    jobsize[i] = (bytes_free * (1 - fraction_reserved)) /  bytes_required;
+                    jobsize[i] = (bytes_free * (1 - fraction_reserved)) /  bytes_jobs;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
 
                     // Print jobsize

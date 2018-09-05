@@ -159,7 +159,7 @@ namespace idg {
                 // Set host report
                 cpuProxy->get_kernels().set_report(report);
 
-                jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory/fft
                 for (int d = 0; d < get_num_devices(); d++) {
