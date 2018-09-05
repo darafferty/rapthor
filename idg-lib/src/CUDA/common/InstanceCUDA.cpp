@@ -71,8 +71,8 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
+                free_host_memory();
                 free_device_memory();
-                for (cu::HostMemory *memory : h_misc_) { delete memory; }
                 for (cu::Module *module : mModules) { delete module; }
                 if (fft_plan_bulk) { delete fft_plan_bulk; }
                 if (fft_plan_misc) { delete fft_plan_misc; }
@@ -962,14 +962,35 @@ namespace idg {
             }
 
             /*
+             * Destructor helper
+             */
+            template<typename T>
+            void free_vector(std::vector<T*> &vector) {
+                for (T* t : vector) {
+                    delete t;
+                }
+                vector.clear();
+            }
+
+            /*
+             * Host memory destructor
+             */
+            void InstanceCUDA::free_host_memory() {
+                free_vector(h_misc_);
+                free_vector(h_visibilities_);
+                free_vector(h_uvw_);
+                free_vector(h_subgrids_);
+            }
+
+            /*
              * Device memory destructor
              */
             void InstanceCUDA::free_device_memory() {
-                d_wavenumbers_.clear();
-                d_visibilities_.clear();
-                d_uvw_.clear();
-                d_metadata_.clear();
-                d_subgrids_.clear();
+                free_vector(d_wavenumbers_);
+                free_vector(d_visibilities_);
+                free_vector(d_uvw_);
+                free_vector(d_metadata_);
+                free_vector(d_subgrids_);
                 if (d_grid != NULL) {
                     delete d_grid;
                     d_grid = NULL;
