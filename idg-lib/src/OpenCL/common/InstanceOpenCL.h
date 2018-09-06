@@ -125,7 +125,6 @@ namespace idg {
                     cl::Kernel *kernel_splitter;
                     cl::Kernel *kernel_scaler;
                     std::vector<cl::Program*> mPrograms;
-                    powersensor::PowerSensor *powerSensor;
 
                 protected:
                     cl::NDRange block_gridder;
