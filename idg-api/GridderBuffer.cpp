@@ -227,7 +227,7 @@ namespace api {
             // Set average beam from sum of kronecker products
             for(size_t ii = 0; ii < 4; ii++) {
                 for(size_t jj = 0; jj < 4; jj++) {
-                    (*average_beam)[i][ii][jj] = sum[ii][jj];
+                    (*average_beam)[i][ii][jj] += sum[ii][jj];
                 }
             }
         } // end for pixels
