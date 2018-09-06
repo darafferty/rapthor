@@ -61,8 +61,8 @@ namespace cu {
     }
 
     int Device::get_capability() const {
-        int capability = 10 * getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-                              getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
+        int capability = 10 * get_attribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
+                              get_attribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
         return capability;
     }
 
@@ -336,7 +336,7 @@ namespace cu {
         _function = function;
     }
 
-    int Function::getAttribute(CUfunction_attribute attribute) {
+    int Function::get_attribute(CUfunction_attribute attribute) {
         int value;
         checkCudaCall(cuFuncGetAttribute(&value, attribute, _function));
         return value;

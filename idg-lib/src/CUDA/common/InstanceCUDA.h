@@ -228,6 +228,7 @@ namespace idg {
                     cu::DeviceMemory& get_device_metadata(unsigned int id) { return *d_metadata_[id]; }
 
                     // Misc
+                    void free_host_memory();
                     void free_device_memory();
                     void reset();
                     int get_tile_size_grid() const { return tile_size_grid; };

@@ -32,6 +32,8 @@ namespace idg {
 
                     std::vector<int> compute_jobsize(
                         const Plan &plan,
+                        const unsigned int nr_stations,
+                        const unsigned int nr_timeslots,
                         const unsigned int nr_timesteps,
                         const unsigned int nr_channels,
                         const unsigned int subgrid_size,

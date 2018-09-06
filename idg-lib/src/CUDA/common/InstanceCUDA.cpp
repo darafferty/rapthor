@@ -71,6 +71,7 @@ namespace idg {
                 delete executestream;
                 delete htodstream;
                 delete dtohstream;
+                free_host_memory();
                 free_device_memory();
                 for (cu::Module *module : mModules) { delete module; }
                 if (fft_plan_bulk) { delete fft_plan_bulk; }
@@ -287,23 +288,42 @@ namespace idg {
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d) {
                 os << d.get_device().get_name() << std::endl;
                 os << std::setprecision(2);
+                os << std::fixed;
                 d.get_context().setCurrent();
-                auto device_memory   = d.get_device().get_total_memory(); // Bytes
-                auto shared_memory   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>(); // Bytes
-                auto clock_frequency = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000; // Mhz
-                auto mem_frequency   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE>() / 1000; // Mhz
-                auto nr_sm           = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT>();
-                auto mem_bus_width   = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH>(); // Bits
-                os << "\tDevice memory : " << device_memory / (float) (1024*1024*1024) << " Gb" << std::endl;
+
+                // Device memory
+                auto device_memory_total = d.get_device().get_total_memory() / (1024*1024); // MBytes
+                auto device_memory_free  = d.get_device().get_free_memory()  / (1024*1024); // MBytes
+                os << "\tDevice memory : " << device_memory_free << " Mb  / "
+                   << device_memory_total << " Mb (free / total)" << std::endl;
+
+                // Shared memory
+                auto shared_memory   = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK>(); // Bytes
                 os << "\tShared memory : " << shared_memory / (float) 1024 << " Kb"<< std::endl;
+
+                // Frequencies
+                auto clock_frequency = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_CLOCK_RATE>() / 1000; // Mhz
                 os << "\tClk frequency : " << clock_frequency << " Ghz" << std::endl;
+                auto mem_frequency   = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE>() / 1000; // Mhz
                 os << "\tMem frequency : " << mem_frequency << " Ghz" << std::endl;
+
+                // Cores/bus
+                auto nr_sm           = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT>();
+                auto mem_bus_width   = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH>(); // Bits
                 os << "\tNumber of SM  : " << nr_sm << std::endl;
                 os << "\tMem bus width : " << mem_bus_width << " bit" << std::endl;
                 os << "\tMem bandwidth : " << 2 * (mem_bus_width / 8) * mem_frequency / 1000 << " GB/s" << std::endl;
+
+                auto nr_threads = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR>();
+                os << "\tNumber of threads  : " << nr_threads << std::endl;
+
+                // Misc
                 os << "\tCapability    : " << d.get_device().get_capability() << std::endl;
-                auto supports_managed_memory = d.get_device().getAttribute<CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY>();
+
+                // Unified memory
+                auto supports_managed_memory = d.get_device().get_attribute<CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY>();
                 os << "\tUnified memory : " << supports_managed_memory << std::endl;
+
                 os << std::endl;
                 return os;
             }
@@ -958,6 +978,16 @@ namespace idg {
                 auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
                 h_uvw = reuse_memory(h_misc_, size, ptr);
                 return *h_uvw;
+            }
+
+            /*
+             * Host memory destructor
+             */
+            void InstanceCUDA::free_host_memory() {
+                h_misc_.clear();
+                h_visibilities_.clear();
+                h_uvw_.clear();
+                h_subgrids_.clear();
             }
 
             /*
