@@ -12,7 +12,7 @@ Each repository can also be installed separately if desired.
 
 # Installation
 ```
-git clone --recursive https://gitlab.com/astron-idg/idg
+git clone --recursive https://gitlab.com/astron-idg/idg.git
 cd idg && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local/idg/ ..
 ccmake . # For interactively setting parameters, like BUILD_LIB_CUDA
