@@ -61,7 +61,8 @@ namespace idg {
                 cl::CommandQueue &queue = device.get_execute_queue();
 
                 // Power measurements
-                Report report(0, 0, grid_size);
+                report.initialize(0, 0, grid_size);
+                device.set_report(report);
                 PowerRecord powerRecords[5];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
