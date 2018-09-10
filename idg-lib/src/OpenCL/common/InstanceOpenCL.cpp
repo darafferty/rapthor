@@ -288,6 +288,9 @@ namespace idg {
                 return os;
             }
 
+            /*
+             * Performance measurements
+             */
             State InstanceOpenCL::measure() {
                 return powerSensor->read();
             }
@@ -298,6 +301,106 @@ namespace idg {
             {
                 record.sensor = powerSensor;
                 record.enqueue(queue);
+            }
+
+            typedef struct {
+                PowerRecord *start; // takes first measurement
+                PowerRecord *end;   // takes second measurement
+                cl::Event *event;   // used to update the Report
+                Report *report;
+
+                // Report member function pointer, used to select
+                // which part of the report to update with start and
+                // end when the callback for the update event is triggered.
+                void (Report::* update_report) (State&, State&);
+            } UpdateData;
+
+            UpdateData* get_update_data(
+                PowerSensor *sensor,
+                Report *report,
+                void (Report::* update_report) (State&, State&))
+            {
+                UpdateData *data    = new UpdateData();
+                data->start         = new PowerRecord(sensor);
+                data->end           = new PowerRecord(sensor);
+                data->event         = new cl::Event();
+                data->report        = report;
+                data->update_report = update_report;
+                return data;
+            }
+
+            void update_report_callback(cl_event, cl_int, void *userData)
+            {
+                UpdateData *data = static_cast<UpdateData*>(userData);
+                PowerRecord* start = data->start;
+                PowerRecord* end   = data->end;
+                Report *report     = data->report;
+                (report->*data->update_report)(start->state, end->state);
+                delete data->start; delete data->end; delete data->event;
+                delete data;
+            }
+
+            void InstanceOpenCL::start_measurement(
+                void *ptr)
+            {
+                UpdateData *data = (UpdateData *) ptr;
+
+                // Schedule the first measurement (prior to kernel execution)
+                data->start->enqueue(*executequeue);
+            }
+
+            void InstanceOpenCL::end_measurement(
+                void *ptr)
+            {
+                UpdateData *data = (UpdateData *) ptr;
+
+                // Schedule the second measurement (after the kernel execution)
+                data->end->enqueue(*executequeue);
+
+                // Afterwards, update the report according to the two measurements
+                executequeue->enqueueMarkerWithWaitList(NULL, data->event);
+                data->event->setCallback(CL_RUNNING, &update_report_callback, data);
+            }
+
+            typedef struct {
+                int nr_timesteps;
+                int nr_subgrids;
+                Report *report;
+                cl::Event *event;
+            } ReportData;
+
+            ReportData* get_report_data(
+                int nr_timesteps,
+                int nr_subgrids,
+                Report *report)
+            {
+                ReportData *data = new ReportData();
+                data->nr_timesteps = nr_timesteps;
+                data->nr_subgrids = nr_subgrids;
+                data->report = report;
+                data->event = new cl::Event();
+
+            }
+
+            void report_job_callback(cl_event, cl_int, void *userData)
+            {
+                ReportData *data = static_cast<ReportData*>(userData);
+                int nr_timesteps = data->nr_timesteps;
+                int nr_subgrids = data->nr_subgrids;
+                Report *report = data->report;
+                report->print(nr_timesteps, nr_subgrids);
+                delete data->event;
+                delete data;
+            }
+
+            void InstanceOpenCL::enqueue_report(
+                cl::CommandQueue &queue,
+                int nr_timesteps,
+                int nr_subgrids)
+            {
+                ReportData *data = get_report_data(nr_timesteps, nr_subgrids, report);
+                executequeue->enqueueMarkerWithWaitList(NULL, data->event);
+                data->event->setCallback(CL_RUNNING, &report_job_callback, data);
             }
 
             /*
@@ -345,8 +448,11 @@ namespace idg {
                 kernel_gridder->setArg(10, d_metadata);
                 kernel_gridder->setArg(11, d_subgrid);
                 try {
+                    UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder);
+                    start_measurement(data);
                     executequeue->enqueueNDRangeKernel(
                         *kernel_gridder, cl::NullRange, global_size, block_gridder);
+                    end_measurement(data);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching gridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -395,8 +501,11 @@ namespace idg {
                 kernel_degridder->setArg(10, d_metadata);
                 kernel_degridder->setArg(11, d_subgrid);
                 try {
+                    UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
+                    start_measurement(data);
                     executequeue->enqueueNDRangeKernel(
                         *kernel_degridder, cl::NullRange, global_size, block_degridder);
+                    end_measurement(data);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching degridder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -448,9 +557,16 @@ namespace idg {
                 DomainAtoDomainB direction)
             {
                 clfftDirection sign = (direction == FourierDomainToImageDomain) ? CLFFT_BACKWARD : CLFFT_FORWARD;
+                size_t batch;
+                clfftGetPlanBatchSize(fft_plan, &batch);
+                UpdateData *data = batch > NR_CORRELATIONS
+                                         ? get_update_data(powerSensor, report, &Report::update_subgrid_fft)
+                                         : get_update_data(powerSensor, report, &Report::update_grid_fft);
+                start_measurement(data);
                 cl_command_queue *queue = &(*executequeue)();
                 clfftStatus status = clfftEnqueueTransform(
                     fft_plan, sign, 1, queue, 0, NULL, NULL, &d_data(), NULL, NULL);
+                end_measurement(data);
                 if (status != CL_SUCCESS) {
                     std::cerr << "Error enqueing fft plan" << std::endl;
                     exit(EXIT_FAILURE);
@@ -474,8 +590,11 @@ namespace idg {
                 kernel_adder->setArg(3, d_subgrid);
                 kernel_adder->setArg(4, d_grid);
                 try {
+                    UpdateData *data = get_update_data(powerSensor, report, &Report::update_adder);
+                    start_measurement(data);
                     executequeue->enqueueNDRangeKernel(
                         *kernel_adder, cl::NullRange, global_size, block_adder);
+                    end_measurement(data);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching adder: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -499,8 +618,11 @@ namespace idg {
                 kernel_splitter->setArg(3, d_subgrid);
                 kernel_splitter->setArg(4, d_grid);
                 try {
+                    UpdateData *data = get_update_data(powerSensor, report, &Report::update_splitter);
+                    start_measurement(data);
                     executequeue->enqueueNDRangeKernel(
                         *kernel_splitter, cl::NullRange, global_size, block_splitter);
+                    end_measurement(data);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching splitter: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);
@@ -518,8 +640,11 @@ namespace idg {
                 kernel_scaler->setArg(0, subgrid_size);
                 kernel_scaler->setArg(1, d_subgrid);
                 try {
+                    UpdateData *data = get_update_data(powerSensor, report, &Report::update_scaler);
+                    start_measurement(data);
                     executequeue->enqueueNDRangeKernel(
                         *kernel_scaler, cl::NullRange, global_size, block_scaler);
+                    end_measurement(data);
                 } catch (cl::Error &error) {
                     std::cerr << "Error launching scaler: " << error.what() << std::endl;
                     exit(EXIT_FAILURE);

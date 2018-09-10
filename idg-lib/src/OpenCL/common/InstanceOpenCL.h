@@ -35,9 +35,6 @@ namespace idg {
 
                     std::string get_compiler_flags();
 
-                    powersensor::State measure();
-                    void measure(PowerRecord &record, cl::CommandQueue &queue);
-
                 void launch_gridder(
                     int nr_timesteps,
                     int nr_subgrids,
@@ -174,6 +171,19 @@ namespace idg {
                         unsigned int nr_baselines = 0,
                         unsigned int nr_timesteps = 0,
                         void *ptr = NULL);
+
+                public:
+                    // Performance measurements
+                    powersensor::State measure();
+                    void measure(PowerRecord &record, cl::CommandQueue &queue);
+                    void start_measurement(void *data);
+                    void end_measurement(void *data);
+
+                    void enqueue_report(
+                        cl::CommandQueue &queue,
+                        int nr_timesteps,
+                        int nr_subgrids);
+
 
                 private:
                     cl::Buffer* reuse_memory(

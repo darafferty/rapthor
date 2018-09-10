@@ -63,7 +63,7 @@ namespace idg {
                 // Power measurements
                 report.initialize(0, 0, grid_size);
                 device.set_report(report);
-                PowerRecord powerRecords[5];
+                PowerRecord powerRecords[4];
                 State powerStates[4];
                 powerStates[0] = hostPowerSensor->read();
                 powerStates[2] = device.measure();
@@ -72,9 +72,7 @@ namespace idg {
                 cl::Buffer& d_grid = device.get_device_grid(grid_size);
 
                 // Perform fft shift
-                double time_shift = -omp_get_wtime();
                 device.shift(grid);
-                time_shift += omp_get_wtime();
 
                 // Copy grid to device
                 device.measure(powerRecords[0], queue);
@@ -88,28 +86,23 @@ namespace idg {
 
 				// Launch FFT
                 #if ENABLE_FFT
-                device.measure(powerRecords[2], queue);
                 device.launch_fft(d_grid, direction);
-                device.measure(powerRecords[3], queue);
                 #endif
 
                 // Copy grid to host
+                device.measure(powerRecords[2], queue);
                 readBuffer(queue, d_grid, CL_FALSE, grid.data());
-                device.measure(powerRecords[4], queue);
+                device.measure(powerRecords[3], queue);
                 queue.finish();
 
                 // Perform fft shift
-                time_shift = -omp_get_wtime();
                 device.shift(grid);
-                time_shift += omp_get_wtime();
 
                 // Perform fft scaling
-                double time_scale = -omp_get_wtime();
                 complex<float> scale = complex<float>(2, 0);
                 if (direction == FourierDomainToImageDomain) {
                     device.scale(grid, scale);
                 }
-                time_scale += omp_get_wtime();
 
                 // End measurements
                 powerStates[1] = hostPowerSensor->read();
@@ -117,13 +110,10 @@ namespace idg {
 
                 #if defined(REPORT_TOTAL)
                 report.update_input(powerRecords[0].state, powerRecords[1].state);
-                report.update_grid_fft(powerRecords[2].state, powerRecords[3].state);
-                report.update_output(powerRecords[3].state, powerRecords[4].state);
-                report.update_fft_shift(time_shift);
-                report.update_fft_scale(time_scale);
+                report.update_output(powerRecords[2].state, powerRecords[3].state);
                 report.update_host(powerStates[0], powerStates[1]);
                 report.print_total();
-                report.print_device(powerRecords[0].state, powerRecords[4].state);
+                report.print_device(powerRecords[0].state, powerRecords[3].state);
                 #endif
             } // end transform
 
@@ -182,6 +172,7 @@ namespace idg {
                 // Initialize device memory
                 for (int d = 0; d < nr_devices; d++) {
                     InstanceOpenCL& device      = get_device(d);
+                    device.set_report(report);
                     cl::CommandQueue& htodqueue = device.get_htod_queue();
                     cl::Buffer& d_wavenumbers   = device.get_device_wavenumbers(nr_channels);
                     cl::Buffer& d_spheroidal    = device.get_device_spheroidal(subgrid_size);
@@ -194,7 +185,7 @@ namespace idg {
                 }
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -274,7 +265,7 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
+                            //htodqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
                             htodqueue.enqueueCopyBuffer(h_visibilities, d_visibilities, visibilities_offset, 0,
                                 auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             htodqueue.enqueueCopyBuffer(h_uvw, d_uvw, uvw_offset, 0,
@@ -286,39 +277,26 @@ namespace idg {
 
 							// Launch gridder kernel
                             executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
-                            device.measure(powerRecords[0], executequeue);
                             device.launch_gridder(
                                 current_nr_timesteps, current_nr_subgrids,
                                 grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                                 d_aterms, d_metadata, d_subgrids);
-                            device.measure(powerRecords[1], executequeue);
 
 							// Launch FFT
                             #if ENABLE_FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
                             #endif
-                            device.measure(powerRecords[2], executequeue);
 
                             // Launch adder kernel
                             device.launch_adder(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
-                            device.measure(powerRecords[3], executequeue);
+                            device.enqueue_report(executequeue, current_nr_timesteps, current_nr_subgrids);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
                         }
 
                         outputReady[0].wait();
-
-                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.update_gridder(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_adder(powerRecords[2].state, powerRecords[3].state);
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish
@@ -428,7 +406,7 @@ namespace idg {
                 }
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -485,7 +463,6 @@ namespace idg {
                     #endif
 
                     // Performance measurement
-                    PowerRecord powerRecords[4];
                     if (local_id == 0) {
                         startStates[device_id] = device.measure();
                     }
@@ -521,17 +498,14 @@ namespace idg {
 
                             // Launch splitter kernel
                             executequeue.enqueueMarkerWithWaitList(&inputReady, NULL);
-                            device.measure(powerRecords[0], executequeue);
                             device.launch_splitter(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
-                            device.measure(powerRecords[1], executequeue);
 
                             // Launch FFT
                             #if ENABLE_FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
                             #endif
-                            device.measure(powerRecords[2], executequeue);
 
                             // Launch degridder kernel
                             device.launch_degridder(
@@ -539,27 +513,17 @@ namespace idg {
                                 grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                                 d_aterms, d_metadata, d_subgrids);
-                            device.measure(powerRecords[3], executequeue);
                             executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);
 
                             // Copy visibilities to host
                             dtohqueue.enqueueBarrierWithWaitList(&outputReady, NULL);
                             dtohqueue.enqueueCopyBuffer(d_visibilities, h_visibilities, 0, visibilities_offset,
                                 auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            device.enqueue_report(executequeue, current_nr_timesteps, current_nr_subgrids);
                             dtohqueue.enqueueMarkerWithWaitList(NULL, &outputFree[0]);
                         }
 
                         outputFree[0].wait();
-
-                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.update_splitter(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_degridder(powerRecords[2].state, powerRecords[3].state);
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish
