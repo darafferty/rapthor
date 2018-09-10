@@ -301,9 +301,6 @@ namespace idg {
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
-                        // Power measurement
-                        vector<PowerRecord> powerRecords(5);
-
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
@@ -317,26 +314,21 @@ namespace idg {
 
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
-                            device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
-                            device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
-                            device.measure(powerRecords[2], executestream);
 
                             // Launch scaler kernel
                             device.launch_scaler(
                                 current_nr_subgrids, subgrid_size, d_subgrids);
-                            device.measure(powerRecords[3], executestream);
 
                             // Launch adder kernel
                             device.launch_adder(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
-                            device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
                             device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                         }
@@ -518,9 +510,6 @@ namespace idg {
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
-                        // Power measurement
-                        vector<PowerRecord> powerRecords(5);
-
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
@@ -535,23 +524,18 @@ namespace idg {
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
-                            device.measure(powerRecords[0], executestream);
                             device.launch_splitter(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, d_grid);
-                            device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
-                            device.measure(powerRecords[2], executestream);
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
-                            device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                            device.measure(powerRecords[4], executestream);
                             device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                             executestream.record(outputReady);
 
