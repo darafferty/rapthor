@@ -120,9 +120,7 @@ namespace idg {
                 powerStates[2] = device.measure();
 
                 // Perform fft shift
-                double time_shift = -omp_get_wtime();
                 device.shift(grid);
-                time_shift += omp_get_wtime();
 
                 // Copy grid to device
                 auto sizeof_grid = auxiliary::sizeof_grid(grid_size);
@@ -140,17 +138,13 @@ namespace idg {
                 stream.synchronize();
 
                 // Perform fft shift
-                time_shift = -omp_get_wtime();
                 device.shift(grid);
-                time_shift += omp_get_wtime();
 
                 // Perform fft scaling
-                double time_scale = -omp_get_wtime();
                 complex<float> scale = complex<float>(2.0/(grid_size*grid_size), 0);
                 if (direction == FourierDomainToImageDomain) {
                     device.scale(grid, scale);
                 }
-                time_scale += omp_get_wtime();
 
                 // End measurements
                 stream.synchronize();
@@ -160,8 +154,6 @@ namespace idg {
                 #if defined(REPORT_TOTAL)
                 report.update_input(powerRecords[0].state, powerRecords[1].state);
                 report.update_output(powerRecords[2].state, powerRecords[3].state);
-                report.update_fft_shift(time_shift);
-                report.update_fft_scale(time_scale);
                 report.update_host(powerStates[0], powerStates[1]);
                 report.print_total();
                 report.print_device(powerRecords[0].state, powerRecords[3].state);
