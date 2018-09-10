@@ -90,7 +90,6 @@ namespace idg {
 
             void InstanceOpenCL::set_parameters_vega() {
                 batch_gridder   = 32;
-                batch_degridder = 256;
                 block_gridder   = cl::NDRange(128, 1);
                 block_degridder = cl::NDRange(256, 1);
             }
