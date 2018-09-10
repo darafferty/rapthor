@@ -10,6 +10,9 @@ namespace idg {
 
             class PowerRecord {
                 public:
+                    PowerRecord();
+                    PowerRecord(powersensor::PowerSensor *sensor);
+
                     void enqueue(cl::CommandQueue &queue);
                     static void getPower(cl_event, cl_int, void *userData);
                     powersensor::PowerSensor *sensor;
