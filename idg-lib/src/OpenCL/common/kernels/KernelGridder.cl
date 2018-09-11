@@ -106,8 +106,10 @@ void kernel_gridder(
 
             // Load UVW
             for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
-                UVW a = uvw[time_offset_global + time_offset_local + time];
-                uvw_[time] = (float4) (a.u, a.v, a.w, 0);
+                int idx_time = time_offset_global + time_offset_local + time;
+                uvw_[time].x = uvw[idx_time].u;
+                uvw_[time].y = uvw[idx_time].v;
+                uvw_[time].z = uvw[idx_time].w;
             }
 
             // Load visibilities
