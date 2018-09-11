@@ -57,7 +57,7 @@ void kernel_degridder(
         for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
             float8 visibility[MAX_NR_CHANNELS];
 
-            for (int chan = 0; chan < current_nr_channels; chan++) {
+            for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
                 visibility[chan] = (float8) 0;
             }
 
@@ -162,7 +162,7 @@ void kernel_degridder(
                     // Load phase offset
                     float phase_offset = x.s3;
 
-                    for (int chan = 0; chan < current_nr_channels; chan++) {
+                    for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
                         // Load wavenumber
                         float wavenumber = wavenumbers[channel_offset + chan];
 
@@ -180,7 +180,7 @@ void kernel_degridder(
                 } // end for k (batch)
             } // end for j (pixels)
 
-            for (int chan = 0; chan < current_nr_channels; chan++) {
+            for (int chan = 0; chan < MAX_NR_CHANNELS; chan++) {
                 // Scale visibility
                 visibility[chan] *= (float8) (1.0f / (nr_pixels));
 
@@ -189,7 +189,7 @@ void kernel_degridder(
                 int idx_chan = channel_offset + chan;
                 int idx_vis = index_visibility(NR_CHANNELS, idx_time, idx_chan);
                 __global float8 *vis_ptr = (__global float8 *) &visibilities[idx_vis];
-                if (time < nr_timesteps) {
+                if (idx_chan < NR_CHANNELS && time < nr_timesteps) {
                     *vis_ptr = visibility[chan];
                 }
             } // end for chan
