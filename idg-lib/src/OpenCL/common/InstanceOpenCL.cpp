@@ -481,7 +481,7 @@ namespace idg {
                     flags << " -DBATCH_SIZE="  << batch_degridder;
                     flags << " -DBLOCK_SIZE="  << block_degridder[0];
                     flags << " -DNR_CHANNELS=" << nr_channels;
-                    kernel_degridder = compile_kernel(0, file_degridder, name_degridder, flags.str());
+                    kernel_degridder = compile_kernel(1, file_degridder, name_degridder, flags.str());
                 }
 
                 int local_size_x = block_degridder[0];
