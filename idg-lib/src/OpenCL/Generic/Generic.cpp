@@ -394,6 +394,7 @@ namespace idg {
                 // Initialize device memory
                 for (int d = 0; d < nr_devices; d++) {
                     InstanceOpenCL& device      = get_device(d);
+                    device.set_report(report);
                     cl::CommandQueue& htodqueue = device.get_htod_queue();
                     cl::Buffer& d_wavenumbers   = device.get_device_wavenumbers(nr_channels);
                     cl::Buffer& d_spheroidal    = device.get_device_spheroidal(subgrid_size);
