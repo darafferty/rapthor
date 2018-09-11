@@ -1,5 +1,7 @@
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
+#define MAX_NR_CHANNELS 8
+
 /*
     Kernel
 */
@@ -23,6 +25,7 @@ void kernel_degridder(
     int tidx = get_local_id(0);
     int tidy = get_local_id(1);
     int tid  = tidx + tidy * get_local_size(0);
+    int nr_threads = get_local_size(0) * get_local_size(1);
 
     // Load metadata for first subgrid
     const Metadata m_0 = metadata[0];
@@ -46,35 +49,42 @@ void kernel_degridder(
     __local float8 pixels_[BATCH_SIZE];
     __local float4 lmn_phaseoffset_[BATCH_SIZE];
 
-    // Iterate visibilities
-    for (int i = tid; i < ALIGN(nr_timesteps * NR_CHANNELS, BLOCK_SIZE); i += BLOCK_SIZE) {
-        int time = i / NR_CHANNELS;
-        int chan = i % NR_CHANNELS;
+    int current_nr_channels = MAX_NR_CHANNELS;
+    for (int channel_offset = 0; channel_offset < NR_CHANNELS; channel_offset += MAX_NR_CHANNELS) {
+        current_nr_channels = NR_CHANNELS - channel_offset < min(nr_threads, MAX_NR_CHANNELS) ?
+                              NR_CHANNELS - channel_offset : min(nr_threads, MAX_NR_CHANNELS);
+        // Iterate timesteps
+        for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
+            float8 visibility[MAX_NR_CHANNELS];
 
-        float8 visibility;
-        float4 uvw_;
+            for (int chan = 0; chan < current_nr_channels; chan++) {
+                visibility[chan] = (float8) 0;
+            }
 
-        if (time < nr_timesteps) {
-            visibility = (float8) (0);
-            uvw_ = (float4) (
-                uvw[time_offset_global + time].u,
-                uvw[time_offset_global + time].v,
-                uvw[time_offset_global + time].w,
-                0);
-        }
-        barrier(CLK_GLOBAL_MEM_FENCE);
+            float4 uvw_;
 
-        // Iterate pixels
-        const int nr_pixels = subgrid_size * subgrid_size;
-        for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE) {
+            if (time < nr_timesteps) {
+                uvw_.x = uvw[time_offset_global + time].u;
+                uvw_.y = uvw[time_offset_global + time].v;
+                uvw_.z = uvw[time_offset_global + time].w;
+            }
+
             barrier(CLK_LOCAL_MEM_FENCE);
 
-            // Prepare data
-            for (int j = tid; j < BATCH_SIZE; j += BLOCK_SIZE) {
-                int y = (pixel_offset + j) / subgrid_size;
-                int x = (pixel_offset + j) % subgrid_size;
+            // Iterate pixels
+            const int nr_pixels = subgrid_size * subgrid_size;
+            int current_nr_pixels = BATCH_SIZE;
+            for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += current_nr_pixels) {
+                current_nr_pixels = nr_pixels - pixel_offset < min(nr_threads, BATCH_SIZE) ?
+                                    nr_pixels - pixel_offset : min(nr_threads, BATCH_SIZE);
 
-                if (y < subgrid_size) {
+                barrier(CLK_LOCAL_MEM_FENCE);
+
+                // Prepare data
+                for (int j = tid; j < current_nr_pixels; j += nr_threads) {
+                    int y = (pixel_offset + j) / subgrid_size;
+                    int x = (pixel_offset + j) % subgrid_size;
+
                     // Load aterm for station1
                     int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
                     float2 aXX1 = aterm[station1_idx + 0];
@@ -136,43 +146,53 @@ void kernel_degridder(
                     const float n = tmp / (1.0f + native_sqrt(1.0f - tmp));
                     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                     lmn_phaseoffset_[j] = (float4) (l, m, n, phase_offset);
-                } // end if y
+                } // end for j (pixels)
+
+                barrier(CLK_LOCAL_MEM_FENCE);
+
+                // Iterate current batch of pixels
+                for (int k = 0; k < current_nr_pixels; k++) {
+                    // Load pixels from local memory
+                    float8 pix = pixels_[k];
+
+                    // Compute phase index
+                    float4 x = lmn_phaseoffset_[k];
+                    float phase_index = dot(uvw_, (float4) (x.s012, 0));
+
+                    // Load phase offset
+                    float phase_offset = x.s3;
+
+                    for (int chan = 0; chan < current_nr_channels; chan++) {
+                        // Load wavenumber
+                        float wavenumber = wavenumbers[channel_offset + chan];
+
+                        // Compute phasor
+                        float phase  = (phase_index * wavenumber) - phase_offset;
+                        float8 phasor_real = native_cos(phase);
+                        float val = native_sin(phase);
+                        float8 phasor_imag = (float8) (val, -val, val, -val,
+                                                       val, -val, val, -val);
+
+                        // Multiply pixels by phasor
+                        visibility[chan] += phasor_real * pix;
+                        visibility[chan] += shuffle(phasor_imag * pix, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
+                    } // end fo rchan
+                } // end for k (batch)
             } // end for j (pixels)
 
-            barrier(CLK_LOCAL_MEM_FENCE);
+            for (int chan = 0; chan < current_nr_channels; chan++) {
+                // Scale visibility
+                visibility[chan] *= (float8) (1.0f / (nr_pixels));
 
-            // Iterate current batch of pixels
-            for (int k = 0; k < BATCH_SIZE; k++) {
-                // Compute phase
-                float4 x = lmn_phaseoffset_[k];
-                float phase_offset = x.s3;
-                float phase_index = dot(uvw_, (float4) (x.s012, 0));
-                float phase  = (phase_index * wavenumbers[chan]) - phase_offset;
-
-                // Compute phasor
-                float8 phasor_real = native_cos(phase);
-                float val = native_sin(phase);
-                float8 phasor_imag = (float8) (val, -val, val, -val,
-                                               val, -val, val, -val);
-
-                // Load pixels from local memory
-                float8 pix = pixels_[k];
-
-                // Multiply pixels by phasor
-                visibility += phasor_real * pix;
-                visibility += shuffle(phasor_imag * pix, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
-            } // end for k (batch)
-        } // end for j (pixels)
-
-        // Scale visibility
-        visibility *= (float8) (1.0f / (nr_pixels));
-
-        // Store visibility
-        if (time < nr_timesteps) {
-            int idx_time = time_offset_global + time;
-            int idx_vis = index_visibility(NR_CHANNELS, idx_time, chan);
-            __global float8 *vis_ptr = (__global float8 *) &visibilities[idx_vis];
-            *vis_ptr = visibility;
-        }
-    } // end for i (visibilities)
+                // Store visibility
+                int idx_time = time_offset_global + time;
+                int idx_chan = channel_offset + chan;
+                int idx_vis = index_visibility(NR_CHANNELS, idx_time, idx_chan);
+                __global float8 *vis_ptr = (__global float8 *) &visibilities[idx_vis];
+                if (time < nr_timesteps) {
+                    *vis_ptr = visibility[chan];
+                }
+            } // end for chan
+        } // end for time
+    } // end for channel_offset
 } // end kernel_degridder
