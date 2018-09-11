@@ -150,6 +150,7 @@ namespace idg {
 				// OpenCL specific flags
                 std::stringstream flags_opencl;
 				flags_opencl << "-cl-fast-relaxed-math";
+                //flags_opencl << " -save-temps";
 
 				// OpenCL 2.0 specific flags
                 float opencl_version = get_opencl_version(*device);
