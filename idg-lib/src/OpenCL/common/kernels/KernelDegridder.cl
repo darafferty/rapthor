@@ -19,7 +19,7 @@ void kernel_degridder(
     __global const float*    spheroidal,
     __global const float2*   aterm,
     __global const Metadata* metadata,
-    __global const float2*   subgrid)
+    __global float2*         subgrid)
 {
     int s = get_group_id(0);
     int tidx = get_local_id(0);
@@ -49,6 +49,68 @@ void kernel_degridder(
     __local float8 pixels_[BATCH_SIZE];
     __local float4 lmn_phaseoffset_[BATCH_SIZE];
 
+    // Apply spheroidal and aterm correction
+    for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
+        int y = i / subgrid_size;
+        int x = i % subgrid_size;
+
+        // Load aterm for station1
+        int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
+        float2 aXX1 = aterm[station1_idx + 0];
+        float2 aXY1 = aterm[station1_idx + 1];
+        float2 aYX1 = aterm[station1_idx + 2];
+        float2 aYY1 = aterm[station1_idx + 3];
+        float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
+        float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
+
+        // Load aterm for station2
+        int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
+        float2 aXX2 = conj(aterm[station2_idx + 0]);
+        float2 aXY2 = conj(aterm[station2_idx + 1]);
+        float2 aYX2 = conj(aterm[station2_idx + 2]);
+        float2 aYY2 = conj(aterm[station2_idx + 3]);
+        float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
+        float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
+
+        // Compute shifted position in subgrid
+        int x_src = (x + (subgrid_size/2)) % subgrid_size;
+        int y_src = (y + (subgrid_size/2)) % subgrid_size;
+
+        // Load pixels
+        int idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
+        int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
+        int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
+        int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
+        float8 pixels = (float8) (
+                    subgrid[idx_xx], subgrid[idx_xy],
+                    subgrid[idx_yx], subgrid[idx_yy]);
+
+        // Apply spheroidal
+        pixels *= spheroidal[y * subgrid_size + x];
+
+        float8 pixels_aterm = (float8) 0;
+
+        // Apply aterm to pixels: P*A1
+        // [ uvXX, uvXY;    [ aXX1, aXY1;
+        //   uvYX, uvYY ] *   aYX1, aYY1 ]
+        pixels_aterm += cmul8(pixels, aterm1);
+        pixels_aterm += cmul8(pixels, aterm2);
+
+        // Apply aterm to pixels: A2^H*P
+        // [ aXX2, aYX1;      [ uvXX, uvXY;
+        //   aXY1, aYY2 ]  *    uvYX, uvYY ]
+        pixels = pixels_aterm;
+        pixels_aterm = (float8) (0);
+        pixels_aterm += cmul8(pixels, aterm3);
+        pixels_aterm += cmul8(pixels, aterm4);
+
+        // Store pixels
+        subgrid[idx_xx] = pixels.S01;
+        subgrid[idx_xy] = pixels.S23;
+        subgrid[idx_yx] = pixels.S45;
+        subgrid[idx_yy] = pixels.S67;
+    }
+
     int current_nr_channels = MAX_NR_CHANNELS;
     for (int channel_offset = 0; channel_offset < NR_CHANNELS; channel_offset += MAX_NR_CHANNELS) {
         current_nr_channels = NR_CHANNELS - channel_offset < min(nr_threads, MAX_NR_CHANNELS) ?
@@ -70,8 +132,6 @@ void kernel_degridder(
                 uvw_.z = uvw[time_offset_global + time].w;
             }
 
-            barrier(CLK_LOCAL_MEM_FENCE);
-
             // Iterate pixels
             const int nr_pixels = subgrid_size * subgrid_size;
             int current_nr_pixels = BATCH_SIZE;
@@ -86,24 +146,6 @@ void kernel_degridder(
                     int y = (pixel_offset + j) / subgrid_size;
                     int x = (pixel_offset + j) % subgrid_size;
 
-                    // Load aterm for station1
-                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-                    float2 aXX1 = aterm[station1_idx + 0];
-                    float2 aXY1 = aterm[station1_idx + 1];
-                    float2 aYX1 = aterm[station1_idx + 2];
-                    float2 aYY1 = aterm[station1_idx + 3];
-                    float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
-                    float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
-
-                    // Load aterm for station2
-                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-                    float2 aXX2 = conj(aterm[station2_idx + 0]);
-                    float2 aXY2 = conj(aterm[station2_idx + 1]);
-                    float2 aYX2 = conj(aterm[station2_idx + 2]);
-                    float2 aYY2 = conj(aterm[station2_idx + 3]);
-                    float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
-                    float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
-
                     // Compute shifted position in subgrid
                     int x_src = (x + (subgrid_size/2)) % subgrid_size;
                     int y_src = (y + (subgrid_size/2)) % subgrid_size;
@@ -113,32 +155,9 @@ void kernel_degridder(
                     int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
                     int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
                     int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                    float8 pixels = (float8) (
+                    pixels_[j] = (float8) (
                         subgrid[idx_xx], subgrid[idx_xy],
                         subgrid[idx_yx], subgrid[idx_yy]);
-
-                    // Apply spheroidal
-                    pixels *= spheroidal[y * subgrid_size + x];
-
-                    float8 pixels_aterm;
-
-                    // Apply aterm to pixels: P*A1
-                    // [ uvXX, uvXY;    [ aXX1, aXY1;
-                    //   uvYX, uvYY ] *   aYX1, aYY1 ]
-                    pixels_aterm = (float8) (0);
-                    pixels_aterm += cmul8(pixels, aterm1);
-                    pixels_aterm += cmul8(pixels, aterm2);
-
-                    // Apply aterm to pixels: A2^H*P
-                    // [ aXX2, aYX1;      [ uvXX, uvXY;
-                    //   aXY1, aYY2 ]  *    uvYX, uvYY ]
-                    pixels = pixels_aterm;
-                    pixels_aterm = (float8) (0);
-                    pixels_aterm += cmul8(pixels, aterm3);
-                    pixels_aterm += cmul8(pixels, aterm4);
-
-                    // Store pixels
-                    pixels_[j] = pixels_aterm;
 
                     // Compute l,m,n and phase offset
                     const float l = (x+0.5-(subgrid_size/2)) * image_size/subgrid_size;
