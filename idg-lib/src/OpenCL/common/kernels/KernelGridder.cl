@@ -132,15 +132,14 @@ void kernel_gridder(
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         // Compute phasor
-                        float phase = phase_offset[j] - (phase_index[j] * wavenumber);
-                        float8 phasor_real = native_cos(phase);
-                        float val = native_sin(phase);
-                        float8 phasor_imag = (float8) (val, -val, val, -val,
-                                                       val, -val, val, -val);
+                        float phase   = phase_offset[j] - (phase_index[j] * wavenumber);
+                        float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
-                        // Multiply visibility by phasor
-                        pixels[j] += phasor_real * vis;
-                        pixels[j] += shuffle(phasor_imag * vis, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
+                        // Update pixel
+                        pixels[j].even += phasor.x * vis.even;
+                        pixels[j].odd  += phasor.x * vis.odd;
+                        pixels[j].even -= phasor.y * vis.odd;
+                        pixels[j].odd  += phasor.y * vis.even;
                     }
                 } // end for chan
             } // end for time

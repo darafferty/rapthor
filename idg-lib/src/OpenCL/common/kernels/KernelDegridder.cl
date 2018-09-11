@@ -168,15 +168,14 @@ void kernel_degridder(
 
                         // Compute phasor
                         float phase  = (phase_index * wavenumber) - phase_offset;
-                        float8 phasor_real = native_cos(phase);
-                        float val = native_sin(phase);
-                        float8 phasor_imag = (float8) (val, -val, val, -val,
-                                                       val, -val, val, -val);
+                        float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
-                        // Multiply pixels by phasor
-                        visibility[chan] += phasor_real * pix;
-                        visibility[chan] += shuffle(phasor_imag * pix, (uint8) (1, 0, 3, 2, 5, 4, 7, 6));
-                    } // end fo rchan
+                        // Update visibility
+                        visibility[chan].even += phasor.x * pix.even;
+                        visibility[chan].odd  += phasor.x * pix.odd;
+                        visibility[chan].even -= phasor.y * pix.odd;
+                        visibility[chan].odd  += phasor.y * pix.even;
+                    } // end for chan
                 } // end for k (batch)
             } // end for j (pixels)
 
