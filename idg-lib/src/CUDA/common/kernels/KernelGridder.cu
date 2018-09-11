@@ -195,7 +195,7 @@ __device__ void
                         uvYY[j].x -= phasor.y * visYY.y;
                         uvYY[j].y += phasor.y * visYY.x;
                     }
-                }
+                } // end for chan
             } // end for time
         } // end for time_offset_local
 
