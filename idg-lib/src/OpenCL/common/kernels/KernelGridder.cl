@@ -27,20 +27,6 @@ void kernel_gridder(
     int nr_threads = get_local_size(0) * get_local_size(1);
     int s = get_group_id(0);
 
-    // Set subgrid to zero
-    for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
-        int idx_xx = index_subgrid(subgrid_size, s, 0, 0, i);
-        int idx_xy = index_subgrid(subgrid_size, s, 1, 0, i);
-        int idx_yx = index_subgrid(subgrid_size, s, 2, 0, i);
-        int idx_yy = index_subgrid(subgrid_size, s, 3, 0, i);
-        subgrid[idx_xx] = (float2) (0, 0);
-        subgrid[idx_xy] = (float2) (0, 0);
-        subgrid[idx_yx] = (float2) (0, 0);
-        subgrid[idx_yy] = (float2) (0, 0);
-    }
-
-    barrier(CLK_GLOBAL_MEM_FENCE);
-
     // Local memory
     __local float8 visibilities_[BATCH_SIZE][NR_CHANNELS];
     __local float4 uvw_[BATCH_SIZE];
@@ -213,10 +199,10 @@ void kernel_gridder(
                 int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
                 int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
                 int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
-                subgrid[idx_xx] += pixels_aterm.s01;
-                subgrid[idx_xy] += pixels_aterm.s23;
-                subgrid[idx_yx] += pixels_aterm.s45;
-                subgrid[idx_yy] += pixels_aterm.s67;
+                subgrid[idx_xx] = pixels_aterm.s01;
+                subgrid[idx_xy] = pixels_aterm.s23;
+                subgrid[idx_yx] = pixels_aterm.s45;
+                subgrid[idx_yy] = pixels_aterm.s67;
             }
         }
     } // end for i (pixels)
