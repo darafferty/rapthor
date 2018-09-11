@@ -53,6 +53,7 @@ void kernel_degridder(
     for (int channel_offset = 0; channel_offset < NR_CHANNELS; channel_offset += MAX_NR_CHANNELS) {
         current_nr_channels = NR_CHANNELS - channel_offset < min(nr_threads, MAX_NR_CHANNELS) ?
                               NR_CHANNELS - channel_offset : min(nr_threads, MAX_NR_CHANNELS);
+
         // Iterate timesteps
         for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
             float8 visibility[MAX_NR_CHANNELS];
@@ -61,7 +62,7 @@ void kernel_degridder(
                 visibility[chan] = (float8) 0;
             }
 
-            float4 uvw_;
+            float4 uvw_ = (float4) 0;
 
             if (time < nr_timesteps) {
                 uvw_.x = uvw[time_offset_global + time].u;
