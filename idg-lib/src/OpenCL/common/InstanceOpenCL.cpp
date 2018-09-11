@@ -238,12 +238,9 @@ namespace idg {
                 full_source << source_kernel;
 
                 // Print information about compilation
-				#if defined(COMPILE_VERBOSE)
+                #if defined(DEBUG)
                 std::cout << "Compiling: " << source_file_name
                           << " " << flags << std::endl;
-                #if defined(DEBUG)
-                std::cout << full_source.str() << std::endl;
-                #endif
 				#endif
 
                 // Create OpenCL program
