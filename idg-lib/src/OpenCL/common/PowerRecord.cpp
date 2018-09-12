@@ -6,6 +6,12 @@ namespace idg {
     namespace kernel {
         namespace opencl {
 
+            PowerRecord::PowerRecord() {};
+
+            PowerRecord::PowerRecord(
+                powersensor::PowerSensor *sensor) :
+                sensor(sensor) {}
+
             void signal_handler(int sig)
             {
                 // Ignore signal

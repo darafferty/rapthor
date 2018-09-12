@@ -171,6 +171,15 @@ namespace idg {
             }
 
             void update_fft_scale(
+                powersensor::State& startState,
+                powersensor::State& endState)
+            {
+                fft_scale_enabled = true;
+                fft_scale_updated = true;
+                update(state_fft_scale, startState, endState);
+            }
+
+            void update_fft_scale(
                 double runtime)
             {
                 fft_scale_enabled = true;

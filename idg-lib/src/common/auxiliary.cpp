@@ -291,7 +291,7 @@ namespace idg {
             bool ignore_short)
         {
             // Ignore very short measurements
-            if (ignore_short && runtime < 1e-1) {
+            if (ignore_short && runtime < 1e-3) {
                 return;
             }
 
