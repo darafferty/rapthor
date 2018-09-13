@@ -48,6 +48,16 @@ namespace idg {
         unsigned int nr_timesteps,
         unsigned int nr_channels);
 
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        Array2D<UVWCoordinate<float>> &uvw,
+        Array1D<float> &frequencies,
+        float        image_size,
+        int          grid_size,
+        int          nr_point_sources = 4,
+        int          max_pixel_offset = -1,
+        int          random_seed = 2,
+        float        amplitude = 1);
+
     Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
         unsigned int nr_stations,
         unsigned int nr_baselines);
