@@ -262,6 +262,33 @@ namespace idg {
         return visibilities;
     }
 
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        Array2D<UVWCoordinate<float>> &uvw,
+        Array1D<float> &frequencies,
+        float        image_size,
+        int          grid_size,
+        int          nr_point_sources,
+        int          max_pixel_offset,
+        int          random_seed,
+        float        amplitude)
+    {
+        unsigned int nr_baselines = uvw.get_y_dim();
+        unsigned int nr_timesteps = uvw.get_x_dim();
+        unsigned int nr_channels  = frequencies.get_x_dim();
+
+        Array3D<Visibility<std::complex<float>>> visibilities(nr_baselines, nr_timesteps, nr_channels);
+
+        srand(random_seed);
+
+        for (int i = 0; i < nr_point_sources; i++) {
+            float x_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
+            float y_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
+
+            add_pt_src(visibilities, uvw, frequencies, image_size, grid_size, x_offset, y_offset, amplitude);
+        }
+
+        return visibilities;
+    }
 
     Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
         unsigned int nr_stations,
