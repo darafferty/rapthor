@@ -306,16 +306,6 @@ namespace idg {
                     cufft::C2C_2D *fft_plan_bulk;
                     cufft::C2C_2D *fft_plan_misc;
 
-                    // Performance reporting
-                    static void report_gridder(CUstream, CUresult, void *userData);
-                    static void report_degridder(CUstream, CUresult, void *userData);
-                    static void report_subgrid_fft(CUstream, CUresult, void *userData);
-                    static void report_grid_fft(CUstream, CUresult, void *userData);
-                    static void report_adder(CUstream, CUresult, void *userData);
-                    static void report_splitter(CUstream, CUresult, void *userData);
-                    static void report_scaler(CUstream, CUresult, void *userData);
-                    static void report_job(CUstream, CUresult, void *userData);
-
                 private:
                     // Memory allocation/reuse methods
                     template<typename T>
@@ -340,6 +330,10 @@ namespace idg {
                         cu::Stream &stream,
                         int nr_timesteps,
                         int nr_subgrids);
+
+                private:
+                    void start_measurement(void *data);
+                    void end_measurement(void *data);
             };
             std::ostream& operator<<(std::ostream& os, InstanceCUDA &d);
 
