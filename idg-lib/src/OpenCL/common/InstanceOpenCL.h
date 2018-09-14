@@ -173,16 +173,17 @@ namespace idg {
                         void *ptr = NULL);
 
                 public:
-                    // Performance measurements
                     powersensor::State measure();
                     void measure(PowerRecord &record, cl::CommandQueue &queue);
-                    void start_measurement(void *data);
-                    void end_measurement(void *data);
 
                     void enqueue_report(
                         cl::CommandQueue &queue,
                         int nr_timesteps,
                         int nr_subgrids);
+
+                private:
+                    void start_measurement(void *data);
+                    void end_measurement(void *data);
 
 
                 private:

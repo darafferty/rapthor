@@ -375,7 +375,6 @@ namespace idg {
                 data->nr_subgrids = nr_subgrids;
                 data->report = report;
                 data->event = new cl::Event();
-
             }
 
             void report_job_callback(cl_event, cl_int, void *userData)
