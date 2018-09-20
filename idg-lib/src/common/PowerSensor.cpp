@@ -34,7 +34,7 @@ namespace powersensor {
             if (power_sensor_str.compare(name_likwid) == 0) {
                 return likwid::LikwidPowerSensor::create();
             } else if (power_sensor_str.compare(name_rapl) == 0) {
-                return rapl::RaplPowerSensor::create();
+                return rapl::RaplPowerSensor::create(NULL);
             } else if (power_sensor_str.compare(name_nvml) == 0) {
                 return nvml::NVMLPowerSensor::create(i, NULL);
             } else if (power_sensor_str.find(name_arduino) != std::string::npos) {
@@ -47,8 +47,6 @@ namespace powersensor {
         return powersensor::DummyPowerSensor::create();
     }
 
-
-    #if !defined(HAVE_POWERSENSOR)
     class DummyPowerSensor_ : public DummyPowerSensor {
         public:
             virtual State read();
@@ -56,32 +54,28 @@ namespace powersensor {
             virtual double Joules(const State &firstState, const State &secondState) override;
             virtual double Watt(const State &firstState, const State &secondState) override;
     };
-    
+
     DummyPowerSensor* DummyPowerSensor::create()
     {
         return new DummyPowerSensor_();
     }
-    
+
     State DummyPowerSensor_::read() {
         State state;
         state.timeAtRead = omp_get_wtime();
         return state;
     }
-    
+
     double DummyPowerSensor_::seconds(const State &firstState, const State &secondState) {
         return secondState.timeAtRead - firstState.timeAtRead;
     }
-    
+
     double DummyPowerSensor_::Joules(const State &firstState, const State &secondState) {
         return secondState.joulesAtRead - firstState.joulesAtRead;
     }
-    
-    
+
     double DummyPowerSensor_::Watt(const State &firstState, const State &secondState) {
         return Joules(firstState, secondState) /
                seconds(firstState, secondState);
     }
-
-    #endif // end if !defined(HAVE_POWERSENSOR)
-
 } // end namespace powersensor

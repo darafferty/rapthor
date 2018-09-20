@@ -3,7 +3,6 @@
 
 #include <cassert>
 
-#include "PowerSensor.h"
 #include "Report.h"
 
 #include "idg-common.h"

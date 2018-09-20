@@ -1,12 +1,5 @@
 project(common)
 
-# external header files
-if (BUILD_WITH_POWERSENSOR)
-include_directories(
-    ${POWERSENSOR_INCLUDE_DIR}
-)
-endif()
-
 # sources and header files
 set (${PROJECT_NAME}_headers
     Exception.h
