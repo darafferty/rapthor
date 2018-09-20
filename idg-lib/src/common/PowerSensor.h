@@ -6,10 +6,6 @@
 
 #include "idg-config.h"
 
-#if defined(HAVE_POWERSENSOR)
-#include "powersensor.h"
-#endif
-
 namespace powersensor {
 
     static std::string name_likwid("likwid");
@@ -23,35 +19,59 @@ namespace powersensor {
 
     static const char *sensor_delimiter = ",";
 
-    #if !defined(HAVE_POWERSENSOR)
     class State {
         public:
             double timeAtRead;
             double joulesAtRead;
     };
- 
-    class PowerSensor {
 
+    class PowerSensor {
         public:
             virtual ~PowerSensor() {}
-    
+
             virtual State read() = 0;
-    
+
             virtual double seconds(const State &firstState, const State &secondState) = 0;
             virtual double Joules(const State &firstState, const State &secondState) = 0;
             virtual double Watt(const State &firstState, const State &secondState) = 0;
     };
 
-    class DummyPowerSensor : public PowerSensor {
-        public:
-            static DummyPowerSensor* create();
-    };
-    #endif // end if !defined(HAVE_POWERSENSOR)
-
     PowerSensor* get_power_sensor(
         const std::string name,
         const int i = 0);
 
+    class DummyPowerSensor : public PowerSensor {
+        public:
+            static DummyPowerSensor* create();
+    };
+
+    namespace likwid {
+        class LikwidPowerSensor : public PowerSensor {
+            public:
+                static LikwidPowerSensor* create();
+        };
+    }
+
+    namespace rapl {
+        class RaplPowerSensor : public PowerSensor {
+            public:
+                static RaplPowerSensor* create(const char*);
+        };
+    }
+
+    namespace nvml {
+        class NVMLPowerSensor : public PowerSensor {
+            public:
+                static NVMLPowerSensor* create(const int, const char*);
+        };
+    }
+
+    namespace arduino {
+        class ArduinoPowerSensor : public PowerSensor {
+            public:
+                static ArduinoPowerSensor* create(const char*, const char*);
+        };
+    }
 } // end namespace powersensor
 
 #endif
