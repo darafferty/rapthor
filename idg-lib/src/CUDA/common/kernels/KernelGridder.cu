@@ -227,7 +227,7 @@ __device__ void
 
                 if (avg_aterm_correction) {
                     apply_avg_aterm_correction(
-                        avg_aterm_correction + i*16,
+                        avg_aterm_correction + i_*16,
                         uvXX[j], uvXY[j], uvYX[j], uvYY[j]);
                 }
 
