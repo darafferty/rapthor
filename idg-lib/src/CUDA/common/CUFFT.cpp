@@ -61,6 +61,8 @@ namespace cufft {
     	case  CUFFT_NO_WORKSPACE:
     		return "no workspace";
     	#endif
+        default:
+            return "unknown error";
     	}
     } // end what
 

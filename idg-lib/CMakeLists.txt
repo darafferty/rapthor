@@ -56,6 +56,23 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(MSVC_CXX_COMPILER TRUE)
 endif()
 
+# Set the warning level to all
+# Ideally there should be no warnings at all
+# and any warning should be an error by the -Werror flag
+# At the moment there are still many warnings
+# These should be fixed
+# For now we only set -Werror=return-type
+# As more warnings are eliminated the -Werror list can be expanded
+# Once all warnings are eliminated the -Werror flag can be set
+# without a list of warning types (error on all warnings)
+#
+# As I do not know how to set the warning level for compilers other than the GNU compiler
+# setting of the flags is conditional on GNU_CXX_COMPILER
+if(GNU_CXX_COMPILER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror=return-type")
+endif()
+
+
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)

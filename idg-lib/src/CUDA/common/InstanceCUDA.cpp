@@ -696,6 +696,7 @@ namespace idg {
                 data->nr_timesteps = nr_timesteps;
                 data->nr_subgrids = nr_subgrids;
                 data->report = report;
+                return data;
             }
 
             void InstanceCUDA::enqueue_report(
