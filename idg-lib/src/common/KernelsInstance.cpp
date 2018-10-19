@@ -9,7 +9,7 @@ namespace idg {
             int nr_polarizations = data.get_z_dim();
             int height = data.get_y_dim();
             int width = data.get_x_dim();
-            assert(height == width);
+            ASSERT(height == width);
 
             powersensor::State states[2];
             states[0] = powerSensor->read();
@@ -72,11 +72,11 @@ namespace idg {
             const Grid& grid_src,
                   Grid& grid_dst) const
         {
-            assert(grid_src.bytes() == grid_dst.bytes());
+            ASSERT(grid_src.bytes() == grid_dst.bytes());
             const int nr_correlations = grid_src.get_z_dim();
             const int height = grid_src.get_y_dim();
             const int width  = grid_dst.get_x_dim();
-            assert(height == width);
+            ASSERT(height == width);
             const int grid_size = height;
 
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
@@ -100,11 +100,11 @@ namespace idg {
             const Grid& grid_src,
                   Grid& grid_dst) const
         {
-            assert(grid_src.bytes() == grid_dst.bytes());
+            ASSERT(grid_src.bytes() == grid_dst.bytes());
             const int nr_correlations = grid_src.get_z_dim();
             const int height = grid_src.get_y_dim();
             const int width  = grid_dst.get_x_dim();
-            assert(height == width);
+            ASSERT(height == width);
             const int grid_size = height;
 
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();

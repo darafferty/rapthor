@@ -32,7 +32,7 @@ namespace idg {
     }
 
 
-    void fft2f(int batch, int m, int n, complex<float> *data)
+    void fft2f(unsigned batch, int m, int n, complex<float> *data)
     {
         if (batch == 1) {
             fft2f(m, n, data);
@@ -52,7 +52,7 @@ namespace idg {
         }
 
         #pragma omp parallel for private(tmp)
-	    for (size_t i = 0; i < batch; i++) {
+	    for (unsigned i = 0; i < batch; i++) {
             tmp = (fftwf_complex *) data + i * m * n;
             ifftshift(m, n, tmp);
             fftwf_execute_dft(plan, tmp, tmp);
@@ -81,7 +81,7 @@ namespace idg {
         fftwf_destroy_plan(plan);
     }
 
-    void ifft2f(int batch, int m, int n, complex<float> *data)
+    void ifft2f(unsigned batch, int m, int n, complex<float> *data)
     {
         if (batch == 1) {
             ifft2f(m, n, data);
@@ -101,7 +101,7 @@ namespace idg {
         }
 
         #pragma omp parallel for private(tmp)
-	    for (size_t i = 0; i < batch; i++) {
+	    for (unsigned i = 0; i < batch; i++) {
             tmp = (fftwf_complex *) data + i * m * n;
             ifftshift(m, n, tmp);
             fftwf_execute_dft(plan, tmp, tmp);

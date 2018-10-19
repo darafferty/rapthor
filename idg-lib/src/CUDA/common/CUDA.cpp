@@ -45,7 +45,7 @@ namespace idg {
                 }
 
                 // Create a device instance for every device
-                for (int i = 0; i < device_numbers.size(); i++) {
+                for (unsigned i = 0; i < device_numbers.size(); i++) {
                     InstanceCUDA *device = new InstanceCUDA(
                         mInfo, i, device_numbers[i]);
                     devices.push_back(device);
@@ -129,7 +129,7 @@ namespace idg {
                 int max_nr_subgrids = plan.get_max_nr_subgrids();
 
                 // Compute the amount of bytes needed for that job
-                auto bytes_jobs = 0;
+                size_t bytes_jobs = 0;
                 bytes_jobs += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
                 bytes_jobs += auxiliary::sizeof_uvw(1, nr_timesteps);
                 bytes_jobs += auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
@@ -137,7 +137,7 @@ namespace idg {
                 bytes_jobs *= nr_streams;
 
                 // Compute the amount of memory needed for data that is identical for all jobs
-                auto bytes_static = 0;
+                size_t bytes_static = 0;
                 bytes_static += auxiliary::sizeof_grid(grid_size);
                 bytes_static += auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
 
@@ -148,9 +148,9 @@ namespace idg {
                 #endif
 
                 // Adjust jobsize to amount of available device memory
-                int nr_devices = devices.size();
+                unsigned nr_devices = devices.size();
                 std::vector<int> jobsize(nr_devices);
-                for (int i = 0; i < nr_devices; i++) {
+                for (unsigned i = 0; i < nr_devices; i++) {
                     InstanceCUDA *device = devices[i];
                     cu::Context &context = device->get_context();
                     context.setCurrent();

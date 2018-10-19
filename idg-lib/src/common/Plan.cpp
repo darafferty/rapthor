@@ -52,6 +52,7 @@ namespace idg {
                 v_min =  std::numeric_limits<float>::infinity();
                 v_max = -std::numeric_limits<float>::infinity();
                 uv_width = 0;
+                w_index  = 0;
                 finished = false;
             }
 
@@ -210,35 +211,32 @@ namespace idg {
 
         // Temporary metadata vector for individual baselines
         std::vector<Metadata> metadata_[nr_baselines];
-        for (int bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
             metadata_[bl].reserve(nr_timesteps / nr_timeslots);
         }
 
         // Iterate all baselines
         #pragma omp parallel for
-        for (int bl = 0; bl < nr_baselines; bl++) {
-            // Get thread id
-            const int thread_id = omp_get_thread_num();
-
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
             // Get baseline
             Baseline baseline = (Baseline) {baselines(bl).first, baselines(bl).second};
 
             // Iterate all time slots
-            for (int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
+            for (unsigned timeslot = 0; timeslot < nr_timeslots; timeslot++) {
                 // Get aterm offset
-                const int current_aterms_offset = aterms_offsets(timeslot);
-                const int next_aterms_offset    = aterms_offsets(timeslot+1);
+                const unsigned current_aterms_offset = aterms_offsets(timeslot);
+                const unsigned next_aterms_offset    = aterms_offsets(timeslot+1);
 
                 // The aterm index is equal to the timeslot
-                const int aterm_index = timeslot;
+                const unsigned aterm_index = timeslot;
 
                 // Determine number of timesteps in current aterm
-                const int nr_timesteps_per_aterm = next_aterms_offset - current_aterms_offset;
+                const unsigned nr_timesteps_per_aterm = next_aterms_offset - current_aterms_offset;
 
                 // Compute uv coordinates in pixels
                 struct DataPoint {
-                    int timestep;
-                    int channel;
+                    unsigned timestep;
+                    unsigned channel;
                     float u_pixels;
                     float v_pixels;
                     float w_lambda;
@@ -246,8 +244,8 @@ namespace idg {
 
                 std::vector<DataPoint> datapoints(nr_timesteps_per_aterm * nr_channels);
 
-                for (int t = 0; t < nr_timesteps_per_aterm; t++) {
-                    for (int c = 0; c < nr_channels; c++) {
+                for (unsigned t = 0; t < nr_timesteps_per_aterm; t++) {
+                    for (unsigned c = 0; c < nr_channels; c++) {
                         // U,V in meters
                         float u_meters = uvw(bl, current_aterms_offset + t).u;
                         float v_meters = uvw(bl, current_aterms_offset + t).v;
@@ -265,7 +263,7 @@ namespace idg {
                 // Initialize subgrid
                 Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers);
 
-                int time_offset = 0;
+                unsigned time_offset = 0;
                 while (time_offset < nr_timesteps_per_aterm) {
                     // Load first visibility
                     DataPoint first_datapoint = datapoints[time_offset*nr_channels];
@@ -287,7 +285,6 @@ namespace idg {
                         DataPoint visibility1 = datapoints[time_offset*nr_channels + nr_channels - 1];
                         const float u_pixels1 = visibility1.u_pixels;
                         const float v_pixels1 = visibility1.v_pixels;
-                        const float w_lambda1 = visibility1.w_lambda;
 
                         // Try to add visibilities to subgrid
                         if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
@@ -323,10 +320,10 @@ namespace idg {
                     // Add subgrid to metadata
                     if (subgrid.in_range()) {
                         Metadata m = {
-                            bl * (int) nr_timesteps,                // baseline offset, TODO: store bl index
-                            current_aterms_offset + first_timestep, // time offset, TODO: store time index
+                            (int) (bl * nr_timesteps),                      // baseline offset, TODO: store bl index
+                            (int) (current_aterms_offset + first_timestep), // time offset, TODO: store time index
                             nr_timesteps_subgrid,                   // nr of timesteps
-                            aterm_index,                            // aterm index
+                            (int) aterm_index,                      // aterm index
                             baseline,                               // baselines
                             subgrid.get_coordinate()                // coordinate
                         };
@@ -342,14 +339,14 @@ namespace idg {
         } // end for bl
 
         // Combine data structures
-        for (int bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
             // The subgrid offset is the number of subgrids for all prior baselines
             subgrid_offset.push_back(metadata.size());
 
             // Count total number of timesteps for baseline
             int total_nr_timesteps = 0;
 
-            for (int i = 0; i < metadata_[bl].size(); i++) {
+            for (unsigned i = 0; i < metadata_[bl].size(); i++) {
                 Metadata& m = metadata_[bl][i];
 
                 // Append subgrid
@@ -513,12 +510,12 @@ namespace idg {
             const Metadata& m_current = metadata[i];
 
             // Determine which visibilities are used in the plan
-            int current_offset       = (m_current.baseline_offset - baseline_offset_1) + m_current.time_offset;
-            int current_nr_timesteps = m_current.nr_timesteps;
+            unsigned current_offset       = (m_current.baseline_offset - baseline_offset_1) + m_current.time_offset;
+            unsigned current_nr_timesteps = m_current.nr_timesteps;
 
             // Determine which visibilities to mask
-            int first = current_offset + current_nr_timesteps;
-            int last = 0;
+            unsigned first = current_offset + current_nr_timesteps;
+            unsigned last = 0;
             if (i < nr_subgrids-1) {
                 const Metadata& m_next = metadata[i+1];
                 int next_offset = (m_next.baseline_offset - baseline_offset_1) + m_next.time_offset;
@@ -528,8 +525,8 @@ namespace idg {
             }
 
             // Mask all selected visibilities for all channels
-            for (int t = first; t < last; t++) {
-                for (int c = 0; c < nr_channels; c++) {
+            for (unsigned t = first; t < last; t++) {
+                for (unsigned c = 0; c < nr_channels; c++) {
                     visibilities(0, t, c) = zero;
                 }
             }

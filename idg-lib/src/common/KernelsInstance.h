@@ -3,6 +3,12 @@
 
 #include <cassert>
 
+#ifndef NDEBUG
+#define ASSERT(x) assert(x)
+#else
+#define ASSERT(x) ((void)(x))
+#endif
+
 #include "Report.h"
 
 #include "idg-common.h"

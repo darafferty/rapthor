@@ -24,7 +24,7 @@ void printDevice(cl::Device &device, bool marker) {
     std::clog << std::endl;
 }
 
-void printDevices(int deviceNumber) {
+void printDevices(unsigned deviceNumber) {
     // Create context
     cl::Context context = cl::Context(CL_DEVICE_TYPE_ALL);
 
@@ -32,7 +32,7 @@ void printDevices(int deviceNumber) {
 	std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
 	std::clog << "Devices" << std::endl;
-	for (int d = 0; d < devices.size(); d++) {
+	for (unsigned d = 0; d < devices.size(); d++) {
         cl::Device &device = devices[d];
         bool marker = d == deviceNumber;
         printDevice(device, marker);

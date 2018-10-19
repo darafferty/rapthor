@@ -504,7 +504,7 @@ namespace idg {
         {
             assert(grid_ptr == grid.data());
             delete grid_ptr;
-            grid_ptr == NULL;
+            grid_ptr = NULL;
         }
 
         void Proxy::run_gridding(

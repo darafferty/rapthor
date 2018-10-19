@@ -202,7 +202,7 @@ namespace idg {
                 // Store helper files in string
                 std::stringstream source_helper_;
 
-                for (int i = 0; i < helper_files.size(); i++) {
+                for (unsigned i = 0; i < helper_files.size(); i++) {
                     // Get source filename
                     std::stringstream source_file_name_;
                     source_file_name_ << srcdir << "/" << helper_files[i];
@@ -509,7 +509,7 @@ namespace idg {
             }
 
             void InstanceOpenCL::plan_fft(
-                int size, int batch)
+                unsigned size, unsigned batch)
             {
                 // Check wheter a new plan has to be created
                 if (!fft_planned ||
