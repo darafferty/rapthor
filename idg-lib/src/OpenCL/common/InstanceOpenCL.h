@@ -70,7 +70,7 @@ namespace idg {
                     cl::Buffer& d_subgrid);
 
                 void plan_fft(
-                    int size, int batch);
+                    unsigned size, unsigned batch);
 
                 void launch_fft(
                     cl::Buffer &d_data,

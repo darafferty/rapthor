@@ -72,17 +72,16 @@ namespace idg {
                 std::cout << "UnifiedOptimized::" << __func__ << std::endl;
                 #endif
 
-                for (int d = 0; d < get_num_devices(); d++) {
+                for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.set_context();
                     int max_jobsize = * max_element(begin(jobsize), end(jobsize));
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, max_jobsize);
 
                     // Static memory
-                    cu::Stream&       htodstream    = device.get_htod_stream();
-                    cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                    cu::DeviceMemory& d_spheroidal  = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms      = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    device.get_device_wavenumbers(nr_channels);
+                    device.get_device_spheroidal(subgrid_size);
+                    device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
 
                     // Dynamic memory (per thread)
                     for (int t = 0; t < nr_streams; t++) {
@@ -156,7 +155,6 @@ namespace idg {
                 const int nr_streams = 2;
 
                 // Initialize metadata
-                const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory
@@ -170,16 +168,12 @@ namespace idg {
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
-                // Locks
-                int locks[nr_devices];
-
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
-                    int lock      = locks[device_id];
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
@@ -378,7 +372,6 @@ namespace idg {
                 const int nr_streams = 3;
 
                 // Initialize metadata
-                const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory
@@ -392,16 +385,12 @@ namespace idg {
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
-                // Locks
-                int locks[nr_devices];
-
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
-                    int lock      = locks[device_id];
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Initialize device
@@ -562,7 +551,7 @@ namespace idg {
 
             void UnifiedOptimized::free_memory(void *ptr)
             {
-                for (int i = 0; i < memory.size(); i++) {
+                for (unsigned i = 0; i < memory.size(); i++) {
                     cu::UnifiedMemory* m = memory[i];
                     if (m->ptr() == ptr) {
                         memory.erase(memory.begin() + i);
@@ -573,7 +562,7 @@ namespace idg {
             }
 
             void UnifiedOptimized::free_memory() {
-                for (int i = 0; i < memory.size(); i++) {
+                for (unsigned i = 0; i < memory.size(); i++) {
                     delete memory[i];
                 }
                 memory.clear();

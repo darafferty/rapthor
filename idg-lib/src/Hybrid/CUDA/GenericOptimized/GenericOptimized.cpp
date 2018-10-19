@@ -26,7 +26,7 @@ namespace idg {
         namespace hybrid {
 
             // The maximum number of CUDA streams in any routine
-            const int max_nr_streams = 3;
+            const unsigned max_nr_streams = 3;
 
             // Constructor
             GenericOptimized::GenericOptimized() :
@@ -50,7 +50,7 @@ namespace idg {
                 cuProfilerStart();
 
                 // Initialize events
-                for (int i = 0; i < get_num_devices() * max_nr_streams; i++) {
+                for (unsigned i = 0; i < get_num_devices() * max_nr_streams; i++) {
                     inputFree.push_back(new cu::Event());
                     inputReady.push_back(new cu::Event());
                     outputFree.push_back(new cu::Event());
@@ -87,7 +87,7 @@ namespace idg {
              * Gridding
              */
             void GenericOptimized::synchronize() {
-                for (int d = 0; d < get_num_devices(); d++) {
+                for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.get_htod_stream().synchronize();
                     device.get_execute_stream().synchronize();
@@ -131,7 +131,7 @@ namespace idg {
                 report.initialize(nr_channels, subgrid_size, grid_size);
 
                 // Initialize devices
-                for (int d = 0; d < get_num_devices(); d++) {
+                for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
 
                     // Set device report
@@ -162,9 +162,8 @@ namespace idg {
                 jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
 
                 // Initialize memory/fft
-                for (int d = 0; d < get_num_devices(); d++) {
+                for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device  = get_device(d);
-                    cu::Stream& dtohstream = device.get_dtoh_stream();
 
                     // Compute maximum number of subgrids for this plan
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d]);
@@ -174,7 +173,7 @@ namespace idg {
                     planned_max_nr_subgrids[d] = max_nr_subgrids;
 
                     // Initialize memory
-                    for (int t = 0; t < max_nr_streams; t++) {
+                    for (unsigned t = 0; t < max_nr_streams; t++) {
                         device.get_device_wavenumbers(t, nr_channels);
                         device.get_device_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
                         device.get_device_uvw(t, jobsize_[d], nr_timesteps);
@@ -215,7 +214,7 @@ namespace idg {
                 report.reset();
                 planned_max_nr_subgrids.clear();
 
-                for (int d = 0; d < get_num_devices(); d++) {
+                for (unsigned d = 0; d < get_num_devices(); d++) {
                     get_device(d).free_device_memory();
                 }
             } // end finish_gridding
@@ -249,9 +248,9 @@ namespace idg {
             void enqueue_adder(
                 cu::Stream *stream,
                 InstanceCPU *cpuKernels,
-                const int nr_subgrids,
-                const int grid_size,
-                const int subgrid_size,
+                const unsigned nr_subgrids,
+                const unsigned grid_size,
+                const unsigned subgrid_size,
                 void *metadata_ptr,
                 void *subgrids_ptr,
                 void *grid_ptr)
@@ -289,9 +288,9 @@ namespace idg {
             void enqueue_splitter(
                 cu::Stream *stream,
                 InstanceCPU *cpuKernels,
-                const int nr_subgrids,
-                const int grid_size,
-                const int subgrid_size,
+                const unsigned nr_subgrids,
+                const unsigned grid_size,
+                const unsigned subgrid_size,
                 void *metadata_ptr,
                 void *subgrids_ptr,
                 void *grid_ptr)
@@ -320,7 +319,7 @@ namespace idg {
             {
                 MemData *data = static_cast<MemData*>(userData);
                 char message[80];
-                snprintf(message, 80, "memcpy(%p, %p, %d)", data->dst, data->src, data->bytes);
+                snprintf(message, 80, "memcpy(%p, %p, %zu)", data->dst, data->src, data->bytes);
                 cu::Marker marker(message, 0xffff0000);
                 marker.start();
                 memcpy(data->dst, data->src, data->bytes);
@@ -356,7 +355,7 @@ namespace idg {
                 StateData *data = static_cast<StateData*>(userData);
 
                 // Start device measurement
-                for (int d = 0; d < data->devices.size(); d++) {
+                for (unsigned d = 0; d < data->devices.size(); d++) {
                     data->startStates.push_back(data->devices[d]->measure());
                 }
             }
@@ -366,7 +365,7 @@ namespace idg {
                 StateData *data = static_cast<StateData*>(userData);
 
                 // End device measurement
-                for (int d = 0; d < data->devices.size(); d++) {
+                for (unsigned d = 0; d < data->devices.size(); d++) {
                     data->endStates.push_back(data->devices[d]->measure());
                 }
 
@@ -405,21 +404,18 @@ namespace idg {
                 auto image_size      = cell_size * grid_size;
 
                 // Configuration
-                const int nr_devices = get_num_devices();
-                const int nr_streams = 2;
+                const unsigned nr_devices = get_num_devices();
+                const unsigned nr_streams = 2;
 
                 // Initialize metadata
-                const Metadata *metadata  = plan.get_metadata_ptr();
-
-                // Page-lock host memory
-                InstanceCUDA& device = get_device(0);
                 #if !ENABLE_SAFE_MEMORY
+                InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
-                for (int d = 0; d < nr_devices; d++) {
+                for (unsigned d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
                         jobsize_[d] *= 0.9;
                     }
@@ -428,7 +424,7 @@ namespace idg {
                 // Performance measurements
                 StateData *stateData = new StateData();
                 stateData->report = (Report *) &report;
-                for (int d = 0; d < nr_devices; d++) {
+                for (unsigned d = 0; d < nr_devices; d++) {
                     stateData->devices.push_back(&get_device(d));
                 }
 
@@ -561,12 +557,6 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
-                auto nr_baselines = visibilities.get_z_dim();
-                auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_channels  = visibilities.get_x_dim();
-                auto nr_stations  = aterms.get_z_dim();
-                auto grid_size    = grid.get_x_dim();
-
                 printf("### Initialize gridding\n");
                 initialize(
                     plan,
@@ -635,21 +625,18 @@ namespace idg {
                 auto image_size      = cell_size * grid_size;
 
                 // Configuration
-                const int nr_devices = get_num_devices();
-                const int nr_streams = 3;
-
-                // Initialize metadata
-                const Metadata *metadata  = plan.get_metadata_ptr();
+                const unsigned nr_devices = get_num_devices();
+                const unsigned nr_streams = 3;
 
                 // Page-lock host memory
-                InstanceCUDA& device = get_device(0);
                 #if !ENABLE_SAFE_MEMORY
+                InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
-                for (int d = 0; d < nr_devices; d++) {
+                for (unsigned d = 0; d < nr_devices; d++) {
                     while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
                         jobsize_[d] *= 0.9;
                     }
@@ -658,7 +645,7 @@ namespace idg {
                 // Performance measurements
                 StateData *stateData = new StateData();
                 stateData->report = (Report *) &report;
-                for (int d = 0; d < nr_devices; d++) {
+                for (unsigned d = 0; d < nr_devices; d++) {
                     stateData->devices.push_back(&get_device(d));
                 }
 
@@ -787,12 +774,6 @@ namespace idg {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
-
-                auto nr_baselines = visibilities.get_z_dim();
-                auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_channels  = visibilities.get_x_dim();
-                auto nr_stations  = aterms.get_z_dim();
-                auto grid_size    = grid.get_x_dim();
 
                 printf("### Initialize degridding\n");
                 initialize(

@@ -55,7 +55,6 @@ namespace idg {
 
                 // Load device
                 InstanceOpenCL& device = get_device(0);
-                cl::Context& context   = get_context();
 
                 // Command queue
                 cl::CommandQueue &queue = device.get_execute_queue();
@@ -159,13 +158,11 @@ namespace idg {
                 const int nr_streams = 2;
 
                 // Initialize metadata
-                const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize host memory
                 cl::Context& context        = get_context();
                 InstanceOpenCL& device      = get_device(0);
-                cl::CommandQueue& htodqueue = device.get_htod_queue();
                 cl::Buffer h_visibilities   = device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 cl::Buffer h_uvw            = device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
 
@@ -189,16 +186,12 @@ namespace idg {
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
-                // Locks
-                int locks[nr_devices];
-
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
-                    int lock      = locks[device_id];
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Limit jobsize
@@ -210,7 +203,6 @@ namespace idg {
                     // Load OpenCL objects
                     cl::CommandQueue& executequeue = device.get_execute_queue();
                     cl::CommandQueue& htodqueue    = device.get_htod_queue();
-                    cl::CommandQueue& dtohqueue    = device.get_dtoh_queue();
 
                     // Load memory objects
                     cl::Buffer& d_grid        = device.get_device_grid();
@@ -321,7 +313,7 @@ namespace idg {
                     float2 *grid_src       = (float2 *) mapBuffer(queue, d_grid, CL_TRUE, CL_MAP_READ);
 
                     #pragma omp parallel for
-                    for (int i = 0; i < grid_size * grid_size * nr_correlations; i++) {
+                    for (unsigned i = 0; i < grid_size * grid_size * nr_correlations; i++) {
                         grid_dst[i] += grid_src[i];
                     }
 
@@ -381,7 +373,6 @@ namespace idg {
                 const int nr_streams = 2;
 
                 // Initialize metadata
-                const Metadata *metadata = plan.get_metadata_ptr();
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size, nr_streams);
 
                 // Initialize host memory
@@ -411,16 +402,12 @@ namespace idg {
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
-                // Locks
-                int locks[nr_devices];
-
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
                     int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     int jobsize   = jobsize_[device_id];
-                    int lock      = locks[device_id];
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Limit jobsize
@@ -431,7 +418,6 @@ namespace idg {
 
                     // Load OpenCL objects
                     cl::CommandQueue& executequeue = device.get_execute_queue();
-                    cl::CommandQueue& htodqueue    = device.get_htod_queue();
                     cl::CommandQueue& dtohqueue    = device.get_dtoh_queue();
 
                     // Load memory objects

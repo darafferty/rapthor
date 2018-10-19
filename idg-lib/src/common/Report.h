@@ -208,7 +208,7 @@ namespace idg {
             void update_device(
                 powersensor::State& startState,
                 powersensor::State& endState,
-                int id = 0)
+                unsigned id = 0)
             {
                 if (states_device.size() <= id) {
                     State state;
@@ -222,7 +222,7 @@ namespace idg {
                 std::vector<powersensor::State> end)
             {
                 assert(start.size() == end.size());
-                for (int d = 0; d < start.size(); d++) {
+                for (unsigned d = 0; d < start.size(); d++) {
                     update_device(start[d], end[d], d);
                 }
             }
@@ -250,7 +250,7 @@ namespace idg {
                 // Do not report short measurements, unless reporting total runtime
                 bool ignore_short = !total;
 
-                if (total && gridder_enabled || gridder_updated) {
+                if ((total && gridder_enabled) || gridder_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_gridder,
                         total ? state_gridder.total_seconds : state_gridder.current_seconds,
@@ -260,7 +260,7 @@ namespace idg {
                         ignore_short);
                     gridder_updated = false;
                 }
-                if (total && degridder_enabled || degridder_updated) {
+                if ((total && degridder_enabled) || degridder_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_degridder,
                         total ? state_degridder.total_seconds : state_degridder.current_seconds,
@@ -270,7 +270,7 @@ namespace idg {
                         ignore_short);
                     degridder_updated = false;
                 }
-                if (total && subgrid_fft_enabled || subgrid_fft_updated) {
+                if ((total && subgrid_fft_enabled) || subgrid_fft_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_subgrid_fft,
                         total ? state_subgrid_fft.total_seconds : state_subgrid_fft.current_seconds,
@@ -280,7 +280,7 @@ namespace idg {
                         ignore_short);
                     subgrid_fft_updated = false;
                 }
-                if (total && adder_enabled || adder_updated) {
+                if ((total && adder_enabled) || adder_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_adder,
                         total ? state_adder.total_seconds : state_adder.current_seconds,
@@ -290,7 +290,7 @@ namespace idg {
                         ignore_short);
                     adder_updated = false;
                 }
-                if (total && splitter_enabled || splitter_updated) {
+                if ((total && splitter_enabled) || splitter_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_splitter,
                         total ? state_splitter.total_seconds : state_splitter.current_seconds,
@@ -300,7 +300,7 @@ namespace idg {
                         ignore_short);
                     splitter_updated = false;
                 }
-                if (total && scaler_enabled || scaler_updated) {
+                if ((total && scaler_enabled) || scaler_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_scaler,
                         total ? state_scaler.total_seconds : state_scaler.current_seconds,
@@ -310,7 +310,7 @@ namespace idg {
                         ignore_short);
                     scaler_updated = false;
                 }
-                if (total && grid_fft_updated || grid_fft_updated) {
+                if ((total && grid_fft_updated) || grid_fft_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_grid_fft,
                         total ? state_grid_fft.total_seconds : state_grid_fft.current_seconds,
@@ -320,21 +320,21 @@ namespace idg {
                         ignore_short);
                     grid_fft_updated = false;
                 }
-                if (total && fft_shift_enabled || fft_shift_updated) {
+                if ((total && fft_shift_enabled) || fft_shift_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_fft_shift,
                         total ? state_fft_shift.total_seconds : state_fft_shift.current_seconds,
                         0, 0, 0, ignore_short);
                     fft_shift_updated = false;
                 }
-                if (total && fft_scale_enabled || fft_scale_updated) {
+                if ((total && fft_scale_enabled) || fft_scale_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_fft_scale,
                         total ? state_fft_scale.total_seconds : state_fft_scale.current_seconds,
                         0, 0, 0, ignore_short);
                     fft_scale_updated = false;
                 }
-                if (total && host_enabled || host_updated) {
+                if ((total && host_enabled) || host_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_host,
                         total ? state_host.total_seconds : state_host.current_seconds,
@@ -390,14 +390,14 @@ namespace idg {
                 std::vector<powersensor::State> end)
             {
                 assert(start.size() == end.size());
-                for (int i = 0; i < start.size(); i++) {
+                for (unsigned i = 0; i < start.size(); i++) {
                     print_device(start[i], end[i], i);
                 }
             }
 
             void print_devices()
             {
-                for (int i = 0; i < states_device.size(); i++) {
+                for (unsigned i = 0; i < states_device.size(); i++) {
                     State state = states_device[i];
                     std::stringstream name;
                     name << prefix << auxiliary::name_device;

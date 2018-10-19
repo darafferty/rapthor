@@ -17,8 +17,6 @@ namespace powersensor {
     static std::string sensor_host("HOST_SENSOR");
     static std::string sensor_device("DEVICE_SENSOR");
 
-    static const char *sensor_delimiter = ",";
-
     class State {
         public:
             double timeAtRead;

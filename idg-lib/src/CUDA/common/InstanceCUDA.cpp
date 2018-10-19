@@ -19,16 +19,16 @@ namespace idg {
                 int device_id) :
                 KernelsInstance(),
                 mInfo(info),
-                mModules(5),
                 h_visibilities_(),
                 h_uvw_(),
                 h_subgrids_(),
                 d_wavenumbers_(),
                 d_visibilities_(),
                 d_uvw_(),
-                d_subgrids_(),
                 d_metadata_(),
-                h_misc_()
+                d_subgrids_(),
+                h_misc_(),
+                mModules(5)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -137,7 +137,7 @@ namespace idg {
 
                 // Create temp directory
                 char _tmpdir[] = "/tmp/idg-XXXXXX";
-                char *tmpdir = mkdtemp(_tmpdir);
+                mkdtemp(_tmpdir);
                 #if defined(DEBUG)
                 std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
                 #endif
@@ -163,7 +163,7 @@ namespace idg {
 
                 // Compile all kernels
                 #pragma omp parallel for
-                for (int i = 0; i < src.size(); i++) {
+                for (unsigned i = 0; i < src.size(); i++) {
                     context->setCurrent();
 
                     // Create a string with the full path to the cubin file "kernel.cubin"
@@ -182,7 +182,7 @@ namespace idg {
 
             void InstanceCUDA::load_kernels() {
                 CUfunction function;
-                int found = 0;
+                unsigned found = 0;
 
                 if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) == CUDA_SUCCESS) {
                     function_gridder = new cu::Function(function); found++;
@@ -471,7 +471,7 @@ namespace idg {
                 start_measurement(data);
 
                 // Enqueue fft for every correlation
-                for (int i = 0; i < NR_CORRELATIONS; i++) {
+                for (unsigned i = 0; i < NR_CORRELATIONS; i++) {
                     fft_plan_grid->execute(data_ptr, data_ptr, sign);
                     data_ptr += grid_size * grid_size;
                 }
@@ -481,10 +481,11 @@ namespace idg {
             }
 
             void InstanceCUDA::plan_fft(
-                int size, int batch)
+                unsigned size,
+                unsigned batch)
             {
-                int stride = 1;
-                int dist = size * size;
+                unsigned stride = 1;
+                unsigned dist = size * size;
 
                 // Plan bulk fft
                 if (batch > fft_bulk) {
@@ -528,7 +529,7 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_subgrid_fft);
                 start_measurement(data);
 
-                int s = 0;
+                unsigned s = 0;
                 for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
                     fft_plan_bulk->execute(data_ptr, data_ptr, sign);
                     data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
@@ -553,7 +554,7 @@ namespace idg {
                     fft_plan_bulk->setStream(*executestream);
                 }
 
-                int s = 0;
+                unsigned s = 0;
                 for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
                     fft_plan_bulk->execute(data_ptr, data_ptr, sign);
                     data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
@@ -565,8 +566,8 @@ namespace idg {
             }
 
             void InstanceCUDA::launch_fft_unified(
-                int size,
-                int batch,
+                unsigned long size,
+                unsigned int batch,
                 Array3D<std::complex<float>>& grid,
                 DomainAtoDomainB direction)
             {
@@ -574,15 +575,15 @@ namespace idg {
                 cufft::C2C_1D fft_plan_row(size, 1, 1, 1);
                 cufft::C2C_1D fft_plan_col(size, size, 1, 1);
 
-                for (int i = 0; i < batch; i++) {
+                for (unsigned i = 0; i < batch; i++) {
                     // Execute 1D FFT over all columns
-                    for (int col = 0; col < size; col++) {
+                    for (unsigned col = 0; col < size; col++) {
                         cufftComplex *ptr = (cufftComplex *) grid.data(i, col, 0);
                         fft_plan_row.execute(ptr, ptr, sign);
                     }
 
                     // Execute 1D FFT over all rows
-                    for (int row = 0; row < size; row++) {
+                    for (unsigned row = 0; row < size; row++) {
                         cufftComplex *ptr = (cufftComplex *) grid.data(i, 0, row);
                         fft_plan_col.execute(ptr, ptr, sign);
                     }
@@ -881,7 +882,7 @@ namespace idg {
                 void* ptr)
             {
                 // detect whether this pointer is used before
-                for (int i = 0; i < memories.size(); i++) {
+                for (unsigned i = 0; i < memories.size(); i++) {
                     T* m = memories[i].get();
                     void *m_ptr = m->get();
                     uint64_t m_size = m->size();

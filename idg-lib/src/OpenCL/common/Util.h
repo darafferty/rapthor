@@ -12,7 +12,7 @@ using namespace std;
 
 float get_opencl_version(cl::Device &device);
 void printDevice(cl::Device &device, bool marker = false);
-void printDevices(int deviceNumber);
+void printDevices(unsigned deviceNumber);
 
 #define BUFFER_BATCH_SIZE 1024 * 1024 * 1024 // 1 Gb
 

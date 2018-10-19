@@ -126,7 +126,7 @@ namespace idg {
                     std::vector<cu::Event*> outputFree;
                     std::vector<cu::Event*> outputReady;
                     std::vector<cu::Event*> hostFinished;
-                    int global_id = 0;
+                    unsigned global_id = 0;
                     std::vector<int> jobsize_;
                     std::vector<int> planned_max_nr_subgrids;
                     cu::Stream* hostStream;

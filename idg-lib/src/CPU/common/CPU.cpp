@@ -67,7 +67,6 @@ namespace idg {
 
                 // Arguments
                 auto nr_baselines = visibilities.get_z_dim();
-                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
@@ -184,7 +183,6 @@ namespace idg {
 
                 // Arguments
                 auto nr_baselines = visibilities.get_z_dim();
-                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
@@ -212,7 +210,6 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();

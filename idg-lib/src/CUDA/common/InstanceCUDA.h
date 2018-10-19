@@ -78,7 +78,7 @@ namespace idg {
                         DomainAtoDomainB direction);
 
                     void plan_fft(
-                        int size, int batch);
+                        unsigned size, unsigned batch);
 
                     void launch_fft(
                         cu::DeviceMemory& d_data,
@@ -89,8 +89,8 @@ namespace idg {
                         DomainAtoDomainB direction);
 
                     void launch_fft_unified(
-                        int size,
-                        int batch,
+                        unsigned long size,
+                        unsigned batch,
                         Array3D<std::complex<float>>& grid,
                         DomainAtoDomainB direction);
 
@@ -300,9 +300,9 @@ namespace idg {
                     cufft::C2C_2D *fft_plan_grid;
 
                     // Subgrid FFT
-                    const int fft_bulk = 1024;
-                    int fft_batch;
-                    int fft_size;
+                    const unsigned fft_bulk = 1024;
+                    unsigned fft_batch;
+                    unsigned fft_size;
                     cufft::C2C_2D *fft_plan_bulk;
                     cufft::C2C_2D *fft_plan_misc;
 

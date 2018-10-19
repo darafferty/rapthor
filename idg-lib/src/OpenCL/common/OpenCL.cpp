@@ -104,7 +104,7 @@ namespace idg {
                 }
 
                 // Create a device instance for every device
-                for (int i = 0; i < device_numbers.size(); i++) {
+                for (unsigned i = 0; i < device_numbers.size(); i++) {
                     InstanceOpenCL *device = new InstanceOpenCL(
                         *context, i, device_numbers[i]);
                     devices.push_back(device);

@@ -25,7 +25,7 @@ namespace powersensor {
         }
 
         // Split environment variable value
-        std::vector<std::string> power_sensors = idg::auxiliary::split_string(power_sensor_char, sensor_delimiter);
+        std::vector<std::string> power_sensors = idg::auxiliary::split_string(power_sensor_char, ",");
 
         // Try to initialize the specified PowerSensor
         #if defined(HAVE_POWERSENSOR)
