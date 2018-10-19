@@ -39,6 +39,10 @@ namespace idg {
 
             // Destructor
             Unified::~Unified() {
+                #if defined(DEBUG)
+                std::cout << "Unified::" << __func__ << std::endl;
+                #endif
+
                 free_memory();
                 delete hostPowerSensor;
             }
@@ -57,6 +61,10 @@ namespace idg {
                 void *visibilities,
                 void *uvw)
             {
+                #if defined(DEBUG)
+                std::cout << "Unified::" << __func__ << std::endl;
+                #endif
+
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.set_context();
@@ -95,7 +103,7 @@ namespace idg {
                 Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << "Unified::" << __func__ << std::endl;
                 cout << "Transform direction: " << direction << endl;
                 #endif
 
@@ -189,7 +197,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << "Unified::" << __func__ << std::endl;
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -407,7 +415,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << "Unified::" << __func__ << std::endl;
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
