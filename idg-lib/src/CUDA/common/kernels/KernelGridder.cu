@@ -8,7 +8,7 @@
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 #define MAX_NR_CHANNELS 8
-#define UNROLL_PIXELS   8
+#define UNROLL_PIXELS   2
 
 __shared__ float4 shared[3][BATCH_SIZE];
 __shared__ float wavenumbers_[MAX_NR_CHANNELS];
