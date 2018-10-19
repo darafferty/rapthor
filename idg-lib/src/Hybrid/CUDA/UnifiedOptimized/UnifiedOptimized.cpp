@@ -1,9 +1,8 @@
 #include <algorithm> // max_element
 
-#include <cuda.h>
-#include <cudaProfiler.h>
-
 #include "UnifiedOptimized.h"
+
+
 #include "InstanceCUDA.h"
 
 using namespace std;
@@ -26,6 +25,7 @@ namespace idg {
             // The maximum number of CUDA streams in any routine
             const int max_nr_streams = 3;
 
+            // Constructor
             UnifiedOptimized::UnifiedOptimized(
                 ProxyInfo info) :
                 CUDA(info),
@@ -38,21 +38,18 @@ namespace idg {
                 hostPowerSensor = get_power_sensor(sensor_host);
                 cpuProxy =  new idg::proxy::cpu::Optimized();
                 omp_set_nested(true);
-                cuProfilerStart();
             }
 
-
+            // Destructor
             UnifiedOptimized::~UnifiedOptimized() {
                 #if defined(DEBUG)
                 std::cout << "UnifiedOptimized::" << __func__ << std::endl;
                 #endif
 
+                free_memory();
                 delete cpuProxy;
                 delete hostPowerSensor;
-                free_memory();
-                cuProfilerStop();
             }
-
 
             void UnifiedOptimized::initialize_memory(
                 const Plan& plan,
@@ -82,6 +79,10 @@ namespace idg {
                     device.get_device_wavenumbers(nr_channels);
                     device.get_device_spheroidal(subgrid_size);
                     device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+
+
+                    unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
+                    device.get_device_avg_aterm_correction(avg_aterm_correction_subgrid_size);
 
                     // Dynamic memory (per thread)
                     for (int t = 0; t < nr_streams; t++) {
@@ -164,7 +165,7 @@ namespace idg {
                     visibilities.data(), uvw.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -201,6 +202,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                         htodstream.synchronize();
+                        device.set_report(report);
                     }
 
                     // Create FFT plan
@@ -381,7 +383,7 @@ namespace idg {
                     visibilities.data(), uvw.data());
 
                 // Performance measurements
-                Report report(nr_channels, subgrid_size, 0);
+                report.initialize(nr_channels, subgrid_size, grid_size);
                 vector<State> startStates(nr_devices+1);
                 vector<State> endStates(nr_devices+1);
 
@@ -417,6 +419,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                         htodstream.synchronize();
+                        device.set_report(report);
                     }
 
                     // Create FFT plan
@@ -581,7 +584,7 @@ namespace idg {
             }
 
         } // namespace hybrid
-    } // namespace cuda
+    } // namespace proxy
 } // namespace idg
 
 #include "UnifiedOptimizedC.h"
