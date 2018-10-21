@@ -9,6 +9,7 @@ extern "C" {
     void CPU_Reference_gridding(
         ProxyType* p,
         float w_step,
+        const float* __restrict__ shift,
         const float cell_size,
         unsigned int kernel_size,
         unsigned int subgrid_size,
@@ -44,6 +45,7 @@ extern "C" {
     {
         p->gridding(
             w_step,
+            shift,
             cell_size,
             kernel_size,
             subgrid_size,
@@ -82,6 +84,7 @@ extern "C" {
      void CPU_Reference_degridding(
         ProxyType* p,
         float w_step,
+        const float* __restrict__ shift,
         const float cell_size,
         unsigned int kernel_size,
         unsigned int subgrid_size,
@@ -117,6 +120,7 @@ extern "C" {
     {
         p->degridding(
             w_step,
+            shift,
             cell_size,
             kernel_size,
             subgrid_size,

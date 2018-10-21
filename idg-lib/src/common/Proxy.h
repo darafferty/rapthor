@@ -42,6 +42,7 @@ namespace idg {
                 void gridding(
                     const Plan& plan,
                     const float w_step, // in lambda
+                    const float* __restrict__ shift,
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const unsigned int subgrid_size,
@@ -56,6 +57,7 @@ namespace idg {
 
                 void gridding(
                     const float w_step,
+                    const float* __restrict__ shift,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const unsigned int subgrid_size,
@@ -70,6 +72,7 @@ namespace idg {
 
                 void gridding(
                     float w_step,
+                    const float* __restrict__ shift,
                     float cell_size,
                     unsigned int kernel_size,
                     unsigned int subgrid_size,
@@ -106,6 +109,7 @@ namespace idg {
                 void degridding(
                     const Plan& plan,
                     const float w_step, // in lambda
+                    const float* __restrict__ shift,
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const unsigned int subgrid_size,
@@ -120,6 +124,7 @@ namespace idg {
 
                 void degridding(
                     const float w_step,
+                    const float* __restrict__ shift,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const unsigned int subgrid_size,
@@ -134,6 +139,7 @@ namespace idg {
 
                 void degridding(
                     float w_step,
+                    const float* __restrict__ shift,
                     float cell_size,
                     unsigned int kernel_size,
                     unsigned int subgrid_size,
@@ -205,6 +211,7 @@ namespace idg {
                 virtual void initialize(
                     const Plan& plan,
                     const float w_step,
+                    const float* __restrict__ shift,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const unsigned int subgrid_size,
@@ -221,6 +228,7 @@ namespace idg {
                 virtual void run_gridding(
                     const Plan& plan,
                     const float w_step,
+                    const float* __restrict__ shift,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const unsigned int subgrid_size,
@@ -237,6 +245,7 @@ namespace idg {
                 virtual void run_degridding(
                     const Plan& plan,
                     const float w_step,
+                    const float* __restrict__ shift,
                     const float cell_size,
                     const unsigned int kernel_size,
                     const unsigned int subgrid_size,
@@ -265,6 +274,7 @@ namespace idg {
                 virtual void do_gridding(
                     const Plan& plan,
                     const float w_step, // in lambda
+                    const float* __restrict__ shift,
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const unsigned int subgrid_size,
@@ -280,6 +290,7 @@ namespace idg {
                 virtual void do_degridding(
                     const Plan& plan,
                     const float w_step, // in lambda
+                    const float* __restrict__ shift,
                     const float cell_size, // TODO: unit?
                     const unsigned int kernel_size, // full width in pixels
                     const unsigned int subgrid_size,

@@ -13,6 +13,7 @@ extern "C" {
         const int   subgridsize,
         const float imagesize,
         const float w_step_in_lambda,
+        const float* shift,
         const int   nr_channels,
         const int   nr_stations,
         const idg::UVWCoordinate<float>* uvw,
@@ -59,7 +60,7 @@ extern "C" {
                     // Compute l,m,n
                     const float l = compute_l(x, subgridsize, imagesize);
                     const float m = compute_m(y, subgridsize, imagesize);
-                    const float n = compute_n(l, m);
+                    const float n = compute_n(l, m, shift);
 
                     // Iterate all timesteps
                     for (int time = 0; time < nr_timesteps; time++) {

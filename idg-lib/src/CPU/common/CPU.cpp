@@ -42,6 +42,7 @@ namespace idg {
             void CPU::do_gridding(
                 const Plan& plan,
                 const float w_step,
+                const float* __restrict__ shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
@@ -158,6 +159,7 @@ namespace idg {
             void CPU::do_degridding(
                 const Plan& plan,
                 const float w_step,
+                const float* __restrict__ shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
