@@ -8,7 +8,6 @@
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 #define MAX_NR_CHANNELS 8
-#define UNROLL_PIXELS   2
 
 __shared__ float4 shared[3][BATCH_SIZE];
 __shared__ float wavenumbers_[MAX_NR_CHANNELS];
@@ -16,6 +15,217 @@ __shared__ float wavenumbers_[MAX_NR_CHANNELS];
 /*
     Kernel
 */
+__device__ void kernel_gridder_1(
+    const int                           grid_size,
+    const int                           subgrid_size,
+    const float                         image_size,
+    const float                         w_step,
+    const int                           nr_stations,
+    const UVW*             __restrict__ uvw,
+    const float*           __restrict__ wavenumbers,
+    const float2*          __restrict__ visibilities,
+    const float*           __restrict__ spheroidal,
+    const float2*          __restrict__ aterm,
+    const float2*          __restrict__ avg_aterm_correction,
+    const Metadata*        __restrict__ metadata,
+          float2*          __restrict__ subgrid)
+{
+    const unsigned UNROLL_PIXELS = 4;
+    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
+
+    int tidx = threadIdx.x;
+    int tidy = threadIdx.y;
+    int tid = tidx + tidy * blockDim.x;
+    int nr_threads = blockDim.x * blockDim.y;
+    int s = blockIdx.x;
+
+    // Load metadata for first subgrid
+    const Metadata &m_0 = metadata[0];
+
+	// Load metadata for current subgrid
+    const Metadata &m = metadata[s];
+    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const int nr_timesteps = m.nr_timesteps;
+    const int aterm_index = m.aterm_index;
+    const int station1 = m.baseline.station1;
+    const int station2 = m.baseline.station2;
+    const int x_coordinate = m.coordinate.x;
+    const int y_coordinate = m.coordinate.y;
+
+    // Compute u,v,w offset in wavelenghts
+    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
+
+    // Iterate all pixels in subgrid
+    for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, nr_threads); i += nr_threads * UNROLL_PIXELS) {
+        // Private pixels
+        float2 uvXX[UNROLL_PIXELS];
+        float2 uvXY[UNROLL_PIXELS];
+        float2 uvYX[UNROLL_PIXELS];
+        float2 uvYY[UNROLL_PIXELS];
+
+        for (int j = 0; j < UNROLL_PIXELS; j++) {
+            uvXX[j] = make_float2(0, 0);
+            uvXY[j] = make_float2(0, 0);
+            uvYX[j] = make_float2(0, 0);
+            uvYY[j] = make_float2(0, 0);
+        }
+
+        // Compute l,m,n, phase_offset
+        float l[UNROLL_PIXELS];
+        float m[UNROLL_PIXELS];
+        float n[UNROLL_PIXELS];
+        float phase_offset[UNROLL_PIXELS];
+
+        for (int j = 0; j < UNROLL_PIXELS; j++) {
+            int i_ = i + j * nr_threads;
+            int y = i_ / subgrid_size;
+            int x = i_ % subgrid_size;
+            l[j] = compute_l(x, subgrid_size, image_size);
+            m[j] = compute_m(y, subgrid_size, image_size);
+            n[j] = compute_n(l[j], m[j]);
+            phase_offset[j] = u_offset*l[j] + v_offset*m[j] + w_offset*n[j];
+        }
+
+        // Iterate timesteps
+        int current_nr_timesteps = BATCH_SIZE;
+        for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+            current_nr_timesteps = nr_timesteps - time_offset_local < current_nr_timesteps ?
+                                   nr_timesteps - time_offset_local : current_nr_timesteps;
+
+            __syncthreads();
+
+            // Load UVW
+            for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
+                UVW a = uvw[time_offset_global + time_offset_local + time];
+                shared[2][time] = make_float4(a.u, a.v, a.w, 0);
+            }
+
+            // Load visibilities
+            for (int i = tid; i < current_nr_timesteps; i += nr_threads) {
+                int idx_time = time_offset_global + time_offset_local + i;
+                int idx_xx = index_visibility(1, idx_time, 0, 0);
+                int idx_xy = index_visibility(1, idx_time, 0, 1);
+                int idx_yx = index_visibility(1, idx_time, 0, 2);
+                int idx_yy = index_visibility(1, idx_time, 0, 3);
+                float2 a = visibilities[idx_xx];
+                float2 b = visibilities[idx_xy];
+                float2 c = visibilities[idx_yx];
+                float2 d = visibilities[idx_yy];
+                shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
+                shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            }
+
+            __syncthreads();
+
+            // Iterate current batch of timesteps
+            for (int time = 0; time < current_nr_timesteps; time++) {
+                // Load UVW coordinates
+                float u = shared[2][time].x;
+                float v = shared[2][time].y;
+                float w = shared[2][time].z;
+
+                // Compute phase index
+                float phase_index[UNROLL_PIXELS];
+
+                for (int j = 0; j < UNROLL_PIXELS; j++) {
+                    phase_index[j]  = u*l[j] + v*m[j] + w*n[j];
+                }
+
+                // Load wavenumber
+                float wavenumber = wavenumbers[0];
+
+                // Load visibilities from shared memory
+                float4 a = shared[0][time];
+                float4 b = shared[1][time];
+                float2 visXX = make_float2(a.x, a.y);
+                float2 visXY = make_float2(a.z, a.w);
+                float2 visYX = make_float2(b.x, b.y);
+                float2 visYY = make_float2(b.z, b.w);
+
+                for (int j = 0; j < UNROLL_PIXELS; j++) {
+                    // Compute phasor
+                    float phase = phase_offset[j] - (phase_index[j] * wavenumber);
+                    float2 phasor = make_float2(cosf(phase), sinf(phase));
+
+                    // Multiply visibility by phasor
+                    uvXX[j].x += phasor.x * visXX.x;
+                    uvXX[j].y += phasor.x * visXX.y;
+                    uvXX[j].x -= phasor.y * visXX.y;
+                    uvXX[j].y += phasor.y * visXX.x;
+
+                    uvXY[j].x += phasor.x * visXY.x;
+                    uvXY[j].y += phasor.x * visXY.y;
+                    uvXY[j].x -= phasor.y * visXY.y;
+                    uvXY[j].y += phasor.y * visXY.x;
+
+                    uvYX[j].x += phasor.x * visYX.x;
+                    uvYX[j].y += phasor.x * visYX.y;
+                    uvYX[j].x -= phasor.y * visYX.y;
+                    uvYX[j].y += phasor.y * visYX.x;
+
+                    uvYY[j].x += phasor.x * visYY.x;
+                    uvYY[j].y += phasor.x * visYY.y;
+                    uvYY[j].x -= phasor.y * visYY.y;
+                    uvYY[j].y += phasor.y * visYY.x;
+                }
+            } // end for time
+        } // end for time_offset_local
+
+        for (int j = 0; j < UNROLL_PIXELS; j++) {
+            int i_ = i + j * nr_threads;
+            if (i_ < subgrid_size * subgrid_size) {
+                int y = i_ / subgrid_size;
+                int x = i_ % subgrid_size;
+
+                // Get aterm for station1
+                int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
+                float2 aXX1 = aterm[station1_idx + 0];
+                float2 aXY1 = aterm[station1_idx + 1];
+                float2 aYX1 = aterm[station1_idx + 2];
+                float2 aYY1 = aterm[station1_idx + 3];
+
+                // Get aterm for station2
+                int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
+                float2 aXX2 = aterm[station2_idx + 0];
+                float2 aXY2 = aterm[station2_idx + 1];
+                float2 aYX2 = aterm[station2_idx + 2];
+                float2 aYY2 = aterm[station2_idx + 3];
+
+                // Apply the conjugate transpose of the A-term
+                apply_aterm(
+                    conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
+                    conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
+                    uvXX[j], uvXY[j], uvYX[j], uvYY[j]);
+
+                if (avg_aterm_correction) {
+                    apply_avg_aterm_correction(
+                        avg_aterm_correction + i_*16,
+                        uvXX[j], uvXY[j], uvYX[j], uvYY[j]);
+                }
+
+                // Load spheroidal
+                float spheroidal_ = spheroidal[y * subgrid_size + x];
+
+                // Compute shifted position in subgrid
+                int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+                int y_dst = (y + (subgrid_size/2)) % subgrid_size;
+
+                // Set subgrid value
+                int idx_xx = index_subgrid(subgrid_size, s, 0, y_dst, x_dst);
+                int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
+                int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
+                int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
+                subgrid[idx_xx] = uvXX[j] * spheroidal_;
+                subgrid[idx_xy] = uvXY[j] * spheroidal_;
+                subgrid[idx_yx] = uvYX[j] * spheroidal_;
+                subgrid[idx_yy] = uvYY[j] * spheroidal_;
+            }
+        }
+    } // end for i (pixels)
+} // end kernel_gridder_1
+
 template<int current_nr_channels>
 __device__ void
     kernel_gridder_(
@@ -35,6 +245,9 @@ __device__ void
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid)
 {
+    const unsigned UNROLL_PIXELS = 2;
+    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
+
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
     int tid = tidx + tidy * blockDim.x;
@@ -279,17 +492,21 @@ __launch_bounds__(BLOCK_SIZE)
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid)
 {
-    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
-	int channel_offset = 0;
-	assert(MAX_NR_CHANNELS == 8);
-	KERNEL_GRIDDER_TEMPLATE(8);
-	KERNEL_GRIDDER_TEMPLATE(7);
-	KERNEL_GRIDDER_TEMPLATE(6);
-	KERNEL_GRIDDER_TEMPLATE(5);
-	KERNEL_GRIDDER_TEMPLATE(4);
-	KERNEL_GRIDDER_TEMPLATE(3);
-	KERNEL_GRIDDER_TEMPLATE(2);
-	KERNEL_GRIDDER_TEMPLATE(1);
+    if (nr_channels == 1) {
+        kernel_gridder_1(
+            grid_size, subgrid_size, image_size, w_step, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterm, avg_aterm_correction, metadata, subgrid);
+    } else {
+	    int channel_offset = 0;
+	    KERNEL_GRIDDER_TEMPLATE(8);
+	    KERNEL_GRIDDER_TEMPLATE(7);
+	    KERNEL_GRIDDER_TEMPLATE(6);
+	    KERNEL_GRIDDER_TEMPLATE(5);
+	    KERNEL_GRIDDER_TEMPLATE(4);
+	    KERNEL_GRIDDER_TEMPLATE(3);
+	    KERNEL_GRIDDER_TEMPLATE(2);
+	    KERNEL_GRIDDER_TEMPLATE(1);
+    }
 }
 
 } // end extern "C"
