@@ -105,7 +105,7 @@ namespace idg {
 
                         // Gridder kernel
                         kernels.run_gridder(
-                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels, nr_stations,
                             uvw_ptr, wavenumbers_ptr, visibilities_ptr, spheroidal_ptr, aterm_ptr, avg_aterm_ptr,
                             metadata_ptr, subgrids_ptr);
 
@@ -236,6 +236,7 @@ namespace idg {
                             subgrid_size,
                             image_size,
                             w_step,
+                            shift,
                             nr_channels,
                             nr_stations,
                             uvw_ptr,
