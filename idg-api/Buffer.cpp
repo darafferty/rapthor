@@ -117,6 +117,18 @@ namespace api {
     {
         return m_wStepInLambda;
     }
+    
+    void BufferImpl::set_shift(const float* shift)
+    {
+        m_shift[0] = shift[0];
+        m_shift[1] = shift[1];
+        m_shift[2] = shift[2];
+    }
+    
+    const float* BufferImpl::get_shift() const
+    {
+        return m_shift;
+    }
 
     void BufferImpl::set_subgrid_size(const size_t size)
     {
@@ -156,7 +168,9 @@ namespace api {
         const float* spheroidal)
     {
         // TODO: first, resize to SUBGRIDSIZE x SUBGRIDSIZE
+#ifndef NDEBUG
         std::cout << height << "," << width << std::endl;
+#endif
         m_spheroidal = Array2D<float>(height, width);
         for (auto y = 0; y < height; ++y) {
             for (auto x = 0; x < width; x++) {
@@ -253,7 +267,9 @@ namespace api {
                 end_pos = meters_to_pixels(m_max_baseline, image_size, frequency);
                 if (std::abs(begin_pos - end_pos) > m_uv_span_frequency) break;
             }
+#ifndef NDEBUG
             std::cout << begin_channel << "-" << end_channel << std::endl;
+#endif
             m_channel_groups.push_back(std::make_pair(begin_channel, end_channel));
             begin_channel = end_channel;
             begin_pos = end_pos;
