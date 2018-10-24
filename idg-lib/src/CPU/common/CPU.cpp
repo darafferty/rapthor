@@ -210,6 +210,7 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
@@ -246,7 +247,11 @@ namespace idg {
                             metadata_ptr,
                             subgrids_ptr);
 
-                    }
+                        // Performance reporting
+                        #if defined(REPORT_VERBOSE)
+                        report.print(current_nr_timesteps, current_nr_subgrids);
+                        #endif
+                    } // end for bl
 
                     states[1] = powerSensor->read();
                     report.update_host(states[0], states[1]);

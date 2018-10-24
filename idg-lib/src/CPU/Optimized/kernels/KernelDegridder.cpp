@@ -27,8 +27,7 @@ void kernel_degridder(
     const idg::float2*               subgrid)
 {
     #if defined(USE_LOOKUP)
-    float lookup[NR_SAMPLES];
-    compute_lookup(lookup);
+    CREATE_LOOKUP
     #endif
 
     // Find offset of first subgrid

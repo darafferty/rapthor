@@ -6,20 +6,7 @@
 #include "common/Math.h"
 
 #if defined(USE_LOOKUP)
-// Floating-point PI values
-#define PI     float(M_PI)
-#define TWO_PI float(2 * M_PI)
-#define HLF_PI float(M_PI_2)
-
-// Integer representations of PI
-#define TWO_PI_INT        32768
-#define PI_INT            TWO_PI_INT / 2
-#define HLF_PI_INT        TWO_PI_INT / 4
-
-// Constants for sine/cosine lookup table
-#define TWO_HLF_PI        TWO_PI + HLF_PI
-#define TWO_HLF_PI_INT    TWO_PI_INT + HLF_PI_INT
-#define NR_SAMPLES        TWO_HLF_PI_INT + 1
+#include "Lookup_01.h"
 #endif
 
 // Alignment
@@ -42,50 +29,6 @@ inline void compute_sincos(
     }
     #endif
 }
-
-#if defined(USE_LOOKUP)
-inline void compute_lookup(
-    float* __restrict__ lookup)
-{
-    for (int i = 0; i < NR_SAMPLES; i++) {
-        lookup[i] = sinf(i * (TWO_PI / TWO_PI_INT));
-    }
-}
-
-inline idg::float2 compute_sincos(
-    const float* __restrict__ lookup,
-    const float x)
-{
-        float p = x;
-
-        // Convert to integer pi range [0:NR_SAMPLES]
-        int p_int = int(p * (TWO_PI_INT / TWO_PI));
-
-        // Shift p in range [0:2*pi]
-        p_int &= (TWO_PI_INT - 1);
-
-        return {
-            lookup[p_int+HLF_PI_INT],
-            lookup[p_int]};
-}
-
-inline void compute_sincos(
-    const int                 n,
-    const float* __restrict__ x,
-    const float* __restrict__ lookup,
-    float*       __restrict__ sin,
-    float*       __restrict__ cos)
-{
-    #if defined(__INTEL_COMPILER)
-    #pragma vector aligned(x, sin, cos)
-    #endif
-    for (int i = 0; i < n; i++) {
-        idg::float2 phasor = compute_sincos(lookup, x[i]);
-        cos[i] = phasor.real;
-        sin[i] = phasor.imag;
-    }
-}
-#endif
 
 // http://bit.ly/2shIfmP
 #if defined(__AVX__)
