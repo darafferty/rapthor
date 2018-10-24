@@ -12,14 +12,15 @@
 #define HLF_PI float(M_PI_2)
 
 // Integer representations of PI
-#define TWO_PI_INT        32768
+#define TWO_PI_INT        16384
 #define PI_INT            TWO_PI_INT / 2
 #define HLF_PI_INT        TWO_PI_INT / 4
 
 // Constants for sine/cosine lookup table
-#define TWO_HLF_PI        TWO_PI + HLF_PI
-#define TWO_HLF_PI_INT    TWO_PI_INT + HLF_PI_INT
-#define NR_SAMPLES        TWO_HLF_PI_INT + 1
+#define NR_SAMPLES        TWO_PI_INT
+
+// Lookup table
+#define CREATE_LOOKUP float lookup[NR_SAMPLES]; compute_lookup(lookup);
 #endif
 
 // Alignment
@@ -47,7 +48,7 @@ inline void compute_sincos(
 inline void compute_lookup(
     float* __restrict__ lookup)
 {
-    for (int i = 0; i < NR_SAMPLES; i++) {
+    for (unsigned i = 0; i < NR_SAMPLES; i++) {
         lookup[i] = sinf(i * (TWO_PI / TWO_PI_INT));
     }
 }
@@ -56,17 +57,17 @@ inline idg::float2 compute_sincos(
     const float* __restrict__ lookup,
     const float x)
 {
-        float p = x;
+    float p = x;
 
-        // Convert to integer pi range [0:NR_SAMPLES]
-        int p_int = int(p * (TWO_PI_INT / TWO_PI));
+    // Convert to integer pi range [0:NR_SAMPLES]
+    unsigned p_int = round(p * (TWO_PI_INT / TWO_PI));
 
-        // Shift p in range [0:2*pi]
-        p_int &= (TWO_PI_INT - 1);
+    // Shift p in range [0:2*pi]
+    p_int &= (TWO_PI_INT - 1);
 
-        return {
-            lookup[p_int+HLF_PI_INT],
-            lookup[p_int]};
+    return {
+        lookup[(p_int+HLF_PI_INT) & (TWO_PI_INT - 1)],
+        lookup[p_int]};
 }
 
 inline void compute_sincos(
