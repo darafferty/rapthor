@@ -34,6 +34,21 @@ void kernel_degridder(
     const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
 
+    // Compute l,m,n
+    const unsigned nr_pixels = subgrid_size*subgrid_size;
+    float l_[nr_pixels];
+    float m_[nr_pixels];
+    float n_[nr_pixels];
+
+    for (unsigned i = 0; i < nr_pixels; i++) {
+        int y = i / subgrid_size;
+        int x = i % subgrid_size;
+
+        l_[i] = compute_l(x, subgrid_size, image_size);
+        m_[i] = compute_m(y, subgrid_size, image_size);
+        n_[i] = compute_n(l_[i], m_[i]);
+    }
+
     // Iterate all subgrids
     #pragma omp parallel for
     for (int s = 0; s < nr_subgrids; s++) {
@@ -50,7 +65,6 @@ void kernel_degridder(
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
         // Storage
-        const int nr_pixels = subgrid_size*subgrid_size;
         float pixels_xx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
         float pixels_xy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
         float pixels_yx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
@@ -61,7 +75,7 @@ void kernel_degridder(
         float pixels_yy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
 
         // Apply aterm to subgrid
-        for (int i = 0; i < nr_pixels; i++) {
+        for (unsigned i = 0; i < nr_pixels; i++) {
             int y = i / subgrid_size;
             int x = i % subgrid_size;
 
@@ -116,6 +130,8 @@ void kernel_degridder(
                                * (2*M_PI / image_size);
         const float w_offset = 2*M_PI * w_offset_in_lambda;
 
+        float phase_offset[nr_pixels];
+
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
             // Load UVW coordinates
@@ -124,22 +140,15 @@ void kernel_degridder(
             float w = uvw[offset + time].w;
 
             float phase_index[nr_pixels];
-            float phase_offset[nr_pixels];
 
-            for (int i = 0; i < nr_pixels; i++) {
-                int y = i / subgrid_size;
-                int x = i % subgrid_size;
-
-                // Compute l,m,n
-                const float l = compute_l(x, subgrid_size, image_size);
-                const float m = compute_m(y, subgrid_size, image_size);
-                const float n = compute_n(l, m);
-
+            for (unsigned i = 0; i < nr_pixels; i++) {
                 // Compute phase index
-                phase_index[i] = u*l + v*m + w*n;
+                phase_index[i] = u*l_[i] + v*m_[i] + w*n_[i];
 
                 // Compute phase offset
-                phase_offset[i] = u_offset*l + v_offset*m + w_offset*n;
+                if (time == 0) {
+                    phase_offset[i] = u_offset*l_[i] + v_offset*m_[i] + w_offset*n_[i];
+                }
             }
 
             // Iterate all channels
@@ -147,7 +156,7 @@ void kernel_degridder(
                 // Compute phase
                 float phase[nr_pixels];
 
-                for (int i = 0; i < nr_pixels; i++) {
+                for (unsigned i = 0; i < nr_pixels; i++) {
                     // Compute phase
                     float wavenumber = wavenumbers[chan];
                     phase[i] = (phase_index[i] * wavenumber) - phase_offset[i];
