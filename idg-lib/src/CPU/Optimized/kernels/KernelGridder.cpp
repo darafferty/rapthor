@@ -35,6 +35,21 @@ void kernel_gridder(
     const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
 
+    // Compute l,m,n
+    const unsigned nr_pixels = subgrid_size*subgrid_size;
+    float l_[nr_pixels];
+    float m_[nr_pixels];
+    float n_[nr_pixels];
+
+    for (unsigned i = 0; i < nr_pixels; i++) {
+        int y = i / subgrid_size;
+        int x = i % subgrid_size;
+
+        l_[i] = compute_l(x, subgrid_size, image_size);
+        m_[i] = compute_m(y, subgrid_size, image_size);
+        n_[i] = compute_n(l_[i], m_[i]);
+    }
+
     // Iterate all subgrids
     #pragma omp parallel for
     for (int s = 0; s < nr_subgrids; s++) {
@@ -94,96 +109,95 @@ void kernel_gridder(
             uvw_w[time] = uvw[offset + time].w;
         }
 
+        // Compute phase offset
+        float phase_offset[nr_pixels];
+
+        for (unsigned i = 0; i < nr_pixels; i++) {
+            phase_offset[i] = u_offset*l_[i] + v_offset*m_[i] + w_offset*n_[i];
+        }
+
         // Iterate all pixels in subgrid
-        for (int y = 0; y < subgrid_size; y++) {
-            for (int x = 0; x < subgrid_size; x++) {
+        for (unsigned i = 0; i < nr_pixels; i++) {
+            int y = i / subgrid_size;
+            int x = i % subgrid_size;
 
-                // Compute phase
-                float phase[nr_timesteps*nr_channels];
+            // Compute phase
+            float phase[nr_timesteps*nr_channels];
 
-                // Compute l,m,n
-                const float l = compute_l(x, subgrid_size, image_size);
-                const float m = compute_m(y, subgrid_size, image_size);
-                const float n = compute_n(l, m);
+            #if defined(__INTEL_COMPILER)
+            #pragma vector aligned(uvw_u, uvw_v, uvw_w)
+            #endif
+            for (int time = 0; time < nr_timesteps; time++) {
+                // Load UVW coordinates
+                float u = uvw_u[time];
+                float v = uvw_v[time];
+                float w = uvw_w[time];
+
+                // Compute phase index
+                float phase_index = u*l_[i] + v*m_[i] + w*n_[i];
 
                 #if defined(__INTEL_COMPILER)
-                #pragma vector aligned(uvw_u, uvw_v, uvw_w)
+                #pragma vector aligned(wavenumbers, phase)
                 #endif
-                for (int time = 0; time < nr_timesteps; time++) {
-                    // Load UVW coordinates
-                    float u = uvw_u[time];
-                    float v = uvw_v[time];
-                    float w = uvw_w[time];
-
-                    // Compute phase index
-                    float phase_index = u*l + v*m + w*n;
-
-                    // Compute phase offset
-                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-
-                    #if defined(__INTEL_COMPILER)
-                    #pragma vector aligned(wavenumbers, phase)
-                    #endif
-                    for (int chan = 0; chan < nr_channels; chan++) {
-                        // Compute phase
-                        float wavenumber = wavenumbers[chan];
-                        phase[time * nr_channels + chan] = phase_offset - (phase_index * wavenumber);
-                    }
-                } // end time
-
-                // Compute phasor
-                float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-                float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-                #if defined(USE_LOOKUP)
-                compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
-                #else
-                compute_sincos(nr_visibilities, phase, phasor_imag, phasor_real);
-                #endif
-
-                // Compute pixels
-                idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned((ALIGNMENT))));
-                compute_reduction(
-                    nr_visibilities,
-                    vis_xx_real, vis_xy_real, vis_yx_real, vis_yy_real,
-                    vis_xx_imag, vis_xy_imag, vis_yx_imag, vis_yy_imag,
-                    phasor_real, phasor_imag, pixels);
-
-                // Load a term for station1
-                size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
-                idg::float2 aXX1 = aterms[station1_idx + 0];
-                idg::float2 aXY1 = aterms[station1_idx + 1];
-                idg::float2 aYX1 = aterms[station1_idx + 2];
-                idg::float2 aYY1 = aterms[station1_idx + 3];
-
-                // Load aterm for station2
-                size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
-                idg::float2 aXX2 = aterms[station2_idx + 0];
-                idg::float2 aXY2 = aterms[station2_idx + 1];
-                idg::float2 aYX2 = aterms[station2_idx + 2];
-                idg::float2 aYY2 = aterms[station2_idx + 3];
-
-                // Apply the conjugate transpose of the A-term
-                apply_aterm(
-                    conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
-                    conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
-                    pixels);
-
-                if (avg_aterm_correction) apply_avg_aterm_correction(avg_aterm_correction + (y*subgrid_size + x)*16, pixels);
-
-                // Load spheroidal
-                float sph = spheroidal[y * subgrid_size + x];
-
-                // Compute shifted position in subgrid
-                int x_dst = (x + (subgrid_size/2)) % subgrid_size;
-                int y_dst = (y + (subgrid_size/2)) % subgrid_size;
-
-                // Set subgrid value
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    size_t dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
-                    subgrid[dst_idx] = pixels[pol] * sph;
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    // Compute phase
+                    float wavenumber = wavenumbers[chan];
+                    phase[time * nr_channels + chan] = phase_offset[i] - (phase_index * wavenumber);
                 }
-            } // end x
-        } // end y
+            } // end time
+
+            // Compute phasor
+            float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+            float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+            #if defined(USE_LOOKUP)
+            compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
+            #else
+            compute_sincos(nr_visibilities, phase, phasor_imag, phasor_real);
+            #endif
+
+            // Compute pixels
+            idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned((ALIGNMENT))));
+            compute_reduction(
+                nr_visibilities,
+                vis_xx_real, vis_xy_real, vis_yx_real, vis_yy_real,
+                vis_xx_imag, vis_xy_imag, vis_yx_imag, vis_yy_imag,
+                phasor_real, phasor_imag, pixels);
+
+            // Load a term for station1
+            size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
+            idg::float2 aXX1 = aterms[station1_idx + 0];
+            idg::float2 aXY1 = aterms[station1_idx + 1];
+            idg::float2 aYX1 = aterms[station1_idx + 2];
+            idg::float2 aYY1 = aterms[station1_idx + 3];
+
+            // Load aterm for station2
+            size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+            idg::float2 aXX2 = aterms[station2_idx + 0];
+            idg::float2 aXY2 = aterms[station2_idx + 1];
+            idg::float2 aYX2 = aterms[station2_idx + 2];
+            idg::float2 aYY2 = aterms[station2_idx + 3];
+
+            // Apply the conjugate transpose of the A-term
+            apply_aterm(
+                conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
+                conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
+                pixels);
+
+            if (avg_aterm_correction) apply_avg_aterm_correction(avg_aterm_correction + (y*subgrid_size + x)*16, pixels);
+
+            // Load spheroidal
+            float sph = spheroidal[y * subgrid_size + x];
+
+            // Compute shifted position in subgrid
+            int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+            int y_dst = (y + (subgrid_size/2)) % subgrid_size;
+
+            // Set subgrid value
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                size_t dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_dst, x_dst);
+                subgrid[dst_idx] = pixels[pol] * sph;
+            }
+        } // end for i (pixels)
     } // end s
 } // end kernel_gridder
 
