@@ -1,3 +1,7 @@
+#if defined(__x86_64__)
+#include <immintrin.h>
+#endif
+
 // Floating-point PI values
 #define PI     float(M_PI)
 #define TWO_PI float(2 * M_PI)
