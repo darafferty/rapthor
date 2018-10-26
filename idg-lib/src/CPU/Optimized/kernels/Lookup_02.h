@@ -1,8 +1,7 @@
 // Constants for sine/cosine lookup table
-#define BITS        14
-#define QRT_PI_INT  8192 // pow(2, BITS - 1);
-#define HLF_PI_INT  (QRT_PI_INT << 1)
-#define TWO_PI_INT  (QRT_PI_INT << 3)
+#define BITS        12
+#define QRT_PI_INT  (1 << BITS)
+#define ONE_PI_INT  (QRT_PI_INT << 2)
 #define NR_SAMPLES  (QRT_PI_INT)
 #define BIT(A,N)	(((A) >> (N)) & 1)
 
@@ -13,8 +12,8 @@ inline void compute_lookup(
     idg::float2* __restrict__ lookup)
 {
     for (unsigned i = 0; i < NR_SAMPLES; i++) {
-        lookup[i].real = sinf(i * (M_PI_4/QRT_PI_INT));
-        lookup[i].imag = cosf(i * (M_PI_4/QRT_PI_INT));
+        lookup[i].real = cosf(i * (M_PI_4/QRT_PI_INT));
+        lookup[i].imag = sinf(i * (M_PI_4/QRT_PI_INT));
     }
 }
 
@@ -22,40 +21,29 @@ inline idg::float2 compute_sincos(
     const idg::float2* __restrict__ lookup,
     const float x)
 {
-    // Convert p into int
-    unsigned index = round(x * (QRT_PI_INT/M_PI_4));
+    unsigned input  = (unsigned) round(x * (ONE_PI_INT / M_PI));
+    unsigned index  = input & (QRT_PI_INT - 1);
+    unsigned octant = input >> BITS;
 
-    // Determine quadrant in range [0:2*pi]
-    char quadrant = (index >> BITS) & 3;
-
-    // Determine first or second half in quadrant
-    char half = BIT(index, BITS - 1);
-
-    // Determine index in range [0:0.25*pi]
-    index &= (HLF_PI_INT - 1);
-    if (BIT(index, BITS - 1)) {
+    if (BIT(octant, 0)) {
         index = ~index & (QRT_PI_INT - 1);
     }
 
-    // Lookup sincos
-    idg::float2 phasor = lookup[index];
+    idg::float2 output = lookup[index];
 
-    // Swap real and imag parts
-    if (!half ^ BIT(quadrant, 0)) {
-        phasor = { phasor.imag, phasor.real };
+    if (BIT(octant, 0) ^ BIT(octant, 1)) {
+        output = { output.imag, output.real };
     }
 
-    // Update real sign
-    if (BIT(quadrant, 0) ^ BIT(quadrant, 1)) {
-        phasor.real = -phasor.real;
+    if (BIT(octant, 1) ^ BIT(octant, 2)) {
+        output.real = -output.real;
     }
 
-    // Update imag sign
-    if (BIT(quadrant, 1) ^ BIT(quadrant, 2)) {
-        phasor.imag = -phasor.imag;
+    if (BIT(octant, 2)) {
+        output.imag = -output.imag;
     }
 
-    return phasor;
+    return output;
 }
 
 inline void compute_sincos(

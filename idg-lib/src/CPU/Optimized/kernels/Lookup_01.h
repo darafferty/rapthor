@@ -1,3 +1,7 @@
+#if defined(__x86_64__)
+#include <immintrin.h>
+#endif
+
 // Floating-point PI values
 #define PI     float(M_PI)
 #define TWO_PI float(2 * M_PI)
@@ -22,36 +26,63 @@ inline void compute_lookup(
     }
 }
 
-inline idg::float2 compute_sincos(
-    const float* __restrict__ lookup,
-    const float x)
-{
-    float p = x;
-
-    // Convert to integer pi range [0:NR_SAMPLES]
-    unsigned p_int = round(p * (TWO_PI_INT / TWO_PI));
-
-    // Shift p in range [0:2*pi]
-    p_int &= (TWO_PI_INT - 1);
-
-    return {
-        lookup[(p_int+HLF_PI_INT) & (TWO_PI_INT - 1)],
-        lookup[p_int]};
-}
-
-inline void compute_sincos(
-    const int                 n,
+inline void compute_sincos_avx2(
+    unsigned*                 offset,
+    const unsigned            n,
     const float* __restrict__ x,
     const float* __restrict__ lookup,
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
-    #if defined(__INTEL_COMPILER)
-    #pragma vector aligned(x, sin, cos)
-    #endif
-    for (int i = 0; i < n; i++) {
-        idg::float2 phasor = compute_sincos(lookup, x[i]);
-        cos[i] = phasor.real;
-        sin[i] = phasor.imag;
+#if defined(__AVX2__)
+    const unsigned vector_length = 8;
+
+    for (unsigned i = *offset; i < (n / vector_length) * vector_length; i += vector_length) {
+        __m256  f0 = _mm256_load_ps(&x[i]);              // input
+        __m256  f1 = _mm256_set1_ps(TWO_PI_INT/TWO_PI);  // compute scale
+        __m256  f2 = _mm256_mul_ps(f0, f1);              // apply scale
+        __m256i u0 = _mm256_set1_epi32(HLF_PI_INT);      // constant 0.5 * pi
+        __m256i u1 = _mm256_set1_epi32(TWO_PI_INT - 1);  // mask 2 * pi
+        __m256i u2 = _mm256_cvtps_epi32(f2);             // round float to int
+        __m256i u3 = _mm256_add_epi32(u2, u0);           // add 0.5 * pi
+        __m256i u4 = _mm256_and_si256(u1, u3);           // apply mask of 2 * pi, second index
+        __m256i u5 = _mm256_and_si256(u1, u2);           // apply mask of 2 * pi, first index
+        __m256  f3 = _mm256_i32gather_ps(lookup, u4, 4); // perform lookup of real
+        __m256  f4 = _mm256_i32gather_ps(lookup, u5, 4); // perform lookup of imag
+        _mm256_store_ps(&cos[i], f3);
+        _mm256_store_ps(&sin[i], f4);
     }
+
+    *offset += vector_length * ((n - *offset) / vector_length);
+#endif
+}
+
+inline void compute_sincos_scalar(
+    unsigned*                 offset,
+    const unsigned            n,
+    const float* __restrict__ x,
+    const float* __restrict__ lookup,
+    float*       __restrict__ sin,
+    float*       __restrict__ cos)
+{
+    for (unsigned i = *offset; i < n; i++) {
+        unsigned index = round(x[i] * (TWO_PI_INT / TWO_PI));
+        index &= (TWO_PI_INT - 1);
+        cos[i] = lookup[(index+HLF_PI_INT) & (TWO_PI_INT - 1)];
+        sin[i] = lookup[index];
+    }
+
+    *offset = n;
+}
+
+inline void compute_sincos(
+    const unsigned            n,
+    const float* __restrict__ x,
+    const float* __restrict__ lookup,
+    float*       __restrict__ sin,
+    float*       __restrict__ cos)
+{
+    unsigned offset = 0;
+    compute_sincos_avx2(&offset, n, x, lookup, sin, cos);
+    compute_sincos_scalar(&offset, n, x, lookup, sin, cos);
 }
