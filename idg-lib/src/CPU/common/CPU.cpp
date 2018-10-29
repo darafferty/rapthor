@@ -73,9 +73,7 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
 
                 try {
-                    auto total_nr_subgrids  = plan.get_nr_subgrids();
-                    auto total_nr_timesteps = plan.get_nr_timesteps();
-                    auto jobsize            = kernel::cpu::jobsize_gridding;
+                    auto jobsize = kernel::cpu::jobsize_gridding;
 
                     // Allocate memory for subgrids
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -94,7 +92,6 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
@@ -127,6 +124,7 @@ namespace idg {
 
                         // Performance reporting
                         #if defined(REPORT_VERBOSE)
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         report.print(current_nr_timesteps, current_nr_subgrids);
                         #endif
                     } // end for bl
@@ -136,6 +134,8 @@ namespace idg {
 
                     // Performance report
                     #if defined(REPORT_TOTAL)
+                    auto total_nr_subgrids  = plan.get_nr_subgrids();
+                    auto total_nr_timesteps = plan.get_nr_timesteps();
                     report.print_total(total_nr_timesteps, total_nr_subgrids);
                     auto total_nr_visibilities = plan.get_nr_visibilities();
                     report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
@@ -189,9 +189,7 @@ namespace idg {
                 auto nr_stations  = aterms.get_z_dim();
 
                 try {
-                    auto total_nr_subgrids  = plan.get_nr_subgrids();
-                    auto total_nr_timesteps = plan.get_nr_timesteps();
-                    auto jobsize            = kernel::cpu::jobsize_degridding;
+                    auto jobsize = kernel::cpu::jobsize_degridding;
 
                     // Allocate memory for subgrids
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -210,7 +208,6 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
@@ -249,6 +246,7 @@ namespace idg {
 
                         // Performance reporting
                         #if defined(REPORT_VERBOSE)
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         report.print(current_nr_timesteps, current_nr_subgrids);
                         #endif
                     } // end for bl
@@ -258,6 +256,8 @@ namespace idg {
 
                     // Report performance
                     #if defined(REPORT_TOTAL)
+                    auto total_nr_subgrids  = plan.get_nr_subgrids();
+                    auto total_nr_timesteps = plan.get_nr_timesteps();
                     report.print_total(total_nr_timesteps, total_nr_subgrids);
                     auto total_nr_visibilities = plan.get_nr_visibilities();
                     report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
