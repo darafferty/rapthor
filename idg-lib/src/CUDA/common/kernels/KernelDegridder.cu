@@ -1,6 +1,8 @@
 #include "Types.h"
 #include "math.cu"
 
+#include <assert.h>
+
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
 #define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
