@@ -14,6 +14,13 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
+/*
+ * Visibilities initializion
+ *   0, use simulated visibilities for some point sources near the centre of the image
+ *   1, use fixed (dummy) visibilities to speed-up initialization of the data
+ */
+#define USE_DUMMY_VISIBILITIES 1
+
 using namespace std;
 
 std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters() {
@@ -192,8 +199,11 @@ void run()
 
     // Allocate and initialize static data structures
     clog << ">>> Initialize data structures" << endl;
+    double runtime;
+    #if USE_DUMMY_VISIBILITIES
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
         idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+    #endif
     idg::Array2D<idg::UVWCoordinate<float>> uvw_(nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
         idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
@@ -208,6 +218,10 @@ void run()
     // Allocate variable data structures
     idg::Array1D<float> frequencies(nr_channels);
     idg::Array2D<idg::UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
+    #if !USE_DUMMY_VISIBILITIES
+    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
+        idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
+    #endif
 
     // Benchmark
     vector<double> runtimes_gridding;
