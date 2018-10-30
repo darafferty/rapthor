@@ -255,6 +255,11 @@ namespace idg {
                 //! Dummy method
                 virtual void finish_degridding() {};
 
+                /*
+                 * Misc
+                 */
+                inline void* allocate_memory(size_t size) { return malloc(size); }
+
             private:
                 //! Degrid the visibilities from a uniform grid
                 virtual void do_gridding(
