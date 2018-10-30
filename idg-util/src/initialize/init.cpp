@@ -227,6 +227,194 @@ namespace idg {
         delete [] out_ft;
     }
 
+
+    /*
+     * Memory-allocation is handled by Proxy
+     */
+    Array1D<float> get_example_frequencies(
+        proxy::Proxy& proxy,
+        unsigned int nr_channels,
+        float start_frequency,
+        float frequency_increment)
+    {
+        auto bytes = auxiliary::sizeof_wavenumbers(nr_channels);
+        float* ptr = (float *) proxy.allocate_memory(bytes);
+
+        Array1D<float> frequencies(ptr, nr_channels);
+
+        for (int chan = 0; chan < nr_channels; chan++) {
+            frequencies(chan) = start_frequency + frequency_increment * chan;
+        }
+
+        return frequencies;
+    }
+
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        proxy::Proxy& proxy,
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        unsigned int nr_channels)
+    {
+        auto bytes = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+        Visibility<std::complex<float>>* ptr = (Visibility<std::complex<float>>*) proxy.allocate_memory(bytes);
+
+        Array3D<Visibility<std::complex<float>>> visibilities(ptr, nr_baselines, nr_timesteps, nr_channels);
+        const Visibility<std::complex<float>> visibility = {1.0f, 0.0f, 0.0f, 1.0f};
+
+        // Set all visibilities
+        #pragma omp parallel for
+        for (int bl = 0; bl < nr_baselines; bl++) {
+            for (int time = 0; time < nr_timesteps; time++) {
+                for (int chan = 0; chan < nr_channels; chan++) {
+                    visibilities(bl, time, chan) = visibility;
+                }
+            }
+        }
+
+        return visibilities;
+    }
+
+    Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_baselines)
+    {
+        auto bytes = auxiliary::sizeof_baselines(nr_baselines);
+        std::pair<unsigned int, unsigned int>* ptr = (std::pair<unsigned int, unsigned int>*) proxy.allocate_memory(bytes);
+        Array1D<std::pair<unsigned int,unsigned int>> baselines(ptr, nr_baselines);
+
+        int bl = 0;
+
+        for (int station1 = 0 ; station1 < nr_stations; station1++) {
+            for (int station2 = station1 + 1; station2 < nr_stations; station2++) {
+                if (bl >= nr_baselines) {
+                    break;
+                }
+                baselines(bl) = std::pair<unsigned int,unsigned int>(station1, station2);
+                bl++;
+            }
+        }
+
+        return baselines;
+    }
+
+    Array2D<UVWCoordinate<float>> get_example_uvw(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        float integration_time)
+    {
+        auto bytes = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
+        UVWCoordinate<float>* ptr = (UVWCoordinate<float>*) proxy.allocate_memory(bytes);
+
+        Array2D<UVWCoordinate<float>> uvw(ptr, nr_baselines, nr_timesteps);
+        void *uvw_ptr = uvw.data();
+        init_example_uvw(uvw_ptr, nr_stations, nr_baselines, nr_timesteps, integration_time);
+
+        return uvw;
+    }
+
+    Array3D<std::complex<float>> get_zero_grid(
+        proxy::Proxy& proxy,
+        unsigned int nr_correlations,
+        unsigned int height,
+        unsigned int width)
+    {
+        assert(height == width);
+        auto bytes = auxiliary::sizeof_grid(height);
+        std::complex<float>* ptr = (std::complex<float>*) proxy.allocate_memory(bytes);
+
+        Array3D<std::complex<float>> grid(ptr, nr_correlations, height, width);
+        memset(grid.data(), 0, grid.bytes());
+        return grid;
+    }
+
+    Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_stations,
+        unsigned int height,
+        unsigned int width)
+    {
+        assert(height == width);
+        auto bytes = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, height);
+        Matrix2x2<std::complex<float>>* ptr = (Matrix2x2<std::complex<float>>*) proxy.allocate_memory(bytes);
+
+        Array4D<Matrix2x2<std::complex<float>>> aterms(ptr, nr_timeslots, nr_stations, height, width);
+        const Matrix2x2<std::complex<float>> aterm = {1.0f, 0.0f, 0.0f, 1.0f};
+
+        for (int t = 0; t < nr_timeslots; t++) {
+            for (int ant = 0; ant < nr_stations; ant++) {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        aterms(t, ant, y, x) = aterm;
+                    }
+                }
+            }
+        }
+
+        return aterms;
+    }
+
+    Array1D<unsigned int> get_example_aterms_offsets(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_timesteps)
+    {
+        auto bytes = auxiliary::sizeof_aterms_offsets(nr_timeslots);
+        unsigned int* ptr = (unsigned int*) proxy.allocate_memory(bytes);
+
+        Array1D<unsigned int> aterms_offsets(ptr, nr_timeslots + 1);
+
+        for (int time = 0; time < nr_timeslots; time++) {
+             aterms_offsets(time) = time * (nr_timesteps / nr_timeslots);
+        }
+
+        aterms_offsets(nr_timeslots) = nr_timesteps;
+
+        return aterms_offsets;
+    }
+
+    Array2D<float> get_example_spheroidal(
+        proxy::Proxy& proxy,
+        unsigned int height,
+        unsigned int width)
+    {
+        assert(height == width);
+        auto bytes = auxiliary::sizeof_spheroidal(height);
+        float* ptr = (float*) proxy.allocate_memory(bytes);
+
+        Array2D<float> spheroidal(ptr, height, width);
+
+        // Evaluate rows
+        float y[height];
+        for (int i = 0; i < height; i++) {
+            float tmp = fabs(-1 + i*2.0f/float(height));
+            y[i] = evaluate_spheroidal(tmp);
+        }
+
+        // Evaluate columns
+        float x[width];
+        for (int i = 0; i < width; i++) {
+            float tmp = fabs(-1 + i*2.0f/float(width));
+            x[i] = evaluate_spheroidal(tmp);
+        }
+
+        // Set values
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                 spheroidal(i, j) = y[i]*x[j];
+            }
+        }
+
+        return spheroidal;
+    }
+
+
+    /*
+     * Default memory allocation
+     */
     Array1D<float> get_example_frequencies(
         unsigned int nr_channels,
         float start_frequency,
@@ -432,7 +620,6 @@ namespace idg {
         float y,
         float amplitude)
     {
-
         int nr_baselines = visibilities.get_z_dim();
         int nr_timesteps = visibilities.get_y_dim();
         int nr_channels  = visibilities.get_x_dim();
