@@ -206,9 +206,9 @@ void run()
     #endif
     idg::Array2D<idg::UVWCoordinate<float>> uvw_(nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-        idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
-        idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+        idg::get_example_aterms_offsets(proxy, nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Grid grid =
