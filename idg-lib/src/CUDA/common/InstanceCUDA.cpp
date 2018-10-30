@@ -136,8 +136,11 @@ namespace idg {
                 #endif
 
                 // Create temp directory
-                char _tmpdir[] = "/tmp/idg-XXXXXX";
-                mkdtemp(_tmpdir);
+                char tmpdir[] = "/tmp/idg-XXXXXX";
+                char *tmpdir_ = mkdtemp(tmpdir);
+                if (!tmpdir_) {
+                    throw std::runtime_error("could not create tmp directory.");
+                }
                 #if defined(DEBUG)
                 std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
                 #endif

@@ -498,7 +498,7 @@ namespace idg {
         const Visibility<std::complex<float>> zero = {0.0f, 0.0f, 0.0f, 0.0f};
 
         // Sanity check
-        assert(get_nr_baselines() == nr_baselines);
+        assert((unsigned) get_nr_baselines() == nr_baselines);
 
         // Find offset for first subgrid
         const Metadata& m0 = metadata[0];
