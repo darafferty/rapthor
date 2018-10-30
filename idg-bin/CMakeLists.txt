@@ -13,6 +13,7 @@ option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
 option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
 option (BUILD_WITH_TESTS "Build with tests" OFF)
 option (BUILD_WITH_DEMOS "Build with demos" OFF)
+option (USE_DUMMY_VISIBILITIES "Run C++ examples using dummy visibilities" ON)
 
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
