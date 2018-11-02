@@ -11,7 +11,7 @@ import random
 # paramaters
 ############
 _nr_channels      = 8
-_nr_timesteps     = 1*60*60           # samples per baseline
+_nr_timesteps     = 3*60*60           # samples per baseline
 _nr_timeslots     = 16             # A-term time slots
 _subgrid_size     = 24
 _grid_size        = 1024
@@ -19,15 +19,12 @@ _integration_time = 0.9
 _kernel_size      = (_subgrid_size / 2) + 1
 _nr_correlations  = 4
 _layout_file           = "SKA1_low_ecef"
-_nr_stations_limit     = -1    # no limit
-_baseline_length_limit = 5000 # m
+_nr_stations_limit     = 20
+_baseline_length_limit = 3000 # m
 _start_frequency       = 150e6 # Mhz
 
 def get_nr_stations_limit():
     return _nr_stations_limit
-
-def get_nr_baselines():
-    return _nr_baselines
 
 def get_nr_channels():
     return _nr_channels
@@ -93,10 +90,10 @@ def plot_metadata(
 # gridding
 ##########
 def gridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.gridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     util.plot_grid(grid, scaling='log')
@@ -109,11 +106,11 @@ def gridding(
 # degridding
 ############
 def degridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.transform(idg.ImageDomainToFourierDomain, grid)
     p.degridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_visibilities(visibilities)
@@ -133,7 +130,7 @@ def main(proxyname):
     integration_time = get_integration_time()
     kernel_size      = get_kernel_size()
     nr_correlations  = get_nr_correlations()
-    w_offset         = 0.0
+    w_step           = 0.0
     layout_file           = get_layout_file()
     nr_stations_limit     = get_nr_stations_limit()
     baseline_length_limit = get_baseline_length_limit()
@@ -171,10 +168,9 @@ def main(proxyname):
     ######################################################################
     # initialize data
     ######################################################################
-    channel_offset  = 5
-    baseline_offset = 1000
-    time_offset     = 100
-    nr_baselines    = 500
+    channel_offset  = 0
+    baseline_offset = 0
+    time_offset     = 0
 
     uvw            = numpy.zeros((nr_baselines, nr_timesteps), dtype=idg.uvwtype)
     frequencies    = numpy.zeros((nr_channels), dtype=idg.frequenciestype)
@@ -192,6 +188,7 @@ def main(proxyname):
     visibilities   = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, frequencies)
+    shift          = numpy.zeros(3, dtype=float)
 
     ######################################################################
     # plot data
@@ -208,11 +205,11 @@ def main(proxyname):
     # routines
     ######################################################################
     gridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     plt.show()

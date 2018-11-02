@@ -94,6 +94,7 @@ int test01()
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_identity_spheroidal(subgrid_size, subgrid_size);
+    idg::Array1D<float> shift(3); // zero shift
     clog << endl;
 
     // Set w-terms to zero
@@ -131,7 +132,7 @@ int test01()
     proxy.transform(idg::ImageDomainToFourierDomain, grid);
 
     proxy.degridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal);
 
