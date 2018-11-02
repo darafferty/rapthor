@@ -278,7 +278,9 @@ namespace api {
             // Create plans
             if (omp_get_thread_num() == 0) {
                 for (int i = 0; i < nr_channel_groups; i++) {
+#ifndef NDEBUG
                     std::cout << "planning channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+#endif
                     Plan* plan = new Plan(
                         m_kernel_size,
                         m_subgridsize,
@@ -309,6 +311,7 @@ namespace api {
                         m_proxy->initialize(
                             *plan,
                             m_wStepInLambda,
+                            m_shift,
                             m_cellHeight,
                             m_kernel_size,
                             m_subgridsize,
@@ -323,7 +326,9 @@ namespace api {
                     }
 
                     // Start flush
+#ifndef NDEBUG
                     std::cout << "gridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+#endif
                     Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
                     auto nr_baselines = visibilities_src.get_z_dim();
                     auto nr_timesteps = visibilities_src.get_y_dim();
@@ -338,6 +343,7 @@ namespace api {
                     m_proxy->run_gridding(
                         *plan,
                         m_wStepInLambda,
+                        m_shift,
                         m_cellHeight,
                         m_kernel_size,
                         m_subgridsize,

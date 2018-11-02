@@ -39,6 +39,7 @@ namespace api {
             size_t width,
             float cellsize,
             float max_w,
+            float shiftl, float shiftm, float shiftp,
             options_type &options) = 0;
 
         virtual void init_buffers(

@@ -25,7 +25,6 @@
 #include "idg-fft.h"
 #include "npy.hpp"
 
-
 extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
                     int* lda, int* ipiv, int *info );
 
@@ -130,6 +129,7 @@ namespace api {
         size_t size,
         float cell_size,
         float max_w,
+        float shiftl, float shiftm, float shiftp,
         options_type &options)
     {
         const float taper_kernel_size = 7.0;
@@ -155,7 +155,9 @@ namespace api {
             m_padded_size = nextcomposite(std::ceil(m_size * padding));
         }
 
+#ifndef NDEBUG
         std::cout << "m_padded_size: " << m_padded_size << std::endl;
+#endif
         // 
         m_cell_size = cell_size;
         m_image_size = m_cell_size * m_padded_size;
@@ -176,9 +178,14 @@ namespace api {
         //restrict nr w layers
         if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
+#ifndef NDEBUG
         std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+#endif
 
         m_w_step = max_w / nr_w_layers;
+        m_shift[0] = shiftl;
+        m_shift[1] = shiftm;
+        m_shift[2] = shiftp;
         w_kernel_size = 0.5*m_w_step * m_image_size * m_image_size;
 
         // DEBUG no w-stacking
@@ -271,6 +278,7 @@ namespace api {
             buffer->set_stations(nr_stations);
             buffer->set_cell_size(m_cell_size, m_cell_size);
             buffer->set_w_step(m_w_step);
+            buffer->set_shift(m_shift);
             buffer->set_kernel_size(m_kernel_size);
             buffer->set_spheroidal(m_subgridsize, m_subgridsize, taper.data());
             buffer->set_grid(&m_grid);
@@ -299,22 +307,44 @@ namespace api {
         return m_degridderbuffers[i].get();
     }
 
+    // Copy of compute_n in Common/Math.h
+    inline float compute_n(
+        float l,
+        float m,
+        const float* __restrict__ shift)
+    {
+        const float lc = l + shift[0];
+        const float mc = m + shift[1];
+        const float tmp = (lc * lc) + (mc * mc);
+        return tmp > 1.0 ? 1.0 : 1.0 - sqrtf(1.0 - tmp) + shift[2];
+        
+        // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
+        // accurately for small values of l and m
+        //return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
+    }
+    
     void BufferSetImpl::set_image(const double* image, bool do_scale)
     {
         double runtime = -omp_get_wtime();
+#ifndef NDEBUG
         std::cout << std::setprecision(3);
+#endif
 
         const int nr_w_layers = m_grid.get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
         // Convert from stokes to linear into w plane 0
+#ifndef NDEBUG
         std::cout << "set grid from image" << std::endl;
+#endif
         double runtime_copy = -omp_get_wtime();
         m_grid.init(0.0);
         if (do_scale)
         {
+#ifndef NDEBUG
             std::cout << "scale: " << (*m_scalar_beam)[0] << std::endl;
+#endif
             #pragma omp parallel for
             for (int y = 0; y < m_size; y++) {
                 for (int x = 0; x < m_size; x++) {
@@ -354,12 +384,16 @@ namespace api {
             } // end for y
         }
         runtime_copy += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << "runtime:" << runtime_copy << std::endl;
+#endif
 
         // Copy to other w planes and multiply by w term
         double runtime_stacking = -omp_get_wtime();
         for (int w = nr_w_layers - 1; w >= 0; w--) {
+#ifndef NDEBUG
             std::cout << "unstacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
+#endif
 
             #pragma omp parallel for
             for(int y = 0; y < m_size; y++) {
@@ -370,8 +404,9 @@ namespace api {
                     const float m = (x-((int)m_size/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
-                    const float tmp = (l * l) + (m * m);
-                    const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
+                    const float n = compute_n(l, m, m_shift);
+                    //const float tmp = (l * l) + (m * m);
+                    //const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
                     float phase = 2*M_PI*n*w_offset;
 
                     // Compute phasor
@@ -389,42 +424,58 @@ namespace api {
             } // end for y
         } // end for w
         runtime_stacking += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
+#endif
 
         // Fourier transform w layers
+#ifndef NDEBUG
         std::cout << "fft w_layers";
+#endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
         fft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         runtime_fft += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << ", runtime: " << runtime_fft << std::endl;
+#endif
 
         // Report overall runtime
         runtime += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
+#endif
     };
 
     void BufferSetImpl::get_image(double* image) 
     {
         double runtime = -omp_get_wtime();
+#ifndef NDEBUG
         std::cout << std::setprecision(3);
+#endif
 
         const int nr_w_layers = m_grid.get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
         // Fourier transform w layers
+#ifndef NDEBUG
         std::cout << "ifft w_layers";
+#endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
         ifft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
         runtime_fft += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << ", runtime: " << runtime_fft << std::endl;
+#endif
 
         // Stack w layers
         double runtime_stacking = -omp_get_wtime();
         for (int w = 0; w < nr_w_layers; w++) {
+#ifndef NDEBUG
             std::cout << "stacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
+#endif
             #pragma omp parallel for
             for (int y = 0; y < m_size; y++) {
                 for (int x = 0; x < m_size; x++) {
@@ -432,10 +483,11 @@ namespace api {
                     const float w_offset = (w+0.5)*m_w_step;
                     const float l = (y-((int)m_size/2)) * m_cell_size;
                     const float m = (x-((int)m_size/2)) * m_cell_size;
+                    const float n = compute_n(l, m, m_shift);
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
-                    const float tmp = (l * l) + (m * m);
-                    const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
+                    //const float tmp = (l * l) + (m * m);
+                    //const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
                     const float phase = -2*M_PI*n*w_offset;
 
                     // Compute phasor
@@ -461,11 +513,15 @@ namespace api {
             } // end for y
         } // end for w
         runtime_stacking += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
+#endif
 
 
         // Copy grid to image
+#ifndef NDEBUG
         std::cout << "set image from grid";
+#endif
         double runtime_copy = -omp_get_wtime();
         #pragma omp parallel for
         for (int y = 0; y < m_size; y++) {
@@ -481,11 +537,15 @@ namespace api {
             } // end for x
         } // end for y
         runtime_copy += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << ", runtime: " << runtime_copy << std::endl;
+#endif
 
         // Report overall runtime
         runtime += omp_get_wtime();
+#ifndef NDEBUG
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
+#endif
     }
 
     void BufferSetImpl::finished()

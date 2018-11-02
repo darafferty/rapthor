@@ -135,7 +135,10 @@ namespace api {
             // Create plans
             if (omp_get_thread_num() == 0) {
                 for (int i = 0; i < nr_channel_groups; i++) {
-                    std::cout << "planning channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+#ifndef NDEBUG
+                    std::cout << "planning channels: " << m_channel_groups[i].first << "-" <<
+ m_channel_groups[i].second << std::endl;
+#endif
                     Plan* plan = new Plan(
                         m_kernel_size,
                         m_subgridsize,
@@ -165,6 +168,7 @@ namespace api {
                         m_proxy->initialize(
                             *plan,
                             m_wStepInLambda,
+                            m_shift,
                             m_cellHeight,
                             m_kernel_size,
                             m_subgridsize,
@@ -179,10 +183,13 @@ namespace api {
                     }
 
                     // Start flush
+#ifndef NDEBUG
                     std::cout << "degridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
+#endif
                     m_proxy->run_degridding(
                         *plan,
                         m_wStepInLambda,
+                        m_shift,
                         m_cellHeight,
                         m_kernel_size,
                         m_subgridsize,
@@ -309,8 +316,8 @@ namespace api {
     {
         #if defined(DEBUG)
         cout << "FINISHED READING: buffer full " << m_buffer_full << endl;
-        #endif
         cout << "m_row_ids_to_data size: " << m_row_ids_to_data.size() << endl;
+        #endif
         m_row_ids_to_data.clear();
         m_data_read = true;
     }
