@@ -39,6 +39,7 @@ class Generic(Proxy):
     def _cwrap_griddding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -71,6 +72,7 @@ class Generic(Proxy):
         lib.OpenCL_Generic_gridding(
             self.obj,
             ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),
@@ -108,6 +110,7 @@ class Generic(Proxy):
     def _cwrap_degridding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -143,6 +146,7 @@ class Generic(Proxy):
         lib.OpenCL_Generic_degridding(
             self.obj,
             ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),
