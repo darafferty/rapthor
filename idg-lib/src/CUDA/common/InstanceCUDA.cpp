@@ -491,7 +491,7 @@ namespace idg {
                 unsigned dist = size * size;
 
                 // Plan bulk fft
-                if (batch > fft_bulk) {
+                if (batch >= fft_bulk) {
                     if (fft_plan_bulk) {
                         delete fft_plan_bulk;
                     }
