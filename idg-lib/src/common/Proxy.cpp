@@ -18,7 +18,7 @@ namespace idg {
         void Proxy::gridding(
             const Plan& plan,
             const float w_step, // in lambda
-            const float* __restrict__ shift,
+            const Array1D<float>& shift,
             const float cell_size, // TODO: unit?
             const unsigned int kernel_size, // full width in pixels
             const unsigned int subgrid_size,
@@ -43,7 +43,7 @@ namespace idg {
 
         void Proxy::gridding(
             const float w_step,
-            const float* __restrict__ shift,
+            const Array1D<float>& shift,
             const float cell_size,
             const unsigned int kernel_size,
             const unsigned int subgrid_size,
@@ -93,7 +93,7 @@ namespace idg {
 
         void Proxy::gridding(
             float w_step,
-            const float* __restrict__ shift,
+            float* shift,
             float cell_size,
             unsigned int kernel_size,
             unsigned int subgrid_size,
@@ -151,6 +151,8 @@ namespace idg {
                 spheroidal_height,
                 spheroidal_width);
 
+            Array1D<float> shift_(
+                shift, 3);
             Array1D<float> frequencies_(
                 frequencies, frequencies_nr_channels);
             Array3D<Visibility<std::complex<float>>> visibilities_(
@@ -172,7 +174,7 @@ namespace idg {
 
             gridding(
                 w_step,
-                shift,
+                shift_,
                 cell_size,
                 kernel_size,
                 subgrid_size,
@@ -190,7 +192,7 @@ namespace idg {
         void Proxy::degridding(
             const Plan& plan,
             const float w_step, // in lambda
-            const float* __restrict__ shift,
+            const Array1D<float>& shift,
             const float cell_size, // TODO: unit?
             unsigned int kernel_size, // full width in pixels
             unsigned int subgrid_size,
@@ -215,7 +217,7 @@ namespace idg {
 
         void Proxy::degridding(
             const float w_step,
-            const float* __restrict__ shift,
+            const Array1D<float>& shift,
             const float cell_size,
             const unsigned int kernel_size,
             const unsigned int subgrid_size,
@@ -264,7 +266,7 @@ namespace idg {
 
         void Proxy::degridding(
             float w_step,
-            const float* __restrict__ shift,
+            float* shift,
             float cell_size,
             unsigned int kernel_size,
             unsigned int subgrid_size,
@@ -322,6 +324,8 @@ namespace idg {
                 spheroidal_height,
                 spheroidal_width);
 
+            Array1D<float> shift_(
+                shift, 3);
             Array1D<float> frequencies_(
                 frequencies, frequencies_nr_channels);
             Array3D<Visibility<std::complex<float>>> visibilities_(
@@ -343,7 +347,7 @@ namespace idg {
 
             degridding(
                 w_step,
-                shift,
+                shift_,
                 cell_size,
                 kernel_size,
                 subgrid_size,
@@ -520,7 +524,7 @@ namespace idg {
         void Proxy::run_gridding(
             const Plan& plan,
             const float w_step,
-            const float* __restrict__ shift,
+            const Array1D<float>& shift,
             const float cell_size,
             const unsigned int kernel_size,
             const unsigned int subgrid_size,
@@ -553,7 +557,7 @@ namespace idg {
         void Proxy::run_degridding(
             const Plan& plan,
             const float w_step,
-            const float* __restrict__ shift,
+            const Array1D<float>& shift,
             const float cell_size,
             const unsigned int kernel_size,
             const unsigned int subgrid_size,

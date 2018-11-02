@@ -42,7 +42,7 @@ namespace idg {
             void CPU::do_gridding(
                 const Plan& plan,
                 const float w_step,
-                const float* __restrict__ shift,
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
@@ -93,6 +93,7 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        const float *shift_ptr = shift.data();
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
@@ -105,7 +106,7 @@ namespace idg {
 
                         // Gridder kernel
                         kernels.run_gridder(
-                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels, nr_stations,
+                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift_ptr, nr_channels, nr_stations,
                             uvw_ptr, wavenumbers_ptr, visibilities_ptr, spheroidal_ptr, aterm_ptr, avg_aterm_ptr,
                             metadata_ptr, subgrids_ptr);
 
@@ -159,7 +160,7 @@ namespace idg {
             void CPU::do_degridding(
                 const Plan& plan,
                 const float w_step,
-                const float* __restrict__ shift,
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
@@ -210,6 +211,7 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        const float *shift_ptr = shift.data();
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
@@ -236,7 +238,7 @@ namespace idg {
                             subgrid_size,
                             image_size,
                             w_step,
-                            shift,
+                            shift_ptr,
                             nr_channels,
                             nr_stations,
                             uvw_ptr,
