@@ -352,7 +352,7 @@ void run()
                             clog << ">>> Run gridding" << endl;
                             double runtime_gridding = -omp_get_wtime();
                             proxy.gridding(
-                                *plan, w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
+                                *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                                 frequencies, visibilities, uvw, baselines,
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
@@ -362,7 +362,7 @@ void run()
                             clog << ">>> Run degridding" << endl;
                             double runtime_degridding = -omp_get_wtime();
                             proxy.degridding(
-                                *plan, w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
+                                *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                                 frequencies, visibilities, uvw, baselines,
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());

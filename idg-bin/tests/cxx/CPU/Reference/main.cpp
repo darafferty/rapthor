@@ -132,7 +132,7 @@ int test01()
     proxy.transform(idg::ImageDomainToFourierDomain, grid);
 
     proxy.degridding(
-        w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
+        w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal);
 
