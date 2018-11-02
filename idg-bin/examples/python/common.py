@@ -93,10 +93,10 @@ def plot_metadata(
 # gridding
 ##########
 def gridding(
-        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.gridding(
-        w_step, cell_size, kernel_size, subgrid_size,
+        w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     util.plot_grid(grid, scaling='log')
@@ -109,11 +109,11 @@ def gridding(
 # degridding
 ############
 def degridding(
-        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.transform(idg.ImageDomainToFourierDomain, grid)
     p.degridding(
-        w_step, cell_size, kernel_size, subgrid_size,
+        w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_visibilities(visibilities)
@@ -192,6 +192,7 @@ def main(proxyname):
     visibilities   = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, frequencies)
+    shift          = numpy.zeros(3, dtype=float)
 
     ######################################################################
     # plot data
@@ -208,11 +209,11 @@ def main(proxyname):
     # routines
     ######################################################################
     gridding(
-        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     plt.show()
