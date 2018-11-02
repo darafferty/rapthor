@@ -37,6 +37,7 @@ namespace api {
           m_gridWidth(0),
           m_subgridsize(bufferset->m_subgridsize),
           m_wStepInLambda(0.0f),
+          m_shift(3),
           m_cellHeight(0.0f),
           m_cellWidth(0.0f),
           m_kernel_size(0),
@@ -120,12 +121,12 @@ namespace api {
     
     void BufferImpl::set_shift(const float* shift)
     {
-        m_shift[0] = shift[0];
-        m_shift[1] = shift[1];
-        m_shift[2] = shift[2];
+        m_shift(0) = shift[0];
+        m_shift(1) = shift[1];
+        m_shift(2) = shift[2];
     }
     
-    const float* BufferImpl::get_shift() const
+    const idg::Array1D<float>& BufferImpl::get_shift() const
     {
         return m_shift;
     }

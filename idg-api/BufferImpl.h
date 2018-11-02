@@ -66,7 +66,7 @@ namespace api {
         float get_w_step() const;
         
         void set_shift(const float* shift);
-        const float* get_shift() const;
+        const idg::Array1D<float>& get_shift() const;
 
         void set_kernel_size(float size);
         float get_kernel_size() const;
@@ -161,7 +161,7 @@ namespace api {
         float  m_cellHeight;
         float  m_cellWidth;
         float  m_wStepInLambda;
-        float  m_shift[3];
+        Array1D<float> m_shift;
         float  m_kernel_size;
         std::vector<unsigned int>  m_default_aterm_offsets;
         std::vector<unsigned int>  m_aterm_offsets;

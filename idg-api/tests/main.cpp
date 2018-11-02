@@ -22,7 +22,11 @@ int main(int argc, char *argv[])
     unsigned int aterm_steps = 3; // Change a-term every 3 time steps
     unsigned int nr_aterms = ceil(nr_timesteps/aterm_steps);
 
-    bufferset->init(imagesize, cellsize, max_w, options);
+    float shiftl = 0;
+    float shiftm = 0;
+    float shiftp = 0;
+
+    bufferset->init(imagesize, cellsize, max_w, shiftl, shiftm, shiftp, options);
 
     bufferset->init_buffers(buffersize,
                             bands,
