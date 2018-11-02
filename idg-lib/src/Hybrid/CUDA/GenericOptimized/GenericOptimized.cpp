@@ -100,6 +100,7 @@ namespace idg {
             void GenericOptimized::initialize(
                 const Plan& plan,
                 const float w_step,
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
@@ -379,6 +380,7 @@ namespace idg {
             void GenericOptimized::run_gridding(
                 const Plan& plan,
                 const float w_step,
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
@@ -541,6 +543,7 @@ namespace idg {
             void GenericOptimized::do_gridding(
                 const Plan& plan,
                 const float w_step, // in lambda
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const unsigned int subgrid_size,
@@ -561,6 +564,7 @@ namespace idg {
                 initialize(
                     plan,
                     w_step,
+                    shift,
                     cell_size,
                     kernel_size,
                     subgrid_size,
@@ -577,6 +581,7 @@ namespace idg {
                 run_gridding(
                     plan,
                     w_step,
+                    shift,
                     cell_size,
                     kernel_size,
                     subgrid_size,
@@ -600,6 +605,7 @@ namespace idg {
             void GenericOptimized::run_degridding(
                 const Plan& plan,
                 const float w_step,
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size,
                 const unsigned int subgrid_size,
@@ -759,6 +765,7 @@ namespace idg {
             void GenericOptimized::do_degridding(
                 const Plan& plan,
                 const float w_step, // in lambda
+                const Array1D<float>& shift,
                 const float cell_size,
                 const unsigned int kernel_size, // full width in pixels
                 const unsigned int subgrid_size,
@@ -779,6 +786,7 @@ namespace idg {
                 initialize(
                     plan,
                     w_step,
+                    shift,
                     cell_size,
                     kernel_size,
                     subgrid_size,
@@ -795,6 +803,7 @@ namespace idg {
                 run_degridding(
                     plan,
                     w_step,
+                    shift,
                     cell_size,
                     kernel_size,
                     subgrid_size,

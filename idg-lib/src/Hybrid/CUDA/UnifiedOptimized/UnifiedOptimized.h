@@ -20,6 +20,7 @@ namespace idg {
                     virtual void do_gridding(
                         const Plan& plan,
                         const float w_step, // in lambda
+                        const Array1D<float>& shift,
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const unsigned int subgrid_size,
@@ -35,6 +36,7 @@ namespace idg {
                     virtual void do_degridding(
                         const Plan& plan,
                         const float w_step, // in lambda
+                        const Array1D<float>& shift,
                         const float cell_size,
                         const unsigned int kernel_size, // full width in pixels
                         const unsigned int subgrid_size,

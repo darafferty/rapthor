@@ -8,7 +8,8 @@ extern "C" {
 
     void HybridCUDA_GenericOptimized_gridding(
         ProxyType* p,
-        float w_offset,
+        float w_step,
+        float* shift,
         const float cell_size,
         unsigned int kernel_size,
         unsigned int subgrid_size,
@@ -43,7 +44,8 @@ extern "C" {
         unsigned int spheroidal_width)
     {
         p->gridding(
-            w_offset,
+            w_step,
+            shift,
             cell_size,
             kernel_size,
             subgrid_size,
@@ -81,7 +83,8 @@ extern "C" {
 
      void HybridCUDA_GenericOptimized_degridding(
         ProxyType* p,
-        float w_offset,
+        float w_step,
+        float* shift,
         const float cell_size,
         unsigned int kernel_size,
         unsigned int subgrid_size,
@@ -116,7 +119,8 @@ extern "C" {
         unsigned int spheroidal_width)
     {
         p->degridding(
-            w_offset,
+            w_step,
+            shift,
             cell_size,
             kernel_size,
             subgrid_size,
