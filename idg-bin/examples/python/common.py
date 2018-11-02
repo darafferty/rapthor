@@ -93,10 +93,10 @@ def plot_metadata(
 # gridding
 ##########
 def gridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.gridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_step, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     util.plot_grid(grid, scaling='log')
@@ -109,11 +109,11 @@ def gridding(
 # degridding
 ############
 def degridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.transform(idg.ImageDomainToFourierDomain, grid)
     p.degridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_step, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_visibilities(visibilities)
@@ -133,7 +133,7 @@ def main(proxyname):
     integration_time = get_integration_time()
     kernel_size      = get_kernel_size()
     nr_correlations  = get_nr_correlations()
-    w_offset         = 0.0
+    w_step         = 0.0
     layout_file           = get_layout_file()
     nr_stations_limit     = get_nr_stations_limit()
     baseline_length_limit = get_baseline_length_limit()
@@ -208,11 +208,11 @@ def main(proxyname):
     # routines
     ######################################################################
     gridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     plt.show()
