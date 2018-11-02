@@ -17,6 +17,7 @@ class Proxy(object):
     def gridding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -82,6 +83,7 @@ class Proxy(object):
         # call C function to do the work
         self._cwrap_griddding(
             w_step,
+            shift,
             cell_size,
             kernel_size,
             subgrid_size,
@@ -119,6 +121,7 @@ class Proxy(object):
     def degridding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -184,6 +187,7 @@ class Proxy(object):
         # call C function to do the work
         self._cwrap_degridding(
             w_step,
+            shift,
             cell_size,
             kernel_size,
             subgrid_size,
@@ -246,6 +250,7 @@ class Proxy(object):
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_gridding(
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -283,6 +288,7 @@ class Proxy(object):
     # Wrapper to C function (override for each class inheriting from this)
     def _cwrap_degridding(
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
