@@ -301,8 +301,8 @@ namespace idg {
 
                     // Subgrid FFT
                     const unsigned fft_bulk = 1024;
-                    unsigned fft_batch;
-                    unsigned fft_size;
+                    unsigned fft_batch = 0;
+                    unsigned fft_size  = 0;
                     cufft::C2C_2D *fft_plan_bulk;
                     cufft::C2C_2D *fft_plan_misc;
 

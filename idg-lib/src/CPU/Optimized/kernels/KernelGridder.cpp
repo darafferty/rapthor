@@ -16,6 +16,7 @@ void kernel_gridder(
     const int                        subgrid_size,
     const float                      image_size,
     const float                      w_step_in_lambda,
+    const float* __restrict__        shift,
     const int                        nr_channels,
     const int                        nr_stations,
     const idg::UVWCoordinate<float>* uvw,
@@ -47,7 +48,7 @@ void kernel_gridder(
 
         l_[i] = compute_l(x, subgrid_size, image_size);
         m_[i] = compute_m(y, subgrid_size, image_size);
-        n_[i] = compute_n(l_[i], m_[i]);
+        n_[i] = compute_n(l_[i], m_[i], shift);
     }
 
     // Iterate all subgrids

@@ -28,6 +28,23 @@ inline float FUNCTION_ATTRIBUTES compute_n(
     return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
 }
 
+/**
+ * Calculates n from l, m and the 3 shift parameters.
+ * result = 1 - sqrt(1 - lc^2 - mc^2) + pshift
+ * with lc = l + lshift, mc = m + mshift
+ * @param shift array of size 3 with [lshift, mshift, pshift] parameters
+ */
+inline float FUNCTION_ATTRIBUTES compute_n(
+    float l,
+    float m,
+    const float* __restrict__ shift)
+{
+    const float lc = l + shift[0];
+    const float mc = m + shift[1];
+    const float tmp = (lc * lc) + (mc * mc);
+    return tmp > 1.0 ? 1.0 : 1.0 - sqrtf(1.0 - tmp) + shift[2];
+}
+
 template <typename T> FUNCTION_ATTRIBUTES inline void apply_aterm(
     const T aXX1, const T aXY1,
     const T aYX1, const T aYY1,

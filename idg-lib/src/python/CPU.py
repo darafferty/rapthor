@@ -38,6 +38,7 @@ class Reference(Proxy):
     def _cwrap_griddding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -70,6 +71,7 @@ class Reference(Proxy):
         lib.CPU_Reference_gridding(
             self.obj,
             ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),
@@ -107,6 +109,7 @@ class Reference(Proxy):
     def _cwrap_degridding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -142,6 +145,7 @@ class Reference(Proxy):
         lib.CPU_Reference_degridding(
             self.obj,
             ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),
@@ -218,6 +222,7 @@ class Optimized(Proxy):
     def _cwrap_griddding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -250,6 +255,7 @@ class Optimized(Proxy):
         lib.CPU_Optimized_gridding(
             self.obj,
             ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),
@@ -287,6 +293,7 @@ class Optimized(Proxy):
     def _cwrap_degridding(
         self,
         w_step,
+        shift,
         cell_size,
         kernel_size,
         subgrid_size,
@@ -322,6 +329,7 @@ class Optimized(Proxy):
         lib.CPU_Optimized_degridding(
             self.obj,
             ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),

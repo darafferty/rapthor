@@ -111,8 +111,8 @@ namespace idg {
             } // end load_kernel_funcions
 
             // Function signatures
-            #define sig_gridder         (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder       (void (*)(int,int,int,float,float,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_gridder         (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*))
             #define sig_fft		        (void (*)(long,long,long,void*,int))
             #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
             #define sig_splitter        (void (*)(long,long,int,void*,void*,void*))
@@ -126,6 +126,7 @@ namespace idg {
                 int subgrid_size,
                 float image_size,
                 float w_step,
+                const float* shift,
                 int nr_channels,
                 int nr_stations,
                 void *uvw,
@@ -140,7 +141,7 @@ namespace idg {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
                 (sig_gridder (void *) *function_gridder)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, avg_aterm, metadata, subgrid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_gridder(states[0], states[1]); }
@@ -152,6 +153,7 @@ namespace idg {
                 int subgrid_size,
                 float image_size,
                 float w_step,
+                const float* shift,
                 int nr_channels,
                 int nr_stations,
                 void *uvw,
@@ -165,7 +167,7 @@ namespace idg {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
                 (sig_degridder (void *) *function_degridder)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels, nr_stations,
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_degridder(states[0], states[1]); }
