@@ -137,6 +137,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         idg::get_example_aterms_offsets(optimized, nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
+    idg::Array1D<float> shift(3); // zero shift
     idg::Grid grid =
         optimized.get_grid(1, nr_correlations, grid_size, grid_size);
     idg::Grid grid_ref =
@@ -153,13 +154,13 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     // Run gridder
     std::clog << ">>> Run gridding" << std::endl;
     optimized.gridding(
-         plan, w_offset, cell_size, kernel_size, subgrid_size,
+         plan, w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
          frequencies, visibilities, uvw, baselines,
          grid, aterms, aterms_offsets, spheroidal);
 
     std::clog << ">>> Run reference gridding" << std::endl;
     reference.gridding(
-         plan, w_offset, cell_size, kernel_size, subgrid_size,
+         plan, w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
          frequencies, visibilities, uvw, baselines,
          grid_ref, aterms, aterms_offsets, spheroidal);
 
@@ -174,13 +175,13 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     memset(visibilities.data(), 0, visibilities.bytes());
     memset(visibilities_ref.data(), 0, visibilities_ref.bytes());
     optimized.degridding(
-        plan, w_offset, cell_size, kernel_size, subgrid_size,
+        plan, w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal);
 
     std::clog << ">>> Run reference degridding" << std::endl;
     reference.degridding(
-        plan, w_offset, cell_size, kernel_size, subgrid_size,
+        plan, w_offset, shift.data(), cell_size, kernel_size, subgrid_size,
         frequencies, visibilities_ref, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal);
 
