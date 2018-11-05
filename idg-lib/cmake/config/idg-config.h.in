@@ -1,0 +1,36 @@
+#ifndef IDG_CONFIG_H_
+#define IDG_CONFIG_H_
+
+#define IDG_VERSION "@VERSION@"
+
+#define IDG_SOURCE_DIR "@CMAKE_SOURCE_DIR@"
+#define IDG_BINARY_DIR "@CMAKE_BINARY_DIR@"
+#define IDG_INSTALL_DIR "@CMAKE_INSTALL_PREFIX@"
+#define IDG_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+
+#cmakedefine BUILD_LIB_CPU
+#cmakedefine BUILD_LIB_CUDA
+#cmakedefine BUILD_LIB_OPENCL
+#cmakedefine BUILD_WITH_PYTHON
+#cmakedefine REPORT_VERBOSE
+#cmakedefine REPORT_TOTAL
+#cmakedefine REPORT_OPS
+#cmakedefine COMPILE_VERBOSE
+
+#cmakedefine CLANG_CXX_COMPILER
+#cmakedefine GNU_CXX_COMPILER
+#cmakedefine INTEL_CXX_COMPILER
+#cmakedefine MSVC_CXX_COMPILER
+
+#cmakedefine HAVE_MKL
+#define MKL_INCLUDE_DIRS "@MKL_INCLUDE_DIRS@"
+#define MKL_LIB_DIR "@MKL_LIB_DIR@"
+
+#cmakedefine HAVE_FFTW
+#define FFTW3_INCLUDE_DIR "@FFTW3_INCLUDE_DIR@"
+#define FFTW3_LIB "@FFTW3_LIBRARY@"
+#define FFTW3F_LIB "@FFTW3F_LIBRARY@"
+
+#cmakedefine HAVE_POWERSENSOR
+
+#endif

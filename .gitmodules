@@ -1,6 +1,3 @@
-[submodule "idg-lib"]
-	path = idg-lib
-	url = ../idg-lib.git
 [submodule "idg-api"]
 	path = idg-api
 	url = ../idg-api.git
