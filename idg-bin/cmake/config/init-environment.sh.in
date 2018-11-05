@@ -1,0 +1,17 @@
+# Usage: $source init-environment
+# sources this file to set your enviroment for easy usage of libidg
+
+export LD_LIBRARY_PATH=@CMAKE_INSTALL_PREFIX@/lib:$LD_LIBRARY_PATH
+export PATH=@CMAKE_INSTALL_PREFIX@/bin/examples/cxx:$PATH
+
+if [ "@BUILD_WITH_TESTS@"=="ON" ]; then
+    export PATH=@CMAKE_INSTALL_PREFIX@/bin/tests/cxx:$PATH
+fi
+
+if [ "@BUILD_WITH_PYTHON@"=="ON" ]; then
+    export PYTHONPATH=@CMAKE_INSTALL_PREFIX@/lib/python2.7/dist-packages:$PYTHONPATH
+    export PATH=@CMAKE_INSTALL_PREFIX@/bin/examples/python:$PATH
+    if [ "@BUILD_WITH_TESTS@"=="ON" ]; then
+        export PATH=@CMAKE_INSTALL_PREFIX@/bin/tests/python:$PATH
+    fi
+fi
