@@ -1,0 +1,6 @@
+#ifndef IDG_UTIL_CONFIG_H_
+#define IDG_UTIL_CONFIG_H_
+
+#define IDG_DATA_DIR "@CMAKE_INSTALL_PREFIX@/data"
+
+#endif
