@@ -1,0 +1,12 @@
+image: ubuntu:16.04
+
+before_script:
+  - apt-get update && apt-get install -y g++ cmake libfftw3-dev
+
+idg:
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make
+    - make install
