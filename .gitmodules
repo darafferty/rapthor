@@ -1,9 +1,6 @@
 [submodule "idg-lib"]
 	path = idg-lib
 	url = ../idg-lib.git
-[submodule "idg-util"]
-	path = idg-util
-	url = ../idg-util.git
 [submodule "idg-bin"]
 	path = idg-bin
 	url = ../idg-bin.git
