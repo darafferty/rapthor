@@ -23,7 +23,7 @@ extern "C" {
     {
         idg::Array2D<idg::UVWCoordinate<float>> uvw(
             (idg::UVWCoordinate<float> *) ptr, nr_baselines, nr_timesteps);
-        idg::Data data(0);
+        idg::Data data;
         data.get_uvw(uvw, 0, 0, integration_time);
     }
 

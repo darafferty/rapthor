@@ -173,7 +173,7 @@ namespace idg {
 
         Array2D<UVWCoordinate<float>> uvw(ptr, nr_baselines, nr_timesteps);
 
-        Data data(0);
+        Data data;
         data.get_uvw(uvw);
 
         return uvw;
