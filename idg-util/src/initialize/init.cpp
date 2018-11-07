@@ -629,6 +629,18 @@ namespace idg {
         }
     }
 
+    Array2D<UVWCoordinate<float>> Data::get_uvw(
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        unsigned int baseline_offset,
+        unsigned int time_offset,
+        float integration_time) const
+    {
+        Array2D<UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
+        get_uvw(uvw, baseline_offset, time_offset, integration_time);
+        return uvw;
+    }
+
     void Data::get_uvw(
         Array2D<UVWCoordinate<float>>& uvw,
         unsigned int baseline_offset,

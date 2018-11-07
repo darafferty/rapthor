@@ -173,6 +173,13 @@ namespace idg {
                 Array1D<float>& frequencies,
                 unsigned int channel_offset = 0) const;
 
+            Array2D<UVWCoordinate<float>> get_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int baseline_offset = 0,
+                unsigned int time_offset = 0,
+                float integration_time = INTEGRATION_TIME) const;
+
             void get_uvw(
                 Array2D<UVWCoordinate<float>>& uvw,
                 unsigned int baseline_offset = 0,
