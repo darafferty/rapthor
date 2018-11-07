@@ -7,144 +7,6 @@
 
 namespace idg {
 
-    void init_example_uvw(
-        void *ptr,
-        unsigned int nr_stations,
-        unsigned int nr_baselines,
-        unsigned int nr_timesteps,
-        float integration_time)
-    {
-        UVWCoordinate<float> *uvw = (UVWCoordinate<float> *) ptr;
-
-        // Try to load layout file from environment
-        char *cstr_layout_file = getenv(ENV_LAYOUT_FILE);
-
-        // Check whether layout file exists
-        char filename[512];
-        if (cstr_layout_file) {
-            sprintf(filename, "%s/%s", IDG_DATA_DIR, cstr_layout_file);
-        } else {
-            sprintf(filename, "%s/%s", IDG_DATA_DIR, LAYOUT_FILE);
-        }
-
-        if (!uvwsim_file_exists(filename)) {
-            std::cerr << "Unable to find specified layout file: "
-                      << filename << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        // Read the number of stations in the layout file.
-        unsigned nr_stations_file = uvwsim_get_num_stations(filename);
-
-        // Check wheter the requested number of station is feasible
-        if (nr_stations_file < nr_stations) {
-           std::cerr << "More stations requested than present in layout file: "
-                     << "(" << nr_stations_file << ")" << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        // Allocate memory for antenna coordinates
-        double *x = (double*) malloc(nr_stations_file * sizeof(double));
-        double *y = (double*) malloc(nr_stations_file * sizeof(double));
-        double *z = (double*) malloc(nr_stations_file * sizeof(double));
-
-        // Load the antenna coordinates
-        #if defined(DEBUG)
-        printf("looking for stations file in: %s\n", filename);
-        #endif
-
-        unsigned nr_stations_read = uvwsim_load_station_coords(filename, nr_stations_file, x, y, z);
-        if (nr_stations_read != nr_stations_file) {
-            std::cerr << "Failed to read antenna coordinates." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        // Select some antennas randomly when not all antennas are requested
-        if (nr_stations < nr_stations_file) {
-            // Allocate memory for selection of antenna coordinates
-            double *_x = (double*) malloc(nr_stations * sizeof(double));
-            double *_y = (double*) malloc(nr_stations * sizeof(double));
-            double *_z = (double*) malloc(nr_stations * sizeof(double));
-
-            // Generate nr_stations random numbers
-            int station_number[nr_stations];
-            unsigned i = 0;
-            srandom(RANDOM_SEED);
-            while (i < nr_stations) {
-                int index = nr_stations_file * ((double) random() / RAND_MAX);
-                bool found = true;
-                for (unsigned j = 0; j < i; j++) {
-                    if (station_number[j] == index) {
-                        found = false;
-                        break;
-                    }
-                }
-                if (found) {
-                     station_number[i++] = index;
-                }
-             }
-
-            // Set stations
-            for (unsigned i = 0; i < nr_stations; i++) {
-                _x[i] = x[station_number[i]];
-                _y[i] = y[station_number[i]];
-                _z[i] = z[station_number[i]];
-            }
-
-            // Swap pointers and free memory
-            double *__x = x;
-            double *__y = y;
-            double *__z = z;
-            x = _x;
-            y = _y;
-            z = _z;
-            free(__x);
-            free(__y);
-            free(__z);
-        }
-
-        // Define observation parameters
-        double ra0  = RIGHT_ASCENSION;
-        double dec0 = DECLINATION;
-        double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
-        double obs_length_hours = (nr_timesteps * integration_time) / (3600.0);
-        double obs_length_days = obs_length_hours / 24.0;
-
-        // Allocate memory for baseline coordinates
-        int nr_coordinates = nr_timesteps * nr_baselines;
-        double *uu = (double*) malloc(nr_coordinates * sizeof(double));
-        double *vv = (double*) malloc(nr_coordinates * sizeof(double));
-        double *ww = (double*) malloc(nr_coordinates * sizeof(double));
-
-        // Evaluate baseline uvw coordinates.
-        #pragma omp parallel for
-        for (unsigned t = 0; t < nr_timesteps; t++) {
-            double time_mjd = start_time_mjd + t
-                              * (obs_length_days/(double)nr_timesteps);
-            size_t offset = t * nr_baselines;
-            uvwsim_evaluate_baseline_uvw(
-                &uu[offset], &vv[offset], &ww[offset],
-                nr_stations, x, y, z, ra0, dec0, time_mjd);
-        }
-
-        // Fill UVW datastructure
-        #pragma omp parallel for
-        for (unsigned bl = 0; bl < nr_baselines; bl++) {
-            for (unsigned t = 0; t < nr_timesteps; t++) {
-                int src = t * nr_baselines + bl;
-                int dst = bl * nr_timesteps + t;
-                UVWCoordinate<float> value = {
-                    (float) uu[src], (float) vv[src], (float) ww[src]};
-                uvw[dst] = value;
-            }
-        }
-
-        // Free memory
-        free(x); free(y); free(z);
-        free(uu); free(vv); free(ww);
-    }
-
-
     // Function to compute spheroidal. Based on reference code by BvdT.
     float evaluate_spheroidal(float nu)
     {
@@ -310,8 +172,9 @@ namespace idg {
         UVWCoordinate<float>* ptr = (UVWCoordinate<float>*) proxy.allocate_memory(bytes);
 
         Array2D<UVWCoordinate<float>> uvw(ptr, nr_baselines, nr_timesteps);
-        void *uvw_ptr = uvw.data();
-        init_example_uvw(uvw_ptr, nr_stations, nr_baselines, nr_timesteps, integration_time);
+
+        Data data(0);
+        data.get_uvw(uvw);
 
         return uvw;
     }
@@ -508,8 +371,9 @@ namespace idg {
         float integration_time)
     {
         Array2D<UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
-        void *uvw_ptr = uvw.data();
-        init_example_uvw(uvw_ptr, nr_stations, nr_baselines, nr_timesteps, integration_time);
+
+        Data data(0);
+        data.get_uvw(uvw);
 
         return uvw;
     }
@@ -653,10 +517,9 @@ namespace idg {
         unsigned int nr_stations_limit,
         unsigned int baseline_length_limit,
         std::string layout_file,
-        float start_frequency
-    ) : start_frequency(start_frequency)
+        float start_frequency)
+        : start_frequency(start_frequency)
     {
-
         // Set station_coordinates
         set_station_coordinates(layout_file, nr_stations_limit);
 
