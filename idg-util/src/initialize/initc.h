@@ -18,12 +18,13 @@ extern "C" {
          void *ptr,
          int nr_stations,
          int nr_baselines,
-         int nr_time,
+         int nr_timesteps,
          float integration_time)
     {
-        idg::init_example_uvw(
-            ptr, nr_stations, nr_baselines,
-            nr_time, integration_time);
+        idg::Array2D<idg::UVWCoordinate<float>> uvw(
+            (idg::UVWCoordinate<float> *) ptr, nr_baselines, nr_timesteps);
+        idg::Data data(0);
+        data.get_uvw(uvw, 0, 0, integration_time);
     }
 
     void utils_init_example_frequencies(void *ptr, int nr_channels)
