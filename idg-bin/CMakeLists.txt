@@ -40,6 +40,11 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(MSVC_CXX_COMPILER TRUE)
 endif()
 
+# Set the warning level to all and treat all warnings as errors
+# TODO: setting of the flags is only applied when using a GNU compiler
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND GNU_CXX_COMPILER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+endif()
 
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
