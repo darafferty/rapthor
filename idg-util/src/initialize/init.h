@@ -17,23 +17,12 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 /* Constants */
-#define RANDOM_SEED         1234
+//#define RANDOM_SEED         1234
 #define SPEED_OF_LIGHT      299792458.0
 
 /* Observation parameters */
-#define LAYOUT_DIR          "src/utility/data"
-#define LAYOUT_FILE         "SKA1_low_ecef"
-#define ENV_LAYOUT_FILE     "LAYOUT_FILE"
 #define START_FREQUENCY     150e6
 #define FREQUENCY_INCREMENT 0.7e6
-#define RIGHT_ASCENSION     (10.0 * (M_PI/180.))
-#define DECLINATION         (70.0 * (M_PI/180.))
-#define YEAR                2014
-#define MONTH               03
-#define DAY                 20
-#define HOUR                01
-#define MINUTE              57
-#define SECONDS             1.3
 #define INTEGRATION_TIME    1.0f
 
 namespace idg {
@@ -164,7 +153,7 @@ namespace idg {
              * Constructor
              */
             Data(
-                unsigned int grid_size, // pixels
+                unsigned int grid_size = 0, // pixels
                 unsigned int nr_stations_limit = -1, // infinite
                 unsigned int baseline_length_limit = 65000, // Meter
                 std::string layout_file = "SKA1_low_ecef",
@@ -188,7 +177,7 @@ namespace idg {
                 Array2D<UVWCoordinate<float>>& uvw,
                 unsigned int baseline_offset = 0,
                 unsigned int time_offset = 0,
-                float integration_time = 0.9) const;
+                float integration_time = INTEGRATION_TIME) const;
 
         private:
             /*
