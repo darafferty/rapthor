@@ -98,8 +98,8 @@ int test01()
     clog << endl;
 
     // Set w-terms to zero
-    for (int bl = 0; bl < nr_baselines; bl++) {
-        for (int t = 0; t < nr_timesteps; t++) {
+    for (unsigned bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned t = 0; t < nr_timesteps; t++) {
             uvw(bl, t).w = 0.0f;
         }
     }
