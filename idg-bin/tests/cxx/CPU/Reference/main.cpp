@@ -22,12 +22,15 @@ int test01()
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 1;
-    float image_size             = 0.08;
     unsigned int grid_size       = 512;
     unsigned int subgrid_size    = 24;
-    float cell_size              = image_size / grid_size;
     unsigned int kernel_size     = (subgrid_size / 2) + 1;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
+
+    // Initialize Data object
+    idg::Data data(grid_size);
+    float image_size             = data.get_image_size();
+    float cell_size              = image_size / grid_size;
 
     // Print parameters
     print_parameters(
