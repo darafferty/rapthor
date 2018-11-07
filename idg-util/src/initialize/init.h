@@ -105,10 +105,10 @@ namespace idg {
         Array2D<UVWCoordinate<float>> &uvw,
         Array1D<float> &frequencies,
         float        image_size,
-        int          grid_size,
-        int          nr_point_sources = 4,
-        int          max_pixel_offset = -1,
-        int          random_seed = 2,
+        unsigned int grid_size,
+        unsigned int nr_point_sources = 4,
+        unsigned int max_pixel_offset = -1,
+        unsigned int random_seed = 2,
         float        amplitude = 1);
 
     Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
@@ -150,11 +150,11 @@ namespace idg {
         Array3D<Visibility<std::complex<float>>> &visibilities,
         Array2D<UVWCoordinate<float>> &uvw,
         Array1D<float> &frequencies,
-        float image_size,
-        int   grid_size,
-        float x,
-        float y,
-        float amplitude);
+        float          image_size,
+        unsigned int   grid_size,
+        float          x,
+        float          y,
+        float          amplitude);
 
     class Data {
         typedef struct { double x, y, z; } StationCoordinate;

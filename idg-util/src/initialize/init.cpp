@@ -9,9 +9,9 @@ namespace idg {
 
     void init_example_uvw(
         void *ptr,
-        int nr_stations,
-        int nr_baselines,
-        int nr_time,
+        unsigned int nr_stations,
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
         float integration_time)
     {
         UVWCoordinate<float> *uvw = (UVWCoordinate<float> *) ptr;
@@ -34,7 +34,7 @@ namespace idg {
         }
 
         // Read the number of stations in the layout file.
-        int nr_stations_file = uvwsim_get_num_stations(filename);
+        unsigned nr_stations_file = uvwsim_get_num_stations(filename);
 
         // Check wheter the requested number of station is feasible
         if (nr_stations_file < nr_stations) {
@@ -53,7 +53,8 @@ namespace idg {
         printf("looking for stations file in: %s\n", filename);
         #endif
 
-        if (uvwsim_load_station_coords(filename, nr_stations_file, x, y, z) != nr_stations_file) {
+        unsigned nr_stations_read = uvwsim_load_station_coords(filename, nr_stations_file, x, y, z);
+        if (nr_stations_read != nr_stations_file) {
             std::cerr << "Failed to read antenna coordinates." << std::endl;
             exit(EXIT_FAILURE);
         }
@@ -67,12 +68,12 @@ namespace idg {
 
             // Generate nr_stations random numbers
             int station_number[nr_stations];
-            int i = 0;
+            unsigned i = 0;
             srandom(RANDOM_SEED);
             while (i < nr_stations) {
                 int index = nr_stations_file * ((double) random() / RAND_MAX);
                 bool found = true;
-                for (int j = 0; j < i; j++) {
+                for (unsigned j = 0; j < i; j++) {
                     if (station_number[j] == index) {
                         found = false;
                         break;
@@ -84,7 +85,7 @@ namespace idg {
              }
 
             // Set stations
-            for (int i = 0; i < nr_stations; i++) {
+            for (unsigned i = 0; i < nr_stations; i++) {
                 _x[i] = x[station_number[i]];
                 _y[i] = y[station_number[i]];
                 _z[i] = z[station_number[i]];
@@ -106,20 +107,20 @@ namespace idg {
         double ra0  = RIGHT_ASCENSION;
         double dec0 = DECLINATION;
         double start_time_mjd = uvwsim_datetime_to_mjd(YEAR, MONTH, DAY, HOUR, MINUTE, SECONDS);
-        double obs_length_hours = (nr_time * integration_time) / (3600.0);
+        double obs_length_hours = (nr_timesteps * integration_time) / (3600.0);
         double obs_length_days = obs_length_hours / 24.0;
 
         // Allocate memory for baseline coordinates
-        int nr_coordinates = nr_time * nr_baselines;
+        int nr_coordinates = nr_timesteps * nr_baselines;
         double *uu = (double*) malloc(nr_coordinates * sizeof(double));
         double *vv = (double*) malloc(nr_coordinates * sizeof(double));
         double *ww = (double*) malloc(nr_coordinates * sizeof(double));
 
         // Evaluate baseline uvw coordinates.
         #pragma omp parallel for
-        for (int t = 0; t < nr_time; t++) {
+        for (unsigned t = 0; t < nr_timesteps; t++) {
             double time_mjd = start_time_mjd + t
-                              * (obs_length_days/(double)nr_time);
+                              * (obs_length_days/(double)nr_timesteps);
             size_t offset = t * nr_baselines;
             uvwsim_evaluate_baseline_uvw(
                 &uu[offset], &vv[offset], &ww[offset],
@@ -128,10 +129,10 @@ namespace idg {
 
         // Fill UVW datastructure
         #pragma omp parallel for
-        for (int bl = 0; bl < nr_baselines; bl++) {
-            for (int t = 0; t < nr_time; t++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
+            for (unsigned t = 0; t < nr_timesteps; t++) {
                 int src = t * nr_baselines + bl;
-                int dst = bl * nr_time + t;
+                int dst = bl * nr_timesteps + t;
                 UVWCoordinate<float> value = {
                     (float) uu[src], (float) vv[src], (float) ww[src]};
                 uvw[dst] = value;
@@ -193,15 +194,15 @@ namespace idg {
     // TODO: use real-to-complex and complex-to-real FFT
     void resize_spheroidal(
         float *__restrict__ spheroidal_in,
-        int   size_in,
+        unsigned int        size_in,
         float *__restrict__ spheroidal_out,
-        int   size_out)
+        unsigned int        size_out)
     {
         auto in_ft  = new std::complex<float>[size_in*size_in];
         auto out_ft = new std::complex<float>[size_out*size_out];
 
-        for (int i = 0; i < size_in; i++) {
-            for (int j = 0; j < size_in; j++) {
+        for (unsigned i = 0; i < size_in; i++) {
+            for (unsigned j = 0; j < size_in; j++) {
                 in_ft[i*size_in + j] = spheroidal_in[i*size_in + j];
             }
         }
@@ -209,16 +210,16 @@ namespace idg {
 
         int offset = int((size_out - size_in)/2);
 
-        for (int i = 0; i < size_in; i++) {
-            for (int j = 0; j < size_in; j++) {
+        for (unsigned i = 0; i < size_in; i++) {
+            for (unsigned j = 0; j < size_in; j++) {
                 out_ft[(i+offset)*size_out + (j+offset)] = in_ft[i*size_in + j];
             }
         }
         idg::ifft2f(size_out, out_ft);
 
         float s = 1.0f / (size_in * size_in);
-        for (int i = 0; i < size_out; i++) {
-            for (int j = 0; j < size_out; j++) {
+        for (unsigned i = 0; i < size_out; i++) {
+            for (unsigned j = 0; j < size_out; j++) {
                 spheroidal_out[i*size_out + j] = out_ft[i*size_out + j].real() * s;
             }
         }
@@ -242,7 +243,7 @@ namespace idg {
 
         Array1D<float> frequencies(ptr, nr_channels);
 
-        for (int chan = 0; chan < nr_channels; chan++) {
+        for (unsigned chan = 0; chan < nr_channels; chan++) {
             frequencies(chan) = start_frequency + frequency_increment * chan;
         }
 
@@ -263,9 +264,9 @@ namespace idg {
 
         // Set all visibilities
         #pragma omp parallel for
-        for (int bl = 0; bl < nr_baselines; bl++) {
-            for (int time = 0; time < nr_timesteps; time++) {
-                for (int chan = 0; chan < nr_channels; chan++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
+            for (unsigned time = 0; time < nr_timesteps; time++) {
+                for (unsigned chan = 0; chan < nr_channels; chan++) {
                     visibilities(bl, time, chan) = visibility;
                 }
             }
@@ -283,10 +284,10 @@ namespace idg {
         std::pair<unsigned int, unsigned int>* ptr = (std::pair<unsigned int, unsigned int>*) proxy.allocate_memory(bytes);
         Array1D<std::pair<unsigned int,unsigned int>> baselines(ptr, nr_baselines);
 
-        int bl = 0;
+        unsigned bl = 0;
 
-        for (int station1 = 0 ; station1 < nr_stations; station1++) {
-            for (int station2 = station1 + 1; station2 < nr_stations; station2++) {
+        for (unsigned station1 = 0 ; station1 < nr_stations; station1++) {
+            for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
                 if (bl >= nr_baselines) {
                     break;
                 }
@@ -344,10 +345,10 @@ namespace idg {
         Array4D<Matrix2x2<std::complex<float>>> aterms(ptr, nr_timeslots, nr_stations, height, width);
         const Matrix2x2<std::complex<float>> aterm = {1.0f, 0.0f, 0.0f, 1.0f};
 
-        for (int t = 0; t < nr_timeslots; t++) {
-            for (int ant = 0; ant < nr_stations; ant++) {
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
+        for (unsigned t = 0; t < nr_timeslots; t++) {
+            for (unsigned ant = 0; ant < nr_stations; ant++) {
+                for (unsigned y = 0; y < height; y++) {
+                    for (unsigned x = 0; x < width; x++) {
                         aterms(t, ant, y, x) = aterm;
                     }
                 }
@@ -367,7 +368,7 @@ namespace idg {
 
         Array1D<unsigned int> aterms_offsets(ptr, nr_timeslots + 1);
 
-        for (int time = 0; time < nr_timeslots; time++) {
+        for (unsigned time = 0; time < nr_timeslots; time++) {
              aterms_offsets(time) = time * (nr_timesteps / nr_timeslots);
         }
 
@@ -389,21 +390,21 @@ namespace idg {
 
         // Evaluate rows
         float y[height];
-        for (int i = 0; i < height; i++) {
+        for (unsigned i = 0; i < height; i++) {
             float tmp = fabs(-1 + i*2.0f/float(height));
             y[i] = evaluate_spheroidal(tmp);
         }
 
         // Evaluate columns
         float x[width];
-        for (int i = 0; i < width; i++) {
+        for (unsigned i = 0; i < width; i++) {
             float tmp = fabs(-1 + i*2.0f/float(width));
             x[i] = evaluate_spheroidal(tmp);
         }
 
         // Set values
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
+        for (unsigned i = 0; i < height; i++) {
+            for (unsigned j = 0; j < width; j++) {
                  spheroidal(i, j) = y[i]*x[j];
             }
         }
@@ -422,7 +423,7 @@ namespace idg {
     {
         Array1D<float> frequencies(nr_channels);
 
-        for (int chan = 0; chan < nr_channels; chan++) {
+        for (unsigned chan = 0; chan < nr_channels; chan++) {
             frequencies(chan) = start_frequency + frequency_increment * chan;
         }
 
@@ -439,9 +440,9 @@ namespace idg {
 
         // Set all visibilities
         #pragma omp parallel for
-        for (int bl = 0; bl < nr_baselines; bl++) {
-            for (int time = 0; time < nr_timesteps; time++) {
-                for (int chan = 0; chan < nr_channels; chan++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
+            for (unsigned time = 0; time < nr_timesteps; time++) {
+                for (unsigned chan = 0; chan < nr_channels; chan++) {
                     visibilities(bl, time, chan) = visibility;
                 }
             }
@@ -454,10 +455,10 @@ namespace idg {
         Array2D<UVWCoordinate<float>> &uvw,
         Array1D<float> &frequencies,
         float        image_size,
-        int          grid_size,
-        int          nr_point_sources,
-        int          max_pixel_offset,
-        int          random_seed,
+        unsigned int grid_size,
+        unsigned int nr_point_sources,
+        unsigned int max_pixel_offset,
+        unsigned int random_seed,
         float        amplitude)
     {
         unsigned int nr_baselines = uvw.get_y_dim();
@@ -468,7 +469,7 @@ namespace idg {
 
         srand(random_seed);
 
-        for (int i = 0; i < nr_point_sources; i++) {
+        for (unsigned i = 0; i < nr_point_sources; i++) {
             float x_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
             float y_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
 
@@ -484,10 +485,10 @@ namespace idg {
     {
         Array1D<std::pair<unsigned int,unsigned int>> baselines(nr_baselines);
 
-        int bl = 0;
+        unsigned bl = 0;
 
-        for (int station1 = 0 ; station1 < nr_stations; station1++) {
-            for (int station2 = station1 + 1; station2 < nr_stations; station2++) {
+        for (unsigned station1 = 0 ; station1 < nr_stations; station1++) {
+            for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
                 if (bl >= nr_baselines) {
                     break;
                 }
@@ -534,10 +535,10 @@ namespace idg {
         Array4D<Matrix2x2<std::complex<float>>> aterms(nr_timeslots, nr_stations, height, width);
         const Matrix2x2<std::complex<float>> aterm = {1.0f, 0.0f, 0.0f, 1.0f};
 
-        for (int t = 0; t < nr_timeslots; t++) {
-            for (int ant = 0; ant < nr_stations; ant++) {
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
+        for (unsigned t = 0; t < nr_timeslots; t++) {
+            for (unsigned ant = 0; ant < nr_stations; ant++) {
+                for (unsigned y = 0; y < height; y++) {
+                    for (unsigned x = 0; x < width; x++) {
                         aterms(t, ant, y, x) = aterm;
                     }
                 }
@@ -554,7 +555,7 @@ namespace idg {
     {
         Array1D<unsigned int> aterms_offsets(nr_timeslots + 1);
 
-        for (int time = 0; time < nr_timeslots; time++) {
+        for (unsigned time = 0; time < nr_timeslots; time++) {
              aterms_offsets(time) = time * (nr_timesteps / nr_timeslots);
         }
 
@@ -571,8 +572,8 @@ namespace idg {
 
         float value = 1.0;
 
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+        for (unsigned y = 0; y < height; y++) {
+            for (unsigned x = 0; x < width; x++) {
                  spheroidal(y, x) = value;
             }
         }
@@ -588,21 +589,21 @@ namespace idg {
 
         // Evaluate rows
         float y[height];
-        for (int i = 0; i < height; i++) {
+        for (unsigned i = 0; i < height; i++) {
             float tmp = fabs(-1 + i*2.0f/float(height));
             y[i] = evaluate_spheroidal(tmp);
         }
 
         // Evaluate columns
         float x[width];
-        for (int i = 0; i < width; i++) {
+        for (unsigned i = 0; i < width; i++) {
             float tmp = fabs(-1 + i*2.0f/float(width));
             x[i] = evaluate_spheroidal(tmp);
         }
 
         // Set values
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
+        for (unsigned i = 0; i < height; i++) {
+            for (unsigned j = 0; j < width; j++) {
                  spheroidal(i, j) = y[i]*x[j];
             }
         }
@@ -614,24 +615,23 @@ namespace idg {
         Array3D<Visibility<std::complex<float>>> &visibilities,
         Array2D<UVWCoordinate<float>> &uvw,
         Array1D<float> &frequencies,
-        float image_size,
-        int   grid_size,
-        float x,
-        float y,
-        float amplitude)
+        float          image_size,
+        unsigned int   grid_size,
+        float          x,
+        float          y,
+        float          amplitude)
     {
-        int nr_baselines = visibilities.get_z_dim();
-        int nr_timesteps = visibilities.get_y_dim();
-        int nr_channels  = visibilities.get_x_dim();
-        int nr_polarizations = 4;
+        auto nr_baselines = visibilities.get_z_dim();
+        auto nr_timesteps = visibilities.get_y_dim();
+        auto nr_channels  = visibilities.get_x_dim();
 
         float l = x * image_size/grid_size;
         float m = y * image_size/grid_size;
 
         #pragma omp parallel for
-        for (int b = 0; b < nr_baselines; b++) {
-            for (int t = 0; t < nr_timesteps; t++) {
-                for (int c = 0; c < nr_channels; c++) {
+        for (unsigned b = 0; b < nr_baselines; b++) {
+            for (unsigned t = 0; t < nr_timesteps; t++) {
+                for (unsigned c = 0; c < nr_channels; c++) {
                     float u = frequencies(c) * uvw(b,t).u / (SPEED_OF_LIGHT);
                     float v = frequencies(c) * uvw(b,t).v / (SPEED_OF_LIGHT);
                     std::complex<float> value = amplitude *
@@ -653,8 +653,9 @@ namespace idg {
         unsigned int nr_stations_limit,
         unsigned int baseline_length_limit,
         std::string layout_file,
-        float start_frequency_
-    ) {
+        float start_frequency
+    ) : start_frequency(start_frequency)
+    {
 
         // Set station_coordinates
         set_station_coordinates(layout_file, nr_stations_limit);
@@ -663,7 +664,6 @@ namespace idg {
         set_baselines(station_coordinates, baseline_length_limit);
 
         // Set derived parameters
-        start_frequency = start_frequency_;
         image_size = (grid_size * pixel_padding) / max_baseline_length * (start_frequency / SPEED_OF_LIGHT);
         frequency_increment = SPEED_OF_LIGHT / (max_baseline_length * image_size);
     }
@@ -681,7 +681,7 @@ namespace idg {
         }
 
         // Get number of stations
-        int nr_stations = uvwsim_get_num_stations(filename.c_str());
+        unsigned nr_stations = uvwsim_get_num_stations(filename.c_str());
         if (nr_stations < 0) {
             std::cerr << "Failed to read any stations from layout file" << std::endl;
             exit(EXIT_FAILURE);
@@ -693,7 +693,8 @@ namespace idg {
         double* z = (double *) malloc(nr_stations * sizeof(double));
 
         // Load the antenna coordinates
-        if (uvwsim_load_station_coords(filename.c_str(), nr_stations, x, y, z) != nr_stations) {
+        unsigned nr_stations_read = uvwsim_load_station_coords(filename.c_str(), nr_stations, x, y, z);
+        if (nr_stations_read != nr_stations) {
             std::cerr << "Failed to read antenna coordinates." << std::endl;
             exit(EXIT_FAILURE);
         }
@@ -712,7 +713,7 @@ namespace idg {
         }
 
         // Create vector of shuffled station indices
-        for (int i = 0; i < nr_stations; i++) {
+        for (unsigned i = 0; i < nr_stations; i++) {
             unsigned station_index = station_indices[i];
             Data::StationCoordinate coordinate = { x[station_index], y[station_index], z[station_index] };
             station_coordinates.push_back(coordinate);
@@ -728,7 +729,7 @@ namespace idg {
         unsigned int baseline_length_limit)
     {
         // Compute (maximum) baseline length and select baselines
-        int nr_stations = station_coordinates.size();
+        unsigned nr_stations = station_coordinates.size();
         max_baseline_length = 0;
         for (unsigned station1 = 0; station1 < nr_stations; station1++) {
             for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
@@ -759,7 +760,7 @@ namespace idg {
     {
         auto nr_channels = frequencies.get_x_dim();
 
-        for (int chan = 0; chan < nr_channels; chan++) {
+        for (unsigned chan = 0; chan < nr_channels; chan++) {
             frequencies(chan) = start_frequency + frequency_increment * (chan + channel_offset);
         }
     }
@@ -786,17 +787,14 @@ namespace idg {
         unsigned int day      = observation_day;
         unsigned int hour     = observation_hour;
         unsigned int minute   = observation_minute;
-        unsigned int seconds  = observation_seconds + time_offset * integration_time;
-        double start_time_mjd = uvwsim_datetime_to_mjd(year, month, day, hour, minute, seconds);
 
         // Define observation parameters
         double ra0  = observation_ra;
         double dec0 = observation_dec;
 
         // Evaluate uvw per baseline
-        double runtime = -omp_get_wtime();
         #pragma omp parallel for
-        for (int bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
             Baseline baseline = baselines[baseline_offset + bl];
             unsigned station1 = baseline.station1;
             unsigned station2 = baseline.station2;
@@ -811,9 +809,9 @@ namespace idg {
             double z[2] = {z1, z2};
             double u, v, w;
 
-            for (int time = 0; time < nr_timesteps; time++) {
-                double seconds_ = observation_seconds + ((time_offset + time) * integration_time);
-                double time_mjd = uvwsim_datetime_to_mjd(year, month, day, hour, minute, seconds_);
+            for (unsigned time = 0; time < nr_timesteps; time++) {
+                double seconds  = observation_seconds + ((time_offset + time) * integration_time);
+                double time_mjd = uvwsim_datetime_to_mjd(year, month, day, hour, minute, seconds);
 
                 uvwsim_evaluate_baseline_uvw(
                         &u, &v, &w,
