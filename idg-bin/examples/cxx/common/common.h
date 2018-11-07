@@ -199,7 +199,6 @@ void run()
 
     // Allocate and initialize static data structures
     clog << ">>> Initialize data structures" << endl;
-    double runtime;
     #if USE_DUMMY_VISIBILITIES
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
         idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
@@ -232,17 +231,12 @@ void run()
     unsigned long nr_visibilities = 0;
 
     // Overlap Plan/Data initialization and imaging
-    int nr_baseline_iterations  = total_nr_baselines / nr_baselines;
-    int nr_timesteps_iterations = total_nr_timesteps / nr_timesteps;
-    int nr_channels_iterations  = total_nr_channels / nr_channels;
-    int nr_plans = nr_baseline_iterations * nr_timesteps_iterations * nr_channels_iterations;
-    int nr_uvw = nr_baseline_iterations * nr_timesteps_iterations;
     Queue<idg::Array2D<idg::UVWCoordinate<float>>*> uvws;
     Queue<idg::Plan*> plans;
     omp_set_nested(true);
 
     // Iterate all cycles
-    for (int i = 0; i < nr_cycles; i++) {
+    for (unsigned i = 0; i < nr_cycles; i++) {
 
         /*
          * Start two threads:
@@ -254,7 +248,7 @@ void run()
             // create plans
             if (omp_get_thread_num() == 0) {
 
-                for (int bl_offset = 0; bl_offset < total_nr_baselines; bl_offset += nr_baselines) {
+                for (unsigned bl_offset = 0; bl_offset < total_nr_baselines; bl_offset += nr_baselines) {
                     int current_nr_baselines = total_nr_baselines - bl_offset < nr_baselines ?
                                                total_nr_baselines - bl_offset : nr_baselines;
                     // Initialize baselines
@@ -262,7 +256,7 @@ void run()
                         idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
                     idg::get_example_baselines(current_nr_stations, current_nr_baselines);
 
-                    for (int time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
+                    for (unsigned time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
                         int current_nr_timesteps = total_nr_timesteps - time_offset < nr_timesteps ?
                                                    total_nr_timesteps - time_offset : nr_timesteps;
 
@@ -271,7 +265,7 @@ void run()
                         data.get_uvw(*uvw_current, bl_offset, time_offset, integration_time);
                         uvws.push(uvw_current);
 
-                        for (int channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
+                        for (unsigned channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
                             // Report progress
                             clog << ">>>" << endl;
                             clog << ">>> [PLAN] ";
@@ -300,7 +294,7 @@ void run()
             if (omp_get_thread_num() == 1) {
 
                 // Iterate all baselines
-                for (int bl_offset = 0; bl_offset < total_nr_baselines; bl_offset += nr_baselines) {
+                for (unsigned bl_offset = 0; bl_offset < total_nr_baselines; bl_offset += nr_baselines) {
                     int current_nr_baselines = total_nr_baselines - bl_offset < nr_baselines ?
                                                total_nr_baselines - bl_offset : nr_baselines;
 
@@ -313,7 +307,7 @@ void run()
                     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(visibilities_.data(), current_nr_baselines, nr_timesteps, nr_channels);
 
                     // Iterate all timesteps
-                    for (int time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
+                    for (unsigned time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
 
                         // Load the UVW data for the current set of baselines and timesteps
                         idg::Array2D<idg::UVWCoordinate<float>>* uvw_current = uvws.pop();
@@ -325,7 +319,7 @@ void run()
                         memcpy(uvw.data(), uvw_current->data(), uvw_current->bytes());
 
                         // Iterate all channels
-                        for (int channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
+                        for (unsigned channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
                             // Report progress
                             clog << ">>>" << endl;
                             clog << ">>> [EXECUTE] ";
@@ -375,7 +369,7 @@ void run()
                             {
                                 clog << ">>> Run fft" << endl;
                                 double runtime_fft = -omp_get_wtime();
-                                for (int w = 0; w < nr_w_layers; w++) {
+                                for (unsigned w = 0; w < nr_w_layers; w++) {
                                     idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
                                     proxy.transform(idg::FourierDomainToImageDomain, grid_);
                                     proxy.transform(idg::ImageDomainToFourierDomain, grid_);
@@ -410,6 +404,15 @@ void run()
     double runtime_degridding     = accumulate(runtimes_degridding.begin(), runtimes_degridding.end(), 0.0);
     double runtime_fft            = accumulate(runtimes_fft.begin(), runtimes_fft.end(), 0.0);
     double runtime_imaging        = accumulate(runtimes_imaging.begin(), runtimes_imaging.end(), 0.0);
+
+    // Ignore slowest run
+    if (nr_cycles > 1) {
+        runtime_gridding   -= max_runtime_gridding;
+        runtime_degridding -= max_runtime_degridding;
+        runtime_fft        -= max_runtime_fft;
+        runtime_imaging    -= max_runtime_imaging;
+        nr_cycles          -= 1;
+    }
 
     // Compute runtime for one cycle
     runtime_gridding   /= nr_cycles;
