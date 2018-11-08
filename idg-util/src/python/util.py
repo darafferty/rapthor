@@ -671,7 +671,7 @@ def init_example_frequencies(frequencies):
                                        ctypes.c_int(nr_channels) )
 
 
-def init_example_visibilities(visibilities):
+def init_dummy_visibilities(visibilities):
     """Initialize visibilities for test case defined in utility/initialize"""
     nr_baselines     = visibilities.shape[0]
     nr_time          = visibilities.shape[1]
@@ -682,7 +682,7 @@ def init_example_visibilities(visibilities):
                                                     ctypes.c_int,
                                                     ctypes.c_int,
                                                     ctypes.c_int]
-    lib.utils_init_example_visibilities(visibilities.ctypes.data_as(ctypes.c_void_p),
+    lib.utils_init_dummy_visibilities(visibilities.ctypes.data_as(ctypes.c_void_p),
                                         ctypes.c_int(nr_baselines),
                                         ctypes.c_int(nr_time),
                                         ctypes.c_int(nr_channels),

@@ -23,7 +23,7 @@ extern "C" {
     {
         idg::Array2D<idg::UVWCoordinate<float>> uvw(
             (idg::UVWCoordinate<float> *) ptr, nr_baselines, nr_timesteps);
-        idg::Data data(0);
+        idg::Data data;
         data.get_uvw(uvw, 0, 0, integration_time);
     }
 
@@ -34,7 +34,7 @@ extern "C" {
         memcpy(ptr, frequencies.data(), frequencies.bytes());
     }
 
-    void utils_init_example_visibilities(
+    void utils_init_dummy_visibilities(
         void *ptr,
         int nr_baselines,
         int nr_timesteps,
@@ -42,7 +42,7 @@ extern "C" {
         int nr_polarizations)
     {
         idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-            idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+            idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
         memcpy(ptr, visibilities.data(), visibilities.bytes());
     }
 

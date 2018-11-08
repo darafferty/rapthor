@@ -36,7 +36,7 @@ namespace idg {
         float start_frequency = START_FREQUENCY,
         float frequency_increment = FREQUENCY_INCREMENT);
 
-    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
         proxy::Proxy& proxy,
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
@@ -85,7 +85,7 @@ namespace idg {
         float start_frequency = START_FREQUENCY,
         float frequency_increment = FREQUENCY_INCREMENT);
 
-    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
         unsigned int nr_channels);
@@ -161,6 +161,11 @@ namespace idg {
             );
 
             /*
+             * Set methods
+             */
+            void set_image_size(float image_size_) { image_size = image_size_; };
+
+            /*
              * Get methods
              */
             float get_image_size() const { return image_size; };
@@ -172,6 +177,13 @@ namespace idg {
             void get_frequencies(
                 Array1D<float>& frequencies,
                 unsigned int channel_offset = 0) const;
+
+            Array2D<UVWCoordinate<float>> get_uvw(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int baseline_offset = 0,
+                unsigned int time_offset = 0,
+                float integration_time = INTEGRATION_TIME) const;
 
             void get_uvw(
                 Array2D<UVWCoordinate<float>>& uvw,

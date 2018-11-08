@@ -112,7 +112,7 @@ namespace idg {
         return frequencies;
     }
 
-    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
         proxy::Proxy& proxy,
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
@@ -173,7 +173,7 @@ namespace idg {
 
         Array2D<UVWCoordinate<float>> uvw(ptr, nr_baselines, nr_timesteps);
 
-        Data data(0);
+        Data data;
         data.get_uvw(uvw);
 
         return uvw;
@@ -293,7 +293,7 @@ namespace idg {
         return frequencies;
     }
 
-    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
         unsigned int nr_channels)
@@ -627,6 +627,18 @@ namespace idg {
         for (unsigned chan = 0; chan < nr_channels; chan++) {
             frequencies(chan) = start_frequency + frequency_increment * (chan + channel_offset);
         }
+    }
+
+    Array2D<UVWCoordinate<float>> Data::get_uvw(
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        unsigned int baseline_offset,
+        unsigned int time_offset,
+        float integration_time) const
+    {
+        Array2D<UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
+        get_uvw(uvw, baseline_offset, time_offset, integration_time);
+        return uvw;
     }
 
     void Data::get_uvw(

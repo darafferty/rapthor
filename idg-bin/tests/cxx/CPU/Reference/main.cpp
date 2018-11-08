@@ -45,14 +45,14 @@ int test01()
     clog << ">>> Initialize data structures" << endl;
     idg::Array1D<float> frequencies =
         idg::get_example_frequencies(nr_channels);
-    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
-    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
-        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
-    idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
-        idg::get_example_baselines(nr_stations, nr_baselines);
     idg::Array2D<idg::UVWCoordinate<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
+    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
+        idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
+    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
+        idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
+    idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
+        idg::get_example_baselines(nr_stations, nr_baselines);
     idg::Array3D<std::complex<float>> grid =
         idg::get_zero_grid(nr_correlations, grid_size, grid_size);
     idg::Array3D<std::complex<float>> grid_ref =

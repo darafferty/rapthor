@@ -124,9 +124,9 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     idg::Array1D<float> frequencies =
         idg::get_example_frequencies(optimized, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-        idg::get_example_visibilities(optimized, nr_baselines, nr_timesteps, nr_channels);
+        idg::get_dummy_visibilities(optimized, nr_baselines, nr_timesteps, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
-        idg::get_example_visibilities(reference, nr_baselines, nr_timesteps, nr_channels);
+        idg::get_dummy_visibilities(reference, nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
         idg::get_example_baselines(optimized, nr_stations, nr_baselines);
     idg::Array2D<idg::UVWCoordinate<float>> uvw =

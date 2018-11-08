@@ -201,7 +201,7 @@ void run()
     clog << ">>> Initialize data structures" << endl;
     #if USE_DUMMY_VISIBILITIES
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
-        idg::get_example_visibilities(nr_baselines, nr_timesteps, nr_channels);
+        idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps, nr_channels);
     #endif
     idg::Array2D<idg::UVWCoordinate<float>> uvw_(nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
