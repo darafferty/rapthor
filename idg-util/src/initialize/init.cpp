@@ -112,7 +112,7 @@ namespace idg {
         return frequencies;
     }
 
-    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
         proxy::Proxy& proxy,
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
@@ -293,7 +293,7 @@ namespace idg {
         return frequencies;
     }
 
-    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
         unsigned int nr_channels)
