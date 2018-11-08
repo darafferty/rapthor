@@ -329,6 +329,7 @@ namespace idg {
         unsigned int nr_channels  = frequencies.get_x_dim();
 
         Array3D<Visibility<std::complex<float>>> visibilities(nr_baselines, nr_timesteps, nr_channels);
+        memset(visibilities.data(), 0, visibilities.bytes());
 
         srand(random_seed);
 
@@ -475,35 +476,35 @@ namespace idg {
         return spheroidal;
     }
 
+
     void add_pt_src(
         Array3D<Visibility<std::complex<float>>> &visibilities,
         Array2D<UVWCoordinate<float>> &uvw,
         Array1D<float> &frequencies,
         float          image_size,
         unsigned int   grid_size,
-        float          x,
-        float          y,
+        float          offset_x,
+        float          offset_y,
         float          amplitude)
     {
         auto nr_baselines = visibilities.get_z_dim();
         auto nr_timesteps = visibilities.get_y_dim();
         auto nr_channels  = visibilities.get_x_dim();
 
-        float l = x * image_size/grid_size;
-        float m = y * image_size/grid_size;
+        float l = offset_x * image_size / grid_size;
+        float m = offset_y * image_size / grid_size;
 
-        #pragma omp parallel for
-        for (unsigned b = 0; b < nr_baselines; b++) {
-            for (unsigned t = 0; t < nr_timesteps; t++) {
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
+            for (unsigned t = 0; t <nr_timesteps; t++) {
                 for (unsigned c = 0; c < nr_channels; c++) {
-                    float u = frequencies(c) * uvw(b,t).u / (SPEED_OF_LIGHT);
-                    float v = frequencies(c) * uvw(b,t).v / (SPEED_OF_LIGHT);
-                    std::complex<float> value = amplitude *
-                        std::exp(std::complex<float>(0, -2 * M_PI * (u*l + v*m)));
-                    visibilities(b,t,c).xx += value;
-                    visibilities(b,t,c).xy += value;
-                    visibilities(b,t,c).yx += value;
-                    visibilities(b,t,c).yy += value;
+                    const double speed_of_light = 299792458.0;
+                    float u = (frequencies(c) / speed_of_light) * uvw(bl, t).u;
+                    float v = (frequencies(c) / speed_of_light) * uvw(bl, t).v;
+                    std::complex<float> value = amplitude*exp(std::complex<float>(0,-2*M_PI*(u*l + v*m)));
+                    visibilities(bl, t, c).xx += value;
+                    visibilities(bl, t, c).xy += value;
+                    visibilities(bl, t, c).yx += value;
+                    visibilities(bl, t, c).yy += value;
                 }
             }
         }

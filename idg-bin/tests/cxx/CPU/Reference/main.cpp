@@ -10,40 +10,6 @@ using namespace std;
 // This test covers the degridder without the A-term and w-terms computation
 // See also test-degridder-001.py, which also visualizes the imaging
 // of predicted visibilities
-// TODO: this should be moved to Init.cpp and merged with "add_pt_src()"
-void add_analytic_point_source(
-    int            offset_x,
-    int            offset_y,
-    float          amplitude,
-    float          image_size,
-    int            nr_baselines,
-    int            nr_timesteps,
-    int            nr_channels,
-    int            nr_correlations,
-    int            grid_size,
-    idg::Array2D<idg::UVWCoordinate<float>>& uvw,
-    idg::Array1D<float>& frequencies,
-    idg::Array3D<idg::Visibility<std::complex<float>>>& visibilities_ref)
-{
-    float l = offset_x * image_size / grid_size;
-    float m = offset_y * image_size / grid_size;
-
-    for (auto bl = 0; bl < nr_baselines; bl++) {
-        for (auto t = 0; t <nr_timesteps; t++) {
-            for (auto c = 0; c < nr_channels; c++) {
-                const double speed_of_light = 299792458.0;
-                float u = (frequencies(c) / speed_of_light) * uvw(bl, t).u;
-                float v = (frequencies(c) / speed_of_light) * uvw(bl, t).v;
-                complex<float> value = amplitude*exp(complex<float>(0,-2*M_PI*(u*l + v*m)));
-                visibilities_ref(bl, t, c).xx = value;
-                visibilities_ref(bl, t, c).xy = value;
-                visibilities_ref(bl, t, c).yx = value;
-                visibilities_ref(bl, t, c).yy = value;
-            }
-        }
-    }
-}
-
 
 int test01()
 {
@@ -56,12 +22,15 @@ int test01()
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 1;
-    float image_size             = 0.08;
     unsigned int grid_size       = 512;
     unsigned int subgrid_size    = 24;
-    float cell_size              = image_size / grid_size;
     unsigned int kernel_size     = (subgrid_size / 2) + 1;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
+
+    // Initialize Data object
+    idg::Data data(grid_size);
+    float image_size             = data.get_image_size();
+    float cell_size              = image_size / grid_size;
 
     // Print parameters
     print_parameters(
@@ -114,12 +83,8 @@ int test01()
     grid(1, location_y, location_x) = amplitude;
     grid(2, location_y, location_x) = amplitude;
     grid(3, location_y, location_x) = amplitude;
-
-    add_analytic_point_source(
-        offset_x, offset_y, amplitude,
-        image_size, nr_baselines, nr_timesteps,
-        nr_channels, nr_correlations, grid_size,
-        uvw, frequencies, visibilities_ref);
+    memset(visibilities_ref.data(), 0, visibilities_ref.bytes());
+    add_pt_src(visibilities_ref, uvw, frequencies, image_size, grid_size, offset_x, offset_y, amplitude);
     clog << endl;
 
     // Initialize proxy
