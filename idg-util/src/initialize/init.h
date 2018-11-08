@@ -161,6 +161,11 @@ namespace idg {
             );
 
             /*
+             * Set methods
+             */
+            void set_image_size(float image_size_) { image_size = image_size_; };
+
+            /*
              * Get methods
              */
             float get_image_size() const { return image_size; };
