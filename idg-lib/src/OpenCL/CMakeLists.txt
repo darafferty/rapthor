@@ -1,5 +1,8 @@
 project(opencl)
 
+# ignore warnings in OpenCL header file
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
+
 # resolve dependencies
 find_package(OpenCL)
 find_package(clFFT)
