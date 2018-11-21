@@ -12,6 +12,7 @@ namespace powersensor {
     static std::string name_rapl("rapl");
     static std::string name_nvml("nvml");
     static std::string name_arduino("tty");
+    static std::string name_amdgpu("amdgpu");
 
     static std::string sensor_default("POWER_SENSOR");
     static std::string sensor_host("HOST_SENSOR");
@@ -36,7 +37,7 @@ namespace powersensor {
 
     PowerSensor* get_power_sensor(
         const std::string name,
-        const int i = 0);
+        const unsigned i = 0);
 
     class DummyPowerSensor : public PowerSensor {
         public:
@@ -68,6 +69,13 @@ namespace powersensor {
         class ArduinoPowerSensor : public PowerSensor {
             public:
                 static ArduinoPowerSensor* create(const char*, const char*);
+        };
+    }
+
+    namespace amdgpu {
+        class AMDGPUPowerSensor : public PowerSensor {
+            public:
+                static AMDGPUPowerSensor* create(const unsigned, const char*);
         };
     }
 } // end namespace powersensor

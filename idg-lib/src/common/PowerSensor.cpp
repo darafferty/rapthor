@@ -6,7 +6,7 @@ namespace powersensor {
 
     PowerSensor* get_power_sensor(
         const std::string name,
-        const int i)
+        const unsigned i)
     {
         // Determine which environment variable to read
         std::string power_sensor_env_str;
@@ -39,6 +39,8 @@ namespace powersensor {
                 return nvml::NVMLPowerSensor::create(i, NULL);
             } else if (power_sensor_str.find(name_arduino) != std::string::npos) {
                 return arduino::ArduinoPowerSensor::create(power_sensor_str.c_str(), NULL);
+            } else if (power_sensor_str.compare(name_amdgpu) == 0) {
+                return amdgpu::AMDGPUPowerSensor::create(i, NULL);
             }
         }
         #endif
