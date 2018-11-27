@@ -700,6 +700,16 @@ namespace idg {
 
     }
 
+    Array1D<float> Data::get_frequencies(
+        unsigned int nr_channels,
+        float image_size,
+        unsigned int channel_offset) const
+    {
+        Array1D<float> frequencies(nr_channels);
+        get_frequencies(frequencies, image_size, channel_offset);
+        return frequencies;
+    }
+
     void Data::get_frequencies(
         Array1D<float>& frequencies,
         float image_size,

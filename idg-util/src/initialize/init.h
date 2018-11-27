@@ -181,6 +181,11 @@ namespace idg {
 
             unsigned int get_nr_baselines() const { return baselines.size(); };
 
+            Array1D<float> get_frequencies(
+                unsigned int nr_channels,
+                float image_size,
+                unsigned int channel_offset = 0) const;
+
             void get_frequencies(
                 Array1D<float>& frequencies,
                 float image_size,
