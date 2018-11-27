@@ -146,9 +146,11 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     // Create plan
     clog << ">>> Create plan" << endl;
+    idg::Plan::Options options;
+    options.plan_strict = true;
     idg::Plan plan(
         kernel_size, subgrid_size, grid_size, cell_size,
-        frequencies, uvw, baselines, aterms_offsets);
+        frequencies, uvw, baselines, aterms_offsets, options);
     clog << endl;
 
     // Run gridder
