@@ -160,8 +160,9 @@ void run()
 
     // Initialize Data object
     clog << "Initialize data" << endl;
-    idg::Data data(grid_size);
-    float image_size = data.get_image_size();
+    idg::Data data;
+    float grid_padding = 0.8;
+    float image_size = data.compute_image_size(grid_padding * grid_size);
     float cell_size = image_size / grid_size;
     unsigned int total_nr_baselines_ = data.get_nr_baselines();
 
@@ -217,7 +218,6 @@ void run()
     clog << endl;
 
     // Allocate variable data structures
-    idg::Array1D<float> frequencies(nr_channels);
     idg::Array2D<idg::UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
     #if !USE_DUMMY_VISIBILITIES
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
@@ -282,13 +282,13 @@ void run()
                             clog << ">>>" << endl;
 
                             // Initialize frequency data
-                            idg::Array1D<float> frequencies_(nr_channels);
-                            data.get_frequencies(frequencies_, channel_offset);
+                            idg::Array1D<float> frequencies(nr_channels);
+                            data.get_frequencies(frequencies, image_size, channel_offset);
 
                             // Create plan
                             idg::Plan* plan = new idg::Plan(
                                 kernel_size, subgrid_size, grid_size, cell_size,
-                                frequencies_, *uvw_current, baselines, aterms_offsets);
+                                frequencies, *uvw_current, baselines, aterms_offsets, options);
 
                             // Store and release plan
                             plans.push(plan);
@@ -337,12 +337,8 @@ void run()
                             clog << ">>>" << endl;
 
                             // Initialize frequency data
-                            idg::Array1D<float> frequencies_(simulate_spectral_line ? 1 : nr_channels);
-                            if (simulate_spectral_line) {
-                                frequencies_(0) = frequencies(0);
-                            } else {
-                                data.get_frequencies(frequencies_, channel_offset);
-                            }
+                            idg::Array1D<float> frequencies(simulate_spectral_line ? 1 : nr_channels);
+                            data.get_frequencies(frequencies, image_size, channel_offset);
 
                             // Wait for plan to become available
                             idg::Plan* plan = plans.pop();
@@ -360,7 +356,7 @@ void run()
                             double runtime_gridding = -omp_get_wtime();
                             proxy.gridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                                frequencies_, visibilities, uvw, baselines,
+                                frequencies, visibilities, uvw, baselines,
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
                             clog << endl;
@@ -370,7 +366,7 @@ void run()
                             double runtime_degridding = -omp_get_wtime();
                             proxy.degridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                                frequencies_, visibilities, uvw, baselines,
+                                frequencies, visibilities, uvw, baselines,
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
                             clog << endl;
