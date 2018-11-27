@@ -10,21 +10,14 @@ import random
 ############
 # paramaters
 ############
-_nr_channels      = 8
-_nr_timesteps     = 3*60*60           # samples per baseline
+_nr_channels      = 1
+_nr_timesteps     = 1*60*60           # samples per baseline
 _nr_timeslots     = 16             # A-term time slots
 _subgrid_size     = 24
-_grid_size        = 1024
 _integration_time = 0.9
 _kernel_size      = (_subgrid_size / 2) + 1
 _nr_correlations  = 4
 _layout_file           = "SKA1_low_ecef"
-_nr_stations_limit     = 20
-_baseline_length_limit = 3000 # m
-_start_frequency       = 150e6 # Mhz
-
-def get_nr_stations_limit():
-    return _nr_stations_limit
 
 def get_nr_channels():
     return _nr_channels
@@ -38,9 +31,6 @@ def get_nr_timeslots():
 def get_subgrid_size():
     return _subgrid_size
 
-def get_grid_size():
-    return _grid_size
-
 def get_integration_time():
     return _integration_time
 
@@ -52,12 +42,6 @@ def get_nr_correlations():
 
 def get_layout_file():
     return _layout_file
-
-def get_baseline_length_limit():
-    return _baseline_length_limit
-
-def get_start_frequency():
-    return _start_frequency
 
 #################
 # initialize data
@@ -126,24 +110,58 @@ def main(proxyname):
     nr_timesteps     = get_nr_timesteps()
     nr_timeslots     = get_nr_timeslots()
     subgrid_size     = get_subgrid_size()
-    grid_size        = get_grid_size()
     integration_time = get_integration_time()
     kernel_size      = get_kernel_size()
     nr_correlations  = get_nr_correlations()
     w_step           = 0.0
-    layout_file           = get_layout_file()
-    nr_stations_limit     = get_nr_stations_limit()
-    baseline_length_limit = get_baseline_length_limit()
-    start_frequency       = get_start_frequency()
+    layout_file      = get_layout_file()
 
     ######################################################################
     # initialize data generator
     ######################################################################
-    data = Data(grid_size, nr_stations_limit, baseline_length_limit, layout_file, start_frequency)
-    nr_stations     = data.get_nr_stations()
-    nr_baselines    = data.get_nr_baselines()
-    image_size      = data.get_image_size()
-    cell_size       = image_size / grid_size
+    #image_size      = round(data.compute_image_size(int(grid_size*1.2)), 3)
+
+    # Consider all stations and do not restrict baseline length
+    nr_stations_limit     = 0
+    baseline_length_limit = 0
+
+    # Example 1: use custom grid_size and image_size
+    # baseline will be selected to fit within the imposed grid
+    # reduce image_size to artificially shrink uv-coverage
+    #data                  = Data(nr_stations_limit, baseline_length_limit, layout_file)
+    #grid_size             = 1024
+    #image_size            = 0.05
+    #data.filter_baselines(int(grid_size), image_size)
+
+    # Example 2: specify grid_size
+    # this is more realistic, the uv-coverage grows with grid_size
+    data                  = Data(nr_stations_limit, baseline_length_limit, layout_file)
+    grid_size             = 2048
+    padding               = 0.9
+    image_size            = round(data.compute_image_size(int(grid_size * padding)), 3)
+
+    # Example 3: specify image_size
+    # the grid_size is computed to match the resolution imposed by image_size and baseline length
+    #data                  = Data(nr_stations_limit, baseline_length_limit, layout_file)
+    #image_size            = 0.05
+    #padding               = 1.3
+    #grid_size             = int(data.compute_grid_size(image_size) * padding)
+
+    # Example 4: limit max baseline
+    # the uv-coverage is controlled by image_size and the baseline_length_limit,
+    # using larger grids will not actually increase the resolution of the image
+    #baseline_length_limit = 10000
+    #data                  = Data(nr_stations_limit, baseline_length_limit, layout_file)
+    #grid_size             = 2048
+    #image_size            = 0.05
+
+    # Reduce number of stations and baselines to use
+    nr_stations           = 20
+    nr_baselines          = (nr_stations * (nr_stations - 1)) / 2
+
+    # get remaining parameters
+    cell_size             = image_size / grid_size
+
 
     ######################################################################
     # initialize proxy
@@ -174,7 +192,7 @@ def main(proxyname):
 
     uvw            = numpy.zeros((nr_baselines, nr_timesteps), dtype=idg.uvwtype)
     frequencies    = numpy.zeros((nr_channels), dtype=idg.frequenciestype)
-    data.get_frequencies(frequencies, nr_channels, channel_offset)
+    data.get_frequencies(frequencies, nr_channels, image_size, channel_offset)
     data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
 
     baselines      = util.get_example_baselines(nr_baselines)
