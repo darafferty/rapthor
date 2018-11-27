@@ -101,19 +101,40 @@ extern "C" {
     }
 
     idg::Data* DATA_init(
-       unsigned int grid_size,
        unsigned int nr_stations_limit,
        unsigned int baseline_length_limit,
-       const char *layout_file,
-       float start_frequency)
+       const char *layout_file)
     {
-        return new idg::Data(grid_size, nr_stations_limit, baseline_length_limit, layout_file, start_frequency);
+        return new idg::Data(nr_stations_limit, baseline_length_limit, layout_file);
     }
 
-    float DATA_get_image_size(
-        idg::Data* data)
+    float DATA_compute_image_size(
+        idg::Data* data,
+        unsigned grid_size)
     {
-        return data->get_image_size();
+        return data->compute_image_size(grid_size);
+    }
+
+    float DATA_compute_grid_size(
+        idg::Data* data,
+        float image_size)
+    {
+        return data->compute_grid_size(image_size);
+    }
+
+    float DATA_compute_max_uv(
+        unsigned grid_size,
+        float image_size)
+    {
+        return idg::Data::compute_max_uv(grid_size, image_size);
+    }
+
+    void DATA_filter_baselines(
+        idg::Data* data,
+        unsigned grid_size,
+        float image_size)
+    {
+        data->filter_baselines(grid_size, image_size);
     }
 
     float DATA_get_nr_stations(
@@ -132,10 +153,11 @@ extern "C" {
         idg::Data* data,
         void* ptr,
         unsigned int nr_channels,
+        float image_size,
         unsigned int channel_offset)
     {
         idg::Array1D<float> frequencies((float *) ptr, nr_channels);
-        data->get_frequencies(frequencies, channel_offset);
+        data->get_frequencies(frequencies, image_size, channel_offset);
     }
 
     void DATA_get_uvw(
