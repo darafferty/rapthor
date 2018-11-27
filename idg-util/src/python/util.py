@@ -222,6 +222,42 @@ def plot_uvw(uvw):
     plt.grid(True)
     plt.axes().set_aspect('equal')
 
+def plot_uvw_pixels(uvw, frequencies, image_size):
+    """Plot UVW data as (u,v)-plot, scaled to pixel coordinates
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
+    """
+    speed_of_light = 299792458.0
+    u_ = numpy.array([], dtype = numpy.float32)
+    v_ = numpy.array([], dtype = numpy.float32)
+    for frequency in frequencies:
+        u_ = numpy.append(u_, uvw['u'].flatten() * image_size * (frequency / speed_of_light))
+        v_ = numpy.append(v_, uvw['v'].flatten() * image_size * (frequency / speed_of_light))
+    uvlim = 1.2*max(max(abs(u_)), max(abs(v_)))
+    fig = plt.figure(get_figure_name("uvw"))
+    plt.plot(u_, v_,'.')
+    plt.xlim([-uvlim, uvlim])
+    plt.ylim([-uvlim, uvlim])
+    plt.grid(True)
+    plt.axes().set_aspect('equal')
+
+def plot_uvw_meters(uvw):
+    """Plot UVW data as (u,v)-plot
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
+    """
+    u = uvw['u'].flatten()
+    v = uvw['v'].flatten()
+    uvlim = 1.2*max(max(abs(u)), max(abs(v)))
+    fig = plt.figure(get_figure_name("uvw"))
+    plt.plot(u, v,'.')
+    plt.xlim([-uvlim, uvlim])
+    plt.ylim([-uvlim, uvlim])
+    plt.grid(True)
+    plt.axes().set_aspect('equal')
+
 def output_uvw(uvw):
     """Plot UVW data as (u,v)-plot to high-resolution png file
     Input:
