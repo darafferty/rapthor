@@ -476,6 +476,14 @@ namespace idg {
         return spheroidal;
     }
 
+    Array1D<float> get_zero_shift() {
+        Array1D<float> shift(3);
+        shift(0) = 0.0f;
+        shift(1) = 0.0f;
+        shift(2) = 0.0f;
+        return shift;
+    }
+
 
     void add_pt_src(
         Array3D<Visibility<std::complex<float>>> &visibilities,
