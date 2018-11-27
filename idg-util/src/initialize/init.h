@@ -17,7 +17,6 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 /* Constants */
-//#define RANDOM_SEED         1234
 #define SPEED_OF_LIGHT      299792458.0
 
 /* Observation parameters */
@@ -153,29 +152,38 @@ namespace idg {
              * Constructor
              */
             Data(
-                unsigned int grid_size = 0, // pixels
-                unsigned int nr_stations_limit = -1, // infinite
-                unsigned int baseline_length_limit = 65000, // Meter
-                std::string layout_file = "SKA1_low_ecef",
-                float start_frequency = 150e6 // Mhz
+                unsigned int nr_stations_limit = 0, // infinite
+                unsigned int baseline_length_limit = 0, // Meter
+                std::string layout_file = "SKA1_low_ecef"
             );
 
             /*
-             * Set methods
+             * Parameters
              */
-            void set_image_size(float image_size_) { image_size = image_size_; };
+            float compute_image_size(unsigned grid_size);
+            float compute_grid_size(float image_size);
+            static float compute_max_uv(unsigned grid_size, float image_size)
+            {
+                return (grid_size / image_size) / (SPEED_OF_LIGHT / start_frequency);
+            }
+
+            /*
+             * Filter baselines
+             */
+            void filter_baselines(
+                unsigned grid_size,
+                float image_size);
 
             /*
              * Get methods
              */
-            float get_image_size() const { return image_size; };
-
             unsigned int get_nr_stations() const { return station_coordinates.size(); };
 
             unsigned int get_nr_baselines() const { return baselines.size(); };
 
             void get_frequencies(
                 Array1D<float>& frequencies,
+                float image_size,
                 unsigned int channel_offset = 0) const;
 
             Array2D<UVWCoordinate<float>> get_uvw(
@@ -202,35 +210,42 @@ namespace idg {
             std::vector<StationCoordinate> station_coordinates;
 
             /*
-             * Set baselines and max_baseline_length
+             * Set baselines and max_uv
              */
             void set_baselines(
                 std::vector<StationCoordinate>& station_coordinates,
                 unsigned int baseline_length_limit);
 
-            std::vector<Baseline> baselines;
-            float max_baseline_length;
+            std::vector<std::pair<float, Baseline>> baselines;
+            float max_uv; // Meters
 
+            /*
+             * Helper methods
+             */
+            void evaluate_uvw(
+                Baseline& baseline,
+                unsigned int time,
+                float integration_time,
+                double* u, double* v, double* w) const;
 
             /*
              * Misc
              */
             const float pixel_padding = 0.8;
-            float start_frequency;
-            float frequency_increment;
-            float image_size;
 
             /*
              * Observation parameters
              */
-            const float observation_ra    = (10.0 * (M_PI/180.));
-            const float observation_dec   = (70.0 * (M_PI/180.));
-            const int observation_year    = 2014;
-            const int observation_month   = 3;
-            const int observation_day     = 20;
-            const int observation_hour    = 1;
-            const int observation_minute  = 57;
-            const int observation_seconds = 0;
+            static constexpr float start_frequency     = 150e6; // Mhz
+            static constexpr float frequency_increment = 5e6; // Mhz
+            static constexpr float observation_ra      = (10.0 * (M_PI/180.));
+            static constexpr float observation_dec     = (70.0 * (M_PI/180.));
+            static const int observation_year    = 2014;
+            static const int observation_month   = 3;
+            static const int observation_day     = 20;
+            static const int observation_hour    = 1;
+            static const int observation_minute  = 57;
+            static const int observation_seconds = 0;
     };
 } // namespace idg
 
