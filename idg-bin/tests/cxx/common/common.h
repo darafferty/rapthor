@@ -101,12 +101,16 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 7;
-    float image_size             = 0.08;
     unsigned int grid_size       = 1024;
     unsigned int subgrid_size    = 24;
-    float cell_size              = image_size / grid_size;
     unsigned int kernel_size     = (subgrid_size / 2) + 1;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
+    float grid_padding           = 0.9;
+
+    // Initialize Data object
+    idg::Data data;
+    float image_size             = data.compute_image_size(grid_size * grid_padding);
+    float cell_size              = image_size / grid_size;
 
     // Print parameters
     print_parameters(
@@ -121,16 +125,14 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
-    idg::Array1D<float> frequencies =
-        idg::get_example_frequencies(optimized, nr_channels);
+    idg::Array1D<float> frequencies = data.get_frequencies(nr_channels, image_size);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
         idg::get_dummy_visibilities(optimized, nr_baselines, nr_timesteps, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
         idg::get_dummy_visibilities(reference, nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
         idg::get_example_baselines(optimized, nr_stations, nr_baselines);
-    idg::Array2D<idg::UVWCoordinate<float>> uvw =
-        idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
+    idg::Array2D<idg::UVWCoordinate<float>> uvw = data.get_uvw(nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
         idg::get_identity_aterms(optimized, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
