@@ -161,7 +161,7 @@ void run()
     // Initialize Data object
     clog << "Initialize data" << endl;
     idg::Data data;
-    float grid_padding = 0.9;
+    float grid_padding = 0.8;
     float image_size = data.compute_image_size(grid_size * grid_padding);
     float cell_size = image_size / grid_size;
     unsigned int total_nr_baselines_ = data.get_nr_baselines();
