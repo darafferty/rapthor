@@ -638,11 +638,9 @@ namespace idg {
                 const unsigned nr_streams = 3;
 
                 // Page-lock host memory
-                #if !ENABLE_SAFE_MEMORY
                 InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-                #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (unsigned d = 0; d < nr_devices; d++) {
@@ -687,10 +685,6 @@ namespace idg {
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
-                    #if ENABLE_SAFE_MEMORY
-                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
-                    cu::HostMemory&   h_uvw          = device.get_host_uvw(local_id);
-                    #endif
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
                     cu::HostMemory&   h_metadata     = device.get_host_metadata(local_id);
 
@@ -698,9 +692,6 @@ namespace idg {
                     cu::Stream& executestream = device.get_execute_stream();
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
-
-                    // Wait for previous work (if any) to finish
-                    outputFree[global_id]->synchronize();
 
                     // Initialize iteration
                     auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
@@ -720,12 +711,7 @@ namespace idg {
                     auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
                     auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
                     htodstream.waitEvent(*inputFree[global_id]);
-                    #if ENABLE_SAFE_MEMORY
-                    enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
-                    htodstream.memcpyHtoDAsync(d_uvw, h_uvw, sizeof_uvw);
-                    #else
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                    #endif
                     enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
                     htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                     htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
@@ -752,7 +738,6 @@ namespace idg {
                     enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
                     #else
                     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
-                    #endif
                     dtohstream.record(*outputFree[global_id]);
 
                     // Finish job
