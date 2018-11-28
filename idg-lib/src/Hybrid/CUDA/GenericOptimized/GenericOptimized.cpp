@@ -715,6 +715,7 @@ namespace idg {
                     auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
                     auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                     auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
+                    auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
                     htodstream.waitEvent(*inputFree[global_id]);
                     #if ENABLE_SAFE_MEMORY
                     enqueue_copy(htodstream, h_uvw, uvw_ptr, sizeof_uvw);
@@ -726,8 +727,7 @@ namespace idg {
                     htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                     htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
                     htodstream.waitEvent(*hostFinished[global_id]);
-                    htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids,
-                        auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size));
+                    htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
                     htodstream.record(*inputReady[global_id]);
 
                     // Launch FFT
