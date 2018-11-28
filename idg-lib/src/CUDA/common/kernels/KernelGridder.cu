@@ -100,18 +100,13 @@ __device__ void kernel_gridder_1(
             }
 
             // Load visibilities
-            for (int i = tid; i < current_nr_timesteps; i += nr_threads) {
-                int idx_time = time_offset_global + time_offset_local + i;
-                int idx_xx = index_visibility(1, idx_time, 0, 0);
-                int idx_xy = index_visibility(1, idx_time, 0, 1);
-                int idx_yx = index_visibility(1, idx_time, 0, 2);
-                int idx_yy = index_visibility(1, idx_time, 0, 3);
-                float2 a = visibilities[idx_xx];
-                float2 b = visibilities[idx_xy];
-                float2 c = visibilities[idx_yx];
-                float2 d = visibilities[idx_yy];
-                shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
-                shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            for (int i = tid; i < current_nr_timesteps*2; i += nr_threads) {
+                int j = i % 2; // one thread loads either upper or lower float4 part of visibility
+                int k = i / 2;
+                int idx_time = time_offset_global + time_offset_local + k;
+                int idx_vis = index_visibility(1, idx_time, 0, 0);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                shared[j][k] = vis_ptr[j];
             }
 
             __syncthreads();
@@ -335,19 +330,14 @@ __device__ void
             }
 
             // Load visibilities
-            for (int i = tid; i < current_nr_timesteps*current_nr_channels; i += nr_threads) {
-                int idx_time = time_offset_global + time_offset_local + (i / current_nr_channels);
-                int idx_chan = channel_offset + (i % current_nr_channels);
-                int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
-                int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
-                int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
-                int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
-                float2 a = visibilities[idx_xx];
-                float2 b = visibilities[idx_xy];
-                float2 c = visibilities[idx_yx];
-                float2 d = visibilities[idx_yy];
-                shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
-                shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            for (int i = tid; i < current_nr_timesteps*current_nr_channels*2; i += nr_threads) {
+                int j = i % 2; // one thread loads either upper or lower float4 part of visibility
+                int k = i / 2;
+                int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
+                int idx_chan = channel_offset + (k % current_nr_channels);
+                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                shared[j][k] = vis_ptr[j];
             }
 
             __syncthreads();
