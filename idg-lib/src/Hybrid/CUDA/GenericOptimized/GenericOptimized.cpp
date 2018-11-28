@@ -19,7 +19,7 @@ using namespace powersensor;
  * to make sure that CUDA is able to copy
  * from and to device using page-locked memory
  */
-#define ENABLE_SAFE_MEMORY 1
+#define ENABLE_SAFE_MEMORY 0
 
 namespace idg {
     namespace proxy {
