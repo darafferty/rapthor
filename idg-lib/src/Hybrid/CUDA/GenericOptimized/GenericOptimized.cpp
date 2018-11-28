@@ -185,6 +185,7 @@ namespace idg {
                         device.get_host_uvw(t, jobsize_[d], nr_timesteps);
                         #endif
                         device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
+                        device.get_host_metadata(t, max_nr_subgrids);
                     }
 
                     // Plan subgrid fft
