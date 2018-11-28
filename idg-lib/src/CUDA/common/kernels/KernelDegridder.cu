@@ -1,8 +1,6 @@
 #include "Types.h"
 #include "math.cu"
 
-#include <assert.h>
-
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
 #define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
@@ -269,7 +267,6 @@ __launch_bounds__(BLOCK_SIZE)
           float2*        __restrict__ subgrid)
 {
 	int channel_offset = 0;
-	assert(MAX_NR_CHANNELS == 8);
 	KERNEL_DEGRIDDER_TEMPLATE(8);
 	KERNEL_DEGRIDDER_TEMPLATE(4);
 	KERNEL_DEGRIDDER_TEMPLATE(2);
