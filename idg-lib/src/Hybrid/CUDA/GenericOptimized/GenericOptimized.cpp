@@ -530,7 +530,7 @@ namespace idg {
                     enqueue_adder(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids.get(), grid.data());
                     hostStream->record(*hostFinished[global_id]);
 
-                    global_id = global_id < (nr_devices * nr_streams) - 1 ? global_id + 1 : 0;
+                    global_id = (global_id + 1) % (nr_devices * nr_streams);
                 } // end for bl
 
                 // Enqueue end device measurement
@@ -754,7 +754,7 @@ namespace idg {
 
                     device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
 
-                    global_id = global_id < (nr_devices * nr_streams) - 1 ? global_id + 1 : 0;
+                    global_id = (global_id + 1) % (nr_devices * nr_streams);
                 } // end for bl
 
                 // Enqueue end device measurement
