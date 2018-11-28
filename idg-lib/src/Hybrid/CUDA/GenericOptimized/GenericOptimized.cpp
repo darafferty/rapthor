@@ -669,9 +669,15 @@ namespace idg {
                     int local_id  = global_id % nr_streams;
                     jobsize       = jobsize_[device_id];
 
+                    // Initialize iteration
                     unsigned int first_bl, last_bl, current_nr_baselines;
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
+                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                    void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
+                    void *uvw_ptr             = uvw.data(first_bl, 0);
+                    void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
 
                     // Load device
                     InstanceCUDA& device  = get_device(device_id);
@@ -693,52 +699,44 @@ namespace idg {
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    // Initialize iteration
-                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                    void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
-                    void *uvw_ptr             = uvw.data(first_bl, 0);
-                    void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
+                    #pragma omp critical
+                    {
+                        // Launch splitter on cpu
+                        hostStream->waitEvent(*inputFree[global_id]);
+                        enqueue_splitter(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids.get(), grid.data());
+                        hostStream->record(*hostFinished[global_id]);
 
-                    // Launch splitter on cpu
-                    hostStream->waitEvent(*inputFree[global_id]);
-                    enqueue_splitter(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids.get(), grid.data());
-                    hostStream->record(*hostFinished[global_id]);
+                        // Copy input data to device
+                        auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
+                        auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                        auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
+                        auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+                        htodstream.waitEvent(*inputFree[global_id]);
+                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                        enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
+                        htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
+                        htodstream.waitEvent(*hostFinished[global_id]);
+                        htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
+                        htodstream.record(*inputReady[global_id]);
 
-                    // Copy input data to device
-                    auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
-                    auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
-                    auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
-                    auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                    htodstream.waitEvent(*inputFree[global_id]);
-                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                    enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
-                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
-                    htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
-                    htodstream.waitEvent(*hostFinished[global_id]);
-                    htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
-                    htodstream.record(*inputReady[global_id]);
+                        // Launch FFT
+                        executestream.waitEvent(*inputReady[global_id]);
+                        device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
-                    // Launch FFT
-                    executestream.waitEvent(*inputReady[global_id]);
-                    device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+                        // Launch degridder kernel
+                        device.launch_degridder(
+                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                            d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                        executestream.record(*outputReady[global_id]);
+                        executestream.record(*inputFree[global_id]);
 
-                    // Launch degridder kernel
-                    device.launch_degridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                    executestream.record(*outputReady[global_id]);
-                    executestream.record(*inputFree[global_id]);
-
-                    // Copy visibilities to host
-                    dtohstream.waitEvent(*outputReady[global_id]);
-                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
-                    #if ENABLE_SAFE_MEMORY
-                    dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
-                    enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
-                    #else
-                    dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
-                    dtohstream.record(*outputFree[global_id]);
+                        // Copy visibilities to host
+                        dtohstream.waitEvent(*outputReady[global_id]);
+                        auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                        dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
+                        dtohstream.record(*outputFree[global_id]);
+                    }
 
                     // Finish job
                     device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
