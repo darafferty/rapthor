@@ -664,7 +664,9 @@ namespace idg {
                 int jobsize = jobsize_[0];
 
                 // Iterate all jobs
+                #pragma omp parallel for num_threads(nr_devices * nr_streams)
                 for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
+                    int global_id = omp_get_thread_num();
                     int device_id = global_id / nr_streams;
                     int local_id  = global_id % nr_streams;
                     jobsize       = jobsize_[device_id];
@@ -675,6 +677,7 @@ namespace idg {
 
                     // Load device
                     InstanceCUDA& device  = get_device(device_id);
+                    device.set_context();
 
                     // Load memory objects
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id, 0);
@@ -752,9 +755,9 @@ namespace idg {
                     #endif
                     dtohstream.record(*outputFree[global_id]);
 
+                    // Finish job
                     device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
-
-                    global_id = (global_id + 1) % (nr_devices * nr_streams);
+                    outputFree[global_id]->synchronize();
                 } // end for bl
 
                 // Enqueue end device measurement
