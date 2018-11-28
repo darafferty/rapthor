@@ -175,6 +175,10 @@ namespace idg {
                         unsigned int jobsize,
                         unsigned int nr_timesteps);
 
+                    cu::HostMemory& get_host_metadata(
+                        unsigned int id,
+                        unsigned int nr_subgrids);
+
                     cu::DeviceMemory& get_device_wavenumbers(
                         unsigned int id,
                         unsigned int nr_channels);
@@ -222,6 +226,7 @@ namespace idg {
                     cu::HostMemory& get_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
                     cu::HostMemory& get_host_visibilities(unsigned int id) { return *h_visibilities_[id]; }
                     cu::HostMemory& get_host_uvw(unsigned int id) { return *h_uvw_[id]; }
+                    cu::HostMemory& get_host_metadata(unsigned int id) { return *h_metadata_[id]; }
                     cu::DeviceMemory& get_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
                     cu::DeviceMemory& get_device_uvw(unsigned int id) { return *d_uvw_[id]; }
                     cu::DeviceMemory& get_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
@@ -271,6 +276,7 @@ namespace idg {
                     // One instance per stream
                     std::vector<std::unique_ptr<cu::HostMemory>> h_visibilities_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_uvw_;
+                    std::vector<std::unique_ptr<cu::HostMemory>> h_metadata_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_subgrids_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_wavenumbers_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;

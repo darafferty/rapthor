@@ -21,6 +21,7 @@ namespace idg {
                 mInfo(info),
                 h_visibilities_(),
                 h_uvw_(),
+                h_metadata_(),
                 h_subgrids_(),
                 d_wavenumbers_(),
                 d_visibilities_(),
@@ -824,6 +825,14 @@ namespace idg {
                 return *reuse_memory(h_uvw_, id, size);
             }
 
+            cu::HostMemory& InstanceCUDA::get_host_metadata(
+                unsigned int id,
+                unsigned int nr_subgrids)
+            {
+                auto size = auxiliary::sizeof_metadata(nr_subgrids);
+                return *reuse_memory(h_metadata_, id, size);
+            }
+
              cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
                 unsigned int id,
                 unsigned int nr_channels)
@@ -958,6 +967,7 @@ namespace idg {
                 h_misc_.clear();
                 h_visibilities_.clear();
                 h_uvw_.clear();
+                h_metadata_.clear();
                 h_subgrids_.clear();
             }
 
