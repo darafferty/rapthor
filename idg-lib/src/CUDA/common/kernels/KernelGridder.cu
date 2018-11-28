@@ -1,8 +1,6 @@
 #include "math.cu"
 #include "Types.h"
 
-#include <assert.h>
-
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
 #define BLOCK_SIZE GRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
@@ -31,7 +29,6 @@ __device__ void kernel_gridder_1(
           float2*          __restrict__ subgrid)
 {
     const unsigned UNROLL_PIXELS = 4;
-    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
 
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -246,7 +243,6 @@ __device__ void
           float2*          __restrict__ subgrid)
 {
     const unsigned UNROLL_PIXELS = 2;
-    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
 
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
