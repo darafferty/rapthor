@@ -171,19 +171,13 @@ __device__ void kernel_gridder_1(
                 int y = i_ / subgrid_size;
                 int x = i_ % subgrid_size;
 
-                // Get aterm for station1
-                int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-                float2 aXX1 = aterm[station1_idx + 0];
-                float2 aXY1 = aterm[station1_idx + 1];
-                float2 aYX1 = aterm[station1_idx + 2];
-                float2 aYY1 = aterm[station1_idx + 3];
+                 // Load aterm for station1
+                float2 aXX1, aXY1, aYX1, aYY1;
+                read_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
 
-                // Get aterm for station2
-                int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-                float2 aXX2 = aterm[station2_idx + 0];
-                float2 aXY2 = aterm[station2_idx + 1];
-                float2 aYX2 = aterm[station2_idx + 2];
-                float2 aYY2 = aterm[station2_idx + 3];
+                // Load aterm for station2
+                float2 aXX2, aXY2, aYX2, aYY2;
+                read_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, aterm, &aXX2, &aXY2, &aYX2, &aYY2);
 
                 // Apply the conjugate transpose of the A-term
                 apply_aterm(
