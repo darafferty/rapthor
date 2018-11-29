@@ -222,20 +222,17 @@ __device__ void kernel_degridder_(
         } // end for j (pixels)
 
         for (int chan = 0; chan < current_nr_channels; chan++) {
-            // Store visibility
-            const float scale = 1.0f / (nr_pixels);
-            int idx_time = time_offset_global + time;
-            int idx_chan = channel_offset + chan;
-            int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
-            int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
-            int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
-            int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
-
             if (time < nr_timesteps) {
-                visibilities[idx_xx] = visXX[chan] * scale;
-                visibilities[idx_xy] = visXY[chan] * scale;
-                visibilities[idx_yx] = visYX[chan] * scale;
-                visibilities[idx_yy] = visYY[chan] * scale;
+                // Store visibility
+                const float scale = 1.0f / (nr_pixels);
+                int idx_time = time_offset_global + time;
+                int idx_chan = channel_offset + chan;
+                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
+                float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                vis_ptr[0] = visA * scale;
+                vis_ptr[1] = visB * scale;
             }
         } // end for chan
     } // end for time
