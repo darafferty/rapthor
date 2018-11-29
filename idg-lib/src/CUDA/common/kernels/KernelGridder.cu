@@ -404,19 +404,25 @@ __device__ void
                 int y = i_ / subgrid_size;
                 int x = i_ % subgrid_size;
 
-                // Get aterm for station1
+                // Load aterm for station1
                 int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-                float2 aXX1 = aterm[station1_idx + 0];
-                float2 aXY1 = aterm[station1_idx + 1];
-                float2 aYX1 = aterm[station1_idx + 2];
-                float2 aYY1 = aterm[station1_idx + 3];
+                float4 *aterm1_ptr = (float4 *) &aterm[station1_idx];
+                float4 aterm1A = aterm1_ptr[0];
+                float4 aterm1B = aterm1_ptr[1];
+                float2 aXX1 = make_float2(aterm1A.x, aterm1A.y);
+                float2 aXY1 = make_float2(aterm1A.z, aterm1A.w);
+                float2 aYX1 = make_float2(aterm1B.x, aterm1B.y);
+                float2 aYY1 = make_float2(aterm1B.z, aterm1B.w);
 
-                // Get aterm for station2
+                // Load aterm for station2
                 int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-                float2 aXX2 = aterm[station2_idx + 0];
-                float2 aXY2 = aterm[station2_idx + 1];
-                float2 aYX2 = aterm[station2_idx + 2];
-                float2 aYY2 = aterm[station2_idx + 3];
+                float4 *aterm2_ptr = (float4 *) &aterm[station2_idx];
+                float4 aterm2A = aterm2_ptr[0];
+                float4 aterm2B = aterm2_ptr[1];
+                float2 aXX2 = make_float2(aterm2A.x, aterm2A.y);
+                float2 aXY2 = make_float2(aterm2A.z, aterm2A.w);
+                float2 aYX2 = make_float2(aterm2B.x, aterm2B.y);
+                float2 aYY2 = make_float2(aterm2B.z, aterm2B.w);
 
                 // Apply the conjugate transpose of the A-term
                 apply_aterm(
