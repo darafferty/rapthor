@@ -87,3 +87,42 @@ inline __device__ int index_visibility(
            chan * NR_POLARIZATIONS +
            pol;
 }
+
+inline __device__ int index_visibility_test(
+    int nr_timesteps,
+    int nr_channels,
+    int time,
+    int chan,
+    int pol)
+{
+    // visibilities: [nr_channels][nr_polarizations][nr_time]
+    return chan * NR_POLARIZATIONS * nr_timesteps +
+           pol * nr_timesteps +
+           time;
+}
+
+/*
+    Helper methods
+ */
+inline __device__ void read_aterm(
+    int subgrid_size,
+    int nr_stations,
+    int aterm_index,
+    int station,
+    int y,
+    int x,
+    const float2 *aterms_ptr,
+    float2 *aXX,
+    float2 *aXY,
+    float2 *aYX,
+    float2 *aYY)
+{
+    int station_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station, y, x);
+    float4 *aterm_ptr = (float4 *) &aterms_ptr[station_idx];
+    float4 atermA = aterm_ptr[0];
+    float4 atermB = aterm_ptr[1];
+    *aXX = make_float2(atermA.x, atermA.y);
+    *aXY = make_float2(atermA.z, atermA.w);
+    *aYX = make_float2(atermB.x, atermB.y);
+    *aYY = make_float2(atermB.z, atermB.w);
+}

@@ -20,6 +20,14 @@ inline __device__ float2 operator*(float2 a, float2 b) {
                        a.x * b.y + a.y * b.x);
 }
 
+inline __device__ float4 operator*(float4 a, float b) {
+    return make_float4(a.x * b, a.y * b, a.z * b, a.w * b);
+}
+
+inline __device__ float4 operator*(float a, float4 b) {
+    return make_float4(a * b.x, a * b.y, a * b.z, a * b.w);
+}
+
 inline __device__ void operator+=(float2 &a, float2 b) {
     a.x += b.x;
     a.y += b.y;

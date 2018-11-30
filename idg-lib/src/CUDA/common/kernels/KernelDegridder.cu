@@ -1,8 +1,6 @@
 #include "Types.h"
 #include "math.cu"
 
-#include <assert.h>
-
 #define BATCH_SIZE DEGRIDDER_BATCH_SIZE
 #define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
@@ -62,18 +60,12 @@ __device__ void kernel_degridder_(
             int x = i % subgrid_size;
 
             // Load aterm for station1
-            int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-            float2 aXX1 = aterm[station1_idx + 0];
-            float2 aXY1 = aterm[station1_idx + 1];
-            float2 aYX1 = aterm[station1_idx + 2];
-            float2 aYY1 = aterm[station1_idx + 3];
+            float2 aXX1, aXY1, aYX1, aYY1;
+            read_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
 
             // Load aterm for station2
-            int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-            float2 aXX2 = aterm[station2_idx + 0];
-            float2 aXY2 = aterm[station2_idx + 1];
-            float2 aYX2 = aterm[station2_idx + 2];
-            float2 aYY2 = aterm[station2_idx + 3];
+            float2 aXX2, aXY2, aYX2, aYY2;
+            read_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, aterm, &aXX2, &aXY2, &aYX2, &aYY2);
 
             // Load spheroidal
             float spheroidal_ = spheroidal[y * subgrid_size + x];
@@ -224,20 +216,17 @@ __device__ void kernel_degridder_(
         } // end for j (pixels)
 
         for (int chan = 0; chan < current_nr_channels; chan++) {
-            // Store visibility
-            const float scale = 1.0f / (nr_pixels);
-            int idx_time = time_offset_global + time;
-            int idx_chan = channel_offset + chan;
-            int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
-            int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
-            int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
-            int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
-
             if (time < nr_timesteps) {
-                visibilities[idx_xx] = visXX[chan] * scale;
-                visibilities[idx_xy] = visXY[chan] * scale;
-                visibilities[idx_yx] = visYX[chan] * scale;
-                visibilities[idx_yy] = visYY[chan] * scale;
+                // Store visibility
+                const float scale = 1.0f / (nr_pixels);
+                int idx_time = time_offset_global + time;
+                int idx_chan = channel_offset + chan;
+                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
+                float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                vis_ptr[0] = visA * scale;
+                vis_ptr[1] = visB * scale;
             }
         } // end for chan
     } // end for time
@@ -269,7 +258,6 @@ __launch_bounds__(BLOCK_SIZE)
           float2*        __restrict__ subgrid)
 {
 	int channel_offset = 0;
-	assert(MAX_NR_CHANNELS == 8);
 	KERNEL_DEGRIDDER_TEMPLATE(8);
 	KERNEL_DEGRIDDER_TEMPLATE(4);
 	KERNEL_DEGRIDDER_TEMPLATE(2);

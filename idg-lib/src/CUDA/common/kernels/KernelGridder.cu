@@ -1,8 +1,6 @@
 #include "math.cu"
 #include "Types.h"
 
-#include <assert.h>
-
 #define BATCH_SIZE GRIDDER_BATCH_SIZE
 #define BLOCK_SIZE GRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
@@ -31,7 +29,6 @@ __device__ void kernel_gridder_1(
           float2*          __restrict__ subgrid)
 {
     const unsigned UNROLL_PIXELS = 4;
-    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
 
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -103,18 +100,13 @@ __device__ void kernel_gridder_1(
             }
 
             // Load visibilities
-            for (int i = tid; i < current_nr_timesteps; i += nr_threads) {
-                int idx_time = time_offset_global + time_offset_local + i;
-                int idx_xx = index_visibility(1, idx_time, 0, 0);
-                int idx_xy = index_visibility(1, idx_time, 0, 1);
-                int idx_yx = index_visibility(1, idx_time, 0, 2);
-                int idx_yy = index_visibility(1, idx_time, 0, 3);
-                float2 a = visibilities[idx_xx];
-                float2 b = visibilities[idx_xy];
-                float2 c = visibilities[idx_yx];
-                float2 d = visibilities[idx_yy];
-                shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
-                shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            for (int i = tid; i < current_nr_timesteps*2; i += nr_threads) {
+                int j = i % 2; // one thread loads either upper or lower float4 part of visibility
+                int k = i / 2;
+                int idx_time = time_offset_global + time_offset_local + k;
+                int idx_vis = index_visibility(1, idx_time, 0, 0);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                shared[j][k] = vis_ptr[j];
             }
 
             __syncthreads();
@@ -179,19 +171,13 @@ __device__ void kernel_gridder_1(
                 int y = i_ / subgrid_size;
                 int x = i_ % subgrid_size;
 
-                // Get aterm for station1
-                int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-                float2 aXX1 = aterm[station1_idx + 0];
-                float2 aXY1 = aterm[station1_idx + 1];
-                float2 aYX1 = aterm[station1_idx + 2];
-                float2 aYY1 = aterm[station1_idx + 3];
+                 // Load aterm for station1
+                float2 aXX1, aXY1, aYX1, aYY1;
+                read_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
 
-                // Get aterm for station2
-                int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-                float2 aXX2 = aterm[station2_idx + 0];
-                float2 aXY2 = aterm[station2_idx + 1];
-                float2 aYX2 = aterm[station2_idx + 2];
-                float2 aYY2 = aterm[station2_idx + 3];
+                // Load aterm for station2
+                float2 aXX2, aXY2, aYX2, aYY2;
+                read_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, aterm, &aXX2, &aXY2, &aYX2, &aYY2);
 
                 // Apply the conjugate transpose of the A-term
                 apply_aterm(
@@ -246,7 +232,6 @@ __device__ void
           float2*          __restrict__ subgrid)
 {
     const unsigned UNROLL_PIXELS = 2;
-    assert(subgrid_size * subgrid_size % UNROLL_PIXELS == 0);
 
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -339,19 +324,14 @@ __device__ void
             }
 
             // Load visibilities
-            for (int i = tid; i < current_nr_timesteps*current_nr_channels; i += nr_threads) {
-                int idx_time = time_offset_global + time_offset_local + (i / current_nr_channels);
-                int idx_chan = channel_offset + (i % current_nr_channels);
-                int idx_xx = index_visibility(nr_channels, idx_time, idx_chan, 0);
-                int idx_xy = index_visibility(nr_channels, idx_time, idx_chan, 1);
-                int idx_yx = index_visibility(nr_channels, idx_time, idx_chan, 2);
-                int idx_yy = index_visibility(nr_channels, idx_time, idx_chan, 3);
-                float2 a = visibilities[idx_xx];
-                float2 b = visibilities[idx_xy];
-                float2 c = visibilities[idx_yx];
-                float2 d = visibilities[idx_yy];
-                shared[0][i] = make_float4(a.x, a.y, b.x, b.y);
-                shared[1][i] = make_float4(c.x, c.y, d.x, d.y);
+            for (int i = tid; i < current_nr_timesteps*current_nr_channels*2; i += nr_threads) {
+                int j = i % 2; // one thread loads either upper or lower float4 part of visibility
+                int k = i / 2;
+                int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
+                int idx_chan = channel_offset + (k % current_nr_channels);
+                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                shared[j][k] = vis_ptr[j];
             }
 
             __syncthreads();
@@ -418,20 +398,13 @@ __device__ void
                 int y = i_ / subgrid_size;
                 int x = i_ % subgrid_size;
 
-                // Get aterm for station1
-                int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-                float2 aXX1 = aterm[station1_idx + 0];
-                float2 aXY1 = aterm[station1_idx + 1];
-                float2 aYX1 = aterm[station1_idx + 2];
-                float2 aYY1 = aterm[station1_idx + 3];
+                // Load aterm for station1
+                float2 aXX1, aXY1, aYX1, aYY1;
+                read_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
 
-                // Get aterm for station2
-                int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
-                float2 aXX2 = aterm[station2_idx + 0];
-                float2 aXY2 = aterm[station2_idx + 1];
-                float2 aYX2 = aterm[station2_idx + 2];
-                float2 aYY2 = aterm[station2_idx + 3];
-
+                // Load aterm for station2
+                float2 aXX2, aXY2, aYX2, aYY2;
+                read_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, aterm, &aXX2, &aXY2, &aYX2, &aYY2);
                 // Apply the conjugate transpose of the A-term
                 apply_aterm(
                     conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
