@@ -7,7 +7,8 @@
 
 #define MAX_NR_CHANNELS 8
 
-__shared__ float4 shared[3][BATCH_SIZE];
+__shared__ float4 visibilities_[BATCH_SIZE][2];
+__shared__ float4 uvw_[BATCH_SIZE];
 __shared__ float wavenumbers_[MAX_NR_CHANNELS];
 
 /*
@@ -93,7 +94,7 @@ __device__ void kernel_gridder_1(
             // Load UVW
             for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
                 UVW a = uvw[time_offset_global + time_offset_local + time];
-                shared[2][time] = make_float4(a.u, a.v, a.w, 0);
+                uvw_[time] = make_float4(a.u, a.v, a.w, 0);
             }
 
             // Load visibilities
@@ -103,7 +104,7 @@ __device__ void kernel_gridder_1(
                 int idx_time = time_offset_global + time_offset_local + k;
                 int idx_vis = index_visibility(1, idx_time, 0, 0);
                 float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                shared[j][k] = vis_ptr[j];
+                visibilities_[k][j] = vis_ptr[j];
             }
 
             __syncthreads();
@@ -111,9 +112,9 @@ __device__ void kernel_gridder_1(
             // Iterate current batch of timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
-                float u = shared[2][time].x;
-                float v = shared[2][time].y;
-                float w = shared[2][time].z;
+                float u = uvw_[time].x;
+                float v = uvw_[time].y;
+                float w = uvw_[time].z;
 
                 // Compute phase index
                 float phase_index[UNROLL_PIXELS];
@@ -126,8 +127,8 @@ __device__ void kernel_gridder_1(
                 float wavenumber = wavenumbers[0];
 
                 // Load visibilities from shared memory
-                float4 a = shared[0][time];
-                float4 b = shared[1][time];
+                float4 a = visibilities_[time][0];
+                float4 b = visibilities_[time][1];
                 float2 visXX = make_float2(a.x, a.y);
                 float2 visXY = make_float2(a.z, a.w);
                 float2 visYX = make_float2(b.x, b.y);
@@ -291,7 +292,7 @@ __device__ void
             // Load UVW
             for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
                 UVW a = uvw[time_offset_global + time_offset_local + time];
-                shared[2][time] = make_float4(a.u, a.v, a.w, 0);
+                uvw_[time] = make_float4(a.u, a.v, a.w, 0);
             }
 
             // Load visibilities
@@ -302,7 +303,7 @@ __device__ void
                 int idx_chan = channel_offset + (k % current_nr_channels);
                 int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
                 float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                shared[j][k] = vis_ptr[j];
+                visibilities_[k][j] = vis_ptr[j];
             }
 
             __syncthreads();
@@ -310,9 +311,9 @@ __device__ void
             // Iterate current batch of timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
                 // Load UVW coordinates
-                float u = shared[2][time].x;
-                float v = shared[2][time].y;
-                float w = shared[2][time].z;
+                float u = uvw_[time].x;
+                float v = uvw_[time].y;
+                float w = uvw_[time].z;
 
                 // Compute phase index and phase offset
                 float phase_index[UNROLL_PIXELS];
@@ -326,8 +327,8 @@ __device__ void
                     float wavenumber = wavenumbers_[chan];
 
                     // Load visibilities from shared memory
-                    float4 a = shared[0][time*current_nr_channels+chan];
-                    float4 b = shared[1][time*current_nr_channels+chan];
+                    float4 a = visibilities_[time*current_nr_channels+chan][0];
+                    float4 b = visibilities_[time*current_nr_channels+chan][1];
                     float2 visXX = make_float2(a.x, a.y);
                     float2 visXY = make_float2(a.z, a.w);
                     float2 visYX = make_float2(b.x, b.y);
