@@ -152,6 +152,7 @@ namespace idg {
         const std::string name_adder("adder");
         const std::string name_splitter("splitter");
         const std::string name_gridder("gridder");
+        const std::string name_gridder_post("sub-post");
         const std::string name_degridder("degridder");
         const std::string name_subgrid_fft("sub-fft");
         const std::string name_grid_fft("grid-fft");

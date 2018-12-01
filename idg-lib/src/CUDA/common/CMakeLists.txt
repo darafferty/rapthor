@@ -45,6 +45,7 @@ install(
     kernels/KernelScaler.cu
     kernels/KernelAdder.cu
     kernels/KernelSplitter.cu
+    kernels/KernelGridderPost.cu
     kernels/math.cu
     kernels/Types.h
     DESTINATION

@@ -486,6 +486,11 @@ namespace idg {
                             d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
                         executestream.record(*inputFree[global_id]);
 
+                        // Launch gridder post-processing kernel
+                        device.launch_gridder_post(
+                            current_nr_subgrids, subgrid_size, nr_stations,
+                            d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
+
                         // Launch FFT
                         device.launch_fft(d_subgrids, FourierDomainToImageDomain);
 

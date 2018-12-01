@@ -99,6 +99,15 @@ namespace idg {
                 update(state_gridder, startState, endState);
             }
 
+            void update_gridder_post(
+                powersensor::State& startState,
+                powersensor::State& endState)
+            {
+                gridder_post_enabled = true;
+                gridder_post_updated = true;
+                update(state_gridder_post, startState, endState);
+            }
+
             void update_degridder(
                 powersensor::State& startState,
                 powersensor::State& endState)
@@ -260,6 +269,16 @@ namespace idg {
                         ignore_short);
                     gridder_updated = false;
                 }
+                if ((total && gridder_post_enabled) || gridder_post_updated) {
+                    auxiliary::report(
+                        prefix + auxiliary::name_gridder_post,
+                        total ? state_gridder_post.total_seconds : state_gridder_post.current_seconds,
+                        total ? state_gridder_post.total_joules : state_gridder_post.current_joules,
+                        0,
+                        0,
+                        ignore_short);
+                    gridder_updated = false;
+                }
                 if ((total && degridder_enabled) || degridder_updated) {
                     auxiliary::report(
                         prefix + auxiliary::name_degridder,
@@ -411,6 +430,7 @@ namespace idg {
             void reset() {
                 host_enabled        = false;
                 gridder_enabled     = false;
+                gridder_post_enabled = false;
                 degridder_enabled   = false;
                 adder_enabled       = false;
                 splitter_enabled    = false;
@@ -461,6 +481,7 @@ namespace idg {
 
             bool host_enabled;
             bool gridder_enabled;
+            bool gridder_post_enabled;
             bool degridder_enabled;
             bool adder_enabled;
             bool splitter_enabled;
@@ -474,6 +495,7 @@ namespace idg {
 
             bool host_updated;
             bool gridder_updated;
+            bool gridder_post_updated;
             bool degridder_updated;
             bool adder_updated;
             bool splitter_updated;
@@ -490,6 +512,7 @@ namespace idg {
             const State state_zero;
             State state_host;
             State state_gridder;
+            State state_gridder_post;
             State state_degridder;
             State state_adder;
             State state_splitter;
