@@ -206,7 +206,7 @@ __device__ void
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid)
 {
-    const unsigned UNROLL_PIXELS = 2;
+    const unsigned UNROLL_PIXELS = 4;
 
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
