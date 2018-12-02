@@ -706,6 +706,11 @@ namespace idg {
                         executestream.waitEvent(*inputReady[global_id]);
                         device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
+                        // Launch degridder pre-processing kernel
+                        device.launch_degridder_pre(
+                            current_nr_subgrids, subgrid_size, nr_stations,
+                            d_spheroidal, d_aterms, d_metadata, d_subgrids);
+
                         // Launch degridder kernel
                         device.launch_degridder(
                             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
