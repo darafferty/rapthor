@@ -66,8 +66,8 @@ namespace idg {
                 Report::State& reportState,
                 double runtime)
             {
-                 reportState.current_seconds = runtime;
-                 reportState.total_seconds  += reportState.current_seconds;
+                reportState.current_seconds = runtime;
+                reportState.total_seconds  += reportState.current_seconds;
             }
 
             void update(
@@ -75,10 +75,10 @@ namespace idg {
                 powersensor::State& startState,
                 powersensor::State& endState)
             {
-                 reportState.current_seconds = dummy->seconds(startState, endState);
-                 reportState.current_joules  = dummy->Joules(startState, endState);
-                 reportState.total_seconds  += reportState.current_seconds;
-                 reportState.total_joules   += reportState.current_joules;
+                reportState.current_seconds = dummy->seconds(startState, endState);
+                reportState.current_joules  = dummy->Joules(startState, endState);
+                reportState.total_seconds  += reportState.current_seconds;
+                reportState.total_joules   += reportState.current_joules;
             }
 
             void update_host(
@@ -269,44 +269,36 @@ namespace idg {
                 bool ignore_short = !total;
 
                 if ((total && gridder_enabled) || gridder_updated) {
+                    auto seconds = total ? state_gridder.total_seconds : state_gridder.current_seconds;
+                    auto joules  = total ? state_gridder.total_joules : state_gridder.current_joules;
+                    if (gridder_post_updated) {
+                        seconds += total ? state_gridder_post.total_seconds : state_gridder_post.current_seconds;
+                        joules  += total ? state_gridder_post.total_joules : state_gridder_post.current_joules;
+                    }
                     auxiliary::report(
                         prefix + auxiliary::name_gridder,
-                        total ? state_gridder.total_seconds : state_gridder.current_seconds,
-                        total ? state_gridder.total_joules : state_gridder.current_joules,
+                        seconds,
+                        joules,
                         auxiliary::flops_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         ignore_short);
                     gridder_updated = false;
                 }
-                if ((total && gridder_post_enabled) || gridder_post_updated) {
-                    auxiliary::report(
-                        prefix + auxiliary::name_gridder_post,
-                        total ? state_gridder_post.total_seconds : state_gridder_post.current_seconds,
-                        total ? state_gridder_post.total_joules : state_gridder_post.current_joules,
-                        0,
-                        0,
-                        ignore_short);
-                    gridder_updated = false;
-                }
                 if ((total && degridder_enabled) || degridder_updated) {
+                    auto seconds = total ? state_degridder.total_seconds : state_degridder.current_seconds;
+                    auto joules  = total ? state_degridder.total_joules : state_degridder.current_joules;
+                    if (degridder_pre_updated) {
+                        seconds += total ? state_degridder_pre.total_seconds : state_degridder_pre.current_seconds;
+                        joules  += total ? state_degridder_pre.total_joules : state_degridder_pre.current_joules;
+                    }
                     auxiliary::report(
                         prefix + auxiliary::name_degridder,
-                        total ? state_degridder.total_seconds : state_degridder.current_seconds,
-                        total ? state_degridder.total_joules : state_degridder.current_joules,
+                        seconds,
+                        joules,
                         auxiliary::flops_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         auxiliary::bytes_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         ignore_short);
                     degridder_updated = false;
-                }
-                if ((total && degridder_pre_enabled) || degridder_pre_updated) {
-                    auxiliary::report(
-                        prefix + auxiliary::name_degridder_pre,
-                        total ? state_degridder_pre.total_seconds : state_degridder_pre.current_seconds,
-                        total ? state_degridder_pre.total_joules : state_degridder_pre.current_joules,
-                        0,
-                        0,
-                        ignore_short);
-                    gridder_updated = false;
                 }
                 if ((total && subgrid_fft_enabled) || subgrid_fft_updated) {
                     auxiliary::report(
