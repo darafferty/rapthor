@@ -42,9 +42,6 @@ __device__ void kernel_degridder_(
     const Metadata &m = metadata[s];
     const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
     const int nr_timesteps = m.nr_timesteps;
-    const int aterm_index = m.aterm_index;
-    const int station1 = m.baseline.station1;
-    const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
 
@@ -52,51 +49,6 @@ __device__ void kernel_degridder_(
     const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
-
-    if (channel_offset == 0) {
-        // Apply spheroidal and aterm correction
-        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
-            int y = i / subgrid_size;
-            int x = i % subgrid_size;
-
-            // Load aterm for station1
-            float2 aXX1, aXY1, aYX1, aYY1;
-            read_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
-
-            // Load aterm for station2
-            float2 aXX2, aXY2, aYX2, aYY2;
-            read_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, aterm, &aXX2, &aXY2, &aYX2, &aYY2);
-
-            // Load spheroidal
-            float spheroidal_ = spheroidal[y * subgrid_size + x];
-
-            // Compute shifted position in subgrid
-            int x_src = (x + (subgrid_size/2)) % subgrid_size;
-            int y_src = (y + (subgrid_size/2)) % subgrid_size;
-
-            // Load pixels
-            int idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
-            int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
-            int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
-            int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-            float2 pixelsXX = spheroidal_ * subgrid[idx_xx];
-            float2 pixelsXY = spheroidal_ * subgrid[idx_xy];
-            float2 pixelsYX = spheroidal_ * subgrid[idx_yx];
-            float2 pixelsYY = spheroidal_ * subgrid[idx_yy];
-
-            // Apply aterm
-            apply_aterm(
-                aXX1, aXY1, aYX1, aYY1,
-                aXX2, aXY2, aYX2, aYY2,
-                pixelsXX, pixelsXY, pixelsYX, pixelsYY);
-
-            // Store pixels
-            subgrid[idx_xx] = pixelsXX;
-            subgrid[idx_xy] = pixelsXY;
-            subgrid[idx_yx] = pixelsYX;
-            subgrid[idx_yy] = pixelsYY;
-        }
-    }
 
     // Iterate visibilities
     for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {

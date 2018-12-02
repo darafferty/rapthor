@@ -154,6 +154,7 @@ namespace idg {
         const std::string name_gridder("gridder");
         const std::string name_gridder_post("sub-post");
         const std::string name_degridder("degridder");
+        const std::string name_degridder_pre("sub-pre");
         const std::string name_subgrid_fft("sub-fft");
         const std::string name_grid_fft("grid-fft");
         const std::string name_fft_shift("fft-shift");

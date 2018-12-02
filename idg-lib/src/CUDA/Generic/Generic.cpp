@@ -517,6 +517,11 @@ namespace idg {
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
+                            // Launch degridder pre-processing kernel
+                            device.launch_degridder_pre(
+                                current_nr_subgrids, subgrid_size, nr_stations,
+                                d_spheroidal, d_aterms, d_metadata, d_subgrids);
+
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
                             device.launch_degridder(

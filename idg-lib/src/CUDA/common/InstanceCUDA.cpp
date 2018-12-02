@@ -29,7 +29,7 @@ namespace idg {
                 d_metadata_(),
                 d_subgrids_(),
                 h_misc_(),
-                mModules(6)
+                mModules(7)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -84,6 +84,7 @@ namespace idg {
                 delete function_adder;
                 delete function_splitter;
                 delete function_gridder_post;
+                delete function_degridder_pre;
                 delete device;
                 delete context;
                 delete powerSensor;
@@ -158,6 +159,7 @@ namespace idg {
                 src.push_back("KernelAdder.cu");
                 src.push_back("KernelSplitter.cu");
                 src.push_back("KernelGridderPost.cu");
+                src.push_back("KernelDegridderPre.cu");
 
                 // Create vector of cubin filenames
                 std::vector<std::string> cubin;
@@ -167,6 +169,7 @@ namespace idg {
                 cubin.push_back("Adder.cubin");
                 cubin.push_back("Splitter.cubin");
                 cubin.push_back("GridderPost.cubin");
+                cubin.push_back("DegridderPre.cubin");
 
                 // Compile all kernels
                 #pragma omp parallel for
@@ -209,6 +212,9 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[5], name_gridder_post.c_str()) == CUDA_SUCCESS) {
                     function_gridder_post = new cu::Function(function); found++;
                 }
+                if (cuModuleGetFunction(&function, *mModules[6], name_degridder_pre.c_str()) == CUDA_SUCCESS) {
+                    function_degridder_pre = new cu::Function(function); found++;
+                }
 
                 if (found != mModules.size()) {
                     std::cerr << "Incorrect number of functions found: " << found << " != " << mModules.size() << std::endl;
@@ -222,7 +228,8 @@ namespace idg {
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                block_gridder_post = dim3(128);
+                block_gridder_post  = dim3(128);
+                block_degridder_pre = dim3(128);
                 batch_gridder    = 192;
                 batch_degridder  = 192;
                 tile_size_grid   = 128;
@@ -234,7 +241,8 @@ namespace idg {
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                block_gridder_post = dim3(128);
+                block_gridder_post  = dim3(128);
+                block_degridder_pre = dim3(128);
                 batch_gridder    = 384;
                 batch_degridder  = 512;
                 tile_size_grid   = 128;
@@ -246,7 +254,8 @@ namespace idg {
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                block_gridder_post = dim3(128);
+                block_gridder_post  = dim3(128);
+                block_degridder_pre = dim3(128);
                 batch_gridder    = 384;
                 batch_degridder  = 512;
                 tile_size_grid   = 128;
@@ -258,7 +267,8 @@ namespace idg {
                 block_adder      = dim3(128);
                 block_splitter   = dim3(128);
                 block_scaler     = dim3(128);
-                block_gridder_post = dim3(128);
+                block_gridder_post   = dim3(128);
+                block_degridder_pre  = dim3(128);
                 batch_gridder    = 128;
                 batch_degridder  = 256;
                 tile_size_grid   = 128;
@@ -703,6 +713,25 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder_post);
                 start_measurement(data);
                 executestream->launchKernel(*function_gridder_post, grid, block_gridder_post, 0, parameters);
+                end_measurement(data);
+            }
+
+             void InstanceCUDA::launch_degridder_pre(
+                int nr_subgrids,
+                int subgrid_size,
+                int nr_stations,
+                cu::DeviceMemory& d_spheroidal,
+                cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid)
+            {
+                const void *parameters[] = {
+                    &subgrid_size, &nr_stations,
+                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+                dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder_pre);
+                start_measurement(data);
+                executestream->launchKernel(*function_degridder_pre, grid, block_degridder_pre, 0, parameters);
                 end_measurement(data);
             }
 
