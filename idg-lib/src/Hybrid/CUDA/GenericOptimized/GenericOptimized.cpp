@@ -493,10 +493,6 @@ namespace idg {
 
                         // Launch FFT
                         device.launch_fft(d_subgrids, FourierDomainToImageDomain);
-
-                        // Launch scaler kernel
-                        device.launch_scaler(
-                            current_nr_subgrids, subgrid_size, d_subgrids);
                         executestream.record(*outputReady[global_id]);
 
                         // Copy subgrid to host

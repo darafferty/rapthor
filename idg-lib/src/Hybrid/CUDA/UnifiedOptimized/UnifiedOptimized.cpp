@@ -266,11 +266,6 @@ namespace idg {
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
                             device.measure(powerRecords[2], executestream);
 
-                            // Launch scaler kernel
-                            device.launch_scaler(
-                                current_nr_subgrids, subgrid_size, d_subgrids);
-                            device.measure(powerRecords[3], executestream);
-
                             // Launch adder kernel
                             device.launch_adder_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,

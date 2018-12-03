@@ -312,10 +312,6 @@ namespace idg {
                             // Launch FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
 
-                            // Launch scaler kernel
-                            device.launch_scaler(
-                                current_nr_subgrids, subgrid_size, d_subgrids);
-
                             // Launch adder kernel
                             device.launch_adder(
                                 current_nr_subgrids, grid_size, subgrid_size,
