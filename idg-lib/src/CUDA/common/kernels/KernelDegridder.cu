@@ -27,6 +27,8 @@ __device__ void kernel_degridder_1(
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
+    const unsigned UNROLL_TIME = 2;
+
     int s          = blockIdx.x;
     int tidx       = threadIdx.x;
     int tidy       = threadIdx.y;
@@ -49,18 +51,31 @@ __device__ void kernel_degridder_1(
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Iterate visibilities
-    for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
-        float2 visXX = make_float2(0, 0);
-        float2 visXY = make_float2(0, 0);
-        float2 visYX = make_float2(0, 0);
-        float2 visYY = make_float2(0, 0);
+    for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads * UNROLL_TIME) {
+        float2 visXX[UNROLL_TIME];
+        float2 visXY[UNROLL_TIME];
+        float2 visYX[UNROLL_TIME];
+        float2 visYY[UNROLL_TIME];
 
-        float u, v, w;
+        for (unsigned i = 0; i < UNROLL_TIME; i++) {
+            visXX[i] = make_float2(0, 0);
+            visXY[i] = make_float2(0, 0);
+            visYX[i] = make_float2(0, 0);
+            visYY[i] = make_float2(0, 0);
+        }
 
-        if (time < nr_timesteps) {
-            u = uvw[time_offset_global + time].u;
-            v = uvw[time_offset_global + time].v;
-            w = uvw[time_offset_global + time].w;
+        float u[UNROLL_TIME];
+        float v[UNROLL_TIME];
+        float w[UNROLL_TIME];
+
+        for (unsigned i = 0; i < UNROLL_TIME; i++) {
+            unsigned time_ = time + i * nr_threads;
+
+            if (time_ < nr_timesteps) {
+                u[i] = uvw[time_offset_global + time_].u;
+                v[i] = uvw[time_offset_global + time_].v;
+                w[i] = uvw[time_offset_global + time_].w;
+            }
         }
 
         __syncthreads();
@@ -123,49 +138,56 @@ __device__ void kernel_degridder_1(
                 // Load phase offset
                 float phase_offset = shared[2][k].w;
 
-                // Compute phase index
-                float phase_index = u * l + v * m + w * n;
-
                 // Load wavenumber
                 float wavenumber = wavenumbers[0];
 
-                // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = make_float2(cosf(phase), sinf(phase));
+                // Iterate unrolled timesteps
+                for (unsigned i = 0; i < UNROLL_TIME; i++) {
+                    // Compute phase index
+                    float phase_index = u[i] * l + v[i] * m + w[i] * n;
 
-                // Multiply pixels by phasor
-                visXX.x += phasor.x * apXX.x;
-                visXX.y += phasor.x * apXX.y;
-                visXX.x -= phasor.y * apXX.y;
-                visXX.y += phasor.y * apXX.x;
+                    // Compute phasor
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(cosf(phase), sinf(phase));
 
-                visXY.x += phasor.x * apXY.x;
-                visXY.y += phasor.x * apXY.y;
-                visXY.x -= phasor.y * apXY.y;
-                visXY.y += phasor.y * apXY.x;
+                    // Multiply pixels by phasor
+                    visXX[i].x += phasor.x * apXX.x;
+                    visXX[i].y += phasor.x * apXX.y;
+                    visXX[i].x -= phasor.y * apXX.y;
+                    visXX[i].y += phasor.y * apXX.x;
 
-                visYX.x += phasor.x * apYX.x;
-                visYX.y += phasor.x * apYX.y;
-                visYX.x -= phasor.y * apYX.y;
-                visYX.y += phasor.y * apYX.x;
+                    visXY[i].x += phasor.x * apXY.x;
+                    visXY[i].y += phasor.x * apXY.y;
+                    visXY[i].x -= phasor.y * apXY.y;
+                    visXY[i].y += phasor.y * apXY.x;
 
-                visYY.x += phasor.x * apYY.x;
-                visYY.y += phasor.x * apYY.y;
-                visYY.x -= phasor.y * apYY.y;
-                visYY.y += phasor.y * apYY.x;
+                    visYX[i].x += phasor.x * apYX.x;
+                    visYX[i].y += phasor.x * apYX.y;
+                    visYX[i].x -= phasor.y * apYX.y;
+                    visYX[i].y += phasor.y * apYX.x;
+
+                    visYY[i].x += phasor.x * apYY.x;
+                    visYY[i].y += phasor.x * apYY.y;
+                    visYY[i].x -= phasor.y * apYY.y;
+                    visYY[i].y += phasor.y * apYY.x;
+                }
             } // end for k (batch)
         } // end for j (pixels)
 
-        if (time < nr_timesteps) {
-            // Store visibility
-            const float scale = 1.0f / (nr_pixels);
-            int idx_time = time_offset_global + time;
-            int idx_vis = index_visibility(nr_channels, idx_time, 1, 0);
-            float4 visA = make_float4(visXX.x, visXX.y, visXY.x, visXY.y);
-            float4 visB = make_float4(visYX.x, visYX.y, visYY.x, visYY.y);
-            float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-            vis_ptr[0] = visA * scale;
-            vis_ptr[1] = visB * scale;
+        for (unsigned i = 0; i < UNROLL_TIME; i++) {
+            unsigned time_ = time + i * nr_threads;
+
+            if (time_ < nr_timesteps) {
+                // Store visibility
+                const float scale = 1.0f / (nr_pixels);
+                int idx_time = time_offset_global + time_;
+                int idx_vis = index_visibility(1, idx_time, 0, 0);
+                float4 visA = make_float4(visXX[i].x, visXX[i].y, visXY[i].x, visXY[i].y);
+                float4 visB = make_float4(visYX[i].x, visYX[i].y, visYY[i].x, visYY[i].y);
+                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                vis_ptr[0] = visA * scale;
+                vis_ptr[1] = visB * scale;
+            }
         }
     } // end for time
 } // end kernel_degridder_1
