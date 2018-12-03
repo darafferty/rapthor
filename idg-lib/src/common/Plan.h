@@ -32,6 +32,10 @@ namespace idg {
                 // limit the maximum amount of timesteps per subgrid
                 // zero means no limit
                 unsigned max_nr_timesteps_per_subgrid = 0;
+
+                // consider only first channel when creating subgrids,
+                // add additional subgrids for every subsequent frequencies
+                bool simulate_spectral_line = false;
             };
 
             // Constructors

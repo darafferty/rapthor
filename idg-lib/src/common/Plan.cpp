@@ -206,6 +206,13 @@ namespace idg {
         auto nr_channels  = frequencies.get_x_dim();
         auto image_size   = cell_size * grid_size; // TODO: remove
 
+        // Spectral-line imaging
+        bool simulate_spectral_line = options.simulate_spectral_line;
+        auto nr_channels_ = nr_channels;
+        if (simulate_spectral_line) {
+            nr_channels = 1;
+        }
+
         // Allocate metadata
         metadata.reserve(nr_baselines * nr_timesteps / nr_timeslots);
 
@@ -276,7 +283,6 @@ namespace idg {
                     // Iterate all datapoints
                     for (; time_offset < nr_timesteps_per_aterm; time_offset++) {
                         // Visibility for first channel
-
                         DataPoint visibility0 = datapoints[time_offset*nr_channels];
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
@@ -329,6 +335,18 @@ namespace idg {
                             coordinate                              // coordinate
                         };
                         metadata_[bl].push_back(m);
+
+                        // Add additional subgrids for subsequent frequencies
+                        if (simulate_spectral_line) {
+                            for (unsigned c = 1; c < nr_channels_; c++) {
+                                // Compute shifted subgrid for current frequency
+                                float shift = frequencies(c) / frequencies(0);
+                                Metadata m = metadata_[bl].back();
+                                m.coordinate.x *= shift;
+                                m.coordinate.y *= shift;
+                                metadata_[bl].push_back(m);
+                            }
+                        }
                     } else if (plan_strict) {
                         std::stringstream message;
                         message << "subgrid out of range: (" << coordinate.x << ", " << coordinate.y << ")";
