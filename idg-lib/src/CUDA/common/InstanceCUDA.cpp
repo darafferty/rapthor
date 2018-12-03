@@ -176,8 +176,8 @@ namespace idg {
                 cubin.push_back("Gridder.cubin");
                 std::stringstream flags_gridder;
                 flags_gridder << flags_common;
-                flags_gridder << " -DGRIDDER_BATCH_SIZE=" << batch_gridder;
-                flags_gridder << " -DGRIDDER_BLOCK_SIZE=" << block_gridder.x;
+                flags_gridder << " -DBATCH_SIZE=" << batch_gridder;
+                flags_gridder << " -DBLOCK_SIZE=" << block_gridder.x;
                 flags.push_back(flags_gridder.str());
 
                 // Degridder
@@ -185,8 +185,8 @@ namespace idg {
                 cubin.push_back("Degridder.cubin");
                 std::stringstream flags_degridder;
                 flags_degridder << flags_common;
-                flags_degridder << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
-                flags_degridder << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
+                flags_degridder << " -DBATCH_SIZE=" << batch_degridder;
+                flags_degridder << " -DBLOCK_SIZE=" << block_degridder.x;
                 flags.push_back(flags_degridder.str());
 
                 // Scaler

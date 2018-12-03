@@ -1,8 +1,6 @@
 #include "math.cu"
 #include "Types.h"
 
-#define BATCH_SIZE GRIDDER_BATCH_SIZE
-#define BLOCK_SIZE GRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 #define MAX_NR_CHANNELS 8

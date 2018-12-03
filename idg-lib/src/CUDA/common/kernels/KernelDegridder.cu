@@ -1,11 +1,7 @@
 #include "Types.h"
 #include "math.cu"
 
-#define BATCH_SIZE DEGRIDDER_BATCH_SIZE
-#define BLOCK_SIZE DEGRIDDER_BLOCK_SIZE
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
-
-#define MAX_NR_CHANNELS 8
 
 __shared__ float4 shared[3][BATCH_SIZE];
 
