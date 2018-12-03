@@ -47,6 +47,8 @@ install(
     kernels/KernelSplitter.cu
     kernels/KernelGridderPost.cu
     kernels/KernelDegridderPre.cu
+    kernels/KernelGridderOne.cu
+    kernels/KernelDegridderOne.cu
     kernels/math.cu
     kernels/Types.h
     DESTINATION
