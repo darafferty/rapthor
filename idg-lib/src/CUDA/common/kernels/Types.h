@@ -26,6 +26,7 @@ inline __device__ long index_grid(
            x;
 }
 
+#if defined(TILE_SIZE_GRID)
 inline __device__ long index_grid_tiled(
         long grid_size,
         int pol,
@@ -46,6 +47,7 @@ inline __device__ long index_grid_tiled(
            tile_y * TILE_SIZE +
            tile_x;
 }
+#endif
 
 inline __device__ long index_subgrid(
     int subgrid_size, 

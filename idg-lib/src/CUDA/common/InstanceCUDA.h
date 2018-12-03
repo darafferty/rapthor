@@ -258,6 +258,7 @@ namespace idg {
                     int get_tile_size_grid() const { return tile_size_grid; };
 
                 protected:
+                    cu::Module* compile_kernel(std::string& flags, std::string& src, std::string& bin);
                     void compile_kernels();
                     void load_kernels();
                     void set_parameters();

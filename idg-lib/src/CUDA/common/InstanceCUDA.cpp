@@ -108,12 +108,7 @@ namespace idg {
                 // Device specific flags
                 int capability = (*device).get_capability();
                 std::stringstream flags_device;
-                flags_device << "-arch=sm_"                << capability;
-                flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
-                flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
-                flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder.x;
-                flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
-                flags_device << " -DTILE_SIZE_GRID="       << tile_size_grid;
+                flags_device << "-arch=sm_" << capability;
 
                 // Include flags
                 std::stringstream flags_includes;
@@ -125,6 +120,26 @@ namespace idg {
                                     " " + flags_constants.str() +
                                     " " + flags_includes.str();
                 return flags;
+            }
+
+            cu::Module* InstanceCUDA::compile_kernel(
+                std::string& flags,
+                std::string& src,
+                std::string& bin)
+            {
+                context->setCurrent();
+
+                // Create a string with the full path to the cubin file "kernel.cubin"
+                std::string lib = mInfo.get_path_to_lib() + "/" + bin;
+
+                // Create a string for all sources that are combined
+                std::string source = mInfo.get_path_to_src() + "/" + src;
+
+                // Call the compiler
+                cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
+
+                // Create module
+                return new cu::Module(lib.c_str());
             }
 
             void InstanceCUDA::compile_kernels() {
@@ -149,44 +164,66 @@ namespace idg {
                 #endif
 
                 // Get compiler flags
-                std::string flags = get_compiler_flags();
+                std::string flags_common = get_compiler_flags();
 
-                // Create vector of source filenames
+                // Create vector of source filenames, filenames and flags
                 std::vector<std::string> src;
-                src.push_back("KernelGridder.cu");
-                src.push_back("KernelDegridder.cu");
-                src.push_back("KernelScaler.cu");
-                src.push_back("KernelAdder.cu");
-                src.push_back("KernelSplitter.cu");
-                src.push_back("KernelGridderPost.cu");
-                src.push_back("KernelDegridderPre.cu");
-
-                // Create vector of cubin filenames
                 std::vector<std::string> cubin;
+                std::vector<std::string> flags;
+
+                // Gridder
+                src.push_back("KernelGridder.cu");
                 cubin.push_back("Gridder.cubin");
+                std::stringstream flags_gridder;
+                flags_gridder << flags_common;
+                flags_gridder << " -DGRIDDER_BATCH_SIZE=" << batch_gridder;
+                flags_gridder << " -DGRIDDER_BLOCK_SIZE=" << block_gridder.x;
+                flags.push_back(flags_gridder.str());
+
+                // Degridder
+                src.push_back("KernelDegridder.cu");
                 cubin.push_back("Degridder.cubin");
+                std::stringstream flags_degridder;
+                flags_degridder << flags_common;
+                flags_degridder << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
+                flags_degridder << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
+                flags.push_back(flags_degridder.str());
+
+                // Scaler
+                src.push_back("KernelScaler.cu");
                 cubin.push_back("Scaler.cubin");
+                flags.push_back(flags_common);
+
+                // Adder
+                src.push_back("KernelAdder.cu");
                 cubin.push_back("Adder.cubin");
+                std::stringstream flags_adder;
+                flags_adder << flags_common;
+                flags_adder << " -DTILE_SIZE_GRID=" << tile_size_grid;
+                flags.push_back(flags_adder.str());
+
+                // Splitter
+                src.push_back("KernelSplitter.cu");
                 cubin.push_back("Splitter.cubin");
+                std::stringstream flags_splitter;
+                flags_splitter << flags_common;
+                flags_splitter << " -DTILE_SIZE_GRID=" << tile_size_grid;
+                flags.push_back(flags_splitter.str());
+
+                // Gridder post-processing
+                src.push_back("KernelGridderPost.cu");
                 cubin.push_back("GridderPost.cubin");
+                flags.push_back(flags_common);
+
+                // Degridder pre-processing
+                src.push_back("KernelDegridderPre.cu");
                 cubin.push_back("DegridderPre.cubin");
+                flags.push_back(flags_common);
 
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
-                    context->setCurrent();
-
-                    // Create a string with the full path to the cubin file "kernel.cubin"
-                    std::string lib = mInfo.get_path_to_lib() + "/" + cubin[i];
-
-                    // Create a string for all sources that are combined
-                    std::string source = mInfo.get_path_to_src() + "/" + src[i];
-
-                    // Call the compiler
-                    cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
-
-                    // Set module
-                    mModules[i] = new cu::Module(lib.c_str());
+                    mModules[i] = compile_kernel(flags[i], src[i], cubin[i]);
                 }
             }
 
