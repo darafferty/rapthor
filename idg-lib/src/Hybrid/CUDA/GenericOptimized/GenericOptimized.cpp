@@ -486,12 +486,13 @@ namespace idg {
                             d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
                         executestream.record(*inputFree[global_id]);
 
+                        // Launch gridder post-processing kernel
+                        device.launch_gridder_post(
+                            current_nr_subgrids, subgrid_size, nr_stations,
+                            d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
+
                         // Launch FFT
                         device.launch_fft(d_subgrids, FourierDomainToImageDomain);
-
-                        // Launch scaler kernel
-                        device.launch_scaler(
-                            current_nr_subgrids, subgrid_size, d_subgrids);
                         executestream.record(*outputReady[global_id]);
 
                         // Copy subgrid to host
@@ -700,6 +701,11 @@ namespace idg {
                         // Launch FFT
                         executestream.waitEvent(*inputReady[global_id]);
                         device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+
+                        // Launch degridder pre-processing kernel
+                        device.launch_degridder_pre(
+                            current_nr_subgrids, subgrid_size, nr_stations,
+                            d_spheroidal, d_aterms, d_metadata, d_subgrids);
 
                         // Launch degridder kernel
                         device.launch_degridder(

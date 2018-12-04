@@ -257,14 +257,14 @@ namespace idg {
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
                             device.measure(powerRecords[1], executestream);
 
+                            // Launch gridder post-processing kernel
+                            device.launch_gridder_post(
+                                current_nr_subgrids, subgrid_size, nr_stations,
+                                d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
+
                             // Launch FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
                             device.measure(powerRecords[2], executestream);
-
-                            // Launch scaler kernel
-                            device.launch_scaler(
-                                current_nr_subgrids, subgrid_size, d_subgrids);
-                            device.measure(powerRecords[3], executestream);
 
                             // Launch adder kernel
                             device.launch_adder_unified(
@@ -482,6 +482,11 @@ namespace idg {
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
                             device.measure(powerRecords[2], executestream);
+
+                            // Launch degridder pre-processing kernel
+                            device.launch_degridder_pre(
+                                current_nr_subgrids, subgrid_size, nr_stations,
+                                d_spheroidal, d_aterms, d_metadata, d_subgrids);
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);

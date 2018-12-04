@@ -29,7 +29,7 @@ namespace idg {
                 d_metadata_(),
                 d_subgrids_(),
                 h_misc_(),
-                mModules(5)
+                mModules(9)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -83,6 +83,8 @@ namespace idg {
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
+                delete function_gridder_post;
+                delete function_degridder_pre;
                 delete device;
                 delete context;
                 delete powerSensor;
@@ -106,12 +108,7 @@ namespace idg {
                 // Device specific flags
                 int capability = (*device).get_capability();
                 std::stringstream flags_device;
-                flags_device << "-arch=sm_"                << capability;
-                flags_device << " -DGRIDDER_BATCH_SIZE="   << batch_gridder;
-                flags_device << " -DDEGRIDDER_BATCH_SIZE=" << batch_degridder;
-                flags_device << " -DGRIDDER_BLOCK_SIZE="   << block_gridder.x;
-                flags_device << " -DDEGRIDDER_BLOCK_SIZE=" << block_degridder.x;
-                flags_device << " -DTILE_SIZE_GRID="       << tile_size_grid;
+                flags_device << "-arch=sm_" << capability;
 
                 // Include flags
                 std::stringstream flags_includes;
@@ -123,6 +120,26 @@ namespace idg {
                                     " " + flags_constants.str() +
                                     " " + flags_includes.str();
                 return flags;
+            }
+
+            cu::Module* InstanceCUDA::compile_kernel(
+                std::string& flags,
+                std::string& src,
+                std::string& bin)
+            {
+                context->setCurrent();
+
+                // Create a string with the full path to the cubin file "kernel.cubin"
+                std::string lib = mInfo.get_path_to_lib() + "/" + bin;
+
+                // Create a string for all sources that are combined
+                std::string source = mInfo.get_path_to_src() + "/" + src;
+
+                // Call the compiler
+                cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
+
+                // Create module
+                return new cu::Module(lib.c_str());
             }
 
             void InstanceCUDA::compile_kernels() {
@@ -147,40 +164,84 @@ namespace idg {
                 #endif
 
                 // Get compiler flags
-                std::string flags = get_compiler_flags();
+                std::string flags_common = get_compiler_flags();
 
-                // Create vector of source filenames
+                // Create vector of source filenames, filenames and flags
                 std::vector<std::string> src;
-                src.push_back("KernelGridder.cu");
-                src.push_back("KernelDegridder.cu");
-                src.push_back("KernelScaler.cu");
-                src.push_back("KernelAdder.cu");
-                src.push_back("KernelSplitter.cu");
-
-                // Create vector of cubin filenames
                 std::vector<std::string> cubin;
+                std::vector<std::string> flags;
+
+                // Gridder
+                src.push_back("KernelGridder.cu");
                 cubin.push_back("Gridder.cubin");
+                std::stringstream flags_gridder;
+                flags_gridder << flags_common;
+                flags_gridder << " -DBATCH_SIZE=" << batch_gridder;
+                flags_gridder << " -DBLOCK_SIZE=" << block_gridder.x;
+                flags.push_back(flags_gridder.str());
+
+                // Degridder
+                src.push_back("KernelDegridder.cu");
                 cubin.push_back("Degridder.cubin");
+                std::stringstream flags_degridder;
+                flags_degridder << flags_common;
+                flags_degridder << " -DBATCH_SIZE=" << batch_degridder;
+                flags_degridder << " -DBLOCK_SIZE=" << block_degridder.x;
+                flags.push_back(flags_degridder.str());
+
+                // Scaler
+                src.push_back("KernelScaler.cu");
                 cubin.push_back("Scaler.cubin");
+                flags.push_back(flags_common);
+
+                // Adder
+                src.push_back("KernelAdder.cu");
                 cubin.push_back("Adder.cubin");
+                std::stringstream flags_adder;
+                flags_adder << flags_common;
+                flags_adder << " -DTILE_SIZE_GRID=" << tile_size_grid;
+                flags.push_back(flags_adder.str());
+
+                // Splitter
+                src.push_back("KernelSplitter.cu");
                 cubin.push_back("Splitter.cubin");
+                std::stringstream flags_splitter;
+                flags_splitter << flags_common;
+                flags_splitter << " -DTILE_SIZE_GRID=" << tile_size_grid;
+                flags.push_back(flags_splitter.str());
+
+                // Gridder post-processing
+                src.push_back("KernelGridderPost.cu");
+                cubin.push_back("GridderPost.cubin");
+                flags.push_back(flags_common);
+
+                // Degridder pre-processing
+                src.push_back("KernelDegridderPre.cu");
+                cubin.push_back("DegridderPre.cubin");
+                flags.push_back(flags_common);
+
+                // Gridder for 1 channel
+                src.push_back("KernelGridderOne.cu");
+                cubin.push_back("GridderOne.cubin");
+                std::stringstream flags_gridder_1;
+                flags_gridder_1 << flags_common;
+                flags_gridder_1 << " -DBATCH_SIZE=" << batch_gridder_1;
+                flags_gridder_1 << " -DBLOCK_SIZE=" << block_gridder_1.x;
+                flags.push_back(flags_gridder_1.str());
+
+                // Degridder for 1 channel
+                src.push_back("KernelDegridderOne.cu");
+                cubin.push_back("DegridderOne.cubin");
+                std::stringstream flags_degridder_1;
+                flags_degridder_1 << flags_common;
+                flags_degridder_1 << " -DBATCH_SIZE=" << batch_degridder_1;
+                flags_degridder_1 << " -DBLOCK_SIZE=" << block_degridder_1.x;
+                flags.push_back(flags_degridder_1.str());
 
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
-                    context->setCurrent();
-
-                    // Create a string with the full path to the cubin file "kernel.cubin"
-                    std::string lib = mInfo.get_path_to_lib() + "/" + cubin[i];
-
-                    // Create a string for all sources that are combined
-                    std::string source = mInfo.get_path_to_src() + "/" + src[i];
-
-                    // Call the compiler
-                    cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
-
-                    // Set module
-                    mModules[i] = new cu::Module(lib.c_str());
+                    mModules[i] = compile_kernel(flags[i], src[i], cubin[i]);
                 }
             }
 
@@ -203,6 +264,18 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
                     function_splitter = new cu::Function(function); found++;
                 }
+                if (cuModuleGetFunction(&function, *mModules[5], name_gridder_post.c_str()) == CUDA_SUCCESS) {
+                    function_gridder_post = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[6], name_degridder_pre.c_str()) == CUDA_SUCCESS) {
+                    function_degridder_pre = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[7], name_gridder_1.c_str()) == CUDA_SUCCESS) {
+                    function_gridder_1 = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[8], name_degridder_1.c_str()) == CUDA_SUCCESS) {
+                    function_degridder_1 = new cu::Function(function); found++;
+                }
 
                 if (found != mModules.size()) {
                     std::cerr << "Incorrect number of functions found: " << found << " != " << mModules.size() << std::endl;
@@ -211,47 +284,38 @@ namespace idg {
             }
 
             void InstanceCUDA::set_parameters_kepler() {
-                block_gridder    = dim3(128);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
                 batch_gridder    = 192;
                 batch_degridder  = 192;
-                tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_maxwell() {
-                block_gridder    = dim3(128);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
                 batch_gridder    = 384;
                 batch_degridder  = 512;
-                tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
-                block_gridder    = dim3(128);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
                 batch_gridder    = 384;
                 batch_degridder  = 512;
-                tile_size_grid   = 128;
             }
 
             void InstanceCUDA::set_parameters_volta() {
-                block_gridder    = dim3(128);
-                block_degridder  = dim3(128);
-                block_adder      = dim3(128);
-                block_splitter   = dim3(128);
-                block_scaler     = dim3(128);
                 batch_gridder    = 128;
                 batch_degridder  = 256;
-                tile_size_grid   = 128;
+            }
+
+            void InstanceCUDA::set_parameters_default() {
+                block_gridder       = dim3(128);
+                block_degridder     = dim3(128);
+                block_adder         = dim3(128);
+                block_splitter      = dim3(128);
+                block_scaler        = dim3(128);
+                block_gridder_post  = dim3(128);
+                block_degridder_pre = dim3(128);
+                block_gridder_1     = dim3(128);
+                block_degridder_1   = dim3(128);
+                batch_degridder_1   = 256;
+                batch_gridder_1     = 256;
+                tile_size_grid      = 128;
             }
 
             void InstanceCUDA::set_parameters() {
@@ -260,6 +324,8 @@ namespace idg {
                 #endif
 
                 int capability = (*device).get_capability();
+
+                set_parameters_default();
 
                 if (capability >= 70) {
                     set_parameters_volta();
@@ -416,9 +482,11 @@ namespace idg {
                     d_spheroidal, d_aterm, d_avg_aterm_correction, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
+                dim3 block(nr_channels == 1 ? block_gridder_1 : block_gridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder);
                 start_measurement(data);
-                executestream->launchKernel(*function_gridder, grid, block_gridder, 0, parameters);
+                cu::Function *function = nr_channels == 1 ? function_gridder_1 : function_gridder;
+                executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
             }
 
@@ -444,9 +512,11 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
+                dim3 block(nr_channels == 1 ? block_degridder_1 : block_degridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
-                executestream->launchKernel(*function_degridder, grid, block_degridder, 0, parameters);
+                cu::Function *function = nr_channels == 1 ? function_degridder_1 : function_degridder;
+                executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
             }
 
@@ -673,6 +743,45 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_scaler);
                 start_measurement(data);
                 executestream->launchKernel(*function_scaler, grid, block_scaler, 0, parameters);
+                end_measurement(data);
+            }
+
+            void InstanceCUDA::launch_gridder_post(
+                int nr_subgrids,
+                int subgrid_size,
+                int nr_stations,
+                cu::DeviceMemory& d_spheroidal,
+                cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_avg_aterm_correction,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid)
+            {
+                const void *parameters[] = {
+                    &subgrid_size, &nr_stations,
+                    d_spheroidal, d_aterm, d_avg_aterm_correction, d_metadata, d_subgrid };
+                dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder_post);
+                start_measurement(data);
+                executestream->launchKernel(*function_gridder_post, grid, block_gridder_post, 0, parameters);
+                end_measurement(data);
+            }
+
+             void InstanceCUDA::launch_degridder_pre(
+                int nr_subgrids,
+                int subgrid_size,
+                int nr_stations,
+                cu::DeviceMemory& d_spheroidal,
+                cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid)
+            {
+                const void *parameters[] = {
+                    &subgrid_size, &nr_stations,
+                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+                dim3 grid(nr_subgrids);
+                UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder_pre);
+                start_measurement(data);
+                executestream->launchKernel(*function_degridder_pre, grid, block_degridder_pre, 0, parameters);
                 end_measurement(data);
             }
 

@@ -232,10 +232,14 @@ void run()
     vector<double> runtimes_imaging;
     unsigned long nr_visibilities = 0;
 
+    // Spectral line imaging
+    bool simulate_spectral_line = getenv("SPECTRAL_LINE");
+
     // Overlap Plan/Data initialization and imaging
     Queue<idg::Array2D<idg::UVWCoordinate<float>>*> uvws;
     idg::Plan::Options options;
     options.plan_strict = true;
+    options.simulate_spectral_line = simulate_spectral_line;
     Queue<idg::Plan*> plans;
     omp_set_nested(true);
 
@@ -308,7 +312,8 @@ void run()
                         idg::get_example_baselines(current_nr_stations, current_nr_baselines);
 
                     // Initialize visibilities
-                    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(visibilities_.data(), current_nr_baselines, nr_timesteps, nr_channels);
+                    auto nr_channels_ = simulate_spectral_line ? 1 : nr_channels;
+                    idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(visibilities_.data(), current_nr_baselines, nr_timesteps, nr_channels_);
 
                     // Iterate all timesteps
                     for (unsigned time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
@@ -333,7 +338,12 @@ void run()
                             clog << ">>>" << endl;
 
                             // Initialize frequency data
-                            data.get_frequencies(frequencies, channel_offset);
+                            idg::Array1D<float> frequencies_(simulate_spectral_line ? 1 : nr_channels);
+                            if (simulate_spectral_line) {
+                                frequencies_(0) = frequencies(0);
+                            } else {
+                                data.get_frequencies(frequencies_, channel_offset);
+                            }
 
                             // Wait for plan to become available
                             idg::Plan* plan = plans.pop();
@@ -351,7 +361,7 @@ void run()
                             double runtime_gridding = -omp_get_wtime();
                             proxy.gridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                                frequencies, visibilities, uvw, baselines,
+                                frequencies_, visibilities, uvw, baselines,
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
                             clog << endl;
@@ -361,7 +371,7 @@ void run()
                             double runtime_degridding = -omp_get_wtime();
                             proxy.degridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                                frequencies, visibilities, uvw, baselines,
+                                frequencies_, visibilities, uvw, baselines,
                                 grid, aterms, aterms_offsets, spheroidal);
                             runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
                             clog << endl;

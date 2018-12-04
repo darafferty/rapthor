@@ -8,14 +8,15 @@ __shared__ float4 shared[3][BATCH_SIZE];
 /*
     Kernel
 */
-template<int current_nr_channels>
-__device__ void kernel_degridder_(
+extern "C" {
+__global__ void
+__launch_bounds__(BLOCK_SIZE)
+kernel_degridder_1(
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
     const int                         nr_channels,
-    const int                         channel_offset,
     const int                         nr_stations,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -25,6 +26,8 @@ __device__ void kernel_degridder_(
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
+    const unsigned UNROLL_TIME = 2;
+
     int s          = blockIdx.x;
     int tidx       = threadIdx.x;
     int tidy       = threadIdx.y;
@@ -47,25 +50,31 @@ __device__ void kernel_degridder_(
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Iterate visibilities
-    for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
-        float2 visXX[current_nr_channels];
-        float2 visXY[current_nr_channels];
-        float2 visYX[current_nr_channels];
-        float2 visYY[current_nr_channels];
+    for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads * UNROLL_TIME) {
+        float2 visXX[UNROLL_TIME];
+        float2 visXY[UNROLL_TIME];
+        float2 visYX[UNROLL_TIME];
+        float2 visYY[UNROLL_TIME];
 
-        for (int chan = 0; chan < current_nr_channels; chan++) {
-            visXX[chan] = make_float2(0, 0);
-            visXY[chan] = make_float2(0, 0);
-            visYX[chan] = make_float2(0, 0);
-            visYY[chan] = make_float2(0, 0);
+        for (unsigned i = 0; i < UNROLL_TIME; i++) {
+            visXX[i] = make_float2(0, 0);
+            visXY[i] = make_float2(0, 0);
+            visYX[i] = make_float2(0, 0);
+            visYY[i] = make_float2(0, 0);
         }
 
-        float u, v, w;
+        float u[UNROLL_TIME];
+        float v[UNROLL_TIME];
+        float w[UNROLL_TIME];
 
-        if (time < nr_timesteps) {
-            u = uvw[time_offset_global + time].u;
-            v = uvw[time_offset_global + time].v;
-            w = uvw[time_offset_global + time].w;
+        for (unsigned i = 0; i < UNROLL_TIME; i++) {
+            unsigned time_ = time + i * nr_threads;
+
+            if (time_ < nr_timesteps) {
+                u[i] = uvw[time_offset_global + time_].u;
+                v[i] = uvw[time_offset_global + time_].v;
+                w[i] = uvw[time_offset_global + time_].w;
+            }
         }
 
         __syncthreads();
@@ -128,88 +137,57 @@ __device__ void kernel_degridder_(
                 // Load phase offset
                 float phase_offset = shared[2][k].w;
 
-                // Compute phase index
-                float phase_index = u * l + v * m + w * n;
+                // Load wavenumber
+                float wavenumber = wavenumbers[0];
 
-                for (int chan = 0; chan < current_nr_channels; chan++) {
-                    // Load wavenumber
-                    float wavenumber = wavenumbers[channel_offset + chan];
+                // Iterate unrolled timesteps
+                for (unsigned i = 0; i < UNROLL_TIME; i++) {
+                    // Compute phase index
+                    float phase_index = u[i] * l + v[i] * m + w[i] * n;
 
                     // Compute phasor
                     float  phase  = (phase_index * wavenumber) - phase_offset;
                     float2 phasor = make_float2(cosf(phase), sinf(phase));
 
                     // Multiply pixels by phasor
-                    visXX[chan].x += phasor.x * apXX.x;
-                    visXX[chan].y += phasor.x * apXX.y;
-                    visXX[chan].x -= phasor.y * apXX.y;
-                    visXX[chan].y += phasor.y * apXX.x;
+                    visXX[i].x += phasor.x * apXX.x;
+                    visXX[i].y += phasor.x * apXX.y;
+                    visXX[i].x -= phasor.y * apXX.y;
+                    visXX[i].y += phasor.y * apXX.x;
 
-                    visXY[chan].x += phasor.x * apXY.x;
-                    visXY[chan].y += phasor.x * apXY.y;
-                    visXY[chan].x -= phasor.y * apXY.y;
-                    visXY[chan].y += phasor.y * apXY.x;
+                    visXY[i].x += phasor.x * apXY.x;
+                    visXY[i].y += phasor.x * apXY.y;
+                    visXY[i].x -= phasor.y * apXY.y;
+                    visXY[i].y += phasor.y * apXY.x;
 
-                    visYX[chan].x += phasor.x * apYX.x;
-                    visYX[chan].y += phasor.x * apYX.y;
-                    visYX[chan].x -= phasor.y * apYX.y;
-                    visYX[chan].y += phasor.y * apYX.x;
+                    visYX[i].x += phasor.x * apYX.x;
+                    visYX[i].y += phasor.x * apYX.y;
+                    visYX[i].x -= phasor.y * apYX.y;
+                    visYX[i].y += phasor.y * apYX.x;
 
-                    visYY[chan].x += phasor.x * apYY.x;
-                    visYY[chan].y += phasor.x * apYY.y;
-                    visYY[chan].x -= phasor.y * apYY.y;
-                    visYY[chan].y += phasor.y * apYY.x;
-                } // end for chan
+                    visYY[i].x += phasor.x * apYY.x;
+                    visYY[i].y += phasor.x * apYY.y;
+                    visYY[i].x -= phasor.y * apYY.y;
+                    visYY[i].y += phasor.y * apYY.x;
+                }
             } // end for k (batch)
         } // end for j (pixels)
 
-        for (int chan = 0; chan < current_nr_channels; chan++) {
-            if (time < nr_timesteps) {
+        for (unsigned i = 0; i < UNROLL_TIME; i++) {
+            unsigned time_ = time + i * nr_threads;
+
+            if (time_ < nr_timesteps) {
                 // Store visibility
                 const float scale = 1.0f / (nr_pixels);
-                int idx_time = time_offset_global + time;
-                int idx_chan = channel_offset + chan;
-                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
-                float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
-                float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
+                int idx_time = time_offset_global + time_;
+                int idx_vis = index_visibility(1, idx_time, 0, 0);
+                float4 visA = make_float4(visXX[i].x, visXX[i].y, visXY[i].x, visXY[i].y);
+                float4 visB = make_float4(visYX[i].x, visYX[i].y, visYY[i].x, visYY[i].y);
                 float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
                 vis_ptr[0] = visA * scale;
                 vis_ptr[1] = visB * scale;
             }
-        } // end for chan
+        }
     } // end for time
-} // end kernel_degridder_
-
-#define KERNEL_DEGRIDDER_TEMPLATE(current_nr_channels) \
-    for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
-        kernel_degridder_<current_nr_channels>( \
-            grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
-    }
-
-extern "C" {
-__global__ void
-__launch_bounds__(BLOCK_SIZE)
-    kernel_degridder(
-    const int                         grid_size,
-    const int                         subgrid_size,
-    const float                       image_size,
-    const float                       w_step,
-    const int                         nr_channels,
-    const int                         nr_stations,
-    const UVW*           __restrict__ uvw,
-    const float*         __restrict__ wavenumbers,
-          float2*        __restrict__ visibilities,
-    const float*         __restrict__ spheroidal,
-    const float2*        __restrict__ aterm,
-    const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ subgrid)
-{
-	int channel_offset = 0;
-	KERNEL_DEGRIDDER_TEMPLATE(8);
-	KERNEL_DEGRIDDER_TEMPLATE(4);
-	KERNEL_DEGRIDDER_TEMPLATE(2);
-	KERNEL_DEGRIDDER_TEMPLATE(1);
-}
-
+} // end kernel_degridder_1
 } // end extern "C"

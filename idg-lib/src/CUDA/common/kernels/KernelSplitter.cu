@@ -34,7 +34,8 @@ __global__ void kernel_splitter(
         for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
             int x = i % subgrid_size;
             int y = i / subgrid_size;
-            float phase = -M_PI*(x+y-subgrid_size)/subgrid_size;
+            float pi = (float) M_PI;
+            float phase = -pi*(x+y-subgrid_size)/subgrid_size;
             float2 phasor = make_float2(cos(phase), sin(phase));
 
             // Compute shifted position in subgrid

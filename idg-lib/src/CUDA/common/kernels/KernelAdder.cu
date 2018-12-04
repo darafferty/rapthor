@@ -22,6 +22,9 @@ __global__ void kernel_adder(
     int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
+    // Compute scaling factor
+    float scale = 1 / (float(subgrid_size)*float(subgrid_size));
+
     // Load position in grid
     const Metadata &m = metadata[s];
     int grid_x = m.coordinate.x;
@@ -31,8 +34,9 @@ __global__ void kernel_adder(
     for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
         int y = i / subgrid_size;
         int x = i % subgrid_size;
-        float phase = M_PI*(x+y-subgrid_size)/subgrid_size;
-        float2 phasor = make_float2(cos(phase), sin(phase));
+        float pi = (float) M_PI;
+        float phase = pi * (x+y-subgrid_size)/subgrid_size;
+        float2 phasor = make_float2(cos(phase), sin(phase)) * scale;
 
         // Check wheter subgrid fits in grid
         if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&

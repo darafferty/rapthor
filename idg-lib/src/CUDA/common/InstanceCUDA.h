@@ -126,6 +126,25 @@ namespace idg {
                         cu::DeviceMemory& d_subgrid,
                         void *u_grid);
 
+                    void launch_gridder_post(
+                        int nr_subgrids,
+                        int subgrid_size,
+                        int nr_stations,
+                        cu::DeviceMemory& d_spheroidal,
+                        cu::DeviceMemory& d_aterm,
+                        cu::DeviceMemory& d_avg_aterm_correction,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid);
+
+                    void launch_degridder_pre(
+                        int nr_subgrids,
+                        int subgrid_size,
+                        int nr_stations,
+                        cu::DeviceMemory& d_spheroidal,
+                        cu::DeviceMemory& d_aterm,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid);
+
                     void launch_scaler(
                         int nr_subgrids,
                         int subgrid_size,
@@ -239,9 +258,11 @@ namespace idg {
                     int get_tile_size_grid() const { return tile_size_grid; };
 
                 protected:
+                    cu::Module* compile_kernel(std::string& flags, std::string& src, std::string& bin);
                     void compile_kernels();
                     void load_kernels();
                     void set_parameters();
+                    void set_parameters_default();
                     void set_parameters_kepler();
                     void set_parameters_maxwell();
                     void set_parameters_pascal();
@@ -263,6 +284,10 @@ namespace idg {
                     cu::Function *function_adder;
                     cu::Function *function_splitter;
                     cu::Function *function_scaler;
+                    cu::Function *function_gridder_post;
+                    cu::Function *function_degridder_pre;
+                    cu::Function *function_gridder_1;
+                    cu::Function *function_degridder_1;
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
@@ -296,9 +321,15 @@ namespace idg {
                     dim3 block_adder;
                     dim3 block_splitter;
                     dim3 block_scaler;
+                    dim3 block_gridder_post;
+                    dim3 block_degridder_pre;
+                    dim3 block_gridder_1;
+                    dim3 block_degridder_1;
 
                     int batch_gridder;
                     int batch_degridder;
+                    int batch_gridder_1;
+                    int batch_degridder_1;
                     int tile_size_grid;
 
                     // Grid FFT
@@ -350,6 +381,10 @@ namespace idg {
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
             static const std::string name_scaler    = "kernel_scaler";
+            static const std::string name_gridder_post  = "kernel_gridder_post";
+            static const std::string name_degridder_pre = "kernel_degridder_pre";
+            static const std::string name_gridder_1     = "kernel_gridder_1";
+            static const std::string name_degridder_1   = "kernel_degridder_1";
 
         } // end namespace cuda
     } // end namespace kernel

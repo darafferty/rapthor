@@ -66,8 +66,8 @@ namespace idg {
                 Report::State& reportState,
                 double runtime)
             {
-                 reportState.current_seconds = runtime;
-                 reportState.total_seconds  += reportState.current_seconds;
+                reportState.current_seconds = runtime;
+                reportState.total_seconds  += reportState.current_seconds;
             }
 
             void update(
@@ -75,10 +75,10 @@ namespace idg {
                 powersensor::State& startState,
                 powersensor::State& endState)
             {
-                 reportState.current_seconds = dummy->seconds(startState, endState);
-                 reportState.current_joules  = dummy->Joules(startState, endState);
-                 reportState.total_seconds  += reportState.current_seconds;
-                 reportState.total_joules   += reportState.current_joules;
+                reportState.current_seconds = dummy->seconds(startState, endState);
+                reportState.current_joules  = dummy->Joules(startState, endState);
+                reportState.total_seconds  += reportState.current_seconds;
+                reportState.total_joules   += reportState.current_joules;
             }
 
             void update_host(
@@ -99,6 +99,15 @@ namespace idg {
                 update(state_gridder, startState, endState);
             }
 
+            void update_gridder_post(
+                powersensor::State& startState,
+                powersensor::State& endState)
+            {
+                gridder_post_enabled = true;
+                gridder_post_updated = true;
+                update(state_gridder_post, startState, endState);
+            }
+
             void update_degridder(
                 powersensor::State& startState,
                 powersensor::State& endState)
@@ -106,6 +115,15 @@ namespace idg {
                 degridder_enabled = true;
                 degridder_updated = true;
                 update(state_degridder, startState, endState);
+            }
+
+            void update_degridder_pre(
+                powersensor::State& startState,
+                powersensor::State& endState)
+            {
+                degridder_pre_enabled = true;
+                degridder_pre_updated = true;
+                update(state_degridder_pre, startState, endState);
             }
 
             void update_adder(
@@ -251,20 +269,32 @@ namespace idg {
                 bool ignore_short = !total;
 
                 if ((total && gridder_enabled) || gridder_updated) {
+                    auto seconds = total ? state_gridder.total_seconds : state_gridder.current_seconds;
+                    auto joules  = total ? state_gridder.total_joules : state_gridder.current_joules;
+                    if (gridder_post_updated) {
+                        seconds += total ? state_gridder_post.total_seconds : state_gridder_post.current_seconds;
+                        joules  += total ? state_gridder_post.total_joules : state_gridder_post.current_joules;
+                    }
                     auxiliary::report(
                         prefix + auxiliary::name_gridder,
-                        total ? state_gridder.total_seconds : state_gridder.current_seconds,
-                        total ? state_gridder.total_joules : state_gridder.current_joules,
+                        seconds,
+                        joules,
                         auxiliary::flops_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         ignore_short);
                     gridder_updated = false;
                 }
                 if ((total && degridder_enabled) || degridder_updated) {
+                    auto seconds = total ? state_degridder.total_seconds : state_degridder.current_seconds;
+                    auto joules  = total ? state_degridder.total_joules : state_degridder.current_joules;
+                    if (degridder_pre_updated) {
+                        seconds += total ? state_degridder_pre.total_seconds : state_degridder_pre.current_seconds;
+                        joules  += total ? state_degridder_pre.total_joules : state_degridder_pre.current_joules;
+                    }
                     auxiliary::report(
                         prefix + auxiliary::name_degridder,
-                        total ? state_degridder.total_seconds : state_degridder.current_seconds,
-                        total ? state_degridder.total_joules : state_degridder.current_joules,
+                        seconds,
+                        joules,
                         auxiliary::flops_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         auxiliary::bytes_degridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         ignore_short);
@@ -411,6 +441,8 @@ namespace idg {
             void reset() {
                 host_enabled        = false;
                 gridder_enabled     = false;
+                gridder_post_enabled  = false;
+                degridder_pre_enabled = false;
                 degridder_enabled   = false;
                 adder_enabled       = false;
                 splitter_enabled    = false;
@@ -461,7 +493,9 @@ namespace idg {
 
             bool host_enabled;
             bool gridder_enabled;
+            bool gridder_post_enabled;
             bool degridder_enabled;
+            bool degridder_pre_enabled;
             bool adder_enabled;
             bool splitter_enabled;
             bool scaler_enabled;
@@ -474,6 +508,8 @@ namespace idg {
 
             bool host_updated;
             bool gridder_updated;
+            bool gridder_post_updated;
+            bool degridder_pre_updated;
             bool degridder_updated;
             bool adder_updated;
             bool splitter_updated;
@@ -490,7 +526,9 @@ namespace idg {
             const State state_zero;
             State state_host;
             State state_gridder;
+            State state_gridder_post;
             State state_degridder;
+            State state_degridder_pre;
             State state_adder;
             State state_splitter;
             State state_scaler;
