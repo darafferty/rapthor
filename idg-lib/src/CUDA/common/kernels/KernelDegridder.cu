@@ -3,6 +3,8 @@
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
+#define MAX_NR_CHANNELS 8
+
 __shared__ float4 shared[3][BATCH_SIZE];
 
 /*
@@ -48,10 +50,10 @@ __device__ void kernel_degridder_(
 
     // Iterate visibilities
     for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
-        float2 visXX[current_nr_channels];
-        float2 visXY[current_nr_channels];
-        float2 visYX[current_nr_channels];
-        float2 visYY[current_nr_channels];
+        float2 visXX[MAX_NR_CHANNELS];
+        float2 visXY[MAX_NR_CHANNELS];
+        float2 visYX[MAX_NR_CHANNELS];
+        float2 visYY[MAX_NR_CHANNELS];
 
         for (int chan = 0; chan < current_nr_channels; chan++) {
             visXX[chan] = make_float2(0, 0);
