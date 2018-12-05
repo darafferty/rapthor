@@ -90,19 +90,6 @@ inline __device__ int index_visibility(
            pol;
 }
 
-inline __device__ int index_visibility_test(
-    int nr_timesteps,
-    int nr_channels,
-    int time,
-    int chan,
-    int pol)
-{
-    // visibilities: [nr_channels][nr_polarizations][nr_time]
-    return chan * NR_POLARIZATIONS * nr_timesteps +
-           pol * nr_timesteps +
-           time;
-}
-
 /*
     Helper methods
  */
