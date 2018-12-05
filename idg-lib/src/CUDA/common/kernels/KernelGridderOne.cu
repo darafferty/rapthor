@@ -136,7 +136,7 @@ kernel_gridder_1(
                 for (int j = 0; j < UNROLL_PIXELS; j++) {
                     // Compute phasor
                     float phase = phase_offset[j] - (phase_index[j] * wavenumber);
-                    float2 phasor = make_float2(cosf(phase), sinf(phase));
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                     // Multiply visibility by phasor
                     uvXX[j].x += phasor.x * visXX.x;
