@@ -191,7 +191,7 @@ __device__ void kernel_degridder_(
 
 extern "C" {
 __global__ void
-__launch_bounds__(BLOCK_SIZE)
+__launch_bounds__(BLOCK_SIZE, 4)
     kernel_degridder(
     const int                         grid_size,
     const int                         subgrid_size,
