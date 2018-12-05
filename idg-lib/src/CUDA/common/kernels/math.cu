@@ -43,5 +43,19 @@ inline  __device__ void atomicAdd(float2 *a, float2 b) {
     atomicAdd(&a->y, b.y);
 }
 
+inline __device__ float raw_sin(float a)
+{
+    float r;
+    asm ("sin.approx.ftz.f32 %0,%1;" : "=f"(r) : "f"(a));
+    return r;
+}
+
+inline __device__ float raw_cos(float a)
+{
+    float r;
+    asm ("cos.approx.ftz.f32 %0,%1;" : "=f"(r) : "f"(a));
+    return r;
+}
+
 #define FUNCTION_ATTRIBUTES __device__
 #include "common/Math.h"

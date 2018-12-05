@@ -3,6 +3,8 @@
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
+#define MAX_NR_CHANNELS 8
+
 __shared__ float4 shared[3][BATCH_SIZE];
 
 /*
@@ -48,10 +50,10 @@ __device__ void kernel_degridder_(
 
     // Iterate visibilities
     for (int time = tid; time < ALIGN(nr_timesteps, nr_threads); time += nr_threads) {
-        float2 visXX[current_nr_channels];
-        float2 visXY[current_nr_channels];
-        float2 visYX[current_nr_channels];
-        float2 visYY[current_nr_channels];
+        float2 visXX[MAX_NR_CHANNELS];
+        float2 visXY[MAX_NR_CHANNELS];
+        float2 visYX[MAX_NR_CHANNELS];
+        float2 visYY[MAX_NR_CHANNELS];
 
         for (int chan = 0; chan < current_nr_channels; chan++) {
             visXX[chan] = make_float2(0, 0);
@@ -137,7 +139,7 @@ __device__ void kernel_degridder_(
 
                     // Compute phasor
                     float  phase  = (phase_index * wavenumber) - phase_offset;
-                    float2 phasor = make_float2(cosf(phase), sinf(phase));
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                     // Multiply pixels by phasor
                     visXX[chan].x += phasor.x * apXX.x;
@@ -189,7 +191,7 @@ __device__ void kernel_degridder_(
 
 extern "C" {
 __global__ void
-__launch_bounds__(BLOCK_SIZE)
+__launch_bounds__(BLOCK_SIZE, 4)
     kernel_degridder(
     const int                         grid_size,
     const int                         subgrid_size,

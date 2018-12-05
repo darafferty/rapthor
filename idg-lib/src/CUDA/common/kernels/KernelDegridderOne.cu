@@ -147,7 +147,7 @@ kernel_degridder_1(
 
                     // Compute phasor
                     float  phase  = (phase_index * wavenumber) - phase_offset;
-                    float2 phasor = make_float2(cosf(phase), sinf(phase));
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                     // Multiply pixels by phasor
                     visXX[i].x += phasor.x * apXX.x;
