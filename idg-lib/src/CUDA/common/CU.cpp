@@ -7,14 +7,15 @@
 
 #include <vector_types.h>
 
-#define checkCudaCall(val)  __checkCudaCall((val), #val, __FILE__, __LINE__)
+#define assertCudaCall(val) __assertCudaCall(val, #val, __FILE__, __LINE__)
+#define checkCudaCall(val)  __checkCudaCall(val, #val, __FILE__, __LINE__)
 
 namespace cu {
 
     /*
         Error checking
     */
-    inline void __checkCudaCall(
+    inline void __assertCudaCall(
         CUresult result,
         char const *const func,
         const char *const file,
@@ -32,12 +33,25 @@ namespace cu {
         }
     }
 
+    inline void __checkCudaCall(
+        CUresult result,
+        char const *const func,
+        const char *const file,
+        int const line)
+    {
+        try {
+            __assertCudaCall(result, func, file, line);
+        } catch (Error<CUresult>& error) {
+            // pass
+        }
+    }
+
 
     /*
         Init
     */
     void init(unsigned flags) {
-        checkCudaCall(cuInit(flags));
+        assertCudaCall(cuInit(flags));
     }
 
 
@@ -46,17 +60,17 @@ namespace cu {
     */
     int Device::getCount() {
         int nrDevices;
-        checkCudaCall(cuDeviceGetCount(&nrDevices));
+        assertCudaCall(cuDeviceGetCount(&nrDevices));
         return nrDevices;
     }
 
     Device::Device(int ordinal) {
-        checkCudaCall(cuDeviceGet(&_device, ordinal));
+        assertCudaCall(cuDeviceGet(&_device, ordinal));
     }
 
     std::string Device::get_name() const {
         char name[64];
-        checkCudaCall(cuDeviceGetName(name, sizeof(name), _device));
+        assertCudaCall(cuDeviceGetName(name, sizeof(name), _device));
         return std::string(name);
     }
 
@@ -94,31 +108,31 @@ namespace cu {
 
     Context::Context(Device& device, int flags) {
         _device = device;
-        checkCudaCall(cuCtxCreate(&_context, flags, device));
+        assertCudaCall(cuCtxCreate(&_context, flags, device));
     }
 
     Context::~Context() {
-        checkCudaCall(cuCtxDestroy(_context));
+        assertCudaCall(cuCtxDestroy(_context));
     }
 
     void Context::setCurrent() const {
-        checkCudaCall(cuCtxSetCurrent(_context));
+        assertCudaCall(cuCtxSetCurrent(_context));
     }
 
     void Context::setCacheConfig(CUfunc_cache config) {
-        checkCudaCall(cuCtxSetCacheConfig(config));
+        assertCudaCall(cuCtxSetCacheConfig(config));
     }
 
     void Context::setSharedMemConfig(CUsharedconfig config) {
-        checkCudaCall(cuCtxSetSharedMemConfig(config));
+        assertCudaCall(cuCtxSetSharedMemConfig(config));
     }
 
     void Context::synchronize() {
-        checkCudaCall(cuCtxSynchronize());
+        assertCudaCall(cuCtxSynchronize());
     }
 
     void Context::reset() {
-        checkCudaCall(cuDevicePrimaryCtxReset(_device));
+        assertCudaCall(cuDevicePrimaryCtxReset(_device));
     }
 
     Context::operator CUcontext() {
@@ -133,7 +147,7 @@ namespace cu {
         _capacity = size;
         _size = size;
         _flags = flags;
-        checkCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
+        assertCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
         allocated = true;
     }
 
@@ -160,7 +174,7 @@ namespace cu {
         } else if (size > _capacity) {
             release();
             if (allocated) {
-                checkCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
+                assertCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
             }
             if (registered) {
                 checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
@@ -172,7 +186,7 @@ namespace cu {
 
     void HostMemory::release() {
         if (allocated) {
-            checkCudaCall(cuMemFreeHost(_ptr));
+            assertCudaCall(cuMemFreeHost(_ptr));
         }
         if (registered) {
             checkCudaCall(cuMemHostUnregister(_ptr));
@@ -210,12 +224,12 @@ namespace cu {
         _size = size;
         if (size)
         {
-            checkCudaCall(cuMemAlloc(&_ptr, size));
+            assertCudaCall(cuMemAlloc(&_ptr, size));
         }
     }
 
     DeviceMemory::~DeviceMemory() {
-        if (_capacity) checkCudaCall(cuMemFree(_ptr));
+        if (_capacity) assertCudaCall(cuMemFree(_ptr));
     }
 
     size_t DeviceMemory::capacity() {
@@ -229,8 +243,8 @@ namespace cu {
     void DeviceMemory::resize(size_t size) {
         _size = size;
         if (size > _capacity) {
-            if (_capacity) checkCudaCall(cuMemFree(_ptr));
-            checkCudaCall(cuMemAlloc(&_ptr, size));
+            if (_capacity) assertCudaCall(cuMemFree(_ptr));
+            assertCudaCall(cuMemAlloc(&_ptr, size));
             _capacity = size;
         }
     }
@@ -258,21 +272,21 @@ namespace cu {
     UnifiedMemory::UnifiedMemory(size_t size, unsigned flags) {
         _size = size;
         free = true;
-        checkCudaCall(cuMemAllocManaged(&_ptr, _size, flags));
+        assertCudaCall(cuMemAllocManaged(&_ptr, _size, flags));
     }
 
     UnifiedMemory::~UnifiedMemory() {
         if (free) {
-            checkCudaCall(cuMemFree(_ptr));
+            assertCudaCall(cuMemFree(_ptr));
         }
     }
 
     void UnifiedMemory::set_advice(CUmem_advise advice) {
-        checkCudaCall(cuMemAdvise(_ptr, _size, advice, CU_DEVICE_CPU));
+        assertCudaCall(cuMemAdvise(_ptr, _size, advice, CU_DEVICE_CPU));
     }
 
     void UnifiedMemory::set_advice(CUmem_advise advice, Device& device) {
-        checkCudaCall(cuMemAdvise(_ptr, _size, advice, device));
+        assertCudaCall(cuMemAdvise(_ptr, _size, advice, device));
     }
 
 
@@ -309,15 +323,15 @@ namespace cu {
        Module
     */
     Module::Module(const char *file_name) {
-        checkCudaCall(cuModuleLoad(&_module, file_name));
+        assertCudaCall(cuModuleLoad(&_module, file_name));
     }
 
     Module::Module(const void *data) {
-        checkCudaCall(cuModuleLoadData(&_module, data));
+        assertCudaCall(cuModuleLoadData(&_module, data));
     }
 
     Module::~Module() {
-        checkCudaCall(cuModuleUnload(_module));
+        assertCudaCall(cuModuleUnload(_module));
     }
 
     Module::operator CUmodule() {
@@ -329,7 +343,7 @@ namespace cu {
         Function
     */
     Function::Function(Module &module, const char *name) {
-        checkCudaCall(cuModuleGetFunction(&_function, module, name));
+        assertCudaCall(cuModuleGetFunction(&_function, module, name));
     }
 
     Function::Function(CUfunction function) {
@@ -338,12 +352,12 @@ namespace cu {
 
     int Function::get_attribute(CUfunction_attribute attribute) {
         int value;
-        checkCudaCall(cuFuncGetAttribute(&value, attribute, _function));
+        assertCudaCall(cuFuncGetAttribute(&value, attribute, _function));
         return value;
     }
 
     void Function::setCacheConfig(CUfunc_cache config) {
-        checkCudaCall(cuFuncSetCacheConfig(_function, config));
+        assertCudaCall(cuFuncSetCacheConfig(_function, config));
     }
 
     Function::operator CUfunction() {
@@ -355,20 +369,20 @@ namespace cu {
         Event
     */
     Event::Event(int flags) {
-        checkCudaCall(cuEventCreate(&_event, flags));
+        assertCudaCall(cuEventCreate(&_event, flags));
     }
 
     Event::~Event() {
-        checkCudaCall(cuEventDestroy(_event));
+        assertCudaCall(cuEventDestroy(_event));
     }
 
     void Event::synchronize() {
-        checkCudaCall(cuEventSynchronize(_event));
+        assertCudaCall(cuEventSynchronize(_event));
     }
 
     float Event::elapsedTime(Event &second) {
         float ms;
-        checkCudaCall(cuEventElapsedTime(&ms, second, _event));
+        assertCudaCall(cuEventElapsedTime(&ms, second, _event));
         return ms;
     }
 
@@ -381,55 +395,55 @@ namespace cu {
         Stream
     */
     Stream::Stream(int flags) {
-        checkCudaCall(cuStreamCreate(&_stream, flags));
+        assertCudaCall(cuStreamCreate(&_stream, flags));
     }
 
     Stream::~Stream() {
-        checkCudaCall(cuStreamDestroy(_stream));
+        assertCudaCall(cuStreamDestroy(_stream));
     }
 
     void Stream::memcpyHtoDAsync(DeviceMemory &devPtr, const void *hostPtr) {
-        checkCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, devPtr.size(), _stream));
+        assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, devPtr.size(), _stream));
     }
 
     void Stream::memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size) {
-        checkCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, size, _stream));
+        assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, size, _stream));
     }
 
     void Stream::memcpyDtoHAsync(void *hostPtr, DeviceMemory &devPtr) {
-        checkCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, devPtr.size(), _stream));
+        assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, devPtr.size(), _stream));
     }
 
     void Stream::memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size) {
-        checkCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
+        assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
     }
 
     void Stream::launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters) {
-        checkCudaCall(cuLaunchKernel(function, gridX, gridY, gridZ, blockX, blockY, blockZ, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
+        assertCudaCall(cuLaunchKernel(function, gridX, gridY, gridZ, blockX, blockY, blockZ, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
     }
 
     void Stream::launchKernel(Function &function, dim3 grid, dim3 block, unsigned sharedMemBytes, const void **parameters) {
-        checkCudaCall(cuLaunchKernel(function, grid.x, grid.y, grid.z, block.x, block.y, block.z, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
+        assertCudaCall(cuLaunchKernel(function, grid.x, grid.y, grid.z, block.x, block.y, block.z, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
     }
 
     void Stream::query() {
-        checkCudaCall(cuStreamQuery(_stream));
+        assertCudaCall(cuStreamQuery(_stream));
     }
 
     void Stream::synchronize() {
-        checkCudaCall(cuStreamSynchronize(_stream));
+        assertCudaCall(cuStreamSynchronize(_stream));
     }
 
     void Stream::waitEvent(Event &event) {
-        checkCudaCall(cuStreamWaitEvent(_stream, event, 0));
+        assertCudaCall(cuStreamWaitEvent(_stream, event, 0));
     }
 
     void Stream::addCallback(CUstreamCallback callback, void *userData, int flags) {
-        checkCudaCall(cuStreamAddCallback(_stream, callback, userData, flags));
+        assertCudaCall(cuStreamAddCallback(_stream, callback, userData, flags));
     }
 
     void Stream::record(Event &event) {
-        checkCudaCall(cuEventRecord(event, _stream));
+        assertCudaCall(cuEventRecord(event, _stream));
     }
 
     Stream::operator CUstream() {

@@ -20,7 +20,6 @@ namespace idg {
                 std::cout << "CUDA::" << __func__ << std::endl;
                 #endif
 
-                setenv("CUDA_DEVICE_ORDER", "PCI_BUS_ID", 0);
                 cu::init();
                 init_devices();
                 print_devices();
