@@ -265,6 +265,7 @@ namespace idg {
                     void set_parameters_default();
                     void set_parameters_kepler();
                     void set_parameters_maxwell();
+                    void set_parameters_gp100();
                     void set_parameters_pascal();
                     void set_parameters_volta();
 

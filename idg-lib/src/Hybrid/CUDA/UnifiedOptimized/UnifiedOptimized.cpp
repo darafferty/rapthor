@@ -230,12 +230,10 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
-
-                        // Power measurement
-                        vector<PowerRecord> powerRecords(5);
 
                         #pragma omp critical (lock)
                         {
@@ -250,11 +248,9 @@ namespace idg {
 
                             // Launch gridder kernel
                             executestream.waitEvent(inputReady);
-                            device.measure(powerRecords[0], executestream);
                             device.launch_gridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
-                            device.measure(powerRecords[1], executestream);
 
                             // Launch gridder post-processing kernel
                             device.launch_gridder_post(
@@ -263,30 +259,16 @@ namespace idg {
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
-                            device.measure(powerRecords[2], executestream);
 
                             // Launch adder kernel
                             device.launch_adder_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, grid.data());
-
-                            device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
+                            device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                         }
 
                         outputReady.synchronize();
-
-                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.update_gridder(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_scaler(powerRecords[2].state, powerRecords[3].state);
-                            report.update_adder(powerRecords[3].state, powerRecords[4].state);
-                            auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish
@@ -451,12 +433,10 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
-
-                        // Power measurement
-                        vector<PowerRecord> powerRecords(5);
 
                         #pragma omp critical (lock)
                         {
@@ -472,15 +452,12 @@ namespace idg {
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
-                            device.measure(powerRecords[0], executestream);
                             device.launch_splitter_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, grid.data());
-                            device.measure(powerRecords[1], executestream);
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
-                            device.measure(powerRecords[2], executestream);
 
                             // Launch degridder pre-processing kernel
                             device.launch_degridder_pre(
@@ -489,31 +466,19 @@ namespace idg {
 
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
-                            device.measure(powerRecords[3], executestream);
                             device.launch_degridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                                 d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                            device.measure(powerRecords[4], executestream);
                             executestream.record(outputReady);
 
                             // Copy visibilities to host
                             dtohstream.waitEvent(outputReady);
                             dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             dtohstream.record(outputFree);
+                            device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                         }
 
                         outputFree.synchronize();
-
-                        #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
-                        #pragma omp critical
-                        {
-                            report.update_splitter(powerRecords[0].state, powerRecords[1].state);
-                            report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
-                            report.update_degridder(powerRecords[3].state, powerRecords[4].state);
-                            auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                            report.print(current_nr_timesteps, current_nr_subgrids);
-                        }
-                        #endif
                     } // end for bl
 
                     // Wait for all jobs to finish
