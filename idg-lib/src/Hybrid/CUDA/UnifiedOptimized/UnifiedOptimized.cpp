@@ -283,6 +283,7 @@ namespace idg {
                             report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
                             report.update_scaler(powerRecords[2].state, powerRecords[3].state);
                             report.update_adder(powerRecords[3].state, powerRecords[4].state);
+                            auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                             report.print(current_nr_timesteps, current_nr_subgrids);
                         }
                         #endif
@@ -509,6 +510,7 @@ namespace idg {
                             report.update_splitter(powerRecords[0].state, powerRecords[1].state);
                             report.update_subgrid_fft(powerRecords[1].state, powerRecords[2].state);
                             report.update_degridder(powerRecords[3].state, powerRecords[4].state);
+                            auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                             report.print(current_nr_timesteps, current_nr_subgrids);
                         }
                         #endif
