@@ -293,6 +293,11 @@ namespace idg {
                 batch_degridder  = 512;
             }
 
+            void InstanceCUDA::set_parameters_gp100() {
+                batch_gridder    = 256;
+                batch_degridder  = 256;
+            }
+
             void InstanceCUDA::set_parameters_pascal() {
                 batch_gridder    = 384;
                 batch_degridder  = 512;
@@ -329,8 +334,10 @@ namespace idg {
 
                 if (capability >= 70) {
                     set_parameters_volta();
-                } else if (capability >= 60) {
+                } else if (capability >= 61) {
                     set_parameters_pascal();
+                } else if (capability == 60) {
+                    set_parameters_gp100();
                 } else if (capability >= 50) {
                     set_parameters_maxwell();
                 } else if (capability >= 30) {
