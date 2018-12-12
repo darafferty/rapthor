@@ -83,14 +83,14 @@ namespace idg {
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
             #pragma omp parallel for
-            for (int pol = 0; pol < nr_correlations; pol++) {
-                for (int y = 0; y < grid_size; y++) {
-                    for (int x = 0; x < grid_size; x++) {
-                        long src_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
-                        long dst_idx = index_grid(nr_correlations, grid_size, 0, pol, y, x);
+            for (int pixel = 0; pixel < grid_size*grid_size; pixel++) {
+                int y = pixel / grid_size;
+                int x = pixel % grid_size;
+                for (int pol = 0; pol < nr_correlations; pol++) {
+                    long src_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
+                    long dst_idx = index_grid(nr_correlations, grid_size, 0, pol, y, x);
 
-                        dst_ptr[dst_idx] = src_ptr[src_idx];
-                    }
+                    dst_ptr[dst_idx] = src_ptr[src_idx];
                 }
             }
         }
@@ -111,13 +111,13 @@ namespace idg {
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
             #pragma omp parallel for
-            for (int pol = 0; pol < nr_correlations; pol++) {
-                for (int y = 0; y < grid_size; y++) {
-                    for (int x = 0; x < grid_size; x++) {
-                        long src_idx = index_grid(nr_correlations, grid_size, 0, pol, y, x);
-                        long dst_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
-                        dst_ptr[dst_idx] = src_ptr[src_idx];
-                    }
+            for (int pixel = 0; pixel < grid_size*grid_size; pixel++) {
+                int y = pixel / grid_size;
+                int x = pixel % grid_size;
+                for (int pol = 0; pol < nr_correlations; pol++) {
+                    long src_idx = index_grid(nr_correlations, grid_size, 0, pol, y, x);
+                    long dst_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
+                    dst_ptr[dst_idx] = src_ptr[src_idx];
                 }
             }
         }
