@@ -3,11 +3,21 @@ image: ubuntu:16.04
 before_script:
   - apt-get update && apt-get install -y g++ cmake libfftw3-dev liblapacke-dev
 
-idg:
+idg-release:
   script:
     - mkdir build
     - cd build
     - cmake .. -DBUILD_WITH_TESTS=On
+    - make
+    - make install
+    - source init-environment.sh
+    - ctest --verbose
+    
+idg-debug:
+  script:
+    - mkdir build
+    - cd build
+    - cmake .. -DBUILD_WITH_TESTS=On -DCMAKE_BUILD_TYPE=Debug
     - make
     - make install
     - source init-environment.sh
