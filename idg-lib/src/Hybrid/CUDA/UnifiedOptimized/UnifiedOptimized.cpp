@@ -230,7 +230,6 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
@@ -451,7 +450,6 @@ namespace idg {
 
                         // Initialize iteration
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                        auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr             = uvw.data(first_bl, 0);
                         void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
