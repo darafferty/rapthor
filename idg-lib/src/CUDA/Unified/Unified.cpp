@@ -222,7 +222,6 @@ namespace idg {
                 auto nr_channels     = visibilities.get_x_dim();
                 auto nr_stations     = aterms.get_z_dim();
                 auto nr_timeslots    = aterms.get_w_dim();
-                auto nr_correlations = grid.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
                 auto image_size      = cell_size * grid_size;
 
@@ -365,7 +364,8 @@ namespace idg {
 
                 // Undo tiling
                 #if ENABLE_TILING
-                const int tile_size = get_device(0).get_tile_size_grid();
+                auto nr_correlations = grid.get_z_dim();
+                auto tile_size = get_device(0).get_tile_size_grid();
                 Grid grid_copy(1, nr_correlations, grid_size, grid_size);
                 memcpy((void *) grid_copy.data(), grid.data(), grid.bytes());
                 get_device(0).tile_backward(tile_size, grid_copy, grid);
@@ -425,13 +425,13 @@ namespace idg {
                 auto nr_channels     = visibilities.get_x_dim();
                 auto nr_stations     = aterms.get_z_dim();
                 auto nr_timeslots    = aterms.get_w_dim();
-                auto nr_correlations = grid.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
                 auto image_size      = cell_size * grid_size;
 
                 // Apply tiling
                 #if ENABLE_TILING
-                const int tile_size = get_device(0).get_tile_size_grid();
+                auto nr_correlations = grid.get_z_dim();
+                auto tile_size = get_device(0).get_tile_size_grid();
                 Grid grid_tiled(1, nr_correlations, grid_size, grid_size);
                 get_device(0).tile_forward(tile_size, grid, grid_tiled);
                 memcpy(grid.data(), grid_tiled.data(), grid.bytes());
