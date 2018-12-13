@@ -295,7 +295,8 @@ namespace idg {
 
             void InstanceCUDA::set_parameters_gp100() {
                 batch_gridder    = 256;
-                batch_degridder  = 256;
+                batch_degridder  = 128;
+                block_degridder  = 64;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
