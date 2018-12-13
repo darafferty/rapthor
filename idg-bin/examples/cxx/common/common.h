@@ -231,6 +231,11 @@ void run()
     vector<double> runtimes_imaging;
     unsigned long nr_visibilities = 0;
 
+    // Enable/disable routines
+    bool disable_gridding   = getenv("DISABLE_GRIDDING");
+    bool disable_degridding = getenv("DISABLE_DEGRIDDING");
+    bool disable_fft        = getenv("DISABLE_FFT");
+
     // Spectral line imaging
     bool simulate_spectral_line = getenv("SPECTRAL_LINE");
 
@@ -354,6 +359,7 @@ void run()
                             // Run gridding
                             clog << ">>> Run gridding" << endl;
                             double runtime_gridding = -omp_get_wtime();
+                            if (!disable_gridding)
                             proxy.gridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                                 frequencies, visibilities, uvw, baselines,
@@ -364,6 +370,7 @@ void run()
                             // Run degridding
                             clog << ">>> Run degridding" << endl;
                             double runtime_degridding = -omp_get_wtime();
+                            if (!disable_degridding)
                             proxy.degridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                                 frequencies, visibilities, uvw, baselines,
@@ -378,6 +385,7 @@ void run()
                             {
                                 clog << ">>> Run fft" << endl;
                                 double runtime_fft = -omp_get_wtime();
+                                if (!disable_fft)
                                 for (unsigned w = 0; w < nr_w_layers; w++) {
                                     idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
                                     proxy.transform(idg::FourierDomainToImageDomain, grid_);
