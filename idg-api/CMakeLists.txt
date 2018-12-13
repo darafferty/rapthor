@@ -60,8 +60,11 @@ include_directories (${IDG_INCLUDE_DIR})
 include_directories(external)
 
 # Try to use MKL libraries
-find_package(MKL QUIET)
-if (${MKL_FOUND})
+if(BUILD_WITH_MKL)
+    find_package(MKL QUIET)
+endif()
+
+if (BUILD_WITH_MKL AND (${MKL_FOUND}))
     set (${PROJECT_NAME}_link_libraries
         ${IDG_LIBRARY}
         ${MKL_LIBRARIES}
