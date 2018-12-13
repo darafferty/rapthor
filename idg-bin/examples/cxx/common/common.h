@@ -23,7 +23,7 @@
 
 using namespace std;
 
-std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters() {
+std::tuple<int, int, int, int, int, int, int, int, int, int, int, float>read_parameters() {
     const unsigned int DEFAULT_NR_STATIONS  = 100;
     const unsigned int DEFAULT_NR_CHANNELS  = 8;
     const unsigned int DEFAULT_NR_TIMESTEPS = 8192;
@@ -31,6 +31,7 @@ std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters
     const unsigned int DEFAULT_GRIDSIZE     = 4096;
     const unsigned int DEFAULT_SUBGRIDSIZE  = 32;
     const unsigned int DEFAULT_NR_CYCLES    = 1;
+    const float        DEFAULT_GRID_PADDING = 0.1;
 
     char *cstr_nr_stations = getenv("NR_STATIONS");
     auto nr_stations = cstr_nr_stations ? atoi(cstr_nr_stations): DEFAULT_NR_STATIONS;
@@ -65,11 +66,14 @@ std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters
     char *cstr_nr_cycles = getenv("NR_CYCLES");
     auto nr_cycles = cstr_nr_cycles ? atoi(cstr_nr_cycles) : DEFAULT_NR_CYCLES;
 
+    char *cstr_grid_padding = getenv("GRID_PADDING");
+    auto grid_padding = cstr_grid_padding ? atof(cstr_grid_padding) : DEFAULT_GRID_PADDING;
+
     return std::make_tuple(
         total_nr_stations, total_nr_channels, total_nr_timesteps,
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         grid_size, subgrid_size, kernel_size,
-        nr_cycles);
+        nr_cycles, grid_padding);
 }
 
 void print_parameters(
@@ -83,7 +87,8 @@ void print_parameters(
     float image_size,
     unsigned int grid_size,
     unsigned int subgrid_size,
-    unsigned int kernel_size
+    unsigned int kernel_size,
+    float grid_padding
 ) {
     const int fw1 = 30;
     const int fw2 = 10;
@@ -125,6 +130,9 @@ void print_parameters(
     os << setw(fw1) << left << "Kernel size" << "== "
        << setw(fw2) << right << kernel_size << endl;
 
+    os << setw(fw1) << left << "Grid padding" << "== "
+       << setw(fw2) << right << grid_padding << endl;
+
     os << "-----------" << endl;
 }
 
@@ -148,20 +156,20 @@ void run()
     unsigned int subgrid_size;
     unsigned int kernel_size;
     unsigned int nr_cycles;
+    float grid_padding;
 
     // Read parameters from environment
     std::tie(
         total_nr_stations, total_nr_channels, total_nr_timesteps,
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         grid_size, subgrid_size, kernel_size,
-        nr_cycles) = read_parameters();
+        nr_cycles, grid_padding) = read_parameters();
     unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
     unsigned int total_nr_baselines = (total_nr_stations * (total_nr_stations - 1)) / 2;
 
     // Initialize Data object
     clog << "Initialize data" << endl;
     idg::Data data;
-    float grid_padding = 0.8;
     float image_size = data.compute_image_size(grid_padding * grid_size);
     float cell_size = image_size / grid_size;
     unsigned int total_nr_baselines_ = data.get_nr_baselines();
@@ -170,7 +178,7 @@ void run()
     print_parameters(
         total_nr_stations, total_nr_channels, total_nr_timesteps,
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-        image_size, grid_size, subgrid_size, kernel_size);
+        image_size, grid_size, subgrid_size, kernel_size, grid_padding);
 
     // Restrict nr_baselines to number of baselines available
     if (total_nr_baselines_ < nr_baselines) {
