@@ -1,4 +1,3 @@
-#include <ctime> // time
 #include <algorithm> // random_shuffle
 
 #include "init.h"
@@ -602,11 +601,6 @@ namespace idg {
         std::vector<StationCoordinate>& station_coordinates,
         unsigned int baseline_length_limit)
     {
-        #if defined(DEBUG)
-        std::cout << "Data::" << __func__ << std::endl;
-        std::cout << "baseline length limit = " << baseline_length_limit << std::endl;
-        #endif
-
         // Compute (maximum) baseline length and select baselines
         unsigned nr_stations = station_coordinates.size();
         max_uv = 0;
@@ -637,10 +631,6 @@ namespace idg {
                 }
             } // end for station 2
         } // end for station 1
-
-        #if defined(DEBUG)
-        std::cout << "longest baseline = " << max_uv << std::endl;
-        #endif
     }
 
     void Data::filter_baselines(
