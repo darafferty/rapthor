@@ -455,7 +455,6 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
-                    cu::HostMemory&   h_metadata     = device.get_host_metadata(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -473,9 +472,8 @@ namespace idg {
                         htodstream.waitEvent(*inputFree[global_id]);
                         htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
-                        htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
+                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.record(*inputReady[global_id]);
 
                         // Launch gridder kernel
@@ -673,7 +671,6 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
-                    cu::HostMemory&   h_metadata     = device.get_host_metadata(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -694,9 +691,8 @@ namespace idg {
                         auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
                         htodstream.waitEvent(*inputFree[global_id]);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
-                        htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
+                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.waitEvent(*hostFinished[global_id]);
                         htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
                         htodstream.record(*inputReady[global_id]);
