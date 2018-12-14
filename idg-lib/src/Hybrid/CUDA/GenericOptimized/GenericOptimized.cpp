@@ -7,6 +7,12 @@
 
 #include "InstanceCUDA.h"
 
+/*
+ * Option to enable/disable the _wwstack
+ * version of the adder and splitter kernels.
+ */
+#define ENABLE_WSTACKING 1
+
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
@@ -225,12 +231,20 @@ namespace idg {
                 HostData *data = static_cast<HostData*>(userData);
 
                 // Add subgrids to grid
+                #if ENABLE_WSTACKING
                 cu::Marker marker("run_adder_wstack");
                 marker.start();
                 data->cpuKernels->run_adder_wstack(
                     data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
                 marker.end();
+                #else
+                cu::Marker marker("run_adder");
+                marker.start();
+                data->cpuKernels->run_adder(
+                    data->nr_subgrids, data->grid_size, data->subgrid_size,
+                    data->metadata, data->subgrids, data->grid);
+                #endif
 
                 // Delete state
                 delete data;
@@ -265,12 +279,21 @@ namespace idg {
                 HostData *data = static_cast<HostData*>(userData);
 
                 // Extract subgrids from grid
+                #if ENABLE_WSTACKING
                 cu::Marker marker("run_splitter_wstack");
                 marker.start();
                 data->cpuKernels->run_splitter_wstack(
                     data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
                 marker.end();
+                #else
+                cu::Marker marker("run_splitter");
+                marker.start();
+                data->cpuKernels->run_splitter(
+                    data->nr_subgrids, data->grid_size, data->subgrid_size,
+                    data->metadata, data->subgrids, data->grid);
+                marker.end();
+                #endif
 
                 // Delete state
                 delete data;
