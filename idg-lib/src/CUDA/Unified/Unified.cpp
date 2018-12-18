@@ -225,6 +225,17 @@ namespace idg {
                 auto grid_size       = grid.get_x_dim();
                 auto image_size      = cell_size * grid_size;
 
+                // Apply tiling
+                #if ENABLE_TILING
+                auto nr_correlations = grid.get_z_dim();
+                auto tile_size = get_device(0).get_tile_size_grid();
+                cu::UnifiedMemory u_grid(grid.bytes());
+                Grid grid_tiled((std::complex<float> *) u_grid.ptr(), 1,  nr_correlations, grid_size, grid_size);
+                get_device(0).tile_forward(tile_size, grid, grid_tiled);
+                #else
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
+                #endif
+
                 // Configuration
                 const int nr_devices = get_num_devices();
                 const int nr_streams = 2;
@@ -336,7 +347,7 @@ namespace idg {
                             // Launch adder kernel
                             device.launch_adder_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, grid.data());
+                                d_metadata, d_subgrids, u_grid.ptr());
 
                             executestream.record(outputReady);
                         }
@@ -364,11 +375,7 @@ namespace idg {
 
                 // Undo tiling
                 #if ENABLE_TILING
-                auto nr_correlations = grid.get_z_dim();
-                auto tile_size = get_device(0).get_tile_size_grid();
-                Grid grid_copy(1, nr_correlations, grid_size, grid_size);
-                memcpy((void *) grid_copy.data(), grid.data(), grid.bytes());
-                get_device(0).tile_backward(tile_size, grid_copy, grid);
+                get_device(0).tile_backward(tile_size, grid_tiled, grid);
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -432,9 +439,11 @@ namespace idg {
                 #if ENABLE_TILING
                 auto nr_correlations = grid.get_z_dim();
                 auto tile_size = get_device(0).get_tile_size_grid();
-                Grid grid_tiled(1, nr_correlations, grid_size, grid_size);
+                cu::UnifiedMemory u_grid(grid.bytes());
+                Grid grid_tiled((std::complex<float> *) u_grid.ptr(), 1,  nr_correlations, grid_size, grid_size);
                 get_device(0).tile_forward(tile_size, grid, grid_tiled);
-                memcpy(grid.data(), grid_tiled.data(), grid.bytes());
+                #else
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
                 #endif
 
                 // Configuration
@@ -525,8 +534,6 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                                 auxiliary::sizeof_metadata(current_nr_subgrids));
                             htodstream.record(inputReady);
@@ -538,7 +545,7 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device.launch_splitter_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, grid.data());
+                                d_metadata, d_subgrids, u_grid.ptr());
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
@@ -578,12 +585,6 @@ namespace idg {
                 // End measurement
                 endStates[nr_devices] = hostPowerSensor->read();
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
-
-                // Undo tiling
-                #if ENABLE_TILING
-                get_device(0).tile_backward(tile_size, grid, grid_tiled);
-                memcpy(grid.data(), grid_tiled.data(), grid.bytes());
-                #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
