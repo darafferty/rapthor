@@ -98,6 +98,8 @@ namespace idg {
                     cl::Buffer& d_subgrid);
 
                 protected:
+                    void compile_kernel_gridder(unsigned nr_channels);
+                    void compile_kernel_degridder(unsigned nr_channels);
                     cl::Kernel* compile_kernel(
                         int kernel_id,
                         std::string file_name,

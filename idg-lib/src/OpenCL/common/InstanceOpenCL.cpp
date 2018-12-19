@@ -41,13 +41,29 @@ namespace idg {
                 set_parameters();
 
                 // Compile kernels
-                kernel_adder    = compile_kernel(2, file_adder, name_adder);
-                kernel_splitter = compile_kernel(3, file_splitter, name_splitter);
-                kernel_scaler   = compile_kernel(4, file_scaler, name_scaler);
-
-                // The gridder and degridder kernels are compiled on first use
-                kernel_gridder   = NULL;
-                kernel_degridder = NULL;
+                #pragma omp parallel for
+                for (unsigned i = 0; i < 5; i++) {
+                    // The gridder and degridder kernels are recompiled
+                    // when the number of channels changes.
+                    const unsigned default_nr_channels = 8;
+                    if (i == 0) {
+                        compile_kernel_gridder(default_nr_channels);
+                    }
+                    if (i == 1) {
+                        compile_kernel_degridder(default_nr_channels);
+                    }
+                    // The adder, splitter and scaler kernel are compiled
+                    // only when this InstanceOpenCL is created
+                    if (i == 2) {
+                        kernel_adder    = compile_kernel(2, file_adder, name_adder);
+                    }
+                    if (i == 3) {
+                        kernel_splitter = compile_kernel(3, file_splitter, name_splitter);
+                    }
+                    if (i == 4) {
+                        kernel_scaler   = compile_kernel(4, file_scaler, name_scaler);
+                    }
+                }
 
                 // Initialize power sensor
                 powerSensor = get_power_sensor(sensor_device, device_nr);
@@ -399,6 +415,29 @@ namespace idg {
                 data->event->setCallback(CL_RUNNING, &report_job_callback, data);
             }
 
+            void InstanceOpenCL::compile_kernel_gridder(
+                unsigned nr_channels)
+            {
+                std::stringstream flags;
+                flags << " -DBATCH_SIZE="  << batch_gridder / max(1, (nr_channels / 8));
+                flags << " -DBLOCK_SIZE="  << block_gridder[0];
+                flags << " -DNR_CHANNELS=" << nr_channels;
+                kernel_gridder = compile_kernel(0, file_gridder, name_gridder, flags.str());
+                nr_channels_gridder = nr_channels;
+            }
+
+
+            void InstanceOpenCL::compile_kernel_degridder(
+                unsigned nr_channels)
+            {
+				std::stringstream flags;
+                flags << " -DBATCH_SIZE="  << batch_degridder;
+                flags << " -DBLOCK_SIZE="  << block_degridder[0];
+                flags << " -DNR_CHANNELS=" << nr_channels;
+                kernel_degridder = compile_kernel(1, file_degridder, name_degridder, flags.str());
+                nr_channels_degridder = nr_channels;
+            }
+
             /*
                 Kernels
             */
@@ -419,13 +458,8 @@ namespace idg {
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid)
             {
-                if (kernel_gridder == NULL || nr_channels_gridder != nr_channels) {
-                    nr_channels_gridder = nr_channels;
-				    std::stringstream flags;
-                    flags << " -DBATCH_SIZE="  << batch_gridder / max(1, (nr_channels / 8));
-                    flags << " -DBLOCK_SIZE="  << block_gridder[0];
-                    flags << " -DNR_CHANNELS=" << nr_channels;
-                    kernel_gridder = compile_kernel(0, file_gridder, name_gridder, flags.str());
+                if (nr_channels_gridder != nr_channels) {
+                    compile_kernel_gridder(nr_channels);
                 }
 
                 int local_size_x = block_gridder[0];
@@ -472,13 +506,8 @@ namespace idg {
                 cl::Buffer& d_metadata,
                 cl::Buffer& d_subgrid)
             {
-                if (kernel_degridder == NULL || nr_channels_degridder != nr_channels) {
-                    nr_channels_degridder = nr_channels;
-				    std::stringstream flags;
-                    flags << " -DBATCH_SIZE="  << batch_degridder;
-                    flags << " -DBLOCK_SIZE="  << block_degridder[0];
-                    flags << " -DNR_CHANNELS=" << nr_channels;
-                    kernel_degridder = compile_kernel(1, file_degridder, name_degridder, flags.str());
+                if (nr_channels_degridder != nr_channels) {
+                    compile_kernel_degridder(nr_channels);
                 }
 
                 int local_size_x = block_degridder[0];
