@@ -28,8 +28,8 @@ int test01()
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
 
     // Initialize Data object
-    idg::Data data;
-    float image_size             = data.compute_image_size(grid_size);
+    idg::Data data(grid_size);
+    float image_size             = data.get_image_size();
     float cell_size              = image_size / grid_size;
 
     // Print parameters

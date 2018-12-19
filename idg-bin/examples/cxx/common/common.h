@@ -160,9 +160,8 @@ void run()
 
     // Initialize Data object
     clog << "Initialize data" << endl;
-    idg::Data data;
-    float grid_padding = 0.8;
-    float image_size = data.compute_image_size(grid_size * grid_padding);
+    idg::Data data(grid_size);
+    float image_size = data.get_image_size();
     float cell_size = image_size / grid_size;
     unsigned int total_nr_baselines_ = data.get_nr_baselines();
 
@@ -213,9 +212,8 @@ void run()
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Grid grid =
         proxy.get_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
-    idg::Array1D<float> shift =
-        idg::get_zero_shift();
     clog << endl;
+    idg::Array1D<float> shift(3); // zero shift
 
     // Allocate variable data structures
     idg::Array1D<float> frequencies(nr_channels);
@@ -269,8 +267,7 @@ void run()
                                                    total_nr_timesteps - time_offset : nr_timesteps;
 
                         // Initialize uvw data
-                        idg::Array2D<idg::UVWCoordinate<float>>* uvw_current =
-                            new idg::Array2D<idg::UVWCoordinate<float>>(current_nr_baselines, current_nr_timesteps);
+                        idg::Array2D<idg::UVWCoordinate<float>>* uvw_current = new idg::Array2D<idg::UVWCoordinate<float>>(current_nr_baselines, current_nr_timesteps);
                         data.get_uvw(*uvw_current, bl_offset, time_offset, integration_time);
                         uvws.push(uvw_current);
 
@@ -284,12 +281,13 @@ void run()
                             clog << ">>>" << endl;
 
                             // Initialize frequency data
-                            idg::Array1D<float> frequencies_ = data.get_frequencies(nr_channels, image_size, channel_offset);
+                            idg::Array1D<float> frequencies_(nr_channels);
+                            data.get_frequencies(frequencies_, channel_offset);
 
                             // Create plan
                             idg::Plan* plan = new idg::Plan(
                                 kernel_size, subgrid_size, grid_size, cell_size,
-                                frequencies_, *uvw_current, baselines, aterms_offsets, options);
+                                frequencies_, *uvw_current, baselines, aterms_offsets);
 
                             // Store and release plan
                             plans.push(plan);

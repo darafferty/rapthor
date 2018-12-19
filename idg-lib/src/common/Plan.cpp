@@ -324,7 +324,6 @@ namespace idg {
                     subgrid.finish();
 
                     // Add subgrid to metadata
-                    Coordinate coordinate = subgrid.get_coordinate();
                     if (subgrid.in_range()) {
                         Metadata m = {
                             (int) (bl * nr_timesteps),                      // baseline offset, TODO: store bl index
@@ -332,7 +331,7 @@ namespace idg {
                             nr_timesteps_subgrid,                   // nr of timesteps
                             (int) aterm_index,                      // aterm index
                             baseline,                               // baselines
-                            coordinate                              // coordinate
+                            subgrid.get_coordinate()                // coordinate
                         };
                         metadata_[bl].push_back(m);
 
@@ -347,11 +346,11 @@ namespace idg {
                                 metadata_[bl].push_back(m);
                             }
                         }
-                    } else if (plan_strict) {
-                        std::stringstream message;
-                        message << "subgrid out of range: (" << coordinate.x << ", " << coordinate.y << ")";
+                    }
+                    else if (plan_strict)
+                    {
                         #pragma omp critical
-                        throw std::runtime_error(message.str());
+                        throw std::runtime_error("subgrid falls not within grid");
                     }
                 } // end while
             } // end for timeslot
