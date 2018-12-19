@@ -108,7 +108,7 @@ int test01()
         (std::complex<float> *) visibilities.data(),
         (std::complex<float> *) visibilities_ref.data());
 
-    cout << "Error = " << error << endl;
+    cout << "Error = " << std::scientific << error << endl;
 
     // Report results
     if (error < tol) {
