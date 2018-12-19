@@ -10,37 +10,26 @@ using namespace std;
 #include "idg-util.h"  // Data init routines
 
 
-// computes max|A[i]-B[i]| / max|B[i]|
+// computes sqrt(A^2-B^2) / n
 float get_accucary(
-    const int size,
+    const int n,
     const std::complex<float>* A,
     const std::complex<float>* B)
 {
-    float max_abs_error = 0.0f;
-    float max_ref_val = 0.0f;
-    float max_val = 0.0f;
-    for (int i=0; i<size; i++) {
-        float abs_error = abs(A[i] - B[i]);
-        if ( abs_error > max_abs_error ) {
-            max_abs_error = abs_error;
-        }
-        if (abs(B[i]) > max_ref_val) {
-            max_ref_val = abs(B[i]);
-        }
-        if (abs(A[i]) > max_val) {
-            max_val = abs(A[i]);
-        }
+    double r_error = 0.0;
+    double i_error = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        double r_diff = A[i].real() - B[i].real();
+        double i_diff = A[i].imag() - B[i].imag();
+        r_error += r_diff * r_diff;
+        i_error += i_diff * i_diff;
     }
-    if (max_ref_val == 0.0f) {
-        if (max_val == 0.0f)
-            // both grid are zero
-            return 0.0f;
-        else
-            // refrence grid is zero, but computed grid not
-            return std::numeric_limits<float>::infinity();
-    } else {
-        return max_abs_error / max_ref_val;
-    }
+
+    r_error /= n;
+    i_error /= n;
+
+    return sqrt(r_error + i_error);
 }
 
 void print_parameters(
