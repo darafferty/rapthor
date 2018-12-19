@@ -77,6 +77,8 @@ namespace idg {
         unsigned int height,
         unsigned int width);
 
+    Array1D<float> get_zero_shift();
+
     /*
      * Default memory allocation
      */

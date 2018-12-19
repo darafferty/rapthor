@@ -212,8 +212,9 @@ void run()
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Grid grid =
         proxy.get_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+    idg::Array1D<float> shift =
+        idg::get_zero_shift();
     clog << endl;
-    idg::Array1D<float> shift(3); // zero shift
 
     // Allocate variable data structures
     idg::Array1D<float> frequencies(nr_channels);

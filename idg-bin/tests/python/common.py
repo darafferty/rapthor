@@ -88,10 +88,10 @@ def plot_metadata(
 # gridding
 ##########
 def gridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.gridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_grid(grid, scaling='log')
@@ -104,11 +104,11 @@ def gridding(
 # degridding
 ############
 def degridding(
-        p, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
     p.transform(idg.ImageDomainToFourierDomain, grid)
     p.degridding(
-        w_offset, cell_size, kernel_size, subgrid_size,
+        w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
     #util.plot_visibilities(visibilities)
@@ -132,7 +132,7 @@ def main(proxyname):
     integration_time = get_integration_time()
     kernel_size      = get_kernel_size()
     nr_correlations  = get_nr_correlations()
-    w_offset         = 0.0
+    w_step         = 0.0
 
     ######################################################################
     # initialize proxies
@@ -177,25 +177,26 @@ def main(proxyname):
     visibilities2  = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, frequencies)
+    shift          = numpy.zeros(3, dtype=float)
 
 
     ######################################################################
     # routines
     ######################################################################
     gridding(
-        opt, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
+        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
         uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        opt, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
+        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
         uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
 
     gridding(
-        ref, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        ref, w_offset, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
+        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
 
     ######################################################################

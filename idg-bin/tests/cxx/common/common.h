@@ -137,7 +137,8 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         idg::get_example_aterms_offsets(optimized, nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
-    idg::Array1D<float> shift(3); // zero shift
+    idg::Array1D<float> shift =
+        idg::get_zero_shift();
     idg::Grid grid =
         optimized.get_grid(1, nr_correlations, grid_size, grid_size);
     idg::Grid grid_ref =
