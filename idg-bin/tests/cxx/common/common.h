@@ -18,16 +18,30 @@ float get_accucary(
 {
     double r_error = 0.0;
     double i_error = 0.0;
+    int nnz = 0;
 
     for (int i = 0; i < n; i++) {
-        double r_diff = A[i].real() - B[i].real();
-        double i_diff = A[i].imag() - B[i].imag();
-        r_error += r_diff * r_diff;
-        i_error += i_diff * i_diff;
+        float r_cmp = A[i].real();
+        float i_cmp = A[i].imag();
+        float r_ref = B[i].real();
+        float i_ref = B[i].imag();
+        double r_diff = r_ref - r_cmp;
+        double i_diff = i_ref - i_cmp;
+        if (abs(B[i]) > 0.0f) {
+            nnz++;
+            r_error += r_diff * r_diff;
+            i_error += i_diff * i_diff;
+        }
     }
 
-    r_error /= n;
-    i_error /= n;
+    #if defined(DEBUG)
+    printf("r_error: %f\n", r_error);
+    printf("i_error: %f\n", i_error);
+    printf("nnz: %d\n", nnz);
+    #endif
+
+    r_error /= max(1, nnz);
+    i_error /= max(1, nnz);
 
     return sqrt(r_error + i_error);
 }
