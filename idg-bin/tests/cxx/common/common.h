@@ -108,10 +108,11 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     unsigned int subgrid_size    = 32;
     unsigned int kernel_size     = 9;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
+    float grid_padding           = 0.8;
 
     // Initialize Data object
-    idg::Data data(grid_size);
-    float image_size             = data.get_image_size();
+    idg::Data data;
+    float image_size             = data.compute_image_size(grid_padding * grid_size);
     float cell_size              = image_size / grid_size;
 
     // Print parameters
