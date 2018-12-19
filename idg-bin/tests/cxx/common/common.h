@@ -104,12 +104,15 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 7;
-    float image_size             = 0.08;
     unsigned int grid_size       = 1024;
-    unsigned int subgrid_size    = 24;
-    float cell_size              = image_size / grid_size;
-    unsigned int kernel_size     = (subgrid_size / 2) + 1;
+    unsigned int subgrid_size    = 32;
+    unsigned int kernel_size     = 9;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
+
+    // Initialize Data object
+    idg::Data data(grid_size);
+    float image_size             = data.get_image_size();
+    float cell_size              = image_size / grid_size;
 
     // Print parameters
     print_parameters(
@@ -148,11 +151,20 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         reference.get_grid(1, nr_correlations, grid_size, grid_size);
     clog << endl;
 
+    // Set w-terms to zero
+    for (unsigned bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned t = 0; t < nr_timesteps; t++) {
+            uvw(bl, t).w = 0.0f;
+        }
+    }
+
     // Create plan
     clog << ">>> Create plan" << endl;
+    idg::Plan::Options options;
+    options.plan_strict = true;
     idg::Plan plan(
         kernel_size, subgrid_size, grid_size, cell_size,
-        frequencies, uvw, baselines, aterms_offsets);
+        frequencies, uvw, baselines, aterms_offsets, options);
     clog << endl;
 
     // Run gridder
@@ -172,7 +184,6 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         nr_correlations*grid_size*grid_size,
         grid.data(),
         grid_ref.data());
-
 
     // Run degridder
     std::clog << ">>> Run degridding" << std::endl;
@@ -200,9 +211,8 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         (std::complex<float> *) visibilities.data(),
         (std::complex<float> *) visibilities_ref.data());
 
-
     // Report results
-    tol = grid_size * std::numeric_limits<float>::epsilon();
+    tol = grid_size*grid_size * std::numeric_limits<float>::epsilon();
     if (grid_error < tol) {
         std::cout << "Gridding test PASSED!" << std::endl;
     } else {
