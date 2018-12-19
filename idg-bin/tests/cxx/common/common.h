@@ -10,37 +10,40 @@ using namespace std;
 #include "idg-util.h"  // Data init routines
 
 
-// computes max|A[i]-B[i]| / max|B[i]|
+// computes sqrt(A^2-B^2) / n
 float get_accucary(
-    const int size,
+    const int n,
     const std::complex<float>* A,
     const std::complex<float>* B)
 {
-    float max_abs_error = 0.0f;
-    float max_ref_val = 0.0f;
-    float max_val = 0.0f;
-    for (int i=0; i<size; i++) {
-        float abs_error = abs(A[i] - B[i]);
-        if ( abs_error > max_abs_error ) {
-            max_abs_error = abs_error;
-        }
-        if (abs(B[i]) > max_ref_val) {
-            max_ref_val = abs(B[i]);
-        }
-        if (abs(A[i]) > max_val) {
-            max_val = abs(A[i]);
+    double r_error = 0.0;
+    double i_error = 0.0;
+    int nnz = 0;
+
+    for (int i = 0; i < n; i++) {
+        float r_cmp = A[i].real();
+        float i_cmp = A[i].imag();
+        float r_ref = B[i].real();
+        float i_ref = B[i].imag();
+        double r_diff = r_ref - r_cmp;
+        double i_diff = i_ref - i_cmp;
+        if (abs(B[i]) > 0.0f) {
+            nnz++;
+            r_error += r_diff * r_diff;
+            i_error += i_diff * i_diff;
         }
     }
-    if (max_ref_val == 0.0f) {
-        if (max_val == 0.0f)
-            // both grid are zero
-            return 0.0f;
-        else
-            // refrence grid is zero, but computed grid not
-            return std::numeric_limits<float>::infinity();
-    } else {
-        return max_abs_error / max_ref_val;
-    }
+
+    #if defined(DEBUG)
+    printf("r_error: %f\n", r_error);
+    printf("i_error: %f\n", i_error);
+    printf("nnz: %d\n", nnz);
+    #endif
+
+    r_error /= max(1, nnz);
+    i_error /= max(1, nnz);
+
+    return sqrt(r_error + i_error);
 }
 
 void print_parameters(
@@ -101,12 +104,15 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 7;
-    float image_size             = 0.08;
     unsigned int grid_size       = 1024;
-    unsigned int subgrid_size    = 24;
-    float cell_size              = image_size / grid_size;
-    unsigned int kernel_size     = (subgrid_size / 2) + 1;
+    unsigned int subgrid_size    = 32;
+    unsigned int kernel_size     = 9;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
+
+    // Initialize Data object
+    idg::Data data(grid_size);
+    float image_size             = data.get_image_size();
+    float cell_size              = image_size / grid_size;
 
     // Print parameters
     print_parameters(
@@ -145,11 +151,20 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         reference.get_grid(1, nr_correlations, grid_size, grid_size);
     clog << endl;
 
+    // Set w-terms to zero
+    for (unsigned bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned t = 0; t < nr_timesteps; t++) {
+            uvw(bl, t).w = 0.0f;
+        }
+    }
+
     // Create plan
     clog << ">>> Create plan" << endl;
+    idg::Plan::Options options;
+    options.plan_strict = true;
     idg::Plan plan(
         kernel_size, subgrid_size, grid_size, cell_size,
-        frequencies, uvw, baselines, aterms_offsets);
+        frequencies, uvw, baselines, aterms_offsets, options);
     clog << endl;
 
     // Run gridder
@@ -169,7 +184,6 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         nr_correlations*grid_size*grid_size,
         grid.data(),
         grid_ref.data());
-
 
     // Run degridder
     std::clog << ">>> Run degridding" << std::endl;
@@ -197,9 +211,8 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         (std::complex<float> *) visibilities.data(),
         (std::complex<float> *) visibilities_ref.data());
 
-
     // Report results
-    tol = grid_size * std::numeric_limits<float>::epsilon();
+    tol = grid_size*grid_size * std::numeric_limits<float>::epsilon();
     if (grid_error < tol) {
         std::cout << "Gridding test PASSED!" << std::endl;
     } else {

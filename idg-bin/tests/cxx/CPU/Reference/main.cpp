@@ -22,9 +22,9 @@ int test01()
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 1;
-    unsigned int grid_size       = 512;
-    unsigned int subgrid_size    = 24;
-    unsigned int kernel_size     = (subgrid_size / 2) + 1;
+    unsigned int grid_size       = 1024;
+    unsigned int subgrid_size    = 32;
+    unsigned int kernel_size     = 9;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
 
     // Initialize Data object
@@ -79,10 +79,10 @@ int test01()
     int   location_x = grid_size/2 + offset_x;
     int   location_y = grid_size/2 + offset_y;
     float amplitude  = 1.0f;
-    grid(0, location_y, location_x) = amplitude;
-    grid(1, location_y, location_x) = amplitude;
-    grid(2, location_y, location_x) = amplitude;
-    grid(3, location_y, location_x) = amplitude;
+    grid_ref(0, location_y, location_x) = amplitude;
+    grid_ref(1, location_y, location_x) = amplitude;
+    grid_ref(2, location_y, location_x) = amplitude;
+    grid_ref(3, location_y, location_x) = amplitude;
     memset(visibilities_ref.data(), 0, visibilities_ref.bytes());
     add_pt_src(visibilities_ref, uvw, frequencies, image_size, grid_size, offset_x, offset_y, amplitude);
     clog << endl;
@@ -91,31 +91,66 @@ int test01()
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::cpu::Reference proxy;
 
+    // Create plan
+    clog << ">>> Create plan" << endl;
+    idg::Plan::Options options;
+    options.plan_strict = true;
+    idg::Plan plan(
+        kernel_size, subgrid_size, grid_size, cell_size,
+        frequencies, uvw, baselines, aterms_offsets, options);
+    clog << endl;
+
+    // Grid reference visibilities
+    clog << ">>> Grid visibilities" << endl;
+    idg::Grid grid_(grid.data(), 1, nr_correlations, grid_size, grid_size);
+    proxy.gridding(
+        plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
+        frequencies, visibilities_ref, uvw, baselines,
+        grid_, aterms, aterms_offsets, spheroidal);
+    proxy.transform(idg::FourierDomainToImageDomain, grid);
+
+    float grid_error = get_accucary(
+        grid_size*grid_size*nr_correlations,
+        (std::complex<float> *) grid.data(),
+        (std::complex<float> *) grid_ref.data());
+
     // Predict visibilities
     clog << ">>> Predict visibilities" << endl;
 
-    proxy.transform(idg::ImageDomainToFourierDomain, grid);
+    proxy.transform(idg::ImageDomainToFourierDomain, grid_ref);
 
     proxy.degridding(
-        w_offset, shift, cell_size, kernel_size, subgrid_size,
+        plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
-        grid, aterms, aterms_offsets, spheroidal);
-
+        grid_ref, aterms, aterms_offsets, spheroidal);
     clog << endl;
 
-    float error = get_accucary(
+    // Compute error
+    float degrid_error = get_accucary(
         nr_baselines*nr_timesteps*nr_channels*nr_correlations,
         (std::complex<float> *) visibilities.data(),
         (std::complex<float> *) visibilities_ref.data());
 
-    cout << "Error = " << error << endl;
+    // Report error
+    clog << "Grid error = " << std::scientific << grid_error << endl;
+    clog << "Degrid error = " << std::scientific << degrid_error << endl;
+    clog << endl;
 
-    // Report results
-    if (error < tol) {
-        cout << "Prediction test PASSED!" << endl;
+
+    // Report gridding results
+    if (grid_error < tol) {
+        cout << "Gridding test PASSED!" << endl;
     } else {
-        cout << "Prediction test FAILED!" << endl;
+        cout << "Gridding test FAILED!" << endl;
         info = 1;
+    }
+
+    // Report degridding results
+    if (degrid_error < tol) {
+        cout << "Degridding test PASSED!" << endl;
+    } else {
+        cout << "Degridding test FAILED!" << endl;
+        info = 2;
     }
 
     return info;
