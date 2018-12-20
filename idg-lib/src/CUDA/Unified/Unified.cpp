@@ -21,7 +21,7 @@ namespace idg {
         namespace cuda {
 
             // The maximum number of CUDA streams in any routine
-            const int max_nr_streams = 3;
+            const int max_nr_streams = 2;
 
             // Constructor
             Unified::Unified(
@@ -448,7 +448,7 @@ namespace idg {
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 3;
+                const int nr_streams = 2;
 
                 // Initialize metadata
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, 0, 0.4);
