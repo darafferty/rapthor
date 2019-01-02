@@ -52,7 +52,7 @@ void kernel_gridder(
     }
 
     // Iterate all subgrids
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
         // Load metadata
         const idg::Metadata m  = metadata[s];
@@ -72,16 +72,19 @@ void kernel_gridder(
 
         // Preload visibilities
         const int nr_visibilities = nr_timesteps * nr_channels;
-        float vis_xx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_xy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_yx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_yy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_xx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_xy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_yx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-        float vis_yy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xx_real[nr_visibilities];
+        float vis_xy_real[nr_visibilities];
+        float vis_yx_real[nr_visibilities];
+        float vis_yy_real[nr_visibilities];
+        float vis_xx_imag[nr_visibilities];
+        float vis_xy_imag[nr_visibilities];
+        float vis_yx_imag[nr_visibilities];
+        float vis_yy_imag[nr_visibilities];
 
         for (int time = 0; time < nr_timesteps; time++) {
+            #if defined(__INTEL_COMPILER)
+            #pragma vector aligned
+            #endif
             for (int chan = 0; chan < nr_channels; chan++) {
                 int time_idx = offset + time;
                 int chan_idx = chan;
@@ -125,9 +128,6 @@ void kernel_gridder(
             // Compute phase
             float phase[nr_timesteps*nr_channels];
 
-            #if defined(__INTEL_COMPILER)
-            #pragma vector aligned(uvw_u, uvw_v, uvw_w)
-            #endif
             for (int time = 0; time < nr_timesteps; time++) {
                 // Load UVW coordinates
                 float u = uvw_u[time];
@@ -138,7 +138,7 @@ void kernel_gridder(
                 float phase_index = u*l_[i] + v*m_[i] + w*n_[i];
 
                 #if defined(__INTEL_COMPILER)
-                #pragma vector aligned(wavenumbers, phase)
+                #pragma vector aligned
                 #endif
                 for (int chan = 0; chan < nr_channels; chan++) {
                     // Compute phase
@@ -148,8 +148,8 @@ void kernel_gridder(
             } // end time
 
             // Compute phasor
-            float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+            float phasor_real[nr_visibilities];
+            float phasor_imag[nr_visibilities];
             #if defined(USE_LOOKUP)
             compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
             #else
@@ -157,7 +157,7 @@ void kernel_gridder(
             #endif
 
             // Compute pixels
-            idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned((ALIGNMENT))));
+            idg::float2 pixels[NR_POLARIZATIONS];
             compute_reduction(
                 nr_visibilities,
                 vis_xx_real, vis_xy_real, vis_yx_real, vis_yy_real,
