@@ -1,6 +1,6 @@
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
-#define UNROLL_PIXELS   2
+#define UNROLL_PIXELS   4
 
 /*
     Kernel
@@ -29,7 +29,7 @@ void kernel_gridder(
 
     // Local memory
     __local float8 visibilities_[BATCH_SIZE][NR_CHANNELS];
-    __local float4 uvw_[BATCH_SIZE];
+    __local float4 uvw_[BATCH_SIZE/NR_CHANNELS];
     __local float  wavenumbers_[NR_CHANNELS];
 
     // Load metadata for first subgrid
