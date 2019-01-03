@@ -52,7 +52,7 @@ void kernel_gridder(
     }
 
     // Iterate all subgrids
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
         // Load metadata
         const idg::Metadata m  = metadata[s];
@@ -81,22 +81,22 @@ void kernel_gridder(
         float vis_yx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
         float vis_yy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
 
-        for (int time = 0; time < nr_timesteps; time++) {
-            for (int chan = 0; chan < nr_channels; chan++) {
-                int time_idx = offset + time;
-                int chan_idx = chan;
-                size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
-                size_t dst_idx = time * nr_channels + chan;
+        for (int vis = 0; vis < nr_visibilities; vis++) {
+            int time = vis / nr_channels;
+            int chan = vis % nr_channels;
+            int time_idx = offset + time;
+            int chan_idx = chan;
+            size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+            size_t dst_idx = time * nr_channels + chan;
 
-                vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
-                vis_xy_real[dst_idx] = visibilities[src_idx + 1].real;
-                vis_yx_real[dst_idx] = visibilities[src_idx + 2].real;
-                vis_yy_real[dst_idx] = visibilities[src_idx + 3].real;
-                vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
-                vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag;
-                vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag;
-                vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag;
-            }
+            vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
+            vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
+            vis_xy_real[dst_idx] = visibilities[src_idx + 1].real;
+            vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag;
+            vis_yx_real[dst_idx] = visibilities[src_idx + 2].real;
+            vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag;
+            vis_yy_real[dst_idx] = visibilities[src_idx + 3].real;
+            vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag;
         }
 
         // Preload uvw
@@ -125,9 +125,6 @@ void kernel_gridder(
             // Compute phase
             float phase[nr_timesteps*nr_channels];
 
-            #if defined(__INTEL_COMPILER)
-            #pragma vector aligned(uvw_u, uvw_v, uvw_w)
-            #endif
             for (int time = 0; time < nr_timesteps; time++) {
                 // Load UVW coordinates
                 float u = uvw_u[time];
@@ -138,7 +135,7 @@ void kernel_gridder(
                 float phase_index = u*l_[i] + v*m_[i] + w*n_[i];
 
                 #if defined(__INTEL_COMPILER)
-                #pragma vector aligned(wavenumbers, phase)
+                #pragma vector aligned
                 #endif
                 for (int chan = 0; chan < nr_channels; chan++) {
                     // Compute phase
@@ -148,8 +145,8 @@ void kernel_gridder(
             } // end time
 
             // Compute phasor
-            float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+            float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));;
+            float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));;
             #if defined(USE_LOOKUP)
             compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
             #else
@@ -157,7 +154,7 @@ void kernel_gridder(
             #endif
 
             // Compute pixels
-            idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned((ALIGNMENT))));
+            idg::float2 pixels[NR_POLARIZATIONS];
             compute_reduction(
                 nr_visibilities,
                 vis_xx_real, vis_xy_real, vis_yx_real, vis_yy_real,

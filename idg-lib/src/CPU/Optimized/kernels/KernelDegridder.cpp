@@ -51,7 +51,7 @@ void kernel_degridder(
     }
 
     // Iterate all subgrids
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
 
         // Load metadata
@@ -164,8 +164,8 @@ void kernel_degridder(
                 }
 
                 // Compute phasor
-                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
+                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
                 #if defined(USE_LOOKUP)
                 compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
                 #else

@@ -18,7 +18,7 @@ endif()
 
 # Compiler options
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    add_compile_options("-axCORE-AVX512")
+    add_compile_options("-x${INSTRUCTION_SET}")
     add_compile_options("-DUSE_VML")
     add_compile_options("-mkl")
 else()
