@@ -66,14 +66,14 @@ void kernel_degridder(
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
         // Storage
-        float pixels_xx_real[nr_pixels];
-        float pixels_xy_real[nr_pixels];
-        float pixels_yx_real[nr_pixels];
-        float pixels_yy_real[nr_pixels];
-        float pixels_xx_imag[nr_pixels];
-        float pixels_xy_imag[nr_pixels];
-        float pixels_yx_imag[nr_pixels];
-        float pixels_yy_imag[nr_pixels];
+        float pixels_xx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
 
         // Apply aterm to subgrid
         for (unsigned i = 0; i < nr_pixels; i++) {
@@ -164,8 +164,8 @@ void kernel_degridder(
                 }
 
                 // Compute phasor
-                float phasor_real[nr_pixels];
-                float phasor_imag[nr_pixels];
+                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
+                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
                 #if defined(USE_LOOKUP)
                 compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
                 #else

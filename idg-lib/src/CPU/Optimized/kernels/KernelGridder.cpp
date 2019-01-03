@@ -72,14 +72,14 @@ void kernel_gridder(
 
         // Preload visibilities
         const int nr_visibilities = nr_timesteps * nr_channels;
-        float vis_xx_real[nr_visibilities];
-        float vis_xy_real[nr_visibilities];
-        float vis_yx_real[nr_visibilities];
-        float vis_yy_real[nr_visibilities];
-        float vis_xx_imag[nr_visibilities];
-        float vis_xy_imag[nr_visibilities];
-        float vis_yx_imag[nr_visibilities];
-        float vis_yy_imag[nr_visibilities];
+        float vis_xx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yx_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yy_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_xy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yx_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
+        float vis_yy_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));
 
         for (int vis = 0; vis < nr_visibilities; vis++) {
             int time = vis / nr_channels;
@@ -145,8 +145,8 @@ void kernel_gridder(
             } // end time
 
             // Compute phasor
-            float phasor_real[nr_visibilities];
-            float phasor_imag[nr_visibilities];
+            float phasor_real[nr_visibilities] __attribute__((aligned((ALIGNMENT))));;
+            float phasor_imag[nr_visibilities] __attribute__((aligned((ALIGNMENT))));;
             #if defined(USE_LOOKUP)
             compute_sincos(nr_visibilities, phase, lookup, phasor_imag, phasor_real);
             #else

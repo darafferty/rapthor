@@ -1,5 +1,7 @@
 #include "common/Math.h"
 
+#define ALIGNMENT 64
+
 #if defined(USE_LOOKUP)
 #include "Lookup_01.h"
 //#include "Lookup_02.h"
