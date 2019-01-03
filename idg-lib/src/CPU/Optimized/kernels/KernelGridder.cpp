@@ -81,25 +81,22 @@ void kernel_gridder(
         float vis_yx_imag[nr_visibilities];
         float vis_yy_imag[nr_visibilities];
 
-        for (int time = 0; time < nr_timesteps; time++) {
-            #if defined(__INTEL_COMPILER)
-            #pragma vector aligned
-            #endif
-            for (int chan = 0; chan < nr_channels; chan++) {
-                int time_idx = offset + time;
-                int chan_idx = chan;
-                size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
-                size_t dst_idx = time * nr_channels + chan;
+        for (int vis = 0; vis < nr_visibilities; vis++) {
+            int time = vis / nr_channels;
+            int chan = vis % nr_channels;
+            int time_idx = offset + time;
+            int chan_idx = chan;
+            size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+            size_t dst_idx = time * nr_channels + chan;
 
-                vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
-                vis_xy_real[dst_idx] = visibilities[src_idx + 1].real;
-                vis_yx_real[dst_idx] = visibilities[src_idx + 2].real;
-                vis_yy_real[dst_idx] = visibilities[src_idx + 3].real;
-                vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
-                vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag;
-                vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag;
-                vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag;
-            }
+            vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
+            vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
+            vis_xy_real[dst_idx] = visibilities[src_idx + 1].real;
+            vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag;
+            vis_yx_real[dst_idx] = visibilities[src_idx + 2].real;
+            vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag;
+            vis_yy_real[dst_idx] = visibilities[src_idx + 3].real;
+            vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag;
         }
 
         // Preload uvw
