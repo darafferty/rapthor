@@ -21,7 +21,7 @@ namespace idg {
         namespace cuda {
 
             // The maximum number of CUDA streams in any routine
-            const int max_nr_streams = 3;
+            const int max_nr_streams = 2;
 
             // Constructor
             Unified::Unified(
@@ -203,14 +203,6 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                // Set prefered grid location
-				#if ENABLE_MEM_ADVISE
-                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
-                InstanceCUDA& device  = get_device(0);
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
-                u_grid.set_advice(CU_MEM_ADVISE_UNSET_READ_MOSTLY, device.get_device());
-				#endif
-
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -224,6 +216,17 @@ namespace idg {
                 auto nr_timeslots    = aterms.get_w_dim();
                 auto grid_size       = grid.get_x_dim();
                 auto image_size      = cell_size * grid_size;
+
+                // Apply tiling
+                #if ENABLE_TILING
+                auto nr_correlations = grid.get_z_dim();
+                auto tile_size = get_device(0).get_tile_size_grid();
+                cu::UnifiedMemory u_grid(grid.bytes());
+                Grid grid_tiled((std::complex<float> *) u_grid.ptr(), 1,  nr_correlations, grid_size, grid_size);
+                get_device(0).tile_forward(tile_size, grid, grid_tiled);
+                #else
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
+                #endif
 
                 // Configuration
                 const int nr_devices = get_num_devices();
@@ -336,7 +339,7 @@ namespace idg {
                             // Launch adder kernel
                             device.launch_adder_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, grid.data());
+                                d_metadata, d_subgrids, u_grid.ptr());
 
                             executestream.record(outputReady);
                         }
@@ -364,11 +367,7 @@ namespace idg {
 
                 // Undo tiling
                 #if ENABLE_TILING
-                auto nr_correlations = grid.get_z_dim();
-                auto tile_size = get_device(0).get_tile_size_grid();
-                Grid grid_copy(1, nr_correlations, grid_size, grid_size);
-                memcpy((void *) grid_copy.data(), grid.data(), grid.bytes());
-                get_device(0).tile_backward(tile_size, grid_copy, grid);
+                get_device(0).tile_backward(tile_size, grid_tiled, grid);
                 #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
@@ -406,14 +405,6 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                // Set prefered grid location
-				#if ENABLE_MEM_ADVISE
-                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
-                InstanceCUDA& device  = get_device(0);
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
-                u_grid.set_advice(CU_MEM_ADVISE_SET_READ_MOSTLY, device.get_device());
-				#endif
-
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -432,14 +423,16 @@ namespace idg {
                 #if ENABLE_TILING
                 auto nr_correlations = grid.get_z_dim();
                 auto tile_size = get_device(0).get_tile_size_grid();
-                Grid grid_tiled(1, nr_correlations, grid_size, grid_size);
+                cu::UnifiedMemory u_grid(grid.bytes());
+                Grid grid_tiled((std::complex<float> *) u_grid.ptr(), 1,  nr_correlations, grid_size, grid_size);
                 get_device(0).tile_forward(tile_size, grid, grid_tiled);
-                memcpy(grid.data(), grid_tiled.data(), grid.bytes());
+                #else
+                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
                 #endif
 
                 // Configuration
                 const int nr_devices = get_num_devices();
-                const int nr_streams = 3;
+                const int nr_streams = 2;
 
                 // Initialize metadata
                 std::vector<int> jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams, 0, 0.4);
@@ -496,7 +489,8 @@ namespace idg {
                     }
 
                     // Events
-                    cu::Event inputReady;
+                    cu::Event metadataReady;
+                    cu::Event uvwReady;
                     cu::Event outputReady;
                     cu::Event outputFree;
 
@@ -525,22 +519,24 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                                 auxiliary::sizeof_metadata(current_nr_subgrids));
-                            htodstream.record(inputReady);
+                            htodstream.record(metadataReady);
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
+                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
+                            htodstream.record(uvwReady);
 
                             // Initialize visibilities to zero
                             d_visibilities.zero(htodstream);
 
-                            // Launch splitter kernel
-                            executestream.waitEvent(inputReady);
+                            // Launch splitter kernel,
+                            executestream.waitEvent(metadataReady);
                             device.launch_splitter_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, grid.data());
+                                d_metadata, d_subgrids, u_grid.ptr());
 
                             // Launch FFT
+                            executestream.waitEvent(uvwReady);
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
                             // Launch degridder pre-processing kernel
@@ -557,7 +553,8 @@ namespace idg {
 
                             // Copy visibilities to host
                             dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
+                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             dtohstream.record(outputFree);
                         }
 
@@ -578,12 +575,6 @@ namespace idg {
                 // End measurement
                 endStates[nr_devices] = hostPowerSensor->read();
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
-
-                // Undo tiling
-                #if ENABLE_TILING
-                get_device(0).tile_backward(tile_size, grid, grid_tiled);
-                memcpy(grid.data(), grid_tiled.data(), grid.bytes());
-                #endif
 
                 #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
