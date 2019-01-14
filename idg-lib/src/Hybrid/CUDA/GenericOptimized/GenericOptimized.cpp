@@ -7,6 +7,12 @@
 
 #include "InstanceCUDA.h"
 
+/*
+ * Option to enable/disable the _wwstack
+ * version of the adder and splitter kernels.
+ */
+#define ENABLE_WSTACKING 1
+
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
@@ -225,12 +231,20 @@ namespace idg {
                 HostData *data = static_cast<HostData*>(userData);
 
                 // Add subgrids to grid
+                #if ENABLE_WSTACKING
                 cu::Marker marker("run_adder_wstack");
                 marker.start();
                 data->cpuKernels->run_adder_wstack(
                     data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
                 marker.end();
+                #else
+                cu::Marker marker("run_adder");
+                marker.start();
+                data->cpuKernels->run_adder(
+                    data->nr_subgrids, data->grid_size, data->subgrid_size,
+                    data->metadata, data->subgrids, data->grid);
+                #endif
 
                 // Delete state
                 delete data;
@@ -265,12 +279,21 @@ namespace idg {
                 HostData *data = static_cast<HostData*>(userData);
 
                 // Extract subgrids from grid
+                #if ENABLE_WSTACKING
                 cu::Marker marker("run_splitter_wstack");
                 marker.start();
                 data->cpuKernels->run_splitter_wstack(
                     data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
                 marker.end();
+                #else
+                cu::Marker marker("run_splitter");
+                marker.start();
+                data->cpuKernels->run_splitter(
+                    data->nr_subgrids, data->grid_size, data->subgrid_size,
+                    data->metadata, data->subgrids, data->grid);
+                marker.end();
+                #endif
 
                 // Delete state
                 delete data;
@@ -455,7 +478,6 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
-                    cu::HostMemory&   h_metadata     = device.get_host_metadata(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -473,9 +495,8 @@ namespace idg {
                         htodstream.waitEvent(*inputFree[global_id]);
                         htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
-                        htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
+                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.record(*inputReady[global_id]);
 
                         // Launch gridder kernel
@@ -673,7 +694,6 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
-                    cu::HostMemory&   h_metadata     = device.get_host_metadata(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -694,9 +714,8 @@ namespace idg {
                         auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
                         htodstream.waitEvent(*inputFree[global_id]);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        enqueue_copy(htodstream, h_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
-                        htodstream.memcpyHtoDAsync(d_metadata, h_metadata, sizeof_metadata);
+                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.waitEvent(*hostFinished[global_id]);
                         htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
                         htodstream.record(*inputReady[global_id]);

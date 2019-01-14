@@ -26,17 +26,17 @@ __global__ void kernel_splitter(
     int grid_x = metadata[s].coordinate.x;
     int grid_y = metadata[s].coordinate.y;
 
-    // Check whether subgrid fits in grid
-    if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
-        grid_y >= 0 && grid_y < grid_size-subgrid_size) {
+    // Iterate all pixels in subgrid
+    for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
+        int x = i % subgrid_size;
+        int y = i / subgrid_size;
+        float pi = (float) M_PI;
+        float phase = -pi*(x+y-subgrid_size)/subgrid_size;
+        float2 phasor = make_float2(cos(phase), sin(phase));
 
-        // Iterate all pixels in subgrid
-        for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
-            int x = i % subgrid_size;
-            int y = i / subgrid_size;
-            float pi = (float) M_PI;
-            float phase = -pi*(x+y-subgrid_size)/subgrid_size;
-            float2 phasor = make_float2(cos(phase), sin(phase));
+        // Check whether subgrid fits in grid
+        if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
+            grid_y >= 0 && grid_y < grid_size-subgrid_size) {
 
             // Compute shifted position in subgrid
             int x_dst = (x + (subgrid_size/2)) % subgrid_size;
