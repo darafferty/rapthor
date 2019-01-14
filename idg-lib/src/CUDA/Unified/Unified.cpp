@@ -203,14 +203,6 @@ namespace idg {
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                // Set prefered grid location
-				#if ENABLE_MEM_ADVISE
-                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
-                InstanceCUDA& device  = get_device(0);
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
-                u_grid.set_advice(CU_MEM_ADVISE_UNSET_READ_MOSTLY, device.get_device());
-				#endif
-
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -412,14 +404,6 @@ namespace idg {
                 #endif
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
-
-                // Set prefered grid location
-				#if ENABLE_MEM_ADVISE
-                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
-                InstanceCUDA& device  = get_device(0);
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
-                u_grid.set_advice(CU_MEM_ADVISE_SET_READ_MOSTLY, device.get_device());
-				#endif
 
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
