@@ -489,7 +489,8 @@ namespace idg {
                     }
 
                     // Events
-                    cu::Event inputReady;
+                    cu::Event metadataReady;
+                    cu::Event uvwReady;
                     cu::Event outputReady;
                     cu::Event outputFree;
 
@@ -520,18 +521,22 @@ namespace idg {
                             // Copy input data to device
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
                                 auxiliary::sizeof_metadata(current_nr_subgrids));
-                            htodstream.record(inputReady);
+                            htodstream.record(metadataReady);
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
+                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
+                            htodstream.record(uvwReady);
 
                             // Initialize visibilities to zero
                             d_visibilities.zero(htodstream);
 
-                            // Launch splitter kernel
-                            executestream.waitEvent(inputReady);
+                            // Launch splitter kernel,
+                            executestream.waitEvent(metadataReady);
                             device.launch_splitter_unified(
                                 current_nr_subgrids, grid_size, subgrid_size,
                                 d_metadata, d_subgrids, u_grid.ptr());
 
                             // Launch FFT
+                            executestream.waitEvent(uvwReady);
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
                             // Launch degridder pre-processing kernel
@@ -548,7 +553,8 @@ namespace idg {
 
                             // Copy visibilities to host
                             dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
+                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
                             dtohstream.record(outputFree);
                         }
 
