@@ -184,7 +184,7 @@ namespace idg {
         const Options& options)
     {
         #if defined(DEBUG)
-        cout << __func__ << endl;
+        cout << "Plan::" << __func__ << endl;
         std::clog << "kernel_size  : " << kernel_size << std::endl;
         std::clog << "subgrid_size : " << subgrid_size << std::endl;
         std::clog << "grid_size    : " << grid_size << std::endl;
@@ -385,6 +385,14 @@ namespace idg {
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
+
+        #if defined(DEBUG)
+        cout << "Plan::" << __func__ << endl;
+        std::clog << "nr_channels     : " << nr_channels_ << std::endl;
+        std::clog << "nr_timesteps    : " << get_nr_timesteps() << std::endl;
+        std::clog << "nr_visibilities : " << get_nr_visibilities() << std::endl;
+        std::clog << "nr_subgrids     : " << get_nr_subgrids() << std::endl;
+        #endif
     } // end initialize
 
 

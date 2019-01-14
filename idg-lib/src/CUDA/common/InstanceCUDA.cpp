@@ -8,6 +8,16 @@ using namespace powersensor;
 
 #define NR_CORRELATIONS 4
 
+/*
+ * Option to enable repeated kernel invocations
+ * this is used to measure energy consumpton
+ * using a low-resolution power measurement (NVML)
+ */
+#define ENABLE_REPEAT_KERNELS     0
+#define NR_REPEITIONS_GRIDDER     10
+#define NR_REPEITIONS_ADDER       50
+#define NR_REPEITIONS_GRID_FFT    500
+
 namespace idg {
     namespace kernel {
         namespace cuda {
@@ -295,7 +305,8 @@ namespace idg {
 
             void InstanceCUDA::set_parameters_gp100() {
                 batch_gridder    = 256;
-                batch_degridder  = 256;
+                batch_degridder  = 128;
+                block_degridder  = 64;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
@@ -493,6 +504,9 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder);
                 start_measurement(data);
                 cu::Function *function = nr_channels == 1 ? function_gridder_1 : function_gridder;
+                #if ENABLE_REPEAT_KERNELS
+                for (int i = 0; i < NR_REPEITIONS_GRIDDER; i++)
+                #endif
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
             }
@@ -523,6 +537,9 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
                 cu::Function *function = nr_channels == 1 ? function_degridder_1 : function_degridder;
+                #if ENABLE_REPEAT_KERNELS
+                for (int i = 0; i < NR_REPEITIONS_GRIDDER; i++)
+                #endif
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
             }
@@ -544,18 +561,24 @@ namespace idg {
                     fft_plan_grid->setStream(*executestream);
                 }
 
-                // Get arguments
-                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
-
                 // Enqueue start of measurement
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_grid_fft);
                 start_measurement(data);
 
+                #if ENABLE_REPEAT_KERNELS
+                for (int i = 0; i < NR_REPEITIONS_GRID_FFT; i++) {
+                #endif
+
                 // Enqueue fft for every correlation
                 for (unsigned i = 0; i < NR_CORRELATIONS; i++) {
+                    cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
+                    data_ptr += i * grid_size * grid_size;
                     fft_plan_grid->execute(data_ptr, data_ptr, sign);
-                    data_ptr += grid_size * grid_size;
                 }
+
+                #if ENABLE_REPEAT_KERNELS
+                }
+                #endif
 
                 // Enqueue end of measurement
                 end_measurement(data);
@@ -685,6 +708,9 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_adder);
                 start_measurement(data);
                 data->start->enqueue(*executestream);
+                #if ENABLE_REPEAT_KERNELS
+                for (int i = 0; i < NR_REPEITIONS_ADDER; i++)
+                #endif
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
                 end_measurement(data);
             }
@@ -719,6 +745,9 @@ namespace idg {
                 dim3 grid(nr_subgrids);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_splitter);
                 start_measurement(data);
+                #if ENABLE_REPEAT_KERNELS
+                for (int i = 0; i < NR_REPEITIONS_ADDER; i++)
+                #endif
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
                 end_measurement(data);
             }

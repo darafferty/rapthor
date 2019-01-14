@@ -23,7 +23,7 @@
 
 using namespace std;
 
-std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters() {
+std::tuple<int, int, int, int, int, int, int, int, int, int, int, float>read_parameters() {
     const unsigned int DEFAULT_NR_STATIONS  = 100;
     const unsigned int DEFAULT_NR_CHANNELS  = 8;
     const unsigned int DEFAULT_NR_TIMESTEPS = 8192;
@@ -31,6 +31,7 @@ std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters
     const unsigned int DEFAULT_GRIDSIZE     = 4096;
     const unsigned int DEFAULT_SUBGRIDSIZE  = 32;
     const unsigned int DEFAULT_NR_CYCLES    = 1;
+    const float        DEFAULT_GRID_PADDING = 0.1;
 
     char *cstr_nr_stations = getenv("NR_STATIONS");
     auto nr_stations = cstr_nr_stations ? atoi(cstr_nr_stations): DEFAULT_NR_STATIONS;
@@ -65,11 +66,14 @@ std::tuple<int, int, int, int, int, int, int, int, int, int, int>read_parameters
     char *cstr_nr_cycles = getenv("NR_CYCLES");
     auto nr_cycles = cstr_nr_cycles ? atoi(cstr_nr_cycles) : DEFAULT_NR_CYCLES;
 
+    char *cstr_grid_padding = getenv("GRID_PADDING");
+    auto grid_padding = cstr_grid_padding ? atof(cstr_grid_padding) : DEFAULT_GRID_PADDING;
+
     return std::make_tuple(
         total_nr_stations, total_nr_channels, total_nr_timesteps,
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         grid_size, subgrid_size, kernel_size,
-        nr_cycles);
+        nr_cycles, grid_padding);
 }
 
 void print_parameters(
@@ -83,7 +87,8 @@ void print_parameters(
     float image_size,
     unsigned int grid_size,
     unsigned int subgrid_size,
-    unsigned int kernel_size
+    unsigned int kernel_size,
+    float grid_padding
 ) {
     const int fw1 = 30;
     const int fw2 = 10;
@@ -125,6 +130,9 @@ void print_parameters(
     os << setw(fw1) << left << "Kernel size" << "== "
        << setw(fw2) << right << kernel_size << endl;
 
+    os << setw(fw1) << left << "Grid padding" << "== "
+       << setw(fw2) << right << grid_padding << endl;
+
     os << "-----------" << endl;
 }
 
@@ -148,20 +156,20 @@ void run()
     unsigned int subgrid_size;
     unsigned int kernel_size;
     unsigned int nr_cycles;
+    float grid_padding;
 
     // Read parameters from environment
     std::tie(
         total_nr_stations, total_nr_channels, total_nr_timesteps,
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         grid_size, subgrid_size, kernel_size,
-        nr_cycles) = read_parameters();
+        nr_cycles, grid_padding) = read_parameters();
     unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
     unsigned int total_nr_baselines = (total_nr_stations * (total_nr_stations - 1)) / 2;
 
     // Initialize Data object
     clog << "Initialize data" << endl;
     idg::Data data;
-    float grid_padding = 0.8;
     float image_size = data.compute_image_size(grid_padding * grid_size);
     float cell_size = image_size / grid_size;
     unsigned int total_nr_baselines_ = data.get_nr_baselines();
@@ -170,7 +178,7 @@ void run()
     print_parameters(
         total_nr_stations, total_nr_channels, total_nr_timesteps,
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-        image_size, grid_size, subgrid_size, kernel_size);
+        image_size, grid_size, subgrid_size, kernel_size, grid_padding);
 
     // Restrict nr_baselines to number of baselines available
     if (total_nr_baselines_ < nr_baselines) {
@@ -230,6 +238,11 @@ void run()
     vector<double> runtimes_fft;
     vector<double> runtimes_imaging;
     unsigned long nr_visibilities = 0;
+
+    // Enable/disable routines
+    bool disable_gridding   = getenv("DISABLE_GRIDDING");
+    bool disable_degridding = getenv("DISABLE_DEGRIDDING");
+    bool disable_fft        = getenv("DISABLE_FFT");
 
     // Spectral line imaging
     bool simulate_spectral_line = getenv("SPECTRAL_LINE");
@@ -354,6 +367,7 @@ void run()
                             // Run gridding
                             clog << ">>> Run gridding" << endl;
                             double runtime_gridding = -omp_get_wtime();
+                            if (!disable_gridding)
                             proxy.gridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                                 frequencies, visibilities, uvw, baselines,
@@ -364,6 +378,7 @@ void run()
                             // Run degridding
                             clog << ">>> Run degridding" << endl;
                             double runtime_degridding = -omp_get_wtime();
+                            if (!disable_degridding)
                             proxy.degridding(
                                 *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                                 frequencies, visibilities, uvw, baselines,
@@ -378,6 +393,7 @@ void run()
                             {
                                 clog << ">>> Run fft" << endl;
                                 double runtime_fft = -omp_get_wtime();
+                                if (!disable_fft)
                                 for (unsigned w = 0; w < nr_w_layers; w++) {
                                     idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
                                     proxy.transform(idg::FourierDomainToImageDomain, grid_);
