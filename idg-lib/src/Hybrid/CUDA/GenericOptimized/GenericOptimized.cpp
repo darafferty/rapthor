@@ -423,9 +423,11 @@ namespace idg {
                 const unsigned nr_streams = 3;
 
                 // Page-lock host memory
+                #if defined(REGISTER_HOST_MEMORY)
                 InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (unsigned d = 0; d < nr_devices; d++) {
@@ -640,9 +642,11 @@ namespace idg {
                 const unsigned nr_streams = 3;
 
                 // Page-lock host memory
+                #if defined(REGISTER_HOST_MEMORY)
                 InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (unsigned d = 0; d < nr_devices; d++) {

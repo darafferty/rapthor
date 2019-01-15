@@ -33,4 +33,6 @@
 
 #cmakedefine HAVE_POWERSENSOR
 
+#cmakedefine REGISTER_HOST_MEMORY
+
 #endif
