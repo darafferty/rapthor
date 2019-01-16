@@ -135,10 +135,10 @@ namespace api {
             // Create plans
             if (omp_get_thread_num() == 0) {
                 for (int i = 0; i < nr_channel_groups; i++) {
-#ifndef NDEBUG
+                    #ifndef NDEBUG
                     std::cout << "planning channels: " << m_channel_groups[i].first << "-" <<
- m_channel_groups[i].second << std::endl;
-#endif
+                                                          m_channel_groups[i].second << std::endl;
+                    #endif
                     Plan* plan = new Plan(
                         m_kernel_size,
                         m_subgridsize,
@@ -183,9 +183,10 @@ namespace api {
                     }
 
                     // Start flush
-#ifndef NDEBUG
-                    std::cout << "degridding channels: " << m_channel_groups[i].first << "-" << m_channel_groups[i].second << std::endl;
-#endif
+                    #ifndef NDEBUG
+                    std::cout << "degridding channels: " << m_channel_groups[i].first << "-"
+                                                         << m_channel_groups[i].second << std::endl;
+                    #endif
                     m_proxy->run_degridding(
                         *plan,
                         m_wStepInLambda,
