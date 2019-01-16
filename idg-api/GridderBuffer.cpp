@@ -425,18 +425,9 @@ namespace api {
     {
         flush();
         // if there is still a flushthread running, wait for it to finish
-        if (m_flush_thread.joinable()) m_flush_thread.join();
-//         // TODO: remove below //////////////////////////
-//         // HACK: Add results to double precision grid
-//         for (auto p = 0; p < m_nrPolarizations; ++p) {
-//             #pragma omp parallel for
-//             for (auto y = 0; y < m_gridHeight; ++y) {
-//                 for (auto x = 0; x < m_gridWidth; ++x) {
-//                     m_grid_double[p*m_gridHeight*m_gridWidth + y*m_gridWidth + x] += m_grid(0, p, y, x);
-//                     m_grid(0, p, y, x) = 0;
-//                 }
-//             }
-//         }
+        if (m_flush_thread.joinable()) {
+            m_flush_thread.join();
+        }
     }
 
 
