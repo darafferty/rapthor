@@ -438,54 +438,6 @@ namespace api {
     }
 
 
-//     void GridderBufferImpl::transform_grid(
-//         double crop_tolerance,
-//         size_t nr_polarizations,
-//         size_t height,
-//         size_t width,
-//         complex<double> *grid)
-//     {
-//         // Normal case: no arguments -> transform member grid
-//         // Note: the other case is to perform the transform on a copy
-//         // so that the process can be monitored
-//         if (grid == nullptr) {
-//             nr_polarizations = m_nrPolarizations;
-//             height           = m_gridHeight;
-//             width            = m_gridWidth;
-//             grid             = m_grid_double;
-//         }
-// 
-//         // Inverse FFT complex-to-complex for each polarization
-//         ifft_grid(nr_polarizations, height, width, grid);
-// 
-//         // Apply the spheroidal and scale
-//         // assuming only half the visibilities are gridded:
-//         // mulitply real part by 2, set imaginary part to zero,
-//         // Note: float, because m_spheroidal is in float to match the
-//         // lower level API
-// //         Grid2D<float> spheroidal_grid(height, width);
-// //         resize2f(static_cast<int>(m_subgridsize),
-// //                  static_cast<int>(m_subgridsize),
-// //                  m_spheroidal.data(),
-// //                  static_cast<int>(height),
-// //                  static_cast<int>(width),
-// //                  spheroidal_grid.data());
-// // 
-//         const double c_real = 2.0 / (height * width);
-//         for (auto pol = 0; pol < nr_polarizations; ++pol) {
-//             for (auto y = 0; y < height; ++y) {
-//                 for (auto x = 0; x < width; ++x) {
-//                     double scale = c_real; // /spheroidal_grid(y,x);
-// //                     if (spheroidal_grid(y,x) < crop_tolerance) {
-// //                         scale = 0.0;
-// //                     }
-//                     grid[pol*height*width + y*width + x] =
-//                         grid[pol*height*width + y*width + x].real() * scale;
-//                 }
-//             }
-//         }
-//     }
-    
     void GridderBufferImpl::malloc_buffers()
     {
         BufferImpl::malloc_buffers();
@@ -502,66 +454,5 @@ namespace api {
         m_buffer_weights2 = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
     }
 
-
-
 } // namespace api
 } // namespace idg
-
-
-
-// C interface:
-// Rationale: calling the code from C code and Fortran easier,
-// and bases to create interface to scripting languages such as
-// Python, Julia, Matlab, ...
-// extern "C" {
-//
-//     idg::api::GridderBuffer* GridderBuffer_init(
-//         unsigned int type,
-//         unsigned int bufferTimesteps)
-//     {
-//         auto proxytype = idg::api::Type::CPU_REFERENCE;
-//         if (type == 0) {
-//             proxytype = idg::api::Type::CPU_REFERENCE;
-//         } else if (type == 1) {
-//             proxytype = idg::api::Type::CPU_OPTIMIZED;
-//         }
-//         return new idg::api::GridderBufferImpl(proxytype, bufferTimesteps);
-//     }
-//
-//     void GridderBuffer_destroy(idg::api::GridderBuffer* p) {
-//        delete p;
-//     }
-//
-//     void GridderBuffer_grid_visibilities(
-//         idg::api::GridderBuffer* p,
-//         int     timeIndex,
-//         int     antenna1,
-//         int     antenna2,
-//         double* uvwInMeters,
-//         float*  visibilities) // size CH x PL x 2
-//     {
-//         p->grid_visibilities(
-//             timeIndex,
-//             antenna1,
-//             antenna2,
-//             uvwInMeters,
-//             (complex<float>*) visibilities); // size CH x PL
-//     }
-
-//     void GridderBuffer_transform_grid(
-//         idg::api::GridderBuffer* p,
-//         double crop_tol,
-//         int    nr_polarizations,
-//         int    height,
-//         int    width,
-//         void*  grid)
-//     {
-//         p->transform_grid(
-//             crop_tol,
-//             nr_polarizations,
-//             height,
-//             width,
-//             (complex<double> *) grid);
-//     }
-
-// } // extern C
