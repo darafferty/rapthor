@@ -214,7 +214,7 @@ namespace idg {
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     get_device(d).free_device_memory();
                 }
-            } // end finish_gridding
+            } // end finish
 
             typedef struct {
                 int nr_subgrids;
