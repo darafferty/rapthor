@@ -111,111 +111,69 @@ namespace api {
         m_aterm_offsets_array = Array1D<unsigned int>(m_aterm_offsets.data(), m_aterm_offsets.size());
         m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_aterms.data(), m_aterm_offsets_array.get_x_dim()-1, m_nrStations, m_subgridsize, m_subgridsize);
 
+        // Set Plan options
         Plan::Options options;
-
-        options.w_step = m_wStepInLambda;
+        options.w_step      = m_wStepInLambda;
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = false;
 
+        // Iterate all channel groups
         const int nr_channel_groups = m_channel_groups.size();
-        Plan* plans[nr_channel_groups];
-        std::mutex locks[nr_channel_groups];
         for (int i = 0; i < nr_channel_groups; i++) {
-            locks[i].lock();
-        }
-        omp_set_nested(true);
+            #ifndef NDEBUG
+            std::cout << "degridding channels: " << m_channel_groups[i].first << "-"
+                                                 << m_channel_groups[i].second << std::endl;
+            #endif
 
-        /*
-         * Start two threads:
-         *  thread 0: create plans
-         *  thread 1: execute these plans
-         */
-        #pragma omp parallel num_threads(2)
-        {
-            // Create plans
-            if (omp_get_thread_num() == 0) {
-                for (int i = 0; i < nr_channel_groups; i++) {
-                    #ifndef NDEBUG
-                    std::cout << "planning channels: " << m_channel_groups[i].first << "-" <<
-                                                          m_channel_groups[i].second << std::endl;
-                    #endif
-                    Plan* plan = new Plan(
-                        m_kernel_size,
-                        m_subgridsize,
-                        m_gridHeight,
-                        m_cellHeight,
-                        m_grouped_frequencies[i],
-                        m_bufferUVW,
-                        m_bufferStationPairs,
-                        m_aterm_offsets_array,
-                        options);
+            // Create plan
+            Plan plan(
+                m_kernel_size,
+                m_subgridsize,
+                m_gridHeight,
+                m_cellHeight,
+                m_grouped_frequencies[i],
+                m_bufferUVW,
+                m_bufferStationPairs,
+                m_aterm_offsets_array,
+                options);
 
-                    plans[i] = plan;
-                    locks[i].unlock();
-                } // end for i
-            } // end create plans
+            // Initialize degridding for first channel group
+            if (i == 0) {
+                m_proxy->initialize(
+                    plan,
+                    m_wStepInLambda,
+                    m_shift,
+                    m_cellHeight,
+                    m_kernel_size,
+                    m_subgridsize,
+                    m_grouped_frequencies[i],
+                    m_bufferVisibilities[i],
+                    m_bufferUVW,
+                    m_bufferStationPairs,
+                    *m_grid,
+                    m_aterms_array,
+                    m_aterm_offsets_array,
+                    m_spheroidal);
+            }
 
-            // Execute plans
-            if (omp_get_thread_num() == 1) {
-                for (int i = 0; i < nr_channel_groups; i++) {
-                    // Wait for plan to become available
-                    locks[i].lock();
-                    Plan *plan = plans[i];
+            // Start flush
+            m_proxy->run_degridding(
+                plan,
+                m_wStepInLambda,
+                m_shift,
+                m_cellHeight,
+                m_kernel_size,
+                m_subgridsize,
+                m_grouped_frequencies[i],
+                m_bufferVisibilities[i],
+                m_bufferUVW,
+                m_bufferStationPairs,
+                *m_grid,
+                m_aterms_array,
+                m_aterm_offsets_array,
+                m_spheroidal);
 
-                    if (i == 0) {
-                        Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities[i];
-
-                        m_proxy->initialize(
-                            *plan,
-                            m_wStepInLambda,
-                            m_shift,
-                            m_cellHeight,
-                            m_kernel_size,
-                            m_subgridsize,
-                            m_grouped_frequencies[i],
-                            visibilities_src,
-                            m_bufferUVW,
-                            m_bufferStationPairs,
-                            *m_grid,
-                            m_aterms_array,
-                            m_aterm_offsets_array,
-                            m_spheroidal);
-                    }
-
-                    // Start flush
-                    #ifndef NDEBUG
-                    std::cout << "degridding channels: " << m_channel_groups[i].first << "-"
-                                                         << m_channel_groups[i].second << std::endl;
-                    #endif
-                    m_proxy->run_degridding(
-                        *plan,
-                        m_wStepInLambda,
-                        m_shift,
-                        m_cellHeight,
-                        m_kernel_size,
-                        m_subgridsize,
-                        m_grouped_frequencies[i],
-                        m_bufferVisibilities[i],
-                        m_bufferUVW,
-                        m_bufferStationPairs,
-                        *m_grid,
-                        m_aterms_array,
-                        m_aterm_offsets_array,
-                        m_spheroidal);
-
-                } // end for i
-                // Wait for all plans to be executed
-                m_proxy->finish_degridding();
-            } // end execute plans
-        } // end omp parallel
-
-        // Cleanup plans
-        for (int i = 0; i < nr_channel_groups; i++) {
-            delete plans[i];
-        }
-
-        // copy data from per channel buffer into buffer for all channels
-        for (int i = 0; i < nr_channel_groups; i++) {
+            // Copy data from per channel buffer into buffer for all channels
             for (int bl = 0; bl < m_nr_baselines; bl++) {
                 for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
                     std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
@@ -223,7 +181,10 @@ namespace api {
                             &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
                 }
             }
-        }
+        } // end for i (channel groups)
+
+        // Wait for all plans to be executed
+        m_proxy->finish_degridding();
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
