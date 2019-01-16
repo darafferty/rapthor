@@ -307,8 +307,6 @@ namespace api {
                     Plan *plan = plans[i];
 
                     if (i == 0) {
-                        Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
-
                         m_proxy->initialize(
                             *plan,
                             m_wStepInLambda,
@@ -317,7 +315,7 @@ namespace api {
                             m_kernel_size,
                             m_subgridsize,
                             m_grouped_frequencies[i],
-                            visibilities_src,
+                            m_bufferVisibilities2[i],
                             m_bufferUVW2,
                             m_bufferStationPairs2,
                             *m_grid,
