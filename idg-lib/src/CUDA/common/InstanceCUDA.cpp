@@ -591,31 +591,47 @@ namespace idg {
                 unsigned stride = 1;
                 unsigned dist = size * size;
 
-                // Plan bulk fft
-                if (batch >= fft_bulk) {
-                    if (fft_plan_bulk) {
-                        delete fft_plan_bulk;
+                while (fft_batch == 0) {
+                    try {
+                        // Plan bulk fft
+                        if (batch >= fft_bulk) {
+                            if (fft_plan_bulk) {
+                                delete fft_plan_bulk;
+                            }
+                            fft_plan_bulk = new cufft::C2C_2D(
+                                size, size, stride, dist,
+                                fft_bulk * NR_CORRELATIONS);
+                        }
+
+                        // Plan remainder fft
+                        int fft_remainder_size = batch % fft_bulk;
+
+                        if (fft_remainder_size) {
+                            if (fft_plan_misc) {
+                                delete fft_plan_misc;
+                            }
+                            fft_plan_misc = new cufft::C2C_2D(
+                                size, size, stride, dist,
+                                fft_remainder_size * NR_CORRELATIONS);
+                        }
+
+                        // Store parameters
+                        fft_size = size;
+                        fft_batch = batch;
+
+                    } catch (cufft::Error& e) {
+                        // bulk might be too large, try again using half the bulk size
+                        if (fft_plan_bulk) { delete fft_plan_bulk; }
+                        if (fft_plan_misc) { delete fft_plan_misc; }
+                        fft_bulk /= 2;
+                        if (fft_bulk > 0) {
+                            std::clog << __func__ << ": reducing subgrid-fft bulk size to: " << fft_bulk << std::endl;
+                        } else {
+                            std::cerr << __func__ << ": could not plan subgrid-fft." << std::endl;
+                            throw e;
+                        }
                     }
-                    fft_plan_bulk = new cufft::C2C_2D(
-                        size, size, stride, dist,
-                        fft_bulk * NR_CORRELATIONS);
                 }
-
-                // Plan remainder fft
-                int fft_remainder_size = batch % fft_bulk;
-
-                if (fft_remainder_size) {
-                    if (fft_plan_misc) {
-                        delete fft_plan_misc;
-                    }
-                    fft_plan_misc = new cufft::C2C_2D(
-                        size, size, stride, dist,
-                        fft_remainder_size * NR_CORRELATIONS);
-                }
-
-                // Store parameters
-                fft_size = size;
-                fft_batch = batch;
             }
 
             void InstanceCUDA::launch_fft(
