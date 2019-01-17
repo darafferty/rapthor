@@ -181,6 +181,9 @@ namespace idg {
                         device.get_device_metadata(t, max_nr_subgrids);
                         device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_host_metadata(t, max_nr_subgrids);
+                        #if !defined(REGISTER_HOST_MEMORY)
+                        device.get_host_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
+                        #endif
                     }
 
                     // Plan subgrid fft
@@ -214,7 +217,7 @@ namespace idg {
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     get_device(d).free_device_memory();
                 }
-            } // end finish_gridding
+            } // end finish
 
             typedef struct {
                 int nr_subgrids;
@@ -423,9 +426,11 @@ namespace idg {
                 const unsigned nr_streams = 3;
 
                 // Page-lock host memory
+                #if defined(REGISTER_HOST_MEMORY)
                 InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (unsigned d = 0; d < nr_devices; d++) {
@@ -640,9 +645,11 @@ namespace idg {
                 const unsigned nr_streams = 3;
 
                 // Page-lock host memory
+                #if defined(REGISTER_HOST_MEMORY)
                 InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 for (unsigned d = 0; d < nr_devices; d++) {
@@ -694,6 +701,9 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
+                    #if !defined(REGISTER_HOST_MEMORY)
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
+                    #endif
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -739,7 +749,12 @@ namespace idg {
                         // Copy visibilities to host
                         dtohstream.waitEvent(*outputReady[global_id]);
                         auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                        #if defined(REGISTER_HOST_MEMORY)
                         dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
+                        #else
+                        dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
+                        enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
+                        #endif
                         dtohstream.record(*outputFree[global_id]);
                     }
 

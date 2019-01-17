@@ -254,120 +254,71 @@ namespace api {
             aterm_correction = &m_default_aterm_correction;
         }
 
+        // Set Plan options
         Plan::Options options;
-
-        options.w_step = m_wStepInLambda;
+        options.w_step      = m_wStepInLambda;
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = false;
 
+        // Iterate all channel groups
         const int nr_channel_groups = m_channel_groups.size();
-        Plan* plans[nr_channel_groups];
-        std::mutex locks[nr_channel_groups];
         for (int i = 0; i < nr_channel_groups; i++) {
-            locks[i].lock();
-        }
-        omp_set_nested(true);
+            #ifndef NDEBUG
+            std::cout << "gridding channels: " << m_channel_groups[i].first << "-"
+                                               << m_channel_groups[i].second << std::endl;
+            #endif
 
-        /*
-         * Start two threads:
-         *  thread 0: create plans
-         *  thread 1: execute these plans
-         */
-        #pragma omp parallel num_threads(2)
-        {
-            // Create plans
-            if (omp_get_thread_num() == 0) {
-                for (int i = 0; i < nr_channel_groups; i++) {
-                    #ifndef NDEBUG
-                    std::cout << "planning channels: " << m_channel_groups[i].first << "-" <<
-                                                          m_channel_groups[i].second << std::endl;
-                    #endif
-                    Plan* plan = new Plan(
-                        m_kernel_size,
-                        m_subgridsize,
-                        m_gridHeight,
-                        m_cellHeight,
-                        m_grouped_frequencies[i],
-                        m_bufferUVW2,
-                        m_bufferStationPairs2,
-                        m_aterm_offsets_array,
-                        options);
+            // Create plan
+            Plan plan(
+                m_kernel_size,
+                m_subgridsize,
+                m_gridHeight,
+                m_cellHeight,
+                m_grouped_frequencies[i],
+                m_bufferUVW2,
+                m_bufferStationPairs2,
+                m_aterm_offsets_array,
+                options);
 
+            // Initialize gridding for first channel group
+            if (i == 0) {
+                m_proxy->initialize(
+                    plan,
+                    m_wStepInLambda,
+                    m_shift,
+                    m_cellHeight,
+                    m_kernel_size,
+                    m_subgridsize,
+                    m_grouped_frequencies[i],
+                    m_bufferVisibilities2[i],
+                    m_bufferUVW2,
+                    m_bufferStationPairs2,
+                    *m_grid,
+                    m_aterms_array,
+                    m_aterm_offsets_array,
+                    m_spheroidal);
+            }
 
-                    plans[i] = plan;
-                    locks[i].unlock();
-                } // end for i
-            } // end create plans
+            // Start flush
+            m_proxy->run_gridding(
+                plan,
+                m_wStepInLambda,
+                m_shift,
+                m_cellHeight,
+                m_kernel_size,
+                m_subgridsize,
+                m_grouped_frequencies[i],
+                m_bufferVisibilities2[i],
+                m_bufferUVW2,
+                m_bufferStationPairs2,
+                *m_grid,
+                m_aterms_array,
+                m_aterm_offsets_array,
+                m_spheroidal);
+        } // end for i (channel groups)
 
-            // Execute plans
-            if (omp_get_thread_num() == 1) {
-                for (int i = 0; i < nr_channel_groups; i++) {
-                    // Wait for plan to become available
-                    locks[i].lock();
-                    Plan *plan = plans[i];
-
-                    if (i == 0) {
-                        Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
-
-                        m_proxy->initialize(
-                            *plan,
-                            m_wStepInLambda,
-                            m_shift,
-                            m_cellHeight,
-                            m_kernel_size,
-                            m_subgridsize,
-                            m_grouped_frequencies[i],
-                            visibilities_src,
-                            m_bufferUVW2,
-                            m_bufferStationPairs2,
-                            *m_grid,
-                            m_aterms_array,
-                            m_aterm_offsets_array,
-                            m_spheroidal);
-                    }
-
-                    // Start flush
-                    #ifndef NDEBUG
-                    std::cout << "gridding channels: " << m_channel_groups[i].first << "-"
-                                                       << m_channel_groups[i].second << std::endl;
-                    #endif
-                    Array3D<Visibility<std::complex<float>>>& visibilities_src = m_bufferVisibilities2[i];
-                    auto nr_baselines = visibilities_src.get_z_dim();
-                    auto nr_timesteps = visibilities_src.get_y_dim();
-                    auto nr_channels  = visibilities_src.get_x_dim();
-                    Array3D<Visibility<std::complex<float>>> visibilities_dst(
-                            m_visibilities.data(), nr_baselines, nr_timesteps, nr_channels);
-                    memcpy(
-                        visibilities_dst.data(),
-                        visibilities_src.data(),
-                        visibilities_src.bytes());
-
-                    m_proxy->run_gridding(
-                        *plan,
-                        m_wStepInLambda,
-                        m_shift,
-                        m_cellHeight,
-                        m_kernel_size,
-                        m_subgridsize,
-                        m_grouped_frequencies[i],
-                        m_bufferVisibilities2[i],
-                        m_bufferUVW2,
-                        m_bufferStationPairs2,
-                        *m_grid,
-                        m_aterms_array,
-                        m_aterm_offsets_array,
-                        m_spheroidal);
-                } // end for i
-                // Wait for all plans to be executed
-                m_proxy->finish_gridding();
-            } // end execute plans
-
-        } // end omp parallel
-
-        // Cleanup plans
-        for (int i = 0; i < nr_channel_groups; i++) {
-            delete plans[i];
-        }
+        // Wait for all plans to be executed
+        m_proxy->finish_gridding();
     }
 
     // Must be called whenever the buffer is full or no more data added
