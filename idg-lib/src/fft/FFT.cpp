@@ -44,7 +44,7 @@ namespace idg {
 
         #pragma omp critical
         {
-        fftwf_plan_with_nthreads(1);
+        fftwf_plan_with_nthreads(4);
         plan = fftwf_plan_dft_2d(m, n,
                                  tmp, tmp,
                                  FFTW_FORWARD,
@@ -53,7 +53,7 @@ namespace idg {
 
         #pragma omp parallel for private(tmp)
 	    for (unsigned i = 0; i < batch; i++) {
-            tmp = (fftwf_complex *) data + i * m * n;
+            tmp = (fftwf_complex *) data + size_t(i) * size_t(m) * size_t(n);
             ifftshift(m, n, tmp);
             fftwf_execute_dft(plan, tmp, tmp);
             fftshift(m, n, tmp);
@@ -93,7 +93,7 @@ namespace idg {
 
         #pragma omp critical
         {
-        fftwf_plan_with_nthreads(1);
+        fftwf_plan_with_nthreads(4);
         plan = fftwf_plan_dft_2d(m, n,
                                  tmp, tmp,
                                  FFTW_BACKWARD,
@@ -102,7 +102,7 @@ namespace idg {
 
         #pragma omp parallel for private(tmp)
 	    for (unsigned i = 0; i < batch; i++) {
-            tmp = (fftwf_complex *) data + i * m * n;
+            tmp = (fftwf_complex *) data + size_t(i) * size_t(m) * size_t(n);
             ifftshift(m, n, tmp);
             fftwf_execute_dft(plan, tmp, tmp);
             fftshift(m, n, tmp);
