@@ -25,7 +25,7 @@ add_library(
 )
 if (NOT BUILD_STATIC_LIBS)
 set_target_properties (
-    ${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+    ${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION 0)
 endif()
 
 # Set install
