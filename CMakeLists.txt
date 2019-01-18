@@ -18,3 +18,17 @@ add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
 add_subdirectory("idg-bin")
 add_subdirectory("idg-api")
+
+# Write environment-module
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake/config/environment-module.in"
+  "${PROJECT_BINARY_DIR}/idg.env"
+)
+
+# Install environment-module
+install(
+    FILES
+    ${PROJECT_BINARY_DIR}/idg.env
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}/share/
+)
