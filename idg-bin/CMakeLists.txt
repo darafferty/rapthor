@@ -96,19 +96,6 @@ configure_file(
 # add directory of config file to include directories
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-# write file to initialize environment
-configure_file (
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh"
-)
-
-install(
-    FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/init-environment.sh"
-    DESTINATION
-    ${CMAKE_INSTALL_PREFIX}
-)
-
 # build all examples
 add_subdirectory(examples)
 

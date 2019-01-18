@@ -10,7 +10,7 @@ idg-release:
     - cmake .. -DBUILD_WITH_TESTS=On
     - make
     - make install
-    - source init-environment.sh
+    - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
     - ctest --verbose
     
 idg-debug:
@@ -20,5 +20,5 @@ idg-debug:
     - cmake .. -DBUILD_WITH_TESTS=On -DCMAKE_BUILD_TYPE=Debug
     - make
     - make install
-    - source init-environment.sh
+    - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
     - ctest --verbose

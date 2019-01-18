@@ -131,19 +131,6 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src)
 # add subfolders, after specifying the targets to build
 add_subdirectory(src)
 
-# write file to initialize environment
-configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake/config/init-environment.sh.in"
-  "${PROJECT_BINARY_DIR}/init-environment.sh"
-  )
-
-install(
-    FILES
-    ${PROJECT_BINARY_DIR}/init-environment.sh
-    DESTINATION
-    ${CMAKE_INSTALL_PREFIX}
-)
-
 # write config file, included in all files of the project
 configure_file (
     "${PROJECT_SOURCE_DIR}/cmake/config/idg-config.h.in"
@@ -191,5 +178,5 @@ configure_file(
 
 install(
     FILES ${PROJECT_BINARY_DIR}/CMakeFiles/idg-config.cmake
-    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share
 )

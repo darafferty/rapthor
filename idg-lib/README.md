@@ -8,7 +8,6 @@ cd idg
 mkdir build; cd build           
 cmake -DCMAKE_INSTALL_PREFIX=<idg_install_path> ..       
 make install
-[ source init-environment.sh ]         
 ```
 
 ## Installation options:      

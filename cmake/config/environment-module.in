@@ -1,0 +1,30 @@
+#%Module
+
+# Set variables from CMake
+set root            @CMAKE_INSTALL_PREFIX@
+set TESTS_ENABLED  [ string toupper "@BUILD_WITH_TESTS@" ]
+set PYTHON_ENABLED [ string toupper "@BUILD_WITH_PYTHON@" ]
+
+# Set environment variables
+setenv          IDG_ROOT        $root
+setenv          IDG_LIB         $root/lib
+setenv          IDG_INCLUDE     $root/include
+
+# Add idg libraries and examples to paths
+prepend-path    LD_LIBRARY_PATH $root/lib
+prepend-path    PATH            $root/bin/examples/cxx
+
+# Add test to path
+if { $TESTS_ENABLED eq "ON" } {
+prepend-path    PATH            $root/bin/tests/cxx
+}
+
+# Add python to path
+if { $PYTHON_ENABLED eq "ON" } {
+    prepend-path    PYTHONPATH      $root/lib/python2.7/dist-packages/idg
+    prepend-path    PATH            $root/bin/examples/python
+    prepend-path    PATH            $root/bin/demo/python
+    if { $TESTS_ENABLED eq "ON" } {
+        prepend-path    PATH            $root/bin/tests/python
+    }
+}
