@@ -147,11 +147,6 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/config/IDGAPIConfig.cmake.in"
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfig.cmake" @ONLY)
 
-configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/config/IDGAPIConfigVersion.cmake.in"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfigVersion.cmake" @ONLY)
-
 install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfig.cmake"
-    "${PROJECT_BINARY_DIR}/CMakeFiles/IDGAPIConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
