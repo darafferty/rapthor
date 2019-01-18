@@ -21,7 +21,7 @@ add_library(
                            ${${PROJECT_NAME}_sources}
 )
 if (NOT BUILD_STATIC_LIBS)
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
+    set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION 0)
 endif()
 if (${CMAKE_VERSION} VERSION_GREATER 2.8.12)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
