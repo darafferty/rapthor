@@ -149,4 +149,4 @@ configure_file(
 
 install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/idg-api-config.cmake"
-    DESTINATION ${CMAKE_INSTALL_PREFIX})
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share)
