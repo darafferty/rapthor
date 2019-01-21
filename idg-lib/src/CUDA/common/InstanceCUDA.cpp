@@ -84,10 +84,8 @@ namespace idg {
                 delete dtohstream;
                 free_host_memory();
                 free_device_memory();
+                free_fft_plans();
                 for (cu::Module *module : mModules) { delete module; }
-                if (fft_plan_bulk) { delete fft_plan_bulk; }
-                if (fft_plan_misc) { delete fft_plan_misc; }
-                if (fft_plan_grid) { delete fft_plan_grid; }
                 delete function_gridder;
                 delete function_degridder;
                 delete function_scaler;
@@ -1157,6 +1155,22 @@ namespace idg {
                     delete d_spheroidal;
                     d_spheroidal = NULL;
                 }
+            }
+
+
+            /*
+             * FFT plan destructor
+             */
+            void InstanceCUDA::free_fft_plans() {
+                if (fft_plan_bulk) { delete fft_plan_bulk; }
+                if (fft_plan_misc) { delete fft_plan_misc; }
+                if (fft_plan_grid) { delete fft_plan_grid; }
+                fft_plan_bulk = NULL;
+                fft_plan_misc = NULL;
+                fft_plan_grid = NULL;
+                fft_bulk  = fft_bulk_default;
+                fft_batch = 0;
+                fft_size  = 0;
             }
 
             /*

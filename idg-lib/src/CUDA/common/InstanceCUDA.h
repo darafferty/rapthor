@@ -254,6 +254,7 @@ namespace idg {
                     // Misc
                     void free_host_memory();
                     void free_device_memory();
+                    void free_fft_plans();
                     void reset();
                     int get_tile_size_grid() const { return tile_size_grid; };
 
@@ -338,7 +339,8 @@ namespace idg {
                     cufft::C2C_2D *fft_plan_grid;
 
                     // Subgrid FFT
-                    unsigned fft_bulk  = 1024;
+                    const unsigned fft_bulk_default = 1024;
+                    unsigned fft_bulk  = fft_bulk_default;
                     unsigned fft_batch = 0;
                     unsigned fft_size  = 0;
                     cufft::C2C_2D *fft_plan_bulk;
