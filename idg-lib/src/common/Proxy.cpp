@@ -11,7 +11,7 @@ namespace idg {
 
         Proxy::~Proxy() {
             if (grid_ptr != NULL) {
-                delete grid_ptr;
+                delete[] grid_ptr;
             }
         }
 
