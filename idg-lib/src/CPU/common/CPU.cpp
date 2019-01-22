@@ -34,6 +34,9 @@ namespace idg {
 
                 // Delete power sensor
                 delete powerSensor;
+
+                // Deallocate FFTWs internally allocated memory
+                fftwf_cleanup();
             }
 
             /*
