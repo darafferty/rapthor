@@ -64,6 +64,13 @@ namespace idg {
                 delete hostPowerSensor;
                 delete hostStream;
                 cuProfilerStop();
+
+                // Delete events
+                inputFree.clear();
+                inputReady.clear();
+                outputFree.clear();
+                outputReady.clear();
+                hostFinished.clear();
             }
 
             /*
@@ -572,7 +579,7 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
-                printf("### Initialize gridding\n");
+                std::clog << "### Initialize gridding" << std::endl;
                 initialize(
                     plan,
                     w_step,
@@ -589,7 +596,7 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
-                printf("### Run gridding\n");
+                std::clog << "### Run gridding" << std::endl;
                 run_gridding(
                     plan,
                     w_step,
@@ -606,7 +613,7 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
-                printf("### Finish gridding\n");
+                std::clog << "### Finish gridding" << std::endl;
                 finish_gridding();
             } // end do_gridding
 
@@ -795,7 +802,7 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 #endif
 
-                printf("### Initialize degridding\n");
+                std::clog << "### Initialize degridding" << std::endl;
                 initialize(
                     plan,
                     w_step,
@@ -812,7 +819,7 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
-                printf("### Run degridding\n");
+                std::clog << "### Run degridding" << std::endl;
                 run_degridding(
                     plan,
                     w_step,
@@ -829,7 +836,7 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
-                printf("### Finish degridding\n");
+                std::clog << "### Finish degridding" << std::endl;
                 finish_degridding();
             } // end do_degridding
 

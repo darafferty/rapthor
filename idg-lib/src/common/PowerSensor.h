@@ -20,8 +20,8 @@ namespace powersensor {
 
     class State {
         public:
-            double timeAtRead;
-            double joulesAtRead;
+            double timeAtRead   = 0;
+            double joulesAtRead = 0;
     };
 
     class PowerSensor {
