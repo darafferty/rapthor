@@ -24,9 +24,6 @@ if (NOT BUILD_STATIC_LIBS)
     set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION 0)
 endif()
 
-# link libraries
-target_link_libraries(${PROJECT_NAME} ${FFTW3_LIBRARIES})
-
 # Copy header files
 install(
 	FILES
