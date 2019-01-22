@@ -95,6 +95,7 @@ namespace idg {
                 delete function_splitter;
                 delete function_gridder_post;
                 delete function_degridder_pre;
+                context->reset();
                 delete device;
                 delete context;
                 delete powerSensor;
