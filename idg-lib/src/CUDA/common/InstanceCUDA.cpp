@@ -88,6 +88,8 @@ namespace idg {
                 for (cu::Module *module : mModules) { delete module; }
                 delete function_gridder;
                 delete function_degridder;
+                delete function_gridder_1;
+                delete function_degridder_1;
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
