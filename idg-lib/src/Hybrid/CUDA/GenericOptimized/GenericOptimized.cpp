@@ -64,6 +64,13 @@ namespace idg {
                 delete hostPowerSensor;
                 delete hostStream;
                 cuProfilerStop();
+
+                // Delete events
+                inputFree.clear();
+                inputReady.clear();
+                outputFree.clear();
+                outputReady.clear();
+                hostFinished.clear();
             }
 
             /*
