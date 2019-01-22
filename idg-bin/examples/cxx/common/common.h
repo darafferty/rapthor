@@ -455,4 +455,9 @@ void run()
     idg::auxiliary::report_visibilities("gridding", runtime_gridding, nr_visibilities);
     idg::auxiliary::report_visibilities("degridding", runtime_degridding, nr_visibilities);
     idg::auxiliary::report_visibilities("imaging", runtime_imaging, nr_visibilities);
+
+    // Cleanup
+    delete aterms.data();
+    delete visibilities_.data();
+    delete aterms_offsets.data();
 }
