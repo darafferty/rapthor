@@ -42,7 +42,7 @@ inline float FUNCTION_ATTRIBUTES compute_n(
     const float lc = l + shift[0];
     const float mc = m + shift[1];
     const float tmp = (lc * lc) + (mc * mc);
-    return tmp > 1.0 ? 1.0 : 1.0 - sqrtf(1.0 - tmp) + shift[2];
+    return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp)) + shift[2];
 }
 
 template <typename T> FUNCTION_ATTRIBUTES inline void apply_aterm(

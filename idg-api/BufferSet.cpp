@@ -316,8 +316,8 @@ namespace api {
         const float lc = l + shift[0];
         const float mc = m + shift[1];
         const float tmp = (lc * lc) + (mc * mc);
-        return tmp > 1.0 ? 1.0 : 1.0 - sqrtf(1.0 - tmp) + shift[2];
-        
+        return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp)) + shift[2];
+
         // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
         // accurately for small values of l and m
         //return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
