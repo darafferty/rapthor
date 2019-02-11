@@ -42,13 +42,7 @@ namespace idg {
                 parameters.nr_channels  = nr_channels;
                 parameters.subgrid_size = subgrid_size;
                 parameters.grid_size    = grid_size;
-                dummy                   = powersensor::DummyPowerSensor::create();
                 reset();
-            }
-
-            ~Report()
-            {
-                delete dummy;
             }
 
             void initialize(
@@ -75,8 +69,8 @@ namespace idg {
                 powersensor::State& startState,
                 powersensor::State& endState)
             {
-                reportState.current_seconds = dummy->seconds(startState, endState);
-                reportState.current_joules  = dummy->Joules(startState, endState);
+                reportState.current_seconds = powersensor::PowerSensor::seconds(startState, endState);
+                reportState.current_joules  = powersensor::PowerSensor::Joules(startState, endState);
                 reportState.total_seconds  += reportState.current_seconds;
                 reportState.total_joules   += reportState.current_joules;
             }
@@ -410,8 +404,8 @@ namespace idg {
                     if (i > 0) {
                        name <<  i;
                     }
-                    double seconds = dummy->seconds(startState, endState);
-                    double joules  = dummy->Joules(startState, endState);
+                    double seconds = powersensor::PowerSensor::seconds(startState, endState);
+                    double joules  = powersensor::PowerSensor::Joules(startState, endState);
                     auxiliary::report(name.str().c_str(), seconds, joules, 0, 0);
             }
 
@@ -487,8 +481,6 @@ namespace idg {
             }
 
         private:
-            powersensor::DummyPowerSensor* dummy;
-
             const std::string prefix = "|";
 
             bool host_enabled;

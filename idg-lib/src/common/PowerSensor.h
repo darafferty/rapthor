@@ -6,6 +6,10 @@
 
 #include "idg-config.h"
 
+#if defined(HAVE_POWERSENSOR)
+#include "powersensor/PowerSensor.h"
+#endif
+
 namespace powersensor {
 
     static std::string name_likwid("likwid");
@@ -18,6 +22,7 @@ namespace powersensor {
     static std::string sensor_host("HOST_SENSOR");
     static std::string sensor_device("DEVICE_SENSOR");
 
+    #if not defined(HAVE_POWERSENSOR)
     class State {
         public:
             double timeAtRead   = 0;
@@ -26,14 +31,13 @@ namespace powersensor {
 
     class PowerSensor {
         public:
-            virtual ~PowerSensor() {}
-
+            virtual ~PowerSensor();
             virtual State read() = 0;
-
-            virtual double seconds(const State &firstState, const State &secondState) = 0;
-            virtual double Joules(const State &firstState, const State &secondState) = 0;
-            virtual double Watt(const State &firstState, const State &secondState) = 0;
+            static double seconds(const State &firstState, const State &secondState);
+            static double Joules(const State &firstState, const State &secondState);
+            static double Watt(const State &firstState, const State &secondState);
     };
+    #endif
 
     PowerSensor* get_power_sensor(
         const std::string name,
@@ -41,43 +45,10 @@ namespace powersensor {
 
     class DummyPowerSensor : public PowerSensor {
         public:
-            static DummyPowerSensor* create();
+            DummyPowerSensor();
+            virtual State read();
     };
 
-    namespace likwid {
-        class LikwidPowerSensor : public PowerSensor {
-            public:
-                static LikwidPowerSensor* create();
-        };
-    }
-
-    namespace rapl {
-        class RaplPowerSensor : public PowerSensor {
-            public:
-                static RaplPowerSensor* create(const char*);
-        };
-    }
-
-    namespace nvml {
-        class NVMLPowerSensor : public PowerSensor {
-            public:
-                static NVMLPowerSensor* create(const int, const char*);
-        };
-    }
-
-    namespace arduino {
-        class ArduinoPowerSensor : public PowerSensor {
-            public:
-                static ArduinoPowerSensor* create(const char*, const char*);
-        };
-    }
-
-    namespace amdgpu {
-        class AMDGPUPowerSensor : public PowerSensor {
-            public:
-                static AMDGPUPowerSensor* create(const unsigned, const char*);
-        };
-    }
 } // end namespace powersensor
 
 #endif

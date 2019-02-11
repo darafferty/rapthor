@@ -2,6 +2,14 @@
 
 #include "idg-common.h"
 
+#if defined(HAVE_POWERSENSOR)
+#include "powersensor/LikwidPowerSensor.h"
+#include "powersensor/RaplPowerSensor.h"
+#include "powersensor/NVMLPowerSensor.h"
+#include "powersensor/ArduinoPowerSensor.h"
+#include "powersensor/AMDGPUPowerSensor.h"
+#endif
+
 namespace powersensor {
 
     PowerSensor* get_power_sensor(
@@ -46,37 +54,28 @@ namespace powersensor {
         #endif
 
         // Use the DummyPowerSensor as backup
-        return powersensor::DummyPowerSensor::create();
+        return new DummyPowerSensor();
     }
 
-    class DummyPowerSensor_ : public DummyPowerSensor {
-        public:
-            virtual State read();
-            virtual double seconds(const State &firstState, const State &secondState) override;
-            virtual double Joules(const State &firstState, const State &secondState) override;
-            virtual double Watt(const State &firstState, const State &secondState) override;
-    };
+    PowerSensor::~PowerSensor() {};
 
-    DummyPowerSensor* DummyPowerSensor::create()
-    {
-        return new DummyPowerSensor_();
-    }
+    DummyPowerSensor::DummyPowerSensor() {}
 
-    State DummyPowerSensor_::read() {
+    State DummyPowerSensor::read() {
         State state;
         state.timeAtRead = omp_get_wtime();
         return state;
     }
 
-    double DummyPowerSensor_::seconds(const State &firstState, const State &secondState) {
+    double PowerSensor::seconds(const State &firstState, const State &secondState) {
         return secondState.timeAtRead - firstState.timeAtRead;
     }
 
-    double DummyPowerSensor_::Joules(const State &firstState, const State &secondState) {
+    double PowerSensor::Joules(const State &firstState, const State &secondState) {
         return secondState.joulesAtRead - firstState.joulesAtRead;
     }
 
-    double DummyPowerSensor_::Watt(const State &firstState, const State &secondState) {
+    double PowerSensor::Watt(const State &firstState, const State &secondState) {
         return Joules(firstState, secondState) /
                seconds(firstState, secondState);
     }
