@@ -417,7 +417,7 @@ namespace idg {
                 return os;
             }
 
-           State InstanceCUDA::measure() {
+            State InstanceCUDA::measure() {
                 return powerSensor->read();
             }
 
