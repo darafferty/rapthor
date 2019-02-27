@@ -433,7 +433,7 @@ namespace idg {
 
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
-                const unsigned nr_streams = 3;
+                const unsigned nr_streams = 2;
 
                 // Page-lock host memory
                 #if defined(REGISTER_HOST_MEMORY)
@@ -499,7 +499,7 @@ namespace idg {
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    #pragma omp critical
+                    #pragma omp critical (lock1)
                     {
                         // Copy input data to device
                         auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
@@ -538,16 +538,22 @@ namespace idg {
                         dtohstream.waitEvent(*outputReady[global_id]);
                         dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
                         dtohstream.record(*outputFree[global_id]);
-
-                        // Launch adder kernel
-                        hostStream->waitEvent(*outputFree[global_id]);
-                        enqueue_adder(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids, grid.data());
-                        hostStream->record(*hostFinished[global_id]);
                     }
 
-                    // Finish job
+                    // Wait for GPU to finish
                     device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
-                    hostFinished[global_id]->synchronize();
+                    outputFree[global_id]->synchronize();
+
+                    // Run adder on CPU
+                    #pragma omp critical (lock2)
+                    {
+                        cu::Marker marker("run_adder_wstack");
+                        marker.start();
+                        cpuKernels.run_adder_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, h_subgrids, grid.data());
+                        marker.end();
+                    }
                 } // end for bl
 
                 // Enqueue end device measurement
