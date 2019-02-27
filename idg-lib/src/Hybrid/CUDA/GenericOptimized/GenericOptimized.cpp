@@ -256,6 +256,7 @@ namespace idg {
                 data->cpuKernels->run_adder(
                     data->nr_subgrids, data->grid_size, data->subgrid_size,
                     data->metadata, data->subgrids, data->grid);
+                marker.end();
                 #endif
 
                 // Delete state
