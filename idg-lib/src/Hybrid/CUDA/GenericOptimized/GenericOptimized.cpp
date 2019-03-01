@@ -434,7 +434,7 @@ namespace idg {
 
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
-                const unsigned nr_streams = 2;
+                const unsigned nr_streams = 3;
 
                 // Page-lock host memory
                 #if defined(REGISTER_HOST_MEMORY)
