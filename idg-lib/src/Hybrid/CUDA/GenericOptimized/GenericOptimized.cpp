@@ -48,15 +48,6 @@ namespace idg {
                 omp_set_nested(true);
 
                 cuProfilerStart();
-
-                // Initialize events
-                for (unsigned i = 0; i < get_num_devices() * max_nr_streams; i++) {
-                    inputFree.push_back(new cu::Event());
-                    inputReady.push_back(new cu::Event());
-                    outputFree.push_back(new cu::Event());
-                    outputReady.push_back(new cu::Event());
-                    hostFinished.push_back(new cu::Event());
-                }
             }
 
             // Destructor
@@ -65,13 +56,6 @@ namespace idg {
                 delete hostPowerSensor;
                 delete hostStream;
                 cuProfilerStop();
-
-                // Delete events
-                inputFree.clear();
-                inputReady.clear();
-                outputFree.clear();
-                outputReady.clear();
-                hostFinished.clear();
             }
 
             /*
@@ -197,9 +181,6 @@ namespace idg {
                     // Plan subgrid fft
                     device.plan_fft(subgrid_size, max_nr_subgrids);
                 }
-
-                // Reset device/thread counter
-                global_id = 0;
 
                 // Host power measurement
                 hostStartState = hostPowerSensor->read();
