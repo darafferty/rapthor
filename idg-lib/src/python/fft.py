@@ -2,6 +2,7 @@ import os
 import ctypes
 import numpy
 import numpy.ctypeslib
+import idg
 
 lib = idg.load_library('libidg-fft.so')
 
