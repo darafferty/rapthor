@@ -499,14 +499,13 @@ namespace idg {
                 }
 
                 // Iterate all jobs
-                #pragma omp parallel for ordered schedule(static,1) num_threads(2)
+                #pragma omp parallel for ordered schedule(static,1) num_threads(nr_streams)
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
                     unsigned local_id = omp_get_thread_num();
 
                     // Get parameters for current iteration
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
-                    auto current_nr_timesteps = jobs[job_id].current_nr_timesteps;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
@@ -534,15 +533,17 @@ namespace idg {
                     #pragma omp critical (gridderlock)
                     {
                         // Copy input data to device
-                        auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
-                        auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
-                        auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
-                        auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
-                        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
-                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
-                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
-                        htodstream.record(*inputCopied[job_id]);
+                        if (job_id < nr_streams) {
+                            auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
+                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                            auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
+                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                            htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+                            htodstream.record(*inputCopied[job_id]);
+                        }
                         executestream.waitEvent(*inputCopied[job_id]);
 
                         // Launch gridder kernel
@@ -567,6 +568,33 @@ namespace idg {
                         auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
                         dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
                         dtohstream.record(*outputCopied[job_id]);
+                    }
+
+                    // Copy input data for next job
+                    unsigned job_id_next = job_id + nr_streams;
+                    if (job_id_next < jobs.size()) {
+                        // Wait for input from other threads to be copied
+                        htodstream.synchronize();
+
+                        // Wait for computation to be finished
+                        gpuFinished[job_id]->synchronize();
+
+                        auto current_nr_baselines = jobs[job_id_next].current_nr_baselines;
+                        auto current_nr_subgrids  = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr        = jobs[job_id_next].metadata_ptr;
+                        void *uvw_ptr             = jobs[job_id_next].uvw_ptr;
+                        void *visibilities_ptr    = jobs[job_id_next].visibilities_ptr;
+
+                        // Copy input data to device
+                        auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
+                        auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                        auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                        auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
+                        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
+                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
+                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+                        htodstream.record(*inputCopied[job_id_next]);
                     }
 
                     // Wait for subgrid to be copied
