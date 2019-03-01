@@ -596,6 +596,7 @@ namespace idg {
                     }
 
                     // Wait for subgrid to be copied
+                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
                     outputCopied[job_id]->synchronize();
 
                     // Run adder on CPU
