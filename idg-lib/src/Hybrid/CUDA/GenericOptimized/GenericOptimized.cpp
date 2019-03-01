@@ -466,7 +466,6 @@ namespace idg {
                 std::vector<cu::Event*> inputCopied;
                 std::vector<cu::Event*> gpuFinished;
                 std::vector<cu::Event*> outputCopied;
-                std::vector<cu::Event*> cpuFinished;
 
                 // Prepare job data
                 device.set_context();
@@ -495,7 +494,6 @@ namespace idg {
                     inputCopied.push_back(new cu::Event());
                     gpuFinished.push_back(new cu::Event());
                     outputCopied.push_back(new cu::Event());
-                    cpuFinished.push_back(new cu::Event());
                 }
 
                 // Iterate all jobs
