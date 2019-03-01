@@ -103,7 +103,7 @@ add_library(idg-cpu
 )
 
 
-set(LINK_LIBRARIES idg-common ${CMAKE_DL_LIBS})
+set(LINK_LIBRARIES idg-common ${CMAKE_DL_LIBS} ${FFTW3_LIBRARIES})
 if(BUILD_WITH_MKL)
     set(LINK_LIBRARIES ${LINK_LIBRARIES} ${MKL_LIBRARIES})
 endif()
