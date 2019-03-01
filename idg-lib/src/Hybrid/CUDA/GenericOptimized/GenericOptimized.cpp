@@ -741,26 +741,54 @@ namespace idg {
 
                 int jobsize = jobsize_[0];
 
-                // Iterate all jobs
-                #pragma omp parallel for num_threads(nr_devices * nr_streams)
-                for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
-                    int global_id = omp_get_thread_num();
-                    int device_id = global_id / nr_streams;
-                    int local_id  = global_id % nr_streams;
-                    jobsize       = jobsize_[device_id];
+                // Events
+                std::vector<cu::Event*> inputCopied;
+                std::vector<cu::Event*> gpuFinished;
+                std::vector<cu::Event*> outputCopied;
 
-                    // Initialize iteration
+                // Prepare job data
+                device.set_context();
+                struct JobData {
+                    unsigned current_nr_baselines;
+                    unsigned current_nr_subgrids;
+                    unsigned current_nr_timesteps;
+                    void *metadata_ptr;
+                    void *uvw_ptr;
+                    void *visibilities_ptr;
+                };
+
+                std::vector<JobData> jobs;
+                for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
                     unsigned int first_bl, last_bl, current_nr_baselines;
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
-                    auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                    auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                    void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
-                    void *uvw_ptr             = uvw.data(first_bl, 0);
-                    void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
+                    JobData job;
+                    job.current_nr_baselines = current_nr_baselines;
+                    job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                    job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                    job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
+                    job.uvw_ptr              = uvw.data(first_bl, 0);
+                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
+                    jobs.push_back(job);
+                    inputCopied.push_back(new cu::Event());
+                    gpuFinished.push_back(new cu::Event());
+                    outputCopied.push_back(new cu::Event());
+                }
+
+                // Iterate all jobs
+                #pragma omp parallel for ordered schedule(static,1) num_threads(nr_streams)
+                for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
+                    unsigned local_id = omp_get_thread_num();
+
+                    // Get parameters for current iteration
+                    auto current_nr_baselines = jobs[job_id].current_nr_baselines;
+                    auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
+                    void *metadata_ptr        = jobs[job_id].metadata_ptr;
+                    void *uvw_ptr             = jobs[job_id].uvw_ptr;
+                    void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
 
                     // Load device
-                    InstanceCUDA& device  = get_device(device_id);
+                    InstanceCUDA& device  = get_device(0);
                     device.set_context();
 
                     // Load memory objects
@@ -781,28 +809,32 @@ namespace idg {
                     cu::Stream& htodstream    = device.get_htod_stream();
                     cu::Stream& dtohstream    = device.get_dtoh_stream();
 
-                    #pragma omp critical
+                    // Run splitter on CPU
+                    #pragma omp critical (splitterlock)
                     {
-                        // Launch splitter on cpu
-                        hostStream->waitEvent(*inputFree[global_id]);
-                        enqueue_splitter(hostStream, &cpuKernels, current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, h_subgrids.get(), grid.data());
-                        hostStream->record(*hostFinished[global_id]);
+                        cu::Marker marker("run_splitter_wstack");
+                        marker.start();
+                        cpuKernels.run_splitter_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, h_subgrids, grid.data());
+                        marker.end();
+                    }
 
+                    #pragma omp critical (degridderlock)
+                    {
                         // Copy input data to device
                         auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
                         auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                         auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
                         auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                        htodstream.waitEvent(*inputFree[global_id]);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
-                        htodstream.waitEvent(*hostFinished[global_id]);
                         htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
-                        htodstream.record(*inputReady[global_id]);
+                        htodstream.record(*inputCopied[job_id]);
 
                         // Launch FFT
-                        executestream.waitEvent(*inputReady[global_id]);
+                        executestream.waitEvent(*inputCopied[job_id]);
                         device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
                         // Launch degridder pre-processing kernel
@@ -814,11 +846,10 @@ namespace idg {
                         device.launch_degridder(
                             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                             d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                        executestream.record(*outputReady[global_id]);
-                        executestream.record(*inputFree[global_id]);
+                        executestream.record(*gpuFinished[job_id]);
 
                         // Copy visibilities to host
-                        dtohstream.waitEvent(*outputReady[global_id]);
+                        dtohstream.waitEvent(*gpuFinished[job_id]);
                         auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                         #if defined(REGISTER_HOST_MEMORY)
                         dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
@@ -826,12 +857,12 @@ namespace idg {
                         dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
                         enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
                         #endif
-                        dtohstream.record(*outputFree[global_id]);
+                        dtohstream.record(*outputCopied[job_id]);
                     }
 
                     // Finish job
-                    device.enqueue_report(dtohstream, current_nr_timesteps, current_nr_subgrids);
-                    outputFree[global_id]->synchronize();
+                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    outputCopied[job_id]->synchronize();
                 } // end for bl
 
                 // Enqueue end device measurement
