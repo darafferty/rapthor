@@ -445,7 +445,12 @@ namespace idg {
                     unsigned job_id_next = job_id + nr_streams;
                     if (job_id_next < jobs.size()) {
                         // Wait for input from other threads to be copied
-                        htodstream.synchronize();
+                        for (unsigned j = 0; j < nr_streams - 1; j++) {
+                            unsigned job_id_other = job_id + 1 + j;
+                            if (job_id_other < jobs.size()) {
+                                inputCopied[job_id_other]->synchronize();
+                            }
+                        }
 
                         // Wait for computation to be finished
                         gpuFinished[job_id]->synchronize();
