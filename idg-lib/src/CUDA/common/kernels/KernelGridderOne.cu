@@ -11,7 +11,6 @@ __shared__ float4 uvw_[BATCH_SIZE];
 */
 extern "C" {
 __global__ void
-__launch_bounds__(BLOCK_SIZE)
 kernel_gridder_1(
     const int                           grid_size,
     const int                           subgrid_size,

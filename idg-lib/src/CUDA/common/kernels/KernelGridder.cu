@@ -223,7 +223,6 @@ __device__ void
 extern "C" {
 
 __global__ void
-__launch_bounds__(BLOCK_SIZE)
     kernel_gridder(
     const int                           grid_size,
     const int                           subgrid_size,

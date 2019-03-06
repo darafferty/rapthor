@@ -10,7 +10,6 @@ __shared__ float4 shared[3][BATCH_SIZE];
 */
 extern "C" {
 __global__ void
-__launch_bounds__(BLOCK_SIZE)
 kernel_degridder_1(
     const int                         grid_size,
     const int                         subgrid_size,

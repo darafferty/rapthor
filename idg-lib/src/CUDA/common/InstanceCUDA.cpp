@@ -188,7 +188,6 @@ namespace idg {
                 std::stringstream flags_gridder;
                 flags_gridder << flags_common;
                 flags_gridder << " -DBATCH_SIZE=" << batch_gridder;
-                flags_gridder << " -DBLOCK_SIZE=" << block_gridder.x;
                 flags.push_back(flags_gridder.str());
 
                 // Degridder
@@ -197,7 +196,6 @@ namespace idg {
                 std::stringstream flags_degridder;
                 flags_degridder << flags_common;
                 flags_degridder << " -DBATCH_SIZE=" << batch_degridder;
-                flags_degridder << " -DBLOCK_SIZE=" << block_degridder.x;
                 flags.push_back(flags_degridder.str());
 
                 // Scaler
@@ -237,7 +235,6 @@ namespace idg {
                 std::stringstream flags_gridder_1;
                 flags_gridder_1 << flags_common;
                 flags_gridder_1 << " -DBATCH_SIZE=" << batch_gridder_1;
-                flags_gridder_1 << " -DBLOCK_SIZE=" << block_gridder_1.x;
                 flags.push_back(flags_gridder_1.str());
 
                 // Degridder for 1 channel
@@ -246,7 +243,6 @@ namespace idg {
                 std::stringstream flags_degridder_1;
                 flags_degridder_1 << flags_common;
                 flags_degridder_1 << " -DBATCH_SIZE=" << batch_degridder_1;
-                flags_degridder_1 << " -DBLOCK_SIZE=" << block_degridder_1.x;
                 flags.push_back(flags_degridder_1.str());
 
                 // Compile all kernels
