@@ -14,9 +14,9 @@ using namespace powersensor;
  * using a low-resolution power measurement (NVML)
  */
 #define ENABLE_REPEAT_KERNELS     0
-#define NR_REPEITIONS_GRIDDER     10
-#define NR_REPEITIONS_ADDER       50
-#define NR_REPEITIONS_GRID_FFT    500
+#define NR_REPETITIONS_GRIDDER     10
+#define NR_REPETITIONS_ADDER       50
+#define NR_REPETITIONS_GRID_FFT    500
 
 namespace idg {
     namespace kernel {
@@ -502,7 +502,7 @@ namespace idg {
                 start_measurement(data);
                 cu::Function *function = nr_channels == 1 ? function_gridder_1 : function_gridder;
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_GRIDDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
@@ -535,7 +535,7 @@ namespace idg {
                 start_measurement(data);
                 cu::Function *function = nr_channels == 1 ? function_degridder_1 : function_degridder;
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_GRIDDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
@@ -563,7 +563,7 @@ namespace idg {
                 start_measurement(data);
 
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_GRID_FFT; i++) {
+                for (int i = 0; i < NR_REPETITIONS_GRID_FFT; i++) {
                 #endif
 
                 // Enqueue fft for every correlation
@@ -722,7 +722,7 @@ namespace idg {
                 start_measurement(data);
                 data->start->enqueue(*executestream);
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_ADDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
                 #endif
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
                 end_measurement(data);
@@ -759,7 +759,7 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_splitter);
                 start_measurement(data);
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_ADDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
                 #endif
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
                 end_measurement(data);
