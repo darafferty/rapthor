@@ -236,26 +236,38 @@ namespace idg {
                 CUfunction function;
                 unsigned found = 0;
 
-                // gridder functions are contained in module 0
-                // deridder functions are contained in module 1
-                for (int chan = 0; chan <= 9; chan++) {
+                // Find gridder and degridder functions,
+                // in module 0 and module 1, respectively.
+                for (int chan = 0; chan < 9; chan++) {
                     std::stringstream name_gridder_;
                     std::stringstream name_degridder_;
                     name_gridder_   << name_gridder << "_";
                     name_degridder_ << name_degridder << "_";
-                    if (chan < 9) {
-                        name_gridder_   << chan;
-                        name_degridder_ << chan;
+                    if (chan < 8) {
+                        name_gridder_   << chan+1;
+                        name_degridder_ << chan+1;
                     } else {
                         name_gridder_   << "n";
                         name_degridder_ << "n";
                     }
-                    cuModuleGetFunction(&function, *mModules[0], name_gridder_.str().c_str());
-                    functions_gridder.push_back(new cu::Function(function));
-                    cuModuleGetFunction(&function, *mModules[0], name_degridder_.str().c_str());
-                    functions_degridder.push_back(new cu::Function(function));
+                    if (cuModuleGetFunction(&function, *mModules[0], name_gridder_.str().c_str()) == CUDA_SUCCESS) {
+                        functions_gridder.push_back(new cu::Function(function));
+                    } else {
+                        std::cerr << "Could not load: " << name_gridder_.str() << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                    if (cuModuleGetFunction(&function, *mModules[1], name_degridder_.str().c_str()) == CUDA_SUCCESS) {
+                        functions_degridder.push_back(new cu::Function(function));
+                    } else {
+                        std::cerr << "Could not load: " << name_degridder_.str() << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
                 }
+
+                // All gridder and degridder functions are found
                 found += 2;
+
+                // Find remaining functions
                 if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) == CUDA_SUCCESS) {
                     function_scaler = new cu::Function(function); found++;
                 }
@@ -272,6 +284,7 @@ namespace idg {
                     function_degridder_pre = new cu::Function(function); found++;
                 }
 
+                // Verify that all functions are found
                 if (found != mModules.size()) {
                     std::cerr << "Incorrect number of functions found: " << found << " != " << mModules.size() << std::endl;
                     exit(EXIT_FAILURE);
@@ -519,7 +532,7 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
                 int kernel_id = min(nr_channels-1, 8);
-                cu::Function *function = functions_gridder[kernel_id];
+                cu::Function *function = functions_degridder[kernel_id];
                 #if ENABLE_REPEAT_KERNELS
                 for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
