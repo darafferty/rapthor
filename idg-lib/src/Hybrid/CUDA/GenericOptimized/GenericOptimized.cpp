@@ -293,6 +293,7 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
+                InstanceCUDA& device = get_device(0);
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -311,7 +312,6 @@ namespace idg {
 
                 // Page-lock host memory
                 #if defined(REGISTER_HOST_MEMORY)
-                InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
@@ -577,6 +577,7 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
+                InstanceCUDA& device = get_device(0);
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -595,7 +596,6 @@ namespace idg {
 
                 // Page-lock host memory
                 #if defined(REGISTER_HOST_MEMORY)
-                InstanceCUDA& device = get_device(0);
                 device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
                 device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
