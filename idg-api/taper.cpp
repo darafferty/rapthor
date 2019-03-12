@@ -331,11 +331,11 @@ double bessel0(double x, double precision)
 
 void init_kaiser_bessel_1D(int size, float* taper_grid)
 {
-	const size_t mid = (size+1)/2;
+	const int mid = (size+1)/2;
 	const double alpha = 8.6;
 	const double normFactor = 1.0/bessel0(alpha, 1e-8);
 	
-	for(size_t i=0; i!=mid; i++)
+	for(int i=0; i!=mid; i++)
 	{
 		double term = 1.0-(double(i)/mid);
 		taper_grid[i] = bessel0(alpha * sqrt(1.0-(term*term)), 1e-10) * normFactor;
@@ -345,7 +345,7 @@ void init_kaiser_bessel_1D(int size, float* taper_grid)
 
 void init_blackman_harris_1D(int size, float* taper_grid)
 {
-	for(size_t i=0; i!=size; ++i)
+	for(int i=0; i!=size; ++i)
 	{
 		const static double
 			a0=0.35875, a1=0.48829, a2=0.14128, a3=0.01168;
