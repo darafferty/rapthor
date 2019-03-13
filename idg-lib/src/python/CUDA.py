@@ -16,7 +16,7 @@ class Generic(CUDA):
         try:
             self.lib.CUDA_Generic_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = self.libCUDA_Generic_init(
+            self.obj = self.lib.CUDA_Generic_init(
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
@@ -25,7 +25,7 @@ class Generic(CUDA):
 
     def __del__(self):
         """Destroy"""
-        self.libCUDA_Generic_destroy(self.obj)
+        self.lib.CUDA_Generic_destroy(self.obj)
 
 
     def _cwrap_griddding(
@@ -61,7 +61,7 @@ class Generic(CUDA):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        self.libCUDA_Generic_gridding(
+        self.lib.CUDA_Generic_gridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -135,7 +135,7 @@ class Generic(CUDA):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        self.libCUDA_Generic_degridding(
+        self.lib.CUDA_Generic_degridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -180,7 +180,7 @@ class Generic(CUDA):
         nr_correlations,
         height,
         width):
-        self.libCUDA_Generic_transform(
+        self.lib.CUDA_Generic_transform(
             self.obj,
             ctypes.c_int(direction),
             grid.ctypes.data_as(ctypes.c_void_p),
@@ -197,9 +197,9 @@ class Unified(CUDA):
         subgrid_size):
         """Unified CUDA implementation"""
         try:
-            self.libCUDA_Unified_init.argtypes = [ctypes.c_uint, \
+            self.lib.CUDA_Unified_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = self.libCUDA_Unified_init(
+            self.obj = self.lib.CUDA_Unified_init(
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
@@ -243,7 +243,7 @@ class Unified(CUDA):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        self.libCUDA_Unified_gridding(
+        self.lib.CUDA_Unified_gridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -317,7 +317,7 @@ class Unified(CUDA):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        self.libCUDA_Unified_degridding(
+        self.lib.CUDA_Unified_degridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -362,7 +362,7 @@ class Unified(CUDA):
         nr_correlations,
         height,
         width):
-        self.libCUDA_Unified_transform(
+        self.lib.CUDA_Unified_transform(
             self.obj,
             ctypes.c_int(direction),
             grid.ctypes.data_as(ctypes.c_void_p),
@@ -372,4 +372,4 @@ class Unified(CUDA):
 
     def __del__(self):
         """Destroy"""
-        self.libCUDA_Unified_destroy(self.obj)
+        self.lib.CUDA_Unified_destroy(self.obj)
