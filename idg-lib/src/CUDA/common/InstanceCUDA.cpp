@@ -14,9 +14,9 @@ using namespace powersensor;
  * using a low-resolution power measurement (NVML)
  */
 #define ENABLE_REPEAT_KERNELS     0
-#define NR_REPEITIONS_GRIDDER     10
-#define NR_REPEITIONS_ADDER       50
-#define NR_REPEITIONS_GRID_FFT    500
+#define NR_REPETITIONS_GRIDDER     10
+#define NR_REPETITIONS_ADDER       50
+#define NR_REPETITIONS_GRID_FFT    500
 
 namespace idg {
     namespace kernel {
@@ -39,7 +39,7 @@ namespace idg {
                 d_metadata_(),
                 d_subgrids_(),
                 h_misc_(),
-                mModules(9)
+                mModules(7)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -86,10 +86,6 @@ namespace idg {
                 free_device_memory();
                 free_fft_plans();
                 for (cu::Module *module : mModules) { delete module; }
-                delete function_gridder;
-                delete function_degridder;
-                delete function_gridder_1;
-                delete function_degridder_1;
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
@@ -188,7 +184,6 @@ namespace idg {
                 std::stringstream flags_gridder;
                 flags_gridder << flags_common;
                 flags_gridder << " -DBATCH_SIZE=" << batch_gridder;
-                flags_gridder << " -DBLOCK_SIZE=" << block_gridder.x;
                 flags.push_back(flags_gridder.str());
 
                 // Degridder
@@ -197,7 +192,6 @@ namespace idg {
                 std::stringstream flags_degridder;
                 flags_degridder << flags_common;
                 flags_degridder << " -DBATCH_SIZE=" << batch_degridder;
-                flags_degridder << " -DBLOCK_SIZE=" << block_degridder.x;
                 flags.push_back(flags_degridder.str());
 
                 // Scaler
@@ -231,24 +225,6 @@ namespace idg {
                 cubin.push_back("DegridderPre.cubin");
                 flags.push_back(flags_common);
 
-                // Gridder for 1 channel
-                src.push_back("KernelGridderOne.cu");
-                cubin.push_back("GridderOne.cubin");
-                std::stringstream flags_gridder_1;
-                flags_gridder_1 << flags_common;
-                flags_gridder_1 << " -DBATCH_SIZE=" << batch_gridder_1;
-                flags_gridder_1 << " -DBLOCK_SIZE=" << block_gridder_1.x;
-                flags.push_back(flags_gridder_1.str());
-
-                // Degridder for 1 channel
-                src.push_back("KernelDegridderOne.cu");
-                cubin.push_back("DegridderOne.cubin");
-                std::stringstream flags_degridder_1;
-                flags_degridder_1 << flags_common;
-                flags_degridder_1 << " -DBATCH_SIZE=" << batch_degridder_1;
-                flags_degridder_1 << " -DBLOCK_SIZE=" << block_degridder_1.x;
-                flags.push_back(flags_degridder_1.str());
-
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
@@ -260,12 +236,38 @@ namespace idg {
                 CUfunction function;
                 unsigned found = 0;
 
-                if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) == CUDA_SUCCESS) {
-                    function_gridder = new cu::Function(function); found++;
+                // Find gridder and degridder functions,
+                // in module 0 and module 1, respectively.
+                for (int chan = 0; chan < 9; chan++) {
+                    std::stringstream name_gridder_;
+                    std::stringstream name_degridder_;
+                    name_gridder_   << name_gridder << "_";
+                    name_degridder_ << name_degridder << "_";
+                    if (chan < 8) {
+                        name_gridder_   << chan+1;
+                        name_degridder_ << chan+1;
+                    } else {
+                        name_gridder_   << "n";
+                        name_degridder_ << "n";
+                    }
+                    if (cuModuleGetFunction(&function, *mModules[0], name_gridder_.str().c_str()) == CUDA_SUCCESS) {
+                        functions_gridder.push_back(new cu::Function(function));
+                    } else {
+                        std::cerr << "Could not load: " << name_gridder_.str() << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                    if (cuModuleGetFunction(&function, *mModules[1], name_degridder_.str().c_str()) == CUDA_SUCCESS) {
+                        functions_degridder.push_back(new cu::Function(function));
+                    } else {
+                        std::cerr << "Could not load: " << name_degridder_.str() << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
                 }
-                if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) == CUDA_SUCCESS) {
-                    function_degridder = new cu::Function(function); found++;
-                }
+
+                // All gridder and degridder functions are found
+                found += 2;
+
+                // Find remaining functions
                 if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) == CUDA_SUCCESS) {
                     function_scaler = new cu::Function(function); found++;
                 }
@@ -281,13 +283,8 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[6], name_degridder_pre.c_str()) == CUDA_SUCCESS) {
                     function_degridder_pre = new cu::Function(function); found++;
                 }
-                if (cuModuleGetFunction(&function, *mModules[7], name_gridder_1.c_str()) == CUDA_SUCCESS) {
-                    function_gridder_1 = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[8], name_degridder_1.c_str()) == CUDA_SUCCESS) {
-                    function_degridder_1 = new cu::Function(function); found++;
-                }
 
+                // Verify that all functions are found
                 if (found != mModules.size()) {
                     std::cerr << "Incorrect number of functions found: " << found << " != " << mModules.size() << std::endl;
                     exit(EXIT_FAILURE);
@@ -307,7 +304,6 @@ namespace idg {
             void InstanceCUDA::set_parameters_gp100() {
                 batch_gridder    = 256;
                 batch_degridder  = 128;
-                block_degridder  = 64;
             }
 
             void InstanceCUDA::set_parameters_pascal() {
@@ -328,10 +324,6 @@ namespace idg {
                 block_scaler        = dim3(128);
                 block_gridder_post  = dim3(128);
                 block_degridder_pre = dim3(128);
-                block_gridder_1     = dim3(128);
-                block_degridder_1   = dim3(128);
-                batch_degridder_1   = 256;
-                batch_gridder_1     = 256;
                 tile_size_grid      = 128;
             }
 
@@ -498,15 +490,16 @@ namespace idg {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_avg_aterm_correction, d_metadata, d_subgrid };
+                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
-                dim3 block(nr_channels == 1 ? block_gridder_1 : block_gridder);
+                dim3 block(block_gridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder);
                 start_measurement(data);
-                cu::Function *function = nr_channels == 1 ? function_gridder_1 : function_gridder;
+                int kernel_id = min(nr_channels-1, 8);
+                cu::Function *function = functions_gridder[kernel_id];
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_GRIDDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
@@ -534,12 +527,13 @@ namespace idg {
                     d_spheroidal, d_aterm, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
-                dim3 block(nr_channels == 1 ? block_degridder_1 : block_degridder);
+                dim3 block(block_degridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
-                cu::Function *function = nr_channels == 1 ? function_degridder_1 : function_degridder;
+                int kernel_id = min(nr_channels-1, 8);
+                cu::Function *function = functions_degridder[kernel_id];
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_GRIDDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
@@ -567,7 +561,7 @@ namespace idg {
                 start_measurement(data);
 
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_GRID_FFT; i++) {
+                for (int i = 0; i < NR_REPETITIONS_GRID_FFT; i++) {
                 #endif
 
                 // Enqueue fft for every correlation
@@ -726,7 +720,7 @@ namespace idg {
                 start_measurement(data);
                 data->start->enqueue(*executestream);
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_ADDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
                 #endif
                 executestream->launchKernel(*function_adder, grid, block_adder, 0, parameters);
                 end_measurement(data);
@@ -763,7 +757,7 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_splitter);
                 start_measurement(data);
                 #if ENABLE_REPEAT_KERNELS
-                for (int i = 0; i < NR_REPEITIONS_ADDER; i++)
+                for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
                 #endif
                 executestream->launchKernel(*function_splitter, grid, block_splitter, 0, parameters);
                 end_measurement(data);

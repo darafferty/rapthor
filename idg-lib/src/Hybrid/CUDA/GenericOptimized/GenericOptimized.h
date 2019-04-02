@@ -126,12 +126,6 @@ namespace idg {
                     /*
                      * Asynchronous (de)gridding state
                      */
-                    std::vector<cu::Event*> inputFree;
-                    std::vector<cu::Event*> inputReady;
-                    std::vector<cu::Event*> outputFree;
-                    std::vector<cu::Event*> outputReady;
-                    std::vector<cu::Event*> hostFinished;
-                    unsigned global_id = 0;
                     std::vector<int> jobsize_;
                     std::vector<int> planned_max_nr_subgrids;
                     cu::Stream* hostStream;
