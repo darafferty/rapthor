@@ -220,7 +220,17 @@ namespace api {
         m_taper_subgrid.resize(m_subgridsize);
         m_taper_grid.resize(m_padded_size);
 
-        init_optimal_taper_1D(m_subgridsize, m_padded_size, m_size, taper_kernel_size, m_taper_subgrid.data(), m_taper_grid.data());
+        std::string tapertype;
+        if(options.count("taper"))
+          tapertype = options["taper"].as<std::string>();
+        if(tapertype == "blackman-harris")
+        {
+          init_blackman_harris_1D(m_subgridsize, m_taper_subgrid.data());
+          init_blackman_harris_1D(m_padded_size, m_taper_grid.data());
+        }
+        else {
+          init_optimal_taper_1D(m_subgridsize, m_padded_size, m_size, taper_kernel_size, m_taper_subgrid.data(), m_taper_grid.data());
+        }
         // Compute inverse taper
         m_inv_taper.resize(m_size);
         size_t offset = (m_padded_size-m_size)/2;
@@ -230,7 +240,6 @@ namespace api {
             float y = m_taper_grid[i+offset];
             m_inv_taper[i] = 1.0/y;
         }
-
     }
 
 

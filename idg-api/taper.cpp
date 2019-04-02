@@ -311,3 +311,50 @@ void init_optimal_gridding_taper_1D(int subgridsize, int gridsize, float kernels
         }
     }
 }
+
+double bessel0(double x, double precision)
+{
+	// Calculate I_0 = SUM of m 0 -> inf [ (x/2)^(2m) ]
+	// This is the unnormalized bessel function of order 0.
+	double
+		d = 0.0,
+		ds = 1.0,
+		sum = 1.0;
+	do
+	{
+		d += 2.0;
+		ds *= x*x/(d*d);
+		sum += ds;
+	} while (ds > sum*precision);
+	return sum;
+}
+
+void init_kaiser_bessel_1D(int size, float* taper_grid)
+{
+	const int mid = (size+1)/2;
+	const double alpha = 8.6;
+	const double normFactor = 1.0/bessel0(alpha, 1e-8);
+	
+	for(int i=0; i!=mid; i++)
+	{
+		double term = 1.0-(double(i)/mid);
+		taper_grid[i] = bessel0(alpha * sqrt(1.0-(term*term)), 1e-10) * normFactor;
+		taper_grid[size-i-1] = taper_grid[i];
+	}
+}
+
+void init_blackman_harris_1D(int size, float* taper_grid)
+{
+	for(int i=0; i!=size; ++i)
+	{
+		const static double
+			a0=0.35875, a1=0.48829, a2=0.14128, a3=0.01168;
+		const double
+			id = double(i) * 2.0 * M_PI, n = int(size)-1;
+		taper_grid[i] =
+			a0 -
+			a1 * std::cos( (1.0 * id)/n ) +
+			a2 * std::cos( (2.0 * id)/n ) -
+			a3 * std::cos( (3.0 * id)/n );
+	}
+}
