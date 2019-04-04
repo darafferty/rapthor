@@ -3,19 +3,21 @@ import ctypes
 import numpy.ctypeslib
 from Proxy import *
 
-lib = idg.load_library('libidg-cpu.so')
+class CPU(Proxy):
+    lib = idg.load_library('libidg-cpu.so')
 
-class Reference(Proxy):
+class Reference(CPU):
 
     def __init__(
         self,
         nr_correlations,
         subgrid_size):
         """Reference CPU implementation"""
+        print self.lib
         try:
-            lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
+            self.lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = lib.CPU_Reference_init(
+            self.obj = self.lib.CPU_Reference_init(
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
@@ -24,7 +26,7 @@ class Reference(Proxy):
 
     def __del__(self):
         """Destroy"""
-        lib.CPU_Reference_destroy(self.obj)
+        self.lib.CPU_Reference_destroy(self.obj)
 
 
     def _cwrap_griddding(
@@ -60,7 +62,7 @@ class Reference(Proxy):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        lib.CPU_Reference_gridding(
+        self.lib.CPU_Reference_gridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -134,7 +136,7 @@ class Reference(Proxy):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        lib.CPU_Reference_degridding(
+        self.lib.CPU_Reference_degridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -179,7 +181,7 @@ class Reference(Proxy):
         nr_correlations,
         height,
         width):
-        lib.CPU_Reference_transform(
+        self.lib.CPU_Reference_transform(
             self.obj,
             ctypes.c_int(direction),
             grid.ctypes.data_as(ctypes.c_void_p),
@@ -189,7 +191,7 @@ class Reference(Proxy):
 
 
 
-class Optimized(Proxy):
+class Optimized(CPU):
 
     def __init__(
         self,
@@ -197,9 +199,9 @@ class Optimized(Proxy):
         subgrid_size):
         """Optimized CPU implementation"""
         try:
-            lib.CPU_Optimized_init.argtypes = [ctypes.c_uint, \
+            self.lib.CPU_Optimized_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = lib.CPU_Optimized_init(
+            self.obj = self.lib.CPU_Optimized_init(
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
@@ -208,7 +210,7 @@ class Optimized(Proxy):
 
     def __del__(self):
         """Destroy"""
-        lib.CPU_Optimized_destroy(self.obj)
+        self.lib.CPU_Optimized_destroy(self.obj)
 
 
     def _cwrap_griddding(
@@ -244,7 +246,7 @@ class Optimized(Proxy):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        lib.CPU_Optimized_gridding(
+        self.lib.CPU_Optimized_gridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -318,7 +320,7 @@ class Optimized(Proxy):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        lib.CPU_Optimized_degridding(
+        self.lib.CPU_Optimized_degridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -363,7 +365,7 @@ class Optimized(Proxy):
         nr_correlations,
         height,
         width):
-        lib.CPU_Optimized_transform(
+        self.lib.CPU_Optimized_transform(
             self.obj,
             ctypes.c_int(direction),
             grid.ctypes.data_as(ctypes.c_void_p),

@@ -3,6 +3,7 @@ import ctypes
 import numpy
 from ctypes.util import find_library
 from idgtypes import *
+import importlib
 
 # A bit ugly, but ctypes.util's find_library does not look in
 # the LD_LIBRARY_PATH, but only PATH. Howver, we can also provide
@@ -23,25 +24,12 @@ def handle_error(library, e):
     else:
         print("Error importing %s: %s" % (library, e.args))
 
-try:
-    import Python
-except OSError as e:
-    handle_error("Python", e)
+for proxy_module in ["CPU", "CUDA", "OpenCL", "HybridCUDA"]:
+    try:
+        globals()[proxy_module] = importlib.import_module("." + proxy_module, __name__)
+    except OSError as e:
+        handle_error(proxy_module, e)
 
-try:
-    import CPU
-except OSError as e:
-    handle_error("CPU", e)
-
-try:
-    import CUDA
-except OSError as e:
-    handle_error("CUDA", e)
-
-try:
-    import OpenCL
-except OSError as e:
-    handle_error("OpenCL", e)
 
 try:
     import fft
@@ -49,7 +37,4 @@ try:
 except OSError as e:
     handle_error("utils", e)
 
-try:
-    import HybridCUDA
-except OSError as e:
-    handle_error("HybridCUDA", e)
+

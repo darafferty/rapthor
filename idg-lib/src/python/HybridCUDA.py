@@ -3,9 +3,11 @@ import ctypes
 import numpy.ctypeslib
 from Proxy import *
 
-lib = idg.load_library('libidg-hybrid-cuda.so')
 
-class GenericOptimized(Proxy):
+class HybridCUDA(Proxy):
+    lib = idg.load_library('libidg-hybrid-cuda.so')
+
+class GenericOptimized(HybridCUDA):
 
     def __init__(
         self,
@@ -13,9 +15,9 @@ class GenericOptimized(Proxy):
         subgrid_size):
         """GenericOptimized CUDA implementation"""
         try:
-            lib.HybridCUDA_GenericOptimized_init.argtypes = [ctypes.c_uint, \
+            self.lib.HybridCUDA_GenericOptimized_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint]
-            self.obj = lib.HybridCUDA_GenericOptimized_init(
+            self.obj = self.lib.HybridCUDA_GenericOptimized_init(
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
@@ -24,7 +26,7 @@ class GenericOptimized(Proxy):
 
     def __del__(self):
         """Destroy"""
-        lib.HybridCUDA_GenericOptimized_destroy(self.obj)
+        self.lib.HybridCUDA_GenericOptimized_destroy(self.obj)
 
 
     def _cwrap_griddding(
@@ -60,7 +62,7 @@ class GenericOptimized(Proxy):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        lib.HybridCUDA_GenericOptimized_gridding(
+        self.lib.HybridCUDA_GenericOptimized_gridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -134,7 +136,7 @@ class GenericOptimized(Proxy):
         spheroidal,
         spheroidal_height,
         spheroidal_width):
-        lib.HybridCUDA_GenericOptimized_degridding(
+        self.lib.HybridCUDA_GenericOptimized_degridding(
             self.obj,
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
@@ -179,7 +181,7 @@ class GenericOptimized(Proxy):
         nr_correlations,
         height,
         width):
-        lib.HybridCUDA_GenericOptimized_transform(
+        self.lib.HybridCUDA_GenericOptimized_transform(
             self.obj,
             ctypes.c_int(direction),
             grid.ctypes.data_as(ctypes.c_void_p),
