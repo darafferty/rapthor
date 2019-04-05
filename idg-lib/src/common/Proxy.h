@@ -173,6 +173,73 @@ namespace idg {
                     unsigned int spheroidal_height,
                     unsigned int spheroidal_width);
 
+                void calibrate(
+                    const Plan& plan,
+                    const float w_step, // in lambda
+                    const Array1D<float>& shift,
+                    const float cell_size, // TODO: unit?
+                    const unsigned int kernel_size, // full width in pixels
+                    const unsigned int subgrid_size,
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
+
+                void calibrate(
+                    const float w_step,
+                    const Array1D<float>& shift,
+                    const float cell_size,
+                    const unsigned int kernel_size,
+                    const unsigned int subgrid_size,
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal);
+
+                void calibrate(
+                    float w_step,
+                    float* shift,
+                    float cell_size,
+                    unsigned int kernel_size,
+                    unsigned int subgrid_size,
+                    float* frequencies,
+                    unsigned int nr_channels,
+                    std::complex<float>* visibilities,
+                    unsigned int visibilities_nr_baselines,
+                    unsigned int visibilities_nr_timesteps,
+                    unsigned int visibilities_nr_channels,
+                    unsigned int visibilities_nr_correlations,
+                    float* uvw,
+                    unsigned int uvw_nr_baselines,
+                    unsigned int uvw_nr_timesteps,
+                    unsigned int uvw_nr_coordinates, // 3 (u, v, w)
+                    unsigned int* baselines,
+                    unsigned int baselines_nr_baselines,
+                    unsigned int baselines_two, // antenna1, antenna2
+                    std::complex<float>* grid,
+                    unsigned int grid_nr_correlations,
+                    unsigned int grid_height,
+                    unsigned int grid_width,
+                    std::complex<float>* aterms,
+                    unsigned int aterms_nr_timeslots,
+                    unsigned int aterms_nr_stations,
+                    unsigned int aterms_aterm_height,
+                    unsigned int aterms_aterm_width,
+                    unsigned int aterms_nr_correlations,
+                    unsigned int* aterms_offsets,
+                    unsigned int aterms_offsets_nr_timeslots_plus_one,
+                    float* spheroidal,
+                    unsigned int spheroidal_height,
+                    unsigned int spheroidal_width);
+
                 //! Applyies (inverse) Fourier transform to grid
                 void transform(
                     DomainAtoDomainB direction,
@@ -302,6 +369,22 @@ namespace idg {
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal) = 0;
+
+                virtual void do_calibrate(
+                    const Plan& plan,
+                    const float w_step, // in lambda
+                    const Array1D<float>& shift,
+                    const float cell_size, // TODO: unit?
+                    const unsigned int kernel_size, // full width in pixels
+                    const unsigned int subgrid_size,
+                    const Array1D<float>& frequencies,
+                    Array3D<Visibility<std::complex<float>>>& visibilities,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Grid& grid,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    const Array2D<float>& spheroidal) {};
 
                 //! Applyies (inverse) Fourier transform to grid
                 virtual void do_transform(
