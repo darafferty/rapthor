@@ -47,7 +47,7 @@ void kernel_degridder(
 
         l_[i] = compute_l(x, subgrid_size, image_size);
         m_[i] = compute_m(y, subgrid_size, image_size);
-        n_[i] = compute_n(l_[i], m_[i], shift);
+        n_[i] = compute_n(-l_[i], m_[i], shift);
     }
 
     // Iterate all subgrids

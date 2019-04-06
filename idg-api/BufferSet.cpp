@@ -400,11 +400,11 @@ namespace api {
                 for(int x = 0; x < m_size; x++) {
                     // Compute phase
                     const float w_offset = (w+0.5)*m_w_step;
-                    const float l = (y-((int)m_size/2)) * m_cell_size;
-                    const float m = (x-((int)m_size/2)) * m_cell_size;
+                    const float l = (x-((int)m_size/2)) * m_cell_size;
+                    const float m = (y-((int)m_size/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
-                    const float n = compute_n(l, m, m_shift);
+                    const float n = compute_n(l, -m, m_shift);
                     //const float tmp = (l * l) + (m * m);
                     //const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
                     float phase = 2*M_PI*n*w_offset;
@@ -481,9 +481,9 @@ namespace api {
                 for (int x = 0; x < m_size; x++) {
                     // Compute phase
                     const float w_offset = (w+0.5)*m_w_step;
-                    const float l = (y-((int)m_size/2)) * m_cell_size;
-                    const float m = (x-((int)m_size/2)) * m_cell_size;
-                    const float n = compute_n(l, m, m_shift);
+                    const float l = (x-((int)m_size/2)) * m_cell_size;
+                    const float m = (y-((int)m_size/2)) * m_cell_size;
+                    const float n = compute_n(l, -m, m_shift);
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     //const float tmp = (l * l) + (m * m);
