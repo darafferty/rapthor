@@ -80,7 +80,7 @@ namespace idg {
                     jobsize[i] = (bytes_total * 0.9) /  bytes_required;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     #if defined(DEBUG)
-                    printf("Bytes required: %lu\n", bytes_required);
+                    printf("Bytes required: %u\n", bytes_required);
                     printf("Bytes total:    %lu\n", bytes_total);
                     printf("Jobsize: %d\n", jobsize[i]);
                     #endif
