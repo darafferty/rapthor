@@ -2,23 +2,60 @@
 #include <immintrin.h>
 #endif
 
-// http://bit.ly/2shIfmP
 #if defined(__AVX__)
-inline float _mm256_reduce_add_ps(__m256 x) {
-    /* ( x3+x7, x2+x6, x1+x5, x0+x4 ) */
-    const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(x, 1),
-                                   _mm256_castps256_ps128(x));
-    /* ( -, -, x1+x3+x5+x7, x0+x2+x4+x6 ) */
-    const __m128 x64 = _mm_add_ps(x128,
-                                   _mm_movehl_ps(x128, x128));
-    /* ( -, -, -, x0+x1+x2+x3+x4+x5+x6+x7 ) */
-    const __m128 x32 = _mm_add_ss(x64,
-                                   _mm_shuffle_ps(x64, x64, 0x55));
-    /* Conversion to float is a no-op on x86-64 */
-    return _mm_cvtss_f32(x32);
+inline float _mm256_horizontal_add(__m256 x) {
+    /* x0, x1, x2, x3, x4, x5, x6, x7 */
+    __m256 x1 = x;
+
+    /* x0+x1, x2+x3, x0+x1, x2+x3, x4+x5, x6+x7, x4+x5, x6+x7 */
+    __m256 x2 = _mm256_hadd_ps(x1, x1);
+
+    /* x0+x1+x2+x3, -, -, -, x4+x5+x6+x7, -, -, - */
+    __m256 x3 = _mm256_hadd_ps(x2, x2);
+
+    /* x4+x5+x6+x7, -, -, - */
+    __m128 x4 = _mm256_extractf128_ps(x3, 1);
+
+    /* x0+x1+x2+x3, -, -, - */
+    __m128 x5 = _mm256_castps256_ps128(x3);
+
+    /* x0+x1+x2+x3+x4+x5+x6+x7, -, -, - */
+    __m128 x6 = _mm_add_ss(x4, x5);
+
+    return _mm_cvtss_f32(x6);
 }
 #endif
 
+// https://bit.ly/2UqZqAp
+#if defined(__AVX512F__)
+inline float _mm512_horizontal_add(__m512 x) {
+    /* x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15 */
+    __m512 x1 = x;
+
+    /* x8, x9, x10, x11, x12, x13, x14, x15, x0, x1, x2, x3, x4, x5, x6, x7 */
+    __m512 x2 = _mm512_shuffle_f32x4(x1,x1,_MM_SHUFFLE(0,0,3,2));
+
+    /* x0+x8, x1+x9, x2+x10, x3+x11, x4+x12, x5+x13, x6+x14, x7+x15, -, -, -, -, -, -, -, - */
+    __m512 x3 = _mm512_add_ps(x1, x2);
+
+    /* x4+x12, x5+x13, x6+x14, x7+x15, x0+x8, x1+x9, x2+x10, x3+x11, -, -, -, -, -, -, -, - */
+    __m512 x4 = _mm512_shuffle_f32x4(x3,x3,_MM_SHUFFLE(0,0,0,1));
+
+    /* x0+x8+x4+x12, x1+x9+x5+x13, x2+x10+x6+x14, x3+x11+x7+x15, -, -, -, -, -, -, -, -, -, -, -, - */
+    __m512 x5 = _mm512_add_ps(x3, x4);
+
+    /* x0+x8+x4+x12, x1+x9+x5+x13, x2+x10+x6+x14, x3+x11+x7+x15 */
+    __m128 x6 = _mm512_castps512_ps128(x5);
+
+    /* x0+x8+x4+x12+x1+x9+x5+x13, x2+x10+x6+x14+x3+x11+x7+x15, -, - */
+    __m128 x7 = _mm_hadd_ps(x6, x6);
+
+    /* x0+x8+x4+x12+x1+x9+x5+x13+x2+x10+x6+x14+x3+x11+x7+x15, -, - */
+    __m128 x8 = _mm_hadd_ps(x7, x7);
+
+    return  _mm_cvtss_f32(x8);
+}
+#endif
 inline void compute_reduction_scalar(
     int *offset,
     const int n,
@@ -152,16 +189,15 @@ inline void compute_reduction_avx2(
 
     // Reduce all vectors
     if (n - *offset > 0) {
-        output[0].real += _mm256_reduce_add_ps(output_xx_r);
-        output[1].real += _mm256_reduce_add_ps(output_xy_r);
-        output[2].real += _mm256_reduce_add_ps(output_yx_r);
-        output[3].real += _mm256_reduce_add_ps(output_yy_r);
-        output[0].imag += _mm256_reduce_add_ps(output_xx_i);
-        output[1].imag += _mm256_reduce_add_ps(output_xy_i);
-        output[2].imag += _mm256_reduce_add_ps(output_yx_i);
-        output[3].imag += _mm256_reduce_add_ps(output_yy_i);
+        output[0].real += _mm256_horizontal_add(output_xx_r);
+        output[1].real += _mm256_horizontal_add(output_xy_r);
+        output[2].real += _mm256_horizontal_add(output_yx_r);
+        output[3].real += _mm256_horizontal_add(output_yy_r);
+        output[0].imag += _mm256_horizontal_add(output_xx_i);
+        output[1].imag += _mm256_horizontal_add(output_xy_i);
+        output[2].imag += _mm256_horizontal_add(output_yx_i);
+        output[3].imag += _mm256_horizontal_add(output_yy_i);
     }
-
 
     *offset += vector_length * ((n - *offset) / vector_length);
 #endif
@@ -236,16 +272,15 @@ inline void compute_reduction_avx(
 
     // Reduce all vectors
     if (n - *offset > 0) {
-        output[0].real += _mm256_reduce_add_ps(output_xx_r);
-        output[1].real += _mm256_reduce_add_ps(output_xy_r);
-        output[2].real += _mm256_reduce_add_ps(output_yx_r);
-        output[3].real += _mm256_reduce_add_ps(output_yy_r);
-        output[0].imag += _mm256_reduce_add_ps(output_xx_i);
-        output[1].imag += _mm256_reduce_add_ps(output_xy_i);
-        output[2].imag += _mm256_reduce_add_ps(output_yx_i);
-        output[3].imag += _mm256_reduce_add_ps(output_yy_i);
+        output[0].real += _mm256_horizontal_add(output_xx_r);
+        output[1].real += _mm256_horizontal_add(output_xy_r);
+        output[2].real += _mm256_horizontal_add(output_yx_r);
+        output[3].real += _mm256_horizontal_add(output_yy_r);
+        output[0].imag += _mm256_horizontal_add(output_xx_i);
+        output[1].imag += _mm256_horizontal_add(output_xy_i);
+        output[2].imag += _mm256_horizontal_add(output_yx_i);
+        output[3].imag += _mm256_horizontal_add(output_yy_i);
     }
-
 
     *offset += vector_length * ((n - *offset) / vector_length);
 #endif
@@ -320,14 +355,14 @@ inline void compute_reduction_avx512(
 
     // Reduce all vectors
     if (n - *offset > 0) {
-        output[0].real += _mm512_reduce_add_ps(output_xx_r);
-        output[1].real += _mm512_reduce_add_ps(output_xy_r);
-        output[2].real += _mm512_reduce_add_ps(output_yx_r);
-        output[3].real += _mm512_reduce_add_ps(output_yy_r);
-        output[0].imag += _mm512_reduce_add_ps(output_xx_i);
-        output[1].imag += _mm512_reduce_add_ps(output_xy_i);
-        output[2].imag += _mm512_reduce_add_ps(output_yx_i);
-        output[3].imag += _mm512_reduce_add_ps(output_yy_i);
+        output[0].real += _mm512_horizontal_add(output_xx_r);
+        output[1].real += _mm512_horizontal_add(output_xy_r);
+        output[2].real += _mm512_horizontal_add(output_yx_r);
+        output[3].real += _mm512_horizontal_add(output_yy_r);
+        output[0].imag += _mm512_horizontal_add(output_xx_i);
+        output[1].imag += _mm512_horizontal_add(output_xy_i);
+        output[2].imag += _mm512_horizontal_add(output_yx_i);
+        output[3].imag += _mm512_horizontal_add(output_yy_i);
     }
 
     *offset += vector_length * ((n - *offset) / vector_length);
