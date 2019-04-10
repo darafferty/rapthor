@@ -19,6 +19,36 @@ inline float _mm256_reduce_add_ps(__m256 x) {
 }
 #endif
 
+// https://bit.ly/2UqZqAp
+#if defined(__AVX512F__)
+inline float _mm512_horizontal_add(__m512 x) {
+    /* x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15 */
+    __m512 x1 = x;
+
+    /* x8, x9, x10, x11, x12, x13, x14, x15, x0, x1, x2, x3, x4, x5, x6, x7 */
+    __m512 x2 = _mm512_shuffle_f32x4(x1,x1,_MM_SHUFFLE(0,0,3,2));
+
+    /* x0+x8, x1+x9, x2+x10, x3+x11, x4+x12, x5+x13, x6+x14, x7+x15, -, -, -, -, -, -, -, - */
+    __m512 x3 = _mm512_add_ps(x1, x2);
+
+    /* x4+x12, x5+x13, x6+x14, x7+x15, x0+x8, x1+x9, x2+x10, x3+x11, -, -, -, -, -, -, -, - */
+    __m512 x4 = _mm512_shuffle_f32x4(x3,x3,_MM_SHUFFLE(0,0,0,1));
+
+    /* x0+x8+x4+x12, x1+x9+x5+x13, x2+x10+x6+x14, x3+x11+x7+x15, -, -, -, -, -, -, -, -, -, -, -, - */
+    __m512 x5 = _mm512_add_ps(x3, x4);
+
+    /* x0+x8+x4+x12, x1+x9+x5+x13, x2+x10+x6+x14, x3+x11+x7+x15 */
+    __m128 x6 = _mm512_castps512_ps128(x5);
+
+    /* x0+x8+x4+x12+x1+x9+x5+x13, x2+x10+x6+x14+x3+x11+x7+x15, -, - */
+    __m128 x7 = _mm_hadd_ps(x6, x6);
+
+    /* x0+x8+x4+x12+x1+x9+x5+x13+x2+x10+x6+x14+x3+x11+x7+x15, -, - */
+    __m128 x8 = _mm_hadd_ps(x7, x7);
+
+    return  _mm_cvtss_f32(x8);
+}
+#endif
 inline void compute_reduction_scalar(
     int *offset,
     const int n,
@@ -320,14 +350,14 @@ inline void compute_reduction_avx512(
 
     // Reduce all vectors
     if (n - *offset > 0) {
-        output[0].real += _mm512_reduce_add_ps(output_xx_r);
-        output[1].real += _mm512_reduce_add_ps(output_xy_r);
-        output[2].real += _mm512_reduce_add_ps(output_yx_r);
-        output[3].real += _mm512_reduce_add_ps(output_yy_r);
-        output[0].imag += _mm512_reduce_add_ps(output_xx_i);
-        output[1].imag += _mm512_reduce_add_ps(output_xy_i);
-        output[2].imag += _mm512_reduce_add_ps(output_yx_i);
-        output[3].imag += _mm512_reduce_add_ps(output_yy_i);
+        output[0].real += _mm512_horizontal_add(output_xx_r);
+        output[1].real += _mm512_horizontal_add(output_xy_r);
+        output[2].real += _mm512_horizontal_add(output_yx_r);
+        output[3].real += _mm512_horizontal_add(output_yy_r);
+        output[0].imag += _mm512_horizontal_add(output_xx_i);
+        output[1].imag += _mm512_horizontal_add(output_xy_i);
+        output[2].imag += _mm512_horizontal_add(output_yx_i);
+        output[3].imag += _mm512_horizontal_add(output_yy_i);
     }
 
     *offset += vector_length * ((n - *offset) / vector_length);
