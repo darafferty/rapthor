@@ -264,7 +264,7 @@ namespace idg {
                 try {
                     // Build the program
                     mPrograms[kernel_id]->build(devices, flags.c_str());
-                } catch (cl::Error error) {
+                } catch (cl::Error& error) {
                     std::cerr << "Compilation failed: " << error.what() << std::endl;
                     std::string msg;
                     mPrograms[kernel_id]->getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);

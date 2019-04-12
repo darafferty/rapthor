@@ -189,7 +189,7 @@ namespace idg {
         std::complex<float>* ptr = (std::complex<float>*) proxy.allocate_memory(bytes);
 
         Array3D<std::complex<float>> grid(ptr, nr_correlations, height, width);
-        memset(grid.data(), 0, grid.bytes());
+				std::fill_n(grid.data(), grid.size(), 0.0);
         return grid;
     }
 
@@ -328,7 +328,7 @@ namespace idg {
         unsigned int nr_channels  = frequencies.get_x_dim();
 
         Array3D<Visibility<std::complex<float>>> visibilities(nr_baselines, nr_timesteps, nr_channels);
-        memset(visibilities.data(), 0, visibilities.bytes());
+        std::fill_n(visibilities.data(), visibilities.size(), Visibility<std::complex<float>>{0.0, 0.0, 0.0, 0.0});
 
         srand(random_seed);
 
@@ -385,7 +385,7 @@ namespace idg {
         unsigned int width
     ) {
         Array3D<std::complex<float>> grid(nr_correlations, height, width);
-        memset(grid.data(), 0, grid.bytes());
+        std::fill_n(grid.data(), grid.size(), 0);
         return grid;
     }
 
