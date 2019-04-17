@@ -46,6 +46,7 @@ add_library(${PROJECT_NAME}-degridder KernelDegridder.cpp)
 add_library(${PROJECT_NAME}-adder     KernelAdder.cpp)
 add_library(${PROJECT_NAME}-splitter  KernelSplitter.cpp)
 add_library(${PROJECT_NAME}-fft       KernelFFT.cpp)
+add_library(${PROJECT_NAME}-calibrate KernelCalibrate.cpp)
 
 # Add libraries for w-stacking
 add_library(${PROJECT_NAME}-adder-wstack     KernelAdderWStack.cpp)
@@ -56,6 +57,7 @@ SET_TARGET_PROPERTIES(${PROJECT_NAME}-degridder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-fft PROPERTIES SOVERSION 0)
+SET_TARGET_PROPERTIES(${PROJECT_NAME}-calibrate PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wstack PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wstack PROPERTIES SOVERSION 0)
 
@@ -67,6 +69,7 @@ install(
     ${PROJECT_NAME}-adder
     ${PROJECT_NAME}-splitter
     ${PROJECT_NAME}-fft
+    ${PROJECT_NAME}-calibrate
     ${PROJECT_NAME}-adder-wstack
     ${PROJECT_NAME}-splitter-wstack
     DESTINATION
