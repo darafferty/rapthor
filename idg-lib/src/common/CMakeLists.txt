@@ -23,6 +23,7 @@ set (${PROJECT_NAME}_sources
     Types.cpp
     KernelsInstance.cpp
     Proxy.cpp
+    ProxyC.cpp
 	Plan.cpp
     PowerSensor.cpp
 )

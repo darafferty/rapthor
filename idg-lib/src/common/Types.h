@@ -101,6 +101,8 @@ namespace idg {
     template<class T>
     class Array1D {
         public:
+            Array1D() : Array1D(0) {}
+
             Array1D(
                 size_t width) :
                 m_x_dim(width),
@@ -183,6 +185,8 @@ namespace idg {
     template<class T>
     class Array2D {
         public:
+            Array2D() : Array2D(0,0) {}
+
             Array2D(
                 size_t height,
                 size_t width) :
@@ -280,6 +284,8 @@ namespace idg {
     template<class T>
     class Array3D {
         public:
+            Array3D() : Array3D(0,0,0) {}
+
             Array3D(
                 size_t depth,
                 size_t height,
@@ -383,6 +389,8 @@ namespace idg {
     template<class T>
     class Array4D {
         public:
+            Array4D() : Array4D(0,0,0,0) {}
+
             Array4D(
                 size_t w_dim,
                 size_t z_dim,
@@ -503,6 +511,146 @@ namespace idg {
             size_t m_w_dim;
             std::shared_ptr<T> m_buffer;
     };
+
+    template<class T>
+    class Array5D {
+        public:
+            Array5D() : Array5D(0,0,0,0,0) {}
+
+            Array5D(
+                size_t dim4,
+                size_t dim3,
+                size_t dim2,
+                size_t dim1,
+                size_t dim0) :
+                m_dim4(dim4),
+                m_dim3(dim3),
+                m_dim2(dim2),
+                m_dim1(dim1),
+                m_dim0(dim0),
+                m_buffer( new T[dim4*dim3*dim2*dim1*dim0], std::default_delete<T[]>() )  // shared_ptr with custom deleter that deletes an array
+            {}
+
+            Array5D(
+                std::shared_ptr<T> data,
+                size_t dim4,
+                size_t dim3,
+                size_t dim2,
+                size_t dim1,
+                size_t dim0) :
+                m_dim4(dim4),
+                m_dim3(dim3),
+                m_dim2(dim2),
+                m_dim1(dim1),
+                m_dim0(dim0),
+                m_buffer(data)
+            {}
+
+            Array5D(
+                T* data,
+                size_t dim4,
+                size_t dim3,
+                size_t dim2,
+                size_t dim1,
+                size_t dim0) :
+                m_dim4(dim4),
+                m_dim3(dim3),
+                m_dim2(dim2),
+                m_dim1(dim1),
+                m_dim0(dim0),
+                m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
+            {}
+
+            Array5D(const Array5D& other) = delete;
+            Array5D& operator=(const Array5D& rhs) = delete;
+
+            Array5D(Array5D&& other)
+                : m_dim4(other.m_dim4),
+                  m_dim3(other.m_dim3),
+                  m_dim2(other.m_dim2),
+                  m_dim1(other.m_dim1),
+                  m_dim0(other.m_dim0),
+                  m_buffer(other.m_buffer)
+            {
+                other.m_buffer = nullptr;
+            }
+
+            // move assignment operator
+            Array5D& operator=(Array5D&& other)
+            {
+                m_dim4 = other.m_dim4;
+                m_dim3 = other.m_dim3;
+                m_dim2 = other.m_dim2;
+                m_dim1 = other.m_dim1;
+                m_dim0 = other.m_dim0;
+                m_buffer = other.m_buffer;
+                other.m_buffer = nullptr;
+                return *this;
+            }
+
+            virtual ~Array5D() {}
+
+            T* data(
+                size_t idx4=0,
+                size_t idx3=0,
+                size_t idx2=0,
+                size_t idx1=0,
+                size_t idx0=0) const
+            {
+                return &m_buffer.get()[idx0 + m_dim0*idx1 + m_dim0*m_dim1*idx2 + m_dim0*m_dim1*m_dim2*idx3 + + m_dim4*m_dim3*m_dim2*m_dim1*idx0];
+            }
+
+            size_t get_dim4() const { return m_dim4; }
+            size_t get_dim3() const { return m_dim3; }
+            size_t get_dim2() const { return m_dim2; }
+            size_t get_dim1() const { return m_dim1; }
+            size_t get_dim0() const { return m_dim0; }
+
+            const T& operator()(
+                size_t idx4,
+                size_t idx3,
+                size_t idx2,
+                size_t idx1,
+                size_t idx0) const
+            {
+                return m_buffer.get()[idx0 + m_dim0*idx1 + m_dim0*m_dim1*idx2 + m_dim0*m_dim1*m_dim2*idx3 + + m_dim4*m_dim3*m_dim2*m_dim1*idx0];
+            }
+
+            T& operator()(
+                size_t idx4,
+                size_t idx3,
+                size_t idx2,
+                size_t idx1,
+                size_t idx0)
+            {
+                return m_buffer.get()[idx0 + m_dim0*idx1 + m_dim0*m_dim1*idx2 + m_dim0*m_dim1*m_dim2*idx3 + + m_dim4*m_dim3*m_dim2*m_dim1*idx0];
+            }
+
+            void init(const T& a) {
+                const unsigned int n = m_dim4*m_dim3*m_dim2*m_dim1*m_dim0;
+                for (unsigned int i = 0; i < n; ++i) {
+                    m_buffer.get()[i] = a;
+                }
+            }
+
+            size_t bytes() const {
+                return m_dim4*m_dim3*m_dim2*m_dim1*m_dim0 * sizeof(T);
+            }
+
+            // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
+            // Need to return a copy in that case.
+            const std::shared_ptr<const T> get() const {return m_buffer;}
+
+        protected:
+            size_t m_dim4;
+            size_t m_dim3;
+            size_t m_dim2;
+            size_t m_dim1;
+            size_t m_dim0;
+            std::shared_ptr<T> m_buffer;
+    };
+
+
 
     class Grid : public Array4D<std::complex<float>> {
         public:
