@@ -407,6 +407,10 @@ namespace idg {
             do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient);
         }
 
+        void Proxy::calibrate_finish()
+        {
+            do_calibrate_finish();
+        }
 
         void Proxy::degridding(
             float w_step,

@@ -410,14 +410,22 @@ namespace idg {
                     subgrids_ptr,
                     hessian_ptr,
                     gradient_ptr);
+            }
 
+            void CPU::do_calibrate_finish()
+            {
                 // Performance reporting
-                #if defined(REPORT_VERBOSE)
-                auto nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                #if defined(REPORT_TOTAL)
+                auto nr_antennas  = m_calibrate_state.plans.size();
+                auto nr_timesteps = 0;
+                auto nr_subgrids  = 0;
+                for (auto antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
+                    nr_timesteps += m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                    nr_subgrids  += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+                }
                 report.print(nr_timesteps, nr_subgrids);
                 #endif
             }
-
 
             void CPU::do_transform(
                 DomainAtoDomainB direction,

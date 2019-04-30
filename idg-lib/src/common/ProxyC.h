@@ -107,6 +107,9 @@ extern "C" {
         std::complex<float>* hessian,
         std::complex<float>* derivative);
 
+    void Proxy_calibrate_finish(
+         Proxy* p);
+
     void Proxy_transform(
         Proxy* p,
         int direction,

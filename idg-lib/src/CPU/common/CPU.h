@@ -84,6 +84,8 @@ namespace idg {
                         Array2D<std::complex<float>>& hessian,
                         Array1D<std::complex<float>>& gradient) override;
 
+                    virtual void do_calibrate_finish() override;
+
                     virtual void do_transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;

@@ -222,6 +222,12 @@ extern "C" {
         reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update(antenna_nr, aterms_, aterm_derivatives_, hessian_, gradient_);
     }
 
+    void Proxy_calibrate_finish(
+        Proxy* p)
+    {
+        reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_finish();
+    }
+
     void Proxy_transform(
         Proxy* p,
         int direction,

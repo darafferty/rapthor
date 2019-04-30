@@ -367,6 +367,15 @@ class Proxy(object):
             hessian,
             gradient)
 
+    def calibrate_finish(self):
+
+        self.lib.Proxy_calibrate_finish.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ]
+
+        self.lib.Proxy_calibrate_finish(
+            self.obj)
+
     def transform(
         self,
         direction,

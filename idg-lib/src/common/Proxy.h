@@ -194,6 +194,8 @@ namespace idg {
                     Array1D<std::complex<float>>& derivative
                 );
 
+                void calibrate_finish();
+
                 //! Applyies (inverse) Fourier transform to grid
                 void transform(
                     DomainAtoDomainB direction,
@@ -347,6 +349,8 @@ namespace idg {
                     Array2D<std::complex<float>>& hessian,
                     Array1D<std::complex<float>>& gradient
                 ) {}
+
+                virtual void do_calibrate_finish() {}
 
                 //! Applyies (inverse) Fourier transform to grid
                 virtual void do_transform(
