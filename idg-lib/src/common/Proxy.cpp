@@ -278,33 +278,32 @@ namespace idg {
             const Grid& grid,
             const Array2D<float>& spheroidal)
         {
-//             check_dimensions(
-//                 subgrid_size, frequencies, visibilities, uvw, baselines,
-//                 grid, aterms, aterms_offsets, spheroidal);
+            #if defined(DEBUG)
+            std::cout << __func__ << std::endl;
+            #endif
+
+            // TODO
+            //check_dimensions(
+            //    subgrid_size, frequencies, visibilities, uvw, baselines,
+            //    grid, aterms, aterms_offsets, spheroidal);
 
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support calibration with W-stacking.");
             }
 
-            std::cout << "Proxy::calibrate_init" << std::endl;
+            // Arguments
+            auto nr_timesteps = visibilities.get_y_dim();
+            auto nr_baselines = baselines.get_x_dim();
+            auto nr_channels  = frequencies.get_x_dim();
+            auto grid_size    = grid.get_x_dim();
+            auto nr_w_layers  = grid.get_w_dim();
 
-            unsigned int nr_timesteps = visibilities.get_y_dim();
-            unsigned int nr_baselines = baselines.get_x_dim();
-            unsigned int nr_channels = frequencies.get_x_dim();
-            unsigned int grid_size = grid.get_x_dim();
-
-            std::cout << "nr_baselines: " << nr_baselines << std::endl;
-            std::cout << "nr_timesteps: " << nr_timesteps << std::endl;
-            std::cout << "nr_channels: " << nr_channels << std::endl;
-
+            // Initialize
             unsigned int nr_antennas = 0;
-            for(unsigned int bl = 0; bl < nr_baselines; bl++)
-            {
+            for (unsigned int bl = 0; bl < nr_baselines; bl++) {
                 nr_antennas = max(nr_antennas, baselines(bl).first+1);
                 nr_antennas = max(nr_antennas, baselines(bl).second+1);
             }
-
-            std::cout << nr_antennas << std::endl;
 
             // New buffers for data grouped by station
             Array3D<UVWCoordinate<float>>  uvw1(nr_antennas, nr_antennas-1, nr_timesteps);
@@ -312,21 +311,17 @@ namespace idg {
             Array2D<std::pair<unsigned int,unsigned int>> baselines1(nr_antennas, nr_antennas-1);
 
             // Group baselines by station
-            for(unsigned int bl = 0; bl < nr_baselines; bl++)
-            {
+            for (unsigned int bl = 0; bl < nr_baselines; bl++) {
                 unsigned int antenna1 = baselines(bl).first;
                 unsigned int antenna2 = baselines(bl).second;
-
-                unsigned int bl1 = antenna2 - (antenna2>antenna1);
-
+                unsigned int bl1      = antenna2 - (antenna2>antenna1);
 
                 baselines1(antenna1, bl1) = {antenna1, antenna2};
 
-                for(unsigned int time = 0; time < nr_timesteps; time++)
-                {
+                for (unsigned int time = 0; time < nr_timesteps; time++) {
                     uvw1(antenna1, bl1, time) = uvw(bl, time);
-                    for(unsigned int channel = 0; channel < nr_channels; channel++)
-                    {
+
+                    for (unsigned int channel = 0; channel < nr_channels; channel++) {
                         visibilities1(antenna1, bl1, time, channel) = visibilities(bl, time, channel);
                     }
                 }
@@ -337,41 +332,38 @@ namespace idg {
                 // and invert sign of uvw coordinates
 
                 std::swap(antenna1, antenna2);
-
                 bl1 = antenna2 - (antenna2>antenna1);
-
                 baselines1(antenna1, bl1) = {antenna1, antenna2};
 
-                for(unsigned int time = 0; time < nr_timesteps; time++)
-                {
+                for (unsigned int time = 0; time < nr_timesteps; time++) {
                     uvw1(antenna1, bl1, time).u = -uvw(bl, time).u;
                     uvw1(antenna1, bl1, time).v = -uvw(bl, time).v;
                     uvw1(antenna1, bl1, time).w = -uvw(bl, time).w;
-                    for(unsigned int channel = 0; channel < nr_channels; channel++)
-                    {
+
+                    for (unsigned int channel = 0; channel < nr_channels; channel++) {
                         visibilities1(antenna1, bl1, time, channel) = {
                             conj(visibilities(bl, time, channel).xx), conj(visibilities(bl, time, channel).yx),
                             conj(visibilities(bl, time, channel).xy), conj(visibilities(bl, time, channel).yy)};
-                    }
-                }
-            }
+                    } // end for channel
+                } // end for time
+            } // end for baseline
 
 
-            auto nr_w_layers      = grid.get_w_dim();
-
+            // Set Plan options
             Plan::Options options;
             options.w_step = w_step;
             options.nr_w_layers = nr_w_layers;
 
+            // Initialize aterms offsets
             Array1D<unsigned int> aterms_offsets(2);
             aterms_offsets(0) = 0;
             aterms_offsets(1) = nr_timesteps;
 
+            // Create one plan per antenna
             std::vector<std::unique_ptr<Plan>> plans;
             plans.reserve(nr_antennas);
 
-            for(unsigned int i = 0; i<nr_antennas; i++)
-            {
+            for (unsigned int i = 0; i <nr_antennas; i++) {
                 plans.push_back(std::unique_ptr<Plan>(new Plan(
                     kernel_size,
                     subgrid_size,
@@ -382,9 +374,9 @@ namespace idg {
                     Array1D<std::pair<unsigned int,unsigned int>>(baselines1.data(i), nr_antennas-1),
                     aterms_offsets,
                     options)));
-                std::cout << plans.back()->get_nr_subgrids() << std::endl;
             }
 
+            // Initialize calibration
             Array1D<float> shift1(2);
             shift1(0) = shift(0);
             shift1(1) = shift(1);
