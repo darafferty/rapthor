@@ -302,23 +302,23 @@ namespace idg {
             {
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-                // split subgrids
-
+                // Arguments
                 auto nr_antennas = plans.size();
                 auto grid_size   = grid.get_x_dim();
-                auto image_size   = cell_size * grid_size;
+                auto image_size  = cell_size * grid_size;
 
+                // Allocate subgrids for all antennas
                 std::vector<Array4D<std::complex<float>>> subgrids;
                 subgrids.reserve(nr_antennas);
 
-                for(auto i = 0; i < nr_antennas; i++)
+                // Create subgrids for every antenna
+                for (auto i = 0; i < nr_antennas; i++)
                 {
+                    // Allocate subgrids for current antenna
                     auto nr_subgrids = plans[i]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
-                    // Arguments
-
-                    // Initialize iteration
+                    // Get data pointers
                     const float *shift_ptr = shift.data();
                     void *metadata_ptr     = (void *) plans[i]->get_metadata_ptr();
                     void *subgrids_ptr     = subgrids_.data();
@@ -334,16 +334,23 @@ namespace idg {
                     // FFT kernel
                     kernels.run_subgrid_fft(grid_size, subgrid_size, nr_subgrids, subgrids_ptr, FFTW_FORWARD);
 
-                    // apply spheroidal
-                    for (int i = 0; i < nr_subgrids; i++)
-                        for (int pol = 0; pol < nr_polarizations; pol++)
-                            for(int j = 0; j < subgrid_size; j++)
-                                for(int k = 0; k < subgrid_size; k++)
-                                    subgrids_(i, pol, (j + (subgrid_size/2)) % subgrid_size, (k + (subgrid_size/2)) % subgrid_size) *= spheroidal(j,k);
+                    // Apply spheroidal
+                    for (int i = 0; i < nr_subgrids; i++) {
+                        for (int pol = 0; pol < nr_polarizations; pol++) {
+                            for (int j = 0; j < subgrid_size; j++) {
+                                for (int k = 0; k < subgrid_size; k++) {
+                                    unsigned int y = (j + (subgrid_size/2)) % subgrid_size;
+                                    unsigned int x = (k + (subgrid_size/2)) % subgrid_size;
+                                    subgrids_(i, pol, y, x) *= spheroidal(j,k);
+                                }
+                            }
+                        }
+                    }
 
                     subgrids.push_back(std::move(subgrids_));
-                }
+                } // end for antennas
 
+                // Set calibration state member variables
                 m_calibrate_state = {
                     std::move(plans),
                     w_step,
@@ -359,7 +366,6 @@ namespace idg {
                     std::move(baselines),
                     std::move(subgrids)
                 };
-
             }
 
             void CPU::do_calibrate_update(
