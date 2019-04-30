@@ -198,13 +198,13 @@ namespace idg {
                 void *hessian,
                 void *gradient)
             {
-//                 powersensor::State states[2];
-//                 states[0] = powerSensor->read();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
                 (sig_calibrate (void *) *function_calibrate)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels, nr_terms,
                   uvw, wavenumbers, visibilities, aterm, aterm_derivative, metadata, subgrid, hessian,gradient);
-//                 states[1] = powerSensor->read();
-//                 if (report) { report->update_degridder(states[0], states[1]); }
+                states[1] = powerSensor->read();
+                if (report) { report->update_calibrate(states[0], states[1]); }
             }
 
             void InstanceCPU::run_fft(

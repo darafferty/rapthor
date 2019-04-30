@@ -120,6 +120,15 @@ namespace idg {
                 update(state_degridder_pre, startState, endState);
             }
 
+            void update_calibrate(
+                powersensor::State& startState,
+                powersensor::State& endState)
+            {
+                calibrate_enabled = true;
+                calibrate_updated = true;
+                update(state_calibrate, startState, endState);
+            }
+
             void update_adder(
                 powersensor::State& startState,
                 powersensor::State& endState)
@@ -303,6 +312,16 @@ namespace idg {
                         auxiliary::bytes_fft(subgrid_size, nr_subgrids),
                         ignore_short);
                     subgrid_fft_updated = false;
+                }
+                if ((total && calibrate_enabled) || calibrate_updated) {
+                    auxiliary::report(
+                        prefix + auxiliary::name_calibrate,
+                        total ? state_calibrate.total_seconds : state_calibrate.current_seconds,
+                        total ? state_calibrate.total_joules : state_calibrate.current_joules,
+                        auxiliary::flops_calibrate(),
+                        auxiliary::bytes_calibrate(),
+                        ignore_short);
+                    calibrate_updated = false;
                 }
                 if ((total && adder_enabled) || adder_updated) {
                     auxiliary::report(
@@ -488,6 +507,7 @@ namespace idg {
             bool gridder_post_enabled;
             bool degridder_enabled;
             bool degridder_pre_enabled;
+            bool calibrate_enabled;
             bool adder_enabled;
             bool splitter_enabled;
             bool scaler_enabled;
@@ -503,6 +523,7 @@ namespace idg {
             bool gridder_post_updated;
             bool degridder_pre_updated;
             bool degridder_updated;
+            bool calibrate_updated;
             bool adder_updated;
             bool splitter_updated;
             bool scaler_updated;
@@ -521,6 +542,7 @@ namespace idg {
             State state_gridder_post;
             State state_degridder;
             State state_degridder_pre;
+            State state_calibrate;
             State state_adder;
             State state_splitter;
             State state_scaler;

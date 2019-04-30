@@ -99,7 +99,7 @@ namespace idg {
                         float cell_size;
                         float image_size;
                         unsigned int kernel_size;
-                        unsigned int grid_size;
+                        long unsigned int grid_size;
                         unsigned int subgrid_size;
                         Array1D<float> wavenumbers;
                         Array4D<Visibility<std::complex<float>>> visibilities;

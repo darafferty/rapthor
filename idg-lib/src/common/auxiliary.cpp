@@ -104,6 +104,16 @@ namespace idg {
             return bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size, nr_correlations);
         }
 
+        uint64_t flops_calibrate()
+        {
+            return 0;
+        }
+
+        uint64_t bytes_calibrate()
+        {
+            return 0;
+        }
+
         uint64_t flops_fft(
             uint64_t size,
             uint64_t batch,

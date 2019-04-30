@@ -375,9 +375,12 @@ namespace idg {
                 Array2D<std::complex<float>>& hessian,
                 Array1D<std::complex<float>>& gradient)
             {
+                // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
-                auto nr_channels = m_calibrate_state.wavenumbers.get_x_dim();
-                auto nr_terms = aterm_derivatives.get_z_dim();
+                auto nr_channels  = m_calibrate_state.wavenumbers.get_x_dim();
+                auto nr_terms     = aterm_derivatives.get_z_dim();
+
+                // Data pointers
                 const float *shift_ptr     = m_calibrate_state.shift.data();
                 void *wavenumbers_ptr      = m_calibrate_state.wavenumbers.data();
                 void *aterm_ptr            = aterms.data();
@@ -407,6 +410,12 @@ namespace idg {
                     subgrids_ptr,
                     hessian_ptr,
                     gradient_ptr);
+
+                // Performance reporting
+                #if defined(REPORT_VERBOSE)
+                auto nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                report.print(nr_timesteps, nr_subgrids);
+                #endif
             }
 
 
