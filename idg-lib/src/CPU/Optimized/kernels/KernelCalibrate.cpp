@@ -9,17 +9,6 @@
 #include "Types.h"
 #include "Math.h"
 
-// std::complex<float> operator + (const std::complex<float> & a, const std::complex<float> & other)
-// {
-// 	return std::complex<float>(0.0);
-// }
-//
-// std::complex<float> operator += (std::complex<float> & a, const std::complex<float> & other)
-// {
-// 	return std::complex<float>(0.0);
-// }
-
-#pragma omp declare reduction(complexplus: std::complex<float>: omp_out += omp_in)
 #pragma omp declare reduction(idgfloat2plus: idg::float2: omp_out += omp_in)
 
 extern "C" {
@@ -36,15 +25,12 @@ void kernel_calibrate(
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
           idg::float2*               visibilities,
-//     const float*                     weights,
     const idg::float2*               aterms,
     const idg::float2*               aterm_derivatives,
     const idg::Metadata*             metadata,
     const idg::float2*               subgrid,
     idg::float2*             hessian,
     idg::float2*             gradient)
-//     std::complex<float>*             hessian,
-//     std::complex<float>*             gradient)
 {
     #if defined(USE_LOOKUP)
     CREATE_LOOKUP
@@ -70,7 +56,6 @@ void kernel_calibrate(
     }
 
     // Iterate all subgrids
-
     #pragma omp parallel for schedule(guided) reduction(idgfloat2plus:gradient[:nr_terms], hessian[:nr_terms*nr_terms])
     for (int s = 0; s < nr_subgrids; s++) {
 
@@ -110,8 +95,7 @@ void kernel_calibrate(
             int x_src = (x + (subgrid_size/2)) % subgrid_size;
             int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-            for(int term_nr = 0; term_nr <= nr_terms; term_nr++)
-            {
+            for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
                 // Load pixel values
                 idg::float2 pixels[NR_POLARIZATIONS];
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -124,17 +108,14 @@ void kernel_calibrate(
                 idg::float2 aYX1;
                 idg::float2 aYY1;
 
-                if (term_nr == 0)
-                {
+                if (term_nr == 0) {
                     // Load aterm for station1
                     size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station1, y, x);
                     aXX1 = aterms[station1_idx + 0];
                     aXY1 = aterms[station1_idx + 1];
                     aYX1 = aterms[station1_idx + 2];
                     aYY1 = aterms[station1_idx + 3];
-                }
-                else
-                {
+                } else {
                     // Load aterm derivative
                     size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, term_nr-1, y, x);
                     aXX1 = aterm_derivatives[station1_idx + 0];
@@ -143,6 +124,7 @@ void kernel_calibrate(
                     aYY1 = aterm_derivatives[station1_idx + 3];
                 }
 
+                // Apply aterm
                 apply_aterm(
                     aXX1, aXY1, aYX1, aYY1,
                     aXX2, aXY2, aYX2, aYY2,
@@ -157,8 +139,8 @@ void kernel_calibrate(
                 pixels_xy_imag[term_nr*nr_pixels + i] = pixels[1].imag;
                 pixels_yx_imag[term_nr*nr_pixels + i] = pixels[2].imag;
                 pixels_yy_imag[term_nr*nr_pixels + i] = pixels[3].imag;
-            }
-        }
+            } // end for terms
+        } // end for pixels
 
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2)
@@ -211,8 +193,7 @@ void kernel_calibrate(
                 // Compute visibilities
                 idg::float2 sums[NR_POLARIZATIONS * (nr_terms + 1)] = {};
 
-                for(int term_nr = 0; term_nr <= nr_terms; term_nr++)
-                {
+                for (int term_nr = 0; term_nr <= nr_terms; term_nr++) {
                     compute_reduction(
                         nr_pixels,
                         pixels_xx_real + term_nr*nr_pixels, pixels_xy_real + term_nr*nr_pixels,
@@ -222,9 +203,9 @@ void kernel_calibrate(
                         phasor_real, phasor_imag, sums + term_nr*NR_POLARIZATIONS);
                 }
 
+                // Scale visibilities
                 const float scale = 1.0f / nr_pixels;
-                for (int i = 0; i < (nr_terms + 1) * NR_POLARIZATIONS; i++)
-                {
+                for (int i = 0; i < (nr_terms + 1) * NR_POLARIZATIONS; i++) {
                     sums[i].real *= scale;
                     sums[i].imag *= scale;
                 }
@@ -234,38 +215,34 @@ void kernel_calibrate(
                 int chan_idx = chan;
                 size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
 
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++)
-                {
-
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     // Compute residual visibilities
                     sums[pol].real = visibilities[vis_idx+pol].real - sums[pol].real;
                     sums[pol].imag = visibilities[vis_idx+pol].imag - sums[pol].imag;
 
-                    for(int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++)
-                    {
+                    // Update gradient
+                    for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
                         gradient[term_nr0-1].real +=
                            sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol].real +
                            sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol].imag;
                         gradient[term_nr0-1].imag +=
                            sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol].imag -
                            sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol].real;
-                        for(int term_nr1 = 1; term_nr1 <= nr_terms; term_nr1++)
-                        {
+
+                        // Update hessian
+                        for (int term_nr1 = 1; term_nr1 <= nr_terms; term_nr1++) {
                             hessian[(term_nr1-1)*nr_terms + term_nr0-1].real +=
                                 sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol + term_nr1*NR_POLARIZATIONS].real +
                                 sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol + term_nr1*NR_POLARIZATIONS].imag;
                             hessian[(term_nr1-1)*nr_terms + term_nr0-1].imag +=
                                 sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol + term_nr1*NR_POLARIZATIONS].imag -
                                 sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol + term_nr1*NR_POLARIZATIONS].real;
-                        }
-                    }
-                }
-
+                        } // end for term1
+                    } // end for term0
+                } // end for polarization
             } // end for channel
         } // end for time
     } // end #pragma parallel
-
-
 } // end kernel_calibrate
 
 } // end extern "C"
