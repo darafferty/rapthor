@@ -55,8 +55,22 @@ void kernel_calibrate(
         n_[i] = compute_n(l_[i], m_[i], shift);
     }
 
+    // Initialize local gradient
+    float gradient_real[nr_subgrids][nr_terms];
+    float gradient_imag[nr_subgrids][nr_terms];
+    size_t sizeof_gradient = nr_subgrids * nr_terms * sizeof(float);
+    memset(gradient_real, 0, sizeof_gradient);
+    memset(gradient_imag, 0, sizeof_gradient);
+
+    // Initialize local hessian
+    float hessian_real[nr_subgrids][nr_terms*nr_terms];
+    float hessian_imag[nr_subgrids][nr_terms*nr_terms];
+    size_t sizeof_hessian = nr_subgrids * nr_terms * nr_terms * sizeof(float);
+    memset(hessian_real, 0, sizeof_hessian);
+    memset(hessian_imag, 0, sizeof_hessian);
+
     // Iterate all subgrids
-    #pragma omp parallel for schedule(guided) reduction(idgfloat2plus:gradient[:nr_terms], hessian[:nr_terms*nr_terms])
+    #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
 
         // Load metadata
@@ -220,21 +234,21 @@ void kernel_calibrate(
                     sums[pol].real = visibilities[vis_idx+pol].real - sums[pol].real;
                     sums[pol].imag = visibilities[vis_idx+pol].imag - sums[pol].imag;
 
-                    // Update gradient
+                    // Update local gradient
                     for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
-                        gradient[term_nr0-1].real +=
+                        gradient_real[s][term_nr0-1] +=
                            sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol].real +
                            sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol].imag;
-                        gradient[term_nr0-1].imag +=
+                        gradient_imag[s][term_nr0-1] +=
                            sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol].imag -
                            sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol].real;
 
-                        // Update hessian
+                        // Update local hessian
                         for (int term_nr1 = 1; term_nr1 <= nr_terms; term_nr1++) {
-                            hessian[(term_nr1-1)*nr_terms + term_nr0-1].real +=
+                            hessian_real[s][(term_nr1-1)*nr_terms + term_nr0-1] +=
                                 sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol + term_nr1*NR_POLARIZATIONS].real +
                                 sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol + term_nr1*NR_POLARIZATIONS].imag;
-                            hessian[(term_nr1-1)*nr_terms + term_nr0-1].imag +=
+                            hessian_imag[s][(term_nr1-1)*nr_terms + term_nr0-1] +=
                                 sums[pol + term_nr0*NR_POLARIZATIONS].real * sums[pol + term_nr1*NR_POLARIZATIONS].imag -
                                 sums[pol + term_nr0*NR_POLARIZATIONS].imag * sums[pol + term_nr1*NR_POLARIZATIONS].real;
                         } // end for term1
@@ -243,6 +257,23 @@ void kernel_calibrate(
             } // end for channel
         } // end for time
     } // end #pragma parallel
+
+    // Update global gradient
+    for (int s = 0; s < nr_subgrids; s++) {
+        for (unsigned i = 0; i < nr_terms; i++) {
+            gradient[i].real += gradient_real[s][i];
+            gradient[i].imag += gradient_imag[s][i];
+        }
+    }
+
+    // Update global hessian
+    for (int s = 0; s < nr_subgrids; s++) {
+        for (unsigned i = 0; i < nr_terms*nr_terms; i++) {
+            hessian[i].real += hessian_real[s][i];
+            hessian[i].imag += hessian_imag[s][i];
+        }
+    }
+
 } // end kernel_calibrate
 
 } // end extern "C"
