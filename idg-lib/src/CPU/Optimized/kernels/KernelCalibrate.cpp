@@ -9,8 +9,6 @@
 #include "Types.h"
 #include "Math.h"
 
-#pragma omp declare reduction(idgfloat2plus: idg::float2: omp_out += omp_in)
-
 extern "C" {
 
 void kernel_calibrate(
@@ -206,17 +204,16 @@ void kernel_calibrate(
 
                 // Compute visibilities
                 unsigned int nr_elements = NR_POLARIZATIONS * (nr_terms + 1);
-                float sums_real[nr_elements];
-                float sums_imag[nr_elements];
+                float sums_real[NR_POLARIZATIONS][nr_terms+1];
+                float sums_imag[NR_POLARIZATIONS][nr_terms+1];
                 memset(sums_real, 0, nr_elements * sizeof(float));
 
                 for (int term_nr = 0; term_nr <= nr_terms; term_nr++) {
                     idg::float2 sum[NR_POLARIZATIONS];
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned idx = term_nr*NR_POLARIZATIONS + pol;
-                        sum[pol].real = sums_real[idx];
-                        sum[pol].imag = sums_imag[idx];
+                        sum[pol].real = sums_real[pol][term_nr];
+                        sum[pol].imag = sums_imag[pol][term_nr];
                     }
 
                     compute_reduction(
@@ -228,17 +225,18 @@ void kernel_calibrate(
                         phasor_real, phasor_imag, sum);
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned idx = term_nr*NR_POLARIZATIONS + pol;
-                        sums_real[term_nr*NR_POLARIZATIONS + pol] = sum[pol].real;
-                        sums_imag[term_nr*NR_POLARIZATIONS + pol] = sum[pol].imag;
+                        sums_real[pol][term_nr] = sum[pol].real;
+                        sums_imag[pol][term_nr] = sum[pol].imag;
                     }
                 }
 
                 // Scale visibilities
                 const float scale = 1.0f / nr_pixels;
-                for (int i = 0; i < (nr_terms + 1) * NR_POLARIZATIONS; i++) {
-                    sums_real[i] *= scale;
-                    sums_imag[i] *= scale;
+                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (int i = 0; i < nr_terms; i++) {
+                        sums_real[pol][i] *= scale;
+                        sums_imag[pol][i] *= scale;
+                    }
                 }
 
                 // Store visibilities
@@ -246,33 +244,37 @@ void kernel_calibrate(
                 int chan_idx = chan;
                 size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
 
+                // Compute residual visibilities
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    // Compute residual visibilities
-                    sums_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol];
-                    sums_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol];
+                    sums_real[pol][0] = visibilities[vis_idx+pol].real - sums_real[pol][0];
+                    sums_imag[pol][0] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
+                }
 
-                    // Update local gradient
-                    for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
-                        unsigned idx0 = term_nr0*NR_POLARIZATIONS + pol;
+                // Update local gradient
+                for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         gradient_real[s][term_nr0-1] +=
-                           sums_real[idx0] * sums_real[pol] +
-                           sums_imag[idx0] * sums_imag[pol];
+                           sums_real[pol][term_nr0] * sums_real[pol][0] +
+                           sums_imag[pol][term_nr0] * sums_imag[pol][0];
                         gradient_imag[s][term_nr0-1] +=
-                           sums_real[idx0] * sums_imag[pol] -
-                           sums_imag[idx0] * sums_real[pol];
+                           sums_real[pol][term_nr0] * sums_imag[pol][0] -
+                           sums_imag[pol][term_nr0] * sums_real[pol][0];
+                    }
+                }
 
-                        // Update local hessian
-                        for (int term_nr1 = 1; term_nr1 <= nr_terms; term_nr1++) {
-                            unsigned idx1 = term_nr1*NR_POLARIZATIONS + pol;
+                // Update local hessian
+                for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
+                    for (int term_nr1 = 1; term_nr1 <= nr_terms; term_nr1++) {
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             hessian_real[s][(term_nr1-1)*nr_terms + term_nr0-1] +=
-                                sums_real[idx0] * sums_real[idx1] +
-                                sums_imag[idx0] * sums_imag[idx1];
+                                sums_real[pol][term_nr0] * sums_real[pol][term_nr1] +
+                                sums_imag[pol][term_nr0] * sums_imag[pol][term_nr1];
                             hessian_imag[s][(term_nr1-1)*nr_terms + term_nr0-1] +=
-                                sums_real[idx0] * sums_imag[idx1] -
-                                sums_imag[idx0] * sums_real[idx1];
-                        } // end for term1
-                    } // end for term0
-                } // end for polarization
+                                sums_real[pol][term_nr0] * sums_imag[pol][term_nr1] -
+                                sums_imag[pol][term_nr0] * sums_real[pol][term_nr1];
+                        }
+                    }
+                }
             } // end for channel
         } // end for time
     } // end #pragma parallel
