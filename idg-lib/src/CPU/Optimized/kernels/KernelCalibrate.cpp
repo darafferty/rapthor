@@ -251,27 +251,27 @@ void kernel_calibrate(
                 }
 
                 // Update local gradient
-                for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
+                for (int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        gradient_real[s][term_nr0-1] +=
-                           sums_real[pol][term_nr0] * sums_real[pol][0] +
-                           sums_imag[pol][term_nr0] * sums_imag[pol][0];
-                        gradient_imag[s][term_nr0-1] +=
-                           sums_real[pol][term_nr0] * sums_imag[pol][0] -
-                           sums_imag[pol][term_nr0] * sums_real[pol][0];
+                        gradient_real[s][term_nr0] +=
+                           sums_real[pol][term_nr0+1] * sums_real[pol][0] +
+                           sums_imag[pol][term_nr0+1] * sums_imag[pol][0];
+                        gradient_imag[s][term_nr0] +=
+                           sums_real[pol][term_nr0+1] * sums_imag[pol][0] -
+                           sums_imag[pol][term_nr0+1] * sums_real[pol][0];
                     }
                 }
 
                 // Update local hessian
-                for (int term_nr0 = 1; term_nr0 <= nr_terms; term_nr0++) {
-                    for (int term_nr1 = 1; term_nr1 <= nr_terms; term_nr1++) {
+                for (int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
+                    for (int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            hessian_real[s][(term_nr1-1)*nr_terms + term_nr0-1] +=
-                                sums_real[pol][term_nr0] * sums_real[pol][term_nr1] +
-                                sums_imag[pol][term_nr0] * sums_imag[pol][term_nr1];
-                            hessian_imag[s][(term_nr1-1)*nr_terms + term_nr0-1] +=
-                                sums_real[pol][term_nr0] * sums_imag[pol][term_nr1] -
-                                sums_imag[pol][term_nr0] * sums_real[pol][term_nr1];
+                            hessian_real[s][term_nr1*nr_terms + term_nr0] +=
+                                sums_real[pol][term_nr0+1] * sums_real[pol][term_nr1+1] +
+                                sums_imag[pol][term_nr0+1] * sums_imag[pol][term_nr1+1];
+                            hessian_imag[s][term_nr1*nr_terms + term_nr0] +=
+                                sums_real[pol][term_nr0+1] * sums_imag[pol][term_nr1+1] -
+                                sums_imag[pol][term_nr0+1] * sums_real[pol][term_nr1+1];
                         }
                     }
                 }
