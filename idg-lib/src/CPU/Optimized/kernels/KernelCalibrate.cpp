@@ -85,14 +85,14 @@ void kernel_calibrate(
 
         // Storage
         unsigned nr_pixels = subgrid_size*subgrid_size;
-        float pixels_xx_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_xy_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yx_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yy_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_xx_imag[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_xy_imag[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yx_imag[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yy_imag[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xx_real[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xy_real[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yx_real[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yy_real[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xx_imag[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_xy_imag[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yx_imag[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        float pixels_yy_imag[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
 
         // Apply aterm to subgrid
         for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
@@ -147,14 +147,14 @@ void kernel_calibrate(
                     pixels);
 
                 // Store pixels
-                pixels_xx_real[term_nr*nr_pixels + i] = pixels[0].real;
-                pixels_xy_real[term_nr*nr_pixels + i] = pixels[1].real;
-                pixels_yx_real[term_nr*nr_pixels + i] = pixels[2].real;
-                pixels_yy_real[term_nr*nr_pixels + i] = pixels[3].real;
-                pixels_xx_imag[term_nr*nr_pixels + i] = pixels[0].imag;
-                pixels_xy_imag[term_nr*nr_pixels + i] = pixels[1].imag;
-                pixels_yx_imag[term_nr*nr_pixels + i] = pixels[2].imag;
-                pixels_yy_imag[term_nr*nr_pixels + i] = pixels[3].imag;
+                pixels_xx_real[term_nr][i] = pixels[0].real;
+                pixels_xy_real[term_nr][i] = pixels[1].real;
+                pixels_yx_real[term_nr][i] = pixels[2].real;
+                pixels_yy_real[term_nr][i] = pixels[3].real;
+                pixels_xx_imag[term_nr][i] = pixels[0].imag;
+                pixels_xy_imag[term_nr][i] = pixels[1].imag;
+                pixels_yx_imag[term_nr][i] = pixels[2].imag;
+                pixels_yy_imag[term_nr][i] = pixels[3].imag;
             } // end for terms
         } // end for pixels
 
@@ -188,10 +188,10 @@ void kernel_calibrate(
 
                     compute_reduction(
                         nr_pixels,
-                        pixels_xx_real + term_nr*nr_pixels, pixels_xy_real + term_nr*nr_pixels,
-                        pixels_yx_real + term_nr*nr_pixels, pixels_yy_real + term_nr*nr_pixels,
-                        pixels_xx_imag + term_nr*nr_pixels, pixels_xy_imag + term_nr*nr_pixels,
-                        pixels_yx_imag + term_nr*nr_pixels, pixels_yy_imag + term_nr*nr_pixels,
+                        pixels_xx_real[term_nr], pixels_xy_real[term_nr],
+                        pixels_yx_real[term_nr], pixels_yy_real[term_nr],
+                        pixels_xx_imag[term_nr], pixels_xy_imag[term_nr],
+                        pixels_yx_imag[term_nr], pixels_yy_imag[term_nr],
                         phasor_real, phasor_imag, sum);
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
