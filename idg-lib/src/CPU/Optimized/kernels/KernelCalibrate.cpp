@@ -55,21 +55,6 @@ void kernel_calibrate(
     const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
 
-    // Compute l,m,n
-    const unsigned nr_pixels = subgrid_size*subgrid_size;
-    float l_[nr_pixels];
-    float m_[nr_pixels];
-    float n_[nr_pixels];
-
-    for (unsigned i = 0; i < nr_pixels; i++) {
-        int y = i / subgrid_size;
-        int x = i % subgrid_size;
-
-        l_[i] = compute_l(x, subgrid_size, image_size);
-        m_[i] = compute_m(y, subgrid_size, image_size);
-        n_[i] = compute_n(l_[i], m_[i], shift);
-    }
-
     // Initialize local gradient
     float gradient_real[nr_subgrids][nr_terms];
     float gradient_imag[nr_subgrids][nr_terms];
@@ -99,6 +84,7 @@ void kernel_calibrate(
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
         // Storage
+        unsigned nr_pixels = subgrid_size*subgrid_size;
         float pixels_xx_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
         float pixels_xy_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
         float pixels_yx_real[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
@@ -171,55 +157,11 @@ void kernel_calibrate(
             } // end for terms
         } // end for pixels
 
-        // Compute u and v offset in wavelenghts
-        const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2)
-                               * (2*M_PI / image_size);
-        const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2)
-                               * (2*M_PI / image_size);
-        const float w_offset = 2*M_PI * w_offset_in_lambda;
-
-        float phase_offset[nr_pixels];
-
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
-            // Load UVW coordinates
-            float u = uvw[time_offset + time].u;
-            float v = uvw[time_offset + time].v;
-            float w = uvw[time_offset + time].w;
-
-            float phase_index[nr_pixels];
-
-            for (unsigned i = 0; i < nr_pixels; i++) {
-                // Compute phase index
-                phase_index[i] = u*l_[i] + v*m_[i] + w*n_[i];
-
-                // Compute phase offset
-                if (time == 0) {
-                    phase_offset[i] = u_offset*l_[i] + v_offset*m_[i] + w_offset*n_[i];
-                }
-            }
-
             // Iterate all channels
             for (int chan = 0; chan < nr_channels; chan++) {
-                // Compute phase
-                float phase[nr_pixels];
-
-                for (unsigned i = 0; i < nr_pixels; i++) {
-                    // Compute phase
-                    float wavenumber = wavenumbers[chan];
-                    phase[i] = (phase_index[i] * wavenumber) - phase_offset[i];
-                }
-
-                // Compute phasor
-#if 0
-                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-                #if defined(USE_LOOKUP)
-                compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
-                #else
-                compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
-                #endif
-#else
+                // Load phasor
                 float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 for (unsigned i = 0; i < nr_pixels; i++) {
@@ -228,7 +170,6 @@ void kernel_calibrate(
                     phasor_real[i] = phasor.real;
                     phasor_imag[i] = phasor.imag;
                 }
-#endif
 
                 // Compute visibilities
                 unsigned int nr_elements = NR_POLARIZATIONS * (nr_terms + 1);
