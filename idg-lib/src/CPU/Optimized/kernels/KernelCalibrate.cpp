@@ -95,22 +95,15 @@ void kernel_calibrate(
         float pixels_yy_imag[nr_pixels * (nr_terms+1)] __attribute__((aligned((ALIGNMENT))));
 
         // Apply aterm to subgrid
-        for (unsigned i = 0; i < nr_pixels; i++) {
-            int y = i / subgrid_size;
-            int x = i % subgrid_size;
+        for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
+            for (unsigned i = 0; i < nr_pixels; i++) {
+                int y = i / subgrid_size;
+                int x = i % subgrid_size;
 
-            // Load aterm for station2
-            size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station2, y, x);
-            idg::float2 aXX2 = aterms[station2_idx + 0];
-            idg::float2 aXY2 = aterms[station2_idx + 1];
-            idg::float2 aYX2 = aterms[station2_idx + 2];
-            idg::float2 aYY2 = aterms[station2_idx + 3];
+                // Compute shifted position in subgrid
+                int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-            // Compute shifted position in subgrid
-            int x_src = (x + (subgrid_size/2)) % subgrid_size;
-            int y_src = (y + (subgrid_size/2)) % subgrid_size;
-
-            for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
                 // Load pixel values
                 idg::float2 pixels[NR_POLARIZATIONS];
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -118,6 +111,7 @@ void kernel_calibrate(
                     pixels[pol] = subgrid[src_idx];
                 }
 
+                // Load first aterm
                 idg::float2 aXX1;
                 idg::float2 aXY1;
                 idg::float2 aYX1;
@@ -138,6 +132,13 @@ void kernel_calibrate(
                     aYX1 = aterm_derivatives[station1_idx + 2];
                     aYY1 = aterm_derivatives[station1_idx + 3];
                 }
+
+                // Load aterm for station2
+                size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station2, y, x);
+                idg::float2 aXX2 = aterms[station2_idx + 0];
+                idg::float2 aXY2 = aterms[station2_idx + 1];
+                idg::float2 aYX2 = aterms[station2_idx + 2];
+                idg::float2 aYY2 = aterms[station2_idx + 3];
 
                 // Apply aterm
                 apply_aterm(
