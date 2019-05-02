@@ -108,6 +108,7 @@ namespace idg {
                         Array3D<UVWCoordinate<float>> uvw;
                         Array2D<std::pair<unsigned int,unsigned int>> baselines;
                         std::vector<Array4D<std::complex<float>>> subgrids;
+                        std::vector<Array4D<std::complex<float>>> phasors;
                     } m_calibrate_state;
 
 

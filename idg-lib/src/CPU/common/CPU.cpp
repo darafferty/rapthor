@@ -303,24 +303,30 @@ namespace idg {
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Arguments
-                auto nr_antennas = plans.size();
-                auto grid_size   = grid.get_x_dim();
-                auto image_size  = cell_size * grid_size;
+                auto nr_antennas  = plans.size();
+                auto grid_size    = grid.get_x_dim();
+                auto image_size   = cell_size * grid_size;
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = frequencies.get_x_dim();
 
                 // Allocate subgrids for all antennas
                 std::vector<Array4D<std::complex<float>>> subgrids;
                 subgrids.reserve(nr_antennas);
 
+                // Allocate phasors for all antennas
+                std::vector<Array4D<std::complex<float>>> phasors;
+                phasors.reserve(nr_antennas);
+
                 // Create subgrids for every antenna
-                for (auto i = 0; i < nr_antennas; i++)
+                for (auto antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
                 {
                     // Allocate subgrids for current antenna
-                    auto nr_subgrids = plans[i]->get_nr_subgrids();
+                    auto nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
                     // Get data pointers
                     const float *shift_ptr = shift.data();
-                    void *metadata_ptr     = (void *) plans[i]->get_metadata_ptr();
+                    void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
                     void *subgrids_ptr     = subgrids_.data();
                     void *grid_ptr         = grid.data();
 
@@ -347,7 +353,33 @@ namespace idg {
                         }
                     }
 
+                    // Store subgrids for current antenna
                     subgrids.push_back(std::move(subgrids_));
+
+                    // Allocate phasors for current antenna
+                    Array4D<std::complex<float>> phasors_(nr_subgrids * nr_timesteps, nr_channels, subgrid_size, subgrid_size);
+
+                    // Get data pointers
+                    void *wavenumbers_ptr  = wavenumbers.data();
+                    void *uvw_ptr          = uvw.data(antenna_nr);
+                    void *phasors_ptr      = phasors_.data();
+
+                    // Compute phasors
+                    kernels.run_phasor(
+                        nr_subgrids,
+                        grid_size,
+                        subgrid_size,
+                        image_size,
+                        w_step,
+                        shift_ptr,
+                        nr_channels,
+                        uvw_ptr,
+                        wavenumbers_ptr,
+                        metadata_ptr,
+                        phasors_ptr);
+
+                    // Store phasors for current antenna
+                    phasors.push_back(std::move(phasors_));
                 } // end for antennas
 
                 // Set calibration state member variables
@@ -364,7 +396,8 @@ namespace idg {
                     std::move(visibilities),
                     std::move(uvw),
                     std::move(baselines),
-                    std::move(subgrids)
+                    std::move(subgrids),
+                    std::move(phasors)
                 };
             }
 
@@ -389,6 +422,7 @@ namespace idg {
                 void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
                 void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
                 void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
+                void *phasors_ptr          = m_calibrate_state.phasors[antenna_nr].data();
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
 
@@ -408,6 +442,7 @@ namespace idg {
                     aterm_derivative_ptr,
                     metadata_ptr,
                     subgrids_ptr,
+                    phasors_ptr,
                     hessian_ptr,
                     gradient_ptr);
             }

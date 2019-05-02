@@ -74,8 +74,22 @@ namespace idg {
                         void *aterm_derivative,
                         void *metadata,
                         void *subgrid,
+                        void *phasors,
                         void *hessian,
                         void *gradient);
+
+                    void run_phasor(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        float image_size,
+                        float w_step,
+                        const float* shift,
+                        int nr_channels,
+                        void *uvw,
+                        void *wavenumbers,
+                        void *metadata,
+                        void *phasors);
 
                     void run_fft(
                         int grid_size,
@@ -140,6 +154,7 @@ namespace idg {
                     runtime::Function *function_gridder;
                     runtime::Function *function_degridder;
                     runtime::Function *function_calibrate;
+                    runtime::Function *function_phasor;
                     runtime::Function *function_fft;
                     runtime::Function *function_adder;
                     runtime::Function *function_splitter;
@@ -155,6 +170,7 @@ namespace idg {
             static const std::string name_gridder         = "kernel_gridder";
             static const std::string name_degridder       = "kernel_degridder";
             static const std::string name_calibrate       = "kernel_calibrate";
+            static const std::string name_phasor          = "kernel_phasor";
             static const std::string name_adder           = "kernel_adder";
             static const std::string name_splitter        = "kernel_splitter";
             static const std::string name_adder_wstack    = "kernel_adder_wstack";
