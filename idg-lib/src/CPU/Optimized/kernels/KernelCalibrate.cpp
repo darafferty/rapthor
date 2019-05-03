@@ -215,20 +215,22 @@ void kernel_calibrate(
                 size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
 
                 // Compute residual visibilities
+                float visibility_res_real[NR_POLARIZATIONS];
+                float visibility_res_imag[NR_POLARIZATIONS];
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sums_real[pol][0] = visibilities[vis_idx+pol].real - sums_real[pol][0];
-                    sums_imag[pol][0] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
+                    visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][0];
+                    visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
                 }
 
                 // Update local gradient
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                         gradient_real[s][term_nr0] +=
-                           sums_real[pol][term_nr0+1] * sums_real[pol][0] +
-                           sums_imag[pol][term_nr0+1] * sums_imag[pol][0];
+                           sums_real[pol][term_nr0+1] * visibility_res_real[pol] +
+                           sums_imag[pol][term_nr0+1] * visibility_res_imag[pol];
                         gradient_imag[s][term_nr0] +=
-                           sums_real[pol][term_nr0+1] * sums_imag[pol][0] -
-                           sums_imag[pol][term_nr0+1] * sums_real[pol][0];
+                           sums_real[pol][term_nr0+1] * visibility_res_imag[pol] -
+                           sums_imag[pol][term_nr0+1] * visibility_res_real[pol];
                     }
                 }
 
