@@ -55,17 +55,20 @@ void kernel_calibrate(
     const idg::Metadata m       = metadata[0];
     const int baseline_offset_1 = m.baseline_offset;
 
+    #define NR_TERMS 8
+    assert(nr_terms <= NR_TERMS);
+
     // Initialize local gradient
-    float gradient_real[nr_subgrids][nr_terms];
-    float gradient_imag[nr_subgrids][nr_terms];
-    size_t sizeof_gradient = nr_subgrids * nr_terms * sizeof(float);
+    float gradient_real[nr_subgrids][NR_TERMS];
+    float gradient_imag[nr_subgrids][NR_TERMS];
+    size_t sizeof_gradient = nr_subgrids * NR_TERMS * sizeof(float);
     memset(gradient_real, 0, sizeof_gradient);
     memset(gradient_imag, 0, sizeof_gradient);
 
     // Initialize local hessian
-    float hessian_real[nr_subgrids][nr_terms][nr_terms];
-    float hessian_imag[nr_subgrids][nr_terms][nr_terms];
-    size_t sizeof_hessian = nr_subgrids * nr_terms * nr_terms * sizeof(float);
+    float hessian_real[nr_subgrids][NR_TERMS][NR_TERMS];
+    float hessian_imag[nr_subgrids][NR_TERMS][NR_TERMS];
+    size_t sizeof_hessian = nr_subgrids * NR_TERMS * NR_TERMS * sizeof(float);
     memset(hessian_real, 0, sizeof_hessian);
     memset(hessian_imag, 0, sizeof_hessian);
 
