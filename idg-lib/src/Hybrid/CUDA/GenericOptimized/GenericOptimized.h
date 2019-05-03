@@ -115,6 +115,29 @@ namespace idg {
                     virtual void finish_degridding() override
                     { finish(auxiliary::name_degridding); };
 
+                    virtual void do_calibrate_init(
+                        std::vector<std::unique_ptr<Plan>> &&plans,
+                        float w_step, // in lambda
+                        Array1D<float> &&shift,
+                        float cell_size,
+                        unsigned int kernel_size, // full width in pixels
+                        unsigned int subgrid_size,
+                        const Array1D<float> &frequencies,
+                        Array4D<Visibility<std::complex<float>>> &&visibilities,
+                        Array3D<UVWCoordinate<float>> &&uvw,
+                        Array2D<std::pair<unsigned int,unsigned int>> &&baselines,
+                        const Grid& grid,
+                        const Array2D<float>& spheroidal) override;
+
+                    virtual void do_calibrate_update(
+                        const int station_nr,
+                        const Array3D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array3D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                        Array2D<std::complex<float>>& hessian,
+                        Array1D<std::complex<float>>& gradient) override;
+
+                    virtual void do_calibrate_finish() override;
+
                 private:
                     void synchronize();
                     void finish(std::string name);
@@ -130,6 +153,25 @@ namespace idg {
                     std::vector<int> planned_max_nr_subgrids;
                     cu::Stream* hostStream;
                     powersensor::State hostStartState;
+
+                    /*
+                     * Calibration state
+                     */
+                    struct {
+                        std::vector<std::unique_ptr<Plan>> plans;
+                        float w_step; // in lambda
+                        Array1D<float> shift;
+                        float cell_size;
+                        float image_size;
+                        unsigned int kernel_size;
+                        long unsigned int grid_size;
+                        unsigned int subgrid_size;
+                        Array1D<float> wavenumbers;
+                        Array4D<Visibility<std::complex<float>>> visibilities;
+                        Array3D<UVWCoordinate<float>> uvw;
+                        Array2D<std::pair<unsigned int,unsigned int>> baselines;
+                        std::vector<Array4D<std::complex<float>>> subgrids;
+                    } m_calibrate_state;
 
             }; // class GenericOptimized
 
