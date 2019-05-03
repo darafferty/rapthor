@@ -833,8 +833,8 @@ namespace idg {
                 auto nr_antennas  = plans.size();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
-                auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_channels  = frequencies.get_x_dim();
+                //auto nr_timesteps = visibilities.get_y_dim();
+                //auto nr_channels  = frequencies.get_x_dim();
 
                 // Allocate subgrids for all antennas
                 std::vector<Array4D<std::complex<float>>> subgrids;
@@ -855,7 +855,6 @@ namespace idg {
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
                     // Get data pointers
-                    const float *shift_ptr = shift.data();
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
                     void *subgrids_ptr     = subgrids_.data();
                     void *grid_ptr         = grid.data();
@@ -932,16 +931,15 @@ namespace idg {
                 }
 
                 // Data pointers
-                const float *shift_ptr     = m_calibrate_state.shift.data();
-                void *wavenumbers_ptr      = m_calibrate_state.wavenumbers.data();
-                void *aterm_ptr            = aterms.data();
-                void *aterm_derivative_ptr = aterm_derivatives.data();
-                void *metadata_ptr         = (void *) m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
-                void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
-                void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
-                void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
-                void *hessian_ptr          = hessian.data();
-                void *gradient_ptr         = gradient.data();
+                //void *wavenumbers_ptr      = m_calibrate_state.wavenumbers.data();
+                //void *aterm_ptr            = aterms.data();
+                //void *aterm_derivative_ptr = aterm_derivatives.data();
+                //void *metadata_ptr         = (void *) m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
+                //void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
+                //void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
+                //void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
+                //void *hessian_ptr          = hessian.data();
+                //void *gradient_ptr         = gradient.data();
 
                 // Run calibration update step
                 // TODO
