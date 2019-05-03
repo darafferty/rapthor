@@ -212,6 +212,7 @@ namespace idg {
                   uvw, wavenumbers, visibilities, aterm, aterm_derivative, metadata, subgrid, phasors, hessian, gradient);
                 states[1] = powerSensor->read();
                 if (report) { report->update_calibrate(states[0], states[1]); }
+                if (report) { report->update_host(states[0], states[1]); }
             }
 
             void InstanceCPU::run_phasor(
@@ -227,13 +228,13 @@ namespace idg {
                 void *metadata,
                 void *phasors)
             {
-                powersensor::State states[2];
-                states[0] = powerSensor->read();
+                //powersensor::State states[2];
+                //states[0] = powerSensor->read();
                 (sig_phasor (void *) *function_phasor)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels,
                   uvw, wavenumbers, metadata, phasors);
-                states[1] = powerSensor->read();
-                if (report) { report->update_calibrate(states[0], states[1]); }
+                //states[1] = powerSensor->read();
+                //if (report) { report->update_calibrate(states[0], states[1]); }
             }
 
             void InstanceCPU::run_fft(

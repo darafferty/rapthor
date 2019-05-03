@@ -412,6 +412,12 @@ namespace idg {
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
                 auto nr_channels  = m_calibrate_state.wavenumbers.get_x_dim();
                 auto nr_terms     = aterm_derivatives.get_z_dim();
+                auto subgrid_size = aterms.get_y_dim();
+
+                // Performance measurement
+                if (antenna_nr == 0) {
+                    report.initialize(nr_channels, subgrid_size, 0, nr_terms);
+                }
 
                 // Data pointers
                 const float *shift_ptr     = m_calibrate_state.shift.data();
@@ -426,6 +432,7 @@ namespace idg {
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
 
+                // Run calibration update step
                 kernels.run_calibrate(
                     nr_subgrids,
                     m_calibrate_state.grid_size,
@@ -445,6 +452,12 @@ namespace idg {
                     phasors_ptr,
                     hessian_ptr,
                     gradient_ptr);
+
+                // Performance reporting
+                auto current_nr_subgrids  = nr_subgrids;
+                auto current_nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                auto current_nr_visibilities = current_nr_timesteps * nr_channels;
+                report.update_total(current_nr_subgrids, current_nr_timesteps, current_nr_visibilities);
             }
 
             void CPU::do_calibrate_finish()
@@ -452,13 +465,14 @@ namespace idg {
                 // Performance reporting
                 #if defined(REPORT_TOTAL)
                 auto nr_antennas  = m_calibrate_state.plans.size();
-                auto nr_timesteps = 0;
-                auto nr_subgrids  = 0;
+                auto total_nr_timesteps = 0;
+                auto total_nr_subgrids  = 0;
                 for (auto antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
-                    nr_timesteps += m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
-                    nr_subgrids  += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+                    total_nr_timesteps += m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                    total_nr_subgrids  += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
                 }
-                report.print(nr_timesteps, nr_subgrids);
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
+                report.print_visibilities(auxiliary::name_calibrate);
                 #endif
             }
 

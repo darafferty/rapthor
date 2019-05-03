@@ -24,6 +24,7 @@ namespace idg {
             int nr_channels;
             int subgrid_size;
             int grid_size;
+            int nr_terms;
         };
 
         struct Counters
@@ -37,22 +38,26 @@ namespace idg {
             Report(
                 const int nr_channels  = 0,
                 const int subgrid_size = 0,
-                const int grid_size    = 0)
+                const int grid_size    = 0,
+                const int nr_terms     = 0)
             {
                 parameters.nr_channels  = nr_channels;
                 parameters.subgrid_size = subgrid_size;
                 parameters.grid_size    = grid_size;
+                parameters.nr_terms     = nr_terms;
                 reset();
             }
 
             void initialize(
                 const int nr_channels  = 0,
                 const int subgrid_size = 0,
-                const int grid_size    = 0)
+                const int grid_size    = 0,
+                const int nr_terms     = 0)
             {
                 parameters.nr_channels  = nr_channels;
                 parameters.subgrid_size = subgrid_size;
                 parameters.grid_size    = grid_size;
+                parameters.nr_terms     = nr_terms;
                 reset();
             }
 
@@ -267,6 +272,7 @@ namespace idg {
                 auto nr_channels  = parameters.nr_channels;
                 auto subgrid_size = parameters.subgrid_size;
                 auto grid_size    = parameters.grid_size;
+                auto nr_terms     = parameters.nr_terms;
 
                 // Do not report short measurements, unless reporting total runtime
                 bool ignore_short = !total;
@@ -318,7 +324,7 @@ namespace idg {
                         prefix + auxiliary::name_calibrate,
                         total ? state_calibrate.total_seconds : state_calibrate.current_seconds,
                         total ? state_calibrate.total_joules : state_calibrate.current_joules,
-                        auxiliary::flops_calibrate(),
+                        auxiliary::flops_calibrate(nr_terms, nr_channels, nr_timesteps, nr_subgrids, subgrid_size),
                         auxiliary::bytes_calibrate(),
                         ignore_short);
                     calibrate_updated = false;
@@ -458,6 +464,7 @@ namespace idg {
                 degridder_pre_enabled = false;
                 degridder_enabled   = false;
                 adder_enabled       = false;
+                calibrate_enabled   = false;
                 splitter_enabled    = false;
                 scaler_enabled      = false;
                 subgrid_fft_enabled = false;
@@ -483,6 +490,7 @@ namespace idg {
                 state_host        = state_zero;
                 state_gridder     = state_zero;
                 state_degridder   = state_zero;
+                state_calibrate   = state_zero;
                 state_adder       = state_zero;
                 state_splitter    = state_zero;
                 state_scaler      = state_zero;

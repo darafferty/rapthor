@@ -104,9 +104,33 @@ namespace idg {
             return bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size, nr_correlations);
         }
 
-        uint64_t flops_calibrate()
+        uint64_t flops_calibrate(
+            uint64_t nr_terms,
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations)
         {
-            return 0;
+            // Flops per subgrid
+            uint64_t flops_per_subgrid = 0;
+            flops_per_subgrid += nr_terms * subgrid_size * subgrid_size * nr_correlations * 30; // aterm
+            flops_per_subgrid += nr_terms * 2; // gradient sum
+            flops_per_subgrid += nr_terms * nr_terms * 2; // hessian sum
+
+            // Flops per visibility
+            uint64_t flops_per_visibility = 0;
+            flops_per_visibility += nr_terms * subgrid_size * subgrid_size * nr_correlations * 8; // reduction
+            flops_per_visibility += nr_correlations * 8; // scale
+            flops_per_visibility += nr_correlations * 2; // residual visibility
+            flops_per_visibility += nr_correlations * nr_terms * 6; // gradient
+            flops_per_visibility += nr_correlations * nr_terms * nr_terms * 6; // hessian
+
+            // Total number of flops
+            uint64_t flops_total = 0;
+            flops_total += nr_subgrids * flops_per_subgrid;
+            flops_total += nr_timesteps * nr_channels * flops_per_visibility;
+            return flops_total;
         }
 
         uint64_t bytes_calibrate()
