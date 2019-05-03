@@ -329,6 +329,9 @@ namespace idg {
                 return;
             }
 
+            // Ignore unrealistic performance
+            int gflops_bound = 1e5; // 100 TFLOPS
+
             double watt = joules / runtime;
             #pragma omp critical (clog)
             {
@@ -346,8 +349,10 @@ namespace idg {
                 if (flops != 0) {
                     clog << ", ";
                     double gflops = (flops / runtime) * 1e-9;
+                    if (gflops < gflops_bound) {
                         clog << setw(FW2) << right << fixed << setprecision(2)
                                           << gflops << " GFLOPS";
+                    }
                 }
                 #endif
                 if (bytes != 0) {
