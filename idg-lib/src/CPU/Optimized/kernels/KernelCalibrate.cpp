@@ -173,17 +173,15 @@ void kernel_calibrate(
                 }
 
                 // Compute visibilities
-                unsigned int nr_elements = NR_POLARIZATIONS * (nr_terms + 1);
                 float sums_real[NR_POLARIZATIONS][nr_terms+1];
                 float sums_imag[NR_POLARIZATIONS][nr_terms+1];
-                memset(sums_real, 0, nr_elements * sizeof(float));
 
                 for (unsigned int term_nr = 0; term_nr <= nr_terms; term_nr++) {
                     idg::float2 sum[NR_POLARIZATIONS];
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        sum[pol].real = sums_real[pol][term_nr];
-                        sum[pol].imag = sums_imag[pol][term_nr];
+                        sum[pol].real = 0;
+                        sum[pol].imag = 0;
                     }
 
                     compute_reduction(
