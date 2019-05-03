@@ -200,15 +200,13 @@ void kernel_calibrate(
                     }
                 }
 
-                // Store visibilities
-                int time_idx = time_offset + time;
-                int chan_idx = chan;
-                size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
-
                 // Compute residual visibilities
                 float visibility_res_real[NR_POLARIZATIONS];
                 float visibility_res_imag[NR_POLARIZATIONS];
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    int time_idx = time_offset + time;
+                    int chan_idx = chan;
+                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
                     visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][0];
                     visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
                 }
