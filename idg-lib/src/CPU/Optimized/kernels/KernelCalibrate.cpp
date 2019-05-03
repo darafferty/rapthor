@@ -56,15 +56,15 @@ void kernel_calibrate(
     const int baseline_offset_1 = m.baseline_offset;
 
     // Initialize local gradient
-    float gradient_real[nr_subgrids][nr_terms];
-    float gradient_imag[nr_subgrids][nr_terms];
+    float gradient_real[nr_subgrids][nr_terms] __attribute__((aligned((ALIGNMENT))));
+    float gradient_imag[nr_subgrids][nr_terms] __attribute__((aligned((ALIGNMENT))));
     size_t sizeof_gradient = nr_subgrids * nr_terms * sizeof(float);
     memset(gradient_real, 0, sizeof_gradient);
     memset(gradient_imag, 0, sizeof_gradient);
 
     // Initialize local hessian
-    float hessian_real[nr_subgrids][nr_terms*nr_terms];
-    float hessian_imag[nr_subgrids][nr_terms*nr_terms];
+    float hessian_real[nr_subgrids][nr_terms][nr_terms] __attribute__((aligned((ALIGNMENT))));
+    float hessian_imag[nr_subgrids][nr_terms][nr_terms] __attribute__((aligned((ALIGNMENT))));
     size_t sizeof_hessian = nr_subgrids * nr_terms * nr_terms * sizeof(float);
     memset(hessian_real, 0, sizeof_hessian);
     memset(hessian_imag, 0, sizeof_hessian);
@@ -170,17 +170,15 @@ void kernel_calibrate(
                 }
 
                 // Compute visibilities
-                unsigned int nr_elements = NR_POLARIZATIONS * (nr_terms + 1);
                 float sums_real[NR_POLARIZATIONS][nr_terms+1];
                 float sums_imag[NR_POLARIZATIONS][nr_terms+1];
-                memset(sums_real, 0, nr_elements * sizeof(float));
 
                 for (unsigned int term_nr = 0; term_nr <= nr_terms; term_nr++) {
                     idg::float2 sum[NR_POLARIZATIONS];
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        sum[pol].real = sums_real[pol][term_nr];
-                        sum[pol].imag = sums_imag[pol][term_nr];
+                        sum[pol].real = 0;
+                        sum[pol].imag = 0;
                     }
 
                     compute_reduction(
@@ -191,41 +189,42 @@ void kernel_calibrate(
                         pixels_yx_imag[term_nr], pixels_yy_imag[term_nr],
                         phasor_real, phasor_imag, sum);
 
+                    // Store and scale sums
+                    const float scale = term_nr < nr_terms ? 1.0f / nr_pixels : 1.0f;
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        sums_real[pol][term_nr] = sum[pol].real;
-                        sums_imag[pol][term_nr] = sum[pol].imag;
+                        sums_real[pol][term_nr] = sum[pol].real * scale;
+                        sums_imag[pol][term_nr] = sum[pol].imag * scale;
                     }
                 }
-
-                // Scale visibilities
-                const float scale = 1.0f / nr_pixels;
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    for (unsigned int i = 0; i < nr_terms; i++) {
-                        sums_real[pol][i] *= scale;
-                        sums_imag[pol][i] *= scale;
-                    }
-                }
-
-                // Store visibilities
-                int time_idx = time_offset + time;
-                int chan_idx = chan;
-                size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
 
                 // Compute residual visibilities
+                float visibility_res_real[NR_POLARIZATIONS];
+                float visibility_res_imag[NR_POLARIZATIONS];
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sums_real[pol][0] = visibilities[vis_idx+pol].real - sums_real[pol][0];
-                    sums_imag[pol][0] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
+                    int time_idx = time_offset + time;
+                    int chan_idx = chan;
+                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                    visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][0];
+                    visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
+                }
+
+                // Reorder sums
+                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (unsigned int term_nr = 0; term_nr < nr_terms; term_nr++) {
+                        sums_real[pol][term_nr] = sums_real[pol][term_nr+1];
+                        sums_imag[pol][term_nr] = sums_imag[pol][term_nr+1];
+                    }
                 }
 
                 // Update local gradient
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                         gradient_real[s][term_nr0] +=
-                           sums_real[pol][term_nr0+1] * sums_real[pol][0] +
-                           sums_imag[pol][term_nr0+1] * sums_imag[pol][0];
+                           sums_real[pol][term_nr0] * visibility_res_real[pol] +
+                           sums_imag[pol][term_nr0] * visibility_res_imag[pol];
                         gradient_imag[s][term_nr0] +=
-                           sums_real[pol][term_nr0+1] * sums_imag[pol][0] -
-                           sums_imag[pol][term_nr0+1] * sums_real[pol][0];
+                           sums_real[pol][term_nr0] * visibility_res_imag[pol] -
+                           sums_imag[pol][term_nr0] * visibility_res_real[pol];
                     }
                 }
 
@@ -233,12 +232,12 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                         for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
-                            hessian_real[s][term_nr1*nr_terms + term_nr0] +=
-                                sums_real[pol][term_nr0+1] * sums_real[pol][term_nr1+1] +
-                                sums_imag[pol][term_nr0+1] * sums_imag[pol][term_nr1+1];
-                            hessian_imag[s][term_nr1*nr_terms + term_nr0] +=
-                                sums_real[pol][term_nr0+1] * sums_imag[pol][term_nr1+1] -
-                                sums_imag[pol][term_nr0+1] * sums_real[pol][term_nr1+1];
+                            hessian_real[s][term_nr1][term_nr0] +=
+                                sums_real[pol][term_nr0] * sums_real[pol][term_nr1] +
+                                sums_imag[pol][term_nr0] * sums_imag[pol][term_nr1];
+                            hessian_imag[s][term_nr1][term_nr0] +=
+                                sums_real[pol][term_nr0] * sums_imag[pol][term_nr1] -
+                                sums_imag[pol][term_nr0] * sums_real[pol][term_nr1];
                         }
                     }
                 }
@@ -256,9 +255,12 @@ void kernel_calibrate(
 
     // Update global hessian
     for (unsigned int s = 0; s < nr_subgrids; s++) {
-        for (unsigned int i = 0; i < nr_terms*nr_terms; i++) {
-            hessian[i].real += hessian_real[s][i];
-            hessian[i].imag += hessian_imag[s][i];
+        for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
+            for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
+                unsigned idx = term_nr1 * nr_terms + term_nr0;
+                hessian[idx].real += hessian_real[s][term_nr1][term_nr0];
+                hessian[idx].imag += hessian_imag[s][term_nr1][term_nr0];
+            }
         }
     }
 
