@@ -1,6 +1,6 @@
 #include <ThrowAssert.hpp> // assert
 #include <cmath> // M_PI
-
+#include <memory>
 #include "Proxy.h"
 
 namespace idg {
@@ -262,6 +262,154 @@ namespace idg {
                 aterms,
                 aterms_offsets,
                 spheroidal);
+        }
+
+
+        void Proxy::calibrate_init(
+            const float w_step, // in lambda
+            const Array1D<float>& shift,
+            const float cell_size, // TODO: unit?
+            unsigned int kernel_size, // full width in pixels
+            unsigned int subgrid_size,
+            const Array1D<float>& frequencies,
+            Array3D<Visibility<std::complex<float>>>& visibilities,
+            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+            const Grid& grid,
+            const Array2D<float>& spheroidal)
+        {
+            #if defined(DEBUG)
+            std::cout << __func__ << std::endl;
+            #endif
+
+            // TODO
+            //check_dimensions(
+            //    subgrid_size, frequencies, visibilities, uvw, baselines,
+            //    grid, aterms, aterms_offsets, spheroidal);
+
+            if ((w_step != 0.0) && (!supports_wstack_degridding())) {
+                throw std::invalid_argument("w_step is not zero, but this Proxy does not support calibration with W-stacking.");
+            }
+
+            // Arguments
+            auto nr_timesteps = visibilities.get_y_dim();
+            auto nr_baselines = baselines.get_x_dim();
+            auto nr_channels  = frequencies.get_x_dim();
+            auto grid_size    = grid.get_x_dim();
+            auto nr_w_layers  = grid.get_w_dim();
+
+            // Initialize
+            unsigned int nr_antennas = 0;
+            for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+                nr_antennas = max(nr_antennas, baselines(bl).first+1);
+                nr_antennas = max(nr_antennas, baselines(bl).second+1);
+            }
+
+            // New buffers for data grouped by station
+            Array3D<UVWCoordinate<float>>  uvw1(nr_antennas, nr_antennas-1, nr_timesteps);
+            Array4D<Visibility<std::complex<float>>> visibilities1(nr_antennas, nr_antennas-1, nr_timesteps, nr_channels);
+            Array2D<std::pair<unsigned int,unsigned int>> baselines1(nr_antennas, nr_antennas-1);
+
+            // Group baselines by station
+            for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+                unsigned int antenna1 = baselines(bl).first;
+                unsigned int antenna2 = baselines(bl).second;
+                unsigned int bl1      = antenna2 - (antenna2>antenna1);
+
+                baselines1(antenna1, bl1) = {antenna1, antenna2};
+
+                for (unsigned int time = 0; time < nr_timesteps; time++) {
+                    uvw1(antenna1, bl1, time) = uvw(bl, time);
+
+                    for (unsigned int channel = 0; channel < nr_channels; channel++) {
+                        visibilities1(antenna1, bl1, time, channel) = visibilities(bl, time, channel);
+                    }
+                }
+
+
+                // Also add swapped baseline
+                // Need to conjugate visibilities
+                // and invert sign of uvw coordinates
+
+                std::swap(antenna1, antenna2);
+                bl1 = antenna2 - (antenna2>antenna1);
+                baselines1(antenna1, bl1) = {antenna1, antenna2};
+
+                for (unsigned int time = 0; time < nr_timesteps; time++) {
+                    uvw1(antenna1, bl1, time).u = -uvw(bl, time).u;
+                    uvw1(antenna1, bl1, time).v = -uvw(bl, time).v;
+                    uvw1(antenna1, bl1, time).w = -uvw(bl, time).w;
+
+                    for (unsigned int channel = 0; channel < nr_channels; channel++) {
+                        visibilities1(antenna1, bl1, time, channel) = {
+                            conj(visibilities(bl, time, channel).xx), conj(visibilities(bl, time, channel).yx),
+                            conj(visibilities(bl, time, channel).xy), conj(visibilities(bl, time, channel).yy)};
+                    } // end for channel
+                } // end for time
+            } // end for baseline
+
+
+            // Set Plan options
+            Plan::Options options;
+            options.w_step = w_step;
+            options.nr_w_layers = nr_w_layers;
+
+            // Initialize aterms offsets
+            Array1D<unsigned int> aterms_offsets(2);
+            aterms_offsets(0) = 0;
+            aterms_offsets(1) = nr_timesteps;
+
+            // Create one plan per antenna
+            std::vector<std::unique_ptr<Plan>> plans;
+            plans.reserve(nr_antennas);
+
+            for (unsigned int i = 0; i <nr_antennas; i++) {
+                plans.push_back(std::unique_ptr<Plan>(new Plan(
+                    kernel_size,
+                    subgrid_size,
+                    grid_size,
+                    cell_size,
+                    frequencies,
+                    Array2D<UVWCoordinate<float>>(uvw1.data(i), nr_antennas-1, nr_timesteps),
+                    Array1D<std::pair<unsigned int,unsigned int>>(baselines1.data(i), nr_antennas-1),
+                    aterms_offsets,
+                    options)));
+            }
+
+            // Initialize calibration
+            Array1D<float> shift1(2);
+            shift1(0) = shift(0);
+            shift1(1) = shift(1);
+
+            do_calibrate_init(
+                std::move(plans),
+                w_step,
+                std::move(shift1),
+                cell_size,
+                kernel_size,
+                subgrid_size,
+                frequencies,
+                std::move(visibilities1),
+                std::move(uvw1),
+                std::move(baselines1),
+                grid,
+                spheroidal);
+        }
+
+        void Proxy::calibrate_update(
+            const int station_nr,
+            const Array3D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array3D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+            Array2D<std::complex<float>>& hessian,
+            Array1D<std::complex<float>>& gradient
+        )
+        {
+            do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient);
+        }
+
+        void Proxy::calibrate_finish()
+        {
+            do_calibrate_finish();
         }
 
         void Proxy::degridding(

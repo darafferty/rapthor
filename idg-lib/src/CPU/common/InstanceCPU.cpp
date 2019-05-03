@@ -19,6 +19,8 @@ namespace idg {
                 KernelsInstance(),
                 function_gridder(nullptr),
                 function_degridder(nullptr),
+                function_calibrate(nullptr),
+                function_phasor(nullptr),
                 function_fft(nullptr),
                 function_adder(nullptr),
                 function_splitter(nullptr),
@@ -50,6 +52,8 @@ namespace idg {
                 // Unload functions
                 delete function_gridder;
                 delete function_degridder;
+                delete function_calibrate;
+                delete function_phasor;
                 delete function_fft;
                 delete function_adder;
                 delete function_splitter;
@@ -92,6 +96,12 @@ namespace idg {
                     if (dlsym(*modules[i], kernel::cpu::name_degridder.c_str())) {
                         function_degridder = new runtime::Function(*modules[i], name_degridder.c_str());
                     }
+                    if (dlsym(*modules[i], kernel::cpu::name_calibrate.c_str())) {
+                        function_calibrate = new runtime::Function(*modules[i], name_calibrate.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_phasor.c_str())) {
+                        function_phasor = new runtime::Function(*modules[i], name_phasor.c_str());
+                    }
                     if (dlsym(*modules[i], kernel::cpu::name_fft.c_str())) {
                         function_fft = new runtime::Function(*modules[i], name_fft.c_str());
                     }
@@ -113,6 +123,8 @@ namespace idg {
             // Function signatures
             #define sig_gridder         (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_calibrate       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_phasor          (void (*)(int,int,int,float,float,const float*,int,void*,void*,void*,void*))
             #define sig_fft		        (void (*)(long,long,long,void*,int))
             #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
             #define sig_splitter        (void (*)(long,long,int,void*,void*,void*))
@@ -171,6 +183,54 @@ namespace idg {
                   uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_degridder(states[0], states[1]); }
+            }
+
+            void InstanceCPU::run_calibrate(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                float image_size,
+                float w_step,
+                const float* shift,
+                int nr_channels,
+                int nr_terms,
+                void *uvw,
+                void *wavenumbers,
+                void *visibilities,
+                void *aterm,
+                void *aterm_derivative,
+                void *metadata,
+                void *subgrid,
+                void *phasors,
+                void *hessian,
+                void *gradient)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                (sig_calibrate (void *) *function_calibrate)(
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels, nr_terms,
+                  uvw, wavenumbers, visibilities, aterm, aterm_derivative, metadata, subgrid, phasors, hessian, gradient);
+                states[1] = powerSensor->read();
+                if (report) { report->update_calibrate(states[0], states[1]); }
+                if (report) { report->update_host(states[0], states[1]); }
+            }
+
+            void InstanceCPU::run_phasor(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                float image_size,
+                float w_step,
+                const float* shift,
+                int nr_channels,
+                void *uvw,
+                void *wavenumbers,
+                void *metadata,
+                void *phasors)
+            {
+                (sig_phasor (void *) *function_phasor)(
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels,
+                  uvw, wavenumbers, metadata, phasors);
             }
 
             void InstanceCPU::run_fft(

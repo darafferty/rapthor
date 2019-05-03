@@ -3,9 +3,11 @@ import ctypes
 import numpy as np
 import idg
 
-lib = idg.load_library('libidg-common.so')
-
 class Proxy(object):
+
+    def __del__(self):
+        """Destroy"""
+        self.lib.Proxy_destroy(self.obj)
 
     def gridding(
         self,
@@ -74,42 +76,42 @@ class Proxy(object):
         spheroidal_width             = spheroidal.shape[1]
 
         # call C function to do the work
-        self._cwrap_griddding(
-            w_step,
-            shift,
-            cell_size,
-            kernel_size,
-            subgrid_size,
-            frequencies,
+        self.lib.Proxy_gridding(
+            self.obj,
+            ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_float(cell_size),
+            ctypes.c_int(kernel_size),
+            ctypes.c_int(subgrid_size),
+            frequencies.ctypes.data_as(ctypes.c_void_p),
             nr_channels,
-            visibilities,
-            visibilities_nr_baselines,
-            visibilities_nr_timesteps,
-            visibilities_nr_channels,
-            visibilities_nr_correlations,
-            uvw,
-            uvw_nr_baselines,
-            uvw_nr_timesteps,
-            uvw_nr_coordinates,
-            baselines,
-            baselines_nr_baselines,
-            baselines_two,
-            grid,
-            grid_nr_correlations,
-            grid_height,
-            grid_width,
-            aterms,
-            aterms_nr_timeslots,
-            aterms_nr_stations,
-            aterms_aterm_height,
-            aterms_aterm_width,
-            aterms_nr_correlations,
-            aterms_offsets,
-            aterms_offsets_nr_timeslots, # plus one
-            spheroidal,
-            spheroidal_height,
-            spheroidal_width)
-
+            visibilities.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(visibilities_nr_baselines),
+            ctypes.c_int(visibilities_nr_timesteps),
+            ctypes.c_int(visibilities_nr_channels),
+            ctypes.c_int(visibilities_nr_correlations),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(uvw_nr_baselines),
+            ctypes.c_int(uvw_nr_timesteps),
+            ctypes.c_int(uvw_nr_coordinates),
+            baselines.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(baselines_nr_baselines),
+            ctypes.c_int(baselines_two),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(grid_nr_correlations),
+            ctypes.c_int(grid_height),
+            ctypes.c_int(grid_width),
+            aterms.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_nr_timeslots),
+            ctypes.c_int(aterms_nr_stations),
+            ctypes.c_int(aterms_aterm_height),
+            ctypes.c_int(aterms_aterm_width),
+            ctypes.c_int(aterms_nr_correlations),
+            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_offsets_nr_timeslots),
+            spheroidal.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(spheroidal_height),
+            ctypes.c_int(spheroidal_width))
 
     def degridding(
         self,
@@ -178,42 +180,201 @@ class Proxy(object):
         spheroidal_width             = spheroidal.shape[1]
 
         # call C function to do the work
-        self._cwrap_degridding(
+        self.lib.Proxy_degridding(
+            self.obj,
+            ctypes.c_float(w_step),
+            shift.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_float(cell_size),
+            ctypes.c_int(kernel_size),
+            ctypes.c_int(subgrid_size),
+            frequencies.ctypes.data_as(ctypes.c_void_p),
+            nr_channels,
+            visibilities.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(visibilities_nr_baselines),
+            ctypes.c_int(visibilities_nr_timesteps),
+            ctypes.c_int(visibilities_nr_channels),
+            ctypes.c_int(visibilities_nr_correlations),
+            uvw.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(uvw_nr_baselines),
+            ctypes.c_int(uvw_nr_timesteps),
+            ctypes.c_int(uvw_nr_coordinates),
+            baselines.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(baselines_nr_baselines),
+            ctypes.c_int(baselines_two),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(grid_nr_correlations),
+            ctypes.c_int(grid_height),
+            ctypes.c_int(grid_width),
+            aterms.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_nr_timeslots),
+            ctypes.c_int(aterms_nr_stations),
+            ctypes.c_int(aterms_aterm_height),
+            ctypes.c_int(aterms_aterm_width),
+            ctypes.c_int(aterms_nr_correlations),
+            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(aterms_offsets_nr_timeslots),
+            spheroidal.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(spheroidal_height),
+            ctypes.c_int(spheroidal_width))
+
+    def calibrate_init(
+        self,
+        w_step,
+        shift,
+        cell_size,
+        kernel_size,
+        subgrid_size,
+        frequencies,
+        visibilities,
+        uvw,
+        baselines,
+        grid,
+        spheroidal):
+        """
+        Calibrate
+
+        :param frequencies: numpy.ndarray(
+                shapenr_channels,
+                dtype = idg.frequenciestype)
+        :param visibilities: numpy.ndarray(
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                dtype=idg.visibilitiestype)
+        :param uvw: numpy.ndarray(
+                shape=(nr_baselines, nr_timesteps),
+                dtype = idg.uvwtype)
+        :param baselines: numpy.ndarray(
+                shape=(nr_baselines),
+                dtype=idg.baselinetype)
+        :param grid: numpy.ndarray(
+                shape=(nr_correlations, height, width),
+                dtype = idg.gridtype)
+        :param spheroidal: numpy.ndarray(
+                shape=(height, width),
+                dtype = idg.spheroidaltype)
+        """
+        # extract dimensions
+        nr_channels = frequencies.shape[0]
+        nr_baselines    = visibilities.shape[0]
+        nr_timesteps    = visibilities.shape[1]
+        nr_correlations = visibilities.shape[3]
+        grid_height                  = grid.shape[1]
+        grid_width                   = grid.shape[2]
+
+        # call C function to do the work
+
+        self.lib.Proxy_calibrate_init.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_float,              #float w_step,
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(2,),
+                flags='C_CONTIGUOUS'),   #float* shift,
+            ctypes.c_float,              #const float cell_size,
+            ctypes.c_uint,               #unsigned int kernel_size,
+            ctypes.c_uint,               #unsigned int subgrid_size,
+            ctypes.c_uint,               #unsigned int nr_channels,
+            ctypes.c_uint,               #unsigned int nr_baselines,
+            ctypes.c_uint,               #unsigned int nr_timesteps,
+            ctypes.c_uint,               #unsigned int nr_correlations,
+            ctypes.c_uint,               #unsigned int grid_height,
+            ctypes.c_uint,               #unsigned int grid_width,
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(nr_channels,),
+                flags='C_CONTIGUOUS'),   #float* frequencies,
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* visibilities,
+            np.ctypeslib.ndpointer(
+                dtype = idg.uvwtype,
+                shape=(nr_baselines, nr_timesteps),
+                flags='C_CONTIGUOUS'),   #float* uvw,
+            np.ctypeslib.ndpointer(
+                dtype=idg.baselinetype,
+                shape=(nr_baselines,),
+                flags='C_CONTIGUOUS'),   #unsigned int* baselines,
+            np.ctypeslib.ndpointer(
+                dtype=idg.gridtype,
+                shape=(nr_correlations, grid_height, grid_width),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* grid,
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                ndim=2,
+                shape=(subgrid_size, subgrid_size),
+                flags='C_CONTIGUOUS')    #float* spheroidal);
+            ]
+
+        self.lib.Proxy_calibrate_init(
+            self.obj,
             w_step,
             shift,
             cell_size,
             kernel_size,
             subgrid_size,
-            frequencies,
             nr_channels,
-            visibilities,
-            visibilities_nr_baselines,
-            visibilities_nr_timesteps,
-            visibilities_nr_channels,
-            visibilities_nr_correlations,
-            uvw,
-            uvw_nr_baselines,
-            uvw_nr_timesteps,
-            uvw_nr_coordinates,
-            baselines,
-            baselines_nr_baselines,
-            baselines_two,
-            grid,
-            grid_nr_correlations,
+            nr_baselines,
+            nr_timesteps,
+            nr_correlations,
             grid_height,
             grid_width,
-            aterms,
-            aterms_nr_timeslots,
-            aterms_nr_stations,
-            aterms_aterm_height,
-            aterms_aterm_width,
-            aterms_nr_correlations,
-            aterms_offsets,
-            aterms_offsets_nr_timeslots, # plus one
-            spheroidal,
-            spheroidal_height,
-            spheroidal_width)
+            frequencies,
+            visibilities,
+            uvw,
+            baselines,
+            grid,
+            spheroidal)
 
+    def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient):
+
+        nr_antennas = aterms.shape[0]
+        subgrid_size = aterms.shape[1]
+        nr_terms = gradient.shape[0]
+        nr_correlations = 4
+
+        self.lib.Proxy_calibrate_update.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_uint,               #unsigned int antenna_nr
+            ctypes.c_uint,               #unsigned int subgrid_size
+            ctypes.c_uint,               #unsigned int nr_antennas
+            ctypes.c_uint,               #unsigned int nr_terms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_terms, nr_terms),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* hessian
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_terms,),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* gradient
+            ]
+
+        self.lib.Proxy_calibrate_update(
+            self.obj,
+            antenna_nr,
+            subgrid_size,
+            nr_antennas,
+            nr_terms,
+            aterms,
+            aterm_derivatives,
+            hessian,
+            gradient)
+
+    def calibrate_finish(self):
+
+        self.lib.Proxy_calibrate_finish.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ]
+
+        self.lib.Proxy_calibrate_finish(
+            self.obj)
 
     def transform(
         self,
@@ -233,95 +394,13 @@ class Proxy(object):
         width           = grid.shape[2]
 
         # call C function to do the work
-        self._cwrap_transform(
-            direction,
-            grid,
-            nr_correlations,
-            height,
-            width)
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_gridding(
-        w_step,
-        shift,
-        cell_size,
-        kernel_size,
-        subgrid_size,
-        frequencies,
-        nr_channels,
-        visibilities,
-        visibilities_nr_baselines,
-        visibilities_nr_timesteps,
-        visibilities_nr_channels,
-        visibilities_nr_correlations,
-        uvw,
-        uvw_nr_baselines,
-        uvw_nr_timesteps,
-        uvw_nr_coordinates,
-        baselines,
-        baselines_nr_baselines,
-        baselines_two,
-        grid,
-        grid_nr_correlations,
-        grid_height,
-        grid_width,
-        aterms,
-        aterms_nr_timeslots,
-        aterms_nr_stations,
-        aterms_aterm_height,
-        aterms_aterm_width,
-        aterms_nr_correlations,
-        aterms_offsets,
-        aterms_offsets_nr_timeslots, # plus one
-        spheroidal,
-        spheroidal_height,
-        spheroidal_width):
-        pass
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_degridding(
-        w_step,
-        shift,
-        cell_size,
-        kernel_size,
-        subgrid_size,
-        frequencies,
-        nr_channels,
-        visibilities,
-        visibilities_nr_baselines,
-        visibilities_nr_timesteps,
-        visibilities_nr_channels,
-        visibilities_nr_correlations,
-        uvw,
-        uvw_nr_baselines,
-        uvw_nr_timesteps,
-        uvw_nr_coordinates,
-        baselines,
-        baselines_nr_baselines,
-        baselines_two,
-        grid,
-        grid_nr_correlations,
-        grid_height,
-        grid_width,
-        aterms,
-        aterms_nr_timeslots,
-        aterms_nr_stations,
-        aterms_aterm_height,
-        aterms_aterm_width,
-        aterms_nr_correlations,
-        aterms_offsets,
-        aterms_offsets_nr_timeslots,
-        spheroidal,
-        spheroidal_height,
-        spheroidal_width):
-        pass
-
-    # Wrapper to C function (override for each class inheriting from this)
-    def _cwrap_transform(
-        self,
-        direction,
-        grid):
-        pass
+        self.lib.Proxy_transform(
+            self.obj,
+            ctypes.c_int(direction),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(nr_correlations),
+            ctypes.c_int(height),
+            ctypes.c_int(width))
 
     def get_grid(
         self,
@@ -329,7 +408,7 @@ class Proxy(object):
         grid_size):
 
         # Get pointer to grid data
-        lib.Proxy_get_grid.restype = ctypes.c_voidp
+        self.lib.Proxy_get_grid.restype = ctypes.c_voidp
         ptr = lib.Proxy_get_grid(
             self.obj,
             ctypes.c_int(nr_correlations),

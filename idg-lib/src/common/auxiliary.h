@@ -58,6 +58,16 @@ namespace idg {
             uint64_t subgrid_size,
             uint64_t nr_correlations = 4);
 
+        uint64_t flops_calibrate(
+            uint64_t nr_terms,
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations = 4);
+
+        uint64_t bytes_calibrate();
+
         uint64_t flops_fft(
             uint64_t size,
             uint64_t batch,
@@ -153,6 +163,7 @@ namespace idg {
         const std::string name_splitter("splitter");
         const std::string name_gridder("gridder");
         const std::string name_degridder("degridder");
+        const std::string name_calibrate("calibrate");
         const std::string name_subgrid_fft("sub-fft");
         const std::string name_grid_fft("grid-fft");
         const std::string name_fft_shift("fft-shift");

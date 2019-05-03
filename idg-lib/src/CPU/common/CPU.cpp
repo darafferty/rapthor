@@ -285,6 +285,211 @@ namespace idg {
                 }
             } // end degridding
 
+
+            void CPU::do_calibrate_init(
+                std::vector<std::unique_ptr<Plan>> &&plans,
+                float w_step,
+                Array1D<float> &&shift,
+                float cell_size,
+                unsigned int kernel_size,
+                unsigned int subgrid_size,
+                const Array1D<float> &frequencies,
+                Array4D<Visibility<std::complex<float>>> &&visibilities,
+                Array3D<UVWCoordinate<float>> &&uvw,
+                Array2D<std::pair<unsigned int,unsigned int>> &&baselines,
+                const Grid& grid,
+                const Array2D<float>& spheroidal)
+            {
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+                // Arguments
+                auto nr_antennas  = plans.size();
+                auto grid_size    = grid.get_x_dim();
+                auto image_size   = cell_size * grid_size;
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = frequencies.get_x_dim();
+
+                // Allocate subgrids for all antennas
+                std::vector<Array4D<std::complex<float>>> subgrids;
+                subgrids.reserve(nr_antennas);
+
+                // Allocate phasors for all antennas
+                std::vector<Array4D<std::complex<float>>> phasors;
+                phasors.reserve(nr_antennas);
+
+                // Start performance measurement
+                #if defined(REPORT_TOTAL)
+                report.initialize();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                #endif
+
+                // Create subgrids for every antenna
+                for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
+                {
+                    // Allocate subgrids for current antenna
+                    unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
+                    Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
+
+                    // Get data pointers
+                    const float *shift_ptr = shift.data();
+                    void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
+                    void *subgrids_ptr     = subgrids_.data();
+                    void *grid_ptr         = grid.data();
+
+                    // Splitter kernel
+                    if (w_step == 0.0) {
+                        kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    } else {
+                        kernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    }
+
+                    // FFT kernel
+                    kernels.run_subgrid_fft(grid_size, subgrid_size, nr_subgrids, subgrids_ptr, FFTW_FORWARD);
+
+                    // Apply spheroidal
+                    for (unsigned int i = 0; i < nr_subgrids; i++) {
+                        for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
+                            for (unsigned int j = 0; j < subgrid_size; j++) {
+                                for (unsigned int k = 0; k < subgrid_size; k++) {
+                                    unsigned int y = (j + (subgrid_size/2)) % subgrid_size;
+                                    unsigned int x = (k + (subgrid_size/2)) % subgrid_size;
+                                    subgrids_(i, pol, y, x) *= spheroidal(j,k);
+                                }
+                            }
+                        }
+                    }
+
+                    // Store subgrids for current antenna
+                    subgrids.push_back(std::move(subgrids_));
+
+                    // Allocate phasors for current antenna
+                    Array4D<std::complex<float>> phasors_(nr_subgrids * nr_timesteps, nr_channels, subgrid_size, subgrid_size);
+
+                    // Get data pointers
+                    void *wavenumbers_ptr  = wavenumbers.data();
+                    void *uvw_ptr          = uvw.data(antenna_nr);
+                    void *phasors_ptr      = phasors_.data();
+
+                    // Compute phasors
+                    kernels.run_phasor(
+                        nr_subgrids,
+                        grid_size,
+                        subgrid_size,
+                        image_size,
+                        w_step,
+                        shift_ptr,
+                        nr_channels,
+                        uvw_ptr,
+                        wavenumbers_ptr,
+                        metadata_ptr,
+                        phasors_ptr);
+
+                    // Store phasors for current antenna
+                    phasors.push_back(std::move(phasors_));
+                } // end for antennas
+
+                // End performance measurement
+                #if defined(REPORT_TOTAL)
+                states[1] = powerSensor->read();
+                report.update_host(states[0], states[1]);
+                report.print_total(0, 0);
+                #endif
+
+                // Set calibration state member variables
+                m_calibrate_state = {
+                    std::move(plans),
+                    w_step,
+                    std::move(shift),
+                    cell_size,
+                    image_size,
+                    kernel_size,
+                    grid_size,
+                    subgrid_size,
+                    std::move(wavenumbers),
+                    std::move(visibilities),
+                    std::move(uvw),
+                    std::move(baselines),
+                    std::move(subgrids),
+                    std::move(phasors)
+                };
+            }
+
+            void CPU::do_calibrate_update(
+                const int antenna_nr,
+                const Array3D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array3D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
+                Array2D<std::complex<float>>& hessian,
+                Array1D<std::complex<float>>& gradient)
+            {
+                // Arguments
+                auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+                auto nr_channels  = m_calibrate_state.wavenumbers.get_x_dim();
+                auto nr_terms     = aterm_derivatives.get_z_dim();
+                auto subgrid_size = aterms.get_y_dim();
+
+                // Performance measurement
+                if (antenna_nr == 0) {
+                    report.initialize(nr_channels, subgrid_size, 0, nr_terms);
+                }
+
+                // Data pointers
+                const float *shift_ptr     = m_calibrate_state.shift.data();
+                void *wavenumbers_ptr      = m_calibrate_state.wavenumbers.data();
+                void *aterm_ptr            = aterms.data();
+                void *aterm_derivative_ptr = aterm_derivatives.data();
+                void *metadata_ptr         = (void *) m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
+                void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
+                void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
+                void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
+                void *phasors_ptr          = m_calibrate_state.phasors[antenna_nr].data();
+                void *hessian_ptr          = hessian.data();
+                void *gradient_ptr         = gradient.data();
+
+                // Run calibration update step
+                kernels.run_calibrate(
+                    nr_subgrids,
+                    m_calibrate_state.grid_size,
+                    m_calibrate_state.subgrid_size,
+                    m_calibrate_state.image_size,
+                    m_calibrate_state.w_step,
+                    shift_ptr,
+                    nr_channels,
+                    nr_terms,
+                    uvw_ptr,
+                    wavenumbers_ptr,
+                    visibilities_ptr,
+                    aterm_ptr,
+                    aterm_derivative_ptr,
+                    metadata_ptr,
+                    subgrids_ptr,
+                    phasors_ptr,
+                    hessian_ptr,
+                    gradient_ptr);
+
+                // Performance reporting
+                auto current_nr_subgrids  = nr_subgrids;
+                auto current_nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                auto current_nr_visibilities = current_nr_timesteps * nr_channels;
+                report.update_total(current_nr_subgrids, current_nr_timesteps, current_nr_visibilities);
+            }
+
+            void CPU::do_calibrate_finish()
+            {
+                // Performance reporting
+                #if defined(REPORT_TOTAL)
+                auto nr_antennas  = m_calibrate_state.plans.size();
+                auto total_nr_timesteps = 0;
+                auto total_nr_subgrids  = 0;
+                for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
+                    total_nr_timesteps += m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                    total_nr_subgrids  += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+                }
+                report.print_total(total_nr_timesteps, total_nr_subgrids);
+                report.print_visibilities(auxiliary::name_calibrate);
+                #endif
+            }
+
             void CPU::do_transform(
                 DomainAtoDomainB direction,
                 Array3D<std::complex<float>>& grid)

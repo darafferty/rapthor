@@ -104,6 +104,40 @@ namespace idg {
             return bytes_gridder(nr_channels, nr_timesteps, nr_subgrids, subgrid_size, nr_correlations);
         }
 
+        uint64_t flops_calibrate(
+            uint64_t nr_terms,
+            uint64_t nr_channels,
+            uint64_t nr_timesteps,
+            uint64_t nr_subgrids,
+            uint64_t subgrid_size,
+            uint64_t nr_correlations)
+        {
+            // Flops per subgrid
+            uint64_t flops_per_subgrid = 0;
+            flops_per_subgrid += nr_terms * subgrid_size * subgrid_size * nr_correlations * 30; // aterm
+            flops_per_subgrid += nr_terms * 2; // gradient sum
+            flops_per_subgrid += nr_terms * nr_terms * 2; // hessian sum
+
+            // Flops per visibility
+            uint64_t flops_per_visibility = 0;
+            flops_per_visibility += nr_terms * subgrid_size * subgrid_size * nr_correlations * 8; // reduction
+            flops_per_visibility += nr_correlations * 8; // scale
+            flops_per_visibility += nr_correlations * 2; // residual visibility
+            flops_per_visibility += nr_correlations * nr_terms * 6; // gradient
+            flops_per_visibility += nr_correlations * nr_terms * nr_terms * 6; // hessian
+
+            // Total number of flops
+            uint64_t flops_total = 0;
+            flops_total += nr_subgrids * flops_per_subgrid;
+            flops_total += nr_timesteps * nr_channels * flops_per_visibility;
+            return flops_total;
+        }
+
+        uint64_t bytes_calibrate()
+        {
+            return 0;
+        }
+
         uint64_t flops_fft(
             uint64_t size,
             uint64_t batch,
@@ -295,6 +329,9 @@ namespace idg {
                 return;
             }
 
+            // Ignore unrealistic performance
+            int gflops_bound = 1e5; // 100 TFLOPS
+
             double watt = joules / runtime;
             #pragma omp critical (clog)
             {
@@ -312,8 +349,10 @@ namespace idg {
                 if (flops != 0) {
                     clog << ", ";
                     double gflops = (flops / runtime) * 1e-9;
+                    if (gflops < gflops_bound) {
                         clog << setw(FW2) << right << fixed << setprecision(2)
                                           << gflops << " GFLOPS";
+                    }
                 }
                 #endif
                 if (bytes != 0) {
