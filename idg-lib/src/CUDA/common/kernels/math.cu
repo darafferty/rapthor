@@ -7,6 +7,10 @@ inline __device__ float2 operator+(float2 a, float2 b) {
     return make_float2(a.x + b.x, a.y + b.y);
 }
 
+inline __device__ float2 operator-(float2 a, float2 b) {
+    return make_float2(a.x - b.x, a.y - b.y);
+}
+
 inline __device__ float2 operator*(float2 a, float b) {
     return make_float2(a.x * b, a.y * b);
 }

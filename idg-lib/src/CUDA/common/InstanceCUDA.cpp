@@ -563,13 +563,14 @@ namespace idg {
                 cu::DeviceMemory& d_aterm_derivatives,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
+                cu::DeviceMemory& d_scratch,
                 cu::DeviceMemory& d_hessian,
                 cu::DeviceMemory& d_gradient)
             {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_terms,
                     d_uvw, d_wavenumbers, d_aterm, d_aterm_derivatives,
-                    d_metadata, d_subgrid, d_hessian, d_gradient };
+                    d_metadata, d_subgrid, d_scratch, d_hessian, d_gradient };
 
                 dim3 grid(nr_subgrids);
                 dim3 block(block_calibrate);
