@@ -28,14 +28,14 @@ inline size_t index_phasors(
 extern "C" {
 
 void kernel_calibrate(
-    const int                        nr_subgrids,
-    const int                        grid_size,
-    const int                        subgrid_size,
+    const unsigned int               nr_subgrids,
+    const unsigned int               grid_size,
+    const unsigned int               subgrid_size,
     const float                      image_size,
     const float                      w_step_in_lambda,
     const float* __restrict__        shift,
-    const int                        nr_channels,
-    const int                        nr_terms,
+    const unsigned int               nr_channels,
+    const unsigned int               nr_terms,
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
           idg::float2*               visibilities,
@@ -71,17 +71,14 @@ void kernel_calibrate(
 
     // Iterate all subgrids
     #pragma omp parallel for schedule(guided)
-    for (int s = 0; s < nr_subgrids; s++) {
+    for (unsigned int s = 0; s < nr_subgrids; s++) {
 
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
-        const int nr_timesteps = m.nr_timesteps;
-        const int station1     = m.baseline.station1;
-        const int station2     = m.baseline.station2;
-        const int x_coordinate = m.coordinate.x;
-        const int y_coordinate = m.coordinate.y;
-        const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
+        const unsigned int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+        const unsigned int nr_timesteps = m.nr_timesteps;
+        const unsigned int station1     = m.baseline.station1;
+        const unsigned int station2     = m.baseline.station2;
 
         // Storage
         unsigned nr_pixels = subgrid_size*subgrid_size;
@@ -159,9 +156,9 @@ void kernel_calibrate(
         } // end for pixels
 
         // Iterate all timesteps
-        for (int time = 0; time < nr_timesteps; time++) {
+        for (unsigned int time = 0; time < nr_timesteps; time++) {
             // Iterate all channels
-            for (int chan = 0; chan < nr_channels; chan++) {
+            for (unsigned int chan = 0; chan < nr_channels; chan++) {
                 // Load phasor
                 float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
@@ -178,7 +175,7 @@ void kernel_calibrate(
                 float sums_imag[NR_POLARIZATIONS][nr_terms+1];
                 memset(sums_real, 0, nr_elements * sizeof(float));
 
-                for (int term_nr = 0; term_nr <= nr_terms; term_nr++) {
+                for (unsigned int term_nr = 0; term_nr <= nr_terms; term_nr++) {
                     idg::float2 sum[NR_POLARIZATIONS];
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -202,8 +199,8 @@ void kernel_calibrate(
 
                 // Scale visibilities
                 const float scale = 1.0f / nr_pixels;
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    for (int i = 0; i < nr_terms; i++) {
+                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (unsigned int i = 0; i < nr_terms; i++) {
                         sums_real[pol][i] *= scale;
                         sums_imag[pol][i] *= scale;
                     }
@@ -215,14 +212,14 @@ void kernel_calibrate(
                 size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
 
                 // Compute residual visibilities
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     sums_real[pol][0] = visibilities[vis_idx+pol].real - sums_real[pol][0];
                     sums_imag[pol][0] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
                 }
 
                 // Update local gradient
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    for (int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
+                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                         gradient_real[s][term_nr0] +=
                            sums_real[pol][term_nr0+1] * sums_real[pol][0] +
                            sums_imag[pol][term_nr0+1] * sums_imag[pol][0];
@@ -233,9 +230,9 @@ void kernel_calibrate(
                 }
 
                 // Update local hessian
-                for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    for (int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
-                        for (int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
+                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
+                        for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                             hessian_real[s][term_nr1*nr_terms + term_nr0] +=
                                 sums_real[pol][term_nr0+1] * sums_real[pol][term_nr1+1] +
                                 sums_imag[pol][term_nr0+1] * sums_imag[pol][term_nr1+1];
@@ -250,16 +247,16 @@ void kernel_calibrate(
     } // end #pragma parallel
 
     // Update global gradient
-    for (int s = 0; s < nr_subgrids; s++) {
-        for (unsigned i = 0; i < nr_terms; i++) {
+    for (unsigned int s = 0; s < nr_subgrids; s++) {
+        for (unsigned int i = 0; i < nr_terms; i++) {
             gradient[i].real += gradient_real[s][i];
             gradient[i].imag += gradient_imag[s][i];
         }
     }
 
     // Update global hessian
-    for (int s = 0; s < nr_subgrids; s++) {
-        for (unsigned i = 0; i < nr_terms*nr_terms; i++) {
+    for (unsigned int s = 0; s < nr_subgrids; s++) {
+        for (unsigned int i = 0; i < nr_terms*nr_terms; i++) {
             hessian[i].real += hessian_real[s][i];
             hessian[i].imag += hessian_imag[s][i];
         }

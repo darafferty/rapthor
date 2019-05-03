@@ -325,10 +325,10 @@ namespace idg {
                 #endif
 
                 // Create subgrids for every antenna
-                for (auto antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
+                for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
                 {
                     // Allocate subgrids for current antenna
-                    auto nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
+                    unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
                     // Get data pointers
@@ -348,10 +348,10 @@ namespace idg {
                     kernels.run_subgrid_fft(grid_size, subgrid_size, nr_subgrids, subgrids_ptr, FFTW_FORWARD);
 
                     // Apply spheroidal
-                    for (int i = 0; i < nr_subgrids; i++) {
-                        for (int pol = 0; pol < nr_polarizations; pol++) {
-                            for (int j = 0; j < subgrid_size; j++) {
-                                for (int k = 0; k < subgrid_size; k++) {
+                    for (unsigned int i = 0; i < nr_subgrids; i++) {
+                        for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
+                            for (unsigned int j = 0; j < subgrid_size; j++) {
+                                for (unsigned int k = 0; k < subgrid_size; k++) {
                                     unsigned int y = (j + (subgrid_size/2)) % subgrid_size;
                                     unsigned int x = (k + (subgrid_size/2)) % subgrid_size;
                                     subgrids_(i, pol, y, x) *= spheroidal(j,k);
@@ -481,7 +481,7 @@ namespace idg {
                 auto nr_antennas  = m_calibrate_state.plans.size();
                 auto total_nr_timesteps = 0;
                 auto total_nr_subgrids  = 0;
-                for (auto antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
+                for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
                     total_nr_timesteps += m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
                     total_nr_subgrids  += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
                 }
