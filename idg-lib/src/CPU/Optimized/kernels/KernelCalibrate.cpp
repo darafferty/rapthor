@@ -192,18 +192,11 @@ void kernel_calibrate(
                         pixels_yx_imag[term_nr], pixels_yy_imag[term_nr],
                         phasor_real, phasor_imag, sum);
 
+                    // Store and scale sums
+                    const float scale = term_nr < nr_terms ? 1.0f / nr_pixels : 1.0f;
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        sums_real[pol][term_nr] = sum[pol].real;
-                        sums_imag[pol][term_nr] = sum[pol].imag;
-                    }
-                }
-
-                // Scale visibilities
-                const float scale = 1.0f / nr_pixels;
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    for (unsigned int i = 0; i < nr_terms; i++) {
-                        sums_real[pol][i] *= scale;
-                        sums_imag[pol][i] *= scale;
+                        sums_real[pol][term_nr] = sum[pol].real * scale;
+                        sums_imag[pol][term_nr] = sum[pol].imag * scale;
                     }
                 }
 
