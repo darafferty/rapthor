@@ -72,6 +72,23 @@ namespace idg {
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
+                    void launch_calibrate(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        float image_size,
+                        float w_step,
+                        int nr_channels,
+                        int nr_terms,
+                        cu::DeviceMemory& d_uvw,
+                        cu::DeviceMemory& d_wavenumbers,
+                        cu::DeviceMemory& d_aterm,
+                        cu::DeviceMemory& d_aterm_derivatives,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid,
+                        cu::DeviceMemory& d_hessian,
+                        cu::DeviceMemory& d_gradient);
+
                     void launch_grid_fft(
                         cu::DeviceMemory& d_data,
                         int size,
@@ -288,6 +305,7 @@ namespace idg {
                     cu::Function *function_scaler;
                     cu::Function *function_gridder_post;
                     cu::Function *function_degridder_pre;
+                    cu::Function *function_calibrate;
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
@@ -318,6 +336,7 @@ namespace idg {
                 protected:
                     dim3 block_gridder;
                     dim3 block_degridder;
+                    dim3 block_calibrate;
                     dim3 block_adder;
                     dim3 block_splitter;
                     dim3 block_scaler;
@@ -374,6 +393,7 @@ namespace idg {
             // Kernel names
             static const std::string name_gridder   = "kernel_gridder";
             static const std::string name_degridder = "kernel_degridder";
+            static const std::string name_calibrate = "kernel_calibrate";
             static const std::string name_adder     = "kernel_adder";
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
