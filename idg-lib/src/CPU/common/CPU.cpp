@@ -317,6 +317,13 @@ namespace idg {
                 std::vector<Array4D<std::complex<float>>> phasors;
                 phasors.reserve(nr_antennas);
 
+                // Start performance measurement
+                #if defined(REPORT_TOTAL)
+                report.initialize();
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                #endif
+
                 // Create subgrids for every antenna
                 for (auto antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
                 {
@@ -381,6 +388,13 @@ namespace idg {
                     // Store phasors for current antenna
                     phasors.push_back(std::move(phasors_));
                 } // end for antennas
+
+                // End performance measurement
+                #if defined(REPORT_TOTAL)
+                states[1] = powerSensor->read();
+                report.update_host(states[0], states[1]);
+                report.print_total(0, 0);
+                #endif
 
                 // Set calibration state member variables
                 m_calibrate_state = {
