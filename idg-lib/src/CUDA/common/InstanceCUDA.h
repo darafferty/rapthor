@@ -86,7 +86,8 @@ namespace idg {
                         cu::DeviceMemory& d_aterm_derivatives,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
-                        cu::DeviceMemory& d_scratch,
+                        cu::DeviceMemory& d_scratch_pix,
+                        cu::DeviceMemory& d_scratch_sum,
                         cu::DeviceMemory& d_hessian,
                         cu::DeviceMemory& d_gradient);
 

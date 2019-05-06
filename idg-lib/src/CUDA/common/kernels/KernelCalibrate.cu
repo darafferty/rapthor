@@ -18,7 +18,8 @@ __global__ void kernel_calibrate(
     const float2*        __restrict__ aterm_derivatives,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch,
+          float2*        __restrict__ scratch_pix,
+          float2*        __restrict__ scratch_sum,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
@@ -93,10 +94,10 @@ __global__ void kernel_calibrate(
             pixel_idx_xy = index_subgrid(subgrid_size, subgrid_idx, 1, y_src, x_src);
             pixel_idx_yx = index_subgrid(subgrid_size, subgrid_idx, 2, y_src, x_src);
             pixel_idx_yy = index_subgrid(subgrid_size, subgrid_idx, 3, y_src, x_src);
-            scratch[pixel_idx_xx] = pixelXX;
-            scratch[pixel_idx_xy] = pixelXY;
-            scratch[pixel_idx_yx] = pixelYX;
-            scratch[pixel_idx_yy] = pixelYY;
+            scratch_pix[pixel_idx_xx] = pixelXX;
+            scratch_pix[pixel_idx_xy] = pixelXY;
+            scratch_pix[pixel_idx_yx] = pixelYX;
+            scratch_pix[pixel_idx_yy] = pixelYY;
         } // end for terms
     } // end for pixels
 
@@ -145,7 +146,7 @@ __global__ void kernel_calibrate(
                     // Load pixel
                     unsigned subgrid_idx = s * nr_terms + term_nr;
                     unsigned pixel_idx   = index_subgrid(subgrid_size, subgrid_idx, pol, y, x);
-                    float2 pixel = scratch[pixel_idx];
+                    float2 pixel = scratch_pix[pixel_idx];
 
                     sum.x += phasor.x * pixel.x;
                     sum.y += phasor.x * pixel.y;

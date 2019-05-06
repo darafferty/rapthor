@@ -982,13 +982,16 @@ namespace idg {
 
                 // Allocate temporary buffers
                 auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
-                auto sizeof_scratch     = auxiliary::sizeof_subgrids(nr_terms * nr_subgrids, subgrid_size);
+                auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(nr_terms * nr_subgrids, subgrid_size);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
-                cu::DeviceMemory d_scratch(sizeof_scratch);
+                cu::DeviceMemory d_scratch_pix(sizeof_scratch_pix);
                 cu::DeviceMemory d_hessian(sizeof_hessian);
                 cu::DeviceMemory d_gradient(sizeof_gradient);
                 cu::DeviceMemory d_aterms_deriv(sizeof_aterm_deriv);
+
+                auto sizeof_scratch_sum    = nr_timesteps * nr_channels * nr_correlations * nr_terms * sizeof(std::complex<float>);
+                cu::DeviceMemory d_scratch_sum(sizeof_scratch_sum);
 
                 // Copy input data to device
                 auto sizeof_visibilities = auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
@@ -1010,7 +1013,7 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, subgrid_size, image_size, w_step, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
-                    d_scratch, d_hessian, d_gradient);
+                    d_scratch_pix, d_scratch_sum, d_hessian, d_gradient);
 
                 // Wait for computation to finish
                 executestream.synchronize();
