@@ -551,7 +551,6 @@ namespace idg {
 
             void InstanceCUDA::launch_calibrate(
                 int nr_subgrids,
-                int grid_size,
                 int subgrid_size,
                 float image_size,
                 float w_step,
@@ -559,6 +558,7 @@ namespace idg {
                 int nr_terms,
                 cu::DeviceMemory& d_uvw,
                 cu::DeviceMemory& d_wavenumbers,
+                cu::DeviceMemory& d_visibilities,
                 cu::DeviceMemory& d_aterm,
                 cu::DeviceMemory& d_aterm_derivatives,
                 cu::DeviceMemory& d_metadata,
@@ -568,8 +568,8 @@ namespace idg {
                 cu::DeviceMemory& d_gradient)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_terms,
-                    d_uvw, d_wavenumbers, d_aterm, d_aterm_derivatives,
+                    &subgrid_size, &image_size, &w_step, &nr_channels, &nr_terms,
+                    d_uvw, d_wavenumbers, d_visibilities, d_aterm, d_aterm_derivatives,
                     d_metadata, d_subgrid, d_scratch, d_hessian, d_gradient };
 
                 dim3 grid(nr_subgrids);

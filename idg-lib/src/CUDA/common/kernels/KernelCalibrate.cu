@@ -6,7 +6,6 @@
 extern "C" {
 
 __global__ void kernel_calibrate(
-    const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
@@ -221,7 +220,6 @@ __global__ void kernel_calibrate(
 
         atomicAdd(&hessian[i], hessian_[term_nr1][term_nr0]);
     } // end for i
-
 } // end kernel_calibrate
 
 } // end extern "C"

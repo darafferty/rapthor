@@ -74,7 +74,6 @@ namespace idg {
 
                     void launch_calibrate(
                         int nr_subgrids,
-                        int grid_size,
                         int subgrid_size,
                         float image_size,
                         float w_step,
@@ -82,6 +81,7 @@ namespace idg {
                         int nr_terms,
                         cu::DeviceMemory& d_uvw,
                         cu::DeviceMemory& d_wavenumbers,
+                        cu::DeviceMemory& d_visibilities,
                         cu::DeviceMemory& d_aterm,
                         cu::DeviceMemory& d_aterm_derivatives,
                         cu::DeviceMemory& d_metadata,
@@ -256,6 +256,7 @@ namespace idg {
                     cu::HostMemory& get_host_grid() { return *h_grid; }
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
                     cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
+                    cu::DeviceMemory& get_device_aterms_derivatives() { return *d_aterms_derivatives; }
                     cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
                     cu::DeviceMemory& get_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
@@ -310,6 +311,7 @@ namespace idg {
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
+                    cu::DeviceMemory *d_aterms_derivatives;
                     cu::DeviceMemory *d_avg_aterm_correction;
                     cu::DeviceMemory *d_spheroidal;
                     cu::DeviceMemory *d_grid;
