@@ -1005,6 +1005,8 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                 htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                 htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
+                htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr, sizeof_hessian);
+                htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr, sizeof_gradient);
 
                 // Wait for input to finish
                 htodstream.synchronize();
