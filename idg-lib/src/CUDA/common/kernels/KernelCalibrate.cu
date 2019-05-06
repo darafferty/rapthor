@@ -46,8 +46,8 @@ __global__ void kernel_calibrate(
     */
 
     // Apply aterm to subgrid
-    for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
-        for (unsigned i = tid; i < nr_pixels; tid += nr_threads) {
+    for (unsigned i = tid; i < nr_pixels; i += nr_threads) {
+        for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
             unsigned y = i / subgrid_size;
             unsigned x = i % subgrid_size;
 
