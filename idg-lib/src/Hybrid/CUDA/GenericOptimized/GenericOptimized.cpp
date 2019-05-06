@@ -1009,7 +1009,7 @@ namespace idg {
                 // Run calibration update step
                 device.launch_calibrate(
                     nr_subgrids, subgrid_size, image_size, w_step, nr_channels, nr_terms,
-                    d_uvw, d_wavenumbers, d_uvw, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
+                    d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
                     d_scratch, d_hessian, d_gradient);
 
                 // Wait for computation to finish
