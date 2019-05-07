@@ -70,12 +70,12 @@ __global__ void kernel_calibrate(
             // Load first aterm
             float2 aXX1, aXY1, aYX1, aYY1;
 
-            if (term_nr == 0) {
+            if (term_nr == nr_terms) {
                 // Load aterm for station1
                 read_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
             } else {
                 // Load aterm derivative
-                read_aterm(subgrid_size, nr_stations, aterm_index, term_nr-1, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
+                read_aterm(subgrid_size, nr_stations, aterm_index, term_nr, y, x, aterm, &aXX1, &aXY1, &aYX1, &aYY1);
             }
 
             // Load second aterm
@@ -154,7 +154,8 @@ __global__ void kernel_calibrate(
                     sum.y += phasor.y * pixel.x;
                 } // end for j (pixels)
 
-                const float scale = term_nr < nr_terms ? 1.0f / nr_pixels : 1.0f;
+                // Scale sums
+                const float scale = 1.0f / nr_pixels;
                 sums_[pol][term_nr] = sum * scale;
 
             } // end for i (terms and polarizations)
@@ -171,7 +172,7 @@ __global__ void kernel_calibrate(
                 int time_idx = time_offset + time;
                 int chan_idx = chan;
                 unsigned vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][0];
+                visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][nr_terms];
             }
 
             // Iterate all terms * terms
@@ -185,20 +186,20 @@ __global__ void kernel_calibrate(
                     // Update local gradient
                     if (term_nr1 == 0) {
                         gradient_[term_nr0].x +=
-                           sums_[pol][term_nr0+1].x * visibility_res[pol].x +
-                           sums_[pol][term_nr0+1].y * visibility_res[pol].y;
+                           sums_[pol][term_nr0].x * visibility_res[pol].x +
+                           sums_[pol][term_nr0].y * visibility_res[pol].y;
                         gradient_[term_nr0].y +=
-                           sums_[pol][term_nr0+1].x * visibility_res[pol].y -
-                           sums_[pol][term_nr0+1].y * visibility_res[pol].x;
+                           sums_[pol][term_nr0].x * visibility_res[pol].y -
+                           sums_[pol][term_nr0].y * visibility_res[pol].x;
                     }
 
                     // Update local hessian
                     hessian_[term_nr1][term_nr0].x +=
-                        sums_[pol][term_nr0+1].x * sums_[pol][term_nr1+1].x +
-                        sums_[pol][term_nr0+1].y * sums_[pol][term_nr1+1].y;
+                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
+                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
                     hessian_[term_nr1][term_nr0].y +=
-                        sums_[pol][term_nr0+1].x * sums_[pol][term_nr1+1].y -
-                        sums_[pol][term_nr0+1].y * sums_[pol][term_nr1+1].x;
+                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
+                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
                 } // end for pol
             } // end for i (terms * terms)
         } // end for chan
