@@ -184,7 +184,7 @@ __global__ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
 
                     // Update local gradient
-                    if (term_nr1 == 0) {
+                    if (i < nr_terms) {
                         gradient_[term_nr0].x +=
                            sums_[pol][term_nr0].x * visibility_res[pol].x +
                            sums_[pol][term_nr0].y * visibility_res[pol].y;
@@ -194,12 +194,14 @@ __global__ void kernel_calibrate(
                     }
 
                     // Update local hessian
-                    hessian_[term_nr1][term_nr0].x +=
-                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
-                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
-                    hessian_[term_nr1][term_nr0].y +=
-                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
-                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
+                    if (i < nr_terms * nr_terms) {
+                        hessian_[term_nr1][term_nr0].x +=
+                            sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
+                            sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
+                        hessian_[term_nr1][term_nr0].y +=
+                            sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
+                            sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
+                    }
                 } // end for pol
             } // end for i (terms * terms)
         } // end for chan
@@ -220,7 +222,9 @@ __global__ void kernel_calibrate(
             atomicAdd(&gradient[i], gradient_[term_nr0]);
         }
 
-        atomicAdd(&hessian[i], hessian_[term_nr1][term_nr0]);
+        if (i < nr_terms * nr_terms) {
+            atomicAdd(&hessian[i], hessian_[term_nr1][term_nr0]);
+        }
     } // end for i
 } // end kernel_calibrate
 
