@@ -203,7 +203,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
                     visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][nr_terms];
                     visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][nr_terms];
                 }
