@@ -114,7 +114,7 @@ void kernel_calibrate(
                 idg::float2 aYX1;
                 idg::float2 aYY1;
 
-                if (term_nr == 0) {
+                if (term_nr == nr_terms) {
                     // Load aterm for station1
                     size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station1, y, x);
                     aXX1 = aterms[station1_idx + 0];
@@ -123,7 +123,7 @@ void kernel_calibrate(
                     aYY1 = aterms[station1_idx + 3];
                 } else {
                     // Load aterm derivative
-                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, term_nr-1, y, x);
+                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, term_nr, y, x);
                     aXX1 = aterm_derivatives[station1_idx + 0];
                     aXY1 = aterm_derivatives[station1_idx + 1];
                     aYX1 = aterm_derivatives[station1_idx + 2];
@@ -204,16 +204,8 @@ void kernel_calibrate(
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
                     size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
-                    visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][0];
-                    visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][0];
-                }
-
-                // Reorder sums
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    for (unsigned int term_nr = 0; term_nr < nr_terms; term_nr++) {
-                        sums_real[pol][term_nr] = sums_real[pol][term_nr+1];
-                        sums_imag[pol][term_nr] = sums_imag[pol][term_nr+1];
-                    }
+                    visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][nr_terms];
+                    visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][nr_terms];
                 }
 
                 // Update local gradient
