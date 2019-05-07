@@ -190,7 +190,7 @@ void kernel_calibrate(
                         phasor_real, phasor_imag, sum);
 
                     // Store and scale sums
-                    const float scale = term_nr < nr_terms ? 1.0f / nr_pixels : 1.0f;
+                    const float scale = 1.0f / nr_pixels;
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         sums_real[pol][term_nr] = sum[pol].real * scale;
                         sums_imag[pol][term_nr] = sum[pol].imag * scale;
