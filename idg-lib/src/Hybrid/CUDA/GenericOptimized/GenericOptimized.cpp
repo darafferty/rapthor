@@ -943,6 +943,7 @@ namespace idg {
                 auto nr_channels  = m_calibrate_state.wavenumbers.get_x_dim();
                 auto nr_terms     = aterm_derivatives.get_z_dim();
                 auto subgrid_size = aterms.get_y_dim();
+                auto grid_size    = m_calibrate_state.grid_size;
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
                 auto nr_correlations = 4;
@@ -1013,7 +1014,7 @@ namespace idg {
 
                 // Run calibration update step
                 device.launch_calibrate(
-                    nr_subgrids, subgrid_size, image_size, w_step, nr_channels, nr_terms,
+                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
                     d_scratch_pix, d_scratch_sum, d_hessian, d_gradient);
 

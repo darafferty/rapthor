@@ -6,6 +6,7 @@
 extern "C" {
 
 __global__ void kernel_calibrate(
+    const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
@@ -41,6 +42,14 @@ __global__ void kernel_calibrate(
     const int nr_timesteps      = m.nr_timesteps;
     const unsigned nr_stations  = 0;
     const unsigned aterm_index  = 0;
+    const int x_coordinate      = m.coordinate.x;
+    const int y_coordinate      = m.coordinate.y;
+    const int z_coordinate      = m.coordinate.z;
+
+    // Compute u,v,w offset in wavelenghts
+    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+    const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
 
     /*
         Phase 1: apply aterm to subgrids and store prepared subgrid in device memory
@@ -122,8 +131,16 @@ __global__ void kernel_calibrate(
     // Iterate all timesteps
     for (unsigned int time = 0; time < nr_timesteps; time++) {
 
+        // Load UVW
+        float u = uvw[time_offset + time].u;
+        float v = uvw[time_offset + time].v;
+        float w = uvw[time_offset + time].w;
+
         // Iterate all channels
         for (unsigned int chan = 0; chan < nr_channels; chan++) {
+
+            // Load wavenumber
+            float wavenumber = wavenumbers[chan];
 
             /*
                 Phase 2: "degrid" all prepared subgrids, store results in local memory
@@ -140,8 +157,20 @@ __global__ void kernel_calibrate(
                     unsigned y = j / subgrid_size;
                     unsigned x = j % subgrid_size;
 
+                    // Compute l,m,n
+                    const float l = compute_l(x, subgrid_size, image_size);
+                    const float m = compute_m(y, subgrid_size, image_size);
+                    const float n = compute_n(l, m);
+
+                    // Compute phase offset
+                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+
+                    // Compute phase index
+                    float phase_index = u*l + v*m + w*n;
+
                     // Compute phasor
-                    float2 phasor = make_float2(1, 0); // TODO
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                     // Load pixel
                     unsigned subgrid_idx = s * nr_terms + term_nr;

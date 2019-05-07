@@ -74,6 +74,7 @@ namespace idg {
 
                     void launch_calibrate(
                         int nr_subgrids,
+                        int grid_size,
                         int subgrid_size,
                         float image_size,
                         float w_step,
