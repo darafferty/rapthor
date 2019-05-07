@@ -92,7 +92,7 @@ void kernel_calibrate(
         float pixels_yy_imag[(nr_terms+1)][nr_pixels] __attribute__((aligned((ALIGNMENT))));
 
         // Apply aterm to subgrid
-        for (unsigned term_nr = 0; term_nr <= nr_terms; term_nr++) {
+        for (unsigned term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
             for (unsigned i = 0; i < nr_pixels; i++) {
                 int y = i / subgrid_size;
                 int x = i % subgrid_size;
@@ -173,7 +173,7 @@ void kernel_calibrate(
                 float sums_real[NR_POLARIZATIONS][nr_terms+1];
                 float sums_imag[NR_POLARIZATIONS][nr_terms+1];
 
-                for (unsigned int term_nr = 0; term_nr <= nr_terms; term_nr++) {
+                for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
                     idg::float2 sum[NR_POLARIZATIONS];
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
