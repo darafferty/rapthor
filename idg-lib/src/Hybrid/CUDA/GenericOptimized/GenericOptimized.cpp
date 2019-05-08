@@ -983,16 +983,15 @@ namespace idg {
 
                 // Allocate temporary buffers
                 auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
-                auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(nr_terms * nr_subgrids, subgrid_size);
+                auto sizeof_scratch_pix = auxiliary::sizeof_subgrids((nr_terms+1) * nr_subgrids, subgrid_size);
+                auto sizeof_scratch_sum = nr_timesteps * nr_channels * nr_correlations * (nr_terms+1) * sizeof(std::complex<float>);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
                 cu::DeviceMemory d_scratch_pix(sizeof_scratch_pix);
+                cu::DeviceMemory d_scratch_sum(sizeof_scratch_sum);
                 cu::DeviceMemory d_hessian(sizeof_hessian);
                 cu::DeviceMemory d_gradient(sizeof_gradient);
                 cu::DeviceMemory d_aterms_deriv(sizeof_aterm_deriv);
-
-                auto sizeof_scratch_sum    = nr_timesteps * nr_channels * nr_correlations * nr_terms * sizeof(std::complex<float>);
-                cu::DeviceMemory d_scratch_sum(sizeof_scratch_sum);
 
                 // Copy input data to device
                 auto sizeof_visibilities = auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
@@ -1022,8 +1021,8 @@ namespace idg {
                 executestream.synchronize();
 
                 // Copy output to host
-                dtohstream.memcpyDtoHAsync(hessian_ptr, d_hessian);
-                dtohstream.memcpyDtoHAsync(gradient_ptr, d_gradient);
+                dtohstream.memcpyDtoHAsync(hessian_ptr, d_hessian, sizeof_hessian);
+                dtohstream.memcpyDtoHAsync(gradient_ptr, d_gradient, sizeof_gradient);
 
                 // Wait for output to finish
                 dtohstream.synchronize();
