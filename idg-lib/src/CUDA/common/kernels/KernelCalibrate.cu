@@ -189,47 +189,50 @@ __global__ void kernel_calibrate(
     */
 
     // Iterate all timesteps
-    for (unsigned int time = 0; time < nr_timesteps; time++) {
+    for (unsigned int i = tid; i < (nr_timesteps*nr_channels); i += nr_threads) {
+        unsigned int time = i / nr_channels;
+        unsigned int chan = i % nr_channels;
 
-        // Load UVW
-        float u = uvw[time_offset + time].u;
-        float v = uvw[time_offset + time].v;
-        float w = uvw[time_offset + time].w;
+        if (time < nr_timesteps) {
 
-        // Iterate all channels
-        for (unsigned int chan = 0; chan < nr_channels; chan++) {
+            // Load UVW
+            float u = uvw[time_offset + time].u;
+            float v = uvw[time_offset + time].v;
+            float w = uvw[time_offset + time].w;
 
             // Load wavenumber
             float wavenumber = wavenumbers[chan];
 
-            // Iterate all terms
+            // Accumulate sums in registers
+            float2 sums[MAX_NR_TERMS][NR_POLARIZATIONS];
             for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
-
-                // Accumulate sums in registers
-                float2 sums[NR_POLARIZATIONS];
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sums[pol] = make_float2(0, 0);
+                    sums[term_nr][pol] = make_float2(0, 0);
                 }
+            }
 
-                // Iterate all pixels
-                for (unsigned int j = 0; j < nr_pixels; j++) {
-                    unsigned y = j / subgrid_size;
-                    unsigned x = j % subgrid_size;
+            // Iterate all pixels
+            for (unsigned int j = 0; j < nr_pixels; j++) {
+                unsigned y = j / subgrid_size;
+                unsigned x = j % subgrid_size;
 
-                    // Compute l,m,n
-                    const float l = compute_l(x, subgrid_size, image_size);
-                    const float m = compute_m(y, subgrid_size, image_size);
-                    const float n = compute_n(l, m);
+                // Compute l,m,n
+                const float l = compute_l(x, subgrid_size, image_size);
+                const float m = compute_m(y, subgrid_size, image_size);
+                const float n = compute_n(l, m);
 
-                    // Compute phase offset
-                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                // Compute phase offset
+                float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
-                    // Compute phase index
-                    float phase_index = u*l + v*m + w*n;
+                // Compute phase index
+                float phase_index = u*l + v*m + w*n;
 
-                    // Compute phasor
-                    float  phase  = (phase_index * wavenumber) - phase_offset;
-                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                // Compute phasor
+                float  phase  = (phase_index * wavenumber) - phase_offset;
+                float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+
+                // Iterate all terms
+                for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         // Load pixel
@@ -237,23 +240,24 @@ __global__ void kernel_calibrate(
                         float2 pixel = scratch_pix[pixel_idx];
 
                         // Update sum
-                        sums[pol].x += phasor.x * pixel.x;
-                        sums[pol].y += phasor.x * pixel.y;
-                        sums[pol].x -= phasor.y * pixel.y;
-                        sums[pol].y += phasor.y * pixel.x;
+                        sums[term_nr][pol].x += phasor.x * pixel.x;
+                        sums[term_nr][pol].y += phasor.x * pixel.y;
+                        sums[term_nr][pol].x -= phasor.y * pixel.y;
+                        sums[term_nr][pol].y += phasor.y * pixel.x;
                     }
-                } // end for j (pixels)
+                } // end for term_nr
+            } // end for j (pixels)
 
-                // Scale sums
+            // Scale sums and store in device memory
+            for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
                 const float scale = 1.0f / nr_pixels;
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     unsigned int idx = index_sums(nr_timesteps, nr_channels, (nr_terms+1), s, time, chan, pol, term_nr);
-                    scratch_sum[idx] = sums[pol] * scale;;
+                    scratch_sum[idx] = sums[term_nr][pol] * scale;;
                 }
-
             } // end for term_nr
-        } // end for chan
-    } // end for time
+        } // end if
+    } // end for i (visibilities)
 
     __syncthreads();
 
