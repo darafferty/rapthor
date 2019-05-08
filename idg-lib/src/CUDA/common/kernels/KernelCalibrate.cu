@@ -14,12 +14,12 @@ inline __device__ long index_sums(
     unsigned int pol,
     unsigned int term_nr)
 {
-    // sums: [nr_subgrids][nr_timesteps][nr_channels][NR_POLARIZATIONS][nr_terms]
-    return s * nr_timesteps * nr_channels * NR_POLARIZATIONS * nr_terms +
-           time * nr_channels * NR_POLARIZATIONS * nr_terms +
-           chan * NR_POLARIZATIONS * nr_terms +
-           pol * nr_terms +
-           term_nr;
+    // sums: [nr_subgrids][nr_timesteps][nr_channels][nr_terms][NR_POLARIZATIONS]
+    return s * nr_timesteps * nr_channels * nr_terms * NR_POLARIZATIONS +
+           time * nr_channels * nr_terms * NR_POLARIZATIONS +
+           chan * nr_terms * NR_POLARIZATIONS +
+           term_nr * NR_POLARIZATIONS +
+           pol;
 }
 
 // Index in scratch_pix
@@ -165,10 +165,10 @@ __global__ void kernel_calibrate(
 
         if (i < MAX_NR_TERMS) {
             gradient_[i] = make_float2(0, 0);
-
-            for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                sums_[pol][i] = make_float2(0, 0);
-            }
+            sums_[0][i]  = make_float2(0, 0);
+            sums_[1][i]  = make_float2(0, 0);
+            sums_[2][i]  = make_float2(0, 0);
+            sums_[3][i]  = make_float2(0, 0);
         }
 
         if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
@@ -199,11 +199,15 @@ __global__ void kernel_calibrate(
             float wavenumber = wavenumbers[chan];
 
             // Accumulate sums in registers
-            float2 sums[MAX_NR_TERMS][NR_POLARIZATIONS];
+            float2 sumXX[MAX_NR_TERMS];
+            float2 sumXY[MAX_NR_TERMS];
+            float2 sumYX[MAX_NR_TERMS];
+            float2 sumYY[MAX_NR_TERMS];
             for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sums[term_nr][pol] = make_float2(0, 0);
-                }
+                sumXX[term_nr] = make_float2(0, 0);
+                sumXY[term_nr] = make_float2(0, 0);
+                sumYX[term_nr] = make_float2(0, 0);
+                sumYY[term_nr] = make_float2(0, 0);
             }
 
             // Iterate all pixels
@@ -229,27 +233,46 @@ __global__ void kernel_calibrate(
                 // Iterate all terms
                 for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
 
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        // Load pixel
-                        unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, pol, y, x);
-                        float2 pixel = scratch_pix[pixel_idx + pol];
+                    // Load pixels
+                    unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
+                    float4 *pix_ptr = (float4 *) &scratch_pix[pixel_idx];
+                    float2 pixelXX = make_float2(pix_ptr[0].x, pix_ptr[0].y);
+                    float2 pixelXY = make_float2(pix_ptr[0].z, pix_ptr[0].w);
+                    float2 pixelYX = make_float2(pix_ptr[1].x, pix_ptr[1].y);
+                    float2 pixelYY = make_float2(pix_ptr[1].z, pix_ptr[1].w);
 
-                        // Update sum
-                        sums[term_nr][pol].x += phasor.x * pixel.x;
-                        sums[term_nr][pol].y += phasor.x * pixel.y;
-                        sums[term_nr][pol].x -= phasor.y * pixel.y;
-                        sums[term_nr][pol].y += phasor.y * pixel.x;
-                    }
+                    // Update sums
+                    sumXX[term_nr].x += phasor.x * pixelXX.x;
+                    sumXX[term_nr].y += phasor.x * pixelXX.y;
+                    sumXX[term_nr].x -= phasor.y * pixelXX.y;
+                    sumXX[term_nr].y += phasor.y * pixelXX.x;
+
+                    sumXY[term_nr].x += phasor.x * pixelXY.x;
+                    sumXY[term_nr].y += phasor.x * pixelXY.y;
+                    sumXY[term_nr].x -= phasor.y * pixelXY.y;
+                    sumXY[term_nr].y += phasor.y * pixelXY.x;
+
+                    sumYX[term_nr].x += phasor.x * pixelYX.x;
+                    sumYX[term_nr].y += phasor.x * pixelYX.y;
+                    sumYX[term_nr].x -= phasor.y * pixelYX.y;
+                    sumYX[term_nr].y += phasor.y * pixelYX.x;
+
+                    sumYY[term_nr].x += phasor.x * pixelYY.x;
+                    sumYY[term_nr].y += phasor.x * pixelYY.y;
+                    sumYY[term_nr].x -= phasor.y * pixelYY.y;
+                    sumYY[term_nr].y += phasor.y * pixelYY.x;
                 } // end for term_nr
             } // end for j (pixels)
 
             // Scale sums and store in device memory
             for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
                 const float scale = 1.0f / nr_pixels;
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    unsigned int idx = index_sums(nr_timesteps, nr_channels, (nr_terms+1), s, time, chan, pol, term_nr);
-                    scratch_sum[idx] = sums[term_nr][pol] * scale;;
-                }
+                unsigned int sum_idx = index_sums(nr_timesteps, nr_channels, (nr_terms+1), s, time, chan, 0, term_nr);
+                float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
+                float4 sumA = make_float4(sumXX[term_nr].x, sumXX[term_nr].y, sumXY[term_nr].x, sumYX[term_nr].y);
+                float4 sumB = make_float4(sumYX[term_nr].x, sumYX[term_nr].y, sumYY[term_nr].x, sumYY[term_nr].y);
+                sum_ptr[0] = sumA * scale;
+                sum_ptr[1] = sumB * scale;
             } // end for term_nr
         } // end if
     } // end for i (visibilities)
