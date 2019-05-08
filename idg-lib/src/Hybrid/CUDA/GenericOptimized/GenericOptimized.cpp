@@ -989,7 +989,7 @@ namespace idg {
                 // Allocate temporary buffers
                 auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
                 auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(max_nr_terms * nr_subgrids, subgrid_size);
-                auto sizeof_scratch_sum = nr_timesteps * nr_channels * nr_correlations * (nr_terms+1) * sizeof(std::complex<float>);
+                auto sizeof_scratch_sum = nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
                 cu::DeviceMemory d_scratch_pix(sizeof_scratch_pix);
