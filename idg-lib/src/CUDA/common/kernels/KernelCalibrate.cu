@@ -24,7 +24,6 @@ inline __device__ long index_sums(
 
 // Index in scratch_pix
 inline __device__ long index_pixels(
-    unsigned int nr_terms,
     unsigned int subgrid_size,
     unsigned int s,
     unsigned int term_nr,
@@ -32,8 +31,8 @@ inline __device__ long index_pixels(
     unsigned int y,
     unsigned int x)
 {
-    // pix: [nr_subgrids][nr_terms][subgrid_size][subgrid_size][NR_POLARIZATIONS]
-    return s * nr_terms * subgrid_size * subgrid_size * NR_POLARIZATIONS +
+    // pix: [nr_subgrids][MAX_NR_TERMS][subgrid_size][subgrid_size][NR_POLARIZATIONS]
+    return s * MAX_NR_TERMS * subgrid_size * subgrid_size * NR_POLARIZATIONS +
            term_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
            y * subgrid_size * NR_POLARIZATIONS +
            x * NR_POLARIZATIONS +
@@ -145,7 +144,7 @@ __global__ void kernel_calibrate(
                     pixelXX, pixelXY, pixelYX, pixelYY);
 
                 // Store pixels
-                unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
+                unsigned int pixel_idx = index_pixels(subgrid_size, s, term_nr, 0, y, x);
                 scratch_pix[pixel_idx + 0] = pixelXX;
                 scratch_pix[pixel_idx + 1] = pixelXY;
                 scratch_pix[pixel_idx + 2] = pixelYX;
@@ -233,7 +232,7 @@ __global__ void kernel_calibrate(
                     for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
 
                         // Load pixels
-                        unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
+                        unsigned int pixel_idx = index_pixels(subgrid_size, s, term_nr, 0, y, x);
                         float4 *pix_ptr = (float4 *) &scratch_pix[pixel_idx];
                         float2 pixelXX = make_float2(pix_ptr[0].x, pix_ptr[0].y);
                         float2 pixelXY = make_float2(pix_ptr[0].z, pix_ptr[0].w);
