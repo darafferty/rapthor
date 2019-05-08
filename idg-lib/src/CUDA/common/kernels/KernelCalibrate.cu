@@ -164,20 +164,18 @@ __global__ void kernel_calibrate(
     __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
 
     // Initialize shared memory to zero
-    for (unsigned int i = tid; i < nr_terms * nr_terms; i += nr_threads) {
-        unsigned term_nr1 = i / nr_terms;
-        unsigned term_nr0 = i % nr_terms;
+    for (unsigned int i = tid; i < (MAX_NR_TERMS*MAX_NR_TERMS); i += nr_threads) {
 
-        if (i < nr_terms) {
-            gradient_[term_nr0] = make_float2(0, 0);
+        if (i < MAX_NR_TERMS) {
+            gradient_[i] = make_float2(0, 0);
 
             for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                sums_[pol][term_nr0] = make_float2(0, 0);
+                sums_[pol][i] = make_float2(0, 0);
             }
         }
 
-        if (i < (nr_terms*nr_terms)) {
-            hessian_[term_nr1][term_nr0] = make_float2(0, 0);
+        if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
+            hessian_[0][i] = make_float2(0, 0);
         }
 
     } // end for i
