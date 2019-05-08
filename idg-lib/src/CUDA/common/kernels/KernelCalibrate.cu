@@ -230,7 +230,7 @@ __global__ void kernel_calibrate(
                     float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                     // Iterate all terms
-                    for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+                    for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
 
                         // Load pixels
                         unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);

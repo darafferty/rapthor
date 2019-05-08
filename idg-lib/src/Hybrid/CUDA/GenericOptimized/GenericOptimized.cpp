@@ -993,6 +993,10 @@ namespace idg {
                 cu::DeviceMemory d_gradient(sizeof_gradient);
                 cu::DeviceMemory d_aterms_deriv(sizeof_aterm_deriv);
 
+                // Initialize scratch space to zero
+                d_scratch_pix.zero();
+                d_scratch_sum.zero();
+
                 // Copy input data to device
                 auto sizeof_visibilities = auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
                 auto sizeof_uvw          = auxiliary::sizeof_uvw(1, nr_timesteps);
