@@ -836,6 +836,8 @@ namespace idg {
                 auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_timeslots = 1;
                 auto nr_channels  = frequencies.get_x_dim();
+                auto max_nr_terms = m_calibrate_max_nr_terms;
+                auto nr_correlations = 4;
 
                 // Allocate subgrids for all antennas
                 std::vector<Array4D<std::complex<float>>> subgrids;
@@ -928,6 +930,18 @@ namespace idg {
                 device.get_device_subgrids(0, max_nr_subgrids, subgrid_size);
                 device.get_device_aterms(nr_antennas, nr_timeslots, subgrid_size);
                 device.get_device_visibilities(0, max_nr_subgrids, nr_timesteps, nr_channels);
+
+                // Allocate device memory (using new allocation mechanism)
+                auto sizeof_aterm_deriv = max_nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
+                auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(max_nr_terms * max_nr_subgrids, subgrid_size);
+                auto sizeof_scratch_sum = max_nr_subgrids * nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
+                auto sizeof_gradient    = max_nr_terms * sizeof(std::complex<float>);
+                auto sizeof_hessian     = max_nr_terms * max_nr_terms * sizeof(std::complex<float>);
+                m_calibrate_state.d_scratch_pix_id  = device.allocate_device_memory(sizeof_scratch_pix);
+                m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
+                m_calibrate_state.d_hessian_id      = device.allocate_device_memory(sizeof_hessian);
+                m_calibrate_state.d_gradient_id     = device.allocate_device_memory(sizeof_gradient);
+                m_calibrate_state.d_aterms_deriv_id = device.allocate_device_memory(sizeof_aterm_deriv);
             }
 
             void GenericOptimized::do_calibrate_update(
@@ -937,6 +951,8 @@ namespace idg {
                 Array2D<std::complex<float>>& hessian,
                 Array1D<std::complex<float>>& gradient)
             {
+                assert((nr_terms+1) < calibrate_max_nr_terms);
+
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
                 auto nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
@@ -946,6 +962,7 @@ namespace idg {
                 auto grid_size    = m_calibrate_state.grid_size;
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
+                auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
 
                 // Performance measurement
@@ -981,22 +998,17 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities = device.get_device_visibilities(0);
                 cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(0);
 
-                // Note: kernel_calibrate processes nr_terms+1 terms
-                //       and internally assumes max_nr_terms = 8
-                const unsigned int max_nr_terms = 8;
-                assert((nr_terms+1) < max_nr_terms);
-
                 // Allocate temporary buffers
                 auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
                 auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(max_nr_terms * nr_subgrids, subgrid_size);
                 auto sizeof_scratch_sum = nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
-                cu::DeviceMemory d_scratch_pix(sizeof_scratch_pix);
-                cu::DeviceMemory d_scratch_sum(sizeof_scratch_sum);
-                cu::DeviceMemory d_hessian(sizeof_hessian);
-                cu::DeviceMemory d_gradient(sizeof_gradient);
-                cu::DeviceMemory d_aterms_deriv(sizeof_aterm_deriv);
+                cu::DeviceMemory& d_scratch_pix  = device.retrieve_device_memory(m_calibrate_state.d_scratch_pix_id);
+                cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
+                cu::DeviceMemory& d_hessian      = device.retrieve_device_memory(m_calibrate_state.d_hessian_id);
+                cu::DeviceMemory& d_gradient     = device.retrieve_device_memory(m_calibrate_state.d_gradient_id);
+                cu::DeviceMemory& d_aterms_deriv = device.retrieve_device_memory(m_calibrate_state.d_aterms_deriv_id);
 
                 // Initialize scratch space to zero
                 d_scratch_pix.zero();

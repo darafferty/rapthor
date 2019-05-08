@@ -254,6 +254,10 @@ namespace idg {
                         unsigned int nr_timesteps,
                         void *ptr);
 
+                    // Memory management for misc device buffers
+                    unsigned int allocate_device_memory(unsigned int size);
+                    cu::DeviceMemory& retrieve_device_memory(unsigned int id);
+
                     // Retrieve pre-allocated buffers (per device)
                     cu::HostMemory& get_host_grid() { return *h_grid; }
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
@@ -334,6 +338,9 @@ namespace idg {
 
                     // Misc host memory
                     std::vector<std::unique_ptr<cu::HostMemory>> h_misc_;
+
+                    // Misc device memory
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
 
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;

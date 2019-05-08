@@ -39,6 +39,7 @@ namespace idg {
                 d_metadata_(),
                 d_subgrids_(),
                 h_misc_(),
+                d_misc_(),
                 mModules(8)
             {
                 #if defined(DEBUG)
@@ -1083,6 +1084,26 @@ namespace idg {
             }
 
             /*
+             * Memory management for misc device buffers
+             *      Rather than storing these buffers by name,
+             *      the caller gets an id that is also used to retrieve
+             *      the memory from the d_misc_ vector
+             */
+            unsigned int InstanceCUDA::allocate_device_memory(
+                unsigned int size)
+            {
+                cu::DeviceMemory *d_misc = new cu::DeviceMemory(size);
+                d_misc_.push_back(std::unique_ptr<cu::DeviceMemory>(d_misc));
+                return d_misc_.size() - 1;
+            }
+
+            cu::DeviceMemory& InstanceCUDA::retrieve_device_memory(
+                unsigned int id)
+            {
+                return *d_misc_[id];
+            }
+
+            /*
              *  Memory management for large (host) buffers
              *      Maintains a history of previously allocated
              *      memory objects so that multiple buffers can be
@@ -1182,6 +1203,7 @@ namespace idg {
                 d_uvw_.clear();
                 d_metadata_.clear();
                 d_subgrids_.clear();
+                d_misc_.clear();
                 if (d_grid != NULL) {
                     delete d_grid;
                     d_grid = NULL;

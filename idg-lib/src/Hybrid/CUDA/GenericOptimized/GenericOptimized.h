@@ -171,7 +171,16 @@ namespace idg {
                         Array3D<UVWCoordinate<float>> uvw;
                         Array2D<std::pair<unsigned int,unsigned int>> baselines;
                         std::vector<Array4D<std::complex<float>>> subgrids;
+                        unsigned int d_scratch_pix_id;
+                        unsigned int d_scratch_sum_id;
+                        unsigned int d_hessian_id;
+                        unsigned int d_gradient_id;
+                        unsigned int d_aterms_deriv_id;
                     } m_calibrate_state;
+
+                    // Note: kernel_calibrate processes nr_terms+1 terms
+                    //       and internally assumes max_nr_terms = 8
+                    const unsigned int m_calibrate_max_nr_terms = 8;
 
             }; // class GenericOptimized
 
