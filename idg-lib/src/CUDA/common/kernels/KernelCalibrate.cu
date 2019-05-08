@@ -305,11 +305,11 @@ __global__ void kernel_calibrate(
                     // Update local hessian
                     if (i < (nr_terms*nr_terms)) {
                         hessian_[term_nr1][term_nr0].x +=
-                            sums_[pol][term_nr1].x * sums_[pol][term_nr0].x +
-                            sums_[pol][term_nr1].y * sums_[pol][term_nr0].y;
+                            sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
+                            sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
                         hessian_[term_nr0][term_nr1].y +=
-                            sums_[pol][term_nr1].x * sums_[pol][term_nr0].y -
-                            sums_[pol][term_nr1].y * sums_[pol][term_nr0].x;
+                            sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
+                            sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
                     }
                 } // end for pol
             } // end for i (terms * terms)
