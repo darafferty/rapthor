@@ -211,58 +211,58 @@ __global__ void kernel_calibrate(
             }
 
             // Iterate all pixels
-            for (unsigned int j = 0; j < nr_pixels; j++) {
-                unsigned y = j / subgrid_size;
-                unsigned x = j % subgrid_size;
+            for (unsigned int y = 0; y < subgrid_size; y++) {
+                for (unsigned int x = 0; x < subgrid_size; x++) {
 
-                // Compute l,m,n
-                const float l = compute_l(x, subgrid_size, image_size);
-                const float m = compute_m(y, subgrid_size, image_size);
-                const float n = compute_n(l, m);
+                    // Compute l,m,n
+                    const float l = compute_l(x, subgrid_size, image_size);
+                    const float m = compute_m(y, subgrid_size, image_size);
+                    const float n = compute_n(l, m);
 
-                // Compute phase offset
-                float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                    // Compute phase offset
+                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
-                // Compute phase index
-                float phase_index = u*l + v*m + w*n;
+                    // Compute phase index
+                    float phase_index = u*l + v*m + w*n;
 
-                // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                    // Compute phasor
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
-                // Iterate all terms
-                for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+                    // Iterate all terms
+                    for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
 
-                    // Load pixels
-                    unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
-                    float4 *pix_ptr = (float4 *) &scratch_pix[pixel_idx];
-                    float2 pixelXX = make_float2(pix_ptr[0].x, pix_ptr[0].y);
-                    float2 pixelXY = make_float2(pix_ptr[0].z, pix_ptr[0].w);
-                    float2 pixelYX = make_float2(pix_ptr[1].x, pix_ptr[1].y);
-                    float2 pixelYY = make_float2(pix_ptr[1].z, pix_ptr[1].w);
+                        // Load pixels
+                        unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
+                        float4 *pix_ptr = (float4 *) &scratch_pix[pixel_idx];
+                        float2 pixelXX = make_float2(pix_ptr[0].x, pix_ptr[0].y);
+                        float2 pixelXY = make_float2(pix_ptr[0].z, pix_ptr[0].w);
+                        float2 pixelYX = make_float2(pix_ptr[1].x, pix_ptr[1].y);
+                        float2 pixelYY = make_float2(pix_ptr[1].z, pix_ptr[1].w);
 
-                    // Update sums
-                    sumXX[term_nr].x += phasor.x * pixelXX.x;
-                    sumXX[term_nr].y += phasor.x * pixelXX.y;
-                    sumXX[term_nr].x -= phasor.y * pixelXX.y;
-                    sumXX[term_nr].y += phasor.y * pixelXX.x;
+                        // Update sums
+                        sumXX[term_nr].x += phasor.x * pixelXX.x;
+                        sumXX[term_nr].y += phasor.x * pixelXX.y;
+                        sumXX[term_nr].x -= phasor.y * pixelXX.y;
+                        sumXX[term_nr].y += phasor.y * pixelXX.x;
 
-                    sumXY[term_nr].x += phasor.x * pixelXY.x;
-                    sumXY[term_nr].y += phasor.x * pixelXY.y;
-                    sumXY[term_nr].x -= phasor.y * pixelXY.y;
-                    sumXY[term_nr].y += phasor.y * pixelXY.x;
+                        sumXY[term_nr].x += phasor.x * pixelXY.x;
+                        sumXY[term_nr].y += phasor.x * pixelXY.y;
+                        sumXY[term_nr].x -= phasor.y * pixelXY.y;
+                        sumXY[term_nr].y += phasor.y * pixelXY.x;
 
-                    sumYX[term_nr].x += phasor.x * pixelYX.x;
-                    sumYX[term_nr].y += phasor.x * pixelYX.y;
-                    sumYX[term_nr].x -= phasor.y * pixelYX.y;
-                    sumYX[term_nr].y += phasor.y * pixelYX.x;
+                        sumYX[term_nr].x += phasor.x * pixelYX.x;
+                        sumYX[term_nr].y += phasor.x * pixelYX.y;
+                        sumYX[term_nr].x -= phasor.y * pixelYX.y;
+                        sumYX[term_nr].y += phasor.y * pixelYX.x;
 
-                    sumYY[term_nr].x += phasor.x * pixelYY.x;
-                    sumYY[term_nr].y += phasor.x * pixelYY.y;
-                    sumYY[term_nr].x -= phasor.y * pixelYY.y;
-                    sumYY[term_nr].y += phasor.y * pixelYY.x;
-                } // end for term_nr
-            } // end for j (pixels)
+                        sumYY[term_nr].x += phasor.x * pixelYY.x;
+                        sumYY[term_nr].y += phasor.x * pixelYY.y;
+                        sumYY[term_nr].x -= phasor.y * pixelYY.y;
+                        sumYY[term_nr].y += phasor.y * pixelYY.x;
+                    } // end for term_nr
+                } // end for x
+            } // end for y
 
             // Scale sums and store in device memory
             for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
