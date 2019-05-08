@@ -1,7 +1,8 @@
 #include "Types.h"
 #include "math.cu"
 
-#define MAX_NR_TERMS 8
+#define MAX_NR_TERMS     8
+#define MAX_SUBGRID_SIZE 32
 
 // Index in scratch_sum
 inline __device__ long index_sums(
@@ -181,6 +182,8 @@ __global__ void kernel_calibrate(
         Phase 2: "degrid" all prepared subgrids, store results in local memory
     */
 
+    __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
+
     // Iterate all timesteps
     for (unsigned int i = tid; i < (nr_timesteps*nr_channels); i += nr_threads) {
         unsigned int time = i / nr_channels;
@@ -208,14 +211,30 @@ __global__ void kernel_calibrate(
                 sumYY[term_nr] = make_float2(0, 0);
             }
 
-            // Iterate all pixels
+            // Iterate all rows of the subgrid
             for (unsigned int y = 0; y < subgrid_size; y++) {
+
+                __syncthreads();
+
+                // Precompute one row of l,m,n
+                for (unsigned int x = tid; x < subgrid_size; x += nr_threads) {
+                    float l = compute_l(x, subgrid_size, image_size);
+                    float m = compute_m(y, subgrid_size, image_size);
+                    float n = compute_n(l, m);
+                    if (x < subgrid_size) {
+                        lmn_[x] = make_float4(l, m, n, 0);
+                    }
+                }
+
+                __syncthreads();
+
+                // Iterate all columns of the subgrid
                 for (unsigned int x = 0; x < subgrid_size; x++) {
 
-                    // Compute l,m,n
-                    const float l = compute_l(x, subgrid_size, image_size);
-                    const float m = compute_m(y, subgrid_size, image_size);
-                    const float n = compute_n(l, m);
+                    // Load l,m,n
+                    const float l = lmn_[x].x;
+                    const float m = lmn_[x].y;
+                    const float n = lmn_[x].z;
 
                     // Compute phase offset
                     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
