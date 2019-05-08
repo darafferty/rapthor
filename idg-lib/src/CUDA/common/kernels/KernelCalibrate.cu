@@ -32,12 +32,12 @@ inline __device__ long index_pixels(
     unsigned int y,
     unsigned int x)
 {
-    // pix: [nr_subgrids][nr_terms][NR_POLARIZATIONS][subgrid_size][subgrid_size]
-    return s * nr_terms * NR_POLARIZATIONS * subgrid_size * subgrid_size +
-           term_nr * NR_POLARIZATIONS * subgrid_size * subgrid_size +
-           pol * subgrid_size * subgrid_size +
-           y * subgrid_size +
-           x;
+    // pix: [nr_subgrids][nr_terms][subgrid_size][subgrid_size][NR_POLARIZATIONS]
+    return s * nr_terms * subgrid_size * subgrid_size * NR_POLARIZATIONS +
+           term_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
+           y * subgrid_size * NR_POLARIZATIONS +
+           x * NR_POLARIZATIONS +
+           pol;
 }
 
 extern "C" {
@@ -145,14 +145,11 @@ __global__ void kernel_calibrate(
                     pixelXX, pixelXY, pixelYX, pixelYY);
 
                 // Store pixels
-                pixel_idx_xx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
-                pixel_idx_xy = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 1, y, x);
-                pixel_idx_yx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 2, y, x);
-                pixel_idx_yy = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 3, y, x);
-                scratch_pix[pixel_idx_xx] = pixelXX;
-                scratch_pix[pixel_idx_xy] = pixelXY;
-                scratch_pix[pixel_idx_yx] = pixelYX;
-                scratch_pix[pixel_idx_yy] = pixelYY;
+                unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, 0, y, x);
+                scratch_pix[pixel_idx + 0] = pixelXX;
+                scratch_pix[pixel_idx + 1] = pixelXY;
+                scratch_pix[pixel_idx + 2] = pixelYX;
+                scratch_pix[pixel_idx + 3] = pixelYY;
             } // end for terms
         } // end if
     } // end for pixels
@@ -235,7 +232,7 @@ __global__ void kernel_calibrate(
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         // Load pixel
                         unsigned int pixel_idx = index_pixels(nr_terms+1, subgrid_size, s, term_nr, pol, y, x);
-                        float2 pixel = scratch_pix[pixel_idx];
+                        float2 pixel = scratch_pix[pixel_idx + pol];
 
                         // Update sum
                         sums[term_nr][pol].x += phasor.x * pixel.x;
