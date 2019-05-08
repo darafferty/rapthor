@@ -282,7 +282,7 @@ __global__ void kernel_calibrate(
             } // end for y
 
             // Scale sums and store in device memory
-            for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+            for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
                 const float scale = 1.0f / nr_pixels;
                 unsigned int sum_idx = index_sums(nr_timesteps, nr_channels, s, time, chan, 0, term_nr);
                 float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
