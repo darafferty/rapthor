@@ -267,8 +267,10 @@ __global__ void kernel_calibrate(
         // Iterate all channels
         for (unsigned int chan = 0; chan < nr_channels; chan++) {
 
+            __syncthreads();
+
             // Load sums for current visibility
-            for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+            for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     unsigned int idx = index_sums(nr_timesteps, nr_channels, (nr_terms+1), s, time, chan, pol, term_nr);
                     sums_[pol][term_nr] = scratch_sum[idx];
