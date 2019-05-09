@@ -951,8 +951,6 @@ namespace idg {
                 Array2D<std::complex<float>>& hessian,
                 Array1D<std::complex<float>>& gradient)
             {
-                assert((nr_terms+1) < calibrate_max_nr_terms);
-
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
                 auto nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
@@ -964,6 +962,8 @@ namespace idg {
                 auto w_step       = m_calibrate_state.w_step;
                 auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
+
+                assert((nr_terms+1) < max_nr_terms);
 
                 // Performance measurement
                 if (antenna_nr == 0) {
@@ -1000,8 +1000,6 @@ namespace idg {
 
                 // Allocate temporary buffers
                 auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
-                auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(max_nr_terms * nr_subgrids, subgrid_size);
-                auto sizeof_scratch_sum = nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
                 cu::DeviceMemory& d_scratch_pix  = device.retrieve_device_memory(m_calibrate_state.d_scratch_pix_id);
