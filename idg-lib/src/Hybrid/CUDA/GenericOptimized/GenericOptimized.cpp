@@ -998,6 +998,12 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities = device.get_device_visibilities(0);
                 cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(0);
 
+                // Events
+                std::vector<cu::Event*> events;
+                for (int i = 0; i < 3; i++) {
+                    events.push_back(new cu::Event());
+                }
+
                 // Allocate temporary buffers
                 auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
@@ -1022,25 +1028,27 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
                 htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr, sizeof_hessian);
                 htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr, sizeof_gradient);
-
-                // Wait for input to finish
-                htodstream.synchronize();
+                htodstream.record(*events[0]);
 
                 // Run calibration update step
+                executestream.waitEvent(*events[0]);
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
                     d_scratch_pix, d_scratch_sum, d_hessian, d_gradient);
+                executestream.record(*events[1]);
 
                 // Wait for computation to finish
-                executestream.synchronize();
+                events[1]->synchronize();
 
                 // Copy output to host
+                //dtohstream.waitEvent(*events[1]);
                 dtohstream.memcpyDtoHAsync(hessian_ptr, d_hessian, sizeof_hessian);
                 dtohstream.memcpyDtoHAsync(gradient_ptr, d_gradient, sizeof_gradient);
+                dtohstream.record(*events[2]);
 
                 // Wait for output to finish
-                dtohstream.synchronize();
+                events[2]->synchronize();
 
                 // Performance reporting
                 auto nr_visibilities = nr_timesteps * nr_channels;
