@@ -221,8 +221,9 @@ __global__ void kernel_calibrate(
                     float l = compute_l(x, subgrid_size, image_size);
                     float m = compute_m(y, subgrid_size, image_size);
                     float n = compute_n(l, m);
+                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
                     if (x < subgrid_size) {
-                        lmn_[x] = make_float4(l, m, n, 0);
+                        lmn_[x] = make_float4(l, m, n, phase_offset);
                     }
                 }
 
@@ -232,12 +233,12 @@ __global__ void kernel_calibrate(
                 for (unsigned int x = 0; x < subgrid_size; x++) {
 
                     // Load l,m,n
-                    const float l = lmn_[x].x;
-                    const float m = lmn_[x].y;
-                    const float n = lmn_[x].z;
+                    float l = lmn_[x].x;
+                    float m = lmn_[x].y;
+                    float n = lmn_[x].z;
 
-                    // Compute phase offset
-                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                    // Load phase offset
+                    float phase_offset = lmn_[x].w;
 
                     // Compute phase index
                     float phase_index = u*l + v*m + w*n;
