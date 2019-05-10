@@ -23,23 +23,6 @@ inline __device__ long index_sums(
            pol;
 }
 
-// Index in scratch_pix
-inline __device__ long index_pixels(
-    unsigned int subgrid_size,
-    unsigned int s,
-    unsigned int term_nr,
-    unsigned int pol,
-    unsigned int y,
-    unsigned int x)
-{
-    // pix: [nr_subgrids][MAX_NR_TERMS][subgrid_size][subgrid_size][NR_POLARIZATIONS]
-    return s * MAX_NR_TERMS * subgrid_size * subgrid_size * NR_POLARIZATIONS +
-           term_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
-           y * subgrid_size * NR_POLARIZATIONS +
-           x * NR_POLARIZATIONS +
-           pol;
-}
-
 extern "C" {
 
 __global__ void kernel_calibrate(
@@ -56,7 +39,6 @@ __global__ void kernel_calibrate(
     const float2*        __restrict__ aterm_derivatives,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_pix,
           float2*        __restrict__ scratch_sum,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)

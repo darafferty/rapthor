@@ -168,7 +168,6 @@ namespace idg {
                         unsigned int subgrid_size;
                         unsigned int nr_channels;
                         Array3D<UVWCoordinate<float>> uvw; // FIXME
-                        unsigned int d_scratch_pix_id;
                         unsigned int d_scratch_sum_id;
                         unsigned int d_hessian_id;
                         unsigned int d_gradient_id;

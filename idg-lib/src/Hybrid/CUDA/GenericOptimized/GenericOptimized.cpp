@@ -957,11 +957,9 @@ namespace idg {
 
                 // Allocate device memory (using new allocation mechanism)
                 auto sizeof_aterm_deriv = max_nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
-                auto sizeof_scratch_pix = auxiliary::sizeof_subgrids(max_nr_terms * max_nr_subgrids, subgrid_size);
                 auto sizeof_scratch_sum = max_nr_subgrids * nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
                 auto sizeof_gradient    = max_nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = max_nr_terms * max_nr_terms * sizeof(std::complex<float>);
-                m_calibrate_state.d_scratch_pix_id  = device.allocate_device_memory(sizeof_scratch_pix);
                 m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
                 m_calibrate_state.d_hessian_id      = device.allocate_device_memory(sizeof_hessian);
                 m_calibrate_state.d_gradient_id     = device.allocate_device_memory(sizeof_gradient);
@@ -1036,7 +1034,6 @@ namespace idg {
                 auto sizeof_uvw         = auxiliary::sizeof_uvw(1, nr_timesteps);
                 auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
                 auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
-                cu::DeviceMemory& d_scratch_pix  = device.retrieve_device_memory(m_calibrate_state.d_scratch_pix_id);
                 cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
                 cu::DeviceMemory& d_hessian      = device.retrieve_device_memory(m_calibrate_state.d_hessian_id);
                 cu::DeviceMemory& d_gradient     = device.retrieve_device_memory(m_calibrate_state.d_gradient_id);
@@ -1055,7 +1052,7 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
-                    d_scratch_pix, d_scratch_sum, d_hessian, d_gradient);
+                    d_scratch_sum, d_hessian, d_gradient);
                 executestream.record(*events[1]);
 
                 // Wait for computation to finish
