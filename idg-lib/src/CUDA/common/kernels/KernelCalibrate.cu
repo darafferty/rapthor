@@ -278,13 +278,19 @@ __global__ void kernel_calibrate(
             unsigned int time = k / nr_channels;
             unsigned int chan = k % nr_channels;
 
-            // Load sums for current visibility
             if (time < nr_timesteps) {
-                for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
-                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int sum_idx = index_sums(s, v, term_nr, pol);
-                        sums_[pol][term_nr] = scratch_sum[sum_idx];
-                    }
+                // Load sums for current visibility
+                for (unsigned int term_nr = tid; term_nr < MAX_NR_TERMS; term_nr += nr_threads) {
+                    unsigned int sum_idx = index_sums(s, v, term_nr, 0);
+                    float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
+                    float4 sumA = make_float4(sumXX[term_nr].x, sumXX[term_nr].y, sumXY[term_nr].x, sumYX[term_nr].y);
+                    float4 sumB = make_float4(sumYX[term_nr].x, sumYX[term_nr].y, sumYY[term_nr].x, sumYY[term_nr].y);
+                    float4 a = sum_ptr[0];
+                    float4 b = sum_ptr[1];
+                    sums_[0][term_nr] = make_float2(a.x, a.y);
+                    sums_[1][term_nr] = make_float2(a.z, a.w);
+                    sums_[2][term_nr] = make_float2(b.x, b.y);
+                    sums_[3][term_nr] = make_float2(b.z, b.w);
                 }
 
                 __syncthreads();
