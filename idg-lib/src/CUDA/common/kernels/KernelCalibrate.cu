@@ -8,18 +8,14 @@
 
 // Index in scratch_sum
 inline __device__ long index_sums(
-    unsigned int nr_timesteps,
-    unsigned int nr_channels,
     unsigned int s,
-    unsigned int time,
-    unsigned int chan,
-    unsigned int pol,
-    unsigned int term_nr)
+    unsigned int tid,
+    unsigned int term_nr,
+    unsigned int pol)
 {
-    // sums: [nr_subgrids][nr_timesteps][nr_channels][NR_TERMS][NR_POLARIZATIONS]
-    return s * nr_timesteps * nr_channels * MAX_NR_TERMS * NR_POLARIZATIONS +
-           time * nr_channels * MAX_NR_TERMS * NR_POLARIZATIONS +
-           chan * MAX_NR_TERMS * NR_POLARIZATIONS +
+    // sums: [nr_subgrids][MAX_NR_THREADS][MAX_NR_TERMS][NR_POLARIZATIONS]
+    return s * MAX_NR_THREADS * MAX_NR_TERMS * NR_POLARIZATIONS +
+           tid * MAX_NR_TERMS * NR_POLARIZATIONS +
            term_nr * NR_POLARIZATIONS +
            pol;
 }
@@ -261,7 +257,7 @@ __global__ void kernel_calibrate(
         for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
             const float scale = 1.0f / nr_pixels;
             if (time < nr_timesteps) {
-                unsigned int sum_idx = index_sums(nr_timesteps, nr_channels, s, time, chan, 0, term_nr);
+                unsigned int sum_idx = index_sums(s, tid, term_nr, 0);
                 float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
                 float4 sumA = make_float4(sumXX[term_nr].x, sumXX[term_nr].y, sumXY[term_nr].x, sumYX[term_nr].y);
                 float4 sumB = make_float4(sumYX[term_nr].x, sumYX[term_nr].y, sumYY[term_nr].x, sumYY[term_nr].y);
@@ -286,8 +282,8 @@ __global__ void kernel_calibrate(
             if (time < nr_timesteps) {
                 for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int idx = index_sums(nr_timesteps, nr_channels, s, time, chan, pol, term_nr);
-                        sums_[pol][term_nr] = scratch_sum[idx];
+                        unsigned int sum_idx = index_sums(s, v, term_nr, pol);
+                        sums_[pol][term_nr] = scratch_sum[sum_idx];
                     }
                 }
 
