@@ -74,11 +74,31 @@ __global__ void kernel_calibrate(
 
     __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
+    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
+    __shared__ float2 gradient_[MAX_NR_TERMS];
+    __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
 
     // Initialize pixels to zero
     for (unsigned int j = tid; j < (NR_POLARIZATIONS*MAX_SUBGRID_SIZE*MAX_NR_TERMS); j += nr_threads) {
         pixels_[0][0][j] = make_float2(0, 0);
     }
+
+    // Initialize shared memory to zero
+    for (unsigned int i = tid; i < (MAX_NR_TERMS*MAX_NR_TERMS); i += nr_threads) {
+
+        if (i < MAX_NR_TERMS) {
+            gradient_[i] = make_float2(0, 0);
+            sums_[0][i]  = make_float2(0, 0);
+            sums_[1][i]  = make_float2(0, 0);
+            sums_[2][i]  = make_float2(0, 0);
+            sums_[3][i]  = make_float2(0, 0);
+        }
+
+        if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
+            hessian_[0][i] = make_float2(0, 0);
+        }
+
+    } // end for i
 
     // Iterate all timesteps
     for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
@@ -253,86 +273,63 @@ __global__ void kernel_calibrate(
     /*
         Phase 2: update local gradient and hessian
     */
-    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
-    __shared__ float2 gradient_[MAX_NR_TERMS];
-    __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
 
-    // Initialize shared memory to zero
-    for (unsigned int i = tid; i < (MAX_NR_TERMS*MAX_NR_TERMS); i += nr_threads) {
+    // Iterate all visibilities
+    for (unsigned int v = 0; v < (nr_timesteps*nr_channels); v++) {
+        unsigned int time = v / nr_channels;
+        unsigned int chan = v % nr_channels;
 
-        if (i < MAX_NR_TERMS) {
-            gradient_[i] = make_float2(0, 0);
-            sums_[0][i]  = make_float2(0, 0);
-            sums_[1][i]  = make_float2(0, 0);
-            sums_[2][i]  = make_float2(0, 0);
-            sums_[3][i]  = make_float2(0, 0);
-        }
+        __syncthreads();
 
-        if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
-            hessian_[0][i] = make_float2(0, 0);
-        }
-
-    } // end for i
-
-    __syncthreads();
-
-    // Iterate all timesteps
-    for (unsigned int time = 0; time < nr_timesteps; time++) {
-        // Iterate all channels
-        for (unsigned int chan = 0; chan < nr_channels; chan++) {
-
-            __syncthreads();
-
-            // Load sums for current visibility
-            for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    unsigned int idx = index_sums(nr_timesteps, nr_channels, s, time, chan, pol, term_nr);
-                    sums_[pol][term_nr] = scratch_sum[idx];
-                }
-            }
-
-            __syncthreads();
-
-            // Compute residual visibility
-            float2 visibility_res[NR_POLARIZATIONS];
+        // Load sums for current visibility
+        for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
             for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                unsigned int time_idx = time_offset + time;
-                unsigned int chan_idx = chan;
-                unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][nr_terms];
+                unsigned int idx = index_sums(nr_timesteps, nr_channels, s, time, chan, pol, term_nr);
+                sums_[pol][term_nr] = scratch_sum[idx];
             }
+        }
 
-            // Iterate all terms * terms
-            for (unsigned int i = tid; i < (nr_terms*nr_terms); i += nr_threads) {
-                unsigned term_nr0 = i / nr_terms;
-                unsigned term_nr1 = i % nr_terms;
+        __syncthreads();
 
-                // Iterate all polarizations
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        // Compute residual visibility
+        float2 visibility_res[NR_POLARIZATIONS];
+        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            unsigned int time_idx = time_offset + time;
+            unsigned int chan_idx = chan;
+            unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
+            visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][nr_terms];
+        }
 
-                    // Update local gradient
-                    if (i < nr_terms) {
-                        gradient_[i].x +=
-                            sums_[pol][i].x * visibility_res[pol].x +
-                            sums_[pol][i].y * visibility_res[pol].y;
-                        gradient_[i].y +=
-                            sums_[pol][i].x * visibility_res[pol].y -
-                            sums_[pol][i].y * visibility_res[pol].x;
-                    }
+        // Iterate all terms * terms
+        for (unsigned int term_nr = tid; term_nr < (nr_terms*nr_terms); term_nr += nr_threads) {
+            unsigned term_nr0 = term_nr / nr_terms;
+            unsigned term_nr1 = term_nr % nr_terms;
 
-                    // Update local hessian
-                    if (i < (nr_terms*nr_terms)) {
-                        hessian_[term_nr1][term_nr0].x +=
-                            sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
-                            sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
-                        hessian_[term_nr0][term_nr1].y +=
-                            sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
-                            sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
-                    }
-                } // end for pol
-            } // end for i (terms * terms)
-        } // end for chan
-    } // end for time
+            // Iterate all polarizations
+            for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+
+                // Update local gradient
+                if (term_nr < nr_terms) {
+                    gradient_[term_nr].x +=
+                        sums_[pol][term_nr].x * visibility_res[pol].x +
+                        sums_[pol][term_nr].y * visibility_res[pol].y;
+                    gradient_[term_nr].y +=
+                        sums_[pol][term_nr].x * visibility_res[pol].y -
+                        sums_[pol][term_nr].y * visibility_res[pol].x;
+                }
+
+                // Update local hessian
+                if (term_nr < (nr_terms*nr_terms)) {
+                    hessian_[term_nr1][term_nr0].x +=
+                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
+                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
+                    hessian_[term_nr0][term_nr1].y +=
+                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
+                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
+                }
+            } // end for pol
+        } // end for i (terms * terms)
+    } // end for v (visibilities)
 
     __syncthreads();
 
