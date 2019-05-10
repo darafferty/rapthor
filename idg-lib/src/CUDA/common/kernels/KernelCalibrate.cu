@@ -87,80 +87,7 @@ __global__ void kernel_calibrate(
     const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
 
     /*
-        Phase 1: apply aterm to subgrids and store prepared subgrid in device memory
-    */
-
-    // Apply aterm to subgrid
-    for (unsigned i = tid; i < nr_pixels; i += nr_threads) {
-        if (i < nr_pixels) {
-            for (unsigned term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
-                unsigned int y = i / subgrid_size;
-                unsigned int x = i % subgrid_size;
-
-                // Compute shifted position in subgrid
-                unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
-                unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
-
-                // Load pixels
-                unsigned int pixel_idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
-                unsigned int pixel_idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
-                unsigned int pixel_idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
-                unsigned int pixel_idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                float2 pixelXX = subgrid[pixel_idx_xx];
-                float2 pixelXY = subgrid[pixel_idx_xy];
-                float2 pixelYX = subgrid[pixel_idx_yx];
-                float2 pixelYY = subgrid[pixel_idx_yy];
-
-                // Load first aterm
-                float2 aXX1, aXY1, aYX1, aYY1;
-
-                if (term_nr == nr_terms) {
-                    // Load aterm for station1
-                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, station1, y, x);
-                    aXX1 = aterm[station1_idx + 0];
-                    aXY1 = aterm[station1_idx + 1];
-                    aYX1 = aterm[station1_idx + 2];
-                    aYY1 = aterm[station1_idx + 3];
-                } else {
-                    // Load aterm derivative
-                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_nr, y, x);
-                    aXX1 = aterm_derivatives[station1_idx + 0];
-                    aXY1 = aterm_derivatives[station1_idx + 1];
-                    aYX1 = aterm_derivatives[station1_idx + 2];
-                    aYY1 = aterm_derivatives[station1_idx + 3];
-                }
-
-                // Load second aterm
-                float2 aXX2, aXY2, aYX2, aYY2;
-                size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
-                aXX2 = aterm[station2_idx + 0];
-                aXY2 = aterm[station2_idx + 1];
-                aYX2 = aterm[station2_idx + 2];
-                aYY2 = aterm[station2_idx + 3];
-
-                // Apply aterm
-                apply_aterm(
-                    aXX1, aYX1, aXY1, aYY1,
-                    aXX2, aYX2, aXY2, aYY2,
-                    pixelXX, pixelXY, pixelYX, pixelYY);
-
-                // Store pixels
-                pixel_idx_xx = index_pixels(subgrid_size, s, term_nr, 0, y, x);
-                pixel_idx_xy = index_pixels(subgrid_size, s, term_nr, 1, y, x);
-                pixel_idx_yx = index_pixels(subgrid_size, s, term_nr, 2, y, x);
-                pixel_idx_yy = index_pixels(subgrid_size, s, term_nr, 3, y, x);
-                scratch_pix[pixel_idx_xx] = pixelXX;
-                scratch_pix[pixel_idx_xy] = pixelXY;
-                scratch_pix[pixel_idx_yx] = pixelYX;
-                scratch_pix[pixel_idx_yy] = pixelYY;
-            } // end for terms
-        } // end if
-    } // end for pixels
-
-    __syncthreads();
-
-    /*
-        Phase 2: "degrid" all prepared subgrids, store results in local memory
+        Phase 1: "degrid" all subgrids, row by row
     */
 
     __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
@@ -201,35 +128,76 @@ __global__ void kernel_calibrate(
 
         // Iterate all rows of the subgrid
         for (unsigned int y = 0; y < subgrid_size; y++) {
-
             __syncthreads();
 
-            // Precompute one row of l,m,n
-            for (unsigned int x = tid; x < subgrid_size; x += nr_threads) {
-                float l = compute_l(x, subgrid_size, image_size);
-                float m = compute_m(y, subgrid_size, image_size);
-                float n = compute_n(l, m);
-                float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-                if (x < subgrid_size) {
-                    lmn_[x] = make_float4(l, m, n, phase_offset);
-                }
-            }
+            // Precompute data for one row
+            for (unsigned x = tid; x < subgrid_size; x += nr_threads) {
 
-            // Preload pixels in shared memory
-            for (unsigned int j = tid; j < ((nr_terms+1)*subgrid_size); j+= nr_threads) {
-                unsigned int term_nr = j / subgrid_size;
-                unsigned int x       = j % subgrid_size;
-                if (term_nr < (nr_terms+1)) {
-                    unsigned int pixel_idx_xx = index_pixels(subgrid_size, s, term_nr, 0, y, x);
-                    unsigned int pixel_idx_xy = index_pixels(subgrid_size, s, term_nr, 1, y, x);
-                    unsigned int pixel_idx_yx = index_pixels(subgrid_size, s, term_nr, 2, y, x);
-                    unsigned int pixel_idx_yy = index_pixels(subgrid_size, s, term_nr, 3, y, x);
-                    pixels_[0][x][term_nr] = scratch_pix[pixel_idx_xx];
-                    pixels_[1][x][term_nr] = scratch_pix[pixel_idx_xy];
-                    pixels_[2][x][term_nr] = scratch_pix[pixel_idx_yx];
-                    pixels_[3][x][term_nr] = scratch_pix[pixel_idx_yy];
-                }
-            }
+                if (x < subgrid_size) {
+                    // Precompute l,m,n and phase offset
+                    float l = compute_l(x, subgrid_size, image_size);
+                    float m = compute_m(y, subgrid_size, image_size);
+                    float n = compute_n(l, m);
+                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                    lmn_[x] = make_float4(l, m, n, phase_offset);
+
+                    // Precompute pixels
+                    for (unsigned term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+                        // Compute shifted position in subgrid
+                        unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                        unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
+
+                        // Load pixels
+                        unsigned int pixel_idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
+                        unsigned int pixel_idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
+                        unsigned int pixel_idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
+                        unsigned int pixel_idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
+                        float2 pixelXX = subgrid[pixel_idx_xx];
+                        float2 pixelXY = subgrid[pixel_idx_xy];
+                        float2 pixelYX = subgrid[pixel_idx_yx];
+                        float2 pixelYY = subgrid[pixel_idx_yy];
+
+                        // Load first aterm
+                        float2 aXX1, aXY1, aYX1, aYY1;
+
+                        if (term_nr == nr_terms) {
+                            // Load aterm for station1
+                            size_t station1_idx = index_aterm(subgrid_size, 0, 0, station1, y, x);
+                            aXX1 = aterm[station1_idx + 0];
+                            aXY1 = aterm[station1_idx + 1];
+                            aYX1 = aterm[station1_idx + 2];
+                            aYY1 = aterm[station1_idx + 3];
+                        } else {
+                            // Load aterm derivative
+                            size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_nr, y, x);
+                            aXX1 = aterm_derivatives[station1_idx + 0];
+                            aXY1 = aterm_derivatives[station1_idx + 1];
+                            aYX1 = aterm_derivatives[station1_idx + 2];
+                            aYY1 = aterm_derivatives[station1_idx + 3];
+                        }
+
+                        // Load second aterm
+                        float2 aXX2, aXY2, aYX2, aYY2;
+                        size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
+                        aXX2 = aterm[station2_idx + 0];
+                        aXY2 = aterm[station2_idx + 1];
+                        aYX2 = aterm[station2_idx + 2];
+                        aYY2 = aterm[station2_idx + 3];
+
+                        // Apply aterm
+                        apply_aterm(
+                            aXX1, aYX1, aXY1, aYY1,
+                            aXX2, aYX2, aXY2, aYY2,
+                            pixelXX, pixelXY, pixelYX, pixelYY);
+
+                        // Store pixels in shared memory
+                        pixels_[0][x][term_nr] = pixelXX;
+                        pixels_[1][x][term_nr] = pixelXY;
+                        pixels_[2][x][term_nr] = pixelYX;
+                        pixels_[3][x][term_nr] = pixelYY;
+                    } // end for terms
+                } // end if
+            } // end for x
 
             __syncthreads();
 
@@ -301,7 +269,7 @@ __global__ void kernel_calibrate(
     __syncthreads();
 
     /*
-        Phase 3: update local gradient and hessian
+        Phase 2: update local gradient and hessian
     */
     __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
     __shared__ float2 gradient_[MAX_NR_TERMS];
@@ -387,7 +355,7 @@ __global__ void kernel_calibrate(
     __syncthreads();
 
     /*
-        Phase 4: update global gradient and hessian
+        Phase 3: update global gradient and hessian
     */
 
     // Iterate all terms * terms
