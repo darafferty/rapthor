@@ -95,7 +95,7 @@ __global__ void kernel_calibrate(
 
     __syncthreads();
 
-    // Iterate all timesteps
+    // Iterate all visibilities
     for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
         unsigned int time = i / nr_channels;
         unsigned int chan = i % nr_channels;
@@ -202,7 +202,7 @@ __global__ void kernel_calibrate(
 
             __syncthreads();
 
-            // Iterate all columns of the subgrid
+            // Iterate all columns of current row
             for (unsigned int x = 0; x < subgrid_size; x++) {
 
                 // Load l,m,n
@@ -273,15 +273,15 @@ __global__ void kernel_calibrate(
         */
 
         // Iterate all visibilities
-        for (unsigned int v = 0; v < MAX_NR_THREADS; v++) {
-            unsigned int k = (i - tid) + v;
+        for (unsigned int j = 0; j < MAX_NR_THREADS; j++) {
+            unsigned int k = (i - tid) + j;
             unsigned int time = k / nr_channels;
             unsigned int chan = k % nr_channels;
 
             if (time < nr_timesteps) {
                 // Load sums for current visibility
                 for (unsigned int term_nr = tid; term_nr < MAX_NR_TERMS; term_nr += nr_threads) {
-                    unsigned int sum_idx = index_sums(s, v, term_nr, 0);
+                    unsigned int sum_idx = index_sums(s, j, term_nr, 0);
                     float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
                     float4 sumA = make_float4(sumXX[term_nr].x, sumXX[term_nr].y, sumXY[term_nr].x, sumYX[term_nr].y);
                     float4 sumB = make_float4(sumYX[term_nr].x, sumYX[term_nr].y, sumYY[term_nr].x, sumYY[term_nr].y);
@@ -332,10 +332,10 @@ __global__ void kernel_calibrate(
                                 sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
                         }
                     } // end for pol
-                } // end for i (terms * terms)
+                } // end for term_nr (terms * terms)
             } // end if time
-        } // end for v (visibilities)
-    } // end for i (visibilities)
+        } // end for j (nr_threads)
+    } // end for i (all visibilities)
 
     __syncthreads();
 
