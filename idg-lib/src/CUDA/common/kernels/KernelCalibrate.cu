@@ -159,29 +159,6 @@ __global__ void kernel_calibrate(
 
     __syncthreads();
 
-    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
-    __shared__ float2 gradient_[MAX_NR_TERMS];
-    __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
-
-    // Initialize shared memory to zero
-    for (unsigned int i = tid; i < (MAX_NR_TERMS*MAX_NR_TERMS); i += nr_threads) {
-
-        if (i < MAX_NR_TERMS) {
-            gradient_[i] = make_float2(0, 0);
-            sums_[0][i]  = make_float2(0, 0);
-            sums_[1][i]  = make_float2(0, 0);
-            sums_[2][i]  = make_float2(0, 0);
-            sums_[3][i]  = make_float2(0, 0);
-        }
-
-        if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
-            hessian_[0][i] = make_float2(0, 0);
-        }
-
-    } // end for i
-
-    __syncthreads();
-
     /*
         Phase 2: "degrid" all prepared subgrids, store results in local memory
     */
@@ -326,6 +303,29 @@ __global__ void kernel_calibrate(
     /*
         Phase 3: update local gradient and hessian
     */
+    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
+    __shared__ float2 gradient_[MAX_NR_TERMS];
+    __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
+
+    // Initialize shared memory to zero
+    for (unsigned int i = tid; i < (MAX_NR_TERMS*MAX_NR_TERMS); i += nr_threads) {
+
+        if (i < MAX_NR_TERMS) {
+            gradient_[i] = make_float2(0, 0);
+            sums_[0][i]  = make_float2(0, 0);
+            sums_[1][i]  = make_float2(0, 0);
+            sums_[2][i]  = make_float2(0, 0);
+            sums_[3][i]  = make_float2(0, 0);
+        }
+
+        if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
+            hessian_[0][i] = make_float2(0, 0);
+        }
+
+    } // end for i
+
+    __syncthreads();
+
     // Iterate all timesteps
     for (unsigned int time = 0; time < nr_timesteps; time++) {
         // Iterate all channels
