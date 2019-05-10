@@ -1,6 +1,7 @@
 #include "Types.h"
 #include "math.cu"
 
+#define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 #define MAX_NR_TERMS     8
 #define MAX_SUBGRID_SIZE 32
 
@@ -144,11 +145,14 @@ __global__ void kernel_calibrate(
                     pixelXX, pixelXY, pixelYX, pixelYY);
 
                 // Store pixels
-                unsigned int pixel_idx = index_pixels(subgrid_size, s, term_nr, 0, y, x);
-                scratch_pix[pixel_idx + 0] = pixelXX;
-                scratch_pix[pixel_idx + 1] = pixelXY;
-                scratch_pix[pixel_idx + 2] = pixelYX;
-                scratch_pix[pixel_idx + 3] = pixelYY;
+                pixel_idx_xx = index_pixels(subgrid_size, s, term_nr, 0, y, x);
+                pixel_idx_xy = index_pixels(subgrid_size, s, term_nr, 1, y, x);
+                pixel_idx_yx = index_pixels(subgrid_size, s, term_nr, 2, y, x);
+                pixel_idx_yy = index_pixels(subgrid_size, s, term_nr, 3, y, x);
+                scratch_pix[pixel_idx_xx] = pixelXX;
+                scratch_pix[pixel_idx_xy] = pixelXY;
+                scratch_pix[pixel_idx_yx] = pixelYX;
+                scratch_pix[pixel_idx_yy] = pixelYY;
             } // end for terms
         } // end if
     } // end for pixels
