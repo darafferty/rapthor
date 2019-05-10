@@ -71,7 +71,7 @@ __global__ void kernel_calibrate(
 
     __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
-    __shared__ float2 sums_[MAX_NR_THREADS][NR_POLARIZATIONS][MAX_NR_TERMS];
+    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
     __shared__ float2 gradient_[MAX_NR_TERMS];
     __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
 
@@ -93,8 +93,8 @@ __global__ void kernel_calibrate(
         }
     }
 
-    for (unsigned int i = tid; i < (MAX_NR_THREADS*NR_POLARIZATIONS*MAX_NR_TERMS); i += nr_threads) {
-        sums_[0][0][i] = make_float2(0, 0);
+    for (unsigned int i = tid; i < (NR_POLARIZATIONS*MAX_NR_TERMS); i += nr_threads) {
+        sums_[0][i] = make_float2(0, 0);
     }
 
     __syncthreads();
@@ -260,10 +260,14 @@ __global__ void kernel_calibrate(
         // Scale sums and store in device memory
         for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
             const float scale = 1.0f / nr_pixels;
-            sums_[tid][0][term_nr] = sumXX[term_nr] * scale;
-            sums_[tid][1][term_nr] = sumXY[term_nr] * scale;
-            sums_[tid][2][term_nr] = sumYX[term_nr] * scale;
-            sums_[tid][3][term_nr] = sumYY[term_nr] * scale;
+            if (time < nr_timesteps) {
+                unsigned int sum_idx = index_sums(nr_timesteps, nr_channels, s, time, chan, 0, term_nr);
+                float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
+                float4 sumA = make_float4(sumXX[term_nr].x, sumXX[term_nr].y, sumXY[term_nr].x, sumYX[term_nr].y);
+                float4 sumB = make_float4(sumYX[term_nr].x, sumYX[term_nr].y, sumYY[term_nr].x, sumYY[term_nr].y);
+                sum_ptr[0] = sumA * scale;
+                sum_ptr[1] = sumB * scale;
+            }
         } // end for term_nr
 
         __syncthreads();
@@ -278,46 +282,56 @@ __global__ void kernel_calibrate(
             unsigned int time = k / nr_channels;
             unsigned int chan = k % nr_channels;
 
-            // Compute residual visibility
-            float2 visibility_res[NR_POLARIZATIONS];
-            for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                unsigned int time_idx = time_offset + time;
-                unsigned int chan_idx = chan;
-                unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                if (time < nr_timesteps) {
-                    visibility_res[pol] = visibilities[vis_idx + pol] - sums_[v][pol][nr_terms];
+            // Load sums for current visibility
+            if (time < nr_timesteps) {
+                for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
+                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        unsigned int idx = index_sums(nr_timesteps, nr_channels, s, time, chan, pol, term_nr);
+                        sums_[pol][term_nr] = scratch_sum[idx];
+                    }
                 }
-            }
 
-            // Iterate all terms * terms
-            for (unsigned int term_nr = tid; term_nr < (nr_terms*nr_terms); term_nr += nr_threads) {
-                unsigned term_nr0 = term_nr / nr_terms;
-                unsigned term_nr1 = term_nr % nr_terms;
+                __syncthreads();
 
-                // Iterate all polarizations
+                // Compute residual visibility
+                float2 visibility_res[NR_POLARIZATIONS];
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    unsigned int time_idx = time_offset + time;
+                    unsigned int chan_idx = chan;
+                    unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                    visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][nr_terms];
+                }
 
-                    // Update local gradient
-                    if (term_nr < nr_terms) {
-                        gradient_[term_nr].x +=
-                            sums_[v][pol][term_nr].x * visibility_res[pol].x +
-                            sums_[v][pol][term_nr].y * visibility_res[pol].y;
-                        gradient_[term_nr].y +=
-                            sums_[v][pol][term_nr].x * visibility_res[pol].y -
-                            sums_[v][pol][term_nr].y * visibility_res[pol].x;
-                    }
+                // Iterate all terms * terms
+                for (unsigned int term_nr = tid; term_nr < (nr_terms*nr_terms); term_nr += nr_threads) {
+                    unsigned term_nr0 = term_nr / nr_terms;
+                    unsigned term_nr1 = term_nr % nr_terms;
 
-                    // Update local hessian
-                    if (term_nr < (nr_terms*nr_terms)) {
-                        hessian_[term_nr1][term_nr0].x +=
-                            sums_[v][pol][term_nr0].x * sums_[v][pol][term_nr1].x +
-                            sums_[v][pol][term_nr0].y * sums_[v][pol][term_nr1].y;
-                        hessian_[term_nr0][term_nr1].y +=
-                            sums_[v][pol][term_nr0].x * sums_[v][pol][term_nr1].y -
-                            sums_[v][pol][term_nr0].y * sums_[v][pol][term_nr1].x;
-                    }
-                } // end for pol
-            } // end for i (terms * terms)
+                    // Iterate all polarizations
+                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+
+                        // Update local gradient
+                        if (term_nr < nr_terms) {
+                            gradient_[term_nr].x +=
+                                sums_[pol][term_nr].x * visibility_res[pol].x +
+                                sums_[pol][term_nr].y * visibility_res[pol].y;
+                            gradient_[term_nr].y +=
+                                sums_[pol][term_nr].x * visibility_res[pol].y -
+                                sums_[pol][term_nr].y * visibility_res[pol].x;
+                        }
+
+                        // Update local hessian
+                        if (term_nr < (nr_terms*nr_terms)) {
+                            hessian_[term_nr1][term_nr0].x +=
+                                sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
+                                sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
+                            hessian_[term_nr0][term_nr1].y +=
+                                sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
+                                sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
+                        }
+                    } // end for pol
+                } // end for i (terms * terms)
+            } // end if time
         } // end for v (visibilities)
     } // end for i (visibilities)
 
