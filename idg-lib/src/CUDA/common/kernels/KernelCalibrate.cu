@@ -4,6 +4,7 @@
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 #define MAX_NR_TERMS     8
 #define MAX_SUBGRID_SIZE 32
+#define MAX_NR_THREADS   128
 
 // Index in scratch_sum
 inline __device__ long index_sums(
@@ -74,7 +75,7 @@ __global__ void kernel_calibrate(
 
     __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
-    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
+    __shared__ float2 sums_[MAX_NR_THREADS][NR_POLARIZATIONS][MAX_NR_TERMS];
     __shared__ float2 gradient_[MAX_NR_TERMS];
     __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
 
@@ -88,10 +89,10 @@ __global__ void kernel_calibrate(
 
         if (i < MAX_NR_TERMS) {
             gradient_[i] = make_float2(0, 0);
-            sums_[0][i]  = make_float2(0, 0);
-            sums_[1][i]  = make_float2(0, 0);
-            sums_[2][i]  = make_float2(0, 0);
-            sums_[3][i]  = make_float2(0, 0);
+            sums_[0][0][i]  = make_float2(0, 0);
+            sums_[0][1][i]  = make_float2(0, 0);
+            sums_[0][2][i]  = make_float2(0, 0);
+            sums_[0][3][i]  = make_float2(0, 0);
         }
 
         if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
@@ -285,7 +286,7 @@ __global__ void kernel_calibrate(
         for (unsigned int term_nr = tid; term_nr < (nr_terms+1); term_nr += nr_threads) {
             for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                 unsigned int idx = index_sums(nr_timesteps, nr_channels, s, time, chan, pol, term_nr);
-                sums_[pol][term_nr] = scratch_sum[idx];
+                sums_[0][pol][term_nr] = scratch_sum[idx];
             }
         }
 
@@ -297,7 +298,7 @@ __global__ void kernel_calibrate(
             unsigned int time_idx = time_offset + time;
             unsigned int chan_idx = chan;
             unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
-            visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][nr_terms];
+            visibility_res[pol] = visibilities[vis_idx + pol] - sums_[0][pol][nr_terms];
         }
 
         // Iterate all terms * terms
@@ -311,21 +312,21 @@ __global__ void kernel_calibrate(
                 // Update local gradient
                 if (term_nr < nr_terms) {
                     gradient_[term_nr].x +=
-                        sums_[pol][term_nr].x * visibility_res[pol].x +
-                        sums_[pol][term_nr].y * visibility_res[pol].y;
+                        sums_[0][pol][term_nr].x * visibility_res[pol].x +
+                        sums_[0][pol][term_nr].y * visibility_res[pol].y;
                     gradient_[term_nr].y +=
-                        sums_[pol][term_nr].x * visibility_res[pol].y -
-                        sums_[pol][term_nr].y * visibility_res[pol].x;
+                        sums_[0][pol][term_nr].x * visibility_res[pol].y -
+                        sums_[0][pol][term_nr].y * visibility_res[pol].x;
                 }
 
                 // Update local hessian
                 if (term_nr < (nr_terms*nr_terms)) {
                     hessian_[term_nr1][term_nr0].x +=
-                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].x +
-                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].y;
+                        sums_[0][pol][term_nr0].x * sums_[0][pol][term_nr1].x +
+                        sums_[0][pol][term_nr0].y * sums_[0][pol][term_nr1].y;
                     hessian_[term_nr0][term_nr1].y +=
-                        sums_[pol][term_nr0].x * sums_[pol][term_nr1].y -
-                        sums_[pol][term_nr0].y * sums_[pol][term_nr1].x;
+                        sums_[0][pol][term_nr0].x * sums_[0][pol][term_nr1].y -
+                        sums_[0][pol][term_nr0].y * sums_[0][pol][term_nr1].x;
                 }
             } // end for pol
         } // end for i (terms * terms)
