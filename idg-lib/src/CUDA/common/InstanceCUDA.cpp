@@ -39,7 +39,8 @@ namespace idg {
                 d_metadata_(),
                 d_subgrids_(),
                 h_misc_(),
-                mModules(7)
+                d_misc_(),
+                mModules(8)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -91,6 +92,7 @@ namespace idg {
                 delete function_splitter;
                 delete function_gridder_post;
                 delete function_degridder_pre;
+                delete function_calibrate;
                 context->reset();
                 delete device;
                 delete context;
@@ -225,6 +227,11 @@ namespace idg {
                 cubin.push_back("DegridderPre.cubin");
                 flags.push_back(flags_common);
 
+                // Calibrate
+                src.push_back("KernelCalibrate.cu");
+                cubin.push_back("Calibrate.cubin");
+                flags.push_back(flags_common);
+
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
@@ -283,6 +290,9 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[6], name_degridder_pre.c_str()) == CUDA_SUCCESS) {
                     function_degridder_pre = new cu::Function(function); found++;
                 }
+                if (cuModuleGetFunction(&function, *mModules[7], name_calibrate.c_str()) == CUDA_SUCCESS) {
+                    function_calibrate = new cu::Function(function); found++;
+                }
 
                 // Verify that all functions are found
                 if (found != mModules.size()) {
@@ -319,6 +329,7 @@ namespace idg {
             void InstanceCUDA::set_parameters_default() {
                 block_gridder       = dim3(128);
                 block_degridder     = dim3(128);
+                block_calibrate     = dim3(128);
                 block_adder         = dim3(128);
                 block_splitter      = dim3(128);
                 block_scaler        = dim3(128);
@@ -535,6 +546,41 @@ namespace idg {
                 #if ENABLE_REPEAT_KERNELS
                 for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
+                executestream->launchKernel(*function, grid, block, 0, parameters);
+                end_measurement(data);
+            }
+
+            void InstanceCUDA::launch_calibrate(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                float image_size,
+                float w_step,
+                int nr_channels,
+                int nr_terms,
+                cu::DeviceMemory& d_uvw,
+                cu::DeviceMemory& d_wavenumbers,
+                cu::DeviceMemory& d_visibilities,
+                cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_aterm_derivatives,
+                cu::DeviceMemory& d_metadata,
+                cu::DeviceMemory& d_subgrid,
+                cu::DeviceMemory& d_scratch_sum,
+                cu::DeviceMemory& d_hessian,
+                cu::DeviceMemory& d_gradient)
+            {
+                const void *parameters[] = {
+                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_terms,
+                    d_uvw, d_wavenumbers, d_visibilities, d_aterm, d_aterm_derivatives,
+                    d_metadata, d_subgrid,
+                    d_scratch_sum,
+                    d_hessian, d_gradient };
+
+                dim3 grid(nr_subgrids);
+                dim3 block(block_calibrate);
+                UpdateData *data = get_update_data(powerSensor, report, &Report::update_calibrate);
+                start_measurement(data);
+                cu::Function *function = function_calibrate;
                 executestream->launchKernel(*function, grid, block, 0, parameters);
                 end_measurement(data);
             }
@@ -1037,6 +1083,26 @@ namespace idg {
             }
 
             /*
+             * Memory management for misc device buffers
+             *      Rather than storing these buffers by name,
+             *      the caller gets an id that is also used to retrieve
+             *      the memory from the d_misc_ vector
+             */
+            unsigned int InstanceCUDA::allocate_device_memory(
+                unsigned int size)
+            {
+                cu::DeviceMemory *d_misc = new cu::DeviceMemory(size);
+                d_misc_.push_back(std::unique_ptr<cu::DeviceMemory>(d_misc));
+                return d_misc_.size() - 1;
+            }
+
+            cu::DeviceMemory& InstanceCUDA::retrieve_device_memory(
+                unsigned int id)
+            {
+                return *d_misc_[id];
+            }
+
+            /*
              *  Memory management for large (host) buffers
              *      Maintains a history of previously allocated
              *      memory objects so that multiple buffers can be
@@ -1136,6 +1202,7 @@ namespace idg {
                 d_uvw_.clear();
                 d_metadata_.clear();
                 d_subgrids_.clear();
+                d_misc_.clear();
                 if (d_grid != NULL) {
                     delete d_grid;
                     d_grid = NULL;

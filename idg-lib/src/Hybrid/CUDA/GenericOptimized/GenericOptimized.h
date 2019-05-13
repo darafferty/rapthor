@@ -166,12 +166,21 @@ namespace idg {
                         unsigned int kernel_size;
                         long unsigned int grid_size;
                         unsigned int subgrid_size;
-                        Array1D<float> wavenumbers;
-                        Array4D<Visibility<std::complex<float>>> visibilities;
-                        Array3D<UVWCoordinate<float>> uvw;
-                        Array2D<std::pair<unsigned int,unsigned int>> baselines;
-                        std::vector<Array4D<std::complex<float>>> subgrids;
+                        unsigned int nr_channels;
+                        Array3D<UVWCoordinate<float>> uvw; // FIXME
+                        unsigned int d_scratch_sum_id;
+                        unsigned int d_hessian_id;
+                        unsigned int d_gradient_id;
+                        unsigned int d_aterms_deriv_id;
+                        std::vector<unsigned int> d_metadata_ids;
+                        std::vector<unsigned int> d_subgrids_ids;
+                        std::vector<unsigned int> d_visibilities_ids;
+                        std::vector<unsigned int> d_uvw_ids;
                     } m_calibrate_state;
+
+                    // Note: kernel_calibrate processes nr_terms+1 terms
+                    //       and internally assumes max_nr_terms = 8
+                    const unsigned int m_calibrate_max_nr_terms = 8;
 
             }; // class GenericOptimized
 

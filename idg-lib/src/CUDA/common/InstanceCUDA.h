@@ -72,6 +72,25 @@ namespace idg {
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
+                    void launch_calibrate(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        float image_size,
+                        float w_step,
+                        int nr_channels,
+                        int nr_terms,
+                        cu::DeviceMemory& d_uvw,
+                        cu::DeviceMemory& d_wavenumbers,
+                        cu::DeviceMemory& d_visibilities,
+                        cu::DeviceMemory& d_aterm,
+                        cu::DeviceMemory& d_aterm_derivatives,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid,
+                        cu::DeviceMemory& d_scratch_sum,
+                        cu::DeviceMemory& d_hessian,
+                        cu::DeviceMemory& d_gradient);
+
                     void launch_grid_fft(
                         cu::DeviceMemory& d_data,
                         int size,
@@ -234,10 +253,15 @@ namespace idg {
                         unsigned int nr_timesteps,
                         void *ptr);
 
+                    // Memory management for misc device buffers
+                    unsigned int allocate_device_memory(unsigned int size);
+                    cu::DeviceMemory& retrieve_device_memory(unsigned int id);
+
                     // Retrieve pre-allocated buffers (per device)
                     cu::HostMemory& get_host_grid() { return *h_grid; }
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
                     cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
+                    cu::DeviceMemory& get_device_aterms_derivatives() { return *d_aterms_derivatives; }
                     cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
                     cu::DeviceMemory& get_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
@@ -288,9 +312,11 @@ namespace idg {
                     cu::Function *function_scaler;
                     cu::Function *function_gridder_post;
                     cu::Function *function_degridder_pre;
+                    cu::Function *function_calibrate;
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
+                    cu::DeviceMemory *d_aterms_derivatives;
                     cu::DeviceMemory *d_avg_aterm_correction;
                     cu::DeviceMemory *d_spheroidal;
                     cu::DeviceMemory *d_grid;
@@ -312,12 +338,16 @@ namespace idg {
                     // Misc host memory
                     std::vector<std::unique_ptr<cu::HostMemory>> h_misc_;
 
+                    // Misc device memory
+                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
+
                     // All CUDA modules private to this InstanceCUDA
                     std::vector<cu::Module*> mModules;
 
                 protected:
                     dim3 block_gridder;
                     dim3 block_degridder;
+                    dim3 block_calibrate;
                     dim3 block_adder;
                     dim3 block_splitter;
                     dim3 block_scaler;
@@ -374,6 +404,7 @@ namespace idg {
             // Kernel names
             static const std::string name_gridder   = "kernel_gridder";
             static const std::string name_degridder = "kernel_degridder";
+            static const std::string name_calibrate = "kernel_calibrate";
             static const std::string name_adder     = "kernel_adder";
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";

@@ -834,7 +834,10 @@ namespace idg {
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
                 auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_timeslots = 1;
                 auto nr_channels  = frequencies.get_x_dim();
+                auto max_nr_terms = m_calibrate_max_nr_terms;
+                auto nr_correlations = 4;
 
                 // Allocate subgrids for all antennas
                 std::vector<Array4D<std::complex<float>>> subgrids;
@@ -847,6 +850,23 @@ namespace idg {
                 states[0] = hostPowerSensor->read();
                 #endif
 
+                // Load device
+                InstanceCUDA& device = get_device(0);
+                device.set_context();
+                device.free_device_memory();
+
+                // Load stream
+                cu::Stream& htodstream = device.get_htod_stream();
+
+                // Maximum number of subgrids for any antenna
+                unsigned int max_nr_subgrids = 0;
+
+                // Reset vectors in calibration state
+                m_calibrate_state.d_metadata_ids.clear();
+                m_calibrate_state.d_subgrids_ids.clear();
+                m_calibrate_state.d_visibilities_ids.clear();
+                m_calibrate_state.d_uvw_ids.clear();
+
                 // Create subgrids for every antenna
                 for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
                 {
@@ -854,8 +874,11 @@ namespace idg {
                     unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
+                    if (nr_subgrids > max_nr_subgrids) {
+                        max_nr_subgrids = nr_subgrids;
+                    }
+
                     // Get data pointers
-                    const float *shift_ptr = shift.data();
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
                     void *subgrids_ptr     = subgrids_.data();
                     void *grid_ptr         = grid.data();
@@ -883,9 +906,30 @@ namespace idg {
                         }
                     }
 
-                    // Store subgrids for current antenna
-                    subgrids.push_back(std::move(subgrids_));
-
+                    // Allocate and initialize device memory for current antenna
+                    void *visibilities_ptr   = visibilities.data(antenna_nr);
+                    void *uvw_ptr            = uvw.data(antenna_nr);
+                    auto sizeof_metadata     = auxiliary::sizeof_metadata(nr_subgrids);
+                    auto sizeof_subgrids     = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_subgrids, nr_timesteps, nr_channels);
+                    auto sizeof_uvw          = auxiliary::sizeof_uvw(nr_antennas-1, nr_timesteps);
+                    auto d_metadata_id       = device.allocate_device_memory(sizeof_metadata);
+                    auto d_subgrids_id       = device.allocate_device_memory(sizeof_subgrids);
+                    auto d_visibilities_id   = device.allocate_device_memory(sizeof_visibilities);
+                    auto d_uvw_id            = device.allocate_device_memory(sizeof_uvw);
+                    m_calibrate_state.d_metadata_ids.push_back(d_metadata_id);
+                    m_calibrate_state.d_subgrids_ids.push_back(d_subgrids_id);
+                    m_calibrate_state.d_visibilities_ids.push_back(d_visibilities_id);
+                    m_calibrate_state.d_uvw_ids.push_back(d_uvw_id);
+                    cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
+                    cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
+                    cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
+                    cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
+                    htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+                    htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
+                    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
+                    //htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw); // FIXME
+                    htodstream.synchronize();
                 } // end for antennas
 
                 // End performance measurement
@@ -896,21 +940,33 @@ namespace idg {
                 #endif
 
                 // Set calibration state member variables
-                m_calibrate_state = {
-                    std::move(plans),
-                    w_step,
-                    std::move(shift),
-                    cell_size,
-                    image_size,
-                    kernel_size,
-                    grid_size,
-                    subgrid_size,
-                    std::move(wavenumbers),
-                    std::move(visibilities),
-                    std::move(uvw),
-                    std::move(baselines),
-                    std::move(subgrids),
-                };
+                m_calibrate_state.plans        = std::move(plans);
+                m_calibrate_state.w_step       = w_step;
+                m_calibrate_state.shift        = std::move(shift);
+                m_calibrate_state.cell_size    = cell_size;
+                m_calibrate_state.image_size   = image_size;
+                m_calibrate_state.kernel_size  = kernel_size;
+                m_calibrate_state.grid_size    = grid_size;
+                m_calibrate_state.subgrid_size = subgrid_size;
+                m_calibrate_state.nr_channels  = nr_channels;
+                m_calibrate_state.uvw          = std::move(uvw); // FIXME
+
+                // Allocate device memory
+                cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
+                device.get_device_aterms(nr_antennas, nr_timeslots, subgrid_size);
+
+                // Allocate device memory (using new allocation mechanism)
+                auto sizeof_aterm_deriv = max_nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
+                auto sizeof_scratch_sum = max_nr_subgrids * nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
+                auto sizeof_gradient    = max_nr_terms * sizeof(std::complex<float>);
+                auto sizeof_hessian     = max_nr_terms * max_nr_terms * sizeof(std::complex<float>);
+                m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
+                m_calibrate_state.d_hessian_id      = device.allocate_device_memory(sizeof_hessian);
+                m_calibrate_state.d_gradient_id     = device.allocate_device_memory(sizeof_gradient);
+                m_calibrate_state.d_aterms_deriv_id = device.allocate_device_memory(sizeof_aterm_deriv);
+
+                // Copy data to device
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
             }
 
             void GenericOptimized::do_calibrate_update(
@@ -922,9 +978,17 @@ namespace idg {
             {
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
-                auto nr_channels  = m_calibrate_state.wavenumbers.get_x_dim();
+                auto nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                auto nr_channels  = m_calibrate_state.nr_channels;
                 auto nr_terms     = aterm_derivatives.get_z_dim();
                 auto subgrid_size = aterms.get_y_dim();
+                auto grid_size    = m_calibrate_state.grid_size;
+                auto image_size   = m_calibrate_state.image_size;
+                auto w_step       = m_calibrate_state.w_step;
+                auto max_nr_terms = m_calibrate_max_nr_terms;
+                auto nr_correlations = 4;
+
+                assert((nr_terms+1) < max_nr_terms);
 
                 // Performance measurement
                 if (antenna_nr == 0) {
@@ -932,25 +996,80 @@ namespace idg {
                 }
 
                 // Data pointers
-                const float *shift_ptr     = m_calibrate_state.shift.data();
-                void *wavenumbers_ptr      = m_calibrate_state.wavenumbers.data();
                 void *aterm_ptr            = aterms.data();
                 void *aterm_derivative_ptr = aterm_derivatives.data();
-                void *metadata_ptr         = (void *) m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
                 void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
-                void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
-                void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
 
+                // Load device
+                InstanceCUDA& device = get_device(0);
+                device.set_context();
+
+                // Load streams
+                cu::Stream& executestream = device.get_execute_stream();
+                cu::Stream& htodstream    = device.get_htod_stream();
+                cu::Stream& dtohstream    = device.get_dtoh_stream();
+
+                // Load memory objects
+                cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                unsigned int d_metadata_id       = m_calibrate_state.d_metadata_ids[antenna_nr];
+                unsigned int d_subgrids_id       = m_calibrate_state.d_subgrids_ids[antenna_nr];
+                unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
+                unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[0]; // FIXME
+                cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
+                cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
+                cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
+                cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
+
+                // Events
+                std::vector<cu::Event*> events;
+                for (int i = 0; i < 3; i++) {
+                    events.push_back(new cu::Event());
+                }
+
+                // Allocate temporary buffers
+                auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
+                auto sizeof_uvw         = auxiliary::sizeof_uvw(1, nr_timesteps);
+                auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
+                auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
+                cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
+                cu::DeviceMemory& d_hessian      = device.retrieve_device_memory(m_calibrate_state.d_hessian_id);
+                cu::DeviceMemory& d_gradient     = device.retrieve_device_memory(m_calibrate_state.d_gradient_id);
+                cu::DeviceMemory& d_aterms_deriv = device.retrieve_device_memory(m_calibrate_state.d_aterms_deriv_id);
+
+                // Copy input data to device
+                htodstream.memcpyHtoDAsync(d_aterms, aterm_ptr);
+                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr, sizeof_aterm_deriv);
+                htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr, sizeof_hessian);
+                htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr, sizeof_gradient);
+                htodstream.record(*events[0]);
+
                 // Run calibration update step
-                // TODO
+                executestream.waitEvent(*events[0]);
+                device.launch_calibrate(
+                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_terms,
+                    d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
+                    d_scratch_sum, d_hessian, d_gradient);
+                executestream.record(*events[1]);
+
+                // Wait for computation to finish
+                events[1]->synchronize();
+
+                // Copy output to host
+                //dtohstream.waitEvent(*events[1]);
+                dtohstream.memcpyDtoHAsync(hessian_ptr, d_hessian, sizeof_hessian);
+                dtohstream.memcpyDtoHAsync(gradient_ptr, d_gradient, sizeof_gradient);
+                dtohstream.record(*events[2]);
+
+                // Wait for output to finish
+                events[2]->synchronize();
 
                 // Performance reporting
-                auto current_nr_subgrids  = nr_subgrids;
-                auto current_nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
-                auto current_nr_visibilities = current_nr_timesteps * nr_channels;
-                report.update_total(current_nr_subgrids, current_nr_timesteps, current_nr_visibilities);
+                auto nr_visibilities = nr_timesteps * nr_channels;
+                report.update_total(nr_subgrids, nr_timesteps, nr_visibilities);
             }
 
             void GenericOptimized::do_calibrate_finish()
