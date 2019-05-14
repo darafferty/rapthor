@@ -908,7 +908,7 @@ namespace idg {
 
                     // Allocate and initialize device memory for current antenna
                     void *visibilities_ptr   = visibilities.data(antenna_nr);
-                    void *uvw_ptr            = uvw.data(antenna_nr);
+                    //void *uvw_ptr            = uvw.data(antenna_nr);
                     auto sizeof_metadata     = auxiliary::sizeof_metadata(nr_subgrids);
                     auto sizeof_subgrids     = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_subgrids, nr_timesteps, nr_channels);
@@ -924,7 +924,7 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
-                    cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
+                    //cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
