@@ -5,6 +5,8 @@
 
 #include "InstanceCPU.h"
 
+#define NR_WTILES 4000
+
 namespace idg {
     namespace proxy {
         namespace cpu {
@@ -26,6 +28,7 @@ namespace idg {
                     virtual bool supports_wstack_gridding() {return kernels.has_adder_wstack();}
                     virtual bool supports_wstack_degridding() {return kernels.has_splitter_wstack();}
                     virtual bool supports_avg_aterm_correction() {return true;}
+                    virtual bool supports_wtiles() {return kernels.has_adder_wtiles() && kernels.has_adder_wtiles();}
 
                     kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
 
@@ -90,9 +93,53 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
+                    virtual Plan* make_plan(
+                        const int kernel_size,
+                        const int subgrid_size,
+                        const int grid_size,
+                        const float cell_size,
+                        const Array1D<float>& frequencies,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        Plan::Options options)
+                    {
+                        if (supports_wtiles()) {
+                            return new Plan(
+                                kernel_size,
+                                subgrid_size,
+                                grid_size,
+                                cell_size,
+                                frequencies,
+                                uvw,
+                                baselines,
+                                aterms_offsets,
+                                itsWTiles,
+                                options
+                            );
+                        } else {
+                            return Proxy::make_plan(
+                                kernel_size,
+                                subgrid_size,
+                                grid_size,
+                                cell_size,
+                                frequencies,
+                                uvw,
+                                baselines,
+                                aterms_offsets,
+                                options
+                            );
+                        }
+
+                    }
+
+                    virtual void init_wtiles(int subgrid_size);
+
                 protected:
                     kernel::cpu::InstanceCPU kernels;
                     powersensor::PowerSensor *powerSensor;
+                    WTiles itsWTiles;
+                    std::vector<std::complex<float>> itsWTilesBuffer;
 
                     struct {
                         std::vector<std::unique_ptr<Plan>> plans;

@@ -27,6 +27,8 @@ namespace idg {
                 libraries.push_back(prefix + "fft.so");
                 libraries.push_back(prefix + "adder-wstack.so");
                 libraries.push_back(prefix + "splitter-wstack.so");
+                libraries.push_back(prefix + "adder-wtiles.so");
+                libraries.push_back(prefix + "splitter-wtiles.so");
                 return libraries;
             }
 
