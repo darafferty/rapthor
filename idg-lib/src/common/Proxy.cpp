@@ -1,5 +1,6 @@
 #include <ThrowAssert.hpp> // assert
 #include <cmath> // M_PI
+#include <climits>
 #include <memory>
 #include "Proxy.h"
 
@@ -63,7 +64,7 @@ namespace idg {
             options.w_step = w_step;
             options.nr_w_layers = nr_w_layers;
 
-            Plan plan(
+            std::unique_ptr<Plan> plan(make_plan(
                 kernel_size,
                 subgrid_size,
                 grid_size,
@@ -72,10 +73,10 @@ namespace idg {
                 uvw,
                 baselines,
                 aterms_offsets,
-                options);
+                options));
 
             gridding(
-                plan,
+                *plan,
                 w_step,
                 shift,
                 cell_size,
@@ -237,7 +238,7 @@ namespace idg {
             options.w_step = w_step;
             options.nr_w_layers = nr_w_layers;
 
-            Plan plan(
+            std::unique_ptr<Plan> plan(make_plan(
                 kernel_size,
                 subgrid_size,
                 grid_size,
@@ -245,10 +246,10 @@ namespace idg {
                 frequencies,
                 uvw, baselines,
                 aterms_offsets,
-                options);
+                options));
 
             degridding(
-                plan,
+                *plan,
                 w_step,
                 shift,
                 cell_size,
@@ -287,8 +288,19 @@ namespace idg {
             //    subgrid_size, frequencies, visibilities, uvw, baselines,
             //    grid, aterms, aterms_offsets, spheroidal);
 
-            if ((w_step != 0.0) && (!supports_wstack_degridding())) {
-                throw std::invalid_argument("w_step is not zero, but this Proxy does not support calibration with W-stacking.");
+            int nr_w_layers;
+
+            if (w_step != 0.0) {
+                if (supports_wtiles()) {
+                    nr_w_layers = INT_MAX;
+
+                }
+                else if (supports_wstack()) {
+                    nr_w_layers  = grid.get_w_dim();
+                }
+                else {
+                    throw std::invalid_argument("w_step is not zero, but this Proxy does not support calibration with W-stacking.");
+                }
             }
 
             // Arguments
@@ -296,7 +308,6 @@ namespace idg {
             auto nr_baselines = baselines.get_x_dim();
             auto nr_channels  = frequencies.get_x_dim();
             auto grid_size    = grid.get_x_dim();
-            auto nr_w_layers  = grid.get_w_dim();
 
             // Initialize
             unsigned int nr_antennas = 0;
@@ -364,7 +375,7 @@ namespace idg {
             plans.reserve(nr_antennas);
 
             for (unsigned int i = 0; i <nr_antennas; i++) {
-                plans.push_back(std::unique_ptr<Plan>(new Plan(
+                plans.push_back(std::unique_ptr<Plan>(make_plan(
                     kernel_size,
                     subgrid_size,
                     grid_size,

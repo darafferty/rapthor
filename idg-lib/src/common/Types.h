@@ -7,6 +7,8 @@
 #include <cstring>
 #include <memory>
 
+#define WTILE_SIZE 128
+
 namespace idg {
 
     /* Structures */
@@ -20,7 +22,10 @@ namespace idg {
         int nr_timesteps;
         int aterm_index;
         Baseline baseline;
-        Coordinate coordinate; } Metadata;
+        Coordinate coordinate;
+        Coordinate wtile_coordinate;
+        int wtile_index;
+    } Metadata;
 
     typedef struct {float real; float imag; } float2;
     typedef struct {double real; double imag; } double2;

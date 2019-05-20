@@ -25,7 +25,11 @@ namespace idg {
                 function_adder(nullptr),
                 function_splitter(nullptr),
                 function_adder_wstack(nullptr),
-                function_splitter_wstack(nullptr)
+                function_splitter_wstack(nullptr),
+                function_adder_wtiles_to_grid(nullptr),
+                function_splitter_wtiles_from_grid(nullptr),
+                function_adder_subgrids_to_wtiles(nullptr),
+                function_splitter_subgrids_from_wtiles(nullptr)
             {
                 #if defined(DEBUG)
                 cout << __func__ << endl;
@@ -59,6 +63,10 @@ namespace idg {
                 delete function_splitter;
                 delete function_adder_wstack;
                 delete function_splitter_wstack;
+                delete function_adder_wtiles_to_grid;
+                delete function_splitter_wtiles_from_grid;
+                delete function_adder_subgrids_to_wtiles;
+                delete function_splitter_subgrids_from_wtiles;
 
                 // Delete power sensor
                 delete powerSensor;
@@ -117,20 +125,35 @@ namespace idg {
                     if (dlsym(*modules[i], kernel::cpu::name_splitter_wstack.c_str())) {
                         function_splitter_wstack = new runtime::Function(*modules[i], name_splitter_wstack.c_str());
                     }
+                    if (dlsym(*modules[i], kernel::cpu::name_adder_wtiles_to_grid.c_str())) {
+                        function_adder_wtiles_to_grid = new runtime::Function(*modules[i], name_adder_wtiles_to_grid.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_splitter_wtiles_from_grid.c_str())) {
+                        function_splitter_wtiles_from_grid = new runtime::Function(*modules[i], name_splitter_wtiles_from_grid.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_adder_subgrids_to_wtiles.c_str())) {
+                        function_adder_subgrids_to_wtiles = new runtime::Function(*modules[i], name_adder_subgrids_to_wtiles.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_splitter_subgrids_from_wtiles.c_str())) {
+                        function_splitter_subgrids_from_wtiles = new runtime::Function(*modules[i], name_splitter_subgrids_from_wtiles.c_str());
+                    }
                 } // end for
             } // end load_kernel_funcions
 
             // Function signatures
-            #define sig_gridder         (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_degridder       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_calibrate       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_phasor          (void (*)(int,int,int,float,float,const float*,int,void*,void*,void*,void*))
-            #define sig_fft		        (void (*)(long,long,long,void*,int))
-            #define sig_adder	        (void (*)(long,long,int,void*,void*,void*))
-            #define sig_splitter        (void (*)(long,long,int,void*,void*,void*))
-            #define sig_adder_wstack    (void (*)(long,long,int,void*,void*,void*))
-            #define sig_splitter_wstack (void (*)(long,long,int,void*,void*,void*))
-
+            #define sig_gridder                       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_degridder                     (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_calibrate                     (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_phasor                        (void (*)(int,int,int,float,float,const float*,int,void*,void*,void*,void*))
+            #define sig_fft		                      (void (*)(long,long,long,void*,int))
+            #define sig_adder	                      (void (*)(long,long,int,void*,void*,void*))
+            #define sig_splitter                      (void (*)(long,long,int,void*,void*,void*))
+            #define sig_adder_wstack                  (void (*)(long,long,int,void*,void*,void*))
+            #define sig_splitter_wstack               (void (*)(long,long,int,void*,void*,void*))
+            #define sig_adder_subgrids_to_wtiles      (void (*)(long,int,int,void*,void*,void*))
+            #define sig_adder_wtiles_to_grid          (void (*)(int,int,float,float,int,void*,void*,void*,void*))
+            #define sig_splitter_subgrids_from_wtiles (void (*)(long,int,int,void*,void*,void*))
+            #define sig_splitter_wtiles_from_grid     (void (*)(int,int,float,float,int,void*,void*,void*,void*))
 
             void InstanceCPU::run_gridder(
                 int nr_subgrids,
@@ -321,6 +344,77 @@ namespace idg {
                 if (report) { report->update_splitter(states[0], states[1]); }
             }
 
+        void InstanceCPU::run_adder_subgrids_to_wtiles(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                void *metadata,
+                void *subgrid,
+                void *tiles)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                std::cout << "Adder subgrids to tiles." << std::endl;
+                (sig_adder_subgrids_to_wtiles (void *) *function_adder_subgrids_to_wtiles)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, tiles);
+                states[1] = powerSensor->read();
+                if (report) { report->update_adder(states[0], states[1]); }
+            }
+
+            void InstanceCPU::run_splitter_subgrids_from_wtiles(
+                int nr_subgrids,
+                int grid_size,
+                int subgrid_size,
+                void *metadata,
+                void *subgrid,
+                void *tiles)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                std::cout << "Splitter subgrids from tiles." << std::endl;
+                (sig_splitter_subgrids_from_wtiles (void *) *function_splitter_subgrids_from_wtiles)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, tiles);
+                states[1] = powerSensor->read();
+                if (report) { report->update_adder(states[0], states[1]); }
+            }
+
+            void InstanceCPU::run_adder_wtiles_to_grid(
+                int grid_size,
+                int subgrid_size,
+                float image_size,
+                float w_step,
+                int nr_tiles,
+                void *tile_ids,
+                void *tile_coordinates,
+                void *tiles,
+                void *grid)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                std::cout << "Adder tiles to grid." << std::endl;
+                (sig_adder_wtiles_to_grid (void *) *function_adder_wtiles_to_grid)(grid_size, subgrid_size, image_size, w_step, nr_tiles, tile_ids, tile_coordinates, tiles, grid);
+                states[1] = powerSensor->read();
+                if (report) { report->update_adder(states[0], states[1]); }
+
+            }
+
+            void InstanceCPU::run_splitter_wtiles_from_grid(
+                int grid_size,
+                int subgrid_size,
+                float image_size,
+                float w_step,
+                int nr_tiles,
+                void *tile_ids,
+                void *tile_coordinates,
+                void *tiles,
+                void *grid)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                std::cout << "Splitter tiles from grid." << std::endl;
+                (sig_splitter_wtiles_from_grid (void *) *function_splitter_wtiles_from_grid)(grid_size, subgrid_size, image_size, w_step, nr_tiles, tile_ids, tile_coordinates, tiles, grid);
+                states[1] = powerSensor->read();
+                if (report) { report->update_adder(states[0], states[1]); }
+
+            }
         } // namespace cpu
     } // namespace kernel
 } // namespace idg

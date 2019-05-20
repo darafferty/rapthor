@@ -545,6 +545,14 @@ namespace idg {
                 }
             } // end transform
 
+            void CPU::init_wtiles(int subgrid_size)
+            {
+                itsWTiles = WTiles(NR_WTILES);
+                itsWTilesBuffer = std::vector<std::complex<float>>(NR_WTILES * (WTILE_SIZE+subgrid_size)*(WTILE_SIZE+subgrid_size)*NR_CORRELATIONS);
+            }
+
+
+
         } // namespace cpu
     } // namespace proxy
 } // namespace idg

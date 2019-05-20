@@ -136,10 +136,52 @@ namespace idg {
                         void *metadata,
                         void *subgrid,
                         void *grid);
-                    
+
+                    void run_adder_subgrids_to_wtiles(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        void *metadata,
+                        void *subgrid,
+                        void *tiles);
+
+                    void run_splitter_subgrids_from_wtiles(
+                        int nr_subgrids,
+                        int grid_size,
+                        int subgrid_size,
+                        void *metadata,
+                        void *subgrid,
+                        void *tiles);
+
+                    void run_adder_wtiles_to_grid(
+                        int grid_size,
+                        int subgrid_size,
+                        float image_size,
+                        float w_step,
+                        int nr_wtiles,
+                        void *tile_ids,
+                        void *tile_coordinates,
+                        void *tiles,
+                        void *grid);
+
+                    void run_splitter_wtiles_from_grid(
+                        int grid_size,
+                        int subgrid_size,
+                        float image_size,
+                        float w_step,
+                        int nr_tiles,
+                        void *tile_ids,
+                        void *tile_coordinates,
+                        void *tiles,
+                        void *grid);
+
                     bool has_adder_wstack() {return (function_adder_wstack != nullptr);}
 
                     bool has_splitter_wstack() {return (function_splitter_wstack != nullptr);}
+
+                    bool has_adder_wtiles() {return (function_adder_subgrids_to_wtiles != nullptr) && (function_adder_wtiles_to_grid != nullptr);}
+
+                    bool has_splitter_wtiles() {return (function_splitter_wtiles_from_grid != nullptr) && (function_splitter_subgrids_from_wtiles != nullptr);}
 
                 protected:
                     void compile(
@@ -160,6 +202,10 @@ namespace idg {
                     runtime::Function *function_splitter;
                     runtime::Function *function_adder_wstack;
                     runtime::Function *function_splitter_wstack;
+                    runtime::Function *function_adder_wtiles_to_grid;
+                    runtime::Function *function_splitter_wtiles_from_grid;
+                    runtime::Function *function_adder_subgrids_to_wtiles;
+                    runtime::Function *function_splitter_subgrids_from_wtiles;
             };
 
             // Jobsize
@@ -167,16 +213,20 @@ namespace idg {
             static const int jobsize_degridding = 1024;
 
             // Kernel names
-            static const std::string name_gridder         = "kernel_gridder";
-            static const std::string name_degridder       = "kernel_degridder";
-            static const std::string name_calibrate       = "kernel_calibrate";
-            static const std::string name_phasor          = "kernel_phasor";
-            static const std::string name_adder           = "kernel_adder";
-            static const std::string name_splitter        = "kernel_splitter";
-            static const std::string name_adder_wstack    = "kernel_adder_wstack";
-            static const std::string name_splitter_wstack = "kernel_splitter_wstack";
-            static const std::string name_fft             = "kernel_fft";
-            static const std::string name_scaler          = "kernel_scaler";
+            static const std::string name_gridder                       = "kernel_gridder";
+            static const std::string name_degridder                     = "kernel_degridder";
+            static const std::string name_calibrate                     = "kernel_calibrate";
+            static const std::string name_phasor                        = "kernel_phasor";
+            static const std::string name_adder                         = "kernel_adder";
+            static const std::string name_splitter                      = "kernel_splitter";
+            static const std::string name_adder_wstack                  = "kernel_adder_wstack";
+            static const std::string name_splitter_wstack               = "kernel_splitter_wstack";
+            static const std::string name_adder_subgrids_to_wtiles      = "kernel_adder_subgrids_to_wtiles";
+            static const std::string name_adder_wtiles_to_grid          = "kernel_adder_wtiles_to_grid";
+            static const std::string name_splitter_subgrids_from_wtiles = "kernel_splitter_subgrids_from_wtiles";
+            static const std::string name_splitter_wtiles_from_grid     = "kernel_splitter_wtiles_from_grid";
+            static const std::string name_fft                           = "kernel_fft";
+            static const std::string name_scaler                        = "kernel_scaler";
 
         } // end namespace cpu
     } // end namespace kernel

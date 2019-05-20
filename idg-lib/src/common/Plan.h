@@ -10,6 +10,7 @@
 #include <omp.h>
 
 #include "Types.h"
+#include "WTiles.h"
 
 
 namespace idg {
@@ -52,6 +53,18 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 Options options = Options());
 
+            Plan(
+                const int kernel_size,
+                const int subgrid_size,
+                const int grid_size,
+                const float cell_size,
+                const Array1D<float>& frequencies,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array1D<unsigned int>& aterms_offsets,
+                WTiles &wtiles,
+                Options options = Options());
+
             // Destructor
             virtual ~Plan() = default;
 
@@ -64,6 +77,7 @@ namespace idg {
                 const Array2D<UVWCoordinate<float>>& uvw,
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array1D<unsigned int>& aterms_offsets,
+                WTiles &wtiles,
                 const Options& options);
 
             // total number of subgrids
@@ -131,6 +145,8 @@ namespace idg {
             std::vector<int> subgrid_offset;
             std::vector<int> total_nr_timesteps_per_baseline;
             std::vector<int> total_nr_visibilities_per_baseline;
+            WTileUpdateSet m_wtile_initialize_set;
+            WTileUpdateSet m_wtile_flush_set;
         }; // class Plan
 
 } // namespace idg

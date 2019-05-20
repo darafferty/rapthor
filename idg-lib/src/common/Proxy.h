@@ -196,6 +196,32 @@ namespace idg {
 
                 void calibrate_finish();
 
+                virtual Plan* make_plan(
+                    const int kernel_size,
+                    const int subgrid_size,
+                    const int grid_size,
+                    const float cell_size,
+                    const Array1D<float>& frequencies,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    Plan::Options options = Plan::Options())
+                {
+                    return new Plan(
+                        kernel_size,
+                        subgrid_size,
+                        grid_size,
+                        cell_size,
+                        frequencies,
+                        uvw,
+                        baselines,
+                        aterms_offsets,
+                        options
+                    );
+                }
+
+                virtual void init_wtiles(int subgrid_size) {}
+
                 //! Applyies (inverse) Fourier transform to grid
                 void transform(
                     DomainAtoDomainB direction,
@@ -213,6 +239,7 @@ namespace idg {
                 virtual bool supports_wstack_gridding() {return false;}
                 virtual bool supports_wstack_degridding() {return false;}
                 virtual bool supports_avg_aterm_correction() {return false;}
+                virtual bool supports_wtiles() {return false;}
 
                 void set_avg_aterm_correction(const Array4D<std::complex<float>>& avg_aterm_correction);
                 void unset_avg_aterm_correction();

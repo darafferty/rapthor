@@ -24,9 +24,34 @@ namespace idg {
         cout << __func__ << endl;
         #endif
 
+        WTiles dummy_wtiles(0);
+
         initialize(
             kernel_size, subgrid_size, grid_size, cell_size,
-            frequencies, uvw, baselines, aterms_offsets, options);
+            frequencies, uvw, baselines, aterms_offsets, dummy_wtiles, options);
+    }
+
+    Plan::Plan(
+        const int kernel_size,
+        const int subgrid_size,
+        const int grid_size,
+        const float cell_size,
+        const Array1D<float>& frequencies,
+        const Array2D<UVWCoordinate<float>>& uvw,
+        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+        const Array1D<unsigned int>& aterms_offsets,
+        WTiles &wtiles,
+        Options options)
+    {
+        #if defined(DEBUG)
+        cout << __func__ << endl;
+        #endif
+
+        std::cout << "Plan with WTiles" << std::endl;
+
+        initialize(
+            kernel_size, subgrid_size, grid_size, cell_size,
+            frequencies, uvw, baselines, aterms_offsets, wtiles, options);
     }
 
     class Subgrid {
@@ -118,10 +143,14 @@ namespace idg {
                         w_index       <   ((int) nr_w_layers);
             }
 
-            void compute_coordinate() {
+            void compute_coordinate()
+            {
                 // Compute middle point in pixels
                 int u_pixels = roundf((u_max + u_min) / 2);
                 int v_pixels = roundf((v_max + v_min) / 2);
+
+                int wtile_x = floor(double(u_pixels) / WTILE_SIZE);
+                int wtile_y = floor(double(v_pixels) / WTILE_SIZE);
 
                 // Shift center from middle of grid to top left
                 u_pixels += (grid_size/2);
@@ -132,6 +161,7 @@ namespace idg {
                 v_pixels -= (subgrid_size/2);
 
                 coordinate = {u_pixels, v_pixels, w_index};
+                wtile_coordinate = {wtile_x, wtile_y, w_index};
             }
 
             void finish() {
@@ -144,6 +174,13 @@ namespace idg {
                     throw std::runtime_error("finish the subgrid before retrieving its coordinate");
                 }
                 return coordinate;
+            }
+
+            Coordinate get_wtile_coordinate() {
+                if (!finished) {
+                    throw std::runtime_error("finish the subgrid before retrieving its coordinate");
+                }
+                return wtile_coordinate;
             }
 
             const int kernel_size;
@@ -159,6 +196,7 @@ namespace idg {
             int nr_w_layers;
             bool finished;
             Coordinate coordinate;
+            Coordinate wtile_coordinate;
     }; // end class Subgrid
 
 
@@ -181,6 +219,7 @@ namespace idg {
         const Array2D<UVWCoordinate<float>>& uvw,
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
+        WTiles &wtiles,
         const Options& options)
     {
         #if defined(DEBUG)
@@ -326,13 +365,16 @@ namespace idg {
                     // Add subgrid to metadata
                     if (subgrid.in_range()) {
                         Metadata m = {
-                            (int) (bl * nr_timesteps),                      // baseline offset, TODO: store bl index
-                            (int) (current_aterms_offset + first_timestep), // time offset, TODO: store time index
-                            nr_timesteps_subgrid,                   // nr of timesteps
-                            (int) aterm_index,                      // aterm index
-                            baseline,                               // baselines
-                            subgrid.get_coordinate()                // coordinate
+                            .baseline_offset  = (int) (bl *  nr_timesteps),                     // baseline offset, TODO: store bl index
+                            .time_offset      = (int) (current_aterms_offset + first_timestep), // time offset, TODO: store time index
+                            .nr_timesteps     = nr_timesteps_subgrid,                           // nr of timesteps
+                            .aterm_index      = (int) aterm_index,                              // aterm index
+                            .baseline         = baseline,                                       // baselines
+                            .coordinate       = subgrid.get_coordinate(),                       // coordinate
+                            .wtile_coordinate = subgrid.get_wtile_coordinate(),                 // tile coordinate
+                            .wtile_index      = -1                                              // tile index, to be filled in combine step
                         };
+
                         metadata_[bl].push_back(m);
 
                         // Add additional subgrids for subsequent frequencies
@@ -366,8 +408,11 @@ namespace idg {
 
             for (unsigned i = 0; i < metadata_[bl].size(); i++) {
                 Metadata& m = metadata_[bl][i];
+                Coordinate& wtile_coordinate = m.wtile_coordinate;
 
                 // Append subgrid
+                int subgrid_index = metadata.size();
+                m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
                 metadata.push_back(metadata_[bl][i]);
 
                 // Accumulate timesteps
@@ -385,6 +430,9 @@ namespace idg {
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
+
+        m_wtile_initialize_set = wtiles.get_initialize_set();
+        m_wtile_flush_set = wtiles.get_flush_set();
 
         #if defined(DEBUG)
         cout << "Plan::" << __func__ << endl;

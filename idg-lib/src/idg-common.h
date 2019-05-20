@@ -11,5 +11,5 @@
 #include "common/KernelsInstance.h"
 #include "common/PowerSensor.h"
 #include "common/Report.h"
-
+#include "common/WTiles.h"
 #endif

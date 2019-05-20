@@ -53,6 +53,13 @@ add_library(${PROJECT_NAME}-calibrate KernelCalibrate.cpp)
 add_library(${PROJECT_NAME}-adder-wstack     KernelAdderWStack.cpp)
 add_library(${PROJECT_NAME}-splitter-wstack  KernelSplitterWStack.cpp)
 
+# Add libraries for w-tiles
+add_library(${PROJECT_NAME}-adder-wtiles     KernelAdderWTiles.cpp)
+add_library(${PROJECT_NAME}-splitter-wtiles  KernelSplitterWTiles.cpp)
+
+target_link_libraries(${PROJECT_NAME}-adder-wtiles idg-fft)
+target_link_libraries(${PROJECT_NAME}-splitter-wtiles idg-fft)
+
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-gridder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-degridder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder PROPERTIES SOVERSION 0)
@@ -61,6 +68,8 @@ SET_TARGET_PROPERTIES(${PROJECT_NAME}-fft PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-calibrate PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wstack PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wstack PROPERTIES SOVERSION 0)
+SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wtiles PROPERTIES SOVERSION 0)
+SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wtiles PROPERTIES SOVERSION 0)
 
 # Copy kernel libraries
 install(
@@ -73,6 +82,8 @@ install(
     ${PROJECT_NAME}-calibrate
     ${PROJECT_NAME}-adder-wstack
     ${PROJECT_NAME}-splitter-wstack
+    ${PROJECT_NAME}-adder-wtiles
+    ${PROJECT_NAME}-splitter-wtiles
     DESTINATION
     lib/idg-cpu/Optimized
 )
