@@ -1,8 +1,9 @@
 # after INSTALLING the library, and sourcing init-enviroment.sh
 # (or setting the PYTHONPATH manually), you can import the idg module
 import idg
-import util
-from data import Data
+import idg.util as util
+from idg import lib as lib
+from idg.data import Data
 import numpy
 import matplotlib.pyplot as plt
 import random
