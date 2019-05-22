@@ -65,6 +65,10 @@ void kernel_degridder(
         const int y_coordinate = m.coordinate.y;
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
+        // Initialize aterm indices to first timestep
+        size_t aterm1_idx_previous = 0;
+        size_t aterm2_idx_previous = 0;
+
         // Storage
         float pixels_xx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
         float pixels_xy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
@@ -74,55 +78,6 @@ void kernel_degridder(
         float pixels_xy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
         float pixels_yx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
         float pixels_yy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-
-        // Apply aterm to subgrid
-        for (unsigned i = 0; i < nr_pixels; i++) {
-            int y = i / subgrid_size;
-            int x = i % subgrid_size;
-
-            // Load aterm for station1
-            size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
-            idg::float2 aXX1 = aterms[station1_idx + 0];
-            idg::float2 aXY1 = aterms[station1_idx + 1];
-            idg::float2 aYX1 = aterms[station1_idx + 2];
-            idg::float2 aYY1 = aterms[station1_idx + 3];
-
-            // Load aterm for station2
-            size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
-            idg::float2 aXX2 = aterms[station2_idx + 0];
-            idg::float2 aXY2 = aterms[station2_idx + 1];
-            idg::float2 aYX2 = aterms[station2_idx + 2];
-            idg::float2 aYY2 = aterms[station2_idx + 3];
-
-            // Load spheroidal
-            float _spheroidal = spheroidal[y * subgrid_size + x];
-
-            // Compute shifted position in subgrid
-            int x_src = (x + (subgrid_size/2)) % subgrid_size;
-            int y_src = (y + (subgrid_size/2)) % subgrid_size;
-
-            // Load pixel values and apply spheroidal
-            idg::float2 pixels[NR_POLARIZATIONS];
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                size_t src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
-                pixels[pol] = _spheroidal * subgrid[src_idx];
-            }
-
-            apply_aterm(
-                aXX1, aXY1, aYX1, aYY1,
-                aXX2, aXY2, aYX2, aYY2,
-                pixels);
-
-            // Store pixels
-            pixels_xx_real[i] = pixels[0].real;
-            pixels_xy_real[i] = pixels[1].real;
-            pixels_yx_real[i] = pixels[2].real;
-            pixels_yy_real[i] = pixels[3].real;
-            pixels_xx_imag[i] = pixels[0].imag;
-            pixels_xy_imag[i] = pixels[1].imag;
-            pixels_yx_imag[i] = pixels[2].imag;
-            pixels_yy_imag[i] = pixels[3].imag;
-        }
 
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2)
@@ -140,6 +95,14 @@ void kernel_degridder(
             float v = uvw[offset + time].v;
             float w = uvw[offset + time].w;
 
+            // Get aterm indices for current timestep
+            size_t aterm1_idx_current = 0;
+            size_t aterm2_idx_current = 0;
+
+            // Determine whether aterm has changed
+            bool aterm_changed = aterm1_idx_previous != aterm1_idx_current ||
+                                 aterm2_idx_previous != aterm2_idx_current;
+
             float phase_index[nr_pixels];
 
             for (unsigned i = 0; i < nr_pixels; i++) {
@@ -149,6 +112,45 @@ void kernel_degridder(
                 // Compute phase offset
                 if (time == 0) {
                     phase_offset[i] = u_offset*l_[i] + v_offset*m_[i] + w_offset*n_[i];
+                }
+            }
+
+            // Apply aterm to subgrid
+            if (time == 0 || aterm_changed) {
+                for (unsigned i = 0; i < nr_pixels; i++) {
+                    int y = i / subgrid_size;
+                    int x = i % subgrid_size;
+
+                    // Load spheroidal
+                    float _spheroidal = spheroidal[y * subgrid_size + x];
+
+                    // Compute shifted position in subgrid
+                    int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                    int y_src = (y + (subgrid_size/2)) % subgrid_size;
+
+                    // Load pixel values and apply spheroidal
+                    idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned(ALIGNMENT)));
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        size_t src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                        pixels[pol] = _spheroidal * subgrid[src_idx];
+                    }
+
+                    // Apply aterm
+                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
+                    size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+                    idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
+                    idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
+                    apply_aterm_generic(pixels, aterm1_ptr, aterm2_ptr);
+
+                    // Store pixels
+                    pixels_xx_real[i] = pixels[0].real;
+                    pixels_xy_real[i] = pixels[1].real;
+                    pixels_yx_real[i] = pixels[2].real;
+                    pixels_yy_real[i] = pixels[3].real;
+                    pixels_xx_imag[i] = pixels[0].imag;
+                    pixels_xy_imag[i] = pixels[1].imag;
+                    pixels_yx_imag[i] = pixels[2].imag;
+                    pixels_yy_imag[i] = pixels[3].imag;
                 }
             }
 
@@ -164,13 +166,9 @@ void kernel_degridder(
                 }
 
                 // Compute phasor
-                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
-                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
-                #if defined(USE_LOOKUP)
-                compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
-                #else
+                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
-                #endif
 
                 // Compute visibilities
                 idg::float2 sums[NR_POLARIZATIONS];
@@ -185,7 +183,7 @@ void kernel_degridder(
                 const float scale = 1.0f / nr_pixels;
                 int time_idx = offset + time;
                 int chan_idx = chan;
-                size_t dst_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                size_t dst_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     visibilities[dst_idx+pol] = {scale*sums[pol].real, scale*sums[pol].imag};
                 }

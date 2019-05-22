@@ -145,3 +145,79 @@ template <typename T> inline FUNCTION_ATTRIBUTES void apply_avg_aterm_correction
     uvYY = uv[3];
 
 }
+
+inline void matmul(
+    const idg::float2 *a,
+    const idg::float2 *b,
+          idg::float2 *c)
+{
+    c[0]  = a[0] * b[0];
+    c[1]  = a[1] * b[0];
+    c[2]  = a[0] * b[2];
+    c[3]  = a[1] * b[2];
+    c[0] += a[2] * b[1];
+    c[1] += a[3] * b[1];
+    c[2] += a[2] * b[3];
+    c[3] += a[3] * b[3];
+}
+
+inline void conjugate(
+    const idg::float2 *a,
+          idg::float2 *b)
+{
+    float s[8] = {1, -1, 1, -1, 1, -1, 1};
+    float *a_ptr = (float *) a;
+    float *b_ptr = (float *) b;
+
+    for (unsigned i = 0; i < 8; i++) {
+        b_ptr[i] = s[i] * a_ptr[i];
+    }
+}
+
+inline void transpose(
+    const idg::float2 *a,
+          idg::float2 *b)
+{
+    b[0] = a[0];
+    b[1] = a[2];
+    b[2] = a[1];
+    b[3] = a[3];
+}
+
+inline void hermitian(
+    const idg::float2 *a,
+          idg::float2 *b)
+{
+    idg::float2 temp[4];
+    conjugate(a, temp);
+    transpose(temp, b);
+}
+
+inline void apply_aterm_generic(
+    idg::float2 *pixels,
+    const idg::float2 *aterm1,
+    const idg::float2 *aterm2)
+{
+    // Apply aterm: P = A1 * P
+    idg::float2 temp1[4];
+    matmul(pixels, aterm1, temp1);
+
+    // Apply aterm: P = P * A2^H
+    idg::float2 temp2[4];
+    hermitian(aterm2, temp2);
+    matmul(temp2, temp1, pixels);
+}
+
+inline void apply_aterm_gridder(
+    idg::float2 *pixels,
+    const idg::float2 *aterm1,
+    const idg::float2 *aterm2)
+{
+    // Apply aterm: P = A1 * P
+    idg::float2 temp1[4], temp2[4];
+    conjugate(aterm1, temp1);
+    matmul(pixels, temp1, temp2);
+
+    // Apply aterm: P = P * A2^H
+    matmul(aterm2, temp2, pixels);
+}
