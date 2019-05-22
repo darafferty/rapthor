@@ -58,7 +58,7 @@ void kernel_degridder(
         const idg::Metadata m  = metadata[s];
         const int offset       = (m.baseline_offset - baseline_offset_1) + m.time_offset;
         const int nr_timesteps = m.nr_timesteps;
-        const int aterm_index  = m.aterm_index;
+        const int aterm_index  = 0;
         const int station1     = m.baseline.station1;
         const int station2     = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;

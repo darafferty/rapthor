@@ -251,13 +251,10 @@ namespace idg {
         }
 
         // Allocate metadata
-        metadata.reserve(nr_baselines * nr_timesteps / nr_timeslots);
+        metadata.reserve(nr_baselines);
 
         // Temporary metadata vector for individual baselines
         std::vector<Metadata> metadata_[nr_baselines];
-        for (unsigned bl = 0; bl < nr_baselines; bl++) {
-            metadata_[bl].reserve(nr_timesteps / nr_timeslots);
-        }
 
         // Iterate all baselines
         #pragma omp parallel for
@@ -265,135 +262,121 @@ namespace idg {
             // Get baseline
             Baseline baseline = (Baseline) {baselines(bl).first, baselines(bl).second};
 
-            // Iterate all time slots
-            for (unsigned timeslot = 0; timeslot < nr_timeslots; timeslot++) {
-                // Get aterm offset
-                const unsigned current_aterms_offset = aterms_offsets(timeslot);
-                const unsigned next_aterms_offset    = aterms_offsets(timeslot+1);
+            // Initialize subgrid
+            Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers);
 
-                // The aterm index is equal to the timeslot
-                const unsigned aterm_index = timeslot;
+            // Compute uv coordinates in pixels
+            struct DataPoint {
+                unsigned timestep;
+                unsigned channel;
+                float u_pixels;
+                float v_pixels;
+                float w_lambda;
+            };
 
-                // Determine number of timesteps in current aterm
-                const unsigned nr_timesteps_per_aterm = next_aterms_offset - current_aterms_offset;
+            std::vector<DataPoint> datapoints(nr_timesteps * nr_channels);
 
-                // Compute uv coordinates in pixels
-                struct DataPoint {
-                    unsigned timestep;
-                    unsigned channel;
-                    float u_pixels;
-                    float v_pixels;
-                    float w_lambda;
-                };
+            for (unsigned t = 0; t < nr_timesteps; t++) {
+                for (unsigned c = 0; c < nr_channels; c++) {
+                    // U,V in meters
+                    float u_meters = uvw(bl, t).u;
+                    float v_meters = uvw(bl, t).v;
+                    float w_meters = uvw(bl, t).w;
 
-                std::vector<DataPoint> datapoints(nr_timesteps_per_aterm * nr_channels);
+                    float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(c));
+                    float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(c));
 
-                for (unsigned t = 0; t < nr_timesteps_per_aterm; t++) {
-                    for (unsigned c = 0; c < nr_channels; c++) {
-                        // U,V in meters
-                        float u_meters = uvw(bl, current_aterms_offset + t).u;
-                        float v_meters = uvw(bl, current_aterms_offset + t).v;
-                        float w_meters = uvw(bl, current_aterms_offset + t).w;
+                    float w_lambda = meters_to_lambda(w_meters, frequencies(c));
 
-                        float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(c));
-                        float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(c));
+                    datapoints[t*nr_channels + c] = {t, c, u_pixels, v_pixels, w_lambda};
+                } // end for channel
+            } // end for time
 
-                        float w_lambda = meters_to_lambda(w_meters, frequencies(c));
+            unsigned int time_offset = 0;
 
-                        datapoints[t*nr_channels + c] = {t, c, u_pixels, v_pixels, w_lambda};
+            while (time_offset < nr_timesteps) {
+                // Create subgrid
+                subgrid.reset();
+                int nr_timesteps_subgrid = 0;
+
+                // Load first visibility
+                DataPoint first_datapoint = datapoints[time_offset*nr_channels];
+                const int first_timestep = first_datapoint.timestep;
+
+                // Iterate all datapoints
+                for (; time_offset < nr_timesteps; time_offset++) {
+                    // Visibility for first channel
+                    DataPoint visibility0 = datapoints[time_offset*nr_channels];
+                    const float u_pixels0 = visibility0.u_pixels;
+                    const float v_pixels0 = visibility0.v_pixels;
+                    const float w_lambda0 = visibility0.w_lambda;
+
+                    DataPoint visibility1 = datapoints[time_offset*nr_channels + nr_channels - 1];
+                    const float u_pixels1 = visibility1.u_pixels;
+                    const float v_pixels1 = visibility1.v_pixels;
+
+                    // Try to add visibilities to subgrid
+                    if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
+                        // HACK also pass w_lambda0 below
+                        subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda0)) {
+                        nr_timesteps_subgrid++;
+                        if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) break;
+                    } else {
+                        break;
                     }
                 } // end for time
 
-                // Initialize subgrid
-                Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers);
+                // Handle empty subgrid
+                if (nr_timesteps_subgrid == 0) {
+                    DataPoint visibility = datapoints[time_offset*nr_channels];
+                    const float u_pixels = visibility.u_pixels;
+                    const float v_pixels = visibility.v_pixels;
 
-                unsigned time_offset = 0;
-                while (time_offset < nr_timesteps_per_aterm) {
-                    // Load first visibility
-                    DataPoint first_datapoint = datapoints[time_offset*nr_channels];
-                    const int first_timestep = first_datapoint.timestep;
-
-                    // Create subgrid
-                    subgrid.reset();
-                    int nr_timesteps_subgrid = 0;
-
-                    // Iterate all datapoints
-                    for (; time_offset < nr_timesteps_per_aterm; time_offset++) {
-                        // Visibility for first channel
-                        DataPoint visibility0 = datapoints[time_offset*nr_channels];
-                        const float u_pixels0 = visibility0.u_pixels;
-                        const float v_pixels0 = visibility0.v_pixels;
-                        const float w_lambda0 = visibility0.w_lambda;
-
-                        DataPoint visibility1 = datapoints[time_offset*nr_channels + nr_channels - 1];
-                        const float u_pixels1 = visibility1.u_pixels;
-                        const float v_pixels1 = visibility1.v_pixels;
-
-                        // Try to add visibilities to subgrid
-                        if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
-                            // HACK also pass w_lambda0 below
-                            subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda0)) {
-                            nr_timesteps_subgrid++;
-                            if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) break;
-                        } else {
-                            break;
-                        }
-                    } // end for time
-
-                    // Handle empty subgrid
-                    if (nr_timesteps_subgrid == 0) {
-                        DataPoint visibility = datapoints[time_offset*nr_channels];
-                        const float u_pixels = visibility.u_pixels;
-                        const float v_pixels = visibility.v_pixels;
-
-                        if (std::isfinite(u_pixels) && std::isfinite(v_pixels) && plan_strict) {
-                            // Coordinates are valid, but did not (all) fit onto subgrid
-                            #pragma omp critical
-                            throw std::runtime_error("could not place (all) visibilities on subgrid (too many channnels, kernel size too large)");
-                        } else {
-                            // Advance to next timeslot when visibilities for current timeslot had infinite coordinates
-                            time_offset++;
-                            continue;
-                        }
-                    }
-
-                    // Finish subgrid
-                    subgrid.finish();
-
-                    // Add subgrid to metadata
-                    if (subgrid.in_range()) {
-                        Metadata m = {
-                            .baseline_offset  = (int) (bl *  nr_timesteps),                     // baseline offset, TODO: store bl index
-                            .time_offset      = (int) (current_aterms_offset + first_timestep), // time offset, TODO: store time index
-                            .nr_timesteps     = nr_timesteps_subgrid,                           // nr of timesteps
-                            .aterm_index      = (int) aterm_index,                              // aterm index
-                            .baseline         = baseline,                                       // baselines
-                            .coordinate       = subgrid.get_coordinate(),                       // coordinate
-                            .wtile_coordinate = subgrid.get_wtile_coordinate(),                 // tile coordinate
-                            .wtile_index      = -1                                              // tile index, to be filled in combine step
-                        };
-
-                        metadata_[bl].push_back(m);
-
-                        // Add additional subgrids for subsequent frequencies
-                        if (simulate_spectral_line) {
-                            for (unsigned c = 1; c < nr_channels_; c++) {
-                                // Compute shifted subgrid for current frequency
-                                float shift = frequencies(c) / frequencies(0);
-                                Metadata m = metadata_[bl].back();
-                                m.coordinate.x *= shift;
-                                m.coordinate.y *= shift;
-                                metadata_[bl].push_back(m);
-                            }
-                        }
-                    }
-                    else if (plan_strict)
-                    {
+                    if (std::isfinite(u_pixels) && std::isfinite(v_pixels) && plan_strict) {
+                        // Coordinates are valid, but did not (all) fit onto subgrid
                         #pragma omp critical
-                        throw std::runtime_error("subgrid falls not within grid");
+                        throw std::runtime_error("could not place (all) visibilities on subgrid (too many channnels, kernel size too large)");
+                    } else {
+                        // Advance to next timeslot when visibilities for current timeslot had infinite coordinates
+                        time_offset++;
+                        continue;
                     }
-                } // end while
-            } // end for timeslot
+                }
+
+                // Finish subgrid
+                subgrid.finish();
+
+                // Add subgrid to metadata
+                if (subgrid.in_range()) {
+                    Metadata m = {
+                        .baseline_offset  = (int) (bl *  nr_timesteps),                     // baseline offset, TODO: store bl index
+                        .time_offset      = (int) (first_timestep),                         // time offset, TODO: store time index
+                        .nr_timesteps     = nr_timesteps_subgrid,                           // nr of timesteps
+                        .aterm_index      = 0,                                              // TODO: remove
+                        .baseline         = baseline,                                       // baselines
+                        .coordinate       = subgrid.get_coordinate(),                       // coordinate
+                        .wtile_coordinate = subgrid.get_wtile_coordinate(),                 // tile coordinate
+                        .wtile_index      = -1                                              // tile index, to be filled in combine step
+                    };
+
+                    metadata_[bl].push_back(m);
+
+                    // Add additional subgrids for subsequent frequencies
+                    if (simulate_spectral_line) {
+                        for (unsigned c = 1; c < nr_channels_; c++) {
+                            // Compute shifted subgrid for current frequency
+                            float shift = frequencies(c) / frequencies(0);
+                            Metadata m = metadata_[bl].back();
+                            m.coordinate.x *= shift;
+                            m.coordinate.y *= shift;
+                            metadata_[bl].push_back(m);
+                        }
+                    }
+                } else if (plan_strict) {
+                    #pragma omp critical
+                    throw std::runtime_error("subgrid falls not within grid");
+                }
+            } // end while
         } // end for bl
 
         // Combine data structures
@@ -425,6 +408,28 @@ namespace idg {
             int total_nr_visibilities = total_nr_timesteps * nr_channels;
             total_nr_visibilities_per_baseline.push_back(total_nr_visibilities);
         } // end for bl
+
+        // Reserve aterm indices
+        aterm_indices.reserve(nr_baselines * nr_timesteps);
+
+        // Set aterm index for every timestep
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
+            for (unsigned timeslot = 0; timeslot < nr_timeslots; timeslot++) {
+                // Get aterm offset
+                const unsigned current_aterms_offset = aterms_offsets(timeslot);
+                const unsigned next_aterms_offset    = aterms_offsets(timeslot+1);
+
+                // The aterm index is equal to the timeslot
+                const unsigned aterm_index = timeslot;
+
+                // Determine number of timesteps in current aterm
+                const unsigned nr_timesteps_per_aterm = next_aterms_offset - current_aterms_offset;
+
+                for (unsigned timestep = 0; timestep < nr_timesteps_per_aterm; timestep++) {
+                    aterm_indices.push_back(aterm_index);
+                }
+            }
+        }
 
         // Set sentinel
         subgrid_offset.push_back(metadata.size());
