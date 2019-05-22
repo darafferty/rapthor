@@ -409,7 +409,7 @@ class Proxy(object):
 
         # Get pointer to grid data
         self.lib.Proxy_get_grid.restype = ctypes.c_voidp
-        ptr = lib.Proxy_get_grid(
+        ptr = self.lib.Proxy_get_grid(
             self.obj,
             ctypes.c_int(nr_correlations),
             ctypes.c_int(grid_size))
