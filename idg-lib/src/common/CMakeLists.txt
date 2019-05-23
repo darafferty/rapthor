@@ -14,6 +14,7 @@ set (${PROJECT_NAME}_headers
     PowerSensor.h
     Report.h
     Math.h
+    WTiles.h
 )
 
 set (${PROJECT_NAME}_sources
