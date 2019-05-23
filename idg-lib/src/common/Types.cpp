@@ -23,7 +23,6 @@ namespace idg {
             << "baseline_offset = " << m.baseline_offset << ",\n"
             << "time_offset = "<< m.time_offset << ",\n"
             << "nr_timesteps = "<< m.nr_timesteps << ",\n"
-            << "aterm_index = " << m.aterm_index << ",\n"
             << "baseline = "<< m.baseline << ",\n"
             << "coordinate = "<< m.coordinate
             << "]";

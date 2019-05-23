@@ -352,7 +352,6 @@ namespace idg {
                         .baseline_offset  = (int) (bl *  nr_timesteps),                     // baseline offset, TODO: store bl index
                         .time_offset      = (int) (first_timestep),                         // time offset, TODO: store time index
                         .nr_timesteps     = nr_timesteps_subgrid,                           // nr of timesteps
-                        .aterm_index      = 0,                                              // TODO: remove
                         .baseline         = baseline,                                       // baselines
                         .coordinate       = subgrid.get_coordinate(),                       // coordinate
                         .wtile_coordinate = subgrid.get_wtile_coordinate(),                 // tile coordinate
