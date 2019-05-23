@@ -276,6 +276,13 @@ namespace idg {
             return 1ULL * nr_stations * nr_timeslots * nr_correlations * subgrid_size * subgrid_size * sizeof(std::complex<float>);
         }
 
+        uint64_t sizeof_aterms_indices(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps)
+        {
+            return 1ULL * nr_baselines * nr_timesteps * sizeof(int);
+        }
+
         uint64_t sizeof_spheroidal(
             unsigned int subgrid_size)
         {

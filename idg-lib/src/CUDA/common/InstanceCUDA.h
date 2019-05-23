@@ -173,6 +173,10 @@ namespace idg {
                         unsigned int nr_timeslots,
                         unsigned int subgrid_size);
 
+                    cu::DeviceMemory& get_device_aterms_indices(
+                        unsigned int nr_baselines,
+                        unsigned int nr_timesteps);
+
                     cu::DeviceMemory& get_device_spheroidal(
                         unsigned int subgrid_size);
 
@@ -244,6 +248,7 @@ namespace idg {
                     cu::HostMemory& get_host_grid() { return *h_grid; }
                     cu::DeviceMemory& get_device_grid() { return *d_grid; }
                     cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
+                    cu::DeviceMemory& get_device_aterms_indices() { return *d_aterms_indices; }
                     cu::DeviceMemory& get_device_aterms_derivatives() { return *d_aterms_derivatives; }
                     cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
                     cu::DeviceMemory& get_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
@@ -297,6 +302,7 @@ namespace idg {
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
+                    cu::DeviceMemory *d_aterms_indices;
                     cu::DeviceMemory *d_aterms_derivatives;
                     cu::DeviceMemory *d_avg_aterm_correction;
                     cu::DeviceMemory *d_spheroidal;

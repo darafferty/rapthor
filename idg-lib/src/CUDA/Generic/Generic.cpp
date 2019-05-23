@@ -58,6 +58,7 @@ namespace idg {
                     device.get_device_wavenumbers(nr_channels);
                     device.get_device_spheroidal(subgrid_size);
                     device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    device.get_device_aterms_indices(nr_baselines, nr_timesteps);
                     device.get_device_grid(grid_size);
 
                     unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
