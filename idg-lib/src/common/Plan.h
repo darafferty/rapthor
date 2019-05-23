@@ -128,6 +128,8 @@ namespace idg {
 
             void copy_metadata(void *ptr) const;
 
+            const int* get_aterm_indices_ptr(int baseline = 0) const;
+
             void initialize_job(
                 const unsigned int nr_baselines,
                 const unsigned int jobsize,

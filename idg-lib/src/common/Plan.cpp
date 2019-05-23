@@ -536,6 +536,11 @@ namespace idg {
         memcpy(ptr, get_metadata_ptr(), get_nr_subgrids() * sizeof(Metadata));
     }
 
+    const int* Plan::get_aterm_indices_ptr(int bl) const {
+        auto offset = get_subgrid_offset(bl);
+        return &(aterm_indices[offset]);
+    }
+
     void Plan::initialize_job(
         const unsigned int nr_baselines,
         const unsigned int jobsize,

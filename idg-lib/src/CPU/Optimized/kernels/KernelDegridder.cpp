@@ -24,6 +24,7 @@ void kernel_degridder(
           idg::float2*               visibilities,
     const float*                     spheroidal,
     const idg::float2*               aterms,
+    const int*                       aterms_indices,
     const idg::Metadata*             metadata,
     const idg::float2*               subgrid)
 {
@@ -56,18 +57,16 @@ void kernel_degridder(
 
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const int offset       = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+        const int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
         const int nr_timesteps = m.nr_timesteps;
-        const int aterm_index  = 0;
         const int station1     = m.baseline.station1;
         const int station2     = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;
         const int y_coordinate = m.coordinate.y;
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
-        // Initialize aterm indices to first timestep
-        size_t aterm1_idx_previous = 0;
-        size_t aterm2_idx_previous = 0;
+        // Initialize aterm index to first timestep
+        size_t aterm_idx_previous = aterms_indices[time_offset];
 
         // Storage
         float pixels_xx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
@@ -91,17 +90,15 @@ void kernel_degridder(
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
             // Load UVW coordinates
-            float u = uvw[offset + time].u;
-            float v = uvw[offset + time].v;
-            float w = uvw[offset + time].w;
+            float u = uvw[time_offset + time].u;
+            float v = uvw[time_offset + time].v;
+            float w = uvw[time_offset + time].w;
 
             // Get aterm indices for current timestep
-            size_t aterm1_idx_current = 0;
-            size_t aterm2_idx_current = 0;
+            size_t aterm_idx_current = aterms_indices[time_offset + time];
 
             // Determine whether aterm has changed
-            bool aterm_changed = aterm1_idx_previous != aterm1_idx_current ||
-                                 aterm2_idx_previous != aterm2_idx_current;
+            bool aterm_changed = aterm_idx_previous != aterm_idx_current;
 
             float phase_index[nr_pixels];
 
@@ -136,8 +133,8 @@ void kernel_degridder(
                     }
 
                     // Apply aterm
-                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
-                    size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station1, y, x);
+                    size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station2, y, x);
                     idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                     idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
                     apply_aterm_generic(pixels, aterm1_ptr, aterm2_ptr);
@@ -152,6 +149,9 @@ void kernel_degridder(
                     pixels_yx_imag[i] = pixels[2].imag;
                     pixels_yy_imag[i] = pixels[3].imag;
                 }
+
+                // Update aterm index
+                aterm_idx_previous = aterm_idx_current;
             }
 
             // Iterate all channels
@@ -181,7 +181,7 @@ void kernel_degridder(
 
                 // Store visibilities
                 const float scale = 1.0f / nr_pixels;
-                int time_idx = offset + time;
+                int time_idx = time_offset + time;
                 int chan_idx = chan;
                 size_t dst_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {

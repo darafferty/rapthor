@@ -100,6 +100,7 @@ namespace idg {
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
+                        void *aterm_idx_ptr    = (void *) plan.get_aterm_indices_ptr();
                         void *avg_aterm_ptr    = m_avg_aterm_correction.size() ? m_avg_aterm_correction.data() : nullptr;
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr          = uvw.data(first_bl, 0);
@@ -109,9 +110,23 @@ namespace idg {
 
                         // Gridder kernel
                         kernels.run_gridder(
-                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift_ptr, nr_channels, nr_stations,
-                            uvw_ptr, wavenumbers_ptr, visibilities_ptr, spheroidal_ptr, aterm_ptr, avg_aterm_ptr,
-                            metadata_ptr, subgrids_ptr);
+                            current_nr_subgrids,
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            shift_ptr,
+                            nr_channels,
+                            nr_stations,
+                            uvw_ptr,
+                            wavenumbers_ptr,
+                            visibilities_ptr,
+                            spheroidal_ptr,
+                            aterm_ptr,
+                            aterm_idx_ptr,
+                            avg_aterm_ptr,
+                            metadata_ptr,
+                            subgrids_ptr);
 
                         // FFT kernel
                         kernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, FFTW_BACKWARD);
@@ -218,6 +233,7 @@ namespace idg {
                         void *wavenumbers_ptr  = wavenumbers.data();
                         void *spheroidal_ptr   = spheroidal.data();
                         void *aterm_ptr        = aterms.data();
+                        void *aterm_idx_ptr    = (void *) plan.get_aterm_indices_ptr();
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr          = uvw.data(first_bl, 0);
                         void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
@@ -249,6 +265,7 @@ namespace idg {
                             visibilities_ptr,
                             spheroidal_ptr,
                             aterm_ptr,
+                            aterm_idx_ptr,
                             metadata_ptr,
                             subgrids_ptr);
 

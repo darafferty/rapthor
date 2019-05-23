@@ -21,6 +21,7 @@ extern "C" {
         const std::complex<float>*       visibilities,
         const float*                     spheroidal,
         const std::complex<float>*       aterms,
+        const int*                       aterms_indices,
         const std::complex<float>*       avg_aterm_correction,
         const idg::Metadata*             metadata,
               std::complex<float>*       subgrid)

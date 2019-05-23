@@ -79,6 +79,7 @@ void kernel_gridder(
     const idg::float2*               visibilities,
     const float*                     spheroidal,
     const idg::float2*               aterms,
+    const int*                       aterms_indices,
     const idg::float2*               avg_aterm_correction,
     const idg::Metadata*             metadata,
           idg::float2*               subgrid)
@@ -122,16 +123,14 @@ void kernel_gridder(
         const idg::Metadata m  = metadata[s];
         const int time_offset_global = (m.baseline_offset - baseline_offset_1) + m.time_offset;
         const int nr_timesteps = m.nr_timesteps;
-        const int aterm_index  = 0;
         const int station1     = m.baseline.station1;
         const int station2     = m.baseline.station2;
         const int x_coordinate = m.coordinate.x;
         const int y_coordinate = m.coordinate.y;
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
-        // Initialize aterm indices to first timestep
-        size_t aterm1_idx_previous = 0;
-        size_t aterm2_idx_previous = 0;
+        // Initialize aterm index to first timestep
+        int aterm_idx_previous = aterms_indices[time_offset_global];
 
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) * (2*M_PI / image_size);
@@ -139,25 +138,33 @@ void kernel_gridder(
         const float w_offset = 2*M_PI * w_offset_in_lambda;
 
         // Iterate all timesteps
-        int current_nr_timesteps = 1;
+        int current_nr_timesteps = 0;
         for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+
             // Get aterm indices for current timestep
-            size_t aterm1_idx_current = 0;
-            size_t aterm2_idx_current = 0;
+            int time_current = time_offset_global + time_offset_local;
+            int aterm_idx_current = aterms_indices[time_current];
 
             // Determine whether aterm has changed
-            bool aterm_changed = aterm1_idx_previous != aterm1_idx_current ||
-                                 aterm2_idx_previous != aterm2_idx_current;
+            bool aterm_changed = aterm_idx_previous != aterm_idx_current;
 
             // Determine number of timesteps to process
-            current_nr_timesteps = nr_timesteps - time_offset_local; // TODO
+            current_nr_timesteps = 0;
+            for (int time = time_offset_local; time < nr_timesteps; time++) {
+                if (aterms_indices[time_offset_global + time] == aterm_idx_current) {
+                    current_nr_timesteps++;
+                } else {
+                    break;
+                }
+            }
+
             int current_nr_visibilities = current_nr_timesteps * nr_channels;
 
             if (aterm_changed) {
                 // Update subgrid
                 update_subgrid(
                     nr_pixels, nr_stations, subgrid_size, s,
-                    aterm_index, station1, station2,
+                    aterm_idx_previous, station1, station2,
                     spheroidal, aterms, avg_aterm_correction,
                     (const idg::float2*) subgrid_local, subgrid);
 
@@ -165,8 +172,7 @@ void kernel_gridder(
                 memset(subgrid_local, 0, NR_POLARIZATIONS*nr_pixels*sizeof(idg::float2));
 
                 // Update aterm indices
-                aterm1_idx_previous = aterm1_idx_current;
-                aterm2_idx_previous = aterm2_idx_current;
+                aterm_idx_previous = aterm_idx_current;
             }
 
             // Load visibilities
@@ -263,7 +269,7 @@ void kernel_gridder(
 
         update_subgrid(
             nr_pixels, nr_stations, subgrid_size, s,
-            aterm_index, station1, station2,
+            aterm_idx_previous, station1, station2,
             spheroidal, aterms, avg_aterm_correction,
             (const idg::float2*) subgrid_local, subgrid);
 
