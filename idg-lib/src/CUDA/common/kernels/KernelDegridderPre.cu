@@ -12,7 +12,8 @@ __global__ void kernel_degridder_pre(
     const unsigned               subgrid_size,
     const unsigned               nr_stations,
     const float*    __restrict__ spheroidal,
-    const float2*   __restrict__ aterm,
+    const float2*   __restrict__ aterms,
+    const float2*   __restrict__ aterms_indices,
     const Metadata* __restrict__ metadata,
           float2*   __restrict__ subgrid)
 {

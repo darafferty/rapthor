@@ -417,14 +417,16 @@ namespace idg {
                         executestream.waitEvent(*inputCopied[job_id]);
 
                         // Launch gridder kernel
-                        device.launch_gridder(
-                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                            d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
+                        // TODO
+                        //device.launch_gridder(
+                        //    current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        //    d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
 
                         // Launch gridder post-processing kernel
-                        device.launch_gridder_post(
-                            current_nr_subgrids, subgrid_size, nr_stations,
-                            d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
+                        // TODO
+                        //device.launch_gridder_post(
+                        //    current_nr_subgrids, subgrid_size, nr_stations,
+                        //    d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
 
                         // Launch FFT
                         device.launch_fft(d_subgrids, FourierDomainToImageDomain);
@@ -715,15 +717,17 @@ namespace idg {
                         device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
                         // Launch degridder pre-processing kernel
-                        device.launch_degridder_pre(
-                            current_nr_subgrids, subgrid_size, nr_stations,
-                            d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                        // TODO
+                        //device.launch_degridder_pre(
+                        //    current_nr_subgrids, subgrid_size, nr_stations,
+                        //    d_spheroidal, d_aterms, d_metadata, d_subgrids);
 
                         // Launch degridder kernel
-                        device.launch_degridder(
-                            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                            d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
-                        executestream.record(*gpuFinished[job_id]);
+                        // TODO
+                        //device.launch_degridder(
+                        //    current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        //    d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                        //executestream.record(*gpuFinished[job_id]);
 
                         // Copy visibilities to host
                         dtohstream.waitEvent(*gpuFinished[job_id]);

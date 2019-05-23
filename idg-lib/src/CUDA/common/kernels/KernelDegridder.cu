@@ -20,7 +20,8 @@ __device__ void kernel_degridder_1_(
     const float*         __restrict__ wavenumbers,
           float2*        __restrict__ visibilities,
     const float*         __restrict__ spheroidal,
-    const float2*        __restrict__ aterm,
+    const float2*        __restrict__ aterms,
+    const float2*        __restrict__ aterms_indices,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
@@ -203,7 +204,7 @@ __device__ void kernel_degridder_n_(
     const float*         __restrict__ wavenumbers,
           float2*        __restrict__ visibilities,
     const float*         __restrict__ spheroidal,
-    const float2*        __restrict__ aterm,
+    const float2*        __restrict__ aterms,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
@@ -366,7 +367,7 @@ __device__ void kernel_degridder_n_(
     for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
         kernel_degridder_n_<current_nr_channels>( \
             grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid); \
+            uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid); \
     }
 
 #define GLOBAL_ARGUMENTS \
@@ -380,7 +381,7 @@ __device__ void kernel_degridder_n_(
     const float*         __restrict__ wavenumbers,  \
           float2*        __restrict__ visibilities, \
     const float*         __restrict__ spheroidal,   \
-    const float2*        __restrict__ aterm,        \
+    const float2*        __restrict__ aterms,       \
     const Metadata*      __restrict__ metadata,     \
           float2*        __restrict__ subgrid
 
@@ -391,7 +392,7 @@ __global__ void
     int channel_offset = 0;
     kernel_degridder_1_(
         grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations,
-        uvw, wavenumbers, visibilities, spheroidal, aterm, metadata, subgrid);
+        uvw, wavenumbers, visibilities, spheroidal, aterms, metadata, subgrid);
 }
 
 __global__ void
