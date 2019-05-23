@@ -35,9 +35,8 @@ extern "C" {
         for (int s = 0; s < nr_subgrids; s++) {
             // Load metadata
             const idg::Metadata m  = metadata[s];
-            const int offset       = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+            const int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
             const int nr_timesteps = m.nr_timesteps;
-            const int aterm_index  = m.aterm_index;
             const int station1     = m.baseline.station1;
             const int station2     = m.baseline.station2;
             const int x_coordinate = m.coordinate.x;
@@ -51,24 +50,30 @@ extern "C" {
                                    * (2*M_PI / imagesize);
             const float w_offset = 2*M_PI * w_offset_in_lambda;
 
+            // Storage
+            std::complex<float> pixels[NR_POLARIZATIONS][subgridsize][subgridsize];
+            memset(pixels, 0, subgridsize*subgridsize*NR_POLARIZATIONS*sizeof(std::complex<float>));
+
             // Iterate all pixels in subgrid
             for (int y = 0; y < subgridsize; y++) {
                 for (int x = 0; x < subgridsize; x++) {
-                    // Initialize pixel for every polarization
-                    std::complex<float> pixels[NR_POLARIZATIONS];
-                    memset(pixels, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
 
                     // Compute l,m,n
                     const float l = compute_l(x, subgridsize, imagesize);
                     const float m = compute_m(y, subgridsize, imagesize);
                     const float n = compute_n(l, m, shift);
 
+
                     // Iterate all timesteps
                     for (int time = 0; time < nr_timesteps; time++) {
+                        // Pixel
+                        std::complex<float> pixel[NR_POLARIZATIONS];
+                        memset(pixel, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
+
                         // Load UVW coordinates
-                        float u = uvw[offset + time].u;
-                        float v = uvw[offset + time].v;
-                        float w = uvw[offset + time].w;
+                        float u = uvw[time_offset + time].u;
+                        float v = uvw[time_offset + time].v;
+                        float w = uvw[time_offset + time].w;
 
                         // Compute phase index
                         float phase_index = u*l + v*m + w*n;
@@ -85,42 +90,57 @@ extern "C" {
                             std::complex<float> phasor = {cosf(phase), sinf(phase)};
 
                             // Update pixel for every polarization
-                            size_t index = (offset + time)*nr_channels + chan;
+                            size_t index = (time_offset + time)*nr_channels + chan;
                             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 std::complex<float> visibility = visibilities[index * NR_POLARIZATIONS + pol];
-                                pixels[pol] += visibility * phasor;
+                                pixel[pol] += visibility * phasor;
                             }
+                        } // end for channel
+
+                        // Load aterm index
+                        int aterm_index = aterms_indices[time_offset + time];
+
+                        // Load a term for station1
+                        int station1_index =
+                            (aterm_index * nr_stations + station1) *
+                            subgridsize * subgridsize * NR_POLARIZATIONS +
+                            y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                        std::complex<float> aXX1 = aterms[station1_index + 0];
+                        std::complex<float> aXY1 = aterms[station1_index + 1];
+                        std::complex<float> aYX1 = aterms[station1_index + 2];
+                        std::complex<float> aYY1 = aterms[station1_index + 3];
+
+                        // Load aterm for station2
+                        int station2_index =
+                            (aterm_index * nr_stations + station2) *
+                            subgridsize * subgridsize * NR_POLARIZATIONS +
+                            y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                        std::complex<float> aXX2 = conj(aterms[station2_index + 0]);
+                        std::complex<float> aXY2 = conj(aterms[station2_index + 1]);
+                        std::complex<float> aYX2 = conj(aterms[station2_index + 2]);
+                        std::complex<float> aYY2 = conj(aterms[station2_index + 3]);
+
+                        apply_aterm(
+                            aXX1, aXY1, aYX1, aYY1,
+                            aXX2, aXY2, aYX2, aYY2,
+                            pixel);
+
+                        // Update pixel
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels[pol][y][x] += pixel[pol];
                         }
+                    } // end for time
+
+
+                    // Load pixel
+                    std::complex<float> pixel[NR_POLARIZATIONS];
+                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        pixel[pol] = pixels[pol][y][x];
                     }
-
-                    // Load a term for station1
-                    int station1_index =
-                        (aterm_index * nr_stations + station1) *
-                        subgridsize * subgridsize * NR_POLARIZATIONS +
-                        y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                    std::complex<float> aXX1 = aterms[station1_index + 0];
-                    std::complex<float> aXY1 = aterms[station1_index + 1];
-                    std::complex<float> aYX1 = aterms[station1_index + 2];
-                    std::complex<float> aYY1 = aterms[station1_index + 3];
-
-                    // Load aterm for station2
-                    int station2_index =
-                        (aterm_index * nr_stations + station2) *
-                        subgridsize * subgridsize * NR_POLARIZATIONS +
-                        y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                    std::complex<float> aXX2 = conj(aterms[station2_index + 0]);
-                    std::complex<float> aXY2 = conj(aterms[station2_index + 1]);
-                    std::complex<float> aYX2 = conj(aterms[station2_index + 2]);
-                    std::complex<float> aYY2 = conj(aterms[station2_index + 3]);
-
-                    apply_aterm(
-                        aXX1, aXY1, aYX1, aYY1,
-                        aXX2, aXY2, aYX2, aYY2,
-                        pixels);
 
                     if (avg_aterm_correction)
                     {
-                        apply_avg_aterm_correction(avg_aterm_correction + (y*subgridsize + x)*16, pixels);
+                        apply_avg_aterm_correction(avg_aterm_correction + (y*subgridsize + x)*16, pixel);
                     }
 
                     // Load spheroidal
@@ -134,10 +154,10 @@ extern "C" {
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         subgrid[s * NR_POLARIZATIONS * subgridsize * subgridsize +
                                 pol * subgridsize * subgridsize + y_dst * subgridsize +
-                                x_dst] = pixels[pol] * sph;
+                                x_dst] = pixel[pol] * sph;
                     }
-                } // end x
-            } // end y
-        } // end s
+                } // end for x
+            } // end for y
+        } // end for s
     }  // end kernel_gridder
 }  // end extern C
