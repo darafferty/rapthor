@@ -3,7 +3,9 @@
 
 # Compute paths
 get_filename_component(IDGAPI_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
-get_filename_component(IDGAPI_PREFIX_DIR "${IDGAPI_CMAKE_DIR}" ABSOLUTE)
+get_filename_component(IDGAPI_CMAKE_DIR_ABS "${IDGAPI_CMAKE_DIR}" ABSOLUTE)
+# Strip last component to get prefix
+get_filename_component(IDGAPI_PREFIX_DIR "${IDGAPI_CMAKE_DIR_ABS}" PATH)
 
 set(IDGAPI_INCLUDE_DIR "${IDGAPI_PREFIX_DIR}/include"
     CACHE PATH "IDGAPI include directory")
