@@ -437,6 +437,7 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
@@ -455,6 +456,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
                         htodstream.memcpyHtoDAsync(d_grid, h_grid);
                         htodstream.synchronize();
                     }
@@ -512,18 +514,12 @@ namespace idg {
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
-                            // Launch degridder pre-processing kernel
-                            // TODO
-                            //device.launch_degridder_pre(
-                            //    current_nr_subgrids, subgrid_size, nr_stations,
-                            //    d_spheroidal, d_aterms, d_metadata, d_subgrids);
-
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
-                            // TODO
-                            //device.launch_degridder(
-                            //    current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                            //    d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                            device.launch_degridder(
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+                                d_aterms, d_aterms_indices, d_metadata, d_subgrids);
                             device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                             executestream.record(outputReady);
 
