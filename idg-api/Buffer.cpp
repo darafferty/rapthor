@@ -328,7 +328,7 @@ namespace api {
     {
         for (auto & buffer : m_bufferVisibilities)
         {
-            buffer.init({0,0,0,0});
+            memset(buffer.data(), 0, buffer.bytes());
         }
         set_uvw_to_infinity();
         init_default_aterm();
