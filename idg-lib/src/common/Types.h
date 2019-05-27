@@ -176,6 +176,10 @@ namespace idg {
                 }
             }
 
+            size_t size() const {
+                return get_x_dim();
+            }
+
             size_t bytes() const {
                 return get_x_dim() * sizeof(T);
             }
@@ -269,6 +273,10 @@ namespace idg {
                 for (unsigned int i = 0; i < n; ++i) {
                     m_buffer[i] = a;
                 }
+            }
+
+            size_t size() const {
+                return get_y_dim() * get_x_dim();
             }
 
             size_t bytes() const {
@@ -379,6 +387,7 @@ namespace idg {
                 return get_z_dim() * get_y_dim() *
                        get_x_dim();
             }
+
             size_t bytes() const {
                 return get_z_dim() * get_y_dim() *
                        get_x_dim() * sizeof(T);
