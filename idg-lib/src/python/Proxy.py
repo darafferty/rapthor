@@ -267,7 +267,7 @@ class Proxy(object):
             ctypes.c_float,              #float w_step,
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
-                shape=(2,),
+                shape=(3,),
                 flags='C_CONTIGUOUS'),   #float* shift,
             ctypes.c_float,              #const float cell_size,
             ctypes.c_uint,               #unsigned int kernel_size,

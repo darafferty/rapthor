@@ -388,9 +388,10 @@ namespace idg {
             }
 
             // Initialize calibration
-            Array1D<float> shift1(2);
+            Array1D<float> shift1(3);
             shift1(0) = shift(0);
             shift1(1) = shift(1);
+            shift1(2) = shift(2);
 
             do_calibrate_init(
                 std::move(plans),
