@@ -112,7 +112,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_delete_buffer(width > 0),
-                m_buffer(new T[width])
+                m_buffer((T*) malloc(width * sizeof(T)))
             {}
 
             Array1D(
@@ -136,7 +136,7 @@ namespace idg {
 
             Array1D& operator=(Array1D&& other)
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
                 m_x_dim = other.m_x_dim;
                 m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
@@ -146,7 +146,7 @@ namespace idg {
 
             virtual ~Array1D()
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
             }
 
             T* data(
@@ -198,7 +198,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_delete_buffer((height*width) > 0),
-                m_buffer(new T[height*width])
+                m_buffer((T*) malloc(height*width*sizeof(T)))
             {}
 
             Array2D(
@@ -226,7 +226,7 @@ namespace idg {
             // move assignment operator
             Array2D& operator=(Array2D&& other)
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
                 m_delete_buffer = other.m_delete_buffer;
@@ -237,9 +237,7 @@ namespace idg {
 
             virtual ~Array2D()
             {
-                if (m_delete_buffer) {
-                    delete[] m_buffer;
-                }
+                if (m_delete_buffer) free(m_buffer);
             }
 
             T* data(
@@ -299,7 +297,7 @@ namespace idg {
                 m_y_dim(height),
                 m_z_dim(depth),
                 m_delete_buffer((width*height*depth) > 0),
-                m_buffer(new T[height*width*depth])
+                m_buffer((T*) malloc(height*width*depth*sizeof(T)))
             {}
 
             Array3D(
@@ -340,7 +338,7 @@ namespace idg {
 				return *this;
             }
 
-            virtual ~Array3D() { if (m_delete_buffer) delete[] m_buffer; }
+            virtual ~Array3D() { if (m_delete_buffer) free(m_buffer); }
 
             T* data(
                 size_t z=0,
