@@ -293,7 +293,6 @@ namespace idg {
             if (w_step != 0.0) {
                 if (supports_wtiles()) {
                     nr_w_layers = INT_MAX;
-
                 }
                 else if (supports_wstack()) {
                     nr_w_layers  = grid.get_w_dim();
@@ -301,6 +300,8 @@ namespace idg {
                 else {
                     throw std::invalid_argument("w_step is not zero, but this Proxy does not support calibration with W-stacking.");
                 }
+            } else {
+                nr_w_layers = 1;
             }
 
             // Arguments
@@ -388,9 +389,10 @@ namespace idg {
             }
 
             // Initialize calibration
-            Array1D<float> shift1(2);
+            Array1D<float> shift1(3);
             shift1(0) = shift(0);
             shift1(1) = shift(1);
+            shift1(2) = shift(2);
 
             do_calibrate_init(
                 std::move(plans),
