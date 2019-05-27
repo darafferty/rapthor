@@ -207,17 +207,6 @@ namespace idg {
                 #endif
                 report.reset();
                 planned_max_nr_subgrids.clear();
-
-                cu::Marker marker("finish");
-                marker.start();
-
-                for (unsigned d = 0; d < get_num_devices(); d++) {
-                    get_device(d).free_device_memory();
-                    get_device(d).free_host_memory();
-                    get_device(d).free_fft_plans();
-                }
-
-                marker.end();
             } // end finish
 
             typedef struct {
