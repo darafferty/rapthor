@@ -146,7 +146,7 @@ template <typename T> inline FUNCTION_ATTRIBUTES void apply_avg_aterm_correction
 
 }
 
-template <typename T> inline void matmul(
+template <typename T> inline FUNCTION_ATTRIBUTES void matmul(
     const T *a,
     const T *b,
           T *c)
@@ -161,7 +161,7 @@ template <typename T> inline void matmul(
     c[3] += a[3] * b[3];
 }
 
-template <typename T> inline void conjugate(
+template <typename T> inline FUNCTION_ATTRIBUTES void conjugate(
     const T *a,
           T *b)
 {
@@ -174,7 +174,7 @@ template <typename T> inline void conjugate(
     }
 }
 
-template <typename T> inline void transpose(
+template <typename T> inline FUNCTION_ATTRIBUTES void transpose(
     const T *a,
           T *b)
 {
@@ -184,7 +184,7 @@ template <typename T> inline void transpose(
     b[3] = a[3];
 }
 
-template <typename T> inline void hermitian(
+template <typename T> inline FUNCTION_ATTRIBUTES void hermitian(
     const T *a,
           T *b)
 {
@@ -193,7 +193,7 @@ template <typename T> inline void hermitian(
     transpose(temp, b);
 }
 
-template <typename T> inline void apply_aterm_generic(
+template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_generic(
           T *pixels,
     const T *aterm1,
     const T *aterm2)
@@ -208,7 +208,7 @@ template <typename T> inline void apply_aterm_generic(
     matmul(temp2, temp1, pixels);
 }
 
-template <typename T> inline void apply_aterm_gridder(
+template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_gridder(
           T *pixels,
     const T *aterm1,
     const T *aterm2)
