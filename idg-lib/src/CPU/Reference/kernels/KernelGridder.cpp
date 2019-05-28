@@ -105,32 +105,22 @@ extern "C" {
                             (aterm_index * nr_stations + station1) *
                             subgridsize * subgridsize * NR_POLARIZATIONS +
                             y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                        std::complex<float> aXX1 = aterms[station1_index + 0];
-                        std::complex<float> aXY1 = aterms[station1_index + 1];
-                        std::complex<float> aYX1 = aterms[station1_index + 2];
-                        std::complex<float> aYY1 = aterms[station1_index + 3];
+                        const std::complex<float> *aterms1 = (std::complex<float> *) &aterms[station1_index];
 
                         // Load aterm for station2
                         int station2_index =
                             (aterm_index * nr_stations + station2) *
                             subgridsize * subgridsize * NR_POLARIZATIONS +
                             y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                        std::complex<float> aXX2 = conj(aterms[station2_index + 0]);
-                        std::complex<float> aXY2 = conj(aterms[station2_index + 1]);
-                        std::complex<float> aYX2 = conj(aterms[station2_index + 2]);
-                        std::complex<float> aYY2 = conj(aterms[station2_index + 3]);
+                        const std::complex<float> *aterms2 = (std::complex<float> *) &aterms[station2_index];
 
-                        apply_aterm(
-                            aXX1, aXY1, aYX1, aYY1,
-                            aXX2, aXY2, aYX2, aYY2,
-                            pixel);
+                        apply_aterm_gridder(pixel, aterms1, aterms2);
 
                         // Update pixel
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             pixels[pol][y][x] += pixel[pol];
                         }
                     } // end for time
-
 
                     // Load pixel
                     std::complex<float> pixel[NR_POLARIZATIONS];
