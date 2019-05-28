@@ -61,6 +61,20 @@ extern "C" {
                 // Apply aterm to subgrid
                 for (int y = 0; y < subgridsize; y++) {
                     for (int x = 0; x < subgridsize; x++) {
+                        // Load spheroidal
+                        float sph = spheroidal[y * subgridsize + x];
+
+                        // Compute shifted position in subgrid
+                        int x_src = (x + (subgridsize/2)) % subgridsize;
+                        int y_src = (y + (subgridsize/2)) % subgridsize;
+
+                        // Load pixel values and apply spheroidal
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels[y][x][pol] = sph * subgrid[
+                                s * NR_POLARIZATIONS * subgridsize * subgridsize +
+                                pol * subgridsize * subgridsize + y_src * subgridsize + x_src];
+                        }
+
                         // Load aterm index
                         int aterm_index = aterms_indices[time_offset + time];
 
@@ -69,52 +83,18 @@ extern "C" {
                             (aterm_index * nr_stations + station1) *
                             subgridsize * subgridsize * NR_POLARIZATIONS +
                             y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                        std::complex<float> aXX1 = conj(aterms[station1_index + 0]);
-                        std::complex<float> aXY1 = conj(aterms[station1_index + 1]);
-                        std::complex<float> aYX1 = conj(aterms[station1_index + 2]);
-                        std::complex<float> aYY1 = conj(aterms[station1_index + 3]);
+                        const std::complex<float> *aterms1 = (std::complex<float> *) &aterms[station1_index];
 
                         // Load aterm for station2
                         int station2_index =
                             (aterm_index * nr_stations + station2) *
                             subgridsize * subgridsize * NR_POLARIZATIONS +
                             y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                        std::complex<float> aXX2 = aterms[station2_index + 0];
-                        std::complex<float> aXY2 = aterms[station2_index + 1];
-                        std::complex<float> aYX2 = aterms[station2_index + 2];
-                        std::complex<float> aYY2 = aterms[station2_index + 3];
+                        const std::complex<float> *aterms2 = (std::complex<float> *) &aterms[station2_index];
 
-                        // Load spheroidal
-                        float sph = spheroidal[y * subgridsize + x];
-
-                        // Compute shifted position in subgrid
-                        int x_src = (x + (subgridsize/2)) % subgridsize;
-                        int y_src = (y + (subgridsize/2)) % subgridsize;
-
-                        // Load uv values
-                        std::complex<float> pixels_[NR_POLARIZATIONS];
-                        pixels_[0] = sph * subgrid[
-                            s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                            0 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                        pixels_[1] = sph * subgrid[
-                            s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                            1 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                        pixels_[2] = sph * subgrid[
-                            s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                            2 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                        pixels_[3] = sph * subgrid[
-                            s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                            3 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-
-                        apply_aterm(
-                            aXX1, aXY1, aYX1, aYY1,
-                            aXX2, aXY2, aYX2, aYY2,
-                            pixels_);
-
-                        // Set pixel
-                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels[y][x][pol] = pixels_[pol];
-                        }
+                        apply_aterm_generic(
+                            pixels[y][x],
+                            aterms1, aterms2);
                     } // end for x
                 } // end for y
 
