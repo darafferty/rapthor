@@ -92,7 +92,7 @@ extern "C" {
                             y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
                         const std::complex<float> *aterms2 = (std::complex<float> *) &aterms[station2_index];
 
-                        apply_aterm_generic(
+                        apply_aterm_degridder(
                             pixels[y][x],
                             aterms1, aterms2);
                     } // end for x

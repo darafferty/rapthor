@@ -137,7 +137,7 @@ void kernel_degridder(
                     size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station2, y, x);
                     idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                     idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
-                    apply_aterm_generic(pixels, aterm1_ptr, aterm2_ptr);
+                    apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
 
                     // Store pixels
                     pixels_xx_real[i] = pixels[0].real;

@@ -193,7 +193,7 @@ template <typename T> inline FUNCTION_ATTRIBUTES void hermitian(
     transpose(temp, b);
 }
 
-template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_generic(
+template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_degridder(
           T *pixels,
     const T *aterm1,
     const T *aterm2)
