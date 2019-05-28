@@ -407,7 +407,7 @@ namespace idg {
                 m_y_dim(y_dim),
                 m_z_dim(z_dim),
                 m_w_dim(w_dim),
-                m_buffer( new T[w_dim*z_dim*y_dim*x_dim], std::default_delete<T[]>() )  // shared_ptr with custom deleter that deletes an array
+                m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)), &free)  // shared_ptr with custom deleter that deletes an array
             {}
 
             Array4D(
