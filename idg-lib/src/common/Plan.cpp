@@ -18,7 +18,8 @@ namespace idg {
         const Array2D<UVWCoordinate<float>>& uvw,
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
-        Options options)
+        Options options) :
+        use_wtiles(false)
     {
         #if defined(DEBUG)
         cout << "Plan::" << __func__ << endl;
@@ -41,7 +42,8 @@ namespace idg {
         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
         const Array1D<unsigned int>& aterms_offsets,
         WTiles &wtiles,
-        Options options)
+        Options options) :
+        use_wtiles(true)
     {
         #if defined(DEBUG)
         cout << "Plan::" << __func__ << " (with WTiles)" << endl;

@@ -1,5 +1,6 @@
 #include <vector>
 #include <memory>
+#include <climits>
 
 #include "fftw3.h"
 
@@ -15,7 +16,9 @@ namespace idg {
             // Constructor
             CPU::CPU(
                 std::vector<std::string> libraries):
-                kernels(libraries)
+                kernels(libraries),
+                itsWTiles(0),
+                itsWTilesBuffer(0)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -38,6 +41,52 @@ namespace idg {
                 // Deallocate FFTWs internally allocated memory
                 fftwf_cleanup();
             }
+
+
+            Plan* CPU::make_plan(
+                const int kernel_size,
+                const int subgrid_size,
+                const int grid_size,
+                const float cell_size,
+                const Array1D<float>& frequencies,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array1D<unsigned int>& aterms_offsets,
+                Plan::Options options)
+            {
+                if (supports_wtiles() && options.w_step != 0.0) {
+
+                    //TODO call somewhere else
+                    init_wtiles(subgrid_size);
+                    options.nr_w_layers = INT_MAX;
+
+                    return new Plan(
+                        kernel_size,
+                        subgrid_size,
+                        grid_size,
+                        cell_size,
+                        frequencies,
+                        uvw,
+                        baselines,
+                        aterms_offsets,
+                        itsWTiles,
+                        options
+                    );
+                } else {
+                    return Proxy::make_plan(
+                        kernel_size,
+                        subgrid_size,
+                        grid_size,
+                        cell_size,
+                        frequencies,
+                        uvw,
+                        baselines,
+                        aterms_offsets,
+                        options
+                    );
+                }
+            }
+
 
             /*
                 High level routines
@@ -216,6 +265,25 @@ namespace idg {
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
                     Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
+                    WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
+
+                    // initialize wtiles
+                    // the front entry of the wtile_initialize_set will be initialized, but it will remain in the queue
+                    //
+                    if (plan.get_use_wtiles()) {
+                        WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                        kernels.run_splitter_wtiles_from_grid(
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            wtile_initialize_info.wtile_ids.size(),
+                            wtile_initialize_info.wtile_ids.data(),
+                            wtile_initialize_info.wtile_coordinates.data(),
+                            itsWTilesBuffer.data(),
+                            grid.data());
+                    }
+
                     // Performance measurement
                     report.initialize(nr_channels, subgrid_size, grid_size);
                     State states[2];
@@ -240,11 +308,49 @@ namespace idg {
                         void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
 
+                        std::cout << "current_nr_subgrids: " << current_nr_subgrids << std::endl;
+
                         // Splitter kernel
                         if (w_step == 0.0) {
                            kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                        } else if (plan.get_use_wtiles()) {
+                            for(int subgrid_index = 0; subgrid_index < current_nr_subgrids; )
+                            {
+                                if (wtile_initialize_set.front().subgrid_index == subgrid_index + plan.get_subgrid_offset(bl))
+                                {
+                                    wtile_initialize_set.pop_front();
+                                    WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                                    kernels.run_splitter_wtiles_from_grid(
+                                        grid_size,
+                                        subgrid_size,
+                                        image_size,
+                                        w_step,
+                                        wtile_initialize_info.wtile_ids.size(),
+                                        wtile_initialize_info.wtile_ids.data(),
+                                        wtile_initialize_info.wtile_coordinates.data(),
+                                        itsWTilesBuffer.data(),
+                                        grid_ptr);
+                                }
+
+                                int nr_subgrids_ = current_nr_subgrids - subgrid_index;
+                                if (wtile_initialize_set.front().subgrid_index - (subgrid_index + plan.get_subgrid_offset(bl)) < nr_subgrids_)
+                                {
+                                    nr_subgrids_ = wtile_initialize_set.front().subgrid_index - (subgrid_index + plan.get_subgrid_offset(bl));
+                                }
+
+                                kernels.run_splitter_subgrids_from_wtiles(
+                                    nr_subgrids_,
+                                    grid_size,
+                                    subgrid_size,
+                                    &static_cast<Metadata*>(metadata_ptr)[subgrid_index],
+                                    &static_cast<std::complex<float>*>(subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
+                                    itsWTilesBuffer.data());
+
+                                subgrid_index += nr_subgrids_;
+                            }
+
                         } else {
-                           kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                            kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                         }
 
                         // FFT kernel
@@ -347,6 +453,26 @@ namespace idg {
                     unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
 
+                    WTileUpdateSet wtile_initialize_set = plans[antenna_nr]->get_wtile_initialize_set();
+
+                    // initialize wtiles
+                    // the front entry of the wtile_initialize_set will be initialized, but it will remain in the queue
+                    //
+                    if (plans[antenna_nr]->get_use_wtiles()) {
+                        WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                        kernels.run_splitter_wtiles_from_grid(
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            wtile_initialize_info.wtile_ids.size(),
+                            wtile_initialize_info.wtile_ids.data(),
+                            wtile_initialize_info.wtile_coordinates.data(),
+                            itsWTilesBuffer.data(),
+                            grid.data());
+                    }
+
+
                     // Get data pointers
                     const float *shift_ptr = shift.data();
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
@@ -356,6 +482,41 @@ namespace idg {
                     // Splitter kernel
                     if (w_step == 0.0) {
                         kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    } else if (plans[antenna_nr]->get_use_wtiles()) {
+                        for(int subgrid_index = 0; subgrid_index < nr_subgrids; )
+                        {
+                            if (wtile_initialize_set.front().subgrid_index == subgrid_index)
+                            {
+                                wtile_initialize_set.pop_front();
+                                WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                                kernels.run_splitter_wtiles_from_grid(
+                                    grid_size,
+                                    subgrid_size,
+                                    image_size,
+                                    w_step,
+                                    wtile_initialize_info.wtile_ids.size(),
+                                    wtile_initialize_info.wtile_ids.data(),
+                                    wtile_initialize_info.wtile_coordinates.data(),
+                                    itsWTilesBuffer.data(),
+                                    grid_ptr);
+                            }
+
+                            int nr_subgrids_ = nr_subgrids - subgrid_index;
+                            if (wtile_initialize_set.front().subgrid_index - subgrid_index < nr_subgrids_)
+                            {
+                                nr_subgrids_ = wtile_initialize_set.front().subgrid_index - subgrid_index;
+                            }
+
+                            kernels.run_splitter_subgrids_from_wtiles(
+                                nr_subgrids_,
+                                grid_size,
+                                subgrid_size,
+                                &static_cast<Metadata*>(metadata_ptr)[subgrid_index],
+                                &static_cast<std::complex<float>*>(subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
+                                itsWTilesBuffer.data());
+
+                            subgrid_index += nr_subgrids_;
+                        }
                     } else {
                         kernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
@@ -567,8 +728,10 @@ namespace idg {
 
             void CPU::init_wtiles(int subgrid_size)
             {
-                itsWTiles = WTiles(NR_WTILES);
-                itsWTilesBuffer = std::vector<std::complex<float>>(NR_WTILES * (WTILE_SIZE+subgrid_size)*(WTILE_SIZE+subgrid_size)*NR_CORRELATIONS);
+                if (itsWTilesBuffer.size() == 0) {
+                    itsWTiles = WTiles(NR_WTILES);
+                    itsWTilesBuffer = std::vector<std::complex<float>>(NR_WTILES * (WTILE_SIZE+subgrid_size)*(WTILE_SIZE+subgrid_size)*NR_CORRELATIONS);
+                }
             }
 
 

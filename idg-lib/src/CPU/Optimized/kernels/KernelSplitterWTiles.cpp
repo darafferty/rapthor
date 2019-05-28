@@ -20,7 +20,6 @@ void kernel_splitter_subgrids_from_wtiles(
           idg::float2*     subgrid,
     const idg::float2*     tiles)
 {
-    std::cout << "#" << std::endl;
     // Precompute phasor
     float phasor_real[subgrid_size][subgrid_size];
     float phasor_imag[subgrid_size][subgrid_size];
@@ -110,8 +109,6 @@ void kernel_splitter_wtiles_from_grid(
     idg::float2 *tiles,
     idg::float2 *grid)
 {
-    std::cout << "*" << std::endl;
-
     float max_abs_w = 0.0;
     for (int i = 0; i<nr_tiles; i++)
     {
@@ -135,10 +132,7 @@ void kernel_splitter_wtiles_from_grid(
         int w_padding2 = w_padding/2;
         size_t current_buffer_size = w_padded_tile_size * w_padded_tile_size * NR_POLARIZATIONS;
 
-
-
         tile_buffer.assign(current_buffer_size, {0.0, 0.0});
-
 
         int x0 = coordinate.x * WTILE_SIZE - (w_padded_tile_size - WTILE_SIZE)/2 + grid_size/2;
         int y0 = coordinate.y * WTILE_SIZE - (w_padded_tile_size - WTILE_SIZE)/2 + grid_size/2;
@@ -147,7 +141,7 @@ void kernel_splitter_wtiles_from_grid(
         int x_end = std::min(x0+w_padded_tile_size, grid_size);
         int y_end = std::min(y0+w_padded_tile_size, grid_size);
 
-        // add to tile to grid
+        // split tile from grid
         #pragma omp parallel for
         for (int y = y_start; y < y_end; y++) {
             for (int x = x_start; x < x_end; x++) {
