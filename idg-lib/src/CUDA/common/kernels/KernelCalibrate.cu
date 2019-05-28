@@ -149,53 +149,36 @@ __global__ void kernel_calibrate(
                         unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
                         // Load pixels
-                        unsigned int pixel_idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
-                        unsigned int pixel_idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
-                        unsigned int pixel_idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
-                        unsigned int pixel_idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                        float2 pixelXX = subgrid[pixel_idx_xx];
-                        float2 pixelXY = subgrid[pixel_idx_xy];
-                        float2 pixelYX = subgrid[pixel_idx_yx];
-                        float2 pixelYY = subgrid[pixel_idx_yy];
+                        float2 pixel[NR_POLARIZATIONS];
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                            pixel[pol] = subgrid[pixel_idx];
+                        }
 
                         // Load first aterm
-                        float2 aXX1, aXY1, aYX1, aYY1;
+                        float2 *aterm1;
 
                         if (term_nr == nr_terms) {
                             // Load aterm for station1
                             size_t station1_idx = index_aterm(subgrid_size, 0, 0, station1, y, x);
-                            aXX1 = aterm[station1_idx + 0];
-                            aXY1 = aterm[station1_idx + 1];
-                            aYX1 = aterm[station1_idx + 2];
-                            aYY1 = aterm[station1_idx + 3];
+                            aterm1 = (float2 *) &aterm[station1_idx];
                         } else {
                             // Load aterm derivative
                             size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_nr, y, x);
-                            aXX1 = aterm_derivatives[station1_idx + 0];
-                            aXY1 = aterm_derivatives[station1_idx + 1];
-                            aYX1 = aterm_derivatives[station1_idx + 2];
-                            aYY1 = aterm_derivatives[station1_idx + 3];
+                            aterm1 = (float2 *) &aterm_derivatives[station1_idx];
                         }
 
                         // Load second aterm
-                        float2 aXX2, aXY2, aYX2, aYY2;
                         size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
-                        aXX2 = aterm[station2_idx + 0];
-                        aXY2 = aterm[station2_idx + 1];
-                        aYX2 = aterm[station2_idx + 2];
-                        aYY2 = aterm[station2_idx + 3];
+                        float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                         // Apply aterm
-                        apply_aterm(
-                            aXX1, aYX1, aXY1, aYY1,
-                            aXX2, aYX2, aXY2, aYY2,
-                            pixelXX, pixelXY, pixelYX, pixelYY);
+                        apply_aterm_calibrate(pixel, aterm1, aterm2);
 
                         // Store pixels in shared memory
-                        pixels_[0][x][term_nr] = pixelXX;
-                        pixels_[1][x][term_nr] = pixelXY;
-                        pixels_[2][x][term_nr] = pixelYX;
-                        pixels_[3][x][term_nr] = pixelYY;
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels_[pol][x][term_nr] = pixel[pol];
+                        }
                     } // end for terms
                 } // end if
             } // end for x

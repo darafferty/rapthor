@@ -111,32 +111,22 @@ __device__ void kernel_degridder_(
                         float spheroidal_ = spheroidal[y * subgrid_size + x];
 
                         // Load pixels
-                        int idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
-                        int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
-                        int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
-                        int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
-                        float2 pixelXX = subgrid[idx_xx] * spheroidal_;
-                        float2 pixelXY = subgrid[idx_xy] * spheroidal_;
-                        float2 pixelYX = subgrid[idx_yx] * spheroidal_;
-                        float2 pixelYY = subgrid[idx_yy] * spheroidal_;
+                        float2 pixel[NR_POLARIZATIONS];
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                            pixel[pol] = subgrid[pixel_idx] * spheroidal_;
+                        }
 
-                        // Load aterm for station1
-                        float2 aXX1, aXY1, aYX1, aYY1;
-                        read_aterm(subgrid_size, nr_stations, aterm_idx_global_current, station1, y, x, aterms, &aXX1, &aXY1, &aYX1, &aYY1);
-
-                        // Load aterm for station2
-                        float2 aXX2, aXY2, aYX2, aYY2;
-                        read_aterm(subgrid_size, nr_stations, aterm_idx_global_current, station2, y, x, aterms, &aXX2, &aXY2, &aYX2, &aYY2);
-
-                        // Apply the conjugate transpose of the A-term
-                        apply_aterm(
-                            aXX1, aYX1, aXY1, aYY1,
-                            aXX2, aYX2, aXY2, aYY2,
-                            pixelXX, pixelXY, pixelYX, pixelYY);
+                        // Apply aterm
+                        int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_global_current, station1, y, x);
+                        int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_global_current, station2, y, x);
+                        float2 *aterm1 = (float2 *) &aterms[station1_idx];
+                        float2 *aterm2 = (float2 *) &aterms[station2_idx];
+                        apply_aterm_degridder(pixel, aterm1, aterm2);
 
                         // Store pixels in shared memory
-                        shared[0][j] = make_float4(pixelXX.x, pixelXX.y, pixelXY.x, pixelXY.y);
-                        shared[1][j] = make_float4(pixelYX.x, pixelYX.y, pixelYY.x, pixelYY.y);
+                        shared[0][j] = *((float4 *) &pixel[0]);
+                        shared[1][j] = *((float4 *) &pixel[2]);;
 
                         // Compute l,m,n and phase offset
                         const float l = compute_l(x, subgrid_size, image_size);

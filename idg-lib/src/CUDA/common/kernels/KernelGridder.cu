@@ -31,35 +31,24 @@ __device__ void update_subgrid(
     const float2* __restrict__ aterms,
           float2* __restrict__ subgrid)
 {
+    float2 pixel[4] = {pixelXX, pixelXY, pixelYX, pixelYY};
+
     // Compute shifted position in subgrid
     int x_dst = (x + (subgrid_size/2)) % subgrid_size;
     int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
-    // Load aterm for station1
-    float2 aXX1, aXY1, aYX1, aYY1;
-    read_aterm(subgrid_size, nr_stations, aterm_index, station1, y_dst, x_dst, aterms, &aXX1, &aXY1, &aYX1, &aYY1);
-
-    // Load aterm for station2
-    float2 aXX2, aXY2, aYX2, aYY2;
-    read_aterm(subgrid_size, nr_stations, aterm_index, station2, y_dst, x_dst, aterms, &aXX2, &aXY2, &aYX2, &aYY2);
-
-    // Apply the conjugate transpose of the A-term
-    apply_aterm(
-        conj(aXX1), conj(aYX1), conj(aXY1), conj(aYY1),
-        conj(aXX2), conj(aYX2), conj(aXY2), conj(aYY2),
-        pixelXX, pixelXY, pixelYX, pixelYY);
-
-    // Compute pixel indices
-    int idx_xx = index_subgrid(subgrid_size, s, 0, y_dst, x_dst);
-    int idx_xy = index_subgrid(subgrid_size, s, 1, y_dst, x_dst);
-    int idx_yx = index_subgrid(subgrid_size, s, 2, y_dst, x_dst);
-    int idx_yy = index_subgrid(subgrid_size, s, 3, y_dst, x_dst);
+    // Apply aterm
+    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
+    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
+    float2 *aterm1 = (float2 *) &aterms[station1_idx];
+    float2 *aterm2 = (float2 *) &aterms[station2_idx];
+    apply_aterm_gridder(pixel, aterm1, aterm2);
 
     // Update subgrid
-    subgrid[idx_xx] += pixelXX;
-    subgrid[idx_xy] += pixelXY;
-    subgrid[idx_yx] += pixelYX;
-    subgrid[idx_yy] += pixelYY;
+    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        int idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
+        subgrid[idx] += pixel[pol];
+    }
 }
 
 __device__ void finialize_subgrid(
