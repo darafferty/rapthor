@@ -94,10 +94,7 @@ def gridding(
         w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
-    #util.plot_grid(grid, scaling='log')
     p.transform(idg.FourierDomainToImageDomain, grid)
-    #util.plot_grid(grid)
-    util.plot_grid(grid, pol=0)
 
 
 ############
@@ -111,7 +108,6 @@ def degridding(
         w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
         grid, aterms, aterms_offsets, spheroidal)
-    #util.plot_visibilities(visibilities)
 
 
 def main(proxyname):
