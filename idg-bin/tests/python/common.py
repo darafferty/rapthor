@@ -158,47 +158,54 @@ def main(proxyname):
                         nr_baselines, nr_timesteps, integration_time)
     frequencies    = util.get_example_frequencies(nr_channels)
     baselines      = util.get_example_baselines(nr_baselines)
-    grid           = util.get_example_grid(
-                        nr_correlations, grid_size)
-    grid2          = util.get_example_grid(
-                        nr_correlations, grid_size)
     aterms         = util.get_example_aterms(
                         nr_timeslots, nr_stations, subgrid_size, nr_correlations)
     aterms_offsets = util.get_example_aterms_offset(
                         nr_timeslots, nr_timesteps)
     spheroidal     = util.get_identity_spheroidal(subgrid_size)
-    visibilities   = util.get_example_visibilities(
-                        nr_baselines, nr_timesteps, nr_channels, nr_correlations,
-                        image_size, grid_size, uvw, frequencies)
-    visibilities2  = util.get_example_visibilities(
-                        nr_baselines, nr_timesteps, nr_channels, nr_correlations,
-                        image_size, grid_size, uvw, frequencies)
     shift          = numpy.zeros(3, dtype=float)
 
+    ######################################################################
+    # initialize visibilities
+    ######################################################################
+    example_visibilities = util.get_example_visibilities(
+                        nr_baselines, nr_timesteps, nr_channels, nr_correlations,
+                        image_size, grid_size, uvw, frequencies)
 
     ######################################################################
-    # routines
+    # initialize empty grids and visibilities
+    ######################################################################
+    ref_grid = util.get_zero_grid(nr_correlations, grid_size)
+    opt_grid = util.get_zero_grid(nr_correlations, grid_size)
+    ref_visibilities = util.get_zero_visibilities(nr_baselines, nr_timesteps, nr_channels, nr_correlations)
+    opt_visibilities = util.get_zero_visibilities(nr_baselines, nr_timesteps, nr_channels, nr_correlations)
+
+    ######################################################################
+    # run gridding
     ######################################################################
     gridding(
-        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
-        uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
-
-    degridding(
-        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities2,
-        uvw, baselines, grid2, aterms, aterms_offsets, spheroidal)
+        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, example_visibilities,
+        uvw, baselines, opt_grid, aterms, aterms_offsets, spheroidal)
 
     gridding(
-        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, example_visibilities,
+        uvw, baselines, ref_grid, aterms, aterms_offsets, spheroidal)
+
+    ######################################################################
+    # run degridding
+    ######################################################################
+    degridding(
+        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, ref_visibilities,
+        uvw, baselines, ref_grid, aterms, aterms_offsets, spheroidal)
 
     degridding(
-        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, opt_visibilities,
+        uvw, baselines, opt_grid, aterms, aterms_offsets, spheroidal)
 
     ######################################################################
     # plot difference between visibilities
     ######################################################################
-    #util.plot_visibilities(visibilities2 - visibilities)
-    #util.plot_visibilities(visibilities)
-    #util.plot_visibilities(visibilities2)
+    util.plot_visibilities(ref_visibilities)
+    util.plot_visibilities(opt_visibilities)
+    util.plot_visibilities(opt_visibilities - ref_visibilities)
     plt.show()
