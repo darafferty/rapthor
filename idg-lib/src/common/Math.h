@@ -152,12 +152,12 @@ template <typename T> inline FUNCTION_ATTRIBUTES void matmul(
           T *c)
 {
     c[0]  = a[0] * b[0];
-    c[1]  = a[1] * b[0];
-    c[2]  = a[0] * b[2];
-    c[3]  = a[1] * b[2];
-    c[0] += a[2] * b[1];
-    c[1] += a[3] * b[1];
-    c[2] += a[2] * b[3];
+    c[1]  = a[0] * b[1];
+    c[2]  = a[2] * b[0];
+    c[3]  = a[2] * b[1];
+    c[0] += a[1] * b[2];
+    c[1] += a[1] * b[3];
+    c[2] += a[3] * b[2];
     c[3] += a[3] * b[3];
 }
 
@@ -165,7 +165,7 @@ template <typename T> inline FUNCTION_ATTRIBUTES void conjugate(
     const T *a,
           T *b)
 {
-    float s[8] = {1, -1, 1, -1, 1, -1, 1};
+    float s[8] = {1, -1, 1, -1, 1, -1, 1, -1};
     float *a_ptr = (float *) a;
     float *b_ptr = (float *) b;
 
@@ -193,31 +193,36 @@ template <typename T> inline FUNCTION_ATTRIBUTES void hermitian(
     transpose(temp, b);
 }
 
+template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_gridder(
+          T *pixels,
+    const T *aterm1,
+    const T *aterm2)
+{
+    // Aterm 1 hermitian
+    T aterm1_h[4];
+    hermitian(aterm1, aterm1_h);
+
+    // Apply aterm: P = A1^H * P
+    T temp[4];
+    matmul(aterm1_h, pixels, temp);
+
+    // Apply aterm: P = P * A2
+    matmul(temp, aterm2, pixels);
+}
+
 template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_degridder(
           T *pixels,
     const T *aterm1,
     const T *aterm2)
 {
     // Apply aterm: P = A1 * P
-    T temp1[4];
-    matmul(pixels, aterm1, temp1);
+    T temp[4];
+    matmul(aterm1, pixels, temp);
+
+    // Aterm 2 hermitian
+    T aterm2_h[4];
+    hermitian(aterm2, aterm2_h);
 
     // Apply aterm: P = P * A2^H
-    T temp2[4];
-    hermitian(aterm2, temp2);
-    matmul(temp2, temp1, pixels);
-}
-
-template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_gridder(
-          T *pixels,
-    const T *aterm1,
-    const T *aterm2)
-{
-    // Apply aterm: P = A1 * P
-    T temp1[4], temp2[4];
-    conjugate(aterm1, temp1);
-    matmul(pixels, temp1, temp2);
-
-    // Apply aterm: P = P * A2^H
-    matmul(aterm2, temp2, pixels);
+    matmul(temp, aterm2_h, pixels);
 }
