@@ -236,10 +236,11 @@ namespace idg {
             for (unsigned ant = 0; ant < nr_stations; ant++) {
                 for (unsigned y = 0; y < height; y++) {
                     for (unsigned x = 0; x < width; x++) {
-                        std::complex<float> valueXX = std::complex<float>(1.0, 1.1);
-                        std::complex<float> valueXY = std::complex<float>(0.8, 0.9);
-                        std::complex<float> valueYX = std::complex<float>(0.6, 1.7);
-                        std::complex<float> valueYY = std::complex<float>(0.4, 0.5);
+                        float scale = ((float) (t+1) / nr_timeslots);
+                        std::complex<float> valueXX = std::complex<float>(scale * 1.0, 1.1);
+                        std::complex<float> valueXY = std::complex<float>(scale * 0.8, 0.9);
+                        std::complex<float> valueYX = std::complex<float>(scale * 0.6, 1.7);
+                        std::complex<float> valueYY = std::complex<float>(scale * 0.4, 0.5);
                         const Matrix2x2<std::complex<float>> aterm = {valueXX, valueXY, valueYX, valueYY};
                         aterms(t, ant, y, x) = aterm;
                     }
