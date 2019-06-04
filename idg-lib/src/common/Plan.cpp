@@ -502,7 +502,7 @@ namespace idg {
         return accumulate(begin, end, 0);
     }
 
-    int Plan::get_max_nr_timesteps() const {
+    int Plan::get_max_nr_timesteps_baseline() const {
         return *max_element(
             total_nr_timesteps_per_baseline.begin(),
             total_nr_timesteps_per_baseline.end());
