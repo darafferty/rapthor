@@ -169,9 +169,6 @@ namespace idg {
                         unsigned int nr_channels;
                         Array3D<UVWCoordinate<float>> uvw; // FIXME
                         unsigned int d_scratch_sum_id;
-                        unsigned int d_hessian_id;
-                        unsigned int d_gradient_id;
-                        unsigned int d_aterms_deriv_id;
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
                         std::vector<unsigned int> d_visibilities_ids;

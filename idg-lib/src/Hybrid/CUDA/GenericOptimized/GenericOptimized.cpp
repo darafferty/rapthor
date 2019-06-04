@@ -951,14 +951,8 @@ namespace idg {
                 device.get_device_aterms(nr_antennas, nr_timeslots, subgrid_size);
 
                 // Allocate device memory (using new allocation mechanism)
-                auto sizeof_aterm_deriv = max_nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
                 auto sizeof_scratch_sum = max_nr_subgrids * nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
-                auto sizeof_gradient    = max_nr_terms * sizeof(std::complex<float>);
-                auto sizeof_hessian     = max_nr_terms * max_nr_terms * sizeof(std::complex<float>);
                 m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
-                m_calibrate_state.d_hessian_id      = device.allocate_device_memory(sizeof_hessian);
-                m_calibrate_state.d_gradient_id     = device.allocate_device_memory(sizeof_gradient);
-                m_calibrate_state.d_aterms_deriv_id = device.allocate_device_memory(sizeof_aterm_deriv);
 
                 // Copy data to device
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
@@ -981,7 +975,6 @@ namespace idg {
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
                 auto max_nr_terms = m_calibrate_max_nr_terms;
-                auto nr_correlations = 4;
 
                 assert((nr_terms+1) < max_nr_terms);
 
@@ -1018,49 +1011,48 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
 
+                // Allocate additional data structures
+                cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
+                cu::DeviceMemory d_hessian(hessian.bytes());
+                cu::DeviceMemory d_gradient(gradient.bytes());
+                cu::HostMemory h_hessian(hessian.bytes());
+                cu::HostMemory h_gradient(gradient.bytes());
+
                 // Events
-                std::vector<cu::Event*> events;
-                for (int i = 0; i < 3; i++) {
-                    events.push_back(new cu::Event());
-                }
+                cu::Event inputCopied, executeFinished, outputCopied;
 
                 // Allocate temporary buffers
-                auto sizeof_aterm_deriv = nr_terms * subgrid_size * subgrid_size * nr_correlations * sizeof(std::complex<float>);
                 auto sizeof_uvw         = auxiliary::sizeof_uvw(1, nr_timesteps);
-                auto sizeof_gradient    = nr_terms * sizeof(std::complex<float>);
-                auto sizeof_hessian     = nr_terms * nr_terms * sizeof(std::complex<float>);
-                cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
-                cu::DeviceMemory& d_hessian      = device.retrieve_device_memory(m_calibrate_state.d_hessian_id);
-                cu::DeviceMemory& d_gradient     = device.retrieve_device_memory(m_calibrate_state.d_gradient_id);
-                cu::DeviceMemory& d_aterms_deriv = device.retrieve_device_memory(m_calibrate_state.d_aterms_deriv_id);
+                cu::DeviceMemory& d_scratch_sum = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
 
                 // Copy input data to device
                 htodstream.memcpyHtoDAsync(d_aterms, aterm_ptr);
-                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr, sizeof_aterm_deriv);
                 htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr, sizeof_hessian);
-                htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr, sizeof_gradient);
-                htodstream.record(*events[0]);
+                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr);
+                htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr);
+                htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
+                htodstream.record(inputCopied);
 
                 // Run calibration update step
-                executestream.waitEvent(*events[0]);
+                executestream.waitEvent(inputCopied);
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
                     d_scratch_sum, d_hessian, d_gradient);
-                executestream.record(*events[1]);
-
-                // Wait for computation to finish
-                events[1]->synchronize();
+                executestream.record(executeFinished);
 
                 // Copy output to host
-                //dtohstream.waitEvent(*events[1]);
-                dtohstream.memcpyDtoHAsync(hessian_ptr, d_hessian, sizeof_hessian);
-                dtohstream.memcpyDtoHAsync(gradient_ptr, d_gradient, sizeof_gradient);
-                dtohstream.record(*events[2]);
+                dtohstream.waitEvent(executeFinished);
+                dtohstream.memcpyDtoHAsync(h_hessian, d_hessian);
+                dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
+                dtohstream.record(outputCopied);
 
                 // Wait for output to finish
-                events[2]->synchronize();
+                outputCopied.synchronize();
+
+                // Copy output on host
+                memcpy(hessian_ptr, h_hessian, hessian.bytes());
+                memcpy(gradient_ptr, h_gradient, gradient.bytes());
 
                 // Performance reporting
                 auto nr_visibilities = nr_timesteps * nr_channels;
