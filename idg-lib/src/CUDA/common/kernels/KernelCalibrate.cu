@@ -54,10 +54,12 @@ __device__ void initialize_shared_memory(
 } // end initialize_shared_memory
 
 
-template<int nr_terms>
+template<int current_nr_terms>
 __device__ void update_sums(
     const int                         subgrid_size,
     const float                       image_size,
+    const unsigned int                nr_terms,
+    const unsigned int                term_offset,
     const unsigned int                s,
     const unsigned int                time,
     const unsigned int                chan,
@@ -100,11 +102,11 @@ __device__ void update_sums(
     float wavenumber = wavenumbers[chan];
 
     // Accumulate sums in registers
-    float2 sumXX[MAX_NR_TERMS];
-    float2 sumXY[MAX_NR_TERMS];
-    float2 sumYX[MAX_NR_TERMS];
-    float2 sumYY[MAX_NR_TERMS];
-    for (unsigned int term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+    float2 sumXX[current_nr_terms];
+    float2 sumXY[current_nr_terms];
+    float2 sumYX[current_nr_terms];
+    float2 sumYY[current_nr_terms];
+    for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
         sumXX[term_nr] = make_float2(0, 0);
         sumXY[term_nr] = make_float2(0, 0);
         sumYX[term_nr] = make_float2(0, 0);
@@ -127,7 +129,7 @@ __device__ void update_sums(
                 lmn_[x] = make_float4(l, m, n, phase_offset);
 
                 // Precompute pixels
-                for (unsigned term_nr = 0; term_nr < (nr_terms+1); term_nr++) {
+                for (unsigned term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                     // Compute shifted position in subgrid
                     unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
                     unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
@@ -142,13 +144,13 @@ __device__ void update_sums(
                     // Load first aterm
                     float2 *aterm1;
 
-                    if (term_nr == nr_terms) {
+                    if ((term_offset+term_nr) == nr_terms) {
                         // Load aterm for station1
                         size_t station1_idx = index_aterm(subgrid_size, 0, 0, station1, y, x);
                         aterm1 = (float2 *) &aterm[station1_idx];
                     } else {
                         // Load aterm derivative
-                        size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_nr, y, x);
+                        size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_offset+term_nr, y, x);
                         aterm1 = (float2 *) &aterm_derivatives[station1_idx];
                     }
 
@@ -188,7 +190,7 @@ __device__ void update_sums(
             float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
             // Iterate all terms
-            for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
+            for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
 
                 // Load pixels
                 float2 pixelXX = pixels_[0][x][term_nr];
@@ -221,10 +223,10 @@ __device__ void update_sums(
     } // end for y
 
     // Scale sums and store in device memory
-    for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
+    for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
         const float scale = 1.0f / nr_pixels;
         if (time < nr_timesteps) {
-            unsigned int sum_idx = index_sums(s, tid, term_nr, 0);
+            unsigned int sum_idx = index_sums(s, tid, term_offset + term_nr, 0);
             float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
             float4 sumA = make_float4(sumXX[term_nr].x, sumXX[term_nr].y, sumXY[term_nr].x, sumYX[term_nr].y);
             float4 sumB = make_float4(sumYX[term_nr].x, sumYX[term_nr].y, sumYY[term_nr].x, sumYY[term_nr].y);
@@ -237,8 +239,10 @@ __device__ void update_sums(
 } // end update_sums
 
 
-template<int nr_terms>
+template<int current_nr_terms>
 __device__ void update_local_solution(
+    const unsigned int                nr_terms,
+    const unsigned int                term_offset,
     const unsigned int                s,
     const unsigned                    visibility_offset,
     const unsigned int                nr_channels,
@@ -356,6 +360,14 @@ __device__ void update_global_solution(
 } // end update_global_solution
 
 
+#define UPDATE_SUMS(current_nr_terms) \
+    for (; (term_offset + current_nr_terms) <= (nr_terms+1); term_offset += current_nr_terms) { \
+        update_sums<current_nr_terms>( \
+                subgrid_size, image_size, nr_terms, term_offset, s, time, chan, \
+                uvw_offset, uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
+                subgrid, scratch_sum, pixels_, lmn_); \
+    }
+
 extern "C" {
 
 __global__ void kernel_calibrate(
@@ -414,15 +426,14 @@ __global__ void kernel_calibrate(
         /*
             Phase 1: "degrid" all subgrids, row by row
         */
-        update_sums<6>(
-                subgrid_size, image_size, s, time, chan,
-                uvw_offset, uvw, aterm, aterm_derivatives, wavenumbers, metadata,
-                subgrid, scratch_sum, pixels_, lmn_);
+        int term_offset = 0;
+        UPDATE_SUMS(7)
 
         /*
             Phase 2: update local gradient and hessian
         */
-        update_local_solution<6>(
+        update_local_solution<-1>(
+            nr_terms, term_offset,
             s, visibility_offset, nr_channels,
             visibilities, metadata, scratch_sum,
             hessian, gradient, sums_, gradient_, hessian_);
