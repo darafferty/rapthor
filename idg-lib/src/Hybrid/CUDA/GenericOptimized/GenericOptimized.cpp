@@ -988,6 +988,10 @@ namespace idg {
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
 
+                // Start marker
+                cu::Marker marker("do_calibrate_update");
+                marker.start();
+
                 // Load device
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
@@ -1047,6 +1051,9 @@ namespace idg {
                 // Copy output on host
                 memcpy(hessian_ptr, h_hessian, hessian.bytes());
                 memcpy(gradient_ptr, h_gradient, gradient.bytes());
+
+                // End marker
+                marker.end();
 
                 // Performance reporting
                 auto nr_visibilities = nr_timesteps * nr_channels;
