@@ -903,7 +903,7 @@ namespace idg {
 
                     // Allocate and initialize device memory for current antenna
                     void *visibilities_ptr   = visibilities.data(antenna_nr);
-                    //void *uvw_ptr            = uvw.data(antenna_nr);
+                    void *uvw_ptr            = uvw.data(antenna_nr);
                     auto sizeof_metadata     = auxiliary::sizeof_metadata(nr_subgrids);
                     auto sizeof_subgrids     = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_subgrids, nr_timesteps, nr_channels);
@@ -919,11 +919,11 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
-                    //cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
+                    cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
-                    //htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw); // FIXME
+                    htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                     htodstream.synchronize();
                 } // end for antennas
 
@@ -944,7 +944,6 @@ namespace idg {
                 m_calibrate_state.grid_size    = grid_size;
                 m_calibrate_state.subgrid_size = subgrid_size;
                 m_calibrate_state.nr_channels  = nr_channels;
-                m_calibrate_state.uvw          = std::move(uvw); // FIXME
 
                 // Allocate device memory
                 cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
@@ -986,7 +985,6 @@ namespace idg {
                 // Data pointers
                 void *aterm_ptr            = aterms.data();
                 void *aterm_derivative_ptr = aterm_derivatives.data();
-                void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
 
@@ -1005,11 +1003,12 @@ namespace idg {
                 unsigned int d_metadata_id       = m_calibrate_state.d_metadata_ids[antenna_nr];
                 unsigned int d_subgrids_id       = m_calibrate_state.d_subgrids_ids[antenna_nr];
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
-                unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[0]; // FIXME
+                unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[antenna_nr];
                 cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                 cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                 cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
+                cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
 
                 // Allocate additional data structures
                 cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
@@ -1021,13 +1020,8 @@ namespace idg {
                 // Events
                 cu::Event inputCopied, executeFinished, outputCopied;
 
-                // Allocate temporary buffers
-                auto sizeof_uvw         = auxiliary::sizeof_uvw(1, nr_timesteps);
-                cu::DeviceMemory& d_scratch_sum = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
-
                 // Copy input data to device
                 htodstream.memcpyHtoDAsync(d_aterms, aterm_ptr);
-                htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                 htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr);
                 htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr);
                 htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
