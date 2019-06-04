@@ -508,6 +508,16 @@ namespace idg {
             total_nr_timesteps_per_baseline.end());
     }
 
+    int Plan::get_max_nr_timesteps_subgrid() const {
+        auto max_nr_timesteps = metadata[0].nr_timesteps;
+        for (const Metadata& m : metadata) {
+            if (m.nr_timesteps > max_nr_timesteps) {
+                max_nr_timesteps = m.nr_timesteps;
+            }
+        }
+        return max_nr_timesteps;
+    }
+
     int Plan::get_nr_visibilities() const {
         return accumulate(
             total_nr_visibilities_per_baseline.begin(),

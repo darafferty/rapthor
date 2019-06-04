@@ -110,6 +110,9 @@ namespace idg {
             // max number of timesteps for 1 baseline
             int get_max_nr_timesteps_baseline() const;
 
+            // max number of timesteps for 1 subgrid
+            int get_max_nr_timesteps_subgrid() const;
+
             // total number of visibilities
             int get_nr_visibilities() const;
 
