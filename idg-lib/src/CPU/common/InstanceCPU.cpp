@@ -144,7 +144,7 @@ namespace idg {
             #define sig_gridder                       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder                     (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_calibrate                     (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_phasor                        (void (*)(int,int,int,float,float,const float*,int,void*,void*,void*,void*))
+            #define sig_phasor                        (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*))
             #define sig_fft		                      (void (*)(long,long,long,void*,int))
             #define sig_adder	                      (void (*)(long,long,int,void*,void*,void*))
             #define sig_splitter                      (void (*)(long,long,int,void*,void*,void*))
@@ -247,6 +247,7 @@ namespace idg {
                 float image_size,
                 float w_step,
                 const float* shift,
+                int max_nr_timesteps,
                 int nr_channels,
                 void *uvw,
                 void *wavenumbers,
@@ -254,8 +255,8 @@ namespace idg {
                 void *phasors)
             {
                 (sig_phasor (void *) *function_phasor)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, nr_channels,
-                  uvw, wavenumbers, metadata, phasors);
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift,
+                  max_nr_timesteps, nr_channels, uvw, wavenumbers, metadata, phasors);
             }
 
             void InstanceCPU::run_fft(

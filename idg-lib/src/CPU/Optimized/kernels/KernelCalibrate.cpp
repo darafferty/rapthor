@@ -265,6 +265,7 @@ void kernel_phasor(
     const float                      image_size,
     const float                      w_step_in_lambda,
     const float* __restrict__        shift,
+    const int                        max_nr_timesteps,
     const int                        nr_channels,
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
@@ -353,7 +354,7 @@ void kernel_phasor(
 
                 // Store phasor
                 for (unsigned i = 0; i < nr_pixels; i++) {
-                    unsigned idx = index_phasors(nr_timesteps, nr_channels, subgrid_size, s, time, chan, i);
+                    unsigned idx = index_phasors(max_nr_timesteps, nr_channels, subgrid_size, s, time, chan, i);
                     phasors[idx] = { phasor_real[i], phasor_imag[i] };
                 }
             } // end for channel
