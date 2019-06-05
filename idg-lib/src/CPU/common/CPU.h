@@ -102,36 +102,7 @@ namespace idg {
                         const Array2D<UVWCoordinate<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                         const Array1D<unsigned int>& aterms_offsets,
-                        Plan::Options options)
-                    {
-                        if (supports_wtiles()) {
-                            return new Plan(
-                                kernel_size,
-                                subgrid_size,
-                                grid_size,
-                                cell_size,
-                                frequencies,
-                                uvw,
-                                baselines,
-                                aterms_offsets,
-                                itsWTiles,
-                                options
-                            );
-                        } else {
-                            return Proxy::make_plan(
-                                kernel_size,
-                                subgrid_size,
-                                grid_size,
-                                cell_size,
-                                frequencies,
-                                uvw,
-                                baselines,
-                                aterms_offsets,
-                                options
-                            );
-                        }
-
-                    }
+                        Plan::Options options);
 
                     virtual void init_wtiles(int subgrid_size);
 
