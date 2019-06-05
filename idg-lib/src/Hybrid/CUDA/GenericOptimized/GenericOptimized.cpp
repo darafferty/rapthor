@@ -122,6 +122,9 @@ namespace idg {
                 // Initialize report
                 report.initialize(nr_channels, subgrid_size, grid_size);
 
+                cu::Marker marker("initialize");
+                marker.start();
+
                 // Initialize devices
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
@@ -182,6 +185,8 @@ namespace idg {
                     device.plan_fft(subgrid_size, max_nr_subgrids);
                 }
 
+                marker.end();
+
                 // Host power measurement
                 hostStartState = hostPowerSensor->read();
             } // end initialize
@@ -202,12 +207,6 @@ namespace idg {
                 #endif
                 report.reset();
                 planned_max_nr_subgrids.clear();
-
-                for (unsigned d = 0; d < get_num_devices(); d++) {
-                    get_device(d).free_device_memory();
-                    get_device(d).free_host_memory();
-                    get_device(d).free_fft_plans();
-                }
             } // end finish
 
             typedef struct {

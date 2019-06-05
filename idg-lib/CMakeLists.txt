@@ -23,6 +23,7 @@ option (REPORT_VERBOSE "Report detailed performance metrics" OFF)
 option (REPORT_TOTAL "Report total performance metrics" OFF)
 option (REPORT_OPS "Report performance in ops (fma, sincos) instead of flops (add, mul)" OFF)
 option (COMPILE_VERBOSE "Report compiler flags used during runtime compilation" OFF)
+option (STRICT_WARNINGS "Turn compiliation warnings into errors" ON)
 
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
@@ -59,7 +60,7 @@ endif()
 
 # Set the warning level to all and treat all warnings as errors
 # TODO: setting of the flags is only applied when using a GNU compiler
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND GNU_CXX_COMPILER)
+if (STRICT_WARNINGS AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND GNU_CXX_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 endif()
 

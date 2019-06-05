@@ -187,6 +187,7 @@ namespace idg {
                     // Compute actual jobsize
                     jobsize[i] = (bytes_free * (1 - fraction_reserved)) /  bytes_jobs;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
+                    jobsize[i] = min(jobsize[i], plan.get_nr_baselines());
 
                     // Print jobsize
                     #if defined(DEBUG)

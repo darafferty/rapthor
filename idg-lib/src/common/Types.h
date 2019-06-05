@@ -112,7 +112,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_delete_buffer(width > 0),
-                m_buffer(new T[width])
+                m_buffer((T*) malloc(width * sizeof(T)))
             {}
 
             Array1D(
@@ -136,7 +136,7 @@ namespace idg {
 
             Array1D& operator=(Array1D&& other)
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
                 m_x_dim = other.m_x_dim;
                 m_delete_buffer = other.m_delete_buffer;
                 m_buffer = other.m_buffer;
@@ -146,7 +146,7 @@ namespace idg {
 
             virtual ~Array1D()
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
             }
 
             T* data(
@@ -176,6 +176,10 @@ namespace idg {
                 }
             }
 
+            size_t size() const {
+                return get_x_dim();
+            }
+
             size_t bytes() const {
                 return get_x_dim() * sizeof(T);
             }
@@ -198,7 +202,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_delete_buffer((height*width) > 0),
-                m_buffer(new T[height*width])
+                m_buffer((T*) malloc(height*width*sizeof(T)))
             {}
 
             Array2D(
@@ -226,7 +230,7 @@ namespace idg {
             // move assignment operator
             Array2D& operator=(Array2D&& other)
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
                 m_delete_buffer = other.m_delete_buffer;
@@ -237,9 +241,7 @@ namespace idg {
 
             virtual ~Array2D()
             {
-                if (m_delete_buffer) {
-                    delete[] m_buffer;
-                }
+                if (m_delete_buffer) free(m_buffer);
             }
 
             T* data(
@@ -273,6 +275,10 @@ namespace idg {
                 }
             }
 
+            size_t size() const {
+                return get_y_dim() * get_x_dim();
+            }
+
             size_t bytes() const {
                 return get_y_dim() *
                        get_x_dim() * sizeof(T);
@@ -299,7 +305,7 @@ namespace idg {
                 m_y_dim(height),
                 m_z_dim(depth),
                 m_delete_buffer((width*height*depth) > 0),
-                m_buffer(new T[height*width*depth])
+                m_buffer((T*) malloc(height*width*depth*sizeof(T)))
             {}
 
             Array3D(
@@ -340,7 +346,7 @@ namespace idg {
 				return *this;
             }
 
-            virtual ~Array3D() { if (m_delete_buffer) delete[] m_buffer; }
+            virtual ~Array3D() { if (m_delete_buffer) free(m_buffer); }
 
             T* data(
                 size_t z=0,
@@ -381,6 +387,7 @@ namespace idg {
                 return get_z_dim() * get_y_dim() *
                        get_x_dim();
             }
+
             size_t bytes() const {
                 return get_z_dim() * get_y_dim() *
                        get_x_dim() * sizeof(T);
@@ -409,7 +416,7 @@ namespace idg {
                 m_y_dim(y_dim),
                 m_z_dim(z_dim),
                 m_w_dim(w_dim),
-                m_buffer( new T[w_dim*z_dim*y_dim*x_dim], std::default_delete<T[]>() )  // shared_ptr with custom deleter that deletes an array
+                m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)), &free)  // shared_ptr with custom deleter that deletes an array
             {}
 
             Array4D(
@@ -520,145 +527,6 @@ namespace idg {
             size_t m_w_dim;
             std::shared_ptr<T> m_buffer;
     };
-
-    template<class T>
-    class Array5D {
-        public:
-            Array5D() : Array5D(0,0,0,0,0) {}
-
-            Array5D(
-                size_t dim4,
-                size_t dim3,
-                size_t dim2,
-                size_t dim1,
-                size_t dim0) :
-                m_dim4(dim4),
-                m_dim3(dim3),
-                m_dim2(dim2),
-                m_dim1(dim1),
-                m_dim0(dim0),
-                m_buffer( new T[dim4*dim3*dim2*dim1*dim0], std::default_delete<T[]>() )  // shared_ptr with custom deleter that deletes an array
-            {}
-
-            Array5D(
-                std::shared_ptr<T> data,
-                size_t dim4,
-                size_t dim3,
-                size_t dim2,
-                size_t dim1,
-                size_t dim0) :
-                m_dim4(dim4),
-                m_dim3(dim3),
-                m_dim2(dim2),
-                m_dim1(dim1),
-                m_dim0(dim0),
-                m_buffer(data)
-            {}
-
-            Array5D(
-                T* data,
-                size_t dim4,
-                size_t dim3,
-                size_t dim2,
-                size_t dim1,
-                size_t dim0) :
-                m_dim4(dim4),
-                m_dim3(dim3),
-                m_dim2(dim2),
-                m_dim1(dim1),
-                m_dim0(dim0),
-                m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
-            {}
-
-            Array5D(const Array5D& other) = delete;
-            Array5D& operator=(const Array5D& rhs) = delete;
-
-            Array5D(Array5D&& other)
-                : m_dim4(other.m_dim4),
-                  m_dim3(other.m_dim3),
-                  m_dim2(other.m_dim2),
-                  m_dim1(other.m_dim1),
-                  m_dim0(other.m_dim0),
-                  m_buffer(other.m_buffer)
-            {
-                other.m_buffer = nullptr;
-            }
-
-            // move assignment operator
-            Array5D& operator=(Array5D&& other)
-            {
-                m_dim4 = other.m_dim4;
-                m_dim3 = other.m_dim3;
-                m_dim2 = other.m_dim2;
-                m_dim1 = other.m_dim1;
-                m_dim0 = other.m_dim0;
-                m_buffer = other.m_buffer;
-                other.m_buffer = nullptr;
-                return *this;
-            }
-
-            virtual ~Array5D() {}
-
-            T* data(
-                size_t idx4=0,
-                size_t idx3=0,
-                size_t idx2=0,
-                size_t idx1=0,
-                size_t idx0=0) const
-            {
-                return &m_buffer.get()[idx0 + m_dim0*idx1 + m_dim0*m_dim1*idx2 + m_dim0*m_dim1*m_dim2*idx3 + + m_dim4*m_dim3*m_dim2*m_dim1*idx0];
-            }
-
-            size_t get_dim4() const { return m_dim4; }
-            size_t get_dim3() const { return m_dim3; }
-            size_t get_dim2() const { return m_dim2; }
-            size_t get_dim1() const { return m_dim1; }
-            size_t get_dim0() const { return m_dim0; }
-
-            const T& operator()(
-                size_t idx4,
-                size_t idx3,
-                size_t idx2,
-                size_t idx1,
-                size_t idx0) const
-            {
-                return m_buffer.get()[idx0 + m_dim0*idx1 + m_dim0*m_dim1*idx2 + m_dim0*m_dim1*m_dim2*idx3 + + m_dim4*m_dim3*m_dim2*m_dim1*idx0];
-            }
-
-            T& operator()(
-                size_t idx4,
-                size_t idx3,
-                size_t idx2,
-                size_t idx1,
-                size_t idx0)
-            {
-                return m_buffer.get()[idx0 + m_dim0*idx1 + m_dim0*m_dim1*idx2 + m_dim0*m_dim1*m_dim2*idx3 + + m_dim4*m_dim3*m_dim2*m_dim1*idx0];
-            }
-
-            void init(const T& a) {
-                const unsigned int n = m_dim4*m_dim3*m_dim2*m_dim1*m_dim0;
-                for (unsigned int i = 0; i < n; ++i) {
-                    m_buffer.get()[i] = a;
-                }
-            }
-
-            size_t bytes() const {
-                return m_dim4*m_dim3*m_dim2*m_dim1*m_dim0 * sizeof(T);
-            }
-
-            // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
-            // Need to return a copy in that case.
-            const std::shared_ptr<const T> get() const {return m_buffer;}
-
-        protected:
-            size_t m_dim4;
-            size_t m_dim3;
-            size_t m_dim2;
-            size_t m_dim1;
-            size_t m_dim0;
-            std::shared_ptr<T> m_buffer;
-    };
-
 
 
     class Grid : public Array4D<std::complex<float>> {

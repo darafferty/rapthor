@@ -21,7 +21,7 @@ namespace idg {
         Options options)
     {
         #if defined(DEBUG)
-        cout << __func__ << endl;
+        cout << "Plan::" << __func__ << endl;
         #endif
 
         WTiles dummy_wtiles(0);
@@ -44,10 +44,8 @@ namespace idg {
         Options options)
     {
         #if defined(DEBUG)
-        cout << __func__ << endl;
+        cout << "Plan::" << __func__ << " (with WTiles)" << endl;
         #endif
-
-        std::cout << "Plan with WTiles" << std::endl;
 
         initialize(
             kernel_size, subgrid_size, grid_size, cell_size,
