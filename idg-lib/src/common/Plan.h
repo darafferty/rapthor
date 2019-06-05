@@ -128,6 +128,8 @@ namespace idg {
 
             void copy_metadata(void *ptr) const;
 
+            const int* get_aterm_indices_ptr(int baseline = 0) const;
+
             void initialize_job(
                 const unsigned int nr_baselines,
                 const unsigned int jobsize,
@@ -147,6 +149,7 @@ namespace idg {
             std::vector<int> total_nr_visibilities_per_baseline;
             WTileUpdateSet m_wtile_initialize_set;
             WTileUpdateSet m_wtile_flush_set;
+            std::vector<int> aterm_indices;
         }; // class Plan
 
 } // namespace idg

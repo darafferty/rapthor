@@ -80,6 +80,18 @@ extern "C" {
         memcpy(ptr, aterms.data(), aterms.bytes());
     }
 
+    void utils_init_example_aterms(
+        void *ptr,
+        int nr_timeslots,
+        int nr_stations,
+        int subgrid_size,
+        int nr_polarizations)
+    {
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
+            idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        memcpy(ptr, aterms.data(), aterms.bytes());
+    }
+
     void utils_init_example_aterms_offset(
         void *ptr,
         int nr_timeslots,

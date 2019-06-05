@@ -58,6 +58,7 @@ namespace idg {
                     device.get_device_wavenumbers(nr_channels);
                     device.get_device_spheroidal(subgrid_size);
                     device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    device.get_device_aterms_indices(nr_baselines, nr_timesteps);
                     device.get_device_grid(grid_size);
 
                     unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
@@ -231,6 +232,7 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_aterms_indices       = device.get_device_aterms_indices();
                     cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
@@ -250,6 +252,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
                         htodstream.synchronize();
                         if (device_id == 0) {
                             htodstream.memcpyHtoDAsync(d_grid, h_grid);
@@ -302,12 +305,8 @@ namespace idg {
                             executestream.waitEvent(inputReady);
                             device.launch_gridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
-
-                            // Launch gridder post-processing kernel
-                            device.launch_gridder_post(
-                                current_nr_subgrids, subgrid_size, nr_stations,
-                                d_spheroidal, d_aterms, d_avg_aterm_correction, d_metadata, d_subgrids);
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+                                d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
@@ -438,6 +437,7 @@ namespace idg {
                     cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
                     cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
                     cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                    cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
@@ -456,6 +456,7 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
+                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
                         htodstream.memcpyHtoDAsync(d_grid, h_grid);
                         htodstream.synchronize();
                     }
@@ -513,16 +514,12 @@ namespace idg {
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
 
-                            // Launch degridder pre-processing kernel
-                            device.launch_degridder_pre(
-                                current_nr_subgrids, subgrid_size, nr_stations,
-                                d_spheroidal, d_aterms, d_metadata, d_subgrids);
-
                             // Launch degridder kernel
                             executestream.waitEvent(outputFree);
                             device.launch_degridder(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
+                                d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+                                d_aterms, d_aterms_indices, d_metadata, d_subgrids);
                             device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                             executestream.record(outputReady);
 

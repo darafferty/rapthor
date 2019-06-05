@@ -21,6 +21,7 @@ extern "C" {
               std::complex<float>*       visibilities,
         const float*                     spheroidal,
         const std::complex<float>*       aterms,
+        const int*                       aterms_indices,
         const idg::Metadata*             metadata,
         const std::complex<float>*       subgrid)
     {
@@ -34,102 +35,13 @@ extern "C" {
 
             // Load metadata
             const idg::Metadata m  = metadata[s];
-            const int local_offset = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+            const int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
             const int nr_timesteps = m.nr_timesteps;
-            const int aterm_index  = m.aterm_index;
             const int station1     = m.baseline.station1;
             const int station2     = m.baseline.station2;
             const int x_coordinate = m.coordinate.x;
             const int y_coordinate = m.coordinate.y;
             const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
-
-            // Storage
-            std::complex<float> pixels[subgridsize][subgridsize][NR_POLARIZATIONS];
-
-            // Apply aterm to subgrid
-            for (int y = 0; y < subgridsize; y++) {
-                for (int x = 0; x < subgridsize; x++) {
-                    // Load aterm for station1
-                    int station1_index =
-                        (aterm_index * nr_stations + station1) *
-                        subgridsize * subgridsize * NR_POLARIZATIONS +
-                        y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                    std::complex<float> aXX1 = conj(aterms[station1_index + 0]);
-                    std::complex<float> aXY1 = conj(aterms[station1_index + 1]);
-                    std::complex<float> aYX1 = conj(aterms[station1_index + 2]);
-                    std::complex<float> aYY1 = conj(aterms[station1_index + 3]);
-
-                    // Load aterm for station2
-                    int station2_index =
-                        (aterm_index * nr_stations + station2) *
-                        subgridsize * subgridsize * NR_POLARIZATIONS +
-                        y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
-                    std::complex<float> aXX2 = aterms[station2_index + 0];
-                    std::complex<float> aXY2 = aterms[station2_index + 1];
-                    std::complex<float> aYX2 = aterms[station2_index + 2];
-                    std::complex<float> aYY2 = aterms[station2_index + 3];
-
-                    // Load spheroidal
-                    float sph = spheroidal[y * subgridsize + x];
-
-                    // Compute shifted position in subgrid
-                    int x_src = (x + (subgridsize/2)) % subgridsize;
-                    int y_src = (y + (subgridsize/2)) % subgridsize;
-
-                    // Load uv values
-                    std::complex<float> pixels_[NR_POLARIZATIONS];
-                    pixels_[0] = sph * subgrid[
-                        s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                        0 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    pixels_[1] = sph * subgrid[
-                        s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                        1 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    pixels_[2] = sph * subgrid[
-                        s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                        2 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-                    pixels_[3] = sph * subgrid[
-                        s * NR_POLARIZATIONS * subgridsize * subgridsize +
-                        3 * subgridsize * subgridsize + y_src * subgridsize + x_src];
-
-                    apply_aterm(
-                        aXX1, aXY1, aYX1, aYY1,
-                        aXX2, aXY2, aYX2, aYY2,
-                        pixels_);
-
-                    for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        pixels[y][x][pol] = pixels_[pol];
-                    }
-#if 0
-                    // Apply aterm to subgrid: P*A1^H
-                    // [ pixels[0], pixels[1];    [ conj(aXX1), conj(aYX1);
-                    //   pixels[2], pixels[3] ] *   conj(aXY1), conj(aYY1) ]
-                    pixels[y][x][0]  = pixelsXX * aXX1;
-                    pixels[y][x][0] += pixelsXY * aXY1;
-                    pixels[y][x][1]  = pixelsXX * aYX1;
-                    pixels[y][x][1] += pixelsXY * aYY1;
-                    pixels[y][x][2]  = pixelsYX * aXX1;
-                    pixels[y][x][2] += pixelsYY * aXY1;
-                    pixels[y][x][3]  = pixelsYX * aYX1;
-                    pixels[y][x][3] += pixelsYY * aYY1;
-
-                    // Apply aterm to subgrid: A2*P
-                    // [ aXX2, aXY1;      [ pixels[0], pixels[1];
-                    //   aYX1, aYY2 ]  *    pixels[2], pixels[3] ]
-                    pixelsXX = pixels[y][x][0];
-                    pixelsXY = pixels[y][x][1];
-                    pixelsYX = pixels[y][x][2];
-                    pixelsYY = pixels[y][x][3];
-                    pixels[y][x][0]  = pixelsXX * aXX2;
-                    pixels[y][x][0] += pixelsYX * aXY2;
-                    pixels[y][x][1]  = pixelsXY * aXX2;
-                    pixels[y][x][1] += pixelsYY * aXY2;
-                    pixels[y][x][2]  = pixelsXX * aYX2;
-                    pixels[y][x][2] += pixelsYX * aYY2;
-                    pixels[y][x][3]  = pixelsXY * aYX2;
-                    pixels[y][x][3] += pixelsYY * aYY2;
-#endif
-                } // end x
-            } // end y
 
             // Compute u and v offset in wavelenghts
             const float u_offset = (x_coordinate + subgridsize/2 - gridsize/2)
@@ -138,12 +50,58 @@ extern "C" {
                                    * (2*M_PI / imagesize);
             const float w_offset = 2*M_PI * w_offset_in_lambda;
 
+            // Storage
+            std::complex<float> pixels[subgridsize][subgridsize][NR_POLARIZATIONS];
+
             // Iterate all timesteps
             for (int time = 0; time < nr_timesteps; time++) {
+                // Reset pixels
+                memset(pixels, 0, subgridsize*subgridsize*NR_POLARIZATIONS*sizeof(std::complex<float>));
+
+                // Apply aterm to subgrid
+                for (int y = 0; y < subgridsize; y++) {
+                    for (int x = 0; x < subgridsize; x++) {
+                        // Load spheroidal
+                        float sph = spheroidal[y * subgridsize + x];
+
+                        // Compute shifted position in subgrid
+                        int x_src = (x + (subgridsize/2)) % subgridsize;
+                        int y_src = (y + (subgridsize/2)) % subgridsize;
+
+                        // Load pixel values and apply spheroidal
+                        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels[y][x][pol] = sph * subgrid[
+                                s * NR_POLARIZATIONS * subgridsize * subgridsize +
+                                pol * subgridsize * subgridsize + y_src * subgridsize + x_src];
+                        }
+
+                        // Load aterm index
+                        int aterm_index = aterms_indices[time_offset + time];
+
+                        // Load aterm for station1
+                        int station1_index =
+                            (aterm_index * nr_stations + station1) *
+                            subgridsize * subgridsize * NR_POLARIZATIONS +
+                            y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                        const std::complex<float> *aterms1 = (std::complex<float> *) &aterms[station1_index];
+
+                        // Load aterm for station2
+                        int station2_index =
+                            (aterm_index * nr_stations + station2) *
+                            subgridsize * subgridsize * NR_POLARIZATIONS +
+                            y * subgridsize * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                        const std::complex<float> *aterms2 = (std::complex<float> *) &aterms[station2_index];
+
+                        apply_aterm_degridder(
+                            pixels[y][x],
+                            aterms1, aterms2);
+                    } // end for x
+                } // end for y
+
                 // Load UVW coordinates
-                float u = uvw[local_offset + time].u;
-                float v = uvw[local_offset + time].v;
-                float w = uvw[local_offset + time].w;
+                float u = uvw[time_offset + time].u;
+                float v = uvw[time_offset + time].v;
+                float w = uvw[time_offset + time].w;
 
                 // Iterate all channels
                 for (int chan = 0; chan < nr_channels; chan++) {
@@ -180,7 +138,7 @@ extern "C" {
                     } // end for y
 
                     const float scale = 1.0f / (subgridsize*subgridsize);
-                    size_t index = (local_offset + time)*nr_channels + chan;
+                    size_t index = (time_offset + time)*nr_channels + chan;
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         visibilities[index * NR_POLARIZATIONS + pol] = sum[pol] * scale;
                     }

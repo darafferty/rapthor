@@ -40,7 +40,7 @@ namespace idg {
                 d_subgrids_(),
                 h_misc_(),
                 d_misc_(),
-                mModules(8)
+                mModules(6)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -57,6 +57,7 @@ namespace idg {
                 h_uvw          = NULL;
                 h_grid         = NULL;
                 d_aterms       = NULL;
+                d_aterms_indices = NULL;
                 d_spheroidal   = NULL;
                 d_avg_aterm_correction = NULL;
                 d_grid         = NULL;
@@ -90,8 +91,6 @@ namespace idg {
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
-                delete function_gridder_post;
-                delete function_degridder_pre;
                 delete function_calibrate;
                 context->reset();
                 delete device;
@@ -217,16 +216,6 @@ namespace idg {
                 flags_splitter << " -DTILE_SIZE_GRID=" << tile_size_grid;
                 flags.push_back(flags_splitter.str());
 
-                // Gridder post-processing
-                src.push_back("KernelGridderPost.cu");
-                cubin.push_back("GridderPost.cubin");
-                flags.push_back(flags_common);
-
-                // Degridder pre-processing
-                src.push_back("KernelDegridderPre.cu");
-                cubin.push_back("DegridderPre.cubin");
-                flags.push_back(flags_common);
-
                 // Calibrate
                 src.push_back("KernelCalibrate.cu");
                 cubin.push_back("Calibrate.cubin");
@@ -284,13 +273,7 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
                     function_splitter = new cu::Function(function); found++;
                 }
-                if (cuModuleGetFunction(&function, *mModules[5], name_gridder_post.c_str()) == CUDA_SUCCESS) {
-                    function_gridder_post = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[6], name_degridder_pre.c_str()) == CUDA_SUCCESS) {
-                    function_degridder_pre = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[7], name_calibrate.c_str()) == CUDA_SUCCESS) {
+                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate.c_str()) == CUDA_SUCCESS) {
                     function_calibrate = new cu::Function(function); found++;
                 }
 
@@ -333,8 +316,6 @@ namespace idg {
                 block_adder         = dim3(128);
                 block_splitter      = dim3(128);
                 block_scaler        = dim3(128);
-                block_gridder_post  = dim3(128);
-                block_degridder_pre = dim3(128);
                 tile_size_grid      = 128;
             }
 
@@ -494,6 +475,7 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities,
                 cu::DeviceMemory& d_spheroidal,
                 cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_aterm_idx,
                 cu::DeviceMemory& d_avg_aterm_correction,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid)
@@ -501,7 +483,7 @@ namespace idg {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+                    d_spheroidal, d_aterm, d_aterm_idx, d_avg_aterm_correction, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
                 dim3 block(block_gridder);
@@ -529,13 +511,14 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities,
                 cu::DeviceMemory& d_spheroidal,
                 cu::DeviceMemory& d_aterm,
+                cu::DeviceMemory& d_aterm_idx,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
+                    d_spheroidal, d_aterm, d_aterm_idx, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
                 dim3 block(block_degridder);
@@ -839,45 +822,6 @@ namespace idg {
                 end_measurement(data);
             }
 
-            void InstanceCUDA::launch_gridder_post(
-                int nr_subgrids,
-                int subgrid_size,
-                int nr_stations,
-                cu::DeviceMemory& d_spheroidal,
-                cu::DeviceMemory& d_aterm,
-                cu::DeviceMemory& d_avg_aterm_correction,
-                cu::DeviceMemory& d_metadata,
-                cu::DeviceMemory& d_subgrid)
-            {
-                const void *parameters[] = {
-                    &subgrid_size, &nr_stations,
-                    d_spheroidal, d_aterm, d_avg_aterm_correction, d_metadata, d_subgrid };
-                dim3 grid(nr_subgrids);
-                UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder_post);
-                start_measurement(data);
-                executestream->launchKernel(*function_gridder_post, grid, block_gridder_post, 0, parameters);
-                end_measurement(data);
-            }
-
-             void InstanceCUDA::launch_degridder_pre(
-                int nr_subgrids,
-                int subgrid_size,
-                int nr_stations,
-                cu::DeviceMemory& d_spheroidal,
-                cu::DeviceMemory& d_aterm,
-                cu::DeviceMemory& d_metadata,
-                cu::DeviceMemory& d_subgrid)
-            {
-                const void *parameters[] = {
-                    &subgrid_size, &nr_stations,
-                    d_spheroidal, d_aterm, d_metadata, d_subgrid };
-                dim3 grid(nr_subgrids);
-                UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder_pre);
-                start_measurement(data);
-                executestream->launchKernel(*function_degridder_pre, grid, block_degridder_pre, 0, parameters);
-                end_measurement(data);
-            }
-
             typedef struct {
                 int nr_timesteps;
                 int nr_subgrids;
@@ -955,6 +899,15 @@ namespace idg {
                 auto size = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
                 d_aterms = reuse_memory(size, d_aterms);
                 return *d_aterms;
+            }
+
+            cu::DeviceMemory& InstanceCUDA::get_device_aterms_indices(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps)
+            {
+                auto size = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                d_aterms_indices = reuse_memory(size, d_aterms_indices);
+                return *d_aterms_indices;
             }
 
             cu::DeviceMemory& InstanceCUDA::get_device_spheroidal(

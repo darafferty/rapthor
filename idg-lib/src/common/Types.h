@@ -20,7 +20,6 @@ namespace idg {
         int baseline_offset;
         int time_offset;
         int nr_timesteps;
-        int aterm_index;
         Baseline baseline;
         Coordinate coordinate;
         Coordinate wtile_coordinate;
