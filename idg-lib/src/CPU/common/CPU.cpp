@@ -323,7 +323,6 @@ namespace idg {
                 auto nr_antennas  = plans.size();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
-                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = frequencies.get_x_dim();
 
                 // Allocate subgrids for all antennas
@@ -380,8 +379,11 @@ namespace idg {
                     // Store subgrids for current antenna
                     subgrids.push_back(std::move(subgrids_));
 
+                    // Get max number of timesteps for any subgrid
+                    auto max_nr_timesteps = plans[antenna_nr]->get_max_nr_timesteps_subgrid();
+
                     // Allocate phasors for current antenna
-                    Array4D<std::complex<float>> phasors_(nr_subgrids * nr_timesteps, nr_channels, subgrid_size, subgrid_size);
+                    Array4D<std::complex<float>> phasors_(nr_subgrids * max_nr_timesteps, nr_channels, subgrid_size, subgrid_size);
 
                     // Get data pointers
                     void *wavenumbers_ptr  = wavenumbers.data();
@@ -396,6 +398,7 @@ namespace idg {
                         image_size,
                         w_step,
                         shift_ptr,
+                        max_nr_timesteps,
                         nr_channels,
                         uvw_ptr,
                         wavenumbers_ptr,

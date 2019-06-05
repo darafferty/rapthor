@@ -108,40 +108,23 @@ void kernel_calibrate(
                     pixels[pol] = subgrid[src_idx];
                 }
 
-                // Load first aterm
-                idg::float2 aXX1;
-                idg::float2 aXY1;
-                idg::float2 aYX1;
-                idg::float2 aYY1;
+                // Get pointer to first aterm
+                idg::float2 *aterm1_ptr;
 
                 if (term_nr == nr_terms) {
-                    // Load aterm for station1
-                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station1, y, x);
-                    aXX1 = aterms[station1_idx + 0];
-                    aXY1 = aterms[station1_idx + 1];
-                    aYX1 = aterms[station1_idx + 2];
-                    aYY1 = aterms[station1_idx + 3];
+                    unsigned int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station1, y, x);
+                    aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                 } else {
-                    // Load aterm derivative
-                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, term_nr, y, x);
-                    aXX1 = aterm_derivatives[station1_idx + 0];
-                    aXY1 = aterm_derivatives[station1_idx + 1];
-                    aYX1 = aterm_derivatives[station1_idx + 2];
-                    aYY1 = aterm_derivatives[station1_idx + 3];
+                    unsigned int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, term_nr, y, x);
+                    aterm1_ptr = (idg::float2 *) &aterm_derivatives[station1_idx];
                 }
 
-                // Load aterm for station2
-                size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station2, y, x);
-                idg::float2 aXX2 = aterms[station2_idx + 0];
-                idg::float2 aXY2 = aterms[station2_idx + 1];
-                idg::float2 aYX2 = aterms[station2_idx + 2];
-                idg::float2 aYY2 = aterms[station2_idx + 3];
+                // Get pointer to second aterm
+                unsigned int station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, 0, 0, station2, y, x);
+                idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
 
                 // Apply aterm
-                apply_aterm(
-                    aXX1, aXY1, aYX1, aYY1,
-                    aXX2, aXY2, aYX2, aYY2,
-                    pixels);
+                apply_aterm_calibrate(pixels, aterm1_ptr, aterm2_ptr);
 
                 // Store pixels
                 pixels_xx_real[term_nr][i] = pixels[0].real;
@@ -204,8 +187,8 @@ void kernel_calibrate(
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
                     size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
-                    visibility_res_real[pol] = visibilities[vis_idx+pol].real - sums_real[pol][nr_terms];
-                    visibility_res_imag[pol] = visibilities[vis_idx+pol].imag - sums_imag[pol][nr_terms];
+                    visibility_res_real[pol] = visibilities[vis_idx].real - sums_real[pol][nr_terms];
+                    visibility_res_imag[pol] = visibilities[vis_idx].imag - sums_imag[pol][nr_terms];
                 }
 
                 // Update local gradient
@@ -265,6 +248,7 @@ void kernel_phasor(
     const float                      image_size,
     const float                      w_step_in_lambda,
     const float* __restrict__        shift,
+    const int                        max_nr_timesteps,
     const int                        nr_channels,
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
@@ -353,7 +337,7 @@ void kernel_phasor(
 
                 // Store phasor
                 for (unsigned i = 0; i < nr_pixels; i++) {
-                    unsigned idx = index_phasors(nr_timesteps, nr_channels, subgrid_size, s, time, chan, i);
+                    unsigned idx = index_phasors(max_nr_timesteps, nr_channels, subgrid_size, s, time, chan, i);
                     phasors[idx] = { phasor_real[i], phasor_imag[i] };
                 }
             } // end for channel

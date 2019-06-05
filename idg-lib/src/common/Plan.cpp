@@ -502,10 +502,20 @@ namespace idg {
         return accumulate(begin, end, 0);
     }
 
-    int Plan::get_max_nr_timesteps() const {
+    int Plan::get_max_nr_timesteps_baseline() const {
         return *max_element(
             total_nr_timesteps_per_baseline.begin(),
             total_nr_timesteps_per_baseline.end());
+    }
+
+    int Plan::get_max_nr_timesteps_subgrid() const {
+        auto max_nr_timesteps = metadata[0].nr_timesteps;
+        for (const Metadata& m : metadata) {
+            if (m.nr_timesteps > max_nr_timesteps) {
+                max_nr_timesteps = m.nr_timesteps;
+            }
+        }
+        return max_nr_timesteps;
     }
 
     int Plan::get_nr_visibilities() const {

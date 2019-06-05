@@ -284,7 +284,7 @@ __global__ void kernel_calibrate(
                     unsigned int time_idx = time_offset + time;
                     unsigned int chan_idx = chan;
                     unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                    visibility_res[pol] = visibilities[vis_idx + pol] - sums_[pol][nr_terms];
+                    visibility_res[pol] = visibilities[vis_idx] - sums_[pol][nr_terms];
                 }
 
                 // Iterate all terms * terms
