@@ -391,7 +391,7 @@ __device__ void update_local_gradient(
 
 
 template<int current_nr_terms>
-__device__ void update_local_solution(
+__device__ void update_local_hessian(
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
     const unsigned int                s,
@@ -459,7 +459,7 @@ __device__ void update_local_solution(
             } // end for term_nr (terms * terms)
         } // end if time
     } // end for j (nr_threads)
-} // end update_local_solution
+} // end update_local_hessian
 
 
 __device__ void update_global_solution(
@@ -572,7 +572,7 @@ __global__ void kernel_calibrate(
         /*
             Phase 2: update local gradient and hessian
         */
-        update_local_solution<-1>(
+        update_local_hessian<-1>(
             nr_terms, term_offset,
             s, max_nr_timesteps, visibility_offset, nr_channels,
             visibilities, metadata, scratch_sum,
