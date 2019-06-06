@@ -202,7 +202,7 @@ __device__ void update_sums(
     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
         const float scale = 1.0f / nr_pixels;
         if (time < nr_timesteps) {
-            unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr, 0);
+            unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
             float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
             float4 *sumA = (float4 *) &sum[term_nr][0];
             float4 *sumB = (float4 *) &sum[term_nr][2];
@@ -491,7 +491,7 @@ __device__ void update_global_solution(
 
 
 #define UPDATE_SUMS(current_nr_terms) \
-    for (; (term_offset + current_nr_terms) <= (nr_terms+1); term_offset += current_nr_terms) { \
+    for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
                 subgrid_size, image_size, max_nr_timesteps, nr_channels, \
                 nr_terms, term_offset, s, time, chan, \
@@ -560,7 +560,14 @@ __global__ void kernel_calibrate(
             Phase 1: "degrid" all subgrids, row by row
        */
         int term_offset = 0;
+        UPDATE_SUMS(8)
+        UPDATE_SUMS(7)
         UPDATE_SUMS(6)
+        UPDATE_SUMS(5)
+        UPDATE_SUMS(4)
+        UPDATE_SUMS(3)
+        UPDATE_SUMS(2)
+        UPDATE_SUMS(1)
 
         update_local_gradient(
             subgrid_size, image_size, max_nr_timesteps, visibility_offset,
