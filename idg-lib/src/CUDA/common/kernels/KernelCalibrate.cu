@@ -33,21 +33,6 @@ inline __device__ long index_sums(
 }
 
 
-inline __device__ void initialize_shared_memory()
-{
-    unsigned tidx       = threadIdx.x;
-    unsigned tidy       = threadIdx.y;
-    unsigned tid        = tidx + tidy * blockDim.x;
-    unsigned nr_threads = blockDim.x * blockDim.y;
-
-    for (unsigned int i = tid; i < (NR_POLARIZATIONS*MAX_SUBGRID_SIZE*MAX_NR_TERMS); i += nr_threads) {
-        pixels_[0][0][i] = make_float2(0, 0);
-    }
-
-    __syncthreads();
-} // end initialize_shared_memory
-
-
 template<int current_nr_terms>
 __device__ void update_sums(
     const int                         subgrid_size,
@@ -502,8 +487,6 @@ __global__ void kernel_calibrate(
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
     const UVW uvw_offset = (UVW) { u_offset, v_offset, w_offset };
-
-    initialize_shared_memory();
 
     int term_offset = 0;
     UPDATE_SUMS(8)
