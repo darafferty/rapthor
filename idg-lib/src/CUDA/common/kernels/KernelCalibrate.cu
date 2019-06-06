@@ -45,12 +45,6 @@ inline __device__ void initialize_shared_memory()
         pixels_[0][0][i] = make_float2(0, 0);
     }
 
-    for (unsigned int i = tid; i < MAX_NR_TERMS; i += nr_threads) {
-        if (i < MAX_NR_TERMS) {
-            gradient_[i] = make_float2(0, 0);
-        }
-    }
-
     for (unsigned int i = tid; i < (NR_POLARIZATIONS*MAX_NR_TERMS); i += nr_threads) {
         sums_[0][i] = make_float2(0, 0);
     }
@@ -252,6 +246,13 @@ __device__ void update_gradient(
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
+
+    // Reset shared memory
+    for (unsigned int i = tid; i < MAX_NR_TERMS; i += nr_threads) {
+        if (i < MAX_NR_TERMS) {
+            gradient_[i] = make_float2(0, 0);
+        }
+    }
 
     // Iterate all visibilities
     for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i+= nr_threads) {
