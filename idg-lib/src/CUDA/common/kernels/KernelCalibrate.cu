@@ -218,7 +218,10 @@ __device__ void update_sums(
 __device__ void compute_residual(
     const int                         subgrid_size,
     const float                       image_size,
+    const unsigned int                max_nr_timesteps,
+    const unsigned int                visibility_offset,
     const int                         nr_channels,
+    const unsigned int                nr_terms,
     const unsigned int                s,
     const unsigned int                time,
     const unsigned int                chan,
@@ -230,8 +233,11 @@ __device__ void compute_residual(
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
+          float2*        __restrict__ scratch_sum,
           float4 lmn_[MAX_SUBGRID_SIZE],
           float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS],
+          float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS],
+          float2 gradient_[MAX_NR_TERMS],
           float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS])
 {
     unsigned tidx       = threadIdx.x;
@@ -349,9 +355,38 @@ __device__ void compute_residual(
             unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
             residual_[pol][tid] = visibilities[vis_idx] - sum[pol] * scale;
         }
+    } else {
+        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            residual_[pol][tid] = make_float2(0, 0);
+        }
     }
 
     __syncthreads();
+
+    for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
+        unsigned int k = (visibility_offset - tid) + j;
+        unsigned int time_ = k / nr_channels;
+        unsigned int chan_ = k % nr_channels;
+
+        for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
+            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time_, chan_, term_nr, pol);
+                float2 sum = scratch_sum[sum_idx];
+
+                if (term_nr < nr_terms) {
+                    gradient_[term_nr].x +=
+                        sum.x * residual_[pol][j].x +
+                        sum.y * residual_[pol][j].y;
+                    gradient_[term_nr].y +=
+                        sum.x * residual_[pol][j].y -
+                        sum.y * residual_[pol][j].x;
+                }
+            }
+        }
+    }
+
+    __syncthreads();
+
 } // end compute_residual
 
 
@@ -378,12 +413,8 @@ __device__ void update_local_solution(
     unsigned tid        = tidx + tidy * blockDim.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
 
-    // Metadata for first subgrid
-    const Metadata &m_0       = metadata[0];
-
     // metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Iterate all visibilities
@@ -407,15 +438,6 @@ __device__ void update_local_solution(
 
             __syncthreads();
 
-            // Compute residual visibility
-            float2 visibility_res[NR_POLARIZATIONS];
-            for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                unsigned int time_idx = time_offset + time;
-                unsigned int chan_idx = chan;
-                unsigned int vis_idx  = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                visibility_res[pol] = residual_[pol][j];
-            }
-
             // Iterate all terms * terms
             for (unsigned int term_nr = tid; term_nr < (nr_terms*nr_terms); term_nr += nr_threads) {
                 unsigned term_nr0 = term_nr / nr_terms;
@@ -423,16 +445,6 @@ __device__ void update_local_solution(
 
                 // Iterate all polarizations
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-
-                    // Update local gradient
-                    if (term_nr < nr_terms) {
-                        gradient_[term_nr].x +=
-                            sums_[pol][term_nr].x * visibility_res[pol].x +
-                            sums_[pol][term_nr].y * visibility_res[pol].y;
-                        gradient_[term_nr].y +=
-                            sums_[pol][term_nr].x * visibility_res[pol].y -
-                            sums_[pol][term_nr].y * visibility_res[pol].x;
-                    }
 
                     // Update local hessian
                     if (term_nr < (nr_terms*nr_terms)) {
@@ -544,17 +556,18 @@ __global__ void kernel_calibrate(
         unsigned int time = visibility_offset / nr_channels;
         unsigned int chan = visibility_offset % nr_channels;
 
-        compute_residual(
-            subgrid_size, image_size, nr_channels, s, time, chan,
-            uvw_offset, uvw, aterm, aterm_derivatives,
-            wavenumbers, visibilities, metadata, subgrid,
-            lmn_, pixels_, residual_);
-
        /*
             Phase 1: "degrid" all subgrids, row by row
        */
         int term_offset = 0;
         UPDATE_SUMS(6)
+
+        compute_residual(
+            subgrid_size, image_size, max_nr_timesteps, visibility_offset,
+            nr_channels, nr_terms, s, time, chan,
+            uvw_offset, uvw, aterm, aterm_derivatives,
+            wavenumbers, visibilities, metadata, subgrid, scratch_sum,
+            lmn_, pixels_, sums_, gradient_, residual_);
 
         /*
             Phase 2: update local gradient and hessian
