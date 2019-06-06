@@ -539,6 +539,7 @@ namespace idg {
                 int subgrid_size,
                 float image_size,
                 float w_step,
+                int max_nr_timesteps,
                 int nr_channels,
                 int nr_terms,
                 cu::DeviceMemory& d_uvw,
@@ -553,7 +554,7 @@ namespace idg {
                 cu::DeviceMemory& d_gradient)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_terms,
+                    &grid_size, &subgrid_size, &image_size, &w_step, &max_nr_timesteps, &nr_channels, &nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterm, d_aterm_derivatives,
                     d_metadata, d_subgrid,
                     d_scratch_sum,

@@ -80,6 +80,7 @@ namespace idg {
                         int subgrid_size,
                         float image_size,
                         float w_step,
+                        int max_nr_timesteps,
                         int nr_channels,
                         int nr_terms,
                         cu::DeviceMemory& d_uvw,

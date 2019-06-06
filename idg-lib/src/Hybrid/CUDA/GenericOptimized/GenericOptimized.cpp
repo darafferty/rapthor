@@ -856,6 +856,9 @@ namespace idg {
                 // Maximum number of subgrids for any antenna
                 unsigned int max_nr_subgrids = 0;
 
+                // Maximum number of timesteps for any antenna
+                unsigned int max_nr_timesteps = 0;
+
                 // Reset vectors in calibration state
                 m_calibrate_state.d_metadata_ids.clear();
                 m_calibrate_state.d_subgrids_ids.clear();
@@ -871,6 +874,11 @@ namespace idg {
 
                     if (nr_subgrids > max_nr_subgrids) {
                         max_nr_subgrids = nr_subgrids;
+                    }
+
+                    unsigned int nr_timesteps = plans[antenna_nr]->get_max_nr_timesteps_subgrid();
+                    if (nr_timesteps > max_nr_timesteps) {
+                        max_nr_timesteps = nr_timesteps;
                     }
 
                     // Get data pointers
@@ -949,8 +957,8 @@ namespace idg {
                 cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
                 device.get_device_aterms(nr_antennas, nr_timeslots, subgrid_size);
 
-                // Allocate device memory (using new allocation mechanism)
-                auto sizeof_scratch_sum = max_nr_subgrids * nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
+                // Allocate device memory
+                auto sizeof_scratch_sum = max_nr_subgrids * max_nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
                 m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
 
                 // Copy data to device
@@ -1031,10 +1039,13 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
                 htodstream.record(inputCopied);
 
+                // Get max number of timesteps for any subgrid
+                auto max_nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_max_nr_timesteps_subgrid();
+
                 // Run calibration update step
                 executestream.waitEvent(inputCopied);
                 device.launch_calibrate(
-                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_terms,
+                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, max_nr_timesteps, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
                     d_scratch_sum, d_hessian, d_gradient);
                 executestream.record(executeFinished);

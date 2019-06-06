@@ -8,14 +8,18 @@
 
 // Index in scratch_sum
 inline __device__ long index_sums(
+    unsigned int max_nr_timesteps,
+    unsigned int nr_channels,
     unsigned int s,
-    unsigned int tid,
+    unsigned int time,
+    unsigned int chan,
     unsigned int term_nr,
     unsigned int pol)
 {
-    // sums: [nr_subgrids][MAX_NR_THREADS][MAX_NR_TERMS][NR_POLARIZATIONS]
-    return s * MAX_NR_THREADS * MAX_NR_TERMS * NR_POLARIZATIONS +
-           tid * MAX_NR_TERMS * NR_POLARIZATIONS +
+    // sums: [nr_subgrids][max_nr_timesteps][nr_channels][MAX_NR_TERMS][NR_POLARIZATIONS]
+    return s * max_nr_timesteps * nr_channels * MAX_NR_TERMS * NR_POLARIZATIONS +
+           time * nr_channels * MAX_NR_TERMS * NR_POLARIZATIONS +
+           chan * MAX_NR_TERMS * NR_POLARIZATIONS +
            term_nr * NR_POLARIZATIONS +
            pol;
 }
@@ -58,6 +62,8 @@ template<int current_nr_terms>
 __device__ void update_sums(
     const int                         subgrid_size,
     const float                       image_size,
+    const unsigned int                max_nr_timesteps,
+    const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
     const unsigned int                s,
@@ -196,7 +202,7 @@ __device__ void update_sums(
     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
         const float scale = 1.0f / nr_pixels;
         if (time < nr_timesteps) {
-            unsigned int sum_idx = index_sums(s, tid, term_offset + term_nr, 0);
+            unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr, 0);
             float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
             float4 *sumA = (float4 *) &sum[term_nr][0];
             float4 *sumB = (float4 *) &sum[term_nr][2];
@@ -354,6 +360,7 @@ __device__ void update_local_solution(
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
     const unsigned int                s,
+    const unsigned int                max_nr_timesteps,
     const unsigned                    visibility_offset,
     const unsigned int                nr_channels,
     const float2*        __restrict__ visibilities,
@@ -388,7 +395,7 @@ __device__ void update_local_solution(
         if (time < nr_timesteps) {
             // Load sums for current visibility
             for (unsigned int term_nr = tid; term_nr < MAX_NR_TERMS; term_nr += nr_threads) {
-                unsigned int sum_idx = index_sums(s, j, term_nr, 0);
+                unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr, 0);
                 float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
                 float4 a = sum_ptr[0];
                 float4 b = sum_ptr[1];
@@ -474,7 +481,8 @@ __device__ void update_global_solution(
 #define UPDATE_SUMS(current_nr_terms) \
     for (; (term_offset + current_nr_terms) <= (nr_terms+1); term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
-                subgrid_size, image_size, nr_terms, term_offset, s, time, chan, \
+                subgrid_size, image_size, max_nr_timesteps, nr_channels, \
+                nr_terms, term_offset, s, time, chan, \
                 uvw_offset, uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
                 subgrid, scratch_sum, pixels_, lmn_); \
     }
@@ -486,6 +494,7 @@ __global__ void kernel_calibrate(
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
+    const int                         max_nr_timesteps,
     const int                         nr_channels,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
@@ -552,7 +561,7 @@ __global__ void kernel_calibrate(
         */
         update_local_solution<-1>(
             nr_terms, term_offset,
-            s, visibility_offset, nr_channels,
+            s, max_nr_timesteps, visibility_offset, nr_channels,
             visibilities, metadata, scratch_sum,
             hessian, gradient,
             sums_, gradient_, hessian_, residual_);
