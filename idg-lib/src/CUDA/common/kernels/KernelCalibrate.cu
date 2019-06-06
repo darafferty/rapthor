@@ -11,7 +11,6 @@
 __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
 __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
 __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
-__shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
 __shared__ float2 gradient_[MAX_NR_TERMS];
 __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
 
@@ -46,13 +45,9 @@ inline __device__ void initialize_shared_memory()
         pixels_[0][0][i] = make_float2(0, 0);
     }
 
-    for (unsigned int i = tid; i < (MAX_NR_TERMS*MAX_NR_TERMS); i += nr_threads) {
+    for (unsigned int i = tid; i < MAX_NR_TERMS; i += nr_threads) {
         if (i < MAX_NR_TERMS) {
             gradient_[i] = make_float2(0, 0);
-        }
-
-        if (i < (MAX_NR_TERMS*MAX_NR_TERMS)) {
-            hessian_[0][i] = make_float2(0, 0);
         }
     }
 
@@ -224,7 +219,7 @@ __device__ void update_sums(
 } // end update_sums
 
 
-__device__ void update_local_gradient(
+__device__ void update_gradient(
     const int                         subgrid_size,
     const float                       image_size,
     const unsigned int                max_nr_timesteps,
@@ -239,7 +234,8 @@ __device__ void update_local_gradient(
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum)
+          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ gradient)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -373,7 +369,7 @@ __device__ void update_local_gradient(
         for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
 
             // Compute gradient update
-            float2 gradient = make_float2(0, 0);
+            float2 update = make_float2(0, 0);
 
             for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
                 unsigned int k = i - tid + j;
@@ -387,31 +383,39 @@ __device__ void update_local_gradient(
                         float2 residual = residual_[pol][j];
 
                         if (term_nr < nr_terms) {
-                            gradient.x += sum.x * residual.x + sum.y * residual.y;
-                            gradient.y += sum.x * residual.y - sum.y * residual.x;
+                            update.x += sum.x * residual.x + sum.y * residual.y;
+                            update.y += sum.x * residual.y - sum.y * residual.x;
                         }
                     } // end for pol
                 } // end if
             } // end for threads
 
             // Update local gradient
-            gradient_[term_nr] += gradient;
+            gradient_[term_nr] += update;
         } // end for term_nr
 
         __syncthreads();
 
     } // end for i (visibilities)
-} // end update_local_gradient
+
+    // Iterate all terms * terms
+    for (unsigned int i = tid; i < nr_terms; i += nr_threads) {
+        if (i < nr_terms) {
+            atomicAdd(&gradient[i], gradient_[i]);
+        }
+    }
+} // end update_gradient
 
 
-__device__ void update_local_hessian(
+__device__ void update_hessian(
     const unsigned int                max_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const unsigned int                s,
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ scratch_sum)
+          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ hessian)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -428,7 +432,7 @@ __device__ void update_local_hessian(
         unsigned term_nr1 = term_nr % nr_terms;
 
         // Compute hessian update
-        float2 hessian = make_float2(0, 0);
+        float2 update = make_float2(0, 0);
 
         // Iterate all timesteps
         for (unsigned int time = 0; time < nr_timesteps; time++) {
@@ -444,45 +448,19 @@ __device__ void update_local_hessian(
 
                     // Update hessian
                     if (term_nr0 < nr_terms) {
-                        hessian.x += sum0.x * sum1.x + sum0.y * sum1.y;
-                        hessian.y += sum0.x * sum1.y - sum0.y * sum1.x;
+                        update.x += sum0.x * sum1.x + sum0.y * sum1.y;
+                        update.y += sum0.x * sum1.y - sum0.y * sum1.x;
                     }
                 } // end for pol
             } // end chan
         } // end for time
 
         // Update local hessian
-        hessian_[term_nr1][term_nr0] += hessian;
+        if (term_nr0 < nr_terms) {
+            atomicAdd(&hessian[term_nr], update);
+        }
     } // end for term_nr (terms * terms)
-} // end update_local_hessian
-
-
-__device__ void update_global_solution(
-    const unsigned int nr_terms,
-    float2*        __restrict__ hessian,
-    float2*        __restrict__ gradient,
-    float2                      hessian_[MAX_NR_TERMS][MAX_NR_TERMS],
-    float2                      gradient_[MAX_NR_TERMS])
-{
-    unsigned tidx       = threadIdx.x;
-    unsigned tidy       = threadIdx.y;
-    unsigned tid        = tidx + tidy * blockDim.x;
-    unsigned nr_threads = blockDim.x * blockDim.y;
-
-    // Iterate all terms * terms
-    for (unsigned int i = tid; i < (nr_terms*nr_terms); i += nr_threads) {
-        unsigned term_nr0 = i / nr_terms;
-        unsigned term_nr1 = i % nr_terms;
-
-        if (i < nr_terms) {
-            atomicAdd(&gradient[i], gradient_[i]);
-        }
-
-        if (i < (nr_terms*nr_terms)) {
-            atomicAdd(&hessian[i], hessian_[term_nr1][term_nr0]);
-        }
-    } // end for i
-} // end update_global_solution
+} // end update_hessian
 
 
 #define UPDATE_SUMS(current_nr_terms) \
@@ -541,19 +519,15 @@ __global__ void kernel_calibrate(
     UPDATE_SUMS(2)
     UPDATE_SUMS(1)
 
-    update_local_gradient(
+    update_gradient(
         subgrid_size, image_size, max_nr_timesteps,
         nr_channels, nr_terms, s,
         uvw_offset, uvw, aterm, aterm_derivatives,
-        wavenumbers, visibilities, metadata, subgrid, scratch_sum);
+        wavenumbers, visibilities, metadata, subgrid, scratch_sum, gradient);
 
-    update_local_hessian(
+    update_hessian(
         max_nr_timesteps, nr_channels, nr_terms, s,
-        visibilities, metadata, scratch_sum);
-
-    __syncthreads();
-
-    update_global_solution(nr_terms, hessian, gradient, hessian_, gradient_);
+        visibilities, metadata, scratch_sum, hessian);
 } // end kernel_calibrate
 
 } // end extern "C"
