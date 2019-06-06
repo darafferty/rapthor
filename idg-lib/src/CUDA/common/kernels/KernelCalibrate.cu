@@ -546,9 +546,6 @@ __global__ void kernel_calibrate(
     __shared__ float2 gradient_[MAX_NR_TERMS];
     __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
 
-    /*
-        Phase 0: initialize shared memory to zero
-    */
     initialize_shared_memory(pixels_, sums_, hessian_, gradient_);
 
     // Iterate all visibilities
@@ -556,9 +553,6 @@ __global__ void kernel_calibrate(
         unsigned int time = visibility_offset / nr_channels;
         unsigned int chan = visibility_offset % nr_channels;
 
-       /*
-            Phase 1: "degrid" all subgrids, row by row
-       */
         int term_offset = 0;
         UPDATE_SUMS(8)
         UPDATE_SUMS(7)
@@ -576,9 +570,6 @@ __global__ void kernel_calibrate(
             wavenumbers, visibilities, metadata, subgrid, scratch_sum,
             lmn_, pixels_, sums_, gradient_, residual_);
 
-        /*
-            Phase 2: update local gradient and hessian
-        */
         update_local_hessian<-1>(
             nr_terms, term_offset,
             s, max_nr_timesteps, visibility_offset, nr_channels,
@@ -589,9 +580,6 @@ __global__ void kernel_calibrate(
 
     __syncthreads();
 
-    /*
-        Phase 3: update global gradient and hessian
-    */
     update_global_solution(nr_terms, hessian, gradient, hessian_, gradient_);
 } // end kernel_calibrate
 
