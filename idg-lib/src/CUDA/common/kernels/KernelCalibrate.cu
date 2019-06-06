@@ -545,10 +545,10 @@ __global__ void kernel_calibrate(
         unsigned int chan = visibility_offset % nr_channels;
 
         compute_residual(
-                subgrid_size, image_size, nr_channels, s, time, chan,
-                uvw_offset, uvw, aterm, aterm_derivatives,
-                wavenumbers, visibilities, metadata, subgrid,
-                lmn_, pixels_, residual_);
+            subgrid_size, image_size, nr_channels, s, time, chan,
+            uvw_offset, uvw, aterm, aterm_derivatives,
+            wavenumbers, visibilities, metadata, subgrid,
+            lmn_, pixels_, residual_);
 
        /*
             Phase 1: "degrid" all subgrids, row by row
