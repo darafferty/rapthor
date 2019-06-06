@@ -10,7 +10,6 @@
 // Shared memory
 __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
 __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
-__shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
 __shared__ float2 gradient_[MAX_NR_TERMS];
 __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
 
@@ -43,10 +42,6 @@ inline __device__ void initialize_shared_memory()
 
     for (unsigned int i = tid; i < (NR_POLARIZATIONS*MAX_SUBGRID_SIZE*MAX_NR_TERMS); i += nr_threads) {
         pixels_[0][0][i] = make_float2(0, 0);
-    }
-
-    for (unsigned int i = tid; i < (NR_POLARIZATIONS*MAX_NR_TERMS); i += nr_threads) {
-        sums_[0][i] = make_float2(0, 0);
     }
 
     __syncthreads();
