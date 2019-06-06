@@ -409,8 +409,6 @@ __device__ void update_local_hessian(
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ scratch_sum,
-          float2*        __restrict__ hessian,
-          float2*        __restrict__ gradient,
           float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS],
           float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS])
 {
@@ -428,6 +426,9 @@ __device__ void update_local_hessian(
         unsigned term_nr0 = term_nr / nr_terms;
         unsigned term_nr1 = term_nr % nr_terms;
 
+        // Compute hessian update
+        float2 hessian = make_float2(0, 0);
+
         // Iterate all timesteps
         for (unsigned int time = 0; time < nr_timesteps; time++) {
             // Iterate all channels
@@ -437,21 +438,20 @@ __device__ void update_local_hessian(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     unsigned int sum_idx0 = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr0, pol);
                     unsigned int sum_idx1 = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr1, pol);
-                    float2 sum0 = scratch_sum[sum_idx0];
-                    float2 sum1 = scratch_sum[sum_idx1];
+                    float2 sum0 = scratch_sum[sum_idx1];
+                    float2 sum1 = scratch_sum[sum_idx0];
 
-                    // Update local hessian
-                    if (term_nr < (nr_terms*nr_terms)) {
-                        hessian_[term_nr1][term_nr0].x +=
-                            sum0.x * sum1.x +
-                            sum0.y * sum1.y;
-                        hessian_[term_nr1][term_nr0].y +=
-                            sum0.x * sum1.y -
-                            sum0.y * sum1.x;
+                    // Update hessian
+                    if (term_nr0 < nr_terms) {
+                        hessian.x += sum0.x * sum1.x + sum0.y * sum1.y;
+                        hessian.y += sum0.x * sum1.y - sum0.y * sum1.x;
                     }
                 } // end for pol
             } // end chan
         } // end for time
+
+        // Update local hessian
+        hessian_[term_nr1][term_nr0] += hessian;
     } // end for term_nr (terms * terms)
 } // end update_local_hessian
 
@@ -557,7 +557,6 @@ __global__ void kernel_calibrate(
     update_local_hessian(
         max_nr_timesteps, nr_channels, nr_terms, s,
         visibilities, metadata, scratch_sum,
-        hessian, gradient,
         sums_, hessian_);
 
     __syncthreads();
