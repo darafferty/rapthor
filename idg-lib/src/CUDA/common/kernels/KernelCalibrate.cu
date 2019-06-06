@@ -7,6 +7,15 @@
 #define MAX_NR_THREADS   128
 #define MAX_NR_TIMESTEPS 128
 
+// Shared memory
+__shared__ float4 lmn_[MAX_SUBGRID_SIZE];
+__shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
+__shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
+__shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
+__shared__ float2 gradient_[MAX_NR_TERMS];
+__shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
+
+
 // Index in scratch_sum
 inline __device__ long index_sums(
     unsigned int max_nr_timesteps,
@@ -26,11 +35,7 @@ inline __device__ long index_sums(
 }
 
 
-__device__ void initialize_shared_memory(
-    float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS],
-    float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS],
-    float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS],
-    float2 gradient_[MAX_NR_TERMS])
+inline __device__ void initialize_shared_memory()
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -75,9 +80,7 @@ __device__ void update_sums(
     const float*         __restrict__ wavenumbers,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
-          float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS],
-          float4 lmn_[MAX_SUBGRID_SIZE])
+          float2*        __restrict__ scratch_sum)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -236,11 +239,7 @@ __device__ void update_local_gradient(
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
-          float4 lmn_[MAX_SUBGRID_SIZE],
-          float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS],
-          float2 gradient_[MAX_NR_TERMS],
-          float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS])
+          float2*        __restrict__ scratch_sum)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -412,9 +411,7 @@ __device__ void update_local_hessian(
     const unsigned int                s,
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ scratch_sum,
-          float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS],
-          float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS])
+          float2*        __restrict__ scratch_sum)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -494,7 +491,7 @@ __device__ void update_global_solution(
                 subgrid_size, image_size, max_nr_timesteps, nr_channels, \
                 nr_terms, term_offset, s, \
                 uvw_offset, uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
-                subgrid, scratch_sum, pixels_, lmn_); \
+                subgrid, scratch_sum); \
     }
 
 extern "C" {
@@ -532,14 +529,7 @@ __global__ void kernel_calibrate(
     const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
     const UVW uvw_offset = (UVW) { u_offset, v_offset, w_offset };
 
-    __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
-    __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
-    __shared__ float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS];
-    __shared__ float2 hessian_[MAX_NR_TERMS][MAX_NR_TERMS];
-    __shared__ float2 gradient_[MAX_NR_TERMS];
-    __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
-
-    initialize_shared_memory(pixels_, sums_, hessian_, gradient_);
+    initialize_shared_memory();
 
     int term_offset = 0;
     UPDATE_SUMS(8)
@@ -555,13 +545,11 @@ __global__ void kernel_calibrate(
         subgrid_size, image_size, max_nr_timesteps,
         nr_channels, nr_terms, s,
         uvw_offset, uvw, aterm, aterm_derivatives,
-        wavenumbers, visibilities, metadata, subgrid, scratch_sum,
-        lmn_, pixels_, gradient_, residual_);
+        wavenumbers, visibilities, metadata, subgrid, scratch_sum);
 
     update_local_hessian(
         max_nr_timesteps, nr_channels, nr_terms, s,
-        visibilities, metadata, scratch_sum,
-        sums_, hessian_);
+        visibilities, metadata, scratch_sum);
 
     __syncthreads();
 
