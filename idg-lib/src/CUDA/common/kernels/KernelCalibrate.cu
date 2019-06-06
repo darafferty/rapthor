@@ -215,7 +215,7 @@ __device__ void update_sums(
 } // end update_sums
 
 
-__device__ void compute_residual(
+__device__ void update_local_gradient(
     const int                         subgrid_size,
     const float                       image_size,
     const unsigned int                max_nr_timesteps,
@@ -387,7 +387,7 @@ __device__ void compute_residual(
 
     __syncthreads();
 
-} // end compute_residual
+} // end update_local_gradient
 
 
 template<int current_nr_terms>
@@ -562,7 +562,7 @@ __global__ void kernel_calibrate(
         int term_offset = 0;
         UPDATE_SUMS(6)
 
-        compute_residual(
+        update_local_gradient(
             subgrid_size, image_size, max_nr_timesteps, visibility_offset,
             nr_channels, nr_terms, s, time, chan,
             uvw_offset, uvw, aterm, aterm_derivatives,
