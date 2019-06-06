@@ -239,7 +239,6 @@ __device__ void update_local_gradient(
           float2*        __restrict__ scratch_sum,
           float4 lmn_[MAX_SUBGRID_SIZE],
           float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS],
-          float2 sums_[NR_POLARIZATIONS][MAX_NR_TERMS],
           float2 gradient_[MAX_NR_TERMS],
           float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS])
 {
@@ -371,29 +370,34 @@ __device__ void update_local_gradient(
 
         __syncthreads();
 
-        for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
-            unsigned int k = i - tid + j;
-            unsigned int time_ = k / nr_channels;
-            unsigned int chan_ = k % nr_channels;
+        // Iterate all terms
+        for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
 
-            if (time < nr_timesteps) {
-                for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
+            // Compute gradient update
+            float2 gradient = make_float2(0, 0);
+
+            for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
+                unsigned int k = i - tid + j;
+                unsigned int time_ = k / nr_channels;
+                unsigned int chan_ = k % nr_channels;
+
+                if (time < nr_timesteps) {
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time_, chan_, term_nr, pol);
-                        float2 sum = scratch_sum[sum_idx];
+                        float2 sum      = scratch_sum[sum_idx];
+                        float2 residual = residual_[pol][j];
 
                         if (term_nr < nr_terms) {
-                            gradient_[term_nr].x +=
-                                sum.x * residual_[pol][j].x +
-                                sum.y * residual_[pol][j].y;
-                            gradient_[term_nr].y +=
-                                sum.x * residual_[pol][j].y -
-                                sum.y * residual_[pol][j].x;
+                            gradient.x += sum.x * residual.x + sum.y * residual.y;
+                            gradient.y += sum.x * residual.y - sum.y * residual.x;
                         }
-                    }
-                }
-            }
-        }
+                    } // end for pol
+                } // end if
+            } // end for threads
+
+            // Update local gradient
+            gradient_[term_nr] += gradient;
+        } // end for term_nr
 
         __syncthreads();
 
@@ -552,7 +556,7 @@ __global__ void kernel_calibrate(
         nr_channels, nr_terms, s,
         uvw_offset, uvw, aterm, aterm_derivatives,
         wavenumbers, visibilities, metadata, subgrid, scratch_sum,
-        lmn_, pixels_, sums_, gradient_, residual_);
+        lmn_, pixels_, gradient_, residual_);
 
     update_local_hessian(
         max_nr_timesteps, nr_channels, nr_terms, s,
