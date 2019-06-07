@@ -121,11 +121,15 @@ __device__ void update_sums(
         float wavenumber = wavenumbers[chan];
 
         // Accumulate sums in registers
-        float2 sum[current_nr_terms][NR_POLARIZATIONS];
+        float2 sum_xx[current_nr_terms];
+        float2 sum_xy[current_nr_terms];
+        float2 sum_yx[current_nr_terms];
+        float2 sum_yy[current_nr_terms];
         for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
-            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                sum[term_nr][pol] = make_float2(0, 0);
-            }
+            sum_xx[term_nr] = make_float2(0, 0);
+            sum_xy[term_nr] = make_float2(0, 0);
+            sum_yx[term_nr] = make_float2(0, 0);
+            sum_yy[term_nr] = make_float2(0, 0);
         }
 
         // Iterate all rows of the subgrid
@@ -190,16 +194,32 @@ __device__ void update_sums(
                 // Iterate all terms
                 for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
 
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        // Load pixel
-                        float2 pixel = pixels_[term_nr][pol][x];
+                        // Load pixels
+                        float2 pixel_xx = pixels_[term_nr][0][x];
+                        float2 pixel_xy = pixels_[term_nr][1][x];
+                        float2 pixel_yx = pixels_[term_nr][2][x];
+                        float2 pixel_yy = pixels_[term_nr][3][x];
 
                         // Update sums
-                        sum[term_nr][pol].x += phasor.x * pixel.x;
-                        sum[term_nr][pol].y += phasor.x * pixel.y;
-                        sum[term_nr][pol].x -= phasor.y * pixel.y;
-                        sum[term_nr][pol].y += phasor.y * pixel.x;
-                    }
+                        sum_xx[term_nr].x += phasor.x * pixel_xx.x;
+                        sum_xx[term_nr].y += phasor.x * pixel_xx.y;
+                        sum_xx[term_nr].x -= phasor.y * pixel_xx.y;
+                        sum_xx[term_nr].y += phasor.y * pixel_xx.x;
+
+                        sum_xy[term_nr].x += phasor.x * pixel_xy.x;
+                        sum_xy[term_nr].y += phasor.x * pixel_xy.y;
+                        sum_xy[term_nr].x -= phasor.y * pixel_xy.y;
+                        sum_xy[term_nr].y += phasor.y * pixel_xy.x;
+
+                        sum_yx[term_nr].x += phasor.x * pixel_yx.x;
+                        sum_yx[term_nr].y += phasor.x * pixel_yx.y;
+                        sum_yx[term_nr].x -= phasor.y * pixel_yx.y;
+                        sum_yx[term_nr].y += phasor.y * pixel_yx.x;
+
+                        sum_yy[term_nr].x += phasor.x * pixel_yy.x;
+                        sum_yy[term_nr].y += phasor.x * pixel_yy.y;
+                        sum_yy[term_nr].x -= phasor.y * pixel_yy.y;
+                        sum_yy[term_nr].y += phasor.y * pixel_yy.x;
                 } // end for term_nr
             } // end for x
         } // end for y
@@ -208,10 +228,14 @@ __device__ void update_sums(
         for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
             const float scale = 1.0f / nr_pixels;
             if (time < nr_timesteps) {
-                for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, pol);
-                    scratch_sum[sum_idx] = sum[term_nr][pol] * scale;
-                }
+                unsigned int sum_idx_xx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
+                unsigned int sum_idx_xy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
+                unsigned int sum_idx_yx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
+                unsigned int sum_idx_yy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
+                scratch_sum[sum_idx_xx] = sum_xx[term_nr] * scale;
+                scratch_sum[sum_idx_xy] = sum_xy[term_nr] * scale;
+                scratch_sum[sum_idx_yx] = sum_yx[term_nr] * scale;
+                scratch_sum[sum_idx_yy] = sum_yy[term_nr] * scale;
             }
         } // end for term_nr
 
