@@ -24,12 +24,12 @@ inline __device__ long index_sums(
     unsigned int term_nr,
     unsigned int pol)
 {
-    // sums: [nr_subgrids][max_nr_timesteps][nr_channels][MAX_NR_TERMS][NR_POLARIZATIONS]
-    return s * max_nr_timesteps * nr_channels * MAX_NR_TERMS * NR_POLARIZATIONS +
-           time * nr_channels * MAX_NR_TERMS * NR_POLARIZATIONS +
-           chan * MAX_NR_TERMS * NR_POLARIZATIONS +
-           term_nr * NR_POLARIZATIONS +
-           pol;
+    // sums: [nr_subgrids][MAX_NR_TERMS][NR_POLARIZATIONS][max_nr_timesteps][nr_channels]
+    return s * MAX_NR_TERMS * NR_POLARIZATIONS * max_nr_timesteps * nr_channels +
+           term_nr * NR_POLARIZATIONS * max_nr_timesteps * nr_channels +
+           pol * max_nr_timesteps * nr_channels +
+           time * nr_channels +
+           chan;
 }
 
 
@@ -179,12 +179,10 @@ __device__ void update_sums(
         for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
             const float scale = 1.0f / nr_pixels;
             if (time < nr_timesteps) {
-                unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
-                float4 *sum_ptr = (float4 *) &scratch_sum[sum_idx];
-                float4 *sumA = (float4 *) &sum[term_nr][0];
-                float4 *sumB = (float4 *) &sum[term_nr][2];
-                sum_ptr[0] = *sumA * scale;
-                sum_ptr[1] = *sumB * scale;
+                for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, pol);
+                    scratch_sum[sum_idx] = sum[term_nr][pol] * scale;
+                }
             }
         } // end for term_nr
 
