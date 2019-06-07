@@ -80,7 +80,6 @@ __device__ void update_sums(
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
-    const unsigned int                s,
     const UVW*           __restrict__ uvw,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
@@ -93,6 +92,7 @@ __device__ void update_sums(
     unsigned tidy       = threadIdx.y;
     unsigned tid        = tidx + tidy * blockDim.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
+    unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
     // Metadata for first subgrid
@@ -227,7 +227,6 @@ __device__ void update_gradient(
     const unsigned int                max_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
-    const unsigned int                s,
     const UVW*           __restrict__ uvw,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
@@ -242,6 +241,7 @@ __device__ void update_gradient(
     unsigned tidy       = threadIdx.y;
     unsigned tid        = tidx + tidy * blockDim.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
+    unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
     // Metadata for first subgrid
@@ -412,7 +412,6 @@ __device__ void update_hessian(
     const unsigned int                max_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
-    const unsigned int                s,
     const float2*        __restrict__ visibilities,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ scratch_sum,
@@ -421,6 +420,7 @@ __device__ void update_hessian(
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
     unsigned tid        = tidx + tidy * blockDim.x;
+    unsigned s          = blockIdx.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
 
     // metadata for current subgrid
@@ -468,7 +468,7 @@ __device__ void update_hessian(
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
                 subgrid_size, image_size, max_nr_timesteps, nr_channels, \
-                nr_terms, term_offset, s, \
+                nr_terms, term_offset, \
                 uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
                 subgrid, scratch_sum); \
     }
@@ -494,8 +494,6 @@ __global__ void kernel_calibrate(
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
-    unsigned s          = blockIdx.x;
-
     compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata);
 
     int term_offset = 0;
@@ -510,12 +508,12 @@ __global__ void kernel_calibrate(
 
     update_gradient(
         subgrid_size, image_size, max_nr_timesteps,
-        nr_channels, nr_terms, s,
+        nr_channels, nr_terms,
         uvw, aterm, aterm_derivatives,
         wavenumbers, visibilities, metadata, subgrid, scratch_sum, gradient);
 
     update_hessian(
-        max_nr_timesteps, nr_channels, nr_terms, s,
+        max_nr_timesteps, nr_channels, nr_terms,
         visibilities, metadata, scratch_sum, hessian);
 } // end kernel_calibrate
 
