@@ -277,7 +277,7 @@ __device__ void update_gradient(
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Shared memory
-    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
+    __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
     __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
     __shared__ float2 gradient_[MAX_NR_TERMS];
 
@@ -342,7 +342,7 @@ __device__ void update_gradient(
 
                     // Store pixels in shared memory
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        pixels_[0][pol][x] = pixel[pol];
+                        pixels_[pol][x] = pixel[pol];
                     }
                 } // end if
             } // end for x
@@ -368,10 +368,10 @@ __device__ void update_gradient(
 
                 // Update sums
                 for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sum[pol].x += phasor.x * pixels_[0][pol][x].x;
-                    sum[pol].y += phasor.x * pixels_[0][pol][x].y;
-                    sum[pol].x -= phasor.y * pixels_[0][pol][x].y;
-                    sum[pol].y += phasor.y * pixels_[0][pol][x].x;
+                    sum[pol].x += phasor.x * pixels_[pol][x].x;
+                    sum[pol].y += phasor.x * pixels_[pol][x].y;
+                    sum[pol].x -= phasor.y * pixels_[pol][x].y;
+                    sum[pol].y += phasor.y * pixels_[pol][x].x;
                 }
             } // end for x
         } // end for y
