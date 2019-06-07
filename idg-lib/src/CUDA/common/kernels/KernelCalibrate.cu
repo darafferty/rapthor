@@ -479,7 +479,7 @@ __device__ void update_hessian(
 
 extern "C" {
 
-__global__ void kernel_calibrate(
+__global__ void kernel_calibrate_sums(
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
@@ -509,16 +509,60 @@ __global__ void kernel_calibrate(
     UPDATE_SUMS(3)
     UPDATE_SUMS(2)
     UPDATE_SUMS(1)
+} // end kernel_calibrate_sums
+
+
+__global__ void kernel_calibrate_gradient(
+    const int                         grid_size,
+    const int                         subgrid_size,
+    const float                       image_size,
+    const float                       w_step,
+    const int                         max_nr_timesteps,
+    const int                         nr_channels,
+    const int                         nr_terms,
+    const UVW*           __restrict__ uvw,
+    const float*         __restrict__ wavenumbers,
+    const float2*        __restrict__ visibilities,
+    const float2*        __restrict__ aterm,
+    const float2*        __restrict__ aterm_derivatives,
+    const Metadata*      __restrict__ metadata,
+    const float2*        __restrict__ subgrid,
+          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ hessian,
+          float2*        __restrict__ gradient)
+{
+    compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata);
 
     update_gradient(
         subgrid_size, image_size, max_nr_timesteps,
         nr_channels, nr_terms,
         uvw, aterm, aterm_derivatives,
         wavenumbers, visibilities, metadata, subgrid, scratch_sum, gradient);
+} // end kernel_calibrate_gradient
 
+
+__global__ void kernel_calibrate_hessian(
+    const int                         grid_size,
+    const int                         subgrid_size,
+    const float                       image_size,
+    const float                       w_step,
+    const int                         max_nr_timesteps,
+    const int                         nr_channels,
+    const int                         nr_terms,
+    const UVW*           __restrict__ uvw,
+    const float*         __restrict__ wavenumbers,
+    const float2*        __restrict__ visibilities,
+    const float2*        __restrict__ aterm,
+    const float2*        __restrict__ aterm_derivatives,
+    const Metadata*      __restrict__ metadata,
+    const float2*        __restrict__ subgrid,
+          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ hessian,
+          float2*        __restrict__ gradient)
+{
     update_hessian(
         max_nr_timesteps, nr_channels, nr_terms,
         visibilities, metadata, scratch_sum, hessian);
-} // end kernel_calibrate
+} // end kernel_calibrate_hessian
 
 } // end extern "C"

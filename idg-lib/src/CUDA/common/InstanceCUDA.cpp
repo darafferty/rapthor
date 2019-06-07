@@ -91,7 +91,6 @@ namespace idg {
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
-                delete function_calibrate;
                 context->reset();
                 delete device;
                 delete context;
@@ -273,8 +272,17 @@ namespace idg {
                 if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
                     function_splitter = new cu::Function(function); found++;
                 }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate.c_str()) == CUDA_SUCCESS) {
-                    function_calibrate = new cu::Function(function); found++;
+
+
+                // Find calibration functions
+                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
+                    functions_calibrate.push_back(new cu::Function(function)); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
+                    functions_calibrate.push_back(new cu::Function(function));
+                }
+                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
+                    functions_calibrate.push_back(new cu::Function(function));
                 }
 
                 // Verify that all functions are found
@@ -564,8 +572,12 @@ namespace idg {
                 dim3 block(block_calibrate);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_calibrate);
                 start_measurement(data);
-                cu::Function *function = function_calibrate;
-                executestream->launchKernel(*function, grid, block, 0, parameters);
+                cu::Function *function_sums     = functions_calibrate[0];
+                cu::Function *function_gradient = functions_calibrate[1];
+                cu::Function *function_hessian  = functions_calibrate[2];
+                executestream->launchKernel(*function_sums, grid, block, 0, parameters);
+                executestream->launchKernel(*function_gradient, grid, block, 0, parameters);
+                executestream->launchKernel(*function_hessian, grid, block, 0, parameters);
                 end_measurement(data);
             }
 
