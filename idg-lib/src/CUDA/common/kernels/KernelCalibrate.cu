@@ -9,7 +9,7 @@
 
 // Shared memory
 __shared__ float4 lmn_[MAX_SUBGRID_SIZE];
-__shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE][MAX_NR_TERMS];
+__shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
 __shared__ float2 gradient_[MAX_NR_TERMS];
 __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
 
@@ -96,17 +96,19 @@ __device__ void update_sums(
 
             // Precompute data for one row
             for (unsigned j = tid; j < (subgrid_size*nr_terms); j += nr_threads) {
-                unsigned int x       = j / nr_terms;
-                unsigned int term_nr = j % nr_terms;
+                unsigned int term_nr = j / subgrid_size;
+                unsigned int x       = j % subgrid_size;
 
-                if (x < subgrid_size) {
+                if (term_nr == 0) {
                     // Precompute l,m,n and phase offset
                     float l = compute_l(x, subgrid_size, image_size);
                     float m = compute_m(y, subgrid_size, image_size);
                     float n = compute_n(l, m);
                     float phase_offset = uvw_offset.u*l + uvw_offset.v*m + uvw_offset.w*n;
                     lmn_[x] = make_float4(l, m, n, phase_offset);
+                }
 
+                if (term_nr < nr_terms) {
                     // Compute shifted position in subgrid
                     unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
                     unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
@@ -131,7 +133,7 @@ __device__ void update_sums(
 
                     // Store pixels in shared memory
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        pixels_[pol][x][term_nr] = pixel[pol];
+                        pixels_[term_nr][pol][x] = pixel[pol];
                     }
                 } // end if
             } // end for j (subgrid_size * terms)
@@ -161,7 +163,7 @@ __device__ void update_sums(
 
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         // Load pixel
-                        float2 pixel = pixels_[pol][x][term_nr];
+                        float2 pixel = pixels_[term_nr][pol][x];
 
                         // Update sums
                         sum[term_nr][pol].x += phasor.x * pixel.x;
@@ -294,7 +296,7 @@ __device__ void update_gradient(
 
                     // Store pixels in shared memory
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        pixels_[pol][x][0] = pixel[pol];
+                        pixels_[0][pol][x] = pixel[pol];
                     }
                 } // end if
             } // end for x
@@ -320,10 +322,10 @@ __device__ void update_gradient(
 
                 // Update sums
                 for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sum[pol].x += phasor.x * pixels_[pol][x][0].x;
-                    sum[pol].y += phasor.x * pixels_[pol][x][0].y;
-                    sum[pol].x -= phasor.y * pixels_[pol][x][0].y;
-                    sum[pol].y += phasor.y * pixels_[pol][x][0].x;
+                    sum[pol].x += phasor.x * pixels_[0][pol][x].x;
+                    sum[pol].y += phasor.x * pixels_[0][pol][x].y;
+                    sum[pol].x -= phasor.y * pixels_[0][pol][x].y;
+                    sum[pol].y += phasor.y * pixels_[0][pol][x].x;
                 }
             } // end for x
         } // end for y
