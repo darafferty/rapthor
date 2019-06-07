@@ -384,8 +384,10 @@ __device__ void update_gradient(
                         float2 residual = residual_[pol][j];
 
                         if (term_nr < nr_terms) {
-                            update.x += sum.x * residual.x + sum.y * residual.y;
-                            update.y += sum.x * residual.y - sum.y * residual.x;
+                            update.x += sum.x * residual.x;
+                            update.x += sum.y * residual.y;
+                            update.y += sum.x * residual.y;
+                            update.y -= sum.y * residual.x;
                         }
                     } // end for pol
                 } // end if
@@ -449,8 +451,10 @@ __device__ void update_hessian(
 
                     // Update hessian
                     if (term_nr0 < nr_terms) {
-                        update.x += sum0.x * sum1.x + sum0.y * sum1.y;
-                        update.y += sum0.x * sum1.y - sum0.y * sum1.x;
+                        update.x += sum0.x * sum1.x;
+                        update.x += sum0.y * sum1.y;
+                        update.y += sum0.x * sum1.y;
+                        update.y -= sum0.y * sum1.x;
                     }
                 } // end for pol
             } // end chan
