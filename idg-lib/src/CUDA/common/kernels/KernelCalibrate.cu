@@ -9,9 +9,6 @@
 
 // Shared memory
 __shared__ float4 lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE];
-__shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
-__shared__ float2 gradient_[MAX_NR_TERMS];
-__shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
 
 
 // Index in scratch_sum
@@ -86,7 +83,8 @@ __device__ void update_sums(
     const float*         __restrict__ wavenumbers,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum)
+          float2*        __restrict__ scratch_sum,
+          float2                      pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE])
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -277,6 +275,11 @@ __device__ void update_gradient(
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
+
+    // Shared memory
+    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
+    __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
+    __shared__ float2 gradient_[MAX_NR_TERMS];
 
     // Reset shared memory
     for (unsigned int i = tid; i < MAX_NR_TERMS; i += nr_threads) {
@@ -498,7 +501,7 @@ __device__ void update_hessian(
                 subgrid_size, image_size, max_nr_timesteps, nr_channels, \
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
-                subgrid, scratch_sum); \
+                subgrid, scratch_sum, pixels_); \
     }
 
 extern "C" {
@@ -523,6 +526,9 @@ __global__ void kernel_calibrate_sums(
           float2*        __restrict__ gradient)
 {
     compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata);
+
+    // Shared memory
+    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
 
     int term_offset = 0;
     UPDATE_SUMS(8)
