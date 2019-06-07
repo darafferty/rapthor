@@ -95,7 +95,9 @@ __device__ void update_sums(
             __syncthreads();
 
             // Precompute data for one row
-            for (unsigned x = tid; x < subgrid_size; x += nr_threads) {
+            for (unsigned j = tid; j < (subgrid_size*nr_terms); j += nr_threads) {
+                unsigned int x       = j / nr_terms;
+                unsigned int term_nr = j % nr_terms;
 
                 if (x < subgrid_size) {
                     // Precompute l,m,n and phase offset
@@ -105,37 +107,34 @@ __device__ void update_sums(
                     float phase_offset = uvw_offset.u*l + uvw_offset.v*m + uvw_offset.w*n;
                     lmn_[x] = make_float4(l, m, n, phase_offset);
 
-                    // Precompute pixels
-                    for (unsigned term_nr = 0; term_nr < current_nr_terms; term_nr++) {
-                        // Compute shifted position in subgrid
-                        unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
-                        unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
+                    // Compute shifted position in subgrid
+                    unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                    unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                        // Load pixels
-                        float2 pixel[NR_POLARIZATIONS];
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                            pixel[pol] = subgrid[pixel_idx];
-                        }
+                    // Load pixels
+                    float2 pixel[NR_POLARIZATIONS];
+                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                        pixel[pol] = subgrid[pixel_idx];
+                    }
 
-                        // Load aterm derivative
-                        size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_offset+term_nr, y, x);
-                        float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
+                    // Load aterm derivative
+                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_offset+term_nr, y, x);
+                    float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
 
-                        // Load second aterm
-                        size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
-                        float2 *aterm2 = (float2 *) &aterm[station2_idx];
+                    // Load second aterm
+                    size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
+                    float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
-                        // Apply aterm
-                        apply_aterm_calibrate(pixel, aterm1, aterm2);
+                    // Apply aterm
+                    apply_aterm_calibrate(pixel, aterm1, aterm2);
 
-                        // Store pixels in shared memory
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels_[pol][x][term_nr] = pixel[pol];
-                        }
-                    } // end for terms
+                    // Store pixels in shared memory
+                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        pixels_[pol][x][term_nr] = pixel[pol];
+                    }
                 } // end if
-            } // end for x
+            } // end for j (subgrid_size * terms)
 
             __syncthreads();
 
