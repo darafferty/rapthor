@@ -91,6 +91,7 @@ extern "C" {
         unsigned int grid_width,
         float* frequencies,
         std::complex<float>* visibilities,
+        float* weights,
         float* uvw,
         unsigned int* baselines,
         std::complex<float>* grid,

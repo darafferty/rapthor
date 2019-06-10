@@ -143,7 +143,7 @@ namespace idg {
             // Function signatures
             #define sig_gridder                       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder                     (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_calibrate                     (void (*)(int,int,int,float,float,const float*,int,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
+            #define sig_calibrate                     (void (*)(int,int,int,float,float,const float*,int,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_phasor                        (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*))
             #define sig_fft		                      (void (*)(long,long,long,void*,int))
             #define sig_adder	                      (void (*)(long,long,int,void*,void*,void*))
@@ -223,6 +223,7 @@ namespace idg {
                 void *uvw,
                 void *wavenumbers,
                 void *visibilities,
+                void *weights,
                 void *aterm,
                 void *aterm_derivative,
                 void *metadata,
@@ -235,7 +236,7 @@ namespace idg {
                 states[0] = powerSensor->read();
                 (sig_calibrate (void *) *function_calibrate)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, max_nr_timesteps, nr_channels, nr_terms,
-                  uvw, wavenumbers, visibilities, aterm, aterm_derivative, metadata, subgrid, phasors, hessian, gradient);
+                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, metadata, subgrid, phasors, hessian, gradient);
                 states[1] = powerSensor->read();
                 if (report) { report->update_calibrate(states[0], states[1]); }
                 if (report) { report->update_host(states[0], states[1]); }

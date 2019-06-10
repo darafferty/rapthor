@@ -169,6 +169,7 @@ extern "C" {
         unsigned int grid_width,
         float* frequencies,
         std::complex<float>* visibilities,
+        float* weights,
         float* uvw,
         unsigned int* baselines,
         std::complex<float>* grid,
@@ -180,6 +181,9 @@ extern "C" {
             frequencies, nr_channels);
         idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
             (idg::Visibility<std::complex<float>> *) visibilities, nr_baselines,
+            nr_timesteps, nr_channels);
+        idg::Array3D<idg::Visibility<float>> weights_(
+            (idg::Visibility<float> *) weights, nr_baselines,
             nr_timesteps, nr_channels);
         idg::Array2D<idg::UVWCoordinate<float>> uvw_(
             (idg::UVWCoordinate<float> *) uvw, nr_baselines, nr_timesteps);
@@ -198,6 +202,7 @@ extern "C" {
             subgrid_size,
             frequencies_,
             visibilities_,
+            weights_,
             uvw_,
             baselines_,
             grid_,

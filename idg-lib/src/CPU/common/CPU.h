@@ -75,6 +75,7 @@ namespace idg {
                         unsigned int subgrid_size,
                         const Array1D<float> &frequencies,
                         Array4D<Visibility<std::complex<float>>> &&visibilities,
+                        Array4D<Visibility<float>> &&weights,
                         Array3D<UVWCoordinate<float>> &&uvw,
                         Array2D<std::pair<unsigned int,unsigned int>> &&baselines,
                         const Grid& grid,
@@ -123,6 +124,7 @@ namespace idg {
                         unsigned int subgrid_size;
                         Array1D<float> wavenumbers;
                         Array4D<Visibility<std::complex<float>>> visibilities;
+                        Array4D<Visibility<float>> weights;
                         Array3D<UVWCoordinate<float>> uvw;
                         Array2D<std::pair<unsigned int,unsigned int>> baselines;
                         std::vector<Array4D<std::complex<float>>> subgrids;

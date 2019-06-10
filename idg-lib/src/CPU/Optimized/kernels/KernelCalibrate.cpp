@@ -40,6 +40,7 @@ void kernel_calibrate(
     const idg::UVWCoordinate<float>* uvw,
     const float*                     wavenumbers,
           idg::float2*               visibilities,
+    const float*                     weights,
     const idg::float2*               aterms,
     const idg::float2*               aterm_derivatives,
     const idg::Metadata*             metadata,
@@ -194,26 +195,32 @@ void kernel_calibrate(
 
                 // Update local gradient
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    int time_idx = time_offset + time;
+                    int chan_idx = chan;
+                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
-                        gradient_real[s][term_nr0] +=
+                        gradient_real[s][term_nr0] += weights[vis_idx] * (
                            sums_real[pol][term_nr0] * visibility_res_real[pol] +
-                           sums_imag[pol][term_nr0] * visibility_res_imag[pol];
-                        gradient_imag[s][term_nr0] +=
+                           sums_imag[pol][term_nr0] * visibility_res_imag[pol]);
+                        gradient_imag[s][term_nr0] += weights[vis_idx] * (
                            sums_real[pol][term_nr0] * visibility_res_imag[pol] -
-                           sums_imag[pol][term_nr0] * visibility_res_real[pol];
+                           sums_imag[pol][term_nr0] * visibility_res_real[pol]);
                     }
                 }
 
                 // Update local hessian
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    int time_idx = time_offset + time;
+                    int chan_idx = chan;
+                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
                     for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                         for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
-                            hessian_real[s][term_nr1][term_nr0] +=
+                            hessian_real[s][term_nr1][term_nr0] += weights[vis_idx] * (
                                 sums_real[pol][term_nr0] * sums_real[pol][term_nr1] +
-                                sums_imag[pol][term_nr0] * sums_imag[pol][term_nr1];
-                            hessian_imag[s][term_nr1][term_nr0] +=
+                                sums_imag[pol][term_nr0] * sums_imag[pol][term_nr1]);
+                            hessian_imag[s][term_nr1][term_nr0] += weights[vis_idx] * (
                                 sums_real[pol][term_nr0] * sums_imag[pol][term_nr1] -
-                                sums_imag[pol][term_nr0] * sums_real[pol][term_nr1];
+                                sums_imag[pol][term_nr0] * sums_real[pol][term_nr1]);
                         }
                     }
                 }

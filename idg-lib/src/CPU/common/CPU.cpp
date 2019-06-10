@@ -418,6 +418,7 @@ namespace idg {
                 unsigned int subgrid_size,
                 const Array1D<float> &frequencies,
                 Array4D<Visibility<std::complex<float>>> &&visibilities,
+                Array4D<Visibility<float>> &&weights,
                 Array3D<UVWCoordinate<float>> &&uvw,
                 Array2D<std::pair<unsigned int,unsigned int>> &&baselines,
                 const Grid& grid,
@@ -593,6 +594,7 @@ namespace idg {
                     subgrid_size,
                     std::move(wavenumbers),
                     std::move(visibilities),
+                    std::move(weights),
                     std::move(uvw),
                     std::move(baselines),
                     std::move(subgrids),
@@ -627,6 +629,7 @@ namespace idg {
                 void *metadata_ptr         = (void *) m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
                 void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
                 void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
+                void *weights_ptr          = m_calibrate_state.weights.data(antenna_nr);
                 void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
                 void *phasors_ptr          = m_calibrate_state.phasors[antenna_nr].data();
                 void *hessian_ptr          = hessian.data();
@@ -648,6 +651,7 @@ namespace idg {
                     uvw_ptr,
                     wavenumbers_ptr,
                     visibilities_ptr,
+                    weights_ptr,
                     aterm_ptr,
                     aterm_derivative_ptr,
                     metadata_ptr,
