@@ -274,6 +274,7 @@ namespace idg {
             unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
+            Array3D<Visibility<float>>& weights,
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
@@ -320,6 +321,7 @@ namespace idg {
             // New buffers for data grouped by station
             Array3D<UVWCoordinate<float>>  uvw1(nr_antennas, nr_antennas-1, nr_timesteps);
             Array4D<Visibility<std::complex<float>>> visibilities1(nr_antennas, nr_antennas-1, nr_timesteps, nr_channels);
+            Array4D<Visibility<float>> weights1(nr_antennas, nr_antennas-1, nr_timesteps, nr_channels);
             Array2D<std::pair<unsigned int,unsigned int>> baselines1(nr_antennas, nr_antennas-1);
 
             // Group baselines by station
@@ -335,6 +337,7 @@ namespace idg {
 
                     for (unsigned int channel = 0; channel < nr_channels; channel++) {
                         visibilities1(antenna1, bl1, time, channel) = visibilities(bl, time, channel);
+                        weights1(antenna1, bl1, time, channel) = weights(bl, time, channel);
                     }
                 }
 
@@ -356,6 +359,7 @@ namespace idg {
                         visibilities1(antenna1, bl1, time, channel) = {
                             conj(visibilities(bl, time, channel).xx), conj(visibilities(bl, time, channel).yx),
                             conj(visibilities(bl, time, channel).xy), conj(visibilities(bl, time, channel).yy)};
+                        weights1(antenna1, bl1, time, channel) = weights(bl, time, channel);
                     } // end for channel
                 } // end for time
             } // end for baseline
@@ -403,6 +407,7 @@ namespace idg {
                 subgrid_size,
                 frequencies,
                 std::move(visibilities1),
+                std::move(weights1),
                 std::move(uvw1),
                 std::move(baselines1),
                 grid,

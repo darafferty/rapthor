@@ -226,6 +226,7 @@ class Proxy(object):
         subgrid_size,
         frequencies,
         visibilities,
+        weights,
         uvw,
         baselines,
         grid,
@@ -287,6 +288,10 @@ class Proxy(object):
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* visibilities,
             np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                flags='C_CONTIGUOUS'),   #float* weights,
+            np.ctypeslib.ndpointer(
                 dtype = idg.uvwtype,
                 shape=(nr_baselines, nr_timesteps),
                 flags='C_CONTIGUOUS'),   #float* uvw,
@@ -320,6 +325,7 @@ class Proxy(object):
             grid_width,
             frequencies,
             visibilities,
+            weights,
             uvw,
             baselines,
             grid,

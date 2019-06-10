@@ -73,6 +73,7 @@ namespace idg {
                         void *uvw,
                         void *wavenumbers,
                         void *visibilities,
+                        void *weights,
                         void *aterm,
                         void *aterm_derivative,
                         void *metadata,
