@@ -67,6 +67,7 @@ namespace idg {
                         float image_size,
                         float w_step,
                         const float* shift,
+                        int max_nr_timesteps,
                         int nr_channels,
                         int nr_terms,
                         void *uvw,

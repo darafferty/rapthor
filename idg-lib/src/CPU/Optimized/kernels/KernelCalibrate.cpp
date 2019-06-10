@@ -34,6 +34,7 @@ void kernel_calibrate(
     const float                      image_size,
     const float                      w_step_in_lambda,
     const float* __restrict__        shift,
+    const unsigned int               max_nr_timesteps,
     const unsigned int               nr_channels,
     const unsigned int               nr_terms,
     const idg::UVWCoordinate<float>* uvw,
@@ -146,7 +147,7 @@ void kernel_calibrate(
                 float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 for (unsigned i = 0; i < nr_pixels; i++) {
-                    unsigned idx = index_phasors(nr_timesteps, nr_channels, subgrid_size, s, time, chan, i);
+                    unsigned idx = index_phasors(max_nr_timesteps, nr_channels, subgrid_size, s, time, chan, i);
                     idg::float2 phasor = phasors[idx];
                     phasor_real[i] = phasor.real;
                     phasor_imag[i] = phasor.imag;
