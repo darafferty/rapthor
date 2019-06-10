@@ -439,6 +439,9 @@ namespace idg {
                 std::vector<Array4D<std::complex<float>>> phasors;
                 phasors.reserve(nr_antennas);
 
+                std::vector<int> max_nr_timesteps;
+                max_nr_timesteps.reserve(nr_antennas);
+
                 // Start performance measurement
                 #if defined(REPORT_TOTAL)
                 report.initialize();
@@ -541,10 +544,11 @@ namespace idg {
                     subgrids.push_back(std::move(subgrids_));
 
                     // Get max number of timesteps for any subgrid
-                    auto max_nr_timesteps = plans[antenna_nr]->get_max_nr_timesteps_subgrid();
+                    auto max_nr_timesteps_ = plans[antenna_nr]->get_max_nr_timesteps_subgrid();
+                    max_nr_timesteps.push_back(max_nr_timesteps_);
 
                     // Allocate phasors for current antenna
-                    Array4D<std::complex<float>> phasors_(nr_subgrids * max_nr_timesteps, nr_channels, subgrid_size, subgrid_size);
+                    Array4D<std::complex<float>> phasors_(nr_subgrids * max_nr_timesteps_, nr_channels, subgrid_size, subgrid_size);
 
                     // Get data pointers
                     void *wavenumbers_ptr  = wavenumbers.data();
@@ -559,7 +563,7 @@ namespace idg {
                         image_size,
                         w_step,
                         shift_ptr,
-                        max_nr_timesteps,
+                        max_nr_timesteps_,
                         nr_channels,
                         uvw_ptr,
                         wavenumbers_ptr,
@@ -592,7 +596,8 @@ namespace idg {
                     std::move(uvw),
                     std::move(baselines),
                     std::move(subgrids),
-                    std::move(phasors)
+                    std::move(phasors),
+                    std::move(max_nr_timesteps)
                 };
             }
 
@@ -627,6 +632,8 @@ namespace idg {
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
 
+                int max_nr_timesteps       = m_calibrate_state.max_nr_timesteps[antenna_nr];
+
                 // Run calibration update step
                 kernels.run_calibrate(
                     nr_subgrids,
@@ -635,6 +642,7 @@ namespace idg {
                     m_calibrate_state.image_size,
                     m_calibrate_state.w_step,
                     shift_ptr,
+                    max_nr_timesteps,
                     nr_channels,
                     nr_terms,
                     uvw_ptr,

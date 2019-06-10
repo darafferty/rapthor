@@ -127,6 +127,7 @@ namespace idg {
                         Array2D<std::pair<unsigned int,unsigned int>> baselines;
                         std::vector<Array4D<std::complex<float>>> subgrids;
                         std::vector<Array4D<std::complex<float>>> phasors;
+                        std::vector<int> max_nr_timesteps;
                     } m_calibrate_state;
 
 
