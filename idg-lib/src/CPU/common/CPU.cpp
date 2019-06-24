@@ -616,7 +616,7 @@ namespace idg {
                 auto nr_terms      = aterm_derivatives.get_z_dim();
                 auto subgrid_size  = aterms.get_y_dim();
                 auto nr_stations   = aterms.get_z_dim();
-                auto nr_time_slots = aterms.get_w_dim();
+                auto nr_timeslots  = aterms.get_w_dim();
 
                 // Performance measurement
                 if (antenna_nr == 0) {
@@ -652,7 +652,7 @@ namespace idg {
                     nr_channels,
                     nr_terms,
                     nr_stations,
-                    nr_time_slots,
+                    nr_timeslots,
                     uvw_ptr,
                     wavenumbers_ptr,
                     visibilities_ptr,
