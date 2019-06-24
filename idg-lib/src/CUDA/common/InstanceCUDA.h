@@ -86,6 +86,7 @@ namespace idg {
                         cu::DeviceMemory& d_uvw,
                         cu::DeviceMemory& d_wavenumbers,
                         cu::DeviceMemory& d_visibilities,
+                        cu::DeviceMemory& d_weights,
                         cu::DeviceMemory& d_aterm,
                         cu::DeviceMemory& d_aterm_derivatives,
                         cu::DeviceMemory& d_metadata,

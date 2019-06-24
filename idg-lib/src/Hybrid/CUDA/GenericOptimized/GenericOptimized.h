@@ -173,6 +173,7 @@ namespace idg {
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
                         std::vector<unsigned int> d_visibilities_ids;
+                        std::vector<unsigned int> d_weights_ids;
                         std::vector<unsigned int> d_uvw_ids;
                     } m_calibrate_state;
 

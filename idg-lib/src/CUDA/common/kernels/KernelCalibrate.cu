@@ -252,6 +252,7 @@ __device__ void update_gradient(
     const float2*        __restrict__ aterm_derivatives,
     const float*         __restrict__ wavenumbers,
     const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ scratch_sum,
@@ -458,6 +459,7 @@ __device__ void update_hessian(
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ scratch_sum,
           float2*        __restrict__ hessian)
@@ -533,6 +535,7 @@ __global__ void kernel_calibrate_sums(
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
     const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
     const Metadata*      __restrict__ metadata,
@@ -570,6 +573,7 @@ __global__ void kernel_calibrate_gradient(
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
     const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
     const Metadata*      __restrict__ metadata,
@@ -586,7 +590,7 @@ __global__ void kernel_calibrate_gradient(
         subgrid_size, image_size, max_nr_timesteps,
         nr_channels, nr_terms,
         uvw, aterm, aterm_derivatives,
-        wavenumbers, visibilities, metadata, subgrid, scratch_sum, gradient, lmnp_);
+        wavenumbers, visibilities, weights, metadata, subgrid, scratch_sum, gradient, lmnp_);
 } // end kernel_calibrate_gradient
 
 
@@ -601,6 +605,7 @@ __global__ void kernel_calibrate_hessian(
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
     const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
     const Metadata*      __restrict__ metadata,
@@ -611,7 +616,7 @@ __global__ void kernel_calibrate_hessian(
 {
     update_hessian(
         max_nr_timesteps, nr_channels, nr_terms,
-        visibilities, metadata, scratch_sum, hessian);
+        visibilities, weights, metadata, scratch_sum, hessian);
 } // end kernel_calibrate_hessian
 
 } // end extern "C"
