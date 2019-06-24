@@ -143,7 +143,32 @@ namespace idg {
             // Function signatures
             #define sig_gridder                       (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*))
             #define sig_degridder                     (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*,void*,void*,void*,void*))
-            #define sig_calibrate                     (void (*)(int,int,int,float,float,const float*,int,int,int,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*))
+
+            #define sig_calibrate                     (void (*)(\
+                                                          const unsigned int               nr_subgrids,\
+                                                          const unsigned int               grid_size,\
+                                                          const unsigned int               subgrid_size,\
+                                                          const float                      image_size,\
+                                                          const float                      w_step_in_lambda,\
+                                                          const float* __restrict__        shift,\
+                                                          const unsigned int               max_nr_timesteps,\
+                                                          const unsigned int               nr_channels,\
+                                                          const unsigned int               nr_stations,\
+                                                          const unsigned int               nr_terms,\
+                                                          const unsigned int               nr_time_slots,\
+                                                          const idg::UVWCoordinate<float>* uvw,\
+                                                          const float*                     wavenumbers,\
+                                                                idg::float2*               visibilities,\
+                                                          const float*                     weights,\
+                                                          const idg::float2*               aterms,\
+                                                          const idg::float2*               aterm_derivatives,\
+                                                          const int*                       aterms_indices,\
+                                                          const idg::Metadata*             metadata,\
+                                                          const idg::float2*               subgrid,\
+                                                          const idg::float2*               phasors,\
+                                                          idg::float2*                     hessian,\
+                                                          idg::float2*                     gradient))
+
             #define sig_phasor                        (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*))
             #define sig_fft		                      (void (*)(long,long,long,void*,int))
             #define sig_adder	                      (void (*)(long,long,int,void*,void*,void*))
@@ -220,23 +245,26 @@ namespace idg {
                 int max_nr_timesteps,
                 int nr_channels,
                 int nr_terms,
-                void *uvw,
-                void *wavenumbers,
-                void *visibilities,
-                void *weights,
-                void *aterm,
-                void *aterm_derivative,
-                void *metadata,
-                void *subgrid,
-                void *phasors,
-                void *hessian,
-                void *gradient)
+                int nr_stations,
+                int nr_time_slots,
+                const idg::UVWCoordinate<float> *uvw,
+                const float *wavenumbers,
+                idg::float2 *visibilities,
+                const float *weights,
+                const idg::float2 *aterm,
+                const idg::float2 *aterm_derivative,
+                const int* aterms_indices,
+                const idg::Metadata *metadata,
+                const idg::float2 *subgrid,
+                const idg::float2 *phasors,
+                idg::float2 *hessian,
+                idg::float2 *gradient)
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
                 (sig_calibrate (void *) *function_calibrate)(
-                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, max_nr_timesteps, nr_channels, nr_terms,
-                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, metadata, subgrid, phasors, hessian, gradient);
+                  nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, max_nr_timesteps, nr_channels, nr_stations, nr_terms, nr_time_slots,
+                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, aterms_indices, metadata, subgrid, phasors, hessian, gradient);
                 states[1] = powerSensor->read();
                 if (report) { report->update_calibrate(states[0], states[1]); }
                 if (report) { report->update_host(states[0], states[1]); }
