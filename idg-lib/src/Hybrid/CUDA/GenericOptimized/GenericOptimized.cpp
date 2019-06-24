@@ -830,7 +830,6 @@ namespace idg {
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
                 auto nr_timesteps = visibilities.get_y_dim();
-                auto nr_timeslots = 1;
                 auto nr_channels  = frequencies.get_x_dim();
                 auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
@@ -961,24 +960,21 @@ namespace idg {
                 m_calibrate_state.subgrid_size = subgrid_size;
                 m_calibrate_state.nr_channels  = nr_channels;
 
-                // Allocate device memory
+                // Initialize wavenumbers
                 cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
-                device.get_device_aterms(nr_antennas, nr_timeslots, subgrid_size);
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
 
-                // Allocate device memory
+                // Allocate scratch device memory
                 auto sizeof_scratch_sum = max_nr_subgrids * max_nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
                 m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
-
-                // Copy data to device
-                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
             }
 
             void GenericOptimized::do_calibrate_update(
                 const int antenna_nr,
-                const Array3D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array3D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
-                Array2D<std::complex<float>>& hessian,
-                Array1D<std::complex<float>>& gradient)
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
+                Array3D<std::complex<float>>& hessian,
+                Array2D<std::complex<float>>& gradient)
             {
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
@@ -986,6 +982,7 @@ namespace idg {
                 auto nr_channels  = m_calibrate_state.nr_channels;
                 auto nr_terms     = aterm_derivatives.get_z_dim();
                 auto subgrid_size = aterms.get_y_dim();
+                auto nr_timeslots = aterms.get_w_dim();
                 auto grid_size    = m_calibrate_state.grid_size;
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
@@ -1019,7 +1016,7 @@ namespace idg {
 
                 // Load memory objects
                 cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                cu::DeviceMemory& d_aterms       = device.get_device_aterms(1, nr_timeslots, subgrid_size);
                 unsigned int d_metadata_id       = m_calibrate_state.d_metadata_ids[antenna_nr];
                 unsigned int d_subgrids_id       = m_calibrate_state.d_subgrids_ids[antenna_nr];
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
