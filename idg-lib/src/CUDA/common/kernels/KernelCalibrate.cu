@@ -398,10 +398,10 @@ __device__ void update_gradient(
             unsigned int vis_idx_xy = index_visibility(nr_channels, time_idx, chan_idx, 1);
             unsigned int vis_idx_yx = index_visibility(nr_channels, time_idx, chan_idx, 2);
             unsigned int vis_idx_yy = index_visibility(nr_channels, time_idx, chan_idx, 3);
-            residual_[0][tid] = visibilities[vis_idx_xx] - sum_xx * scale;
-            residual_[1][tid] = visibilities[vis_idx_xy] - sum_xy * scale;
-            residual_[2][tid] = visibilities[vis_idx_yx] - sum_yx * scale;
-            residual_[3][tid] = visibilities[vis_idx_yy] - sum_yy * scale;
+            residual_[0][tid] = (visibilities[vis_idx_xx] - (sum_xx * scale)) * weights[vis_idx_xx];
+            residual_[1][tid] = (visibilities[vis_idx_xy] - (sum_xy * scale)) * weights[vis_idx_xy];
+            residual_[2][tid] = (visibilities[vis_idx_yx] - (sum_yx * scale)) * weights[vis_idx_yx];
+            residual_[3][tid] = (visibilities[vis_idx_yy] - (sum_yy * scale)) * weights[vis_idx_yy];
         } else {
             for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                 residual_[pol][tid] = make_float2(0, 0);
@@ -470,8 +470,12 @@ __device__ void update_hessian(
     unsigned s          = blockIdx.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
 
-    // metadata for current subgrid
+    // Metadata for first subgrid
+    const Metadata &m_0       = metadata[0];
+
+    // Metadata for current subgrid
     const Metadata &m = metadata[s];
+    const unsigned int time_offset  = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Iterate all terms * terms
@@ -484,14 +488,18 @@ __device__ void update_hessian(
 
         // Iterate all timesteps
         for (unsigned int time = 0; time < nr_timesteps; time++) {
+
             // Iterate all channels
             for (unsigned int chan = 0; chan < nr_channels; chan++) {
 
                 // Iterate all polarizations
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    unsigned int time_idx = time_offset + time;
+                    unsigned int chan_idx = chan;
+                    unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
                     unsigned int sum_idx0 = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr0, pol);
                     unsigned int sum_idx1 = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr1, pol);
-                    float2 sum0 = scratch_sum[sum_idx1];
+                    float2 sum0 = scratch_sum[sum_idx1] * weights[vis_idx];
                     float2 sum1 = scratch_sum[sum_idx0];
 
                     // Update hessian
