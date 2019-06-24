@@ -188,7 +188,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
+                    size_t vis_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
                     visibility_res_real[pol] = visibilities[vis_idx].real - sums_real[pol][nr_terms];
                     visibility_res_imag[pol] = visibilities[vis_idx].imag - sums_imag[pol][nr_terms];
                 }
@@ -197,7 +197,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
+                    size_t vis_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                         gradient_real[s][term_nr0] += weights[vis_idx] * (
                            sums_real[pol][term_nr0] * visibility_res_real[pol] +
@@ -212,7 +212,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility( nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
+                    size_t vis_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
                     for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                         for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                             hessian_real[s][term_nr1][term_nr0] += weights[vis_idx] * (
