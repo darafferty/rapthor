@@ -308,8 +308,6 @@ namespace idg {
                         void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
 
-                        std::cout << "current_nr_subgrids: " << current_nr_subgrids << std::endl;
-
                         // Splitter kernel
                         if (w_step == 0.0) {
                            kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);

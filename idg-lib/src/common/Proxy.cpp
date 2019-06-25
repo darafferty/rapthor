@@ -360,7 +360,9 @@ namespace idg {
                         visibilities1(antenna1, bl1, time, channel) = {
                             conj(visibilities(bl, time, channel).xx), conj(visibilities(bl, time, channel).yx),
                             conj(visibilities(bl, time, channel).xy), conj(visibilities(bl, time, channel).yy)};
-                        weights1(antenna1, bl1, time, channel) = weights(bl, time, channel);
+                        weights1(antenna1, bl1, time, channel) = {
+                            weights(bl, time, channel).xx, weights(bl, time, channel).yx,
+                            weights(bl, time, channel).xy, weights(bl, time, channel).yy};
                     } // end for channel
                 } // end for time
             } // end for baseline
