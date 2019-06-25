@@ -198,30 +198,6 @@ namespace idg {
 
                 void calibrate_finish();
 
-                virtual Plan* make_plan(
-                    const int kernel_size,
-                    const int subgrid_size,
-                    const int grid_size,
-                    const float cell_size,
-                    const Array1D<float>& frequencies,
-                    const Array2D<UVWCoordinate<float>>& uvw,
-                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                    const Array1D<unsigned int>& aterms_offsets,
-                    Plan::Options options = Plan::Options())
-                {
-                    return new Plan(
-                        kernel_size,
-                        subgrid_size,
-                        grid_size,
-                        cell_size,
-                        frequencies,
-                        uvw,
-                        baselines,
-                        aterms_offsets,
-                        options
-                    );
-                }
-
                 virtual void init_wtiles(int subgrid_size) {}
 
                 //! Applyies (inverse) Fourier transform to grid
@@ -309,6 +285,30 @@ namespace idg {
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
+
+                virtual Plan* make_plan(
+                    const int kernel_size,
+                    const int subgrid_size,
+                    const int grid_size,
+                    const float cell_size,
+                    const Array1D<float>& frequencies,
+                    const Array2D<UVWCoordinate<float>>& uvw,
+                    const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                    const Array1D<unsigned int>& aterms_offsets,
+                    Plan::Options options = Plan::Options())
+                {
+                    return new Plan(
+                        kernel_size,
+                        subgrid_size,
+                        grid_size,
+                        cell_size,
+                        frequencies,
+                        uvw,
+                        baselines,
+                        aterms_offsets,
+                        options
+                    );
+                }
 
                 //! Dummy method
                 virtual void finish_gridding() {};

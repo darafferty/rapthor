@@ -139,7 +139,17 @@ namespace idg {
 
                     virtual void do_calibrate_finish() override;
 
-                private:
+                    virtual Plan* make_plan(
+                        const int kernel_size,
+                        const int subgrid_size,
+                        const int grid_size,
+                        const float cell_size,
+                        const Array1D<float>& frequencies,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        Plan::Options options);
+
                     void synchronize();
                     void finish(std::string name);
 

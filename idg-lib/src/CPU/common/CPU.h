@@ -32,6 +32,17 @@ namespace idg {
 
                     kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
 
+                    virtual Plan* make_plan(
+                        const int kernel_size,
+                        const int subgrid_size,
+                        const int grid_size,
+                        const float cell_size,
+                        const Array1D<float>& frequencies,
+                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        Plan::Options options);
+
                 private:
                     // Routines
                     virtual void do_gridding(
@@ -93,17 +104,6 @@ namespace idg {
                     virtual void do_transform(
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
-
-                    virtual Plan* make_plan(
-                        const int kernel_size,
-                        const int subgrid_size,
-                        const int grid_size,
-                        const float cell_size,
-                        const Array1D<float>& frequencies,
-                        const Array2D<UVWCoordinate<float>>& uvw,
-                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        const Array1D<unsigned int>& aterms_offsets,
-                        Plan::Options options);
 
                     virtual void init_wtiles(int subgrid_size);
 

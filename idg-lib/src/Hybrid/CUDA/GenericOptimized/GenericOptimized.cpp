@@ -1094,6 +1094,34 @@ namespace idg {
                 #endif
             }
 
+            Plan* GenericOptimized::make_plan(
+                const int kernel_size,
+                const int subgrid_size,
+                const int grid_size,
+                const float cell_size,
+                const Array1D<float>& frequencies,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array1D<unsigned int>& aterms_offsets,
+                Plan::Options options)
+            {
+                // Defer call to cpuProxy
+                // cpuProxy manages the wtiles state
+                // plan will be made accordingly
+                return cpuProxy->make_plan(
+                kernel_size,
+                subgrid_size,
+                grid_size,
+                cell_size,
+                frequencies,
+                uvw,
+                baselines,
+                aterms_offsets,
+                options);
+            }
+
+
+
         } // namespace hybrid
     } // namespace proxy
 } // namespace idg
