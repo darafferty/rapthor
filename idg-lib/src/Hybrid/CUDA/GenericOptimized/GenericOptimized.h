@@ -168,7 +168,7 @@ namespace idg {
                         long unsigned int grid_size;
                         unsigned int subgrid_size;
                         unsigned int nr_channels;
-                        Array3D<UVWCoordinate<float>> uvw; // FIXME
+                        Array3D<UVWCoordinate<float>> uvw;
                         unsigned int d_scratch_sum_id;
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
