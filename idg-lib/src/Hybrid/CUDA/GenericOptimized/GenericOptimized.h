@@ -124,6 +124,7 @@ namespace idg {
                         unsigned int subgrid_size,
                         const Array1D<float> &frequencies,
                         Array4D<Visibility<std::complex<float>>> &&visibilities,
+                        Array4D<Visibility<float>> &&weights,
                         Array3D<UVWCoordinate<float>> &&uvw,
                         Array2D<std::pair<unsigned int,unsigned int>> &&baselines,
                         const Grid& grid,
@@ -131,10 +132,10 @@ namespace idg {
 
                     virtual void do_calibrate_update(
                         const int station_nr,
-                        const Array3D<Matrix2x2<std::complex<float>>>& aterms,
-                        const Array3D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-                        Array2D<std::complex<float>>& hessian,
-                        Array1D<std::complex<float>>& gradient) override;
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                        Array3D<std::complex<float>>& hessian,
+                        Array2D<std::complex<float>>& gradient) override;
 
                     virtual void do_calibrate_finish() override;
 
@@ -172,6 +173,7 @@ namespace idg {
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
                         std::vector<unsigned int> d_visibilities_ids;
+                        std::vector<unsigned int> d_weights_ids;
                         std::vector<unsigned int> d_uvw_ids;
                     } m_calibrate_state;
 

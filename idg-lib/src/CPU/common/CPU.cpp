@@ -605,16 +605,18 @@ namespace idg {
 
             void CPU::do_calibrate_update(
                 const int antenna_nr,
-                const Array3D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array3D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
-                Array2D<std::complex<float>>& hessian,
-                Array1D<std::complex<float>>& gradient)
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
+                Array3D<std::complex<float>>& hessian,
+                Array2D<std::complex<float>>& gradient)
             {
                 // Arguments
-                auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
-                auto nr_channels  = m_calibrate_state.wavenumbers.get_x_dim();
-                auto nr_terms     = aterm_derivatives.get_z_dim();
-                auto subgrid_size = aterms.get_y_dim();
+                auto nr_subgrids   = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+                auto nr_channels   = m_calibrate_state.wavenumbers.get_x_dim();
+                auto nr_terms      = aterm_derivatives.get_z_dim();
+                auto subgrid_size  = aterms.get_y_dim();
+                auto nr_stations   = aterms.get_z_dim();
+                auto nr_timeslots  = aterms.get_w_dim();
 
                 // Performance measurement
                 if (antenna_nr == 0) {
@@ -622,18 +624,19 @@ namespace idg {
                 }
 
                 // Data pointers
-                const float *shift_ptr     = m_calibrate_state.shift.data();
-                void *wavenumbers_ptr      = m_calibrate_state.wavenumbers.data();
-                void *aterm_ptr            = aterms.data();
-                void *aterm_derivative_ptr = aterm_derivatives.data();
-                void *metadata_ptr         = (void *) m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
-                void *uvw_ptr              = m_calibrate_state.uvw.data(antenna_nr);
-                void *visibilities_ptr     = m_calibrate_state.visibilities.data(antenna_nr);
-                void *weights_ptr          = m_calibrate_state.weights.data(antenna_nr);
-                void *subgrids_ptr         = m_calibrate_state.subgrids[antenna_nr].data();
-                void *phasors_ptr          = m_calibrate_state.phasors[antenna_nr].data();
-                void *hessian_ptr          = hessian.data();
-                void *gradient_ptr         = gradient.data();
+                auto shift_ptr                     = m_calibrate_state.shift.data();
+                auto wavenumbers_ptr               = m_calibrate_state.wavenumbers.data();
+                idg::float2 *aterm_ptr             = (idg::float2*) aterms.data();
+                idg::float2 * aterm_derivative_ptr = (idg::float2*) aterm_derivatives.data();
+                auto aterm_idx_ptr                 = m_calibrate_state.plans[antenna_nr]->get_aterm_indices_ptr();
+                auto metadata_ptr                  = m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
+                auto uvw_ptr                       = m_calibrate_state.uvw.data(antenna_nr);
+                idg::float2 *visibilities_ptr      = (idg::float2*) m_calibrate_state.visibilities.data(antenna_nr);
+                float *weights_ptr                 = (float*) m_calibrate_state.weights.data(antenna_nr);
+                idg::float2 *subgrids_ptr          = (idg::float2*) m_calibrate_state.subgrids[antenna_nr].data();
+                idg::float2 *phasors_ptr           = (idg::float2*) m_calibrate_state.phasors[antenna_nr].data();
+                idg::float2 *hessian_ptr           = (idg::float2*) hessian.data();
+                idg::float2 *gradient_ptr          = (idg::float2*) gradient.data();
 
                 int max_nr_timesteps       = m_calibrate_state.max_nr_timesteps[antenna_nr];
 
@@ -648,12 +651,15 @@ namespace idg {
                     max_nr_timesteps,
                     nr_channels,
                     nr_terms,
+                    nr_stations,
+                    nr_timeslots,
                     uvw_ptr,
                     wavenumbers_ptr,
                     visibilities_ptr,
                     weights_ptr,
                     aterm_ptr,
                     aterm_derivative_ptr,
+                    aterm_idx_ptr,
                     metadata_ptr,
                     subgrids_ptr,
                     phasors_ptr,

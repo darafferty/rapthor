@@ -164,6 +164,7 @@ extern "C" {
         unsigned int nr_channels,
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
+        unsigned int nr_timeslots,
         unsigned int nr_correlations,
         unsigned int grid_height,
         unsigned int grid_width,
@@ -173,6 +174,7 @@ extern "C" {
         float* uvw,
         unsigned int* baselines,
         std::complex<float>* grid,
+        unsigned int* aterms_offsets,
         float* spheroidal)
     {
         idg::Array1D<float> shift_(
@@ -191,6 +193,7 @@ extern "C" {
             (std::pair<unsigned int,unsigned int> *) baselines, nr_baselines);
         idg::Grid grid_(
             grid, 1, nr_correlations, grid_height, grid_width);
+        idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots+1);
         idg::Array2D<float> spheroidal_(
             spheroidal, subgrid_size, subgrid_size);
 
@@ -206,6 +209,7 @@ extern "C" {
             uvw_,
             baselines_,
             grid_,
+            aterms_offsets_,
             spheroidal_);
     }
 
@@ -214,16 +218,17 @@ extern "C" {
         const unsigned int antenna_nr,
         const unsigned int subgrid_size,
         const unsigned int nr_antennas,
+        const unsigned int nr_timeslots,
         const unsigned int nr_terms,
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,
         std::complex<float>* hessian,
         std::complex<float>* gradient)
     {
-        idg::Array3D<idg::Matrix2x2<std::complex<float>>> aterms_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms), nr_antennas, subgrid_size, subgrid_size);
-        idg::Array3D<idg::Matrix2x2<std::complex<float>>> aterm_derivatives_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives), nr_terms, subgrid_size, subgrid_size);
-        idg::Array2D<std::complex<float>> hessian_(hessian, nr_terms, nr_terms);
-        idg::Array1D<std::complex<float>> gradient_(gradient, nr_terms);
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms), nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterm_derivatives_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives), nr_timeslots, nr_terms, subgrid_size, subgrid_size);
+        idg::Array3D<std::complex<float>> hessian_(hessian, nr_timeslots, nr_terms, nr_terms);
+        idg::Array2D<std::complex<float>> gradient_(gradient, nr_timeslots, nr_terms);
         reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update(antenna_nr, aterms_, aterm_derivatives_, hessian_, gradient_);
     }
 

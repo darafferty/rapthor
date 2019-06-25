@@ -278,6 +278,7 @@ namespace idg {
             const Array2D<UVWCoordinate<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
+            const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
             #if defined(DEBUG)
@@ -370,11 +371,6 @@ namespace idg {
             options.w_step = w_step;
             options.nr_w_layers = nr_w_layers;
 
-            // Initialize aterms offsets
-            Array1D<unsigned int> aterms_offsets(2);
-            aterms_offsets(0) = 0;
-            aterms_offsets(1) = nr_timesteps;
-
             // Create one plan per antenna
             std::vector<std::unique_ptr<Plan>> plans;
             plans.reserve(nr_antennas);
@@ -416,10 +412,10 @@ namespace idg {
 
         void Proxy::calibrate_update(
             const int station_nr,
-            const Array3D<Matrix2x2<std::complex<float>>>& aterms,
-            const Array3D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-            Array2D<std::complex<float>>& hessian,
-            Array1D<std::complex<float>>& gradient
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+            Array3D<std::complex<float>>& hessian,
+            Array2D<std::complex<float>>& gradient
         )
         {
             do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient);

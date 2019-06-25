@@ -86,6 +86,7 @@ extern "C" {
         unsigned int nr_channels,
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
+        unsigned int nr_timeslots,
         unsigned int nr_correlations,
         unsigned int grid_height,
         unsigned int grid_width,
@@ -95,6 +96,7 @@ extern "C" {
         float* uvw,
         unsigned int* baselines,
         std::complex<float>* grid,
+        unsigned int* aterms_offsets,
         float* spheroidal);
 
      void Proxy_calibrate_update(
@@ -102,6 +104,7 @@ extern "C" {
         const unsigned int station_nr,
         const unsigned int subgrid_size,
         const unsigned int nr_stations,
+        const unsigned int nr_time_slots,
         const unsigned int nr_terms,
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,

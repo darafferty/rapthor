@@ -230,6 +230,7 @@ class Proxy(object):
         uvw,
         baselines,
         grid,
+        aterms_offsets,
         spheroidal):
         """
         Calibrate
@@ -254,12 +255,13 @@ class Proxy(object):
                 dtype = idg.spheroidaltype)
         """
         # extract dimensions
-        nr_channels = frequencies.shape[0]
+        nr_channels     = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
         nr_correlations = visibilities.shape[3]
-        grid_height                  = grid.shape[1]
-        grid_width                   = grid.shape[2]
+        grid_height     = grid.shape[1]
+        grid_width      = grid.shape[2]
+        nr_timeslots    = aterms_offsets.shape[0] - 1
 
         # call C function to do the work
 
@@ -276,6 +278,7 @@ class Proxy(object):
             ctypes.c_uint,               #unsigned int nr_channels,
             ctypes.c_uint,               #unsigned int nr_baselines,
             ctypes.c_uint,               #unsigned int nr_timesteps,
+            ctypes.c_uint,               #unsigned int nr_timeslots,
             ctypes.c_uint,               #unsigned int nr_correlations,
             ctypes.c_uint,               #unsigned int grid_height,
             ctypes.c_uint,               #unsigned int grid_width,
@@ -304,6 +307,11 @@ class Proxy(object):
                 shape=(nr_correlations, grid_height, grid_width),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* grid,
             np.ctypeslib.ndpointer(
+                dtype=np.int32,
+                ndim=1,
+                shape=(nr_timeslots+1, ),
+                flags='C_CONTIGUOUS'),    #int* aterms_offsets);
+            np.ctypeslib.ndpointer(
                 dtype=np.float32,
                 ndim=2,
                 shape=(subgrid_size, subgrid_size),
@@ -320,6 +328,7 @@ class Proxy(object):
             nr_channels,
             nr_baselines,
             nr_timesteps,
+            nr_timeslots,
             nr_correlations,
             grid_height,
             grid_width,
@@ -329,13 +338,15 @@ class Proxy(object):
             uvw,
             baselines,
             grid,
+            aterms_offsets,
             spheroidal)
 
     def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient):
 
-        nr_antennas = aterms.shape[0]
-        subgrid_size = aterms.shape[1]
-        nr_terms = gradient.shape[0]
+        nr_timeslots = aterms.shape[0]
+        nr_antennas = aterms.shape[1]
+        subgrid_size = aterms.shape[2]
+        nr_terms = gradient.shape[1]
         nr_correlations = 4
 
         self.lib.Proxy_calibrate_update.argtypes = [
@@ -343,22 +354,23 @@ class Proxy(object):
             ctypes.c_uint,               #unsigned int antenna_nr
             ctypes.c_uint,               #unsigned int subgrid_size
             ctypes.c_uint,               #unsigned int nr_antennas
+            ctypes.c_uint,               #unsigned int nr_timeslots
             ctypes.c_uint,               #unsigned int nr_terms
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                shape=(nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_terms, nr_terms),
+                shape=(nr_timeslots, nr_terms, nr_terms),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* hessian
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_terms,),
+                shape=(nr_timeslots, nr_terms),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* gradient
             ]
 
@@ -367,6 +379,7 @@ class Proxy(object):
             antenna_nr,
             subgrid_size,
             nr_antennas,
+            nr_timeslots,
             nr_terms,
             aterms,
             aterm_derivatives,

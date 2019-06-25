@@ -80,11 +80,13 @@ namespace idg {
                         int subgrid_size,
                         float image_size,
                         float w_step,
+                        int max_nr_timesteps,
                         int nr_channels,
                         int nr_terms,
                         cu::DeviceMemory& d_uvw,
                         cu::DeviceMemory& d_wavenumbers,
                         cu::DeviceMemory& d_visibilities,
+                        cu::DeviceMemory& d_weights,
                         cu::DeviceMemory& d_aterm,
                         cu::DeviceMemory& d_aterm_derivatives,
                         cu::DeviceMemory& d_metadata,
@@ -298,7 +300,7 @@ namespace idg {
                     cu::Function *function_adder;
                     cu::Function *function_splitter;
                     cu::Function *function_scaler;
-                    cu::Function *function_calibrate;
+                    std::vector<cu::Function *> functions_calibrate;
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
@@ -389,11 +391,13 @@ namespace idg {
             // Kernel names
             static const std::string name_gridder   = "kernel_gridder";
             static const std::string name_degridder = "kernel_degridder";
-            static const std::string name_calibrate = "kernel_calibrate";
             static const std::string name_adder     = "kernel_adder";
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
             static const std::string name_scaler    = "kernel_scaler";
+            static const std::string name_calibrate_sums     = "kernel_calibrate_sums";
+            static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
+            static const std::string name_calibrate_hessian  = "kernel_calibrate_hessian";
 
         } // end namespace cuda
     } // end namespace kernel

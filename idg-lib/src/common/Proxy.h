@@ -185,14 +185,15 @@ namespace idg {
                     const Array2D<UVWCoordinate<float>>& uvw,
                     const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                     const Grid& grid,
+                    const Array1D<unsigned int>& aterms_offsets,
                     const Array2D<float>& spheroidal);
 
                 void calibrate_update(
                     const int station_nr,
-                    const Array3D<Matrix2x2<std::complex<float>>>& aterms,
-                    const Array3D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-                    Array2D<std::complex<float>>& hessian,
-                    Array1D<std::complex<float>>& derivative
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    Array3D<std::complex<float>>& hessian,
+                    Array2D<std::complex<float>>& derivative
                 );
 
                 void calibrate_finish();
@@ -373,10 +374,10 @@ namespace idg {
 
                 virtual void do_calibrate_update(
                     const int station_nr,
-                    const Array3D<Matrix2x2<std::complex<float>>>& aterms,
-                    const Array3D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-                    Array2D<std::complex<float>>& hessian,
-                    Array1D<std::complex<float>>& gradient
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    Array3D<std::complex<float>>& hessian,
+                    Array2D<std::complex<float>>& gradient
                 ) {}
 
                 virtual void do_calibrate_finish() {}
