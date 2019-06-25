@@ -387,7 +387,6 @@ namespace idg {
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
-                std::cout << "Adder subgrids to tiles." << std::endl;
                 (sig_adder_subgrids_to_wtiles (void *) *function_adder_subgrids_to_wtiles)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, tiles);
                 states[1] = powerSensor->read();
                 if (report) { report->update_adder(states[0], states[1]); }
@@ -403,7 +402,6 @@ namespace idg {
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
-                std::cout << "Splitter subgrids from tiles." << std::endl;
                 (sig_splitter_subgrids_from_wtiles (void *) *function_splitter_subgrids_from_wtiles)(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, tiles);
                 states[1] = powerSensor->read();
                 if (report) { report->update_adder(states[0], states[1]); }
@@ -422,7 +420,6 @@ namespace idg {
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
-                std::cout << "Adder tiles to grid." << std::endl;
                 (sig_adder_wtiles_to_grid (void *) *function_adder_wtiles_to_grid)(grid_size, subgrid_size, image_size, w_step, nr_tiles, tile_ids, tile_coordinates, tiles, grid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_adder(states[0], states[1]); }
@@ -442,7 +439,6 @@ namespace idg {
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
-                std::cout << "Splitter tiles from grid." << std::endl;
                 (sig_splitter_wtiles_from_grid (void *) *function_splitter_wtiles_from_grid)(grid_size, subgrid_size, image_size, w_step, nr_tiles, tile_ids, tile_coordinates, tiles, grid);
                 states[1] = powerSensor->read();
                 if (report) { report->update_adder(states[0], states[1]); }
