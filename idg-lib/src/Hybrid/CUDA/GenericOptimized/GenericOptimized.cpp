@@ -830,7 +830,6 @@ namespace idg {
                 auto nr_antennas  = plans.size();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
-                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = frequencies.get_x_dim();
                 auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
