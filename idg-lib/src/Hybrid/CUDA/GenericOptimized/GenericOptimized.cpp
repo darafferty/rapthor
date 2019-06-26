@@ -822,6 +822,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                cpuKernels.set_report(report);
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -829,7 +830,6 @@ namespace idg {
                 auto nr_antennas  = plans.size();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
-                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = frequencies.get_x_dim();
                 auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
@@ -849,6 +849,7 @@ namespace idg {
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
                 device.free_device_memory();
+                device.set_report(report);
 
                 // Load stream
                 cu::Stream& htodstream = device.get_htod_stream();
@@ -890,6 +891,53 @@ namespace idg {
                     // Splitter kernel
                     if (w_step == 0.0) {
                         cpuKernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
+                    } else if (plans[antenna_nr]->get_use_wtiles()) {
+                        WTileUpdateSet wtile_initialize_set = plans[antenna_nr]->get_wtile_initialize_set();
+                        WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                        cpuKernels.run_splitter_wtiles_from_grid(
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            wtile_initialize_info.wtile_ids.size(),
+                            wtile_initialize_info.wtile_ids.data(),
+                            wtile_initialize_info.wtile_coordinates.data(),
+                            cpuProxy->getWTilesBuffer(),
+                            grid.data());
+                        for(unsigned int subgrid_index = 0; subgrid_index < nr_subgrids; )
+                        {
+                            if ((unsigned int)wtile_initialize_set.front().subgrid_index == subgrid_index)
+                            {
+                                wtile_initialize_set.pop_front();
+                                WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                                cpuKernels.run_splitter_wtiles_from_grid(
+                                    grid_size,
+                                    subgrid_size,
+                                    image_size,
+                                    w_step,
+                                    wtile_initialize_info.wtile_ids.size(),
+                                    wtile_initialize_info.wtile_ids.data(),
+                                    wtile_initialize_info.wtile_coordinates.data(),
+                                    cpuProxy->getWTilesBuffer(),
+                                    grid_ptr);
+                            }
+
+                            unsigned int nr_subgrids_ = nr_subgrids - subgrid_index;
+                            if (wtile_initialize_set.front().subgrid_index - subgrid_index < nr_subgrids_)
+                            {
+                                nr_subgrids_ = wtile_initialize_set.front().subgrid_index - subgrid_index;
+                            }
+
+                            cpuKernels.run_splitter_subgrids_from_wtiles(
+                                nr_subgrids_,
+                                grid_size,
+                                subgrid_size,
+                                &static_cast<Metadata*>(metadata_ptr)[subgrid_index],
+                                &static_cast<std::complex<float>*>(subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
+                                cpuProxy->getWTilesBuffer());
+
+                            subgrid_index += nr_subgrids_;
+                        }
                     } else {
                         cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
@@ -983,6 +1031,7 @@ namespace idg {
                 auto nr_terms     = aterm_derivatives.get_z_dim();
                 auto subgrid_size = aterms.get_y_dim();
                 auto nr_timeslots = aterms.get_w_dim();
+                auto nr_stations  = aterms.get_z_dim();
                 auto grid_size    = m_calibrate_state.grid_size;
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
@@ -1016,7 +1065,7 @@ namespace idg {
 
                 // Load memory objects
                 cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                cu::DeviceMemory& d_aterms       = device.get_device_aterms(1, nr_timeslots, subgrid_size);
+                cu::DeviceMemory& d_aterms       = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                 unsigned int d_metadata_id       = m_calibrate_state.d_metadata_ids[antenna_nr];
                 unsigned int d_subgrids_id       = m_calibrate_state.d_subgrids_ids[antenna_nr];
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
@@ -1093,6 +1142,34 @@ namespace idg {
                 report.print_visibilities(auxiliary::name_calibrate);
                 #endif
             }
+
+            Plan* GenericOptimized::make_plan(
+                const int kernel_size,
+                const int subgrid_size,
+                const int grid_size,
+                const float cell_size,
+                const Array1D<float>& frequencies,
+                const Array2D<UVWCoordinate<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array1D<unsigned int>& aterms_offsets,
+                Plan::Options options)
+            {
+                // Defer call to cpuProxy
+                // cpuProxy manages the wtiles state
+                // plan will be made accordingly
+                return cpuProxy->make_plan(
+                kernel_size,
+                subgrid_size,
+                grid_size,
+                cell_size,
+                frequencies,
+                uvw,
+                baselines,
+                aterms_offsets,
+                options);
+            }
+
+
 
         } // namespace hybrid
     } // namespace proxy

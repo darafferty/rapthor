@@ -225,9 +225,9 @@ __device__ void update_sums(
             const float scale = 1.0f / nr_pixels;
             if (time < nr_timesteps) {
                 unsigned int sum_idx_xx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
-                unsigned int sum_idx_xy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
-                unsigned int sum_idx_yx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
-                unsigned int sum_idx_yy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
+                unsigned int sum_idx_xy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 1);
+                unsigned int sum_idx_yx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 2);
+                unsigned int sum_idx_yy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 3);
                 scratch_sum[sum_idx_xx] = sum_xx[term_nr] * scale;
                 scratch_sum[sum_idx_xy] = sum_xy[term_nr] * scale;
                 scratch_sum[sum_idx_yx] = sum_yx[term_nr] * scale;
@@ -421,7 +421,7 @@ __device__ void update_gradient(
                 unsigned int time_ = k / nr_channels;
                 unsigned int chan_ = k % nr_channels;
 
-                if (time < nr_timesteps) {
+                if (time_ < nr_timesteps) {
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time_, chan_, term_nr, pol);
                         float2 sum      = scratch_sum[sum_idx];
