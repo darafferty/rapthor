@@ -822,6 +822,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                cpuKernels.set_report(report);
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -849,6 +850,7 @@ namespace idg {
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
                 device.free_device_memory();
+                device.set_report(report);
 
                 // Load stream
                 cu::Stream& htodstream = device.get_htod_stream();
