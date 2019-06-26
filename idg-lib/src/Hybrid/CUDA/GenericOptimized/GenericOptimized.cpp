@@ -984,6 +984,7 @@ namespace idg {
                 auto nr_terms     = aterm_derivatives.get_z_dim();
                 auto subgrid_size = aterms.get_y_dim();
                 auto nr_timeslots = aterms.get_w_dim();
+                auto nr_stations  = aterms.get_z_dim();
                 auto grid_size    = m_calibrate_state.grid_size;
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
@@ -1017,7 +1018,7 @@ namespace idg {
 
                 // Load memory objects
                 cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                cu::DeviceMemory& d_aterms       = device.get_device_aterms(1, nr_timeslots, subgrid_size);
+                cu::DeviceMemory& d_aterms       = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                 unsigned int d_metadata_id       = m_calibrate_state.d_metadata_ids[antenna_nr];
                 unsigned int d_subgrids_id       = m_calibrate_state.d_subgrids_ids[antenna_nr];
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
