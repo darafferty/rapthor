@@ -421,7 +421,7 @@ __device__ void update_gradient(
                 unsigned int time_ = k / nr_channels;
                 unsigned int chan_ = k % nr_channels;
 
-                if (time < nr_timesteps) {
+                if (time_ < nr_timesteps) {
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time_, chan_, term_nr, pol);
                         float2 sum      = scratch_sum[sum_idx];
