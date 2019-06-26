@@ -43,6 +43,8 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         Plan::Options options);
 
+                    virtual std::complex<float>* getWTilesBuffer() {return itsWTilesBuffer.data();}
+
                 private:
                     // Routines
                     virtual void do_gridding(
