@@ -8,7 +8,8 @@ typedef struct { int x, y, z; } Coordinate;
 typedef struct { int station1, station2; } Baseline;
 typedef struct { int baseline_offset; int time_offset; int nr_timesteps;
                  Baseline baseline; Coordinate coordinate;
-                 Coordinate wtile_coordinate; int wtile_index; } Metadata;
+                 Coordinate wtile_coordinate; int wtile_index;
+                 int nr_aterms;} Metadata;
 
 /*
     Index methods

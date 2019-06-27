@@ -357,7 +357,8 @@ namespace idg {
                         .baseline         = baseline,                                       // baselines
                         .coordinate       = subgrid.get_coordinate(),                       // coordinate
                         .wtile_coordinate = subgrid.get_wtile_coordinate(),                 // tile coordinate
-                        .wtile_index      = -1                                              // tile index, to be filled in combine step
+                        .wtile_index      = -1,                                             // tile index, to be filled in combine step
+                        .nr_aterms        = -1                                              // nr of aterms, to be filled in later
                     };
 
                     metadata_[bl].push_back(m);
@@ -432,6 +433,22 @@ namespace idg {
                     aterm_indices.push_back(aterm_index);
                 }
             }
+        }
+
+        // Set nr_aterms
+        for (Metadata &m : metadata) {
+            auto time_offset_global = m.baseline_offset + m.time_offset;
+            auto aterm_index = aterm_indices[time_offset_global];
+            auto nr_aterms = 1;
+            for (auto time = 0; time < m.nr_timesteps; time++) {
+                auto aterm_index_current = aterm_indices[time_offset_global + time];
+                if (aterm_index != aterm_index_current) {
+                    nr_aterms++;
+                    aterm_index = aterm_index_current;
+                }
+            }
+
+            m.nr_aterms = nr_aterms;
         }
 
         // Set sentinel
