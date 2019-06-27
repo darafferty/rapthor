@@ -390,11 +390,13 @@ namespace idg {
 
             for (unsigned i = 0; i < metadata_[bl].size(); i++) {
                 Metadata& m = metadata_[bl][i];
+                int subgrid_index = metadata.size();
+
+                // Set wtile_index
                 Coordinate& wtile_coordinate = m.wtile_coordinate;
+                m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
 
                 // Append subgrid
-                int subgrid_index = metadata.size();
-                m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
                 metadata.push_back(metadata_[bl][i]);
 
                 // Accumulate timesteps
