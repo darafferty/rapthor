@@ -139,7 +139,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     idg::Array2D<idg::UVWCoordinate<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-        idg::get_example_aterms(optimized, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        idg::get_identity_aterms(optimized, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
         idg::get_example_aterms_offsets(optimized, nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
