@@ -1,8 +1,9 @@
+#!/usr/bin/env python
+
 # after INSTALLING the library, and sourcing init-enviroment.sh
 # (or setting the PYTHONPATH manually), you can import the idg module
 import idg
 import idg.util as util
-from idg import lib as lib
 from idg.data import Data
 import numpy
 import matplotlib.pyplot as plt
@@ -12,13 +13,13 @@ import random
 # paramaters
 ############
 _nr_channels      = 1
-_nr_timesteps     = 1*60*60           # samples per baseline
+_nr_timesteps     = 1*60*60        # samples per baseline
 _nr_timeslots     = 16             # A-term time slots
 _subgrid_size     = 24
 _integration_time = 0.9
 _kernel_size      = (_subgrid_size / 2) + 1
 _nr_correlations  = 4
-_layout_file           = "SKA1_low_ecef"
+_layout_file      = "SKA1_low_ecef"
 
 def get_nr_channels():
     return _nr_channels
@@ -43,16 +44,6 @@ def get_nr_correlations():
 
 def get_layout_file():
     return _layout_file
-
-#################
-# initialize data
-#################
-def init_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels):
-    visibilities =  numpy.ones(
-        (nr_baselines, nr_timesteps, nr_channels, _nr_correlations),
-        dtype = idg.visibilitiestype)
-    #util.plot_visibilities(visibilities)
-    return visibilities
 
 
 ###########
