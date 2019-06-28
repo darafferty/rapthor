@@ -133,19 +133,22 @@ namespace idg {
                     device.set_context();
                     device.set_report(report);
 
-                    // Set device memory
-                    cu::Stream&       htodstream   = device.get_htod_stream();
-                    cu::DeviceMemory& d_spheroidal = device.get_device_spheroidal(subgrid_size);
+                    // Allocate device memory
+                    cu::DeviceMemory& d_spheroidal     = device.get_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms         = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices(nr_baselines, nr_timesteps);
+                    device.get_device_wavenumbers(nr_channels);
 
                     unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
                     cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction(avg_aterm_correction_subgrid_size);
 
-                    cu::DeviceMemory& d_aterms         = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices(nr_baselines, nr_timesteps);
-
+                    // Copy static data structures
+                    cu::Stream& htodstream = device.get_htod_stream();
                     htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
                     htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
                     htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
+                    // wavenumber can differ for individual gridding/degridding calls,
+                    // need to copy them in the routines rather than here
 
                     if (avg_aterm_correction_subgrid_size)
                     {
@@ -171,7 +174,6 @@ namespace idg {
 
                     // Initialize memory
                     for (unsigned t = 0; t < max_nr_streams; t++) {
-                        device.get_device_wavenumbers(t, nr_channels);
                         device.get_device_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
                         device.get_device_uvw(t, jobsize_[d], nr_timesteps);
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
@@ -295,6 +297,8 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 InstanceCUDA& device = get_device(0);
+                device.set_context();
+
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -341,7 +345,6 @@ namespace idg {
                 std::vector<cu::Event*> outputCopied;
 
                 // Prepare job data
-                device.set_context();
                 struct JobData {
                     unsigned current_nr_baselines;
                     unsigned current_nr_subgrids;
@@ -369,6 +372,21 @@ namespace idg {
                     outputCopied.push_back(new cu::Event());
                 }
 
+                // Load memory objects
+                cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
+                cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
+                cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction();
+
+                // Load streams
+                cu::Stream& executestream = device.get_execute_stream();
+                cu::Stream& htodstream    = device.get_htod_stream();
+                cu::Stream& dtohstream    = device.get_dtoh_stream();
+
+                // Copy static data structures
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+
                 // Id for double-buffering
                 unsigned local_id = 0;
 
@@ -385,34 +403,18 @@ namespace idg {
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
 
-                    // Load device
-                    InstanceCUDA& device  = get_device(0);
-                    device.set_context();
-
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                    cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
-                    cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                    cu::DeviceMemory& d_aterms_indices       = device.get_device_aterms_indices();
-                    cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
 
-                    // Load streams
-                    cu::Stream& executestream = device.get_execute_stream();
-                    cu::Stream& htodstream    = device.get_htod_stream();
-                    cu::Stream& dtohstream    = device.get_dtoh_stream();
-
                     // Copy input data for first job to device
                     if (job_id == 0) {
-                        auto sizeof_wavenumbers  = auxiliary::sizeof_wavenumbers(nr_channels);
                         auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                         auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                         auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                         htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
@@ -472,7 +474,10 @@ namespace idg {
                     // Run adder on host
                     cu::Marker marker("run_adder_wstack");
                     marker.start();
-                    cpuKernels.run_adder_wstack(
+                    //cpuKernels.run_adder_wstack(
+                    //    current_nr_subgrids, grid_size, subgrid_size,
+                    //    metadata_ptr, h_subgrids, grid.data());
+                    cpuKernels.run_adder(
                         current_nr_subgrids, grid_size, subgrid_size,
                         metadata_ptr, h_subgrids, grid.data());
                     marker.end();
@@ -570,6 +575,8 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 InstanceCUDA& device = get_device(0);
+                device.set_context();
+
                 InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -616,7 +623,6 @@ namespace idg {
                 std::vector<cu::Event*> outputCopied;
 
                 // Prepare job data
-                device.set_context();
                 struct JobData {
                     unsigned current_nr_baselines;
                     unsigned current_nr_subgrids;
@@ -644,6 +650,20 @@ namespace idg {
                     outputCopied.push_back(new cu::Event());
                 }
 
+                // Load memory objects
+                cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
+                cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
+                cu::DeviceMemory& d_aterms       = device.get_device_aterms();
+                cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
+
+                // Load streams
+                cu::Stream& executestream = device.get_execute_stream();
+                cu::Stream& htodstream    = device.get_htod_stream();
+                cu::Stream& dtohstream    = device.get_dtoh_stream();
+
+                // Copy static data structures
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+
                 // Id for double-buffering
                 unsigned local_id = 0;
 
@@ -660,15 +680,7 @@ namespace idg {
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
 
-                    // Load device
-                    InstanceCUDA& device  = get_device(0);
-                    device.set_context();
-
                     // Load memory objects
-                    cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers(local_id, 0);
-                    cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
-                    cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                    cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
                     cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
@@ -678,25 +690,21 @@ namespace idg {
                     cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
                     #endif
 
-                    // Load streams
-                    cu::Stream& executestream = device.get_execute_stream();
-                    cu::Stream& htodstream    = device.get_htod_stream();
-                    cu::Stream& dtohstream    = device.get_dtoh_stream();
-
                     // Copy input data for first job to device
                     if (job_id == 0) {
-                        auto sizeof_wavenumbers = auxiliary::sizeof_wavenumbers(nr_channels);
                         auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                         auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), sizeof_wavenumbers);
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                     }
 
                     // Run splitter on host
                     cu::Marker marker("run_splitter_wstack");
                     marker.start();
-                    cpuKernels.run_splitter_wstack(
+                    //cpuKernels.run_splitter_wstack(
+                    //    current_nr_subgrids, grid_size, subgrid_size,
+                    //    metadata_ptr, h_subgrids, grid.data());
+                    cpuKernels.run_splitter(
                         current_nr_subgrids, grid_size, subgrid_size,
                         metadata_ptr, h_subgrids, grid.data());
                     marker.end();
@@ -727,7 +735,7 @@ namespace idg {
                     // Copy input data for next job
                     if (job_id_next < jobs.size()) {
 
-                        // Load memory objects 
+                        // Load memory objects
                         cu::DeviceMemory& d_uvw      = device.get_device_uvw(local_id_next);
                         cu::DeviceMemory& d_metadata = device.get_device_metadata(local_id_next);
 
