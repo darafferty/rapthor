@@ -220,18 +220,15 @@ namespace idg {
         return aterms;
     }
 
-    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
-        proxy::Proxy& proxy,
-        unsigned int nr_timeslots,
-        unsigned int nr_stations,
-        unsigned int height,
-        unsigned int width)
-    {
-        assert(height == width);
-        auto bytes = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, height);
-        Matrix2x2<std::complex<float>>* ptr = (Matrix2x2<std::complex<float>>*) proxy.allocate_memory(bytes);
 
-        Array4D<Matrix2x2<std::complex<float>>> aterms(ptr, nr_timeslots, nr_stations, height, width);
+    void init_example_aterms(
+        Array4D<Matrix2x2<std::complex<float>>> &aterms)
+    {
+        unsigned int nr_timeslots = aterms.get_w_dim();
+        unsigned int nr_stations  = aterms.get_z_dim();
+        unsigned int height       = aterms.get_y_dim();
+        unsigned int width        = aterms.get_x_dim();
+
         for (unsigned t = 0; t < nr_timeslots; t++) {
             for (unsigned ant = 0; ant < nr_stations; ant++) {
                 for (unsigned y = 0; y < height; y++) {
@@ -247,7 +244,21 @@ namespace idg {
                 }
             }
         }
+    }
 
+
+    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_stations,
+        unsigned int height,
+        unsigned int width)
+    {
+        assert(height == width);
+        auto bytes = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, height);
+        Matrix2x2<std::complex<float>>* ptr = (Matrix2x2<std::complex<float>>*) proxy.allocate_memory(bytes);
+        Array4D<Matrix2x2<std::complex<float>>> aterms(ptr, nr_timeslots, nr_stations, height, width);
+        init_example_aterms(aterms);
         return aterms;
     }
 
@@ -452,22 +463,7 @@ namespace idg {
     {
         assert(height == width);
         Array4D<Matrix2x2<std::complex<float>>> aterms(nr_timeslots, nr_stations, height, width);
-
-        for (unsigned t = 0; t < nr_timeslots; t++) {
-            for (unsigned ant = 0; ant < nr_stations; ant++) {
-                for (unsigned y = 0; y < height; y++) {
-                    for (unsigned x = 0; x < width; x++) {
-                        std::complex<float> valueXX = std::complex<float>(1.0, 1.1);
-                        std::complex<float> valueXY = std::complex<float>(0.8, 0.9);
-                        std::complex<float> valueYX = std::complex<float>(0.6, 1.7);
-                        std::complex<float> valueYY = std::complex<float>(0.4, 0.5);
-                        const Matrix2x2<std::complex<float>> aterm = {valueXX, valueXY, valueYX, valueYY};
-                        aterms(t, ant, y, x) = aterm;
-                    }
-                }
-            }
-        }
-
+        init_example_aterms(aterms);
         return aterms;
     }
 

@@ -129,6 +129,12 @@ namespace idg {
         unsigned int height,
         unsigned int width);
 
+    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+        unsigned int nr_timeslots,
+        unsigned int nr_stations,
+        unsigned int height,
+        unsigned int width);
+
     Array1D<unsigned int> get_example_aterms_offsets(
         unsigned int nr_timeslots,
         unsigned int nr_timesteps);
