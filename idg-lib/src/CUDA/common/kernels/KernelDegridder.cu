@@ -8,7 +8,7 @@ __shared__ float4 shared[3][BATCH_SIZE];
 /*
     Kernel
 */
-template<int current_nr_channels>
+template<int current_nr_channels, int unroll_channels>
 __device__ void kernel_degridder_(
     const int                         grid_size,
     const int                         subgrid_size,
@@ -49,6 +49,9 @@ __device__ void kernel_degridder_(
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
+    // Determine the number of visibilities are computed in parallel in the frequency dimension
+    int nr_channels_parallel = current_nr_channels / unroll_channels;
+
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
@@ -64,15 +67,16 @@ __device__ void kernel_degridder_(
             }
         }
 
-        for (int i = tid; i < ALIGN(current_nr_timesteps, nr_threads); i += nr_threads) {
-            int time = time_offset_local + i;
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, nr_threads); i += nr_threads) {
+            int time = time_offset_local + (i / nr_channels_parallel);
+            int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
 
-            float2 visXX[current_nr_channels];
-            float2 visXY[current_nr_channels];
-            float2 visYX[current_nr_channels];
-            float2 visYY[current_nr_channels];
+            float2 visXX[unroll_channels];
+            float2 visXY[unroll_channels];
+            float2 visYX[unroll_channels];
+            float2 visYY[unroll_channels];
 
-            for (int chan = 0; chan < current_nr_channels; chan++) {
+            for (int chan = 0; chan < unroll_channels; chan++) {
                 visXX[chan] = make_float2(0, 0);
                 visXY[chan] = make_float2(0, 0);
                 visYX[chan] = make_float2(0, 0);
@@ -159,9 +163,9 @@ __device__ void kernel_degridder_(
                     // Compute phase index
                     float phase_index = u * l + v * m + w * n;
 
-                    for (int chan = 0; chan < current_nr_channels; chan++) {
+                    for (int chan = 0; chan < unroll_channels; chan++) {
                         // Load wavenumber
-                        float wavenumber = wavenumbers[channel_offset + chan];
+                        float wavenumber = wavenumbers[channel_offset + channel_offset_local + chan];
 
                         // Compute phasor
                         float  phase  = (phase_index * wavenumber) - phase_offset;
@@ -191,12 +195,12 @@ __device__ void kernel_degridder_(
                 } // end for k (batch)
             } // end for pixel_offset
 
-            for (int chan = 0; chan < current_nr_channels; chan++) {
+            for (int chan = 0; chan < unroll_channels; chan++) {
                 if (time < nr_timesteps) {
                     // Store visibility
                     const float scale = 1.0f / (subgrid_size * subgrid_size);
                     int idx_time = time_offset_global + time;
-                    int idx_chan = channel_offset + chan;
+                    int idx_chan = channel_offset + channel_offset_local + chan;
                     int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
                     float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
                     float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
@@ -209,11 +213,25 @@ __device__ void kernel_degridder_(
     } // end for time_offset_local
 } // end kernel_degridder_
 
+#define LOAD_METADATA \
+    int s          = blockIdx.x; \
+    const Metadata &m = metadata[s]; \
+    const int nr_timesteps = m.nr_timesteps; \
+    const int nr_aterms    = m.nr_aterms;
+
 #define KERNEL_DEGRIDDER(current_nr_channels) \
-    for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
-        kernel_degridder_<current_nr_channels>( \
-            grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
+    if (nr_timesteps / nr_aterms < (2*warpSize)) { \
+        for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
+            kernel_degridder_<current_nr_channels, 1>( \
+                grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+                uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
+        } \
+    } else { \
+        for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
+            kernel_degridder_<current_nr_channels, current_nr_channels>( \
+                grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+                uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
+        } \
     }
 
 #define GLOBAL_ARGUMENTS \
@@ -233,9 +251,11 @@ __device__ void kernel_degridder_(
           float2*        __restrict__ subgrid
 
 extern "C" {
+
 __global__ void
     kernel_degridder_1(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(1)
 }
@@ -243,6 +263,7 @@ __global__ void
 __global__ void
     kernel_degridder_2(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(2)
 }
@@ -250,6 +271,7 @@ __global__ void
 __global__ void
     kernel_degridder_3(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(3)
 }
@@ -257,6 +279,7 @@ __global__ void
 __global__ void
     kernel_degridder_4(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(4)
 }
@@ -264,6 +287,7 @@ __global__ void
 __global__ void
     kernel_degridder_5(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(5)
 }
@@ -271,6 +295,7 @@ __global__ void
 __global__ void
     kernel_degridder_6(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(6)
 }
@@ -278,6 +303,7 @@ __global__ void
 __global__ void
     kernel_degridder_7(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(7)
 }
@@ -285,6 +311,7 @@ __global__ void
 __global__ void
     kernel_degridder_8(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(8)
 }
@@ -292,6 +319,7 @@ __global__ void
 __global__ void
     kernel_degridder_n(GLOBAL_ARGUMENTS)
 {
+    LOAD_METADATA
     int channel_offset = 0;
     KERNEL_DEGRIDDER(8)
     KERNEL_DEGRIDDER(7)

@@ -24,6 +24,7 @@ namespace idg {
         Coordinate coordinate;
         Coordinate wtile_coordinate;
         int wtile_index;
+        int nr_aterms;
     } Metadata;
 
     typedef struct {float real; float imag; } float2;

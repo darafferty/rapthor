@@ -357,7 +357,8 @@ namespace idg {
                         .baseline         = baseline,                                       // baselines
                         .coordinate       = subgrid.get_coordinate(),                       // coordinate
                         .wtile_coordinate = subgrid.get_wtile_coordinate(),                 // tile coordinate
-                        .wtile_index      = -1                                              // tile index, to be filled in combine step
+                        .wtile_index      = -1,                                             // tile index, to be filled in combine step
+                        .nr_aterms        = -1                                              // nr of aterms, to be filled in later
                     };
 
                     metadata_[bl].push_back(m);
@@ -390,11 +391,13 @@ namespace idg {
 
             for (unsigned i = 0; i < metadata_[bl].size(); i++) {
                 Metadata& m = metadata_[bl][i];
+                int subgrid_index = metadata.size();
+
+                // Set wtile_index
                 Coordinate& wtile_coordinate = m.wtile_coordinate;
+                m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
 
                 // Append subgrid
-                int subgrid_index = metadata.size();
-                m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
                 metadata.push_back(metadata_[bl][i]);
 
                 // Accumulate timesteps
@@ -430,6 +433,22 @@ namespace idg {
                     aterm_indices.push_back(aterm_index);
                 }
             }
+        }
+
+        // Set nr_aterms
+        for (Metadata &m : metadata) {
+            auto time_offset_global = m.baseline_offset + m.time_offset;
+            auto aterm_index = aterm_indices[time_offset_global];
+            auto nr_aterms = 1;
+            for (auto time = 0; time < m.nr_timesteps; time++) {
+                auto aterm_index_current = aterm_indices[time_offset_global + time];
+                if (aterm_index != aterm_index_current) {
+                    nr_aterms++;
+                    aterm_index = aterm_index_current;
+                }
+            }
+
+            m.nr_aterms = nr_aterms;
         }
 
         // Set sentinel

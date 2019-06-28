@@ -273,7 +273,6 @@ namespace idg {
                     function_splitter = new cu::Function(function); found++;
                 }
 
-
                 // Find calibration functions
                 if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
                     functions_calibrate.push_back(new cu::Function(function)); found++;
@@ -532,8 +531,12 @@ namespace idg {
                 dim3 block(block_degridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
+                #if 1
                 int kernel_id = min(nr_channels-1, 8);
                 cu::Function *function = functions_degridder[kernel_id];
+                #else
+                cu::Function *function = functions_degridder[8];
+                #endif
                 #if ENABLE_REPEAT_KERNELS
                 for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
