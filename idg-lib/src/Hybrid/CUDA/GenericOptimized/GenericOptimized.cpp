@@ -474,7 +474,10 @@ namespace idg {
                     // Run adder on host
                     cu::Marker marker("run_adder_wstack");
                     marker.start();
-                    cpuKernels.run_adder_wstack(
+                    //cpuKernels.run_adder_wstack(
+                    //    current_nr_subgrids, grid_size, subgrid_size,
+                    //    metadata_ptr, h_subgrids, grid.data());
+                    cpuKernels.run_adder(
                         current_nr_subgrids, grid_size, subgrid_size,
                         metadata_ptr, h_subgrids, grid.data());
                     marker.end();
@@ -698,7 +701,10 @@ namespace idg {
                     // Run splitter on host
                     cu::Marker marker("run_splitter_wstack");
                     marker.start();
-                    cpuKernels.run_splitter_wstack(
+                    //cpuKernels.run_splitter_wstack(
+                    //    current_nr_subgrids, grid_size, subgrid_size,
+                    //    metadata_ptr, h_subgrids, grid.data());
+                    cpuKernels.run_splitter(
                         current_nr_subgrids, grid_size, subgrid_size,
                         metadata_ptr, h_subgrids, grid.data());
                     marker.end();
