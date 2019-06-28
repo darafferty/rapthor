@@ -259,11 +259,6 @@ namespace idg {
                     }
                 }
 
-                // Find generic degridder function
-                if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) == CUDA_SUCCESS) {
-                    functions_degridder.push_back(new cu::Function(function));
-                }
-
                 // All gridder and degridder functions are found
                 found += 2;
 
@@ -536,7 +531,7 @@ namespace idg {
                 dim3 block(block_degridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
-                #if 0
+                #if 1
                 int kernel_id = min(nr_channels-1, 8);
                 cu::Function *function = functions_degridder[kernel_id];
                 #else
