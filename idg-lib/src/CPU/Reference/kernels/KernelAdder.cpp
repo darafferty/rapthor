@@ -40,8 +40,8 @@ void kernel_adder(
             int *index_pol = (int *) (negative_w ? index_pol_default : index_pol_transposed);
 
             // Check wheter subgrid fits in grid
-            if (subgrid_x >= 0 && subgrid_x < grid_size-subgrid_size-1 &&
-                subgrid_y >= 0 && subgrid_y < grid_size-subgrid_size-1) {
+            if (subgrid_x > 0 && subgrid_x < grid_size-subgrid_size &&
+                subgrid_y > 0 && subgrid_y < grid_size-subgrid_size) {
 
                 for (int y = 0; y < subgrid_size; y++) {
                     for (int x = 0; x < subgrid_size; x++) {

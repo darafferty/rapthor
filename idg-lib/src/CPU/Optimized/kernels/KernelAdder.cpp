@@ -49,8 +49,8 @@ void kernel_adder(
             }
 
             // Check whether subgrid fits in grid
-            if (!(subgrid_x > 0 && subgrid_x < grid_size-subgrid_size &&
-                  subgrid_y > 0 && subgrid_y < grid_size-subgrid_size)) continue;
+            if (!(subgrid_x >= 1 && subgrid_x < grid_size-subgrid_size &&
+                  subgrid_y >= 1 && subgrid_y < grid_size-subgrid_size)) continue;
 
             // Determine polarization index
             const int index_pol_default[NR_POLARIZATIONS]    = {0, 1, 2, 3};
