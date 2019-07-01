@@ -91,9 +91,12 @@ __device__ void update_sums(
     unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
+    // Load metadata for first subgrid
+    const Metadata &m0 = metadata[0];
+
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = m.time_index;
+    const unsigned int time_offset  = m.time_index - m0.time_index;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
