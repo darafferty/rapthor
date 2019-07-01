@@ -149,11 +149,11 @@ __device__ void
 	}
 
     // Load metadata for first subgrid
-    const Metadata &m_0 = metadata[0];
+    const Metadata &m0 = metadata[0];
 
 	// Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const int time_offset_global = m.time_index - m0.time_index;
     const int nr_timesteps = m.nr_timesteps;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;

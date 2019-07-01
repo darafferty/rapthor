@@ -345,14 +345,16 @@ namespace idg {
                     }
                 }
 
+                // Compute time index for first visibility on subgrid
+                auto time_index = bl * nr_timesteps + first_timestep;
+
                 // Finish subgrid
                 subgrid.finish();
 
                 // Add subgrid to metadata
                 if (subgrid.in_range()) {
                     Metadata m = {
-                        .baseline_offset  = (int) (bl *  nr_timesteps),                     // baseline offset, TODO: store bl index
-                        .time_offset      = (int) (first_timestep),                         // time offset, TODO: store time index
+                        .time_index       = (int) time_index,                               // time index
                         .nr_timesteps     = nr_timesteps_subgrid,                           // nr of timesteps
                         .baseline         = baseline,                                       // baselines
                         .coordinate       = subgrid.get_coordinate(),                       // coordinate
@@ -437,11 +439,10 @@ namespace idg {
 
         // Set nr_aterms
         for (Metadata &m : metadata) {
-            auto time_offset_global = m.baseline_offset + m.time_offset;
-            auto aterm_index = aterm_indices[time_offset_global];
+            auto aterm_index = aterm_indices[m.time_index];
             auto nr_aterms = 1;
             for (auto time = 0; time < m.nr_timesteps; time++) {
-                auto aterm_index_current = aterm_indices[time_offset_global + time];
+                auto aterm_index_current = aterm_indices[m.time_index + time];
                 if (aterm_index != aterm_index_current) {
                     nr_aterms++;
                     aterm_index = aterm_index_current;
@@ -612,26 +613,22 @@ namespace idg {
         // Sanity check
         assert((unsigned) get_nr_baselines() == nr_baselines);
 
-        // Find offset for first subgrid
-        const Metadata& m0 = metadata[0];
-        int baseline_offset_1 = m0.baseline_offset;
-
         // Iterate all metadata elements
         int nr_subgrids = get_nr_subgrids();
         for (int i = 0; i < nr_subgrids; i++) {
             const Metadata& m_current = metadata[i];
 
             // Determine which visibilities are used in the plan
-            unsigned current_offset       = (m_current.baseline_offset - baseline_offset_1) + m_current.time_offset;
+            unsigned time_index           = m_current.time_index;
             unsigned current_nr_timesteps = m_current.nr_timesteps;
 
             // Determine which visibilities to mask
-            unsigned first = current_offset + current_nr_timesteps;
+            unsigned first = time_index + current_nr_timesteps;
             unsigned last = 0;
             if (i < nr_subgrids-1) {
                 const Metadata& m_next = metadata[i+1];
-                int next_offset = (m_next.baseline_offset - baseline_offset_1) + m_next.time_offset;
-                last = next_offset;
+                int next_index = m_next.time_index;
+                last = next_index;
             } else {
                 last = nr_baselines * nr_timesteps;
             }

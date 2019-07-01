@@ -17,8 +17,7 @@ namespace idg {
     typedef struct { unsigned int station1, station2; } Baseline;
 
     typedef struct {
-        int baseline_offset;
-        int time_offset;
+        int time_index;
         int nr_timesteps;
         Baseline baseline;
         Coordinate coordinate;

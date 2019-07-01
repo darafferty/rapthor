@@ -91,12 +91,12 @@ __device__ void update_sums(
     unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
-    // Metadata for first subgrid
-    const Metadata &m_0       = metadata[0];
+    // Load metadata for first subgrid
+    const Metadata &m0 = metadata[0];
 
-    // metadata for current subgrid
+    // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const unsigned int time_offset  = m.time_index - m0.time_index;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
@@ -266,12 +266,9 @@ __device__ void update_gradient(
     unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
-    // Metadata for first subgrid
-    const Metadata &m_0       = metadata[0];
-
-    // metadata for current subgrid
+    // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const unsigned int time_offset  = m.time_index;
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
@@ -470,12 +467,9 @@ __device__ void update_hessian(
     unsigned s          = blockIdx.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
 
-    // Metadata for first subgrid
-    const Metadata &m_0       = metadata[0];
-
     // Metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const unsigned int time_offset  = m.time_index;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Iterate all terms * terms

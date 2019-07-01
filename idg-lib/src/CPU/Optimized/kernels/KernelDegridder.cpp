@@ -32,10 +32,6 @@ void kernel_degridder(
     CREATE_LOOKUP
     #endif
 
-    // Find offset of first subgrid
-    const idg::Metadata m       = metadata[0];
-    const int baseline_offset_1 = m.baseline_offset;
-
     // Compute l,m,n
     const unsigned nr_pixels = subgrid_size*subgrid_size;
     float l_[nr_pixels];
@@ -57,7 +53,7 @@ void kernel_degridder(
 
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+        const int time_offset  = m.time_index;
         const int nr_timesteps = m.nr_timesteps;
         const int station1     = m.baseline.station1;
         const int station2     = m.baseline.station2;

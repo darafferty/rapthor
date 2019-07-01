@@ -44,14 +44,10 @@ class Reference(Proxy):
         v_ = uvw['v'].flatten()
         w_ = uvw['w'].flatten()
 
-        # Find offset of first subgrid
-        m_1 = metadata[0]
-        baseline_offset_1 = m_1['baseline_offset']
-
         # Iterate all subgrids
         for s,m in enumerate(metadata):
             # Load metadata
-            offset       = (m['baseline_offset'] - baseline_offset_1) + m['time_offset']
+            offset       = m['time_index']
             nr_timesteps = m['nr_timesteps']
             aterm_index  = m['aterm_index']
             station1     = m['baseline']['station1']
