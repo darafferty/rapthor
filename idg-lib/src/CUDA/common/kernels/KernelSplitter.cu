@@ -43,8 +43,8 @@ __global__ void kernel_splitter(
         float2 phasor = make_float2(cos(phase), sin(phase));
 
         // Check whether subgrid fits in grid
-        if (subgrid_x > 0 && subgrid_x < grid_size-subgrid_size-1 &&
-            subgrid_y > 0 && subgrid_y < grid_size-subgrid_size-1) {
+        if (subgrid_x >= 1 && subgrid_x < grid_size-subgrid_size &&
+            subgrid_y >= 1 && subgrid_y < grid_size-subgrid_size) {
 
             // Compute shifted position in subgrid
             int x_dst = (x + (subgrid_size/2)) % subgrid_size;
