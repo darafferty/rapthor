@@ -1,10 +1,6 @@
 #include <complex>
 
-#include <stdlib.h>
-#include <stdint.h>
-
 #include "Types.h"
-
 
 extern "C" {
 void kernel_splitter_wstack(
@@ -31,18 +27,18 @@ void kernel_splitter_wstack(
     #pragma omp parallel for
     for (int s = 0; s < nr_subgrids; s++) {
         // Load position in grid
-        int grid_x = metadata[s].coordinate.x;
-        int grid_y = metadata[s].coordinate.y;
-        int grid_w = metadata[s].coordinate.z;
+        int subgrid_x = metadata[s].coordinate.x;
+        int subgrid_y = metadata[s].coordinate.y;
+        int subgrid_w = metadata[s].coordinate.z;
 
         // Mirror w-layer for negative w-values
-        bool negative_w = grid_w < 0;
-        int w_layer = negative_w ? -grid_w - 1 : grid_w;
+        bool negative_w = subgrid_w < 0;
+        int w_layer = negative_w ? -subgrid_w - 1 : subgrid_w;
 
         // Determine polarization index
         const int index_pol_default[NR_POLARIZATIONS]    = {0, 1, 2, 3};
         const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-        int *index_pol = (int *) (grid_w < 0 ? index_pol_default : index_pol_transposed);
+        int *index_pol = (int *) (negative_w ? index_pol_default : index_pol_transposed);
 
         for (int y = 0; y < subgrid_size; y++) {
             for (int x = 0; x < subgrid_size; x++) {
@@ -51,12 +47,12 @@ void kernel_splitter_wstack(
                 int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
                 // Compute position in grid
-                int x_src = negative_w ? grid_size - grid_x - x : grid_x + x;
-                int y_src = negative_w ? grid_size - grid_y - y : grid_y + y;
+                int x_src = negative_w ? grid_size - subgrid_x - x : subgrid_x + x;
+                int y_src = negative_w ? grid_size - subgrid_y - y : subgrid_y + y;
 
                 // Check whether subgrid fits in grid
-                if (grid_x >= 1 && grid_x < grid_size-subgrid_size &&
-                    grid_y >= 1 && grid_y < grid_size-subgrid_size) {
+                if (subgrid_x >= 1 && subgrid_x < grid_size-subgrid_size &&
+                    subgrid_y >= 1 && subgrid_y < grid_size-subgrid_size) {
 
                     // Load phasor
                     idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
