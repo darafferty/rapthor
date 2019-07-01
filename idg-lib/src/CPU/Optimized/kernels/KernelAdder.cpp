@@ -40,9 +40,22 @@ void kernel_adder(
             int subgrid_y = metadata[s].coordinate.y;
             int subgrid_w = metadata[s].coordinate.z;
 
+            // Mirror subgrid coordinates for negative w-values
+            bool negative_w = subgrid_w < 0;
+            if (negative_w) {
+                subgrid_x = grid_size - subgrid_x - subgrid_size + 1;
+                subgrid_y = grid_size - subgrid_y - subgrid_size + 1;
+                subgrid_w =  -subgrid_w - 1;
+            }
+
             // Check whether subgrid fits in grid
-            if (!(subgrid_x > 0 && subgrid_x < grid_size-subgrid_size &&
-                  subgrid_y > 0 && subgrid_y < grid_size-subgrid_size)) continue;
+            if (!(subgrid_x >= 1 && subgrid_x < grid_size-subgrid_size &&
+                  subgrid_y >= 1 && subgrid_y < grid_size-subgrid_size)) continue;
+
+            // Determine polarization index
+            const int index_pol_default[NR_POLARIZATIONS]    = {0, 1, 2, 3};
+            const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+            int *index_pol = (int *) (negative_w ? index_pol_default : index_pol_transposed);
 
             // Iterate over subgrid rows, starting at a row that belongs to this thread
             // and stepping by the number of threads
@@ -65,9 +78,11 @@ void kernel_adder(
 
                     // Add subgrid value to grid
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        long dst_idx = index_grid(NR_POLARIZATIONS, grid_size, subgrid_w, pol, y_dst, x_dst);
+                        int pol_dst = index_pol[pol];
+                        long dst_idx = index_grid(NR_POLARIZATIONS, grid_size, subgrid_w, pol_dst, y_dst, x_dst);
                         long src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
                         idg::float2 value = phasor * subgrid[src_idx];
+                        value = negative_w ? conj(value) : value;
                         grid[dst_idx] += value;
                     } // end for pol
                 } // end for x

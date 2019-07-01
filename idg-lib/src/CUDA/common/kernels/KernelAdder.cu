@@ -27,8 +27,15 @@ __global__ void kernel_adder(
 
     // Load position in grid
     const Metadata &m = metadata[s];
-    int grid_x = m.coordinate.x;
-    int grid_y = m.coordinate.y;
+    int subgrid_x = m.coordinate.x;
+    int subgrid_y = m.coordinate.y;
+    int subgrid_w = m.coordinate.z;
+    bool negative_w = subgrid_w < 0;
+
+    // Determine polarization index
+    const int index_pol_default[NR_POLARIZATIONS]    = {0, 1, 2, 3};
+    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+    int *index_pol = (int *) (negative_w ? index_pol_default : index_pol_transposed);
 
     // Iterate all pixels in subgrid
     for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
@@ -39,20 +46,28 @@ __global__ void kernel_adder(
         float2 phasor = make_float2(cos(phase), sin(phase)) * scale;
 
         // Check wheter subgrid fits in grid
-        if (grid_x >= 0 && grid_x < grid_size-subgrid_size &&
-            grid_y >= 0 && grid_y < grid_size-subgrid_size) {
+        if (subgrid_x >= 1 && subgrid_x < grid_size-subgrid_size &&
+            subgrid_y >= 1 && subgrid_y < grid_size-subgrid_size) {
+
             // Compute shifted position in subgrid
             int x_src = (x + (subgrid_size/2)) % subgrid_size;
             int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
+            // Compute position in grid
+            int x_dst = subgrid_x + x;
+            int y_dst = subgrid_y + y;
+
             // Add subgrid value to grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                int pol_dst = index_pol[pol];
                 long dst_idx = enable_tiling ?
-                    index_grid_tiled(grid_size, pol, grid_y + y, grid_x + x) :
-                    index_grid(grid_size, pol, grid_y + y, grid_x + x);
+                    index_grid_tiled(grid_size, pol_dst, y_dst, x_dst) :
+                    index_grid(grid_size, pol_dst, y_dst, x_dst);
                 long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                atomicAdd(&(grid[dst_idx]), phasor * subgrid[src_idx]);
+                float2 value = phasor * subgrid[src_idx];
+                value = negative_w ? conj(value) : value;
+                atomicAdd(&(grid[dst_idx]), value);
             }
         }
     }
