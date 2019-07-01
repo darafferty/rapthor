@@ -56,10 +56,6 @@ void kernel_calibrate(
     CREATE_LOOKUP
     #endif
 
-    // Find offset of first subgrid
-    const idg::Metadata m       = metadata[0];
-    const int baseline_offset_1 = m.baseline_offset;
-
     // Initialize local gradient
     float gradient_real[nr_subgrids][nr_time_slots][nr_terms] __attribute__((aligned((ALIGNMENT))));
     float gradient_imag[nr_subgrids][nr_time_slots][nr_terms] __attribute__((aligned((ALIGNMENT))));
@@ -80,7 +76,7 @@ void kernel_calibrate(
 
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const unsigned int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+        const unsigned int time_offset  = m.time_index;
         const unsigned int nr_timesteps = m.nr_timesteps;
         const unsigned int station1     = m.baseline.station1;
         const unsigned int station2     = m.baseline.station2;
@@ -291,10 +287,6 @@ void kernel_phasor(
     CREATE_LOOKUP
     #endif
 
-    // Find offset of first subgrid
-    const idg::Metadata m       = metadata[0];
-    const int baseline_offset_1 = m.baseline_offset;
-
     // Compute l,m,n
     const unsigned nr_pixels = subgrid_size*subgrid_size;
     float l_[nr_pixels];
@@ -316,7 +308,7 @@ void kernel_phasor(
 
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const int time_offset  = (m.baseline_offset - baseline_offset_1) + m.time_offset;
+        const int time_offset  = m.time_index;
         const int nr_timesteps = m.nr_timesteps;
         const int x_coordinate = m.coordinate.x;
         const int y_coordinate = m.coordinate.y;
