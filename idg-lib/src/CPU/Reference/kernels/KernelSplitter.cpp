@@ -34,7 +34,8 @@ void kernel_splitter(
 
         for (int y = 0; y < subgrid_size; y++) {
             for (int x = 0; x < subgrid_size; x++) {
-                // Compute shifted position in subgrid
+
+                // Compute position in subgrid
                 int x_dst = (x + (subgrid_size/2)) % subgrid_size;
                 int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
@@ -43,8 +44,8 @@ void kernel_splitter(
                 int y_src = negative_w ? grid_size - subgrid_y - y : subgrid_y + y;
 
                 // Check wheter subgrid fits in grid
-                if (subgrid_x >= 0 && subgrid_x < grid_size-subgrid_size-1 &&
-                    subgrid_y >= 0 && subgrid_y < grid_size-subgrid_size-1) {
+                if (subgrid_x >= 1 && subgrid_x < grid_size-subgrid_size &&
+                    subgrid_y >= 1 && subgrid_y < grid_size-subgrid_size) {
 
                     // Compute phasor
                     float phase  = -M_PI*(x+y-subgrid_size)/subgrid_size;

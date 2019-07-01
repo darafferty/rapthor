@@ -56,8 +56,8 @@ void kernel_splitter(
                 int y_src = negative_w ? grid_size - subgrid_y - y : subgrid_y + y;
 
                 // Check whether subgrid fits in grid
-                if (!(subgrid_x > 0 && subgrid_x < grid_size-subgrid_size &&
-                      subgrid_y > 0 && subgrid_y < grid_size-subgrid_size)) continue;
+                if (!(subgrid_x >= 0 && subgrid_x < grid_size-subgrid_size-1 &&
+                      subgrid_y >= 0 && subgrid_y < grid_size-subgrid_size-1)) continue;
 
                 // Load phasor
                 idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
