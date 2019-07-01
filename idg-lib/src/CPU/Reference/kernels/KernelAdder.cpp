@@ -58,9 +58,9 @@ void kernel_adder(
                         idg::float2 phasor = {cosf(phase), sinf(phase)};
 
                         // Add subgrid value to grid
-                        int pol_dst = index_pol[pol];
-                        int dst_idx = index_grid(grid_size, pol, y_dst, x_dst);
-                        int src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol_dst, y_src, x_src);
+                        int  pol_dst = index_pol[pol];
+                        long dst_idx = index_grid(grid_size, pol, y_dst, x_dst);
+                        long src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol_dst, y_src, x_src);
                         idg::float2 value = phasor * subgrid[src_idx];
                         value = negative_w ? conj(value) : value;
                         grid[dst_idx] += value;
