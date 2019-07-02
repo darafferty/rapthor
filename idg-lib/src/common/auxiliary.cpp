@@ -308,6 +308,15 @@ namespace idg {
             return 1ULL * (nr_timeslots + 1) * sizeof(unsigned int);
         }
 
+        uint64_t sizeof_weights(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps,
+            unsigned int nr_channels,
+            unsigned int nr_correlations)
+        {
+            return 1ULL * nr_baselines * nr_timesteps * nr_channels * nr_correlations * sizeof(float);
+        }
+ 
         /*
             Performance reporting
          */
