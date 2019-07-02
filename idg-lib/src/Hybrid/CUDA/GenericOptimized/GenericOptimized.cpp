@@ -855,7 +855,9 @@ namespace idg {
                 auto nr_antennas  = plans.size();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
-                auto nr_channels  = frequencies.get_x_dim();
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
+                auto nr_channels  = visibilities.get_x_dim();
                 auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
 
@@ -879,12 +881,6 @@ namespace idg {
                 // Load stream
                 cu::Stream& htodstream = device.get_htod_stream();
 
-                // Maximum number of subgrids for any antenna
-                unsigned int max_nr_subgrids = 0;
-
-                // Maximum number of timesteps for any antenna
-                unsigned int max_nr_timesteps = 0;
-
                 // Reset vectors in calibration state
                 m_calibrate_state.d_metadata_ids.clear();
                 m_calibrate_state.d_subgrids_ids.clear();
@@ -898,15 +894,6 @@ namespace idg {
                     // Allocate subgrids for current antenna
                     unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
-
-                    if (nr_subgrids > max_nr_subgrids) {
-                        max_nr_subgrids = nr_subgrids;
-                    }
-
-                    unsigned int nr_timesteps = plans[antenna_nr]->get_max_nr_timesteps_subgrid();
-                    if (nr_timesteps > max_nr_timesteps) {
-                        max_nr_timesteps = nr_timesteps;
-                    }
 
                     // Get data pointers
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
@@ -1031,6 +1018,8 @@ namespace idg {
                 m_calibrate_state.kernel_size  = kernel_size;
                 m_calibrate_state.grid_size    = grid_size;
                 m_calibrate_state.subgrid_size = subgrid_size;
+                m_calibrate_state.nr_baselines = nr_baselines;
+                m_calibrate_state.nr_timesteps = nr_timesteps;
                 m_calibrate_state.nr_channels  = nr_channels;
 
                 // Initialize wavenumbers
@@ -1038,7 +1027,8 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
 
                 // Allocate scratch device memory
-                auto sizeof_scratch_sum = max_nr_subgrids * max_nr_timesteps * nr_channels * nr_correlations * max_nr_terms * sizeof(std::complex<float>);
+                auto total_nr_timesteps = nr_baselines * nr_timesteps;
+                auto sizeof_scratch_sum = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
                 m_calibrate_state.d_scratch_sum_id  = device.allocate_device_memory(sizeof_scratch_sum);
             }
 
@@ -1051,7 +1041,8 @@ namespace idg {
             {
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
-                auto nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+                auto nr_baselines = m_calibrate_state.nr_baselines;
+                auto nr_timesteps = m_calibrate_state.nr_timesteps;
                 auto nr_channels  = m_calibrate_state.nr_channels;
                 auto nr_terms     = aterm_derivatives.get_z_dim();
                 auto subgrid_size = aterms.get_y_dim();
@@ -1120,13 +1111,11 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
                 htodstream.record(inputCopied);
 
-                // Get max number of timesteps for any subgrid
-                auto max_nr_timesteps = m_calibrate_state.plans[antenna_nr]->get_max_nr_timesteps_subgrid();
-
                 // Run calibration update step
                 executestream.waitEvent(inputCopied);
+                auto total_nr_timesteps = nr_baselines * nr_timesteps;
                 device.launch_calibrate(
-                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, max_nr_timesteps, nr_channels, nr_terms,
+                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
                     d_scratch_sum, d_hessian, d_gradient);
                 executestream.record(executeFinished);

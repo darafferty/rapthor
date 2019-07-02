@@ -9,22 +9,19 @@
 
 // Index in scratch_sum
 inline __device__ long index_sums(
-    unsigned int max_nr_timesteps,
-    unsigned int nr_channels,
-    unsigned int s,
-    unsigned int time,
-    unsigned int chan,
+    unsigned int total_nr_timesteps, // number of timesteps for all baselines
+    unsigned int nr_channels,        // number channels for a single baseline
     unsigned int term_nr,
-    unsigned int pol)
+    unsigned int pol,
+    unsigned int time,
+    unsigned int chan)
 {
-    // sums: [nr_subgrids][MAX_NR_TERMS][NR_POLARIZATIONS][max_nr_timesteps][nr_channels]
-    return s * MAX_NR_TERMS * NR_POLARIZATIONS * max_nr_timesteps * nr_channels +
-           term_nr * NR_POLARIZATIONS * max_nr_timesteps * nr_channels +
-           pol * max_nr_timesteps * nr_channels +
+    // sums: [MAX_NR_TERMS][NR_POLARIZATIONS][TOTAL_NR_TIMESTEPS][NR_CHANNELS]
+    return term_nr * NR_POLARIZATIONS * total_nr_timesteps * nr_channels +
+           pol * total_nr_timesteps * nr_channels +
            time * nr_channels +
            chan;
 }
-
 
 __device__ void compute_lmnp(
     const int                         grid_size,
@@ -70,7 +67,7 @@ template<int current_nr_terms>
 __device__ void update_sums(
     const int                         subgrid_size,
     const float                       image_size,
-    const unsigned int                max_nr_timesteps,
+    const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
@@ -224,10 +221,12 @@ __device__ void update_sums(
         for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
             const float scale = 1.0f / nr_pixels;
             if (time < nr_timesteps) {
-                unsigned int sum_idx_xx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 0);
-                unsigned int sum_idx_xy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 1);
-                unsigned int sum_idx_yx = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 2);
-                unsigned int sum_idx_yy = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_offset+term_nr, 3);
+                unsigned int time_idx = time_offset + time;
+                unsigned int chan_idx = chan;
+                unsigned int sum_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
+                unsigned int sum_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
+                unsigned int sum_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
+                unsigned int sum_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
                 scratch_sum[sum_idx_xx] = sum_xx[term_nr] * scale;
                 scratch_sum[sum_idx_xy] = sum_xy[term_nr] * scale;
                 scratch_sum[sum_idx_yx] = sum_yx[term_nr] * scale;
@@ -244,7 +243,7 @@ __device__ void update_sums(
 __device__ void update_gradient(
     const int                         subgrid_size,
     const float                       image_size,
-    const unsigned int                max_nr_timesteps,
+    const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const UVW*           __restrict__ uvw,
@@ -420,7 +419,9 @@ __device__ void update_gradient(
 
                 if (time_ < nr_timesteps) {
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int sum_idx = index_sums(max_nr_timesteps, nr_channels, s, time_, chan_, term_nr, pol);
+                        unsigned int time_idx = time_offset + time;
+                        unsigned int chan_idx = chan_;
+                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
                         float2 sum      = scratch_sum[sum_idx];
                         float2 residual = residual_[pol][j];
 
@@ -452,7 +453,7 @@ __device__ void update_gradient(
 
 
 __device__ void update_hessian(
-    const unsigned int                max_nr_timesteps,
+    const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_terms,
     const float2*        __restrict__ visibilities,
@@ -491,8 +492,8 @@ __device__ void update_hessian(
                     unsigned int time_idx = time_offset + time;
                     unsigned int chan_idx = chan;
                     unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                    unsigned int sum_idx0 = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr0, pol);
-                    unsigned int sum_idx1 = index_sums(max_nr_timesteps, nr_channels, s, time, chan, term_nr1, pol);
+                    unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
+                    unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
                     float2 sum0 = scratch_sum[sum_idx1] * weights[vis_idx];
                     float2 sum1 = scratch_sum[sum_idx0];
 
@@ -518,7 +519,7 @@ __device__ void update_hessian(
 #define UPDATE_SUMS(current_nr_terms) \
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
-                subgrid_size, image_size, max_nr_timesteps, nr_channels, \
+                subgrid_size, image_size, total_nr_timesteps, nr_channels, \
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
                 subgrid, scratch_sum, lmnp_, pixels_); \
@@ -531,7 +532,7 @@ __global__ void kernel_calibrate_sums(
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
-    const int                         max_nr_timesteps,
+    const int                         total_nr_timesteps,
     const int                         nr_channels,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
@@ -569,7 +570,7 @@ __global__ void kernel_calibrate_gradient(
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
-    const int                         max_nr_timesteps,
+    const int                         total_nr_timesteps,
     const int                         nr_channels,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
@@ -589,7 +590,7 @@ __global__ void kernel_calibrate_gradient(
     compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
 
     update_gradient(
-        subgrid_size, image_size, max_nr_timesteps,
+        subgrid_size, image_size, total_nr_timesteps,
         nr_channels, nr_terms,
         uvw, aterm, aterm_derivatives,
         wavenumbers, visibilities, weights, metadata, subgrid, scratch_sum, gradient, lmnp_);
@@ -601,7 +602,7 @@ __global__ void kernel_calibrate_hessian(
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
-    const int                         max_nr_timesteps,
+    const int                         total_nr_timesteps,
     const int                         nr_channels,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
@@ -617,7 +618,7 @@ __global__ void kernel_calibrate_hessian(
           float2*        __restrict__ gradient)
 {
     update_hessian(
-        max_nr_timesteps, nr_channels, nr_terms,
+        total_nr_timesteps, nr_channels, nr_terms,
         visibilities, weights, metadata, scratch_sum, hessian);
 } // end kernel_calibrate_hessian
 

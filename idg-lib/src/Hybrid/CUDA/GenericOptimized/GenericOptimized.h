@@ -177,6 +177,8 @@ namespace idg {
                         unsigned int kernel_size;
                         long unsigned int grid_size;
                         unsigned int subgrid_size;
+                        unsigned int nr_baselines;
+                        unsigned int nr_timesteps;
                         unsigned int nr_channels;
                         Array3D<UVWCoordinate<float>> uvw;
                         unsigned int d_scratch_sum_id;
