@@ -497,15 +497,15 @@ __device__ void update_hessian(
                     unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
                     unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
                     unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
-                    float2 sum0 = scratch_sum[sum_idx1] * weights[vis_idx];
-                    float2 sum1 = scratch_sum[sum_idx0];
+                    float2 sum0 = scratch_sum[sum_idx0];
+                    float2 sum1 = scratch_sum[sum_idx1] * weights[vis_idx];
 
                     // Update hessian
                     if (term_nr0 < nr_terms) {
                         update.x += sum0.x * sum1.x;
                         update.x += sum0.y * sum1.y;
-                        update.y += sum0.x * sum1.y;
-                        update.y -= sum0.y * sum1.x;
+                        update.y += sum0.y * sum1.x;
+                        update.y -= sum0.x * sum1.y;
                     }
                 } // end for pol
             } // end chan
