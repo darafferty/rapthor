@@ -156,6 +156,12 @@ namespace idg {
         uint64_t sizeof_aterms_offsets(
             unsigned int nr_timeslots);
 
+        uint64_t sizeof_weights(
+            unsigned int nr_baselines,
+            unsigned int nr_timesteps,
+            unsigned int nr_channels,
+            unsigned int nr_correlations = 4);
+
         /*
             Performance reporting
          */
