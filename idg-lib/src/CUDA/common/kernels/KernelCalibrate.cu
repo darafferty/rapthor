@@ -265,9 +265,12 @@ __device__ void update_gradient(
     unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
+    // Load metadata for first subgrid
+    const Metadata &m0 = metadata[0];
+
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = m.time_index;
+    const unsigned int time_offset  = m.time_index - m0.time_index;
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
@@ -285,7 +288,7 @@ __device__ void update_gradient(
     }
 
     // Iterate all visibilities
-    for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i+= nr_threads) {
+    for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
         unsigned int time = i / nr_channels;
         unsigned int chan = i % nr_channels;
 
@@ -417,9 +420,9 @@ __device__ void update_gradient(
                 unsigned int time_ = k / nr_channels;
                 unsigned int chan_ = k % nr_channels;
 
-                if (time_ < nr_timesteps) {
+                if (term_nr < nr_terms && time_ < nr_timesteps) {
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int time_idx = time_offset + time;
+                        unsigned int time_idx = time_offset + time_;
                         unsigned int chan_idx = chan_;
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
                         float2 sum      = scratch_sum[sum_idx];
