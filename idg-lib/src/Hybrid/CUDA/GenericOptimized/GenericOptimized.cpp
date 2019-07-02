@@ -976,9 +976,9 @@ namespace idg {
                     void *uvw_ptr            = uvw.data(antenna_nr);
                     auto sizeof_metadata     = auxiliary::sizeof_metadata(nr_subgrids);
                     auto sizeof_subgrids     = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
-                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_subgrids, nr_timesteps, nr_channels);
-                    auto sizeof_weights      = sizeof_visibilities / 2;
-                    auto sizeof_uvw          = auxiliary::sizeof_uvw(nr_antennas-1, nr_timesteps);
+                    auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                    auto sizeof_weights      = auxiliary::sizeof_weights(nr_baselines, nr_timesteps, nr_channels);
+                    auto sizeof_uvw          = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
                     auto d_metadata_id       = device.allocate_device_memory(sizeof_metadata);
                     auto d_subgrids_id       = device.allocate_device_memory(sizeof_subgrids);
                     auto d_visibilities_id   = device.allocate_device_memory(sizeof_visibilities);
