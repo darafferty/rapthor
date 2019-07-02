@@ -1084,12 +1084,13 @@ namespace idg {
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
                 unsigned int d_weights_id        = m_calibrate_state.d_weights_ids[antenna_nr];
                 unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[antenna_nr];
+                unsigned int d_scratch_sum_id    = m_calibrate_state.d_scratch_sum_id;
                 cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                 cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                 cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                 cu::DeviceMemory& d_weights      = device.retrieve_device_memory(d_weights_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
-                cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(m_calibrate_state.d_scratch_sum_id);
+                cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(d_scratch_sum_id);
 
                 // Allocate additional data structures
                 cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
