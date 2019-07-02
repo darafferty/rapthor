@@ -1122,7 +1122,7 @@ namespace idg {
                 executestream.waitEvent(inputCopied);
                 auto total_nr_timesteps = nr_baselines * nr_timesteps;
                 device.launch_calibrate(
-                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_terms,
+                    nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
                     d_metadata, d_subgrids, d_scratch_sum, d_hessian, d_gradient);
                 executestream.record(executeFinished);

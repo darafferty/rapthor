@@ -69,6 +69,7 @@ __device__ void update_sums(
     const float                       image_size,
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
+    const unsigned int                nr_stations,
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
     const UVW*           __restrict__ uvw,
@@ -245,6 +246,7 @@ __device__ void update_gradient(
     const float                       image_size,
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
+    const unsigned int                nr_stations,
     const unsigned int                nr_terms,
     const UVW*           __restrict__ uvw,
     const float2*        __restrict__ aterm,
@@ -274,6 +276,9 @@ __device__ void update_gradient(
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
+
+    // TODO
+    unsigned int aterm_idx_current = 0;
 
     // Shared memory
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
@@ -329,11 +334,11 @@ __device__ void update_gradient(
                     }
 
                     // Load first aterm
-                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, station1, y, x);
+                    size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x);
                     float2 *aterm1 = (float2 *) &aterm[station1_idx];
 
                     // Load second aterm
-                    size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
+                    size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x);
                     float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                     // Apply aterm
@@ -458,6 +463,7 @@ __device__ void update_gradient(
 __device__ void update_hessian(
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
+    const unsigned int                nr_stations,
     const unsigned int                nr_terms,
     const float2*        __restrict__ visibilities,
     const float*         __restrict__ weights,
@@ -522,7 +528,7 @@ __device__ void update_hessian(
 #define UPDATE_SUMS(current_nr_terms) \
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
-                subgrid_size, image_size, total_nr_timesteps, nr_channels, \
+                subgrid_size, image_size, total_nr_timesteps, nr_channels, nr_stations, \
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
                 subgrid, scratch_sum, lmnp_, pixels_); \
@@ -537,6 +543,7 @@ __global__ void kernel_calibrate_sums(
     const float                       w_step,
     const int                         total_nr_timesteps,
     const int                         nr_channels,
+    const int                         nr_stations,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -576,6 +583,7 @@ __global__ void kernel_calibrate_gradient(
     const float                       w_step,
     const int                         total_nr_timesteps,
     const int                         nr_channels,
+    const int                         nr_stations,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -596,7 +604,7 @@ __global__ void kernel_calibrate_gradient(
 
     update_gradient(
         subgrid_size, image_size, total_nr_timesteps,
-        nr_channels, nr_terms,
+        nr_channels, nr_stations, nr_terms,
         uvw, aterm, aterm_derivatives,
         wavenumbers, visibilities, weights, metadata, subgrid, scratch_sum, gradient, lmnp_);
 } // end kernel_calibrate_gradient
@@ -609,6 +617,7 @@ __global__ void kernel_calibrate_hessian(
     const float                       w_step,
     const int                         total_nr_timesteps,
     const int                         nr_channels,
+    const int                         nr_stations,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -624,7 +633,7 @@ __global__ void kernel_calibrate_hessian(
           float2*        __restrict__ gradient)
 {
     update_hessian(
-        total_nr_timesteps, nr_channels, nr_terms,
+        total_nr_timesteps, nr_channels, nr_stations, nr_terms,
         visibilities, weights, metadata, scratch_sum, hessian);
 } // end kernel_calibrate_hessian
 

@@ -82,6 +82,7 @@ namespace idg {
                         float w_step,
                         int total_nr_timesteps,
                         int nr_channels,
+                        int nr_stations,
                         int nr_terms,
                         cu::DeviceMemory& d_uvw,
                         cu::DeviceMemory& d_wavenumbers,
