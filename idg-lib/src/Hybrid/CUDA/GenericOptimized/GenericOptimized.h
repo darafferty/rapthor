@@ -187,6 +187,7 @@ namespace idg {
                         std::vector<unsigned int> d_visibilities_ids;
                         std::vector<unsigned int> d_weights_ids;
                         std::vector<unsigned int> d_uvw_ids;
+                        std::vector<unsigned int> d_aterm_idx_ids;
                     } m_calibrate_state;
 
                     // Note: kernel_calibrate processes nr_terms+1 terms

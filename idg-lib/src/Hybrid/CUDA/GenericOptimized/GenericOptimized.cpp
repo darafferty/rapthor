@@ -886,6 +886,7 @@ namespace idg {
                 m_calibrate_state.d_visibilities_ids.clear();
                 m_calibrate_state.d_weights_ids.clear();
                 m_calibrate_state.d_uvw_ids.clear();
+                m_calibrate_state.d_aterm_idx_ids.clear();
 
                 // Create subgrids for every antenna
                 for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
@@ -898,6 +899,7 @@ namespace idg {
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
                     void *subgrids_ptr     = subgrids_.data();
                     void *grid_ptr         = grid.data();
+                    void *aterm_idx_ptr    = (void *) plans[antenna_nr]->get_aterm_indices_ptr();
 
                     // Splitter kernel
                     if (w_step == 0.0) {
@@ -978,26 +980,31 @@ namespace idg {
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
                     auto sizeof_weights      = auxiliary::sizeof_weights(nr_baselines, nr_timesteps, nr_channels);
                     auto sizeof_uvw          = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
+                    auto sizeof_aterm_idx    = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
                     auto d_metadata_id       = device.allocate_device_memory(sizeof_metadata);
                     auto d_subgrids_id       = device.allocate_device_memory(sizeof_subgrids);
                     auto d_visibilities_id   = device.allocate_device_memory(sizeof_visibilities);
                     auto d_weights_id        = device.allocate_device_memory(sizeof_weights);
                     auto d_uvw_id            = device.allocate_device_memory(sizeof_uvw);
+                    auto d_aterm_idx_id      = device.allocate_device_memory(sizeof_aterm_idx);
                     m_calibrate_state.d_metadata_ids.push_back(d_metadata_id);
                     m_calibrate_state.d_subgrids_ids.push_back(d_subgrids_id);
                     m_calibrate_state.d_visibilities_ids.push_back(d_visibilities_id);
                     m_calibrate_state.d_weights_ids.push_back(d_weights_id);
                     m_calibrate_state.d_uvw_ids.push_back(d_uvw_id);
+                    m_calibrate_state.d_aterm_idx_ids.push_back(d_aterm_idx_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                     cu::DeviceMemory& d_weights      = device.retrieve_device_memory(d_weights_id);
                     cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
+                    cu::DeviceMemory& d_aterm_idx    = device.retrieve_device_memory(d_aterm_idx_id);
                     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
                     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                     htodstream.memcpyHtoDAsync(d_weights, weights_ptr, sizeof_weights);
                     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                    htodstream.memcpyHtoDAsync(d_aterm_idx, aterm_idx_ptr, sizeof_aterm_idx);
                     htodstream.synchronize();
                 } // end for antennas
 
@@ -1085,12 +1092,14 @@ namespace idg {
                 unsigned int d_weights_id        = m_calibrate_state.d_weights_ids[antenna_nr];
                 unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[antenna_nr];
                 unsigned int d_scratch_sum_id    = m_calibrate_state.d_scratch_sum_id;
+                unsigned int d_aterm_idx_id      = m_calibrate_state.d_aterm_idx_ids[antenna_nr];
                 cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                 cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                 cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                 cu::DeviceMemory& d_weights      = device.retrieve_device_memory(d_weights_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
                 cu::DeviceMemory& d_scratch_sum  = device.retrieve_device_memory(d_scratch_sum_id);
+                cu::DeviceMemory& d_aterms_idx   = device.retrieve_device_memory(d_aterm_idx_id);
 
                 // Allocate additional data structures
                 cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
@@ -1114,8 +1123,8 @@ namespace idg {
                 auto total_nr_timesteps = nr_baselines * nr_timesteps;
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_terms,
-                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_metadata, d_subgrids,
-                    d_scratch_sum, d_hessian, d_gradient);
+                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
+                    d_metadata, d_subgrids, d_scratch_sum, d_hessian, d_gradient);
                 executestream.record(executeFinished);
 
                 // Copy output to host

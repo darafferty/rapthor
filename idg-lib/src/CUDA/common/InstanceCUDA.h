@@ -89,6 +89,7 @@ namespace idg {
                         cu::DeviceMemory& d_weights,
                         cu::DeviceMemory& d_aterm,
                         cu::DeviceMemory& d_aterm_derivatives,
+                        cu::DeviceMemory& d_aterm_idx,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
                         cu::DeviceMemory& d_scratch_sum,

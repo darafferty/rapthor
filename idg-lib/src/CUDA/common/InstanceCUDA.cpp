@@ -559,6 +559,7 @@ namespace idg {
                 cu::DeviceMemory& d_weights,
                 cu::DeviceMemory& d_aterm,
                 cu::DeviceMemory& d_aterm_derivatives,
+                cu::DeviceMemory& d_aterm_idx,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
                 cu::DeviceMemory& d_scratch_sum,
@@ -567,7 +568,7 @@ namespace idg {
             {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &total_nr_timesteps, &nr_channels, &nr_terms,
-                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives,
+                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_idx,
                     d_metadata, d_subgrid,
                     d_scratch_sum,
                     d_hessian, d_gradient };
