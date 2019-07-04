@@ -139,8 +139,6 @@ namespace api {
 
             // loop over baselines
             for (int bl = 0; bl < nr_baselines; bl++) {
-                unsigned int antenna1 = (*station_pairs)[bl][0];
-                unsigned int antenna2 = (*station_pairs)[bl][1];
 
                 for (int t = time_start; t < time_end; t++)
                 {
@@ -168,6 +166,11 @@ namespace api {
                 for (int bl = 0; bl < nr_baselines; bl++) {
                     unsigned int antenna1 = (*station_pairs)[bl][0];
                     unsigned int antenna2 = (*station_pairs)[bl][1];
+
+                    // Check whether stationPair is initialized
+                    if (antenna1 > m_nrStations || antenna2 > m_nrStations) {
+                        continue;
+                    }
 
                     std::complex<float> aXX1 = (*aterms)[n][antenna1][0][i][0];
                     std::complex<float> aXY1 = (*aterms)[n][antenna1][0][i][1];
