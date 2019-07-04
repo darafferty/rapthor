@@ -139,8 +139,6 @@ namespace api {
 
             // loop over baselines
             for (int bl = 0; bl < nr_baselines; bl++) {
-                unsigned int antenna1 = (*station_pairs)[bl][0];
-                unsigned int antenna2 = (*station_pairs)[bl][1];
 
                 for (int t = time_start; t < time_end; t++)
                 {
