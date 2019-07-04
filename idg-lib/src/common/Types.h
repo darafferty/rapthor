@@ -7,6 +7,7 @@
 #include <cstring>
 #include <memory>
 
+#define ALIGNMENT  64
 #define WTILE_SIZE 128
 
 namespace idg {
@@ -101,6 +102,13 @@ namespace idg {
     }
 
 
+    template<class T>
+    T* allocate_memory(size_t n) {
+        void *ptr;
+        posix_memalign(&ptr, ALIGNMENT, n * sizeof(T));
+        return (T *) ptr;
+    }
+
     /* Classes */
     template<class T>
     class Array1D {
@@ -111,7 +119,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_delete_buffer(width > 0),
-                m_buffer((T*) malloc(width * sizeof(T)))
+                m_buffer(allocate_memory<T>(width))
             {}
 
             Array1D(
@@ -201,7 +209,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_delete_buffer((height*width) > 0),
-                m_buffer((T*) malloc(height*width*sizeof(T)))
+                m_buffer(allocate_memory<T>(height*width))
             {}
 
             Array2D(
@@ -304,7 +312,7 @@ namespace idg {
                 m_y_dim(height),
                 m_z_dim(depth),
                 m_delete_buffer((width*height*depth) > 0),
-                m_buffer((T*) malloc(height*width*depth*sizeof(T)))
+                m_buffer(allocate_memory<T>(height*width*depth))
             {}
 
             Array3D(
@@ -335,7 +343,7 @@ namespace idg {
             // move assignment operator
             Array3D& operator=(Array3D&& other)
             {
-                if (m_delete_buffer) delete[] m_buffer;
+                if (m_delete_buffer) free(m_buffer);
                 m_x_dim = other.m_x_dim;
                 m_y_dim = other.m_y_dim;
                 m_z_dim = other.m_z_dim;
@@ -415,7 +423,7 @@ namespace idg {
                 m_y_dim(y_dim),
                 m_z_dim(z_dim),
                 m_w_dim(w_dim),
-                m_buffer((T*) malloc(w_dim*z_dim*y_dim*x_dim*sizeof(T)), &free)  // shared_ptr with custom deleter that deletes an array
+                m_buffer(allocate_memory<T>(w_dim*z_dim*y_dim*x_dim), &free)  // shared_ptr with custom deleter that deletes an array
             {}
 
             Array4D(
