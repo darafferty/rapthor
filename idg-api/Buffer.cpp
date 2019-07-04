@@ -319,6 +319,7 @@ namespace api {
         }
         m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, max_nr_channels);
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
+        m_bufferStationPairs.init({m_nrStations, m_nrStations});
         // already done: m_spheroidal.reserve(m_subgridsize, m_subgridsize);
         // m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridsize, m_subgridsize);
     }

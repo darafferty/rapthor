@@ -167,6 +167,11 @@ namespace api {
                     unsigned int antenna1 = (*station_pairs)[bl][0];
                     unsigned int antenna2 = (*station_pairs)[bl][1];
 
+                    // Check whether stationPair is initialized
+                    if (antenna1 > m_nrStations || antenna2 > m_nrStations) {
+                        continue;
+                    }
+
                     std::complex<float> aXX1 = (*aterms)[n][antenna1][0][i][0];
                     std::complex<float> aXY1 = (*aterms)[n][antenna1][0][i][1];
                     std::complex<float> aYX1 = (*aterms)[n][antenna1][0][i][2];
