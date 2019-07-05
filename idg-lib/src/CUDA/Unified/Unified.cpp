@@ -171,14 +171,13 @@ namespace idg {
                 powerStates[1] = hostPowerSensor->read();
                 powerStates[3] = device.measure();
 
-                #if defined(REPORT_TOTAL)
+                // Report performance
                 report.update_grid_fft(powerRecords[0].state, powerRecords[1].state);
                 report.update_fft_shift(time_shift);
                 report.update_fft_scale(time_scale);
                 report.print_total();
                 report.print_device(powerStates[2], powerStates[3]);
                 clog << endl;
-                #endif
             } // end transform
 
 
@@ -369,7 +368,7 @@ namespace idg {
                 get_device(0).tile_backward(tile_size, grid_tiled, grid);
                 #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
                 auto total_nr_visibilities    = plan.get_nr_visibilities();
@@ -378,7 +377,6 @@ namespace idg {
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                 clog << endl;
-                #endif
             } // end gridding
 
 
@@ -573,7 +571,7 @@ namespace idg {
                 endStates[nr_devices] = hostPowerSensor->read();
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
                 auto total_nr_timesteps         = plan.get_nr_timesteps();
                 auto total_nr_visibilities      = plan.get_nr_visibilities();
@@ -582,7 +580,6 @@ namespace idg {
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                 clog << endl;
-                #endif
             } // end degridding
 
 
