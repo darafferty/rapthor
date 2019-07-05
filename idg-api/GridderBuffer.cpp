@@ -118,6 +118,7 @@ namespace api {
         typedef unsigned int StationPairs[nr_baselines][2];
         typedef float UVW[nr_baselines][nr_timesteps][3];
         typedef float Weights[nr_baselines][nr_timesteps][nr_channels][nr_correlations];
+        typedef float SumOfWeights[nr_baselines][nr_aterms][nr_correlations];
 
         // Cast class members to multidimensional types used in this method
         ATerms       *aterms        = (ATerms *) m_aterms2.data();
@@ -128,8 +129,8 @@ namespace api {
         Weights      *weights       = (Weights *) m_buffer_weights2.data();
 
         // Initialize sum of weights
-        float sum_of_weights[nr_baselines][nr_aterms][nr_correlations];
-        memset(sum_of_weights, 0, nr_baselines * nr_aterms * nr_correlations * sizeof(float));
+        std::vector<float> sum_of_weights_buffer(nr_baselines*nr_aterms*nr_correlations, 0.0);
+        SumOfWeights &sum_of_weights = *((SumOfWeights *) sum_of_weights_buffer.data());
 
         // Compute sum of weights
         #pragma omp parallel for
