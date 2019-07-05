@@ -319,6 +319,7 @@ __device__ void update_gradient(
     const unsigned int                nr_terms,
     const UVW*           __restrict__ uvw,
     const float2*        __restrict__ aterm,
+    const int*           __restrict__ aterm_indices,
     const float2*        __restrict__ aterm_derivatives,
     const float*         __restrict__ wavenumbers,
     const float2*        __restrict__ visibilities,
@@ -341,21 +342,23 @@ __device__ void update_gradient(
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = m.time_index - m0.time_index;
+    const unsigned int time_offset_global = m.time_index - m0.time_index;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
-    // Shared memory
-    __shared__ float2 gradient_[MAX_NR_TERMS];
+    // Iterate timesteps
+    int current_nr_timesteps = 0;
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
-    // Reset shared memory
-    for (unsigned int i = tid; i < MAX_NR_TERMS; i += nr_threads) {
-        if (i < MAX_NR_TERMS) {
-            gradient_[i] = make_float2(0, 0);
+        // Determine number of timesteps to process
+        current_nr_timesteps = 0;
+        for (int time = time_offset_local; time < nr_timesteps; time++) {
+            if (aterm_indices[time_offset_global + time] == aterm_idx) {
+                current_nr_timesteps++;
+            } else {
+                break;
+            }
         }
-    }
-
-    // Iterate all visibilities
-    for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
 
         // Iterate all terms
         for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
@@ -363,18 +366,15 @@ __device__ void update_gradient(
             // Compute gradient update
             float2 update = make_float2(0, 0);
 
-            // Iterate current batch of residuals
-            for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
-                // Compute the index of the first visibility in the batch
-                unsigned int k = i - tid + j;
+            // Iterate all timesteps
+            for (unsigned int time = 0; time < current_nr_timesteps; time++) {
 
-                // Derive the current time and channel
-                unsigned int time = k / nr_channels;
-                unsigned int chan = k % nr_channels;
+                // Iterate all channels
+                for (unsigned int chan = 0; chan < nr_channels; chan++) {
 
-                if (term_nr < nr_terms && time < nr_timesteps) {
+                    // Iterate all polarizations
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int time_idx = time_offset + time;
+                        unsigned int time_idx = time_offset_global + time_offset_local + time;
                         unsigned int chan_idx = chan;
                         unsigned int sum_deriv_idx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
                         unsigned int sum_aterm_idx = index_sum_aterm(total_nr_timesteps, nr_channels, pol, time_idx, chan_idx);
@@ -388,23 +388,18 @@ __device__ void update_gradient(
                             update.y -= sum.y * residual.x;
                         }
                     } // end for pol
-                } // end if
-            } // end for threads
+                } // end for chan
+            } // end for time
 
-            // Update local gradient
-            gradient_[term_nr] += update;
-        } // end for term_nr
+            __syncthreads();
 
-        __syncthreads();
-
-    } // end for i (visibilities)
-
-    // Iterate all terms * terms
-    for (unsigned int i = tid; i < nr_terms; i += nr_threads) {
-        if (i < nr_terms) {
-            atomicAdd(&gradient[i], gradient_[i]);
-        }
-    }
+            // Update gradient
+            if (term_nr < nr_terms) {
+                unsigned int idx = aterm_idx * nr_terms + term_nr;
+                atomicAdd(&gradient[idx], update);
+            }
+        } // end for term_nr (terms)
+    }  // end for time_offset_local
 } // end update_gradient
 
 
@@ -584,7 +579,7 @@ __global__ void kernel_calibrate_gradient(
     update_gradient(
         subgrid_size, image_size, total_nr_timesteps,
         nr_channels, nr_stations, nr_terms,
-        uvw, aterm, aterm_derivatives,
+        uvw, aterm, aterm_indices, aterm_derivatives,
         wavenumbers, visibilities, weights, metadata, subgrid,
         sum_aterm, sum_deriv, gradient, lmnp_);
 } // end kernel_calibrate_gradient
