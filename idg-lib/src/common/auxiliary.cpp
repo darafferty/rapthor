@@ -28,9 +28,6 @@ namespace idg {
             flops_per_visibility += 5; // phase index
             flops_per_visibility += 5; // phase offset
             flops_per_visibility += nr_channels * 2; // phase
-            #if defined(REPORT_OPS)
-            flops_per_visibility += nr_channels * 2; // phasor
-            #endif
             flops_per_visibility += nr_channels * nr_correlations * 8; // update
 
             // Number of flops per subgrid
@@ -317,110 +314,6 @@ namespace idg {
             return 1ULL * nr_baselines * nr_timesteps * nr_channels * nr_correlations * sizeof(float);
         }
  
-        /*
-            Performance reporting
-         */
-        #define FW1 12
-        #define FW2 8
-
-        void report(
-            string name,
-            double runtime)
-        {
-            clog << setw(FW1) << left << string(name) + ": "
-                 << setw(FW2) << right << scientific << setprecision(4)
-                 << runtime << " s" << endl;
-        }
-
-        void report(
-            string name,
-            double runtime,
-            double joules,
-            uint64_t flops,
-            uint64_t bytes,
-            bool ignore_short)
-        {
-            // Ignore very short measurements
-            if (ignore_short && runtime < 1e-3) {
-                return;
-            }
-
-            // Ignore unrealistic performance
-            int gflops_bound = 1e5; // 100 TFLOPS
-
-            double watt = joules / runtime;
-            #pragma omp critical (clog)
-            {
-                clog << setw(FW1) << left << string(name) + ": "
-                     << setw(FW2) << right << scientific << setprecision(4)
-                     << runtime << " s";
-                #if defined(REPORT_OPS)
-                if (flops != 0) {
-                    clog << ", ";
-                    double gops = (flops / runtime) * 1e-9;
-                        clog << setw(FW2) << right << fixed << setprecision(2)
-                                          << gops << " GOPS";
-                }
-                #else
-                if (flops != 0) {
-                    clog << ", ";
-                    double gflops = (flops / runtime) * 1e-9;
-                    if (gflops < gflops_bound) {
-                        clog << setw(FW2) << right << fixed << setprecision(2)
-                                          << gflops << " GFLOPS";
-                    }
-                }
-                #endif
-                if (bytes != 0) {
-                    clog << ", ";
-                    clog << setw(FW2) << right << fixed << setprecision(2)
-                                      << bytes / runtime * 1e-9 << " GB/s";
-                }
-                if (watt > 1) {
-                    clog << ", ";
-                    clog << setw(FW2) << right << fixed << setprecision(2)
-                                      << watt << " Watt";
-                }
-                if (flops != 0 && watt > 1) {
-                    clog << ", ";
-                    clog << setw(FW2) << right << fixed << setprecision(2)
-                                      << (flops / runtime * 1e-9) / watt << " GFLOPS/W";
-                }
-                if (joules > 1) {
-                    clog << ", ";
-                    clog << setw(FW2) << right  << fixed << setprecision(2)
-                                      << joules << " Joules";
-                }
-
-            }
-            clog << endl;
-        }
-
-        void report(
-            string name,
-            uint64_t flops,
-            uint64_t bytes,
-            powersensor::PowerSensor *powerSensor,
-            powersensor::State startState,
-            powersensor::State endState)
-        {
-            double seconds = powerSensor->seconds(startState, endState);
-            double joules  = powerSensor->Joules(startState, endState);
-            report(name, seconds, flops, bytes, joules);
-            return;
-       }
-
-        void report_visibilities(
-            string name,
-            double runtime,
-            uint64_t nr_visibilities)
-        {
-            clog << setw(FW1) << left << string(name) + ": "
-                 << fixed << setprecision(2)
-                 << 1e-6 * nr_visibilities / runtime
-                 << " Mvisibilities/s" << endl;
-        }
-
         /*
             Misc
         */

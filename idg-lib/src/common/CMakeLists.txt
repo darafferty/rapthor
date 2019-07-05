@@ -27,6 +27,7 @@ set (${PROJECT_NAME}_sources
     ProxyC.cpp
 	Plan.cpp
     PowerSensor.cpp
+    Report.cpp
 )
 
 add_library(

@@ -446,15 +446,15 @@ void run()
     runtime_imaging    /= nr_cycles;
 
     // Report runtime
-    idg::auxiliary::report("gridding", runtime_gridding);
-    idg::auxiliary::report("degridding", runtime_degridding);
-    idg::auxiliary::report("fft", runtime_fft);
-    idg::auxiliary::report("imaging", runtime_imaging);
+    idg::report("gridding", runtime_gridding);
+    idg::report("degridding", runtime_degridding);
+    idg::report("fft", runtime_fft);
+    idg::report("imaging", runtime_imaging);
 
     // Report throughput
-    idg::auxiliary::report_visibilities("gridding", runtime_gridding, nr_visibilities);
-    idg::auxiliary::report_visibilities("degridding", runtime_degridding, nr_visibilities);
-    idg::auxiliary::report_visibilities("imaging", runtime_imaging, nr_visibilities);
+    idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
+    idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
+    idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
 
     // Cleanup
     delete aterms.data();

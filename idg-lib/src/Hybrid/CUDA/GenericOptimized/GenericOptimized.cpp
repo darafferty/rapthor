@@ -191,7 +191,7 @@ namespace idg {
 
                 marker.end();
 
-                // Host power measurement
+                // Start host performance measurement
                 hostStartState = hostPowerSensor->read();
             } // end initialize
 
@@ -200,16 +200,17 @@ namespace idg {
             {
                 synchronize();
 
+                // End host performance measurement
                 State hostEndState = hostPowerSensor->read();
                 report.update_host(hostStartState, hostEndState);
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 report.print_total();
                 report.print_devices();
                 report.print_visibilities(name);
-                std::clog << std::endl;
-                #endif
                 report.reset();
+
+                // Cleanup
                 planned_max_nr_subgrids.clear();
             } // end finish
 
@@ -866,11 +867,9 @@ namespace idg {
                 subgrids.reserve(nr_antennas);
 
                 // Start performance measurement
-                #if defined(REPORT_TOTAL)
                 report.initialize();
                 powersensor::State states[2];
                 states[0] = hostPowerSensor->read();
-                #endif
 
                 // Load device
                 InstanceCUDA& device = get_device(0);
@@ -1003,11 +1002,9 @@ namespace idg {
                 } // end for antennas
 
                 // End performance measurement
-                #if defined(REPORT_TOTAL)
                 states[1] = hostPowerSensor->read();
                 report.update_host(states[0], states[1]);
                 report.print_total(0, 0);
-                #endif
 
                 // Set calibration state member variables
                 m_calibrate_state.plans        = std::move(plans);
@@ -1144,7 +1141,6 @@ namespace idg {
             void GenericOptimized::do_calibrate_finish()
             {
                 // Performance reporting
-                #if defined(REPORT_TOTAL)
                 auto nr_antennas  = m_calibrate_state.plans.size();
                 auto total_nr_timesteps = 0;
                 auto total_nr_subgrids  = 0;
@@ -1154,7 +1150,6 @@ namespace idg {
                 }
                 report.print_total(total_nr_timesteps, total_nr_subgrids);
                 report.print_visibilities(auxiliary::name_calibrate);
-                #endif
             }
 
             Plan* GenericOptimized::make_plan(
@@ -1182,8 +1177,6 @@ namespace idg {
                 aterms_offsets,
                 options);
             }
-
-
 
         } // namespace hybrid
     } // namespace proxy

@@ -192,23 +192,19 @@ namespace idg {
                         }
 
                         // Performance reporting
-                        #if defined(REPORT_VERBOSE)
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         report.print(current_nr_timesteps, current_nr_subgrids);
-                        #endif
                     } // end for bl
 
                     states[1] = powerSensor->read();
                     report.update_host(states[0], states[1]);
 
                     // Performance report
-                    #if defined(REPORT_TOTAL)
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
                     report.print_total(total_nr_timesteps, total_nr_subgrids);
                     auto total_nr_visibilities = plan.get_nr_visibilities();
                     report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
-                    #endif
 
                 } catch (const std::invalid_argument& e) {
                     std::cerr << __func__ << ": invalid argument: "
@@ -374,23 +370,19 @@ namespace idg {
                             subgrids_ptr);
 
                         // Performance reporting
-                        #if defined(REPORT_VERBOSE)
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         report.print(current_nr_timesteps, current_nr_subgrids);
-                        #endif
                     } // end for bl
 
                     states[1] = powerSensor->read();
                     report.update_host(states[0], states[1]);
 
                     // Report performance
-                    #if defined(REPORT_TOTAL)
                     auto total_nr_subgrids  = plan.get_nr_subgrids();
                     auto total_nr_timesteps = plan.get_nr_timesteps();
                     report.print_total(total_nr_timesteps, total_nr_subgrids);
                     auto total_nr_visibilities = plan.get_nr_visibilities();
                     report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
-                    #endif
 
                 } catch (const std::invalid_argument& e) {
                     std::cerr << __func__ << ": invalid argument: "
@@ -442,11 +434,9 @@ namespace idg {
                 max_nr_timesteps.reserve(nr_antennas);
 
                 // Start performance measurement
-                #if defined(REPORT_TOTAL)
                 report.initialize();
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
-                #endif
 
                 // Create subgrids for every antenna
                 for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
@@ -574,11 +564,9 @@ namespace idg {
                 } // end for antennas
 
                 // End performance measurement
-                #if defined(REPORT_TOTAL)
                 states[1] = powerSensor->read();
                 report.update_host(states[0], states[1]);
                 report.print_total(0, 0);
-                #endif
 
                 // Set calibration state member variables
                 m_calibrate_state = {
@@ -674,7 +662,6 @@ namespace idg {
             void CPU::do_calibrate_finish()
             {
                 // Performance reporting
-                #if defined(REPORT_TOTAL)
                 auto nr_antennas  = m_calibrate_state.plans.size();
                 auto total_nr_timesteps = 0;
                 auto total_nr_subgrids  = 0;
@@ -684,7 +671,6 @@ namespace idg {
                 }
                 report.print_total(total_nr_timesteps, total_nr_subgrids);
                 report.print_visibilities(auxiliary::name_calibrate);
-                #endif
             }
 
             void CPU::do_transform(
@@ -729,10 +715,8 @@ namespace idg {
                     report.update_host(states[0], states[1]);
 
                     // Report performance
-                    #if defined(REPORT_TOTAL)
                     report.print_total();
                     std::clog << std::endl;
-                    #endif
 
                 } catch (const std::exception& e) {
                     std::cerr << __func__ << " caught exception: "

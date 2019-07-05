@@ -293,7 +293,7 @@ namespace idg {
                 get_device(0).tile_backward(tile_size, grid_copy, grid);
                 #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
                 auto total_nr_visibilities    = plan.get_nr_visibilities();
@@ -302,7 +302,6 @@ namespace idg {
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
                 clog << endl;
-                #endif
             } // end gridding
 
 
@@ -496,7 +495,7 @@ namespace idg {
                 memcpy(grid.data(), grid_tiled.data(), grid.bytes());
                 #endif
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
                 auto total_nr_timesteps         = plan.get_nr_timesteps();
                 auto total_nr_visibilities      = plan.get_nr_visibilities();
@@ -505,7 +504,6 @@ namespace idg {
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
                 clog << endl;
-                #endif
             } // end degridding
 
 

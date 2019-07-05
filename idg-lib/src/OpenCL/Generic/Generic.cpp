@@ -107,13 +107,12 @@ namespace idg {
                 powerStates[1] = hostPowerSensor->read();
                 powerStates[3] = device.measure();
 
-                #if defined(REPORT_TOTAL)
+                // Report performance
                 report.update_input(powerRecords[0].state, powerRecords[1].state);
                 report.update_output(powerRecords[2].state, powerRecords[3].state);
                 report.update_host(powerStates[0], powerStates[1]);
                 report.print_total();
                 report.print_device(powerRecords[0].state, powerRecords[3].state);
-                #endif
             } // end transform
 
 
@@ -321,7 +320,7 @@ namespace idg {
                     unmapBuffer(queue, d_grid, grid_src);
                 }
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 auto total_nr_subgrids        = plan.get_nr_subgrids();
                 auto total_nr_timesteps       = plan.get_nr_timesteps();
                 auto total_nr_visibilities    = plan.get_nr_visibilities();
@@ -329,8 +328,6 @@ namespace idg {
                 startStates.pop_back(); endStates.pop_back();
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
-                clog << endl;
-                #endif
             } // end gridding
 
 
@@ -528,7 +525,7 @@ namespace idg {
                     }
                 } // end omp parallel
 
-                #if defined(REPORT_VERBOSE) || defined(REPORT_TOTAL)
+                // Report performance
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
                 auto total_nr_timesteps         = plan.get_nr_timesteps();
                 auto total_nr_visibilities      = plan.get_nr_visibilities();
@@ -536,8 +533,6 @@ namespace idg {
                 startStates.pop_back(); endStates.pop_back();
                 report.print_devices(startStates, endStates);
                 report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
-                clog << endl;
-                #endif
             } // end degridding
 
         } // namespace opencl

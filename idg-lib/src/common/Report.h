@@ -3,11 +3,64 @@
 
 #include <vector>
 #include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cassert>
 
 #include "auxiliary.h"
 #include "PowerSensor.h"
 
 namespace idg {
+
+    namespace auxiliary {
+        /*
+            Strings
+        */
+        const std::string name_gridding("gridding");
+        const std::string name_degridding("degridding");
+        const std::string name_adding("|adding");
+        const std::string name_splitting("|splitting");
+        const std::string name_adder("adder");
+        const std::string name_splitter("splitter");
+        const std::string name_gridder("gridder");
+        const std::string name_degridder("degridder");
+        const std::string name_calibrate("calibrate");
+        const std::string name_subgrid_fft("sub-fft");
+        const std::string name_grid_fft("grid-fft");
+        const std::string name_fft_shift("fft-shift");
+        const std::string name_fft_scale("fft-scale");
+        const std::string name_scaler("scaler");
+        const std::string name_host("host");
+        const std::string name_device("device");
+    }
+
+    /*
+        Performance reporting
+     */
+    void report(
+        const std::string name,
+        double runtime);
+
+    void report(
+        const std::string name,
+        double runtime,
+        double joules,
+        uint64_t flops,
+        uint64_t bytes,
+        bool ignore_short = false);
+
+    void report(
+        const std::string name,
+        uint64_t flops,
+        uint64_t bytes,
+        powersensor::PowerSensor *powerSensor,
+        powersensor::State startState,
+        powersensor::State endState);
+
+    void report_visibilities(
+        const std::string name,
+        double runtime,
+        uint64_t nr_visibilities);
 
     class Report
     {
@@ -284,7 +337,7 @@ namespace idg {
                         seconds += total ? state_gridder_post.total_seconds : state_gridder_post.current_seconds;
                         joules  += total ? state_gridder_post.total_joules : state_gridder_post.current_joules;
                     }
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_gridder,
                         seconds,
                         joules,
@@ -300,7 +353,7 @@ namespace idg {
                         seconds += total ? state_degridder_pre.total_seconds : state_degridder_pre.current_seconds;
                         joules  += total ? state_degridder_pre.total_joules : state_degridder_pre.current_joules;
                     }
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_degridder,
                         seconds,
                         joules,
@@ -310,7 +363,7 @@ namespace idg {
                     degridder_updated = false;
                 }
                 if ((total && subgrid_fft_enabled) || subgrid_fft_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_subgrid_fft,
                         total ? state_subgrid_fft.total_seconds : state_subgrid_fft.current_seconds,
                         total ? state_subgrid_fft.total_joules : state_subgrid_fft.current_joules,
@@ -320,7 +373,7 @@ namespace idg {
                     subgrid_fft_updated = false;
                 }
                 if ((total && calibrate_enabled) || calibrate_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_calibrate,
                         total ? state_calibrate.total_seconds : state_calibrate.current_seconds,
                         total ? state_calibrate.total_joules : state_calibrate.current_joules,
@@ -330,7 +383,7 @@ namespace idg {
                     calibrate_updated = false;
                 }
                 if ((total && adder_enabled) || adder_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_adder,
                         total ? state_adder.total_seconds : state_adder.current_seconds,
                         total ? state_adder.total_joules : state_adder.current_joules,
@@ -340,7 +393,7 @@ namespace idg {
                     adder_updated = false;
                 }
                 if ((total && splitter_enabled) || splitter_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_splitter,
                         total ? state_splitter.total_seconds : state_splitter.current_seconds,
                         total ? state_splitter.total_joules : state_splitter.current_joules,
@@ -350,7 +403,7 @@ namespace idg {
                     splitter_updated = false;
                 }
                 if ((total && scaler_enabled) || scaler_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_scaler,
                         total ? state_scaler.total_seconds : state_scaler.current_seconds,
                         total ? state_scaler.total_joules : state_scaler.current_joules,
@@ -360,7 +413,7 @@ namespace idg {
                     scaler_updated = false;
                 }
                 if ((total && grid_fft_updated) || grid_fft_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_grid_fft,
                         total ? state_grid_fft.total_seconds : state_grid_fft.current_seconds,
                         total ? state_grid_fft.total_joules : state_grid_fft.current_joules,
@@ -370,21 +423,21 @@ namespace idg {
                     grid_fft_updated = false;
                 }
                 if ((total && fft_shift_enabled) || fft_shift_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_fft_shift,
                         total ? state_fft_shift.total_seconds : state_fft_shift.current_seconds,
                         0, 0, 0, ignore_short);
                     fft_shift_updated = false;
                 }
                 if ((total && fft_scale_enabled) || fft_scale_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_fft_scale,
                         total ? state_fft_scale.total_seconds : state_fft_scale.current_seconds,
                         0, 0, 0, ignore_short);
                     fft_scale_updated = false;
                 }
                 if ((total && host_enabled) || host_updated) {
-                    auxiliary::report(
+                    report(
                         prefix + auxiliary::name_host,
                         total ? state_host.total_seconds : state_host.current_seconds,
                         total ? state_host.total_joules : state_host.current_joules,
@@ -413,7 +466,7 @@ namespace idg {
                 if (nr_visibilities == 0) {
                     nr_visibilities = counters.total_nr_visibilities;
                 }
-                auxiliary::report_visibilities(
+                report_visibilities(
                     prefix + name,
                     state_host.total_seconds,
                     nr_visibilities);
@@ -424,14 +477,14 @@ namespace idg {
                 powersensor::State& endState,
                 int i = -1)
             {
-                    std::stringstream name;
-                    name << prefix << auxiliary::name_device;
-                    if (i > 0) {
-                       name <<  i;
-                    }
-                    double seconds = powersensor::PowerSensor::seconds(startState, endState);
-                    double joules  = powersensor::PowerSensor::Joules(startState, endState);
-                    auxiliary::report(name.str().c_str(), seconds, joules, 0, 0);
+                std::stringstream name;
+                name << prefix << auxiliary::name_device;
+                if (i > 0) {
+                   name <<  i;
+                }
+                double seconds = powersensor::PowerSensor::seconds(startState, endState);
+                double joules  = powersensor::PowerSensor::Joules(startState, endState);
+                report(name.str().c_str(), seconds, joules, 0, 0, false);
             }
 
             void print_devices(
@@ -453,7 +506,7 @@ namespace idg {
                     if (states_device.size() > 1) {
                        name <<  i;
                     }
-                    auxiliary::report(name.str().c_str(), state.total_seconds, state.total_joules, 0, 0);
+                    report(name.str().c_str(), state.total_seconds, state.total_joules, 0, 0);
                 }
             }
 
