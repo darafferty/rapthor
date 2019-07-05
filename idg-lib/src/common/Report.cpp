@@ -1,5 +1,7 @@
 #include "Report.h"
 
+#include "idg-config.h"
+
 using namespace std;
 
 namespace idg {
@@ -11,9 +13,11 @@ namespace idg {
         string name,
         double runtime)
     {
+        #if defined(PERFORMANCE_REPORT)
         clog << setw(FW1) << left << string(name) + ": "
              << setw(FW2) << right << scientific << setprecision(4)
              << runtime << " s" << endl;
+        #endif
     }
 
     void report(
@@ -24,6 +28,7 @@ namespace idg {
         uint64_t bytes,
         bool ignore_short)
     {
+        #if defined(PERFORMANCE_REPORT)
         // Ignore very short measurements
         if (ignore_short && runtime < 1e-3) {
             return;
@@ -69,6 +74,7 @@ namespace idg {
 
         }
         clog << endl;
+        #endif
     }
 
     void report(
@@ -91,10 +97,12 @@ namespace idg {
         double runtime,
         uint64_t nr_visibilities)
     {
+        #if defined(PERFORMANCE_REPORT)
         clog << setw(FW1) << left << string(name) + ": "
              << fixed << setprecision(2)
              << 1e-6 * nr_visibilities / runtime
              << " Mvisibilities/s" << endl;
+        #endif
     }
 
 } // end namespace idg

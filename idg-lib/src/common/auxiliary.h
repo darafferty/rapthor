@@ -7,9 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "idg-config.h"
-
-
 inline int min(int a, int b) {
     return a < b ? a : b;
 }
