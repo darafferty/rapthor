@@ -563,7 +563,7 @@ namespace idg {
                 cu::DeviceMemory& d_aterm_indices,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
-                cu::DeviceMemory& d_scratch_sum,
+                cu::DeviceMemory& d_sum_aterm,
                 cu::DeviceMemory& d_hessian,
                 cu::DeviceMemory& d_gradient)
             {
@@ -571,7 +571,7 @@ namespace idg {
                     &grid_size, &subgrid_size, &image_size, &w_step, &total_nr_timesteps, &nr_channels, &nr_stations, &nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
                     d_metadata, d_subgrid,
-                    d_scratch_sum,
+                    d_sum_aterm,
                     d_hessian, d_gradient };
 
                 dim3 grid(nr_subgrids);
