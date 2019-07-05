@@ -100,6 +100,8 @@ __device__ void update_sums(
     const int*           __restrict__ aterm_indices,
     const float2*        __restrict__ aterm_derivatives,
     const float*         __restrict__ wavenumbers,
+    const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ sum_aterm,
@@ -289,10 +291,14 @@ __device__ void update_sums(
                         unsigned int sum_idx_xy = index_sum_aterm(total_nr_timesteps, nr_channels, 1, time_idx, chan_idx);
                         unsigned int sum_idx_yx = index_sum_aterm(total_nr_timesteps, nr_channels, 2, time_idx, chan_idx);
                         unsigned int sum_idx_yy = index_sum_aterm(total_nr_timesteps, nr_channels, 3, time_idx, chan_idx);
-                        sum_aterm[sum_idx_xx] = sum_xx[term_nr] * scale;
-                        sum_aterm[sum_idx_xy] = sum_xy[term_nr] * scale;
-                        sum_aterm[sum_idx_yx] = sum_yx[term_nr] * scale;
-                        sum_aterm[sum_idx_yy] = sum_yy[term_nr] * scale;
+                        unsigned int vis_idx_xx = index_visibility(nr_channels, time_idx, chan_idx, 0);
+                        unsigned int vis_idx_xy = index_visibility(nr_channels, time_idx, chan_idx, 1);
+                        unsigned int vis_idx_yx = index_visibility(nr_channels, time_idx, chan_idx, 2);
+                        unsigned int vis_idx_yy = index_visibility(nr_channels, time_idx, chan_idx, 3);
+                        sum_aterm[sum_idx_xx] = (visibilities[vis_idx_xx] - (sum_xx[term_nr] * scale)) * weights[vis_idx_xx];
+                        sum_aterm[sum_idx_xy] = (visibilities[vis_idx_xy] - (sum_xy[term_nr] * scale)) * weights[vis_idx_xy];
+                        sum_aterm[sum_idx_yx] = (visibilities[vis_idx_yx] - (sum_yx[term_nr] * scale)) * weights[vis_idx_yx];
+                        sum_aterm[sum_idx_yy] = (visibilities[vis_idx_yy] - (sum_yy[term_nr] * scale)) * weights[vis_idx_yy];
                     }
                 }
             } // end for term_nr
@@ -339,7 +345,6 @@ __device__ void update_gradient(
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Shared memory
-    __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
     __shared__ float2 gradient_[MAX_NR_TERMS];
 
     // Reset shared memory
@@ -351,25 +356,6 @@ __device__ void update_gradient(
 
     // Iterate all visibilities
     for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
-        unsigned int time = i / nr_channels;
-        unsigned int chan = i % nr_channels;
-
-        // Compute residual visibilities
-        if (time < nr_timesteps) {
-            unsigned int time_idx = time_offset + time;
-            unsigned int chan_idx = chan;
-            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                unsigned int vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                unsigned int sum_idx = index_sum_aterm(total_nr_timesteps, nr_channels, pol, time_idx, chan_idx);
-                residual_[pol][tid] = (visibilities[vis_idx] - sum_aterm[sum_idx]) * weights[vis_idx];
-            }
-        } else {
-            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                residual_[pol][tid] = make_float2(0, 0);
-            }
-        }
-
-        __syncthreads();
 
         // Iterate all terms
         for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
@@ -390,9 +376,10 @@ __device__ void update_gradient(
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int time_idx = time_offset + time;
                         unsigned int chan_idx = chan;
-                        unsigned int sum_idx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
-                        float2 sum      = sum_deriv[sum_idx];
-                        float2 residual = residual_[pol][j];
+                        unsigned int sum_deriv_idx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
+                        unsigned int sum_aterm_idx = index_sum_aterm(total_nr_timesteps, nr_channels, pol, time_idx, chan_idx);
+                        float2 sum      = sum_deriv[sum_deriv_idx];
+                        float2 residual = sum_aterm[sum_aterm_idx];
 
                         if (term_nr < nr_terms) {
                             update.x += sum.x * residual.x;
@@ -492,7 +479,8 @@ __device__ void update_hessian(
         update_sums<current_nr_terms, mode>( \
                 subgrid_size, image_size, total_nr_timesteps, nr_channels, nr_stations, \
                 nr_terms, term_offset, \
-                uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, metadata, subgrid, \
+                uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, \
+                visibilities, weights, metadata, subgrid, \
                 sum_aterm, sum_deriv, lmnp_, pixels_); \
     }
 
