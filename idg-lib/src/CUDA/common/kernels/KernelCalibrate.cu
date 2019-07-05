@@ -342,18 +342,11 @@ __device__ void update_gradient(
         if (time < nr_timesteps) {
             unsigned int time_idx = time_offset + time;
             unsigned int chan_idx = chan;
-            unsigned int vis_idx_xx = index_visibility(nr_channels, time_idx, chan_idx, 0);
-            unsigned int vis_idx_xy = index_visibility(nr_channels, time_idx, chan_idx, 1);
-            unsigned int vis_idx_yx = index_visibility(nr_channels, time_idx, chan_idx, 2);
-            unsigned int vis_idx_yy = index_visibility(nr_channels, time_idx, chan_idx, 3);
-            unsigned int sum_idx_xx = index_sum_aterm(total_nr_timesteps, nr_channels, 0, time_idx, chan_idx);
-            unsigned int sum_idx_xy = index_sum_aterm(total_nr_timesteps, nr_channels, 1, time_idx, chan_idx);
-            unsigned int sum_idx_yx = index_sum_aterm(total_nr_timesteps, nr_channels, 2, time_idx, chan_idx);
-            unsigned int sum_idx_yy = index_sum_aterm(total_nr_timesteps, nr_channels, 3, time_idx, chan_idx);
-            residual_[0][tid] = (visibilities[vis_idx_xx] - sum_aterm[sum_idx_xx]) * weights[vis_idx_xx];
-            residual_[1][tid] = (visibilities[vis_idx_xy] - sum_aterm[sum_idx_xy]) * weights[vis_idx_xy];
-            residual_[2][tid] = (visibilities[vis_idx_yx] - sum_aterm[sum_idx_yx]) * weights[vis_idx_yx];
-            residual_[3][tid] = (visibilities[vis_idx_yy] - sum_aterm[sum_idx_yy]) * weights[vis_idx_yy];
+            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                unsigned int vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                unsigned int sum_idx = index_sum_aterm(total_nr_timesteps, nr_channels, pol, time_idx, chan_idx);
+                residual_[pol][tid] = (visibilities[vis_idx] - sum_aterm[sum_idx]) * weights[vis_idx];
+            }
         } else {
             for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                 residual_[pol][tid] = make_float2(0, 0);
