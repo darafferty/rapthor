@@ -278,7 +278,7 @@ __device__ void update_gradient(
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // TODO
-    unsigned int aterm_idx_current = 0;
+    unsigned int aterm_idx = 0;
 
     // Shared memory
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
@@ -334,11 +334,11 @@ __device__ void update_gradient(
                     }
 
                     // Load first aterm
-                    size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x);
+                    size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x);
                     float2 *aterm1 = (float2 *) &aterm[station1_idx];
 
                     // Load second aterm
-                    size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x);
+                    size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
                     float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                     // Apply aterm
