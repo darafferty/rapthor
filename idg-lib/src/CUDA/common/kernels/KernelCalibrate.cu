@@ -241,32 +241,32 @@ __device__ void update_sums(
                     // Iterate all terms
                     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
 
-                            // Load pixels
-                            float2 pixel_xx = pixels_[term_nr][0][x];
-                            float2 pixel_xy = pixels_[term_nr][1][x];
-                            float2 pixel_yx = pixels_[term_nr][2][x];
-                            float2 pixel_yy = pixels_[term_nr][3][x];
+                        // Load pixels
+                        float2 pixel_xx = pixels_[term_nr][0][x];
+                        float2 pixel_xy = pixels_[term_nr][1][x];
+                        float2 pixel_yx = pixels_[term_nr][2][x];
+                        float2 pixel_yy = pixels_[term_nr][3][x];
 
-                            // Update sums
-                            sum_xx[term_nr].x += phasor.x * pixel_xx.x;
-                            sum_xx[term_nr].y += phasor.x * pixel_xx.y;
-                            sum_xx[term_nr].x -= phasor.y * pixel_xx.y;
-                            sum_xx[term_nr].y += phasor.y * pixel_xx.x;
+                        // Update sums
+                        sum_xx[term_nr].x += phasor.x * pixel_xx.x;
+                        sum_xx[term_nr].y += phasor.x * pixel_xx.y;
+                        sum_xx[term_nr].x -= phasor.y * pixel_xx.y;
+                        sum_xx[term_nr].y += phasor.y * pixel_xx.x;
 
-                            sum_xy[term_nr].x += phasor.x * pixel_xy.x;
-                            sum_xy[term_nr].y += phasor.x * pixel_xy.y;
-                            sum_xy[term_nr].x -= phasor.y * pixel_xy.y;
-                            sum_xy[term_nr].y += phasor.y * pixel_xy.x;
+                        sum_xy[term_nr].x += phasor.x * pixel_xy.x;
+                        sum_xy[term_nr].y += phasor.x * pixel_xy.y;
+                        sum_xy[term_nr].x -= phasor.y * pixel_xy.y;
+                        sum_xy[term_nr].y += phasor.y * pixel_xy.x;
 
-                            sum_yx[term_nr].x += phasor.x * pixel_yx.x;
-                            sum_yx[term_nr].y += phasor.x * pixel_yx.y;
-                            sum_yx[term_nr].x -= phasor.y * pixel_yx.y;
-                            sum_yx[term_nr].y += phasor.y * pixel_yx.x;
+                        sum_yx[term_nr].x += phasor.x * pixel_yx.x;
+                        sum_yx[term_nr].y += phasor.x * pixel_yx.y;
+                        sum_yx[term_nr].x -= phasor.y * pixel_yx.y;
+                        sum_yx[term_nr].y += phasor.y * pixel_yx.x;
 
-                            sum_yy[term_nr].x += phasor.x * pixel_yy.x;
-                            sum_yy[term_nr].y += phasor.x * pixel_yy.y;
-                            sum_yy[term_nr].x -= phasor.y * pixel_yy.y;
-                            sum_yy[term_nr].y += phasor.y * pixel_yy.x;
+                        sum_yy[term_nr].x += phasor.x * pixel_yy.x;
+                        sum_yy[term_nr].y += phasor.x * pixel_yy.y;
+                        sum_yy[term_nr].x -= phasor.y * pixel_yy.y;
+                        sum_yy[term_nr].y += phasor.y * pixel_yy.x;
                     } // end for term_nr
                 } // end for x
             } // end for y
