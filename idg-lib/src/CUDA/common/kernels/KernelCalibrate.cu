@@ -7,7 +7,6 @@
 #define MAX_NR_THREADS   128
 #define MAX_NR_TIMESTEPS 128
 
-// Index in sum_aterm
 inline __device__ long index_sum_deriv(
     unsigned int total_nr_timesteps, // number of timesteps for all baselines
     unsigned int nr_channels,        // number channels for a single baseline
@@ -19,6 +18,19 @@ inline __device__ long index_sum_deriv(
     // sums: [MAX_NR_TERMS][NR_POLARIZATIONS][TOTAL_NR_TIMESTEPS][NR_CHANNELS]
     return term_nr * NR_POLARIZATIONS * total_nr_timesteps * nr_channels +
            pol * total_nr_timesteps * nr_channels +
+           time * nr_channels +
+           chan;
+}
+
+inline __device__ long index_sum_aterm(
+    unsigned int total_nr_timesteps, // number of timesteps for all baselines
+    unsigned int nr_channels,        // number channels for a single baseline
+    unsigned int pol,
+    unsigned int time,
+    unsigned int chan)
+{
+    // sums: [NR_POLARIZATIONS][TOTAL_NR_TIMESTEPS][NR_CHANNELS]
+    return pol * total_nr_timesteps * nr_channels +
            time * nr_channels +
            chan;
 }
@@ -63,7 +75,18 @@ __device__ void compute_lmnp(
 } // end compute_lmnp
 
 
-template<int current_nr_terms>
+/*
+    This method has two modes:
+        UPDATE_MODE_DERIV:
+            Compute sums for the current station by combining aterm_derivatives
+            with the aterm for station2 and storing the result in sum_deriv
+        UPDATE_MODE_ATERM:
+            Compute sums for every visibility by combining the aterms
+            for station1 and station 2 and storing the result in sum_aterm
+*/
+#define UPDATE_MODE_DERIV 0
+#define UPDATE_MODE_ATERM 1
+template<int current_nr_terms, int mode>
 __device__ void update_sums(
     const int                         subgrid_size,
     const float                       image_size,
@@ -90,12 +113,17 @@ __device__ void update_sums(
     unsigned s          = blockIdx.x;
     unsigned nr_pixels  = subgrid_size * subgrid_size;
 
+    if (mode == UPDATE_MODE_ATERM) {
+        assert(current_nr_terms == 1);
+    }
+
     // Load metadata for first subgrid
     const Metadata &m0 = metadata[0];
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
     const unsigned int time_offset  = m.time_index - m0.time_index;
+    const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
@@ -148,9 +176,16 @@ __device__ void update_sums(
                         pixel[pol] = subgrid[pixel_idx];
                     }
 
-                    // Load aterm derivative
-                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_offset+term_nr, y, x);
-                    float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
+                    // Load first aterm
+                    float2 *aterm1;
+                    if (mode == UPDATE_MODE_DERIV) {
+                        size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_offset+term_nr, y, x);
+                        aterm1 = (float2 *) &aterm_derivatives[station1_idx];
+                    } else {
+                        unsigned int aterm_idx = 0; // TODO
+                        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x);
+                        aterm1 = (float2 *) &aterm[station1_idx];
+                    }
 
                     // Load second aterm
                     size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
@@ -225,14 +260,25 @@ __device__ void update_sums(
             if (time < nr_timesteps) {
                 unsigned int time_idx = time_offset + time;
                 unsigned int chan_idx = chan;
-                unsigned int sum_idx_xx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
-                unsigned int sum_idx_xy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
-                unsigned int sum_idx_yx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
-                unsigned int sum_idx_yy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
-                sum_deriv[sum_idx_xx] = sum_xx[term_nr] * scale;
-                sum_deriv[sum_idx_xy] = sum_xy[term_nr] * scale;
-                sum_deriv[sum_idx_yx] = sum_yx[term_nr] * scale;
-                sum_deriv[sum_idx_yy] = sum_yy[term_nr] * scale;
+                if (mode == UPDATE_MODE_DERIV) {
+                    unsigned int sum_idx_xx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
+                    unsigned int sum_idx_xy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
+                    unsigned int sum_idx_yx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
+                    unsigned int sum_idx_yy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
+                    sum_deriv[sum_idx_xx] = sum_xx[term_nr] * scale;
+                    sum_deriv[sum_idx_xy] = sum_xy[term_nr] * scale;
+                    sum_deriv[sum_idx_yx] = sum_yx[term_nr] * scale;
+                    sum_deriv[sum_idx_yy] = sum_yy[term_nr] * scale;
+                } else {
+                    unsigned int sum_idx_xx = index_sum_aterm(total_nr_timesteps, nr_channels, 0, time_idx, chan_idx);
+                    unsigned int sum_idx_xy = index_sum_aterm(total_nr_timesteps, nr_channels, 1, time_idx, chan_idx);
+                    unsigned int sum_idx_yx = index_sum_aterm(total_nr_timesteps, nr_channels, 2, time_idx, chan_idx);
+                    unsigned int sum_idx_yy = index_sum_aterm(total_nr_timesteps, nr_channels, 3, time_idx, chan_idx);
+                    sum_aterm[sum_idx_xx] = sum_xx[term_nr] * scale;
+                    sum_aterm[sum_idx_xy] = sum_xy[term_nr] * scale;
+                    sum_aterm[sum_idx_yx] = sum_yx[term_nr] * scale;
+                    sum_aterm[sum_idx_yy] = sum_yy[term_nr] * scale;
+                }
             }
         } // end for term_nr
 
@@ -528,9 +574,9 @@ __device__ void update_hessian(
 } // end update_hessian
 
 
-#define UPDATE_SUMS(current_nr_terms) \
+#define UPDATE_SUMS(current_nr_terms, mode) \
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
-        update_sums<current_nr_terms>( \
+        update_sums<current_nr_terms, mode>( \
                 subgrid_size, image_size, total_nr_timesteps, nr_channels, nr_stations, \
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_derivatives, wavenumbers, metadata, subgrid, \
@@ -568,15 +614,22 @@ __global__ void kernel_calibrate_sums(
 
     compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
 
-    int term_offset = 0;
-    UPDATE_SUMS(8)
-    UPDATE_SUMS(7)
-    UPDATE_SUMS(6)
-    UPDATE_SUMS(5)
-    UPDATE_SUMS(4)
-    UPDATE_SUMS(3)
-    UPDATE_SUMS(2)
-    UPDATE_SUMS(1)
+    int term_offset;
+
+    // Compute sum_deriv
+    term_offset = 0;
+    UPDATE_SUMS(8, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(7, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(6, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(5, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(4, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(3, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(2, UPDATE_MODE_DERIV)
+    UPDATE_SUMS(1, UPDATE_MODE_DERIV)
+
+    // Compute sum_aterm
+    term_offset = 0;
+    UPDATE_SUMS(1, UPDATE_MODE_ATERM)
 } // end kernel_calibrate_sums
 
 
