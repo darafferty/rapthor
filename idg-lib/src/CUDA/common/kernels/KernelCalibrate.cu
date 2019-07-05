@@ -361,15 +361,19 @@ __device__ void update_gradient(
             // Compute gradient update
             float2 update = make_float2(0, 0);
 
+            // Iterate current batch of residuals
             for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
+                // Compute the index of the first visibility in the batch
                 unsigned int k = i - tid + j;
-                unsigned int time_ = k / nr_channels;
-                unsigned int chan_ = k % nr_channels;
 
-                if (term_nr < nr_terms && time_ < nr_timesteps) {
+                // Derive the current time and channel
+                unsigned int time = k / nr_channels;
+                unsigned int chan = k % nr_channels;
+
+                if (term_nr < nr_terms && time < nr_timesteps) {
                     for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int time_idx = time_offset + time_;
-                        unsigned int chan_idx = chan_;
+                        unsigned int time_idx = time_offset + time;
+                        unsigned int chan_idx = chan;
                         unsigned int sum_idx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
                         float2 sum      = sum_deriv[sum_idx];
                         float2 residual = residual_[pol][j];
