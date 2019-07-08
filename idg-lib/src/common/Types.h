@@ -732,4 +732,21 @@ namespace idg {
                static_cast<size_t>(pol);
     }
 
+    inline FUNCTION_ATTRIBUTES size_t index_aterm_transposed(
+        int subgrid_size,
+        int nr_stations,
+        int aterm_index,
+        int station,
+        int y,
+        int x,
+        int pol)
+    {
+        // aterm: [nr_aterms][NR_CORRELATIONS][subgrid_size][subgrid_size]
+        size_t aterm_nr = (aterm_index * nr_stations + station);
+        return static_cast<size_t>(aterm_nr) * NR_CORRELATIONS * subgrid_size * subgrid_size +
+               static_cast<size_t>(pol) * subgrid_size * subgrid_size +
+               static_cast<size_t>(y) * subgrid_size +
+               static_cast<size_t>(x);
+    }
+
 #endif

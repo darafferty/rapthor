@@ -1056,6 +1056,7 @@ namespace idg {
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
                 auto max_nr_terms = m_calibrate_max_nr_terms;
+                auto nr_correlations = 4;
 
                 assert((nr_terms+1) < max_nr_terms);
 
@@ -1064,12 +1065,6 @@ namespace idg {
                     report.initialize(nr_channels, subgrid_size, 0, nr_terms);
                 }
 
-                // Data pointers
-                void *aterm_ptr            = aterms.data();
-                void *aterm_derivative_ptr = aterm_derivatives.data();
-                void *hessian_ptr          = hessian.data();
-                void *gradient_ptr         = gradient.data();
-
                 // Start marker
                 cu::Marker marker("do_calibrate_update");
                 marker.start();
@@ -1077,6 +1072,20 @@ namespace idg {
                 // Load device
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
+
+                // Transpose aterms and aterm derivatives
+                const unsigned int nr_aterms = nr_stations * nr_timeslots;
+                const unsigned int nr_aterm_derivatives = nr_terms * nr_timeslots;
+                Array4D<std::complex<float>> aterms_transposed(nr_aterms, nr_correlations, subgrid_size, subgrid_size);
+                Array4D<std::complex<float>> aterm_derivatives_transposed(nr_aterm_derivatives, nr_correlations, subgrid_size, subgrid_size);
+                device.transpose_aterm(aterms, aterms_transposed);
+                device.transpose_aterm(aterm_derivatives, aterm_derivatives_transposed);
+
+                // Data pointers
+                void *aterm_ptr            = aterms_transposed.data();
+                void *aterm_derivative_ptr = aterm_derivatives_transposed.data();
+                void *hessian_ptr          = hessian.data();
+                void *gradient_ptr         = gradient.data();
 
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();

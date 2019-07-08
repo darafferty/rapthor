@@ -157,20 +157,18 @@ __device__ void update_sums(
                         unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
                         unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                        // Load pixels
+                        // Load pixels and aterms
                         float2 pixel[NR_POLARIZATIONS];
+                        float2 aterm1[NR_POLARIZATIONS];
+                        float2 aterm2[NR_POLARIZATIONS];
                         for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                            pixel[pol] = subgrid[pixel_idx];
+                            unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                            unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_terms, aterm_idx, term_offset+term_nr, y, x, pol);
+                            unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                            pixel[pol]  = subgrid[pixel_idx];
+                            aterm1[pol] = aterm_derivatives[aterm1_idx];
+                            aterm2[pol] = aterm[aterm2_idx];
                         }
-
-                        // Load first aterm
-                        size_t station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx, term_offset+term_nr, y, x, 0);
-                        float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
-
-                        // Load second aterm
-                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
-                        float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                         // Apply aterm
                         apply_aterm_calibrate(pixel, aterm1, aterm2);
@@ -348,20 +346,18 @@ __device__ void update_gradient(
                         unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
                         unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                        // Load pixels
+                        // Load pixels and aterms
                         float2 pixel[NR_POLARIZATIONS];
+                        float2 aterm1[NR_POLARIZATIONS];
+                        float2 aterm2[NR_POLARIZATIONS];
                         for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                            pixel[pol] = subgrid[pixel_idx];
+                            unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                            unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station1, y, x, pol);
+                            unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                            pixel[pol]  = subgrid[pixel_idx];
+                            aterm1[pol] = aterm[aterm1_idx];
+                            aterm2[pol] = aterm[aterm2_idx];
                         }
-
-                        // Load first aterm
-                        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x, 0);
-                        float2 *aterm1 = (float2 *) &aterm[station1_idx];
-
-                        // Load second aterm
-                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
-                        float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                         // Apply aterm
                         apply_aterm_calibrate(pixel, aterm1, aterm2);
