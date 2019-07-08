@@ -7,7 +7,7 @@
 #define MAX_NR_THREADS   128
 #define MAX_NR_TIMESTEPS 128
 
-inline __device__ long index_sum_deriv(
+inline __device__ long index_sums(
     unsigned int total_nr_timesteps, // number of timesteps for all baselines
     unsigned int nr_channels,        // number channels for a single baseline
     unsigned int term_nr,
@@ -80,7 +80,7 @@ __device__ void update_sums(
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_deriv,
+          float2*        __restrict__ sums,
           float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE],
           float2                      pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE])
 {
@@ -241,14 +241,14 @@ __device__ void update_sums(
                 if (time < nr_timesteps) {
                     unsigned int time_idx = time_offset_global + time;
                     unsigned int chan_idx = chan;
-                    unsigned int sum_idx_xx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
-                    unsigned int sum_idx_xy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
-                    unsigned int sum_idx_yx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
-                    unsigned int sum_idx_yy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
-                    sum_deriv[sum_idx_xx] = sum_xx[term_nr] * scale;
-                    sum_deriv[sum_idx_xy] = sum_xy[term_nr] * scale;
-                    sum_deriv[sum_idx_yx] = sum_yx[term_nr] * scale;
-                    sum_deriv[sum_idx_yy] = sum_yy[term_nr] * scale;
+                    unsigned int sum_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
+                    unsigned int sum_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
+                    unsigned int sum_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
+                    unsigned int sum_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
+                    sums[sum_idx_xx] = sum_xx[term_nr] * scale;
+                    sums[sum_idx_xy] = sum_xy[term_nr] * scale;
+                    sums[sum_idx_yx] = sum_yx[term_nr] * scale;
+                    sums[sum_idx_yy] = sum_yy[term_nr] * scale;
                 }
             } // end for term_nr
 
@@ -275,7 +275,7 @@ __device__ void update_gradient(
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_deriv,
+          float2*        __restrict__ sums,
           float2*        __restrict__ gradient,
           float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE])
 {
@@ -443,14 +443,14 @@ __device__ void update_gradient(
                     float2 residual_yy = (visibilities[vis_idx_yy] - (sum_yy * scale)) * weights[vis_idx_yy];
 
                     // Load derivative sums
-                    unsigned int sum_deriv_idx_xx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
-                    unsigned int sum_deriv_idx_xy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
-                    unsigned int sum_deriv_idx_yx = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
-                    unsigned int sum_deriv_idx_yy = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
-                    float2 sum_xx = sum_deriv[sum_deriv_idx_xx];
-                    float2 sum_xy = sum_deriv[sum_deriv_idx_xy];
-                    float2 sum_yx = sum_deriv[sum_deriv_idx_yx];
-                    float2 sum_yy = sum_deriv[sum_deriv_idx_yy];
+                    unsigned int sums_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
+                    unsigned int sums_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
+                    unsigned int sums_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
+                    unsigned int sums_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
+                    float2 sum_xx = sums[sums_idx_xx];
+                    float2 sum_xy = sums[sums_idx_xy];
+                    float2 sum_yx = sums[sums_idx_yx];
+                    float2 sum_yy = sums[sums_idx_yy];
 
                     // Compute gradient update
                     float2 update = make_float2(0, 0);
@@ -498,7 +498,7 @@ __device__ void update_hessian(
     const float2*        __restrict__ visibilities,
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ sum_deriv,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian)
 {
     unsigned tidx       = threadIdx.x;
@@ -546,10 +546,10 @@ __device__ void update_hessian(
                         unsigned int time_idx = time_offset_global + time_offset_local + time;
                         unsigned int chan_idx = chan;
                         unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                        unsigned int sum_idx0 = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
-                        unsigned int sum_idx1 = index_sum_deriv(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
-                        float2 sum0 = sum_deriv[sum_idx0];
-                        float2 sum1 = sum_deriv[sum_idx1] * weights[vis_idx];
+                        unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
+                        unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
+                        float2 sum0 = sums[sum_idx0];
+                        float2 sum1 = sums[sum_idx1] * weights[vis_idx];
 
                         // Update hessian
                         if (term_nr0 < nr_terms) {
@@ -581,7 +581,7 @@ __device__ void update_hessian(
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, \
                 visibilities, weights, metadata, subgrid, \
-                sum_deriv, lmnp_, pixels_); \
+                sums, lmnp_, pixels_); \
     }
 
 extern "C" {
@@ -604,7 +604,7 @@ __global__ void kernel_calibrate_sums(
     const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_deriv,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
@@ -644,7 +644,7 @@ __global__ void kernel_calibrate_gradient(
     const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_deriv,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
@@ -658,7 +658,7 @@ __global__ void kernel_calibrate_gradient(
         nr_channels, nr_stations, nr_terms,
         uvw, aterm, aterm_indices, aterm_derivatives,
         wavenumbers, visibilities, weights, metadata, subgrid,
-        sum_deriv, gradient, lmnp_);
+        sums, gradient, lmnp_);
 } // end kernel_calibrate_gradient
 
 
@@ -680,13 +680,13 @@ __global__ void kernel_calibrate_hessian(
     const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_deriv,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
     update_hessian(
         total_nr_timesteps, nr_channels, nr_stations, nr_terms,
-        aterm_indices, visibilities, weights, metadata, sum_deriv, hessian);
+        aterm_indices, visibilities, weights, metadata, sums, hessian);
 } // end kernel_calibrate_hessian
 
 } // end extern "C"
