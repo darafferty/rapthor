@@ -127,15 +127,15 @@ void kernel_calibrate(
                         idg::float2 *aterm1_ptr;
 
                         if (term_nr == nr_terms) {
-                            unsigned int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x);
+                            unsigned int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x, 0);
                             aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                         } else {
-                            unsigned int station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx_current, term_nr, y, x);
+                            unsigned int station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx_current, term_nr, y, x, 0);
                             aterm1_ptr = (idg::float2 *) &aterm_derivatives[station1_idx];
                         }
 
                         // Get pointer to second aterm
-                        unsigned int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x);
+                        unsigned int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x, 0);
                         idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
 
                         // Apply aterm

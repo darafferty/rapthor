@@ -28,8 +28,8 @@ inline void update_subgrid(
         int x = i % subgrid_size;
 
         // Apply the conjugate transpose of the A-term
-        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
-        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
+        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, 0);
+        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, 0);
         idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
         idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
         idg::float2 pixels[NR_POLARIZATIONS];

@@ -129,8 +129,8 @@ void kernel_degridder(
                     }
 
                     // Apply aterm
-                    size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x);
-                    size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x);
+                    size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x, 0);
+                    size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x, 0);
                     idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                     idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
                     apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);

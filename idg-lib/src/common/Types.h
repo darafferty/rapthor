@@ -739,13 +739,15 @@ namespace idg {
         int aterm_index,
         int station,
         int y,
-        int x)
+        int x,
+        int pol)
     {
         // aterm: [nr_aterms][subgrid_size][subgrid_size][NR_CORRELATIONS]
         size_t aterm_nr = (aterm_index * nr_stations + station);
         return static_cast<size_t>(aterm_nr) * subgrid_size * subgrid_size * NR_CORRELATIONS +
                static_cast<size_t>(y) * subgrid_size * NR_CORRELATIONS +
-               static_cast<size_t>(x) * NR_CORRELATIONS;
+               static_cast<size_t>(x) * NR_CORRELATIONS +
+               static_cast<size_t>(pol);
     }
 
 #endif
