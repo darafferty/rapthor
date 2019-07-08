@@ -62,7 +62,7 @@ __global__ void kernel_adder(
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                 int pol_dst = index_pol[pol];
                 long dst_idx = enable_tiling ?
-                    index_grid_tiled(grid_size, pol_dst, y_dst, x_dst) :
+                    index_grid_tiling(TILE_SIZE_GRID, grid_size, pol_dst, y_dst, x_dst) :
                     index_grid(grid_size, pol_dst, y_dst, x_dst);
                 long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
