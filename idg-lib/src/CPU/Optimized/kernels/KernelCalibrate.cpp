@@ -119,7 +119,7 @@ void kernel_calibrate(
                         // Load pixel values
                         idg::float2 pixels[NR_POLARIZATIONS];
                         for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            size_t src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                            size_t src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                             pixels[pol] = subgrid[src_idx];
                         }
 
@@ -127,15 +127,15 @@ void kernel_calibrate(
                         idg::float2 *aterm1_ptr;
 
                         if (term_nr == nr_terms) {
-                            unsigned int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station1, y, x);
+                            unsigned int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x, 0);
                             aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                         } else {
-                            unsigned int station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_terms, aterm_idx_current, term_nr, y, x);
+                            unsigned int station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx_current, term_nr, y, x, 0);
                             aterm1_ptr = (idg::float2 *) &aterm_derivatives[station1_idx];
                         }
 
                         // Get pointer to second aterm
-                        unsigned int station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station2, y, x);
+                        unsigned int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x, 0);
                         idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
 
                         // Apply aterm
@@ -203,7 +203,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
+                    size_t vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
                     visibility_res_real[pol] = visibilities[vis_idx].real - sums_real[pol][nr_terms];
                     visibility_res_imag[pol] = visibilities[vis_idx].imag - sums_imag[pol][nr_terms];
                 }
@@ -212,7 +212,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
+                    size_t vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                         gradient_real[s][aterm_idx_current][term_nr0] += weights[vis_idx] * (
                            sums_real[pol][term_nr0] * visibility_res_real[pol] +
@@ -227,7 +227,7 @@ void kernel_calibrate(
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
-                    size_t vis_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, pol);
+                    size_t vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
                     for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                         for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                             hessian_real[s][aterm_idx_current][term_nr1][term_nr0] += weights[vis_idx] * (

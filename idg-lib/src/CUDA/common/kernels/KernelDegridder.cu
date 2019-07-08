@@ -122,8 +122,8 @@ __device__ void kernel_degridder_(
                     }
 
                     // Apply aterm
-                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x);
-                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
+                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x, 0);
+                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
                     float2 *aterm1 = (float2 *) &aterms[station1_idx];
                     float2 *aterm2 = (float2 *) &aterms[station2_idx];
                     apply_aterm_degridder(pixel, aterm1, aterm2);

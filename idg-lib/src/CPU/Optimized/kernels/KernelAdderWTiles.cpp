@@ -70,10 +70,8 @@ void kernel_adder_subgrids_to_wtiles(
 
                     // Add subgrid value to tiles
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        long dst_idx = index_grid(
-                            NR_POLARIZATIONS, WTILE_SIZE + subgrid_size, tile_index, pol, y_dst, x_dst);
-                        long src_idx = index_subgrid(
-                            NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                        long dst_idx = index_grid(WTILE_SIZE + subgrid_size, tile_index, pol, y_dst, x_dst);
+                        long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
 
                         idg::float2 value = phasor * subgrid[src_idx];
                         tiles[dst_idx] += value;

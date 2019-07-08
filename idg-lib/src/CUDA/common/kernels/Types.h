@@ -70,13 +70,15 @@ inline __device__ int index_aterm(
     int aterm_index,
     int station,
     int y,
-    int x)
+    int x,
+    int pol)
 {
     // aterm: [nr_aterms][subgrid_size][subgrid_size][NR_POLARIZATIONS]
     int aterm_nr = (aterm_index * nr_stations + station);
     return aterm_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
            y * subgrid_size * NR_POLARIZATIONS +
-           x * NR_POLARIZATIONS;
+           x * NR_POLARIZATIONS +
+           pol;
 }
 
 inline __device__ int index_visibility(
@@ -89,30 +91,4 @@ inline __device__ int index_visibility(
     return time * nr_channels * NR_POLARIZATIONS +
            chan * NR_POLARIZATIONS +
            pol;
-}
-
-/*
-    Helper methods
- */
-inline __device__ void read_aterm(
-    int subgrid_size,
-    int nr_stations,
-    int aterm_index,
-    int station,
-    int y,
-    int x,
-    const float2 *aterms_ptr,
-    float2 *aXX,
-    float2 *aXY,
-    float2 *aYX,
-    float2 *aYY)
-{
-    int station_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station, y, x);
-    float4 *aterm_ptr = (float4 *) &aterms_ptr[station_idx];
-    float4 atermA = aterm_ptr[0];
-    float4 atermB = aterm_ptr[1];
-    *aXX = make_float2(atermA.x, atermA.y);
-    *aXY = make_float2(atermA.z, atermA.w);
-    *aYX = make_float2(atermB.x, atermB.y);
-    *aYY = make_float2(atermB.z, atermB.w);
 }
