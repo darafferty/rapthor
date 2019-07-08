@@ -28,8 +28,8 @@ inline void update_subgrid(
         int x = i % subgrid_size;
 
         // Apply the conjugate transpose of the A-term
-        size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station1, y, x);
-        size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_index, station2, y, x);
+        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
+        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
         idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
         idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
         idg::float2 pixels[NR_POLARIZATIONS];
@@ -57,7 +57,7 @@ inline void update_subgrid(
 
         // Update global subgrid
         for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            size_t dst_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, subgrid, pol, y_dst, x_dst);
+            size_t dst_idx = index_subgrid(subgrid_size, subgrid, pol, y_dst, x_dst);
             subgrid_global[dst_idx] += pixels[pol] * sph;
         }
     }
@@ -107,7 +107,7 @@ void kernel_gridder(
     #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
         // Initialize global subgrid
-        size_t subgrid_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, 0, 0, 0);
+        size_t subgrid_idx = index_subgrid(subgrid_size, s, 0, 0, 0);
         idg::float2 *subgrid_ptr = &subgrid[subgrid_idx];
         memset(subgrid_ptr, 0, NR_POLARIZATIONS*nr_pixels*sizeof(idg::float2));
 
@@ -185,7 +185,7 @@ void kernel_gridder(
                 for (int chan = 0; chan < nr_channels; chan++) {
                     int time_idx = time_offset_global + time_offset_local + time;
                     int chan_idx = chan;
-                    size_t src_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                    size_t src_idx = index_visibility(nr_channels, time_idx, chan_idx, 0);
                     size_t dst_idx = time * nr_channels + chan;
 
                     vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;

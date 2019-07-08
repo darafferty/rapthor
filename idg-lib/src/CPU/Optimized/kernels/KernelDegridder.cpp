@@ -124,13 +124,13 @@ void kernel_degridder(
                     // Load pixel values and apply spheroidal
                     idg::float2 pixels[NR_POLARIZATIONS] __attribute__((aligned(ALIGNMENT)));
                     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        size_t src_idx = index_subgrid(NR_POLARIZATIONS, subgrid_size, s, pol, y_src, x_src);
+                        size_t src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                         pixels[pol] = _spheroidal * subgrid[src_idx];
                     }
 
                     // Apply aterm
-                    size_t station1_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station1, y, x);
-                    size_t station2_idx = index_aterm(subgrid_size, NR_POLARIZATIONS, nr_stations, aterm_idx_current, station2, y, x);
+                    size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x);
+                    size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x);
                     idg::float2 *aterm1_ptr = (idg::float2 *) &aterms[station1_idx];
                     idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
                     apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
@@ -179,7 +179,7 @@ void kernel_degridder(
                 const float scale = 1.0f / nr_pixels;
                 int time_idx = time_offset + time;
                 int chan_idx = chan;
-                size_t dst_idx = index_visibility(nr_channels, NR_POLARIZATIONS, time_idx, chan_idx, 0);
+                size_t dst_idx = index_visibility(nr_channels, time_idx, chan_idx, 0);
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     visibilities[dst_idx+pol] = {scale*sums[pol].real, scale*sums[pol].imag};
                 }

@@ -87,8 +87,8 @@ namespace idg {
                 int y = pixel / grid_size;
                 int x = pixel % grid_size;
                 for (int pol = 0; pol < nr_correlations; pol++) {
-                    long src_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
-                    long dst_idx = index_grid(nr_correlations, grid_size, 0, pol, y, x);
+                    long src_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
+                    long dst_idx = index_grid(grid_size, 0, pol, y, x);
 
                     dst_ptr[dst_idx] = src_ptr[src_idx];
                 }
@@ -115,8 +115,8 @@ namespace idg {
                 int y = pixel / grid_size;
                 int x = pixel % grid_size;
                 for (int pol = 0; pol < nr_correlations; pol++) {
-                    long src_idx = index_grid(nr_correlations, grid_size, 0, pol, y, x);
-                    long dst_idx = index_grid_tiling(tile_size, nr_correlations, grid_size, pol, y, x);
+                    long src_idx = index_grid(grid_size, 0, pol, y, x);
+                    long dst_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
                     dst_ptr[dst_idx] = src_ptr[src_idx];
                 }
             }
