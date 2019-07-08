@@ -187,8 +187,8 @@ extern "C" {
         idg::Array3D<idg::Visibility<float>> weights_(
             (idg::Visibility<float> *) weights, nr_baselines,
             nr_timesteps, nr_channels);
-        idg::Array2D<idg::UVWCoordinate<float>> uvw_(
-            (idg::UVWCoordinate<float> *) uvw, nr_baselines, nr_timesteps);
+        idg::Array2D<idg::UVW<float>> uvw_(
+            (idg::UVW<float> *) uvw, nr_baselines, nr_timesteps);
         idg::Array1D<std::pair<unsigned int,unsigned int>> baselines_(
             (std::pair<unsigned int,unsigned int> *) baselines, nr_baselines);
         idg::Grid grid_(

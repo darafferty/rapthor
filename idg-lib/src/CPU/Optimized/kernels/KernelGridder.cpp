@@ -66,7 +66,7 @@ void kernel_gridder(
     const float* __restrict__        shift,
     const int                        nr_channels,
     const int                        nr_stations,
-    const idg::UVWCoordinate<float>* uvw,
+    const idg::UVW<float>*           uvw,
     const float*                     wavenumbers,
     const idg::float2*               visibilities,
     const float*                     spheroidal,

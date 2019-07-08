@@ -16,7 +16,7 @@ namespace idg {
     using AtermIndex = int;
 
     template<class T>
-    using UVWCoordinates = std::vector<UVWCoordinate<T>>;
+    using UVWCoordinates = std::vector<UVW<T>>;
 
     template<class T>
     using Frequencies = std::vector<T>;
@@ -54,7 +54,7 @@ namespace idg {
     {
         Measurement(size_t rowid, size_t timeIndex,
                     size_t antenna1, size_t antenna2,
-                    UVWCoordinate<UVW_Datatype> uvw,
+                    UVW<UVW_Datatype> uvw,
                     VisibilityGroup<Visibility_Datatype> visibilities)
         : rowid(rowid),
           timeIndex(timeIndex),
@@ -81,7 +81,7 @@ namespace idg {
         size_t timeIndex;
         size_t antenna1;
         size_t antenna2;
-        UVWCoordinate<UVW_Datatype> uvw;
+        UVW<UVW_Datatype> uvw;
         VisibilityGroup<Visibility_Datatype> visibilities;
     };
 
@@ -285,7 +285,7 @@ namespace idg {
 
     template<class T>
     std::ostream& operator<<(std::ostream& os,
-                             const UVWCoordinate<T>& c)
+                             const UVW<T>& c)
     {
         os << "{" << c.u << "," << c.v
            << "," << c.w << "}";

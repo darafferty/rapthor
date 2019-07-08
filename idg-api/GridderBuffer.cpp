@@ -390,7 +390,7 @@ namespace api {
     {
         BufferImpl::malloc_buffers();
         
-        m_bufferUVW2 = Array2D<UVWCoordinate<float>>(m_nr_baselines, m_bufferTimesteps);
+        m_bufferUVW2 = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
         m_bufferVisibilities2.clear();
         for (auto & channel_group : m_channel_groups)
         {

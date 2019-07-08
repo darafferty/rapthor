@@ -11,34 +11,16 @@
 #define ALIGNMENT       64
 #define WTILE_SIZE      128
 
+#ifndef FUNCTION_ATTRIBUTES
+#define FUNCTION_ATTRIBUTES
+#endif
+
 namespace idg {
 
     /* Structures */
-    typedef struct { int x, y, z; } Coordinate;
-
-    typedef struct { unsigned int station1, station2; } Baseline;
-
-    typedef struct {
-        int time_index;
-        int nr_timesteps;
-        Baseline baseline;
-        Coordinate coordinate;
-        Coordinate wtile_coordinate;
-        int wtile_index;
-        int nr_aterms;
-    } Metadata;
-
-    typedef struct {float real; float imag; } float2;
-    typedef struct {double real; double imag; } double2;
-
-    template<class T>
-    struct Matrix2x2 {T xx; T xy; T yx; T yy;};
-
-    template<class T>
-    using Visibility = Matrix2x2<T>;
-
-    template<class T>
-    struct UVWCoordinate {T u; T v; T w;};
+    typedef struct { float real; float imag; } float2;
+    typedef struct { double real; double imag; } double2;
+    #include "KernelTypes.h"
 
 
     /* Inline operations */
@@ -575,7 +557,7 @@ namespace idg {
     std::ostream& operator<<(std::ostream& os, Metadata& m);
 
     template<class T>
-    std::ostream& operator<<(std::ostream& os, UVWCoordinate<T>& uvw);
+    std::ostream& operator<<(std::ostream& os, UVW<T>& uvw);
 
     std::ostream& operator<<(std::ostream& os, const float2& x);
     std::ostream& operator<<(std::ostream& os, const double2& x);
@@ -658,7 +640,7 @@ namespace idg {
 } // end namespace idg
 
     /* Index methods */
-    inline size_t index_grid(
+    inline FUNCTION_ATTRIBUTES size_t index_grid(
             long grid_size,
             int w_layer,
             int pol,
@@ -672,7 +654,7 @@ namespace idg {
                static_cast<size_t>(x);
     }
 
-    inline size_t index_grid_tiling(
+    inline FUNCTION_ATTRIBUTES size_t index_grid_tiling(
             int tile_size,
             size_t grid_size,
             int pol,
@@ -695,7 +677,7 @@ namespace idg {
                tile_x;
     }
 
-    inline size_t index_grid(
+    inline FUNCTION_ATTRIBUTES size_t index_grid(
             size_t grid_size,
             int pol,
             int y,
@@ -707,7 +689,7 @@ namespace idg {
                x;
     }
 
-    inline size_t index_subgrid(
+    inline FUNCTION_ATTRIBUTES size_t index_subgrid(
         int subgrid_size,
         int s,
         int pol,
@@ -721,7 +703,7 @@ namespace idg {
                static_cast<size_t>(x);
     }
 
-    inline size_t index_visibility(
+    inline FUNCTION_ATTRIBUTES size_t index_visibility(
         int nr_channels,
         int time,
         int chan,
@@ -733,7 +715,7 @@ namespace idg {
                static_cast<size_t>(pol);
     }
 
-    inline size_t index_aterm(
+    inline FUNCTION_ATTRIBUTES size_t index_aterm(
         int subgrid_size,
         int nr_stations,
         int aterm_index,

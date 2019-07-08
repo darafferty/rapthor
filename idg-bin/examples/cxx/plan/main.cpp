@@ -128,7 +128,7 @@ int main(int argc, char **argv)
         idg::get_example_frequencies(nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
         idg::get_example_baselines(nr_stations, nr_baselines);
-    idg::Array2D<idg::UVWCoordinate<float>> uvw =
+    idg::Array2D<idg::UVW<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
     idg::Array1D<unsigned int> aterms_offsets =
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);

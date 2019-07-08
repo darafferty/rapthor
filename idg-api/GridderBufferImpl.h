@@ -108,7 +108,7 @@ namespace api {
     private:
 
         //secondary buffers      
-        Array2D<UVWCoordinate<float>> m_bufferUVW2;                       // BL x TI
+        Array2D<UVW<float>> m_bufferUVW2;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs2;                         // BL
         std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities2;   // BL x TI x CH
         std::vector<Matrix2x2<std::complex<float>>> m_aterms2; // ST x SB x SB

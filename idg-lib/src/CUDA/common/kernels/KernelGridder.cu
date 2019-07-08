@@ -116,7 +116,7 @@ __device__ void
     const int                           nr_channels,
     const int                           channel_offset,
     const int                           nr_stations,
-    const UVW*             __restrict__ uvw,
+    const UVW<float>*      __restrict__ uvw,
     const float*           __restrict__ wavenumbers,
     const float2*          __restrict__ visibilities,
     const float2*          __restrict__ aterms,
@@ -214,7 +214,7 @@ __device__ void
 
             // Load UVW
             for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
-                UVW a = uvw[time_offset_global + time_offset_local + time];
+                UVW<float> a = uvw[time_offset_global + time_offset_local + time];
                 uvw_[time] = make_float4(a.u, a.v, a.w, 0);
             }
 
@@ -362,7 +362,7 @@ __device__ void
     const float                       w_step,       \
     const int                         nr_channels,  \
     const int                         nr_stations,  \
-    const UVW*           __restrict__ uvw,          \
+    const UVW<float>*    __restrict__ uvw,          \
     const float*         __restrict__ wavenumbers,  \
           float2*        __restrict__ visibilities, \
     const float*         __restrict__ spheroidal,   \

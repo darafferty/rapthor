@@ -39,7 +39,7 @@ void kernel_calibrate(
     const unsigned int               nr_stations,
     const unsigned int               nr_terms,
     const unsigned int               nr_time_slots,
-    const idg::UVWCoordinate<float>* uvw,
+    const idg::UVW<float>*           uvw,
     const float*                     wavenumbers,
           idg::float2*               visibilities,
     const float*                     weights,
@@ -278,7 +278,7 @@ void kernel_phasor(
     const float* __restrict__        shift,
     const int                        max_nr_timesteps,
     const int                        nr_channels,
-    const idg::UVWCoordinate<float>* uvw,
+    const idg::UVW<float>*           uvw,
     const float*                     wavenumbers,
     const idg::Metadata*             metadata,
           idg::float2*               phasors)

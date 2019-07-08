@@ -176,7 +176,7 @@ namespace api {
         std::vector<Matrix2x2<std::complex<float>>> m_default_aterms;
         Array4D<Matrix2x2<std::complex<float>>> m_aterms_array;     // ST x SB x SB
 
-        Array2D<UVWCoordinate<float>> m_bufferUVW;                       // BL x TI
+        Array2D<UVW<float>> m_bufferUVW;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs;                         // BL
         std::vector<Array3D<Visibility<std::complex<float>>>> m_bufferVisibilities;   // BL x TI x CH
         Array3D<Visibility<std::complex<float>>> m_visibilities;   // BL * TI * CH

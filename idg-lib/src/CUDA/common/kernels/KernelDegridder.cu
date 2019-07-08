@@ -17,7 +17,7 @@ __device__ void kernel_degridder_(
     const int                         nr_channels,
     const int                         channel_offset,
     const int                         nr_stations,
-    const UVW*           __restrict__ uvw,
+    const UVW<float>*    __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
           float2*        __restrict__ visibilities,
     const float*         __restrict__ spheroidal,
@@ -241,7 +241,7 @@ __device__ void kernel_degridder_(
     const float                       w_step,       \
     const int                         nr_channels,  \
     const int                         nr_stations,  \
-    const UVW*           __restrict__ uvw,          \
+    const UVW<float>*    __restrict__ uvw,          \
     const float*         __restrict__ wavenumbers,  \
           float2*        __restrict__ visibilities, \
     const float*         __restrict__ spheroidal,   \

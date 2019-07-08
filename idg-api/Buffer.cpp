@@ -306,7 +306,7 @@ namespace api {
 
     void BufferImpl::malloc_buffers()
     {
-        m_bufferUVW = Array2D<UVWCoordinate<float>>(m_nr_baselines, m_bufferTimesteps);
+        m_bufferUVW = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
         m_bufferVisibilities.clear();
         int max_nr_channels = 0;
         for (auto & channel_group : m_channel_groups)

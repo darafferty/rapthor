@@ -16,7 +16,7 @@ extern "C" {
         const float* shift,
         const int   nr_channels,
         const int   nr_stations,
-        const idg::UVWCoordinate<float>* uvw,
+        const idg::UVW<float>*           uvw,
         const float*                     wavenumbers,
         const std::complex<float>*       visibilities,
         const float*                     spheroidal,
