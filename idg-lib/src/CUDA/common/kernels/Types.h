@@ -70,13 +70,15 @@ inline __device__ int index_aterm(
     int aterm_index,
     int station,
     int y,
-    int x)
+    int x,
+    int pol)
 {
     // aterm: [nr_aterms][subgrid_size][subgrid_size][NR_POLARIZATIONS]
     int aterm_nr = (aterm_index * nr_stations + station);
     return aterm_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
            y * subgrid_size * NR_POLARIZATIONS +
-           x * NR_POLARIZATIONS;
+           x * NR_POLARIZATIONS +
+           pol;
 }
 
 inline __device__ int index_visibility(

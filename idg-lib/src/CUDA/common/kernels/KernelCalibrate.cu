@@ -165,11 +165,11 @@ __device__ void update_sums(
                         }
 
                         // Load first aterm
-                        size_t station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx, term_offset+term_nr, y, x);
+                        size_t station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx, term_offset+term_nr, y, x, 0);
                         float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
 
                         // Load second aterm
-                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
+                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
                         float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                         // Apply aterm
@@ -356,11 +356,11 @@ __device__ void update_gradient(
                         }
 
                         // Load first aterm
-                        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x);
+                        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x, 0);
                         float2 *aterm1 = (float2 *) &aterm[station1_idx];
 
                         // Load second aterm
-                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
+                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
                         float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
                         // Apply aterm
