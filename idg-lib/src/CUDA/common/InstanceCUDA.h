@@ -52,7 +52,7 @@ namespace idg {
                         cu::DeviceMemory& d_visibilities,
                         cu::DeviceMemory& d_spheroidal,
                         cu::DeviceMemory& d_aterm,
-                        cu::DeviceMemory& d_aterm_idx,
+                        cu::DeviceMemory& d_aterm_indices,
                         cu::DeviceMemory& d_avg_aterm_correction,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
@@ -70,7 +70,7 @@ namespace idg {
                         cu::DeviceMemory& d_visibilities,
                         cu::DeviceMemory& d_spheroidal,
                         cu::DeviceMemory& d_aterm,
-                        cu::DeviceMemory& d_aterm_idx,
+                        cu::DeviceMemory& d_aterm_indices,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
@@ -82,6 +82,7 @@ namespace idg {
                         float w_step,
                         int total_nr_timesteps,
                         int nr_channels,
+                        int nr_stations,
                         int nr_terms,
                         cu::DeviceMemory& d_uvw,
                         cu::DeviceMemory& d_wavenumbers,
@@ -89,9 +90,10 @@ namespace idg {
                         cu::DeviceMemory& d_weights,
                         cu::DeviceMemory& d_aterm,
                         cu::DeviceMemory& d_aterm_derivatives,
+                        cu::DeviceMemory& d_aterm_indices,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
-                        cu::DeviceMemory& d_scratch_sum,
+                        cu::DeviceMemory& d_sums,
                         cu::DeviceMemory& d_hessian,
                         cu::DeviceMemory& d_gradient);
 

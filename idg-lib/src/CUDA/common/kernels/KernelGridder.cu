@@ -347,7 +347,7 @@ __device__ void
     for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
         kernel_gridder_<current_nr_channels>( \
             grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, aterms, aterms_indicies, metadata, subgrid); \
+            uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
     }
 
 #define FINALIZE_SUBGRID \
@@ -367,7 +367,7 @@ __device__ void
           float2*        __restrict__ visibilities, \
     const float*         __restrict__ spheroidal,   \
     const float2*        __restrict__ aterms,       \
-    const int*           __restrict__ aterms_indicies,      \
+    const int*           __restrict__ aterms_indices,       \
     const float2*        __restrict__ avg_aterm_correction, \
     const Metadata*      __restrict__ metadata,             \
           float2*        __restrict__ subgrid

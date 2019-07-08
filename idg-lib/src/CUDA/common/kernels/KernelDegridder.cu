@@ -55,12 +55,12 @@ __device__ void kernel_degridder_(
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx_current = aterms_indices[time_offset_global + time_offset_local];
+        int aterm_idx = aterms_indices[time_offset_global + time_offset_local];
 
         // Determine number of timesteps to process
         current_nr_timesteps = 0;
         for (int time = time_offset_local; time < nr_timesteps; time++) {
-            if (aterms_indices[time_offset_global + time] == aterm_idx_current) {
+            if (aterms_indices[time_offset_global + time] == aterm_idx) {
                 current_nr_timesteps++;
             } else {
                 break;
@@ -122,8 +122,8 @@ __device__ void kernel_degridder_(
                     }
 
                     // Apply aterm
-                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station1, y, x);
-                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx_current, station2, y, x);
+                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x);
+                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
                     float2 *aterm1 = (float2 *) &aterms[station1_idx];
                     float2 *aterm2 = (float2 *) &aterms[station2_idx];
                     apply_aterm_degridder(pixel, aterm1, aterm2);

@@ -7,7 +7,6 @@
 #define MAX_NR_THREADS   128
 #define MAX_NR_TIMESTEPS 128
 
-// Index in scratch_sum
 inline __device__ long index_sums(
     unsigned int total_nr_timesteps, // number of timesteps for all baselines
     unsigned int nr_channels,        // number channels for a single baseline
@@ -69,15 +68,19 @@ __device__ void update_sums(
     const float                       image_size,
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
+    const unsigned int                nr_stations,
     const unsigned int                nr_terms,
     const unsigned int                term_offset,
     const UVW*           __restrict__ uvw,
     const float2*        __restrict__ aterm,
+    const int*           __restrict__ aterm_indices,
     const float2*        __restrict__ aterm_derivatives,
     const float*         __restrict__ wavenumbers,
+    const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ sums,
           float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE],
           float2                      pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE])
 {
@@ -93,99 +96,114 @@ __device__ void update_sums(
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = m.time_index - m0.time_index;
+    const unsigned int time_offset_global = m.time_index - m0.time_index;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
-    // Iterate all visibilities
-    for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
-        unsigned int time = i / nr_channels;
-        unsigned int chan = i % nr_channels;
+    // Iterate timesteps
+    int current_nr_timesteps = 0;
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
-        // Load UVW
-        float u, v, w;
-        if (time < nr_timesteps) {
-            u = uvw[time_offset + time].u;
-            v = uvw[time_offset + time].v;
-            w = uvw[time_offset + time].w;
+        // Determine number of timesteps to process
+        current_nr_timesteps = 0;
+        for (int time = time_offset_local; time < nr_timesteps; time++) {
+            if (aterm_indices[time_offset_global + time] == aterm_idx) {
+                current_nr_timesteps++;
+            } else {
+                break;
+            }
         }
 
-        // Load wavenumber
-        float wavenumber = wavenumbers[chan];
+        // Iterate batch of visibilities from the same timeslot
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
+            int time = (i / nr_channels) + time_offset_local;
+            int chan = (i % nr_channels);
 
-        // Accumulate sums in registers
-        float2 sum_xx[current_nr_terms];
-        float2 sum_xy[current_nr_terms];
-        float2 sum_yx[current_nr_terms];
-        float2 sum_yy[current_nr_terms];
-        for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
-            sum_xx[term_nr] = make_float2(0, 0);
-            sum_xy[term_nr] = make_float2(0, 0);
-            sum_yx[term_nr] = make_float2(0, 0);
-            sum_yy[term_nr] = make_float2(0, 0);
-        }
+            // Load UVW
+            float u, v, w;
+            if (time < nr_timesteps) {
+                u = uvw[time_offset_global + time].u;
+                v = uvw[time_offset_global + time].v;
+                w = uvw[time_offset_global + time].w;
+            }
 
-        // Iterate all rows of the subgrid
-        for (unsigned int y = 0; y < subgrid_size; y++) {
-            __syncthreads();
+            // Load wavenumber
+            float wavenumber = wavenumbers[chan];
 
-            // Precompute data for one row
-            for (unsigned j = tid; j < (subgrid_size*nr_terms); j += nr_threads) {
-                unsigned int term_nr = j / subgrid_size;
-                unsigned int x       = j % subgrid_size;
+            // Accumulate sums in registers
+            float2 sum_xx[current_nr_terms];
+            float2 sum_xy[current_nr_terms];
+            float2 sum_yx[current_nr_terms];
+            float2 sum_yy[current_nr_terms];
+            for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
+                sum_xx[term_nr] = make_float2(0, 0);
+                sum_xy[term_nr] = make_float2(0, 0);
+                sum_yx[term_nr] = make_float2(0, 0);
+                sum_yy[term_nr] = make_float2(0, 0);
+            }
 
-                if (term_nr < nr_terms) {
-                    // Compute shifted position in subgrid
-                    unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
-                    unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
+            // Iterate all rows of the subgrid
+            for (unsigned int y = 0; y < subgrid_size; y++) {
+                __syncthreads();
 
-                    // Load pixels
-                    float2 pixel[NR_POLARIZATIONS];
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                        pixel[pol] = subgrid[pixel_idx];
-                    }
+                // Precompute data for one row
+                for (unsigned j = tid; j < (subgrid_size*nr_terms); j += nr_threads) {
+                    unsigned int term_nr = j / subgrid_size;
+                    unsigned int x       = j % subgrid_size;
 
-                    // Load aterm derivative
-                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, term_offset+term_nr, y, x);
-                    float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
+                    if (term_nr < nr_terms) {
+                        // Compute shifted position in subgrid
+                        unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                        unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                    // Load second aterm
-                    size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
-                    float2 *aterm2 = (float2 *) &aterm[station2_idx];
+                        // Load pixels
+                        float2 pixel[NR_POLARIZATIONS];
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                            pixel[pol] = subgrid[pixel_idx];
+                        }
 
-                    // Apply aterm
-                    apply_aterm_calibrate(pixel, aterm1, aterm2);
+                        // Load first aterm
+                        size_t station1_idx = index_aterm(subgrid_size, nr_terms, aterm_idx, term_offset+term_nr, y, x);
+                        float2 *aterm1 = (float2 *) &aterm_derivatives[station1_idx];
 
-                    // Store pixels in shared memory
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        pixels_[term_nr][pol][x] = pixel[pol];
-                    }
-                } // end if
-            } // end for j (subgrid_size * terms)
+                        // Load second aterm
+                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
+                        float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
-            __syncthreads();
+                        // Apply aterm
+                        apply_aterm_calibrate(pixel, aterm1, aterm2);
 
-            // Iterate all columns of current row
-            for (unsigned int x = 0; x < subgrid_size; x++) {
+                        // Store pixels in shared memory
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels_[term_nr][pol][x] = pixel[pol];
+                        }
+                    } // end if
+                } // end for j (subgrid_size * terms)
 
-                // Load l,m,n
-                float l = lmnp_[y][x].x;
-                float m = lmnp_[y][x].y;
-                float n = lmnp_[y][x].z;
+                __syncthreads();
 
-                // Load phase offset
-                float phase_offset = lmnp_[y][x].w;
+                // Iterate all columns of current row
+                for (unsigned int x = 0; x < subgrid_size; x++) {
 
-                // Compute phase index
-                float phase_index = u*l + v*m + w*n;
+                    // Load l,m,n
+                    float l = lmnp_[y][x].x;
+                    float m = lmnp_[y][x].y;
+                    float n = lmnp_[y][x].z;
 
-                // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                    // Load phase offset
+                    float phase_offset = lmnp_[y][x].w;
 
-                // Iterate all terms
-                for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
+                    // Compute phase index
+                    float phase_index = u*l + v*m + w*n;
+
+                    // Compute phasor
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+
+                    // Iterate all terms
+                    for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
 
                         // Load pixels
                         float2 pixel_xx = pixels_[term_nr][0][x];
@@ -213,30 +231,31 @@ __device__ void update_sums(
                         sum_yy[term_nr].y += phasor.x * pixel_yy.y;
                         sum_yy[term_nr].x -= phasor.y * pixel_yy.y;
                         sum_yy[term_nr].y += phasor.y * pixel_yy.x;
-                } // end for term_nr
-            } // end for x
-        } // end for y
+                    } // end for term_nr
+                } // end for x
+            } // end for y
 
-        // Scale sums and store in device memory
-        for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
-            const float scale = 1.0f / nr_pixels;
-            if (time < nr_timesteps) {
-                unsigned int time_idx = time_offset + time;
-                unsigned int chan_idx = chan;
-                unsigned int sum_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
-                unsigned int sum_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
-                unsigned int sum_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
-                unsigned int sum_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
-                scratch_sum[sum_idx_xx] = sum_xx[term_nr] * scale;
-                scratch_sum[sum_idx_xy] = sum_xy[term_nr] * scale;
-                scratch_sum[sum_idx_yx] = sum_yx[term_nr] * scale;
-                scratch_sum[sum_idx_yy] = sum_yy[term_nr] * scale;
-            }
-        } // end for term_nr
+            // Scale sums and store in device memory
+            for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
+                const float scale = 1.0f / nr_pixels;
+                if (time < nr_timesteps) {
+                    unsigned int time_idx = time_offset_global + time;
+                    unsigned int chan_idx = chan;
+                    unsigned int sum_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
+                    unsigned int sum_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
+                    unsigned int sum_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
+                    unsigned int sum_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
+                    sums[sum_idx_xx] = sum_xx[term_nr] * scale;
+                    sums[sum_idx_xy] = sum_xy[term_nr] * scale;
+                    sums[sum_idx_yx] = sum_yx[term_nr] * scale;
+                    sums[sum_idx_yy] = sum_yy[term_nr] * scale;
+                }
+            } // end for term_nr
 
-        __syncthreads();
+            __syncthreads();
 
-    } // end for i (visibilities)
+        } // end for i (visibilities)
+    } // end for time_offset_local
 } // end update_sums
 
 
@@ -245,16 +264,18 @@ __device__ void update_gradient(
     const float                       image_size,
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
+    const unsigned int                nr_stations,
     const unsigned int                nr_terms,
     const UVW*           __restrict__ uvw,
     const float2*        __restrict__ aterm,
+    const int*           __restrict__ aterm_indices,
     const float2*        __restrict__ aterm_derivatives,
     const float*         __restrict__ wavenumbers,
     const float2*        __restrict__ visibilities,
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ sums,
           float2*        __restrict__ gradient,
           float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE])
 {
@@ -270,199 +291,214 @@ __device__ void update_gradient(
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = m.time_index - m0.time_index;
+    const unsigned int time_offset_global = m.time_index - m0.time_index;
+    const unsigned int nr_timesteps = m.nr_timesteps;
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
-    const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Shared memory
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
-    __shared__ float2 residual_[NR_POLARIZATIONS][MAX_NR_THREADS];
-    __shared__ float2 gradient_[MAX_NR_TERMS];
 
-    // Reset shared memory
-    for (unsigned int i = tid; i < MAX_NR_TERMS; i += nr_threads) {
-        if (i < MAX_NR_TERMS) {
-            gradient_[i] = make_float2(0, 0);
-        }
-    }
+    // Iterate timesteps
+    int current_nr_timesteps = 0;
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
-    // Iterate all visibilities
-    for (unsigned int i = tid; i < ALIGN(nr_timesteps*nr_channels, nr_threads); i += nr_threads) {
-        unsigned int time = i / nr_channels;
-        unsigned int chan = i % nr_channels;
-
-        // Load UVW
-        float u, v, w;
-        if (time < nr_timesteps) {
-            u = uvw[time_offset + time].u;
-            v = uvw[time_offset + time].v;
-            w = uvw[time_offset + time].w;
-        }
-
-        // Load wavenumber
-        float wavenumber = wavenumbers[chan];
-
-        // Accumulate sums in registers
-        float2 sum_xx = make_float2(0, 0);
-        float2 sum_xy = make_float2(0, 0);
-        float2 sum_yx = make_float2(0, 0);
-        float2 sum_yy = make_float2(0, 0);
-
-        // Iterate all rows of the subgrid
-        for (unsigned int y = 0; y < subgrid_size; y++) {
-            __syncthreads();
-
-            // Precompute data for one row
-            for (unsigned x = tid; x < subgrid_size; x += nr_threads) {
-
-                if (x < subgrid_size) {
-                    // Compute shifted position in subgrid
-                    unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
-                    unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
-
-                    // Load pixels
-                    float2 pixel[NR_POLARIZATIONS];
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                        pixel[pol] = subgrid[pixel_idx];
-                    }
-
-                    // Load first aterm
-                    size_t station1_idx = index_aterm(subgrid_size, 0, 0, station1, y, x);
-                    float2 *aterm1 = (float2 *) &aterm[station1_idx];
-
-                    // Load second aterm
-                    size_t station2_idx = index_aterm(subgrid_size, 0, 0, station2, y, x);
-                    float2 *aterm2 = (float2 *) &aterm[station2_idx];
-
-                    // Apply aterm
-                    apply_aterm_calibrate(pixel, aterm1, aterm2);
-
-                    // Store pixels in shared memory
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        pixels_[pol][x] = pixel[pol];
-                    }
-                } // end if
-            } // end for x
-
-            __syncthreads();
-
-            // Iterate all columns of current row
-            for (unsigned int x = 0; x < subgrid_size; x++) {
-                // Load l,m,n
-                float l = lmnp_[y][x].x;
-                float m = lmnp_[y][x].y;
-                float n = lmnp_[y][x].z;
-
-                // Load phase offset
-                float phase_offset = lmnp_[y][x].w;
-
-                // Compute phase index
-                float phase_index = u*l + v*m + w*n;
-
-                // Compute phasor
-                float  phase  = (phase_index * wavenumber) - phase_offset;
-                float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
-
-                // Update sums
-                sum_xx.x += phasor.x * pixels_[0][x].x;
-                sum_xx.y += phasor.x * pixels_[0][x].y;
-                sum_xx.x -= phasor.y * pixels_[0][x].y;
-                sum_xx.y += phasor.y * pixels_[0][x].x;
-
-                sum_xy.x += phasor.x * pixels_[1][x].x;
-                sum_xy.y += phasor.x * pixels_[1][x].y;
-                sum_xy.x -= phasor.y * pixels_[1][x].y;
-                sum_xy.y += phasor.y * pixels_[1][x].x;
-
-                sum_yx.x += phasor.x * pixels_[2][x].x;
-                sum_yx.y += phasor.x * pixels_[2][x].y;
-                sum_yx.x -= phasor.y * pixels_[2][x].y;
-                sum_yx.y += phasor.y * pixels_[2][x].x;
-
-                sum_yy.x += phasor.x * pixels_[3][x].x;
-                sum_yy.y += phasor.x * pixels_[3][x].y;
-                sum_yy.x -= phasor.y * pixels_[3][x].y;
-                sum_yy.y += phasor.y * pixels_[3][x].x;
-            } // end for x
-        } // end for y
-
-        // Scale sums and store in shared memory
-        const float scale = 1.0f / nr_pixels;
-        if (time < nr_timesteps) {
-            unsigned int time_idx = time_offset + time;
-            unsigned int chan_idx = chan;
-            unsigned int vis_idx_xx = index_visibility(nr_channels, time_idx, chan_idx, 0);
-            unsigned int vis_idx_xy = index_visibility(nr_channels, time_idx, chan_idx, 1);
-            unsigned int vis_idx_yx = index_visibility(nr_channels, time_idx, chan_idx, 2);
-            unsigned int vis_idx_yy = index_visibility(nr_channels, time_idx, chan_idx, 3);
-            residual_[0][tid] = (visibilities[vis_idx_xx] - (sum_xx * scale)) * weights[vis_idx_xx];
-            residual_[1][tid] = (visibilities[vis_idx_xy] - (sum_xy * scale)) * weights[vis_idx_xy];
-            residual_[2][tid] = (visibilities[vis_idx_yx] - (sum_yx * scale)) * weights[vis_idx_yx];
-            residual_[3][tid] = (visibilities[vis_idx_yy] - (sum_yy * scale)) * weights[vis_idx_yy];
-        } else {
-            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                residual_[pol][tid] = make_float2(0, 0);
+        // Determine number of timesteps to process
+        current_nr_timesteps = 0;
+        for (int time = time_offset_local; time < nr_timesteps; time++) {
+            if (aterm_indices[time_offset_global + time] == aterm_idx) {
+                current_nr_timesteps++;
+            } else {
+                break;
             }
         }
 
-        __syncthreads();
+        // Iterate batch of visibilities from the same timeslot
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
+            int time = (i / nr_channels) + time_offset_local;
+            int chan = (i % nr_channels);
 
-        // Iterate all terms
-        for (unsigned term_nr = tid; term_nr < nr_terms; term_nr += nr_threads) {
+            // Load UVW
+            float u, v, w;
+            if (time < nr_timesteps) {
+                u = uvw[time_offset_global + time].u;
+                v = uvw[time_offset_global + time].v;
+                w = uvw[time_offset_global + time].w;
+            }
 
-            // Compute gradient update
-            float2 update = make_float2(0, 0);
+            // Load wavenumber
+            float wavenumber = wavenumbers[chan];
 
-            for (unsigned j = 0; j < MAX_NR_THREADS; j++) {
-                unsigned int k = i - tid + j;
-                unsigned int time_ = k / nr_channels;
-                unsigned int chan_ = k % nr_channels;
+            // Accumulate sums in registers
+            float2 sum_xx = make_float2(0, 0);
+            float2 sum_xy = make_float2(0, 0);
+            float2 sum_yx = make_float2(0, 0);
+            float2 sum_yy = make_float2(0, 0);
 
-                if (term_nr < nr_terms && time_ < nr_timesteps) {
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int time_idx = time_offset + time_;
-                        unsigned int chan_idx = chan_;
-                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
-                        float2 sum      = scratch_sum[sum_idx];
-                        float2 residual = residual_[pol][j];
+            // Iterate all rows of the subgrid
+            for (unsigned int y = 0; y < subgrid_size; y++) {
+                __syncthreads();
 
-                        if (term_nr < nr_terms) {
-                            update.x += sum.x * residual.x;
-                            update.x += sum.y * residual.y;
-                            update.y += sum.x * residual.y;
-                            update.y -= sum.y * residual.x;
+                // Precompute data for one row
+                for (unsigned x = tid; x < subgrid_size; x += nr_threads) {
+
+                    if (x < subgrid_size) {
+                        // Compute shifted position in subgrid
+                        unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                        unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
+
+                        // Load pixels
+                        float2 pixel[NR_POLARIZATIONS];
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                            pixel[pol] = subgrid[pixel_idx];
                         }
-                    } // end for pol
-                } // end if
-            } // end for threads
 
-            // Update local gradient
-            gradient_[term_nr] += update;
-        } // end for term_nr
+                        // Load first aterm
+                        size_t station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x);
+                        float2 *aterm1 = (float2 *) &aterm[station1_idx];
 
-        __syncthreads();
+                        // Load second aterm
+                        size_t station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x);
+                        float2 *aterm2 = (float2 *) &aterm[station2_idx];
 
-    } // end for i (visibilities)
+                        // Apply aterm
+                        apply_aterm_calibrate(pixel, aterm1, aterm2);
 
-    // Iterate all terms * terms
-    for (unsigned int i = tid; i < nr_terms; i += nr_threads) {
-        if (i < nr_terms) {
-            atomicAdd(&gradient[i], gradient_[i]);
-        }
-    }
+                        // Store pixels in shared memory
+                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            pixels_[pol][x] = pixel[pol];
+                        }
+                    }
+                } // end for x
+
+                __syncthreads();
+
+                // Iterate all columns of current row
+                for (unsigned int x = 0; x < subgrid_size; x++) {
+
+                    // Load l,m,n
+                    float l = lmnp_[y][x].x;
+                    float m = lmnp_[y][x].y;
+                    float n = lmnp_[y][x].z;
+
+                    // Load phase offset
+                    float phase_offset = lmnp_[y][x].w;
+
+                    // Compute phase index
+                    float phase_index = u*l + v*m + w*n;
+
+                    // Compute phasor
+                    float  phase  = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+
+                    // Load pixels
+                    float2 pixel_xx = pixels_[0][x];
+                    float2 pixel_xy = pixels_[1][x];
+                    float2 pixel_yx = pixels_[2][x];
+                    float2 pixel_yy = pixels_[3][x];
+
+                    // Update sums
+                    sum_xx.x += phasor.x * pixel_xx.x;
+                    sum_xx.y += phasor.x * pixel_xx.y;
+                    sum_xx.x -= phasor.y * pixel_xx.y;
+                    sum_xx.y += phasor.y * pixel_xx.x;
+
+                    sum_xy.x += phasor.x * pixel_xy.x;
+                    sum_xy.y += phasor.x * pixel_xy.y;
+                    sum_xy.x -= phasor.y * pixel_xy.y;
+                    sum_xy.y += phasor.y * pixel_xy.x;
+
+                    sum_yx.x += phasor.x * pixel_yx.x;
+                    sum_yx.y += phasor.x * pixel_yx.y;
+                    sum_yx.x -= phasor.y * pixel_yx.y;
+                    sum_yx.y += phasor.y * pixel_yx.x;
+
+                    sum_yy.x += phasor.x * pixel_yy.x;
+                    sum_yy.y += phasor.x * pixel_yy.y;
+                    sum_yy.x -= phasor.y * pixel_yy.y;
+                    sum_yy.y += phasor.y * pixel_yy.x;
+                } // end for x
+            } // end for y
+
+            // Compute sums
+            const float scale = 1.0f / nr_pixels;
+
+            if ((time - time_offset_local) < current_nr_timesteps) {
+
+                // Iterate all terms
+                for (unsigned term_nr = 0; term_nr < nr_terms; term_nr++) {
+
+                    // Compute residual
+                    unsigned int time_idx = time_offset_global + time;
+                    unsigned int chan_idx = chan;
+                    unsigned int vis_idx_xx = index_visibility(nr_channels, time_idx, chan_idx, 0);
+                    unsigned int vis_idx_xy = index_visibility(nr_channels, time_idx, chan_idx, 1);
+                    unsigned int vis_idx_yx = index_visibility(nr_channels, time_idx, chan_idx, 2);
+                    unsigned int vis_idx_yy = index_visibility(nr_channels, time_idx, chan_idx, 3);
+                    float2 residual_xx = (visibilities[vis_idx_xx] - (sum_xx * scale)) * weights[vis_idx_xx];
+                    float2 residual_xy = (visibilities[vis_idx_xy] - (sum_xy * scale)) * weights[vis_idx_xy];
+                    float2 residual_yx = (visibilities[vis_idx_yx] - (sum_yx * scale)) * weights[vis_idx_yx];
+                    float2 residual_yy = (visibilities[vis_idx_yy] - (sum_yy * scale)) * weights[vis_idx_yy];
+
+                    // Load derivative sums
+                    unsigned int sums_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
+                    unsigned int sums_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
+                    unsigned int sums_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
+                    unsigned int sums_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
+                    float2 sum_xx = sums[sums_idx_xx];
+                    float2 sum_xy = sums[sums_idx_xy];
+                    float2 sum_yx = sums[sums_idx_yx];
+                    float2 sum_yy = sums[sums_idx_yy];
+
+                    // Compute gradient update
+                    float2 update = make_float2(0, 0);
+
+                    update.x += sum_xx.x * residual_xx.x;
+                    update.x += sum_xx.y * residual_xx.y;
+                    update.y += sum_xx.x * residual_xx.y;
+                    update.y -= sum_xx.y * residual_xx.x;
+
+                    update.x += sum_xy.x * residual_xy.x;
+                    update.x += sum_xy.y * residual_xy.y;
+                    update.y += sum_xy.x * residual_xy.y;
+                    update.y -= sum_xy.y * residual_xy.x;
+
+                    update.x += sum_yx.x * residual_yx.x;
+                    update.x += sum_yx.y * residual_yx.y;
+                    update.y += sum_yx.x * residual_yx.y;
+                    update.y -= sum_yx.y * residual_yx.x;
+
+                    update.x += sum_yy.x * residual_yy.x;
+                    update.x += sum_yy.y * residual_yy.y;
+                    update.y += sum_yy.x * residual_yy.y;
+                    update.y -= sum_yy.y * residual_yy.x;
+
+                    // Update gradient
+                    unsigned int idx = aterm_idx * nr_terms + term_nr;
+                    atomicAdd(&gradient[idx], update);
+
+                } // end for term
+            } // end if time
+
+            __syncthreads();
+
+        } // end for i (visibilities)
+    }  // end for time_offset_local
 } // end update_gradient
 
 
 __device__ void update_hessian(
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
+    const unsigned int                nr_stations,
     const unsigned int                nr_terms,
+    const int*           __restrict__ aterm_indices,
     const float2*        __restrict__ visibilities,
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian)
 {
     unsigned tidx       = threadIdx.x;
@@ -473,59 +509,79 @@ __device__ void update_hessian(
 
     // Metadata for current subgrid
     const Metadata &m = metadata[s];
-    const unsigned int time_offset  = m.time_index;
+    const unsigned int time_offset_global = m.time_index;
     const unsigned int nr_timesteps = m.nr_timesteps;
 
-    // Iterate all terms * terms
-    for (unsigned int term_nr = tid; term_nr < (nr_terms*nr_terms); term_nr += nr_threads) {
-        unsigned term_nr0 = term_nr / nr_terms;
-        unsigned term_nr1 = term_nr % nr_terms;
+    // Iterate timesteps
+    int current_nr_timesteps = 0;
+    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
-        // Compute hessian update
-        float2 update = make_float2(0, 0);
-
-        // Iterate all timesteps
-        for (unsigned int time = 0; time < nr_timesteps; time++) {
-
-            // Iterate all channels
-            for (unsigned int chan = 0; chan < nr_channels; chan++) {
-
-                // Iterate all polarizations
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    unsigned int time_idx = time_offset + time;
-                    unsigned int chan_idx = chan;
-                    unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                    unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
-                    unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
-                    float2 sum0 = scratch_sum[sum_idx0];
-                    float2 sum1 = scratch_sum[sum_idx1] * weights[vis_idx];
-
-                    // Update hessian
-                    if (term_nr0 < nr_terms) {
-                        update.x += sum0.x * sum1.x;
-                        update.x += sum0.y * sum1.y;
-                        update.y += sum0.y * sum1.x;
-                        update.y -= sum0.x * sum1.y;
-                    }
-                } // end for pol
-            } // end chan
-        } // end for time
-
-        // Update local hessian
-        if (term_nr0 < nr_terms) {
-            atomicAdd(&hessian[term_nr], update);
+        // Determine number of timesteps to process
+        current_nr_timesteps = 0;
+        for (int time = time_offset_local; time < nr_timesteps; time++) {
+            if (aterm_indices[time_offset_global + time] == aterm_idx) {
+                current_nr_timesteps++;
+            } else {
+                break;
+            }
         }
-    } // end for term_nr (terms * terms)
+
+        // Iterate all terms * terms
+        for (unsigned int term_nr = tid; term_nr < (nr_terms*nr_terms); term_nr += nr_threads) {
+            unsigned term_nr1 = term_nr / nr_terms;
+            unsigned term_nr0 = term_nr % nr_terms;
+
+            // Compute hessian update
+            float2 update = make_float2(0, 0);
+
+            // Iterate all timesteps
+            for (unsigned int time = 0; time < current_nr_timesteps; time++) {
+
+                // Iterate all channels
+                for (unsigned int chan = 0; chan < nr_channels; chan++) {
+
+                    // Iterate all polarizations
+                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        unsigned int time_idx = time_offset_global + time_offset_local + time;
+                        unsigned int chan_idx = chan;
+                        unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                        unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
+                        unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
+                        float2 sum0 = sums[sum_idx0];
+                        float2 sum1 = sums[sum_idx1] * weights[vis_idx];
+
+                        // Update hessian
+                        if (term_nr0 < nr_terms) {
+                            update.x += sum1.x * sum0.x;
+                            update.x += sum1.y * sum0.y;
+                            update.y += sum1.y * sum0.x;
+                            update.y -= sum1.x * sum0.y;
+                        }
+                    } // end for pol
+                } // end chan
+            } // end for time
+
+            __syncthreads();
+
+            // Update hessian
+            if (term_nr0 < nr_terms) {
+                unsigned idx = aterm_idx * nr_terms * nr_terms + term_nr1 * nr_terms + term_nr0;
+                atomicAdd(&hessian[idx], update);
+            }
+        } // end for term_nr (terms * terms)
+    } // end for time_offset_local
 } // end update_hessian
 
 
 #define UPDATE_SUMS(current_nr_terms) \
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
-                subgrid_size, image_size, total_nr_timesteps, nr_channels, \
+                subgrid_size, image_size, total_nr_timesteps, nr_channels, nr_stations, \
                 nr_terms, term_offset, \
-                uvw, aterm, aterm_derivatives, wavenumbers, metadata, \
-                subgrid, scratch_sum, lmnp_, pixels_); \
+                uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, \
+                visibilities, weights, metadata, subgrid, \
+                sums, lmnp_, pixels_); \
     }
 
 extern "C" {
@@ -537,6 +593,7 @@ __global__ void kernel_calibrate_sums(
     const float                       w_step,
     const int                         total_nr_timesteps,
     const int                         nr_channels,
+    const int                         nr_stations,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -544,9 +601,10 @@ __global__ void kernel_calibrate_sums(
     const float*         __restrict__ weights,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
+    const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
@@ -575,6 +633,7 @@ __global__ void kernel_calibrate_gradient(
     const float                       w_step,
     const int                         total_nr_timesteps,
     const int                         nr_channels,
+    const int                         nr_stations,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -582,21 +641,24 @@ __global__ void kernel_calibrate_gradient(
     const float*         __restrict__ weights,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
+    const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
+    // Shared memory
     __shared__ float4 lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE];
 
     compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
 
     update_gradient(
         subgrid_size, image_size, total_nr_timesteps,
-        nr_channels, nr_terms,
-        uvw, aterm, aterm_derivatives,
-        wavenumbers, visibilities, weights, metadata, subgrid, scratch_sum, gradient, lmnp_);
+        nr_channels, nr_stations, nr_terms,
+        uvw, aterm, aterm_indices, aterm_derivatives,
+        wavenumbers, visibilities, weights, metadata, subgrid,
+        sums, gradient, lmnp_);
 } // end kernel_calibrate_gradient
 
 
@@ -607,6 +669,7 @@ __global__ void kernel_calibrate_hessian(
     const float                       w_step,
     const int                         total_nr_timesteps,
     const int                         nr_channels,
+    const int                         nr_stations,
     const int                         nr_terms,
     const UVW*           __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
@@ -614,15 +677,16 @@ __global__ void kernel_calibrate_hessian(
     const float*         __restrict__ weights,
     const float2*        __restrict__ aterm,
     const float2*        __restrict__ aterm_derivatives,
+    const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ scratch_sum,
+          float2*        __restrict__ sums,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
     update_hessian(
-        total_nr_timesteps, nr_channels, nr_terms,
-        visibilities, weights, metadata, scratch_sum, hessian);
+        total_nr_timesteps, nr_channels, nr_stations, nr_terms,
+        aterm_indices, visibilities, weights, metadata, sums, hessian);
 } // end kernel_calibrate_hessian
 
 } // end extern "C"

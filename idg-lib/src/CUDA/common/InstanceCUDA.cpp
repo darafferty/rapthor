@@ -482,7 +482,7 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities,
                 cu::DeviceMemory& d_spheroidal,
                 cu::DeviceMemory& d_aterm,
-                cu::DeviceMemory& d_aterm_idx,
+                cu::DeviceMemory& d_aterm_indices,
                 cu::DeviceMemory& d_avg_aterm_correction,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid)
@@ -490,7 +490,7 @@ namespace idg {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_aterm_idx, d_avg_aterm_correction, d_metadata, d_subgrid };
+                    d_spheroidal, d_aterm, d_aterm_indices, d_avg_aterm_correction, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
                 dim3 block(block_gridder);
@@ -518,14 +518,14 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities,
                 cu::DeviceMemory& d_spheroidal,
                 cu::DeviceMemory& d_aterm,
-                cu::DeviceMemory& d_aterm_idx,
+                cu::DeviceMemory& d_aterm_indices,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
                     &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
-                    d_spheroidal, d_aterm, d_aterm_idx, d_metadata, d_subgrid };
+                    d_spheroidal, d_aterm, d_aterm_indices, d_metadata, d_subgrid };
 
                 dim3 grid(nr_subgrids);
                 dim3 block(block_degridder);
@@ -552,6 +552,7 @@ namespace idg {
                 float w_step,
                 int total_nr_timesteps,
                 int nr_channels,
+                int nr_stations,
                 int nr_terms,
                 cu::DeviceMemory& d_uvw,
                 cu::DeviceMemory& d_wavenumbers,
@@ -559,18 +560,17 @@ namespace idg {
                 cu::DeviceMemory& d_weights,
                 cu::DeviceMemory& d_aterm,
                 cu::DeviceMemory& d_aterm_derivatives,
+                cu::DeviceMemory& d_aterm_indices,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
-                cu::DeviceMemory& d_scratch_sum,
+                cu::DeviceMemory& d_sums,
                 cu::DeviceMemory& d_hessian,
                 cu::DeviceMemory& d_gradient)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_step, &total_nr_timesteps, &nr_channels, &nr_terms,
-                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives,
-                    d_metadata, d_subgrid,
-                    d_scratch_sum,
-                    d_hessian, d_gradient };
+                    &grid_size, &subgrid_size, &image_size, &w_step, &total_nr_timesteps, &nr_channels, &nr_stations, &nr_terms,
+                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
+                    d_metadata, d_subgrid, d_sums, d_hessian, d_gradient };
 
                 dim3 grid(nr_subgrids);
                 dim3 block(block_calibrate);

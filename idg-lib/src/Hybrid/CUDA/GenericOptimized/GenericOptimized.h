@@ -181,12 +181,13 @@ namespace idg {
                         unsigned int nr_timesteps;
                         unsigned int nr_channels;
                         Array3D<UVWCoordinate<float>> uvw;
-                        unsigned int d_scratch_sum_id;
+                        unsigned int d_sums_id;
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
                         std::vector<unsigned int> d_visibilities_ids;
                         std::vector<unsigned int> d_weights_ids;
                         std::vector<unsigned int> d_uvw_ids;
+                        std::vector<unsigned int> d_aterm_idx_ids;
                     } m_calibrate_state;
 
                     // Note: kernel_calibrate processes nr_terms+1 terms
