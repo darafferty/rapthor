@@ -80,7 +80,6 @@ __device__ void update_sums(
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_aterm,
           float2*        __restrict__ sum_deriv,
           float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE],
           float2                      pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE])
@@ -276,7 +275,6 @@ __device__ void update_gradient(
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_aterm,
           float2*        __restrict__ sum_deriv,
           float2*        __restrict__ gradient,
           float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE])
@@ -424,7 +422,7 @@ __device__ void update_gradient(
                 } // end for x
             } // end for y
 
-            // Compute sum_aterm
+            // Compute sums
             const float scale = 1.0f / nr_pixels;
 
             if ((time - time_offset_local) < current_nr_timesteps) {
@@ -500,7 +498,6 @@ __device__ void update_hessian(
     const float2*        __restrict__ visibilities,
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ sum_aterm,
           float2*        __restrict__ sum_deriv,
           float2*        __restrict__ hessian)
 {
@@ -584,7 +581,7 @@ __device__ void update_hessian(
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, \
                 visibilities, weights, metadata, subgrid, \
-                sum_aterm, sum_deriv, lmnp_, pixels_); \
+                sum_deriv, lmnp_, pixels_); \
     }
 
 extern "C" {
@@ -607,7 +604,6 @@ __global__ void kernel_calibrate_sums(
     const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_aterm,
           float2*        __restrict__ sum_deriv,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
@@ -648,7 +644,6 @@ __global__ void kernel_calibrate_gradient(
     const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_aterm,
           float2*        __restrict__ sum_deriv,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
@@ -663,7 +658,7 @@ __global__ void kernel_calibrate_gradient(
         nr_channels, nr_stations, nr_terms,
         uvw, aterm, aterm_indices, aterm_derivatives,
         wavenumbers, visibilities, weights, metadata, subgrid,
-        sum_aterm, sum_deriv, gradient, lmnp_);
+        sum_deriv, gradient, lmnp_);
 } // end kernel_calibrate_gradient
 
 
@@ -685,14 +680,13 @@ __global__ void kernel_calibrate_hessian(
     const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
-          float2*        __restrict__ sum_aterm,
           float2*        __restrict__ sum_deriv,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
     update_hessian(
         total_nr_timesteps, nr_channels, nr_stations, nr_terms,
-        aterm_indices, visibilities, weights, metadata, sum_aterm, sum_deriv, hessian);
+        aterm_indices, visibilities, weights, metadata, sum_deriv, hessian);
 } // end kernel_calibrate_hessian
 
 } // end extern "C"
