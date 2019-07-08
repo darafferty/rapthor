@@ -36,15 +36,7 @@ inline void update_subgrid(
         for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
             pixels[pol] = subgrid_local[pol * nr_pixels + i];
         }
-        #if 1
         apply_aterm_gridder(pixels, aterm1_ptr, aterm2_ptr);
-        #else
-        idg::float2 aterm1[4];
-        idg::float2 aterm2[4];
-        conjugate(aterm1_ptr, aterm1);
-        hermitian(aterm2_ptr, aterm2);
-        apply_aterm_generic(pixels, aterm1, aterm2);
-        #endif
 
         if (avg_aterm_correction) apply_avg_aterm_correction(avg_aterm_correction + (y*subgrid_size + x)*16, pixels);
 
