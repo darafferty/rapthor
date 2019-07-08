@@ -6,6 +6,7 @@ set (${PROJECT_NAME}_headers
     ProxyInfo.h
     RuntimeWrapper.h
     auxiliary.h
+    KernelTypes.h
     Types.h
     KernelsInstance.h
     Proxy.h

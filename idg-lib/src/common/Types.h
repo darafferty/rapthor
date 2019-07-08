@@ -18,31 +18,9 @@
 namespace idg {
 
     /* Structures */
-    typedef struct { int x, y, z; } Coordinate;
-
-    typedef struct { unsigned int station1, station2; } Baseline;
-
-    typedef struct {
-        int time_index;
-        int nr_timesteps;
-        Baseline baseline;
-        Coordinate coordinate;
-        Coordinate wtile_coordinate;
-        int wtile_index;
-        int nr_aterms;
-    } Metadata;
-
-    typedef struct {float real; float imag; } float2;
-    typedef struct {double real; double imag; } double2;
-
-    template<class T>
-    struct Matrix2x2 {T xx; T xy; T yx; T yy;};
-
-    template<class T>
-    using Visibility = Matrix2x2<T>;
-
-    template<class T>
-    struct UVWCoordinate {T u; T v; T w;};
+    typedef struct { float real; float imag; } float2;
+    typedef struct { double real; double imag; } double2;
+    #include "KernelTypes.h"
 
 
     /* Inline operations */
