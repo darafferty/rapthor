@@ -156,7 +156,7 @@ namespace idg {
                                                           const unsigned int               nr_stations,\
                                                           const unsigned int               nr_terms,\
                                                           const unsigned int               nr_time_slots,\
-                                                          const idg::UVWCoordinate<float>* uvw,\
+                                                          const idg::UVW<float>*           uvw,\
                                                           const float*                     wavenumbers,\
                                                                 idg::float2*               visibilities,\
                                                           const float*                     weights,\
@@ -247,7 +247,7 @@ namespace idg {
                 int nr_terms,
                 int nr_stations,
                 int nr_time_slots,
-                const idg::UVWCoordinate<float> *uvw,
+                const idg::UVW<float> *uvw,
                 const float *wavenumbers,
                 idg::float2 *visibilities,
                 const float *weights,

@@ -21,8 +21,8 @@ extern "C" {
          int nr_timesteps,
          float integration_time)
     {
-        idg::Array2D<idg::UVWCoordinate<float>> uvw(
-            (idg::UVWCoordinate<float> *) ptr, nr_baselines, nr_timesteps);
+        idg::Array2D<idg::UVW<float>> uvw(
+            (idg::UVW<float> *) ptr, nr_baselines, nr_timesteps);
         idg::Data data;
         data.get_uvw(uvw, 0, 0, integration_time);
     }
@@ -61,7 +61,7 @@ extern "C" {
         void *visibilities)
     {
         typedef idg::Matrix2x2<std::complex<float>> VisibilityType;
-        typedef idg::UVWCoordinate<float> UVWType;
+        typedef idg::UVW<float> UVWType;
         idg::Array3D<VisibilityType> visibilities_((VisibilityType *) visibilities, nr_baselines, nr_timesteps, nr_channels);
         idg::Array2D<UVWType> uvw_((UVWType *) uvw, nr_baselines, nr_timesteps);
         idg::Array1D<float> frequencies_((float *) frequencies, nr_channels);
@@ -181,7 +181,7 @@ extern "C" {
         unsigned int time_offset,
         float integration_time)
     {
-        idg::Array2D<idg::UVWCoordinate<float>> uvw((idg::UVWCoordinate<float> *) ptr, nr_baselines, nr_timesteps);
+        idg::Array2D<idg::UVW<float>> uvw((idg::UVW<float> *) ptr, nr_baselines, nr_timesteps);
         data->get_uvw(uvw, baseline_offset, time_offset, integration_time);
     }
 

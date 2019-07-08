@@ -38,7 +38,7 @@ namespace idg {
                         const int grid_size,
                         const float cell_size,
                         const Array1D<float>& frequencies,
-                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array2D<UVW<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                         const Array1D<unsigned int>& aterms_offsets,
                         Plan::Options options);
@@ -56,7 +56,7 @@ namespace idg {
                         const unsigned int subgrid_size,
                         const Array1D<float>& frequencies,
                         const Array3D<Visibility<std::complex<float>>>& visibilities,
-                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array2D<UVW<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                         Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -72,7 +72,7 @@ namespace idg {
                         const unsigned int subgrid_size,
                         const Array1D<float>& frequencies,
                         Array3D<Visibility<std::complex<float>>>& visibilities,
-                        const Array2D<UVWCoordinate<float>>& uvw,
+                        const Array2D<UVW<float>>& uvw,
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                         const Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -89,7 +89,7 @@ namespace idg {
                         const Array1D<float> &frequencies,
                         Array4D<Visibility<std::complex<float>>> &&visibilities,
                         Array4D<Visibility<float>> &&weights,
-                        Array3D<UVWCoordinate<float>> &&uvw,
+                        Array3D<UVW<float>> &&uvw,
                         Array2D<std::pair<unsigned int,unsigned int>> &&baselines,
                         const Grid& grid,
                         const Array2D<float>& spheroidal) override;
@@ -127,7 +127,7 @@ namespace idg {
                         Array1D<float> wavenumbers;
                         Array4D<Visibility<std::complex<float>>> visibilities;
                         Array4D<Visibility<float>> weights;
-                        Array3D<UVWCoordinate<float>> uvw;
+                        Array3D<UVW<float>> uvw;
                         Array2D<std::pair<unsigned int,unsigned int>> baselines;
                         std::vector<Array4D<std::complex<float>>> subgrids;
                         std::vector<Array4D<std::complex<float>>> phasors;

@@ -160,7 +160,7 @@ namespace idg {
         return baselines;
     }
 
-    Array2D<UVWCoordinate<float>> get_example_uvw(
+    Array2D<UVW<float>> get_example_uvw(
         proxy::Proxy& proxy,
         unsigned int nr_stations,
         unsigned int nr_baselines,
@@ -168,9 +168,9 @@ namespace idg {
         float integration_time)
     {
         auto bytes = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-        UVWCoordinate<float>* ptr = (UVWCoordinate<float>*) proxy.allocate_memory(bytes);
+        UVW<float>* ptr = (UVW<float>*) proxy.allocate_memory(bytes);
 
-        Array2D<UVWCoordinate<float>> uvw(ptr, nr_baselines, nr_timesteps);
+        Array2D<UVW<float>> uvw(ptr, nr_baselines, nr_timesteps);
 
         Data data;
         data.get_uvw(uvw);
@@ -356,7 +356,7 @@ namespace idg {
     }
 
     Array3D<Visibility<std::complex<float>>> get_example_visibilities(
-        Array2D<UVWCoordinate<float>> &uvw,
+        Array2D<UVW<float>> &uvw,
         Array1D<float> &frequencies,
         float        image_size,
         unsigned int grid_size,
@@ -406,13 +406,13 @@ namespace idg {
     }
 
 
-    Array2D<UVWCoordinate<float>> get_example_uvw(
+    Array2D<UVW<float>> get_example_uvw(
         unsigned int nr_stations,
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
         float integration_time)
     {
-        Array2D<UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
+        Array2D<UVW<float>> uvw(nr_baselines, nr_timesteps);
 
         Data data;
         data.get_uvw(uvw);
@@ -541,7 +541,7 @@ namespace idg {
 
     void add_pt_src(
         Array3D<Visibility<std::complex<float>>> &visibilities,
-        Array2D<UVWCoordinate<float>> &uvw,
+        Array2D<UVW<float>> &uvw,
         Array1D<float> &frequencies,
         float          image_size,
         unsigned int   grid_size,
@@ -765,20 +765,20 @@ namespace idg {
         }
     }
 
-    Array2D<UVWCoordinate<float>> Data::get_uvw(
+    Array2D<UVW<float>> Data::get_uvw(
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
         unsigned int baseline_offset,
         unsigned int time_offset,
         float integration_time) const
     {
-        Array2D<UVWCoordinate<float>> uvw(nr_baselines, nr_timesteps);
+        Array2D<UVW<float>> uvw(nr_baselines, nr_timesteps);
         get_uvw(uvw, baseline_offset, time_offset, integration_time);
         return uvw;
     }
 
     void Data::get_uvw(
-        Array2D<UVWCoordinate<float>>& uvw,
+        Array2D<UVW<float>>& uvw,
         unsigned int baseline_offset,
         unsigned int time_offset,
         float integration_time) const

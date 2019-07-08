@@ -557,7 +557,7 @@ namespace idg {
     std::ostream& operator<<(std::ostream& os, Metadata& m);
 
     template<class T>
-    std::ostream& operator<<(std::ostream& os, UVWCoordinate<T>& uvw);
+    std::ostream& operator<<(std::ostream& os, UVW<T>& uvw);
 
     std::ostream& operator<<(std::ostream& os, const float2& x);
     std::ostream& operator<<(std::ostream& os, const double2& x);

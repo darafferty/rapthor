@@ -29,14 +29,13 @@ namespace idg {
     }
 
     template<class T>
-    ostream& operator<<(ostream &out, UVWCoordinate<T> &uvw) {
+    ostream& operator<<(ostream &out, UVW<T> &uvw) {
         out << "("
             << uvw.u << ","
             << uvw.v << ","
             << uvw.w << ")";
         return out;
     }
-
 
     ostream& operator<<(ostream& os, const float2& x)
     {

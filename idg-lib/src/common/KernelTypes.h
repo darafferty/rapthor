@@ -19,7 +19,4 @@ template<class T>
 using Visibility = Matrix2x2<T>;
 
 template<class T>
-struct UVWCoordinate {T u; T v; T w;};
-
-template<class T>
 struct UVW {T u; T v; T w;};

@@ -45,7 +45,7 @@ int test01()
     clog << ">>> Initialize data structures" << endl;
     idg::Array1D<float> frequencies =
         idg::get_example_frequencies(nr_channels);
-    idg::Array2D<idg::UVWCoordinate<float>> uvw =
+    idg::Array2D<idg::UVW<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
         idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);

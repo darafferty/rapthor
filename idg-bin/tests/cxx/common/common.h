@@ -136,7 +136,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         idg::get_dummy_visibilities(reference, nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
         idg::get_example_baselines(optimized, nr_stations, nr_baselines);
-    idg::Array2D<idg::UVWCoordinate<float>> uvw =
+    idg::Array2D<idg::UVW<float>> uvw =
         idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
         idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);

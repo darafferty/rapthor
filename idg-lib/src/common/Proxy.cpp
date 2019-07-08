@@ -25,7 +25,7 @@ namespace idg {
             const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -50,7 +50,7 @@ namespace idg {
             const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -159,8 +159,8 @@ namespace idg {
             Array3D<Visibility<std::complex<float>>> visibilities_(
                 (Visibility<std::complex<float>> *) visibilities, visibilities_nr_baselines,
                 visibilities_nr_timesteps, visibilities_nr_channels);
-            Array2D<UVWCoordinate<float>> uvw_(
-                (UVWCoordinate<float> *) uvw, uvw_nr_baselines, uvw_nr_timesteps);
+            Array2D<UVW<float>> uvw_(
+                (UVW<float> *) uvw, uvw_nr_baselines, uvw_nr_timesteps);
             Array1D<std::pair<unsigned int,unsigned int>> baselines_(
                 (std::pair<unsigned int,unsigned int> *) baselines, baselines_nr_baselines);
             Grid grid_(
@@ -199,7 +199,7 @@ namespace idg {
             unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -224,7 +224,7 @@ namespace idg {
             const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -275,7 +275,7 @@ namespace idg {
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
             Array3D<Visibility<float>>& weights,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
             const Array1D<unsigned int>& aterms_offsets,
@@ -320,7 +320,7 @@ namespace idg {
             }
 
             // New buffers for data grouped by station
-            Array3D<UVWCoordinate<float>>  uvw1(nr_antennas, nr_antennas-1, nr_timesteps);
+            Array3D<UVW<float>>  uvw1(nr_antennas, nr_antennas-1, nr_timesteps);
             Array4D<Visibility<std::complex<float>>> visibilities1(nr_antennas, nr_antennas-1, nr_timesteps, nr_channels);
             Array4D<Visibility<float>> weights1(nr_antennas, nr_antennas-1, nr_timesteps, nr_channels);
             Array2D<std::pair<unsigned int,unsigned int>> baselines1(nr_antennas, nr_antennas-1);
@@ -384,7 +384,7 @@ namespace idg {
                     grid_size,
                     cell_size,
                     frequencies,
-                    Array2D<UVWCoordinate<float>>(uvw1.data(i), nr_antennas-1, nr_timesteps),
+                    Array2D<UVW<float>>(uvw1.data(i), nr_antennas-1, nr_timesteps),
                     Array1D<std::pair<unsigned int,unsigned int>>(baselines1.data(i), nr_antennas-1),
                     aterms_offsets,
                     options)));
@@ -495,8 +495,8 @@ namespace idg {
             Array3D<Visibility<std::complex<float>>> visibilities_(
                 (Visibility<std::complex<float>> *) visibilities, visibilities_nr_baselines,
                 visibilities_nr_timesteps, visibilities_nr_channels);
-            Array2D<UVWCoordinate<float>> uvw_(
-                (UVWCoordinate<float> *) uvw, uvw_nr_baselines, uvw_nr_timesteps);
+            Array2D<UVW<float>> uvw_(
+                (UVW<float> *) uvw, uvw_nr_baselines, uvw_nr_timesteps);
             Array1D<std::pair<unsigned int,unsigned int>> baselines_(
                 (std::pair<unsigned int,unsigned int> *) baselines, baselines_nr_baselines);
             Grid grid_(
@@ -533,7 +533,7 @@ namespace idg {
                 throw exception::NotImplemented("This proxy does not support average aterm correction");
             }
 
-//             check_dimensions_avg_aterm_correction();
+            // check_dimensions_avg_aterm_correction();
             std::complex<float> *data = avg_aterm_correction.data();
             size_t size = avg_aterm_correction.get_x_dim() *
                             avg_aterm_correction.get_y_dim() *
@@ -616,7 +616,7 @@ namespace idg {
             unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -694,7 +694,7 @@ namespace idg {
             const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             const Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -727,7 +727,7 @@ namespace idg {
             const unsigned int subgrid_size,
             const Array1D<float>& frequencies,
             Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVWCoordinate<float>>& uvw,
+            const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
             const Grid& grid,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
