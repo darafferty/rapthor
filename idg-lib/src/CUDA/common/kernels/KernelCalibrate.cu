@@ -23,49 +23,44 @@ inline __device__ long index_sums(
 }
 
 __device__ void compute_lmnp(
+    const int                         y,
+    const int                         x,
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
     const Metadata*      __restrict__ metadata,
-          float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE])
+          float4*                     lmnp_)
 {
-    unsigned tidx       = threadIdx.x;
-    unsigned tidy       = threadIdx.y;
-    unsigned tid        = tidx + tidy * blockDim.x;
-    unsigned nr_threads = blockDim.x * blockDim.y;
     unsigned s          = blockIdx.x;
 
     // Load metadata for current subgrid
-    const Metadata &m = metadata[s];
-    const int x_coordinate      = m.coordinate.x;
-    const int y_coordinate      = m.coordinate.y;
-    const int z_coordinate      = m.coordinate.z;
+    const int x_coordinate = metadata[s].coordinate.x;
+    const int y_coordinate = metadata[s].coordinate.y;
+    const int z_coordinate = metadata[s].coordinate.z;
 
     // Compute u,v,w offset in wavelenghts
     const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
 
-    for (unsigned int i = tid; i < (subgrid_size * subgrid_size); i += nr_threads) {
-        unsigned int y = i / subgrid_size;
-        unsigned int x = i % subgrid_size;
+    // Compute l,m,n and phase_offset
+    float l = compute_l(x, subgrid_size, image_size);
+    float m = compute_m(y, subgrid_size, image_size);
+    float n = compute_n(l, m);
+    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
-        if (y < subgrid_size) {
-            float l = compute_l(x, subgrid_size, image_size);
-            float m = compute_m(y, subgrid_size, image_size);
-            float n = compute_n(l, m);
-            float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-            lmnp_[y][x] = make_float4(l, m, n, phase_offset);
-        }
-    }
+    // Store result in shared memory
+    lmnp_[x] = make_float4(l, m, n, phase_offset);
 } // end compute_lmnp
 
 
 template<int current_nr_terms>
 __device__ void update_sums(
+    const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
+    const float                       w_step,
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_stations,
@@ -81,7 +76,7 @@ __device__ void update_sums(
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ sums,
-          float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE],
+          float4*                     lmnp_,
           float2                      pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE])
 {
     unsigned tidx       = threadIdx.x;
@@ -178,6 +173,10 @@ __device__ void update_sums(
                             pixels_[term_nr][pol][x] = pixel[pol];
                         }
                     } // end if
+
+                    if (term_nr == 0) {
+                        compute_lmnp(y, x, grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
+                    }
                 } // end for j (subgrid_size * terms)
 
                 __syncthreads();
@@ -186,12 +185,12 @@ __device__ void update_sums(
                 for (unsigned int x = 0; x < subgrid_size; x++) {
 
                     // Load l,m,n
-                    float l = lmnp_[y][x].x;
-                    float m = lmnp_[y][x].y;
-                    float n = lmnp_[y][x].z;
+                    float l = lmnp_[x].x;
+                    float m = lmnp_[x].y;
+                    float n = lmnp_[x].z;
 
                     // Load phase offset
-                    float phase_offset = lmnp_[y][x].w;
+                    float phase_offset = lmnp_[x].w;
 
                     // Compute phase index
                     float phase_index = u*l + v*m + w*n;
@@ -258,8 +257,10 @@ __device__ void update_sums(
 
 
 __device__ void update_gradient(
+    const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
+    const float                       w_step,
     const unsigned int                total_nr_timesteps,
     const unsigned int                nr_channels,
     const unsigned int                nr_stations,
@@ -274,8 +275,7 @@ __device__ void update_gradient(
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ sums,
-          float2*        __restrict__ gradient,
-          float4                      lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE])
+          float2*        __restrict__ gradient)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -295,6 +295,7 @@ __device__ void update_gradient(
     const unsigned int station2     = m.baseline.station2;
 
     // Shared memory
+    __shared__ float4 lmnp_[MAX_SUBGRID_SIZE];
     __shared__ float2 pixels_[NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
 
     // Iterate timesteps
@@ -366,7 +367,9 @@ __device__ void update_gradient(
                         for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             pixels_[pol][x] = pixel[pol];
                         }
-                    }
+
+                        compute_lmnp(y, x, grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
+                    } // end if
                 } // end for x
 
                 __syncthreads();
@@ -375,12 +378,12 @@ __device__ void update_gradient(
                 for (unsigned int x = 0; x < subgrid_size; x++) {
 
                     // Load l,m,n
-                    float l = lmnp_[y][x].x;
-                    float m = lmnp_[y][x].y;
-                    float n = lmnp_[y][x].z;
+                    float l = lmnp_[x].x;
+                    float m = lmnp_[x].y;
+                    float n = lmnp_[x].z;
 
                     // Load phase offset
-                    float phase_offset = lmnp_[y][x].w;
+                    float phase_offset = lmnp_[x].w;
 
                     // Compute phase index
                     float phase_index = u*l + v*m + w*n;
@@ -573,7 +576,7 @@ __device__ void update_hessian(
 #define UPDATE_SUMS(current_nr_terms) \
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
-                subgrid_size, image_size, total_nr_timesteps, nr_channels, nr_stations, \
+                grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, \
                 nr_terms, term_offset, \
                 uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, \
                 visibilities, weights, metadata, subgrid, \
@@ -605,10 +608,8 @@ __global__ void kernel_calibrate_sums(
           float2*        __restrict__ gradient)
 {
     // Shared memory
-    __shared__ float4 lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE];
+    __shared__ float4 lmnp_[MAX_SUBGRID_SIZE];
     __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
-
-    compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
 
     int term_offset = 0;
     UPDATE_SUMS(8)
@@ -644,17 +645,12 @@ __global__ void kernel_calibrate_gradient(
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
-    // Shared memory
-    __shared__ float4 lmnp_[MAX_SUBGRID_SIZE][MAX_SUBGRID_SIZE];
-
-    compute_lmnp(grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
-
     update_gradient(
-        subgrid_size, image_size, total_nr_timesteps,
+        grid_size, subgrid_size, image_size, w_step, total_nr_timesteps,
         nr_channels, nr_stations, nr_terms,
         uvw, aterm, aterm_indices, aterm_derivatives,
         wavenumbers, visibilities, weights, metadata, subgrid,
-        sums, gradient, lmnp_);
+        sums, gradient);
 } // end kernel_calibrate_gradient
 
 
