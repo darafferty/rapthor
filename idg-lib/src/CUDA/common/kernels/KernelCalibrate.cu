@@ -4,8 +4,6 @@
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 #define MAX_NR_TERMS     8
 #define MAX_SUBGRID_SIZE 32
-#define MAX_NR_THREADS   128
-#define MAX_NR_TIMESTEPS 128
 
 inline __device__ long index_sums(
     unsigned int total_nr_timesteps, // number of timesteps for all baselines
