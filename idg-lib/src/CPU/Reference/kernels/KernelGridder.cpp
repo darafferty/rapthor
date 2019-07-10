@@ -30,13 +30,15 @@ extern "C" {
         #pragma omp parallel for
         for (int s = 0; s < nr_subgrids; s++) {
             // Load metadata
-            const idg::Metadata m  = metadata[s];
-            const int time_offset  = m.time_index;
-            const int nr_timesteps = m.nr_timesteps;
-            const int station1     = m.baseline.station1;
-            const int station2     = m.baseline.station2;
-            const int x_coordinate = m.coordinate.x;
-            const int y_coordinate = m.coordinate.y;
+            const idg::Metadata m   = metadata[s];
+            const int time_offset   = m.time_index;
+            const int nr_timesteps  = m.nr_timesteps;
+            const int channel_begin = m.channel_begin;
+            const int channel_end   = m.channel_end;
+            const int station1      = m.baseline.station1;
+            const int station2      = m.baseline.station2;
+            const int x_coordinate  = m.coordinate.x;
+            const int y_coordinate  = m.coordinate.y;
             const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
             // Compute u and v offset in wavelenghts
@@ -78,7 +80,7 @@ extern "C" {
                         float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
                         // Update pixel for every channel
-                        for (int chan = 0; chan < nr_channels; chan++) {
+                        for (int chan = channel_begin; chan < channel_end; chan++) {
                             // Compute phase
                             float phase = phase_offset - (phase_index * wavenumbers[chan]);
 

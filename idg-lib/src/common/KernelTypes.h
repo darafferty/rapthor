@@ -5,6 +5,8 @@ typedef struct { unsigned int station1, station2; } Baseline;
 typedef struct {
     int time_index;
     int nr_timesteps;
+    int channel_begin;
+    int channel_end;
     Baseline baseline;
     Coordinate coordinate;
     Coordinate wtile_coordinate;

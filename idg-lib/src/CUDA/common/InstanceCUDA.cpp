@@ -231,38 +231,13 @@ namespace idg {
                 CUfunction function;
                 unsigned found = 0;
 
-                // Find gridder and degridder functions,
-                // in module 0 and module 1, respectively.
-                for (int chan = 0; chan < 9; chan++) {
-                    std::stringstream name_gridder_;
-                    std::stringstream name_degridder_;
-                    name_gridder_   << name_gridder << "_";
-                    name_degridder_ << name_degridder << "_";
-                    if (chan < 8) {
-                        name_gridder_   << chan+1;
-                        name_degridder_ << chan+1;
-                    } else {
-                        name_gridder_   << "n";
-                        name_degridder_ << "n";
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[0], name_gridder_.str().c_str()) == CUDA_SUCCESS) {
-                        functions_gridder.push_back(new cu::Function(function));
-                    } else {
-                        std::cerr << "Could not load: " << name_gridder_.str() << std::endl;
-                        exit(EXIT_FAILURE);
-                    }
-                    if (cuModuleGetFunction(&function, *mModules[1], name_degridder_.str().c_str()) == CUDA_SUCCESS) {
-                        functions_degridder.push_back(new cu::Function(function));
-                    } else {
-                        std::cerr << "Could not load: " << name_degridder_.str() << std::endl;
-                        exit(EXIT_FAILURE);
-                    }
-                }
-
-                // All gridder and degridder functions are found
-                found += 2;
-
                 // Find remaining functions
+                if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) == CUDA_SUCCESS) {
+                    function_gridder = new cu::Function(function); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) == CUDA_SUCCESS) {
+                    function_degridder = new cu::Function(function); found++;
+                }
                 if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) == CUDA_SUCCESS) {
                     function_scaler = new cu::Function(function); found++;
                 }
@@ -497,11 +472,10 @@ namespace idg {
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder);
                 start_measurement(data);
                 int kernel_id = min(nr_channels-1, 8);
-                cu::Function *function = functions_gridder[kernel_id];
                 #if ENABLE_REPEAT_KERNELS
                 for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
-                executestream->launchKernel(*function, grid, block, 0, parameters);
+                executestream->launchKernel(*function_gridder, grid, block, 0, parameters);
                 end_measurement(data);
             }
 
@@ -531,16 +505,10 @@ namespace idg {
                 dim3 block(block_degridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_degridder);
                 start_measurement(data);
-                #if 1
-                int kernel_id = min(nr_channels-1, 8);
-                cu::Function *function = functions_degridder[kernel_id];
-                #else
-                cu::Function *function = functions_degridder[8];
-                #endif
                 #if ENABLE_REPEAT_KERNELS
                 for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
-                executestream->launchKernel(*function, grid, block, 0, parameters);
+                executestream->launchKernel(*function_degridder, grid, block, 0, parameters);
                 end_measurement(data);
             }
 

@@ -76,10 +76,12 @@ void kernel_calibrate(
 
         // Load metadata
         const idg::Metadata m  = metadata[s];
-        const unsigned int time_offset  = m.time_index;
-        const unsigned int nr_timesteps = m.nr_timesteps;
-        const unsigned int station1     = m.baseline.station1;
-        const unsigned int station2     = m.baseline.station2;
+        const unsigned int time_offset   = m.time_index;
+        const unsigned int nr_timesteps  = m.nr_timesteps;
+        const unsigned int channel_begin = m.channel_begin;
+        const unsigned int channel_end   = m.channel_end;
+        const unsigned int station1      = m.baseline.station1;
+        const unsigned int station2      = m.baseline.station2;
 
         // Initialize aterm index to first timestep
         size_t aterm_idx_previous = aterms_indices[time_offset];
@@ -158,7 +160,7 @@ void kernel_calibrate(
             }
 
             // Iterate all channels
-            for (unsigned int chan = 0; chan < nr_channels; chan++) {
+            for (unsigned int chan = channel_begin; chan < channel_end; chan++) {
                 // Load phasor
                 float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
