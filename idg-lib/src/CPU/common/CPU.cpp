@@ -152,8 +152,8 @@ namespace idg {
                         void *aterm_idx_ptr    = (void *) plan.get_aterm_indices_ptr();
                         void *avg_aterm_ptr    = m_avg_aterm_correction.size() ? m_avg_aterm_correction.data() : nullptr;
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
-                        void *uvw_ptr          = uvw.data(first_bl, 0);
-                        void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
+                        void *uvw_ptr          = uvw.data(0, 0);
+                        void *visibilities_ptr = visibilities.data(0, 0, 0);
                         void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
 
@@ -299,8 +299,8 @@ namespace idg {
                         void *aterm_ptr        = aterms.data();
                         void *aterm_idx_ptr    = (void *) plan.get_aterm_indices_ptr();
                         void *metadata_ptr     = (void *) plan.get_metadata_ptr(first_bl);
-                        void *uvw_ptr          = uvw.data(first_bl, 0);
-                        void *visibilities_ptr = visibilities.data(first_bl, 0, 0);
+                        void *uvw_ptr          = uvw.data(0, 0);
+                        void *visibilities_ptr = visibilities.data(0, 0, 0);
                         void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
 
