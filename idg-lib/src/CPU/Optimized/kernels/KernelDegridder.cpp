@@ -151,7 +151,7 @@ void kernel_degridder(
             }
 
             // Iterate all channels
-            for (int chan = 0; chan < nr_channels; chan++) {
+            for (int chan = m.channel_begin; chan < m.channel_end; chan++) {
                 // Compute phase
                 float phase[nr_pixels];
 

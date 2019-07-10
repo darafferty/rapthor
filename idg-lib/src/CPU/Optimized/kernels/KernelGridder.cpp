@@ -110,11 +110,14 @@ void kernel_gridder(
         // Load metadata
         const idg::Metadata m  = metadata[s];
         const int time_offset_global = m.time_index;
-        const int nr_timesteps = m.nr_timesteps;
-        const int station1     = m.baseline.station1;
-        const int station2     = m.baseline.station2;
-        const int x_coordinate = m.coordinate.x;
-        const int y_coordinate = m.coordinate.y;
+        const int nr_timesteps  = m.nr_timesteps;
+        const int channel_begin = m.channel_begin;
+        const int channel_end   = m.channel_end;
+        const int nr_channels_subgrid = channel_end - channel_begin;
+        const int station1      = m.baseline.station1;
+        const int station2      = m.baseline.station2;
+        const int x_coordinate  = m.coordinate.x;
+        const int y_coordinate  = m.coordinate.y;
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
         // Initialize aterm index to first timestep
@@ -146,7 +149,7 @@ void kernel_gridder(
                 }
             }
 
-            int current_nr_visibilities = current_nr_timesteps * nr_channels;
+            int current_nr_visibilities = current_nr_timesteps * nr_channels_subgrid;
 
             if (aterm_changed) {
                 // Update subgrid
@@ -174,11 +177,11 @@ void kernel_gridder(
             float vis_yy_imag[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
 
             for (int time = 0; time < current_nr_timesteps; time++) {
-                for (int chan = 0; chan < nr_channels; chan++) {
+                for (int chan = channel_begin; chan < channel_end; chan++) {
                     int time_idx = time_offset_global + time_offset_local + time;
-                    int chan_idx = chan;
-                    size_t src_idx = index_visibility(nr_channels, time_idx, chan_idx, 0);
-                    size_t dst_idx = time * nr_channels + chan;
+                    int chan_idx = chan - channel_begin;
+                    size_t src_idx = index_visibility(nr_channels, time_idx, chan, 0);
+                    size_t dst_idx = time * nr_channels_subgrid + chan_idx;
 
                     vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
                     vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
@@ -216,7 +219,7 @@ void kernel_gridder(
                 int x = i % subgrid_size;
 
                 // Compute phase
-                float phase[current_nr_timesteps*nr_channels];
+                float phase[current_nr_timesteps*nr_channels_subgrid];
 
                 for (int time = 0; time < current_nr_timesteps; time++) {
                     // Load UVW coordinates
@@ -228,10 +231,11 @@ void kernel_gridder(
                     float phase_index = u*l_[i] + v*m_[i] + w*n_[i];
 
                     // pragma vector aligned
-                    for (int chan = 0; chan < nr_channels; chan++) {
+                    for (int chan = channel_begin; chan < channel_end; chan++) {
+                        int chan_idx = chan - channel_begin;
                         // Compute phase
                         float wavenumber = wavenumbers[chan];
-                        phase[time * nr_channels + chan] = phase_offset[i] - (phase_index * wavenumber);
+                        phase[time * nr_channels_subgrid + chan_idx] = phase_offset[i] - (phase_index * wavenumber);
                     }
                 } // end time
 
