@@ -21,25 +21,19 @@ inline __device__ long index_sums(
            chan;
 }
 
-__device__ void compute_lmnp(
-    const int                         y,
-    const int                         x,
-    const int                         grid_size,
-    const int                         subgrid_size,
-    const float                       image_size,
-    const float                       w_step,
-    const Metadata*      __restrict__ metadata,
-          float4*                     lmnp_)
+inline __device__ float4 compute_lmnp(
+    const Coordinate coordinate,
+    const int        y,
+    const int        x,
+    const int        grid_size,
+    const int        subgrid_size,
+    const float      image_size,
+    const float      w_step)
 {
-    unsigned s    = blockIdx.x;
-    unsigned tidx = threadIdx.x;
-    unsigned tidy = threadIdx.y;
-    unsigned tid  = tidx + tidy * blockDim.x;
-
-    // Load metadata for current subgrid
-    const int x_coordinate = metadata[s].coordinate.x;
-    const int y_coordinate = metadata[s].coordinate.y;
-    const int z_coordinate = metadata[s].coordinate.z;
+    // Locateion of current subgrid
+    const int x_coordinate = coordinate.x;
+    const int y_coordinate = coordinate.y;
+    const int z_coordinate = coordinate.z;
 
     // Compute u,v,w offset in wavelenghts
     const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
@@ -52,8 +46,8 @@ __device__ void compute_lmnp(
     float n = compute_n(l, m);
     float phase_offset = u_offset*l + v_offset*m + w_offset*n;
 
-    // Store result in shared memory
-    lmnp_[tid] = make_float4(l, m, n, phase_offset);
+    // Return result
+    return make_float4(l, m, n, phase_offset);
 } // end compute_lmnp
 
 
@@ -96,6 +90,7 @@ __device__ void update_sums(
     const unsigned int time_offset_global = m.time_index - m0.time_index;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
+    const Coordinate coordinate     = m.coordinate;
 
     // Iterate timesteps
     int current_nr_timesteps = 0;
@@ -177,7 +172,7 @@ __device__ void update_sums(
                     } // end if
 
                     if (term_nr == 0) {
-                        compute_lmnp(y, x, grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
+                        lmnp_[x] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
                     }
                 } // end for j (subgrid_size * terms)
 
@@ -295,6 +290,7 @@ __device__ void update_gradient(
     const unsigned int nr_timesteps = m.nr_timesteps;
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
+    const Coordinate coordinate     = m.coordinate;
 
     // Shared memory
     __shared__ float4 lmnp_[BATCH_SIZE_GRADIENT];
@@ -371,7 +367,7 @@ __device__ void update_gradient(
                         pixels_[pol][tid] = pixel[pol];
                     }
 
-                    compute_lmnp(y, x, grid_size, subgrid_size, image_size, w_step, metadata, lmnp_);
+                    lmnp_[tid] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
                 }
 
                 // Iterate batch
