@@ -92,39 +92,39 @@ __device__ void update_sums(
     const unsigned int nr_timesteps = m.nr_timesteps;
     const Coordinate coordinate     = m.coordinate;
 
-    // Iterate timesteps
-    int current_nr_timesteps = 0;
-    for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+    // Iterate all terms
+    for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
 
-        // Determine number of timesteps to process
-        current_nr_timesteps = 0;
-        for (int time = time_offset_local; time < nr_timesteps; time++) {
-            if (aterm_indices[time_offset_global + time] == aterm_idx) {
-                current_nr_timesteps++;
-            } else {
-                break;
-            }
-        }
+        // Iterate timesteps
+        int current_nr_timesteps = 0;
+        for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+            int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
-        // Iterate batch of visibilities from the same timeslot
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-            int time = (i / nr_channels) + time_offset_local;
-            int chan = (i % nr_channels);
-
-            // Load UVW
-            float u, v, w;
-            if (time < nr_timesteps) {
-                u = uvw[time_offset_global + time].u;
-                v = uvw[time_offset_global + time].v;
-                w = uvw[time_offset_global + time].w;
+            // Determine number of timesteps to process
+            current_nr_timesteps = 0;
+            for (int time = time_offset_local; time < nr_timesteps; time++) {
+                if (aterm_indices[time_offset_global + time] == aterm_idx) {
+                    current_nr_timesteps++;
+                } else {
+                    break;
+                }
             }
 
-            // Load wavenumber
-            float wavenumber = wavenumbers[chan];
+            // Iterate batch of visibilities from the same timeslot
+            for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
+                int time = (i / nr_channels) + time_offset_local;
+                int chan = (i % nr_channels);
 
-            // Iterate all terms
-            for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
+                // Load UVW
+                float u, v, w;
+                if (time < nr_timesteps) {
+                    u = uvw[time_offset_global + time].u;
+                    v = uvw[time_offset_global + time].v;
+                    w = uvw[time_offset_global + time].w;
+                }
+
+                // Load wavenumber
+                float wavenumber = wavenumbers[chan];
 
                 // Accumulate sums in registers
                 float2 sum_xx = make_float2(0, 0);
@@ -240,9 +240,9 @@ __device__ void update_sums(
 
                 __syncthreads();
 
-            } // end for term_nr
-        } // end for i (visibilities)
-    } // end for time_offset_local
+            } // end for i (visibilities)
+        } // end for time_offset_local
+    } // end for term_nr
 } // end update_sums
 
 
