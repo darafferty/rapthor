@@ -3,7 +3,7 @@
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 #define MAX_NR_TERMS     8
-#define MAX_SUBGRID_SIZE 32
+#define BATCH_SIZE_SUMS     256
 #define BATCH_SIZE_GRADIENT 128
 
 inline __device__ long index_sums(
@@ -73,7 +73,7 @@ __device__ void update_sums(
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ sums,
           float4*                     lmnp_,
-          float2                      pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE])
+          float2                      pixels_[NR_POLARIZATIONS][BATCH_SIZE_SUMS])
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -123,114 +123,107 @@ __device__ void update_sums(
             // Load wavenumber
             float wavenumber = wavenumbers[chan];
 
-            // Accumulate sums in registers
-            float2 sum_xx[current_nr_terms];
-            float2 sum_xy[current_nr_terms];
-            float2 sum_yx[current_nr_terms];
-            float2 sum_yy[current_nr_terms];
+            // Iterate all terms
             for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
-                sum_xx[term_nr] = make_float2(0, 0);
-                sum_xy[term_nr] = make_float2(0, 0);
-                sum_yx[term_nr] = make_float2(0, 0);
-                sum_yy[term_nr] = make_float2(0, 0);
-            }
 
-            // Iterate all rows of the subgrid
-            for (unsigned int y = 0; y < subgrid_size; y++) {
-                __syncthreads();
+                // Accumulate sums in registers
+                float2 sum_xx = make_float2(0, 0);
+                float2 sum_xy = make_float2(0, 0);
+                float2 sum_yx = make_float2(0, 0);
+                float2 sum_yy = make_float2(0, 0);
 
-                // Precompute data for one row
-                for (unsigned j = tid; j < (subgrid_size*nr_terms); j += nr_threads) {
-                    unsigned int term_nr = j / subgrid_size;
-                    unsigned int x       = j % subgrid_size;
+                // Iterate all pixels
+                for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_SUMS) {
+                    __syncthreads();
 
-                    if (term_nr < nr_terms) {
-                        // Compute shifted position in subgrid
-                        unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
-                        unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
-
-                        // Load pixels and aterms
-                        float2 pixel[NR_POLARIZATIONS];
-                        float2 aterm1[NR_POLARIZATIONS];
-                        float2 aterm2[NR_POLARIZATIONS];
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                            unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_terms, aterm_idx, term_offset+term_nr, y, x, pol);
-                            unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
-                            pixel[pol]  = subgrid[pixel_idx];
-                            aterm1[pol] = aterm_derivatives[aterm1_idx];
-                            aterm2[pol] = aterm[aterm2_idx];
-                        }
-
-                        // Apply aterm
-                        apply_aterm_calibrate(pixel, aterm1, aterm2);
-
-                        // Store pixels in shared memory
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels_[term_nr][pol][x] = pixel[pol];
-                        }
-                    } // end if
-
-                    if (term_nr == 0) {
-                        lmnp_[x] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
+                    float2 pixel[NR_POLARIZATIONS];
+                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        pixel[pol] = make_float2(0, 0);
                     }
-                } // end for j (subgrid_size * terms)
 
-                __syncthreads();
+                    for (unsigned int j = tid; j < BATCH_SIZE_SUMS; j += nr_threads) {
+                        unsigned int y = (pixel_offset + j) / subgrid_size;
+                        unsigned int x = (pixel_offset + j) % subgrid_size;
 
-                // Iterate all columns of current row
-                for (unsigned int x = 0; x < subgrid_size; x++) {
+                        // Prepare batch
+                        if (y < subgrid_size) {
+                            // Compute shifted position in subgrid
+                            unsigned int x_src = (x + (subgrid_size/2)) % subgrid_size;
+                            unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-                    // Load l,m,n
-                    float l = lmnp_[x].x;
-                    float m = lmnp_[x].y;
-                    float n = lmnp_[x].z;
+                            // Load pixels and aterms
+                            float2 aterm1[NR_POLARIZATIONS];
+                            float2 aterm2[NR_POLARIZATIONS];
+                            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                unsigned int term_idx   = term_offset + term_nr;
+                                unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                                unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_terms, aterm_idx, term_idx, y, x, pol);
+                                unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                                pixel[pol]  = subgrid[pixel_idx];
+                                aterm1[pol] = aterm_derivatives[aterm1_idx];
+                                aterm2[pol] = aterm[aterm2_idx];
+                            }
 
-                    // Load phase offset
-                    float phase_offset = lmnp_[x].w;
+                            // Apply aterm
+                            apply_aterm_calibrate(pixel, aterm1, aterm2);
 
-                    // Compute phase index
-                    float phase_index = u*l + v*m + w*n;
+                            // Store pixels in shared memory
+                            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                pixels_[pol][j] = pixel[pol];
+                            }
 
-                    // Compute phasor
-                    float  phase  = (phase_index * wavenumber) - phase_offset;
-                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                            lmnp_[j] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
+                        }
+                    }
 
-                    // Iterate all terms
-                    for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
+                    __syncthreads();
+
+                    // Iterate batch
+                    for (unsigned int j = 0; j < BATCH_SIZE_SUMS; j++) {
+                        // Load l,m,n
+                        float l = lmnp_[j].x;
+                        float m = lmnp_[j].y;
+                        float n = lmnp_[j].z;
+
+                        // Load phase offset
+                        float phase_offset = lmnp_[j].w;
+
+                        // Compute phase index
+                        float phase_index = u*l + v*m + w*n;
+
+                        // Compute phasor
+                        float  phase  = (phase_index * wavenumber) - phase_offset;
+                        float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                         // Load pixels
-                        float2 pixel_xx = pixels_[term_nr][0][x];
-                        float2 pixel_xy = pixels_[term_nr][1][x];
-                        float2 pixel_yx = pixels_[term_nr][2][x];
-                        float2 pixel_yy = pixels_[term_nr][3][x];
+                        float2 pixel_xx = pixels_[0][j];
+                        float2 pixel_xy = pixels_[1][j];
+                        float2 pixel_yx = pixels_[2][j];
+                        float2 pixel_yy = pixels_[3][j];
 
                         // Update sums
-                        sum_xx[term_nr].x += phasor.x * pixel_xx.x;
-                        sum_xx[term_nr].y += phasor.x * pixel_xx.y;
-                        sum_xx[term_nr].x -= phasor.y * pixel_xx.y;
-                        sum_xx[term_nr].y += phasor.y * pixel_xx.x;
+                        sum_xx.x += phasor.x * pixel_xx.x;
+                        sum_xx.y += phasor.x * pixel_xx.y;
+                        sum_xx.x -= phasor.y * pixel_xx.y;
+                        sum_xx.y += phasor.y * pixel_xx.x;
 
-                        sum_xy[term_nr].x += phasor.x * pixel_xy.x;
-                        sum_xy[term_nr].y += phasor.x * pixel_xy.y;
-                        sum_xy[term_nr].x -= phasor.y * pixel_xy.y;
-                        sum_xy[term_nr].y += phasor.y * pixel_xy.x;
+                        sum_xy.x += phasor.x * pixel_xy.x;
+                        sum_xy.y += phasor.x * pixel_xy.y;
+                        sum_xy.x -= phasor.y * pixel_xy.y;
+                        sum_xy.y += phasor.y * pixel_xy.x;
 
-                        sum_yx[term_nr].x += phasor.x * pixel_yx.x;
-                        sum_yx[term_nr].y += phasor.x * pixel_yx.y;
-                        sum_yx[term_nr].x -= phasor.y * pixel_yx.y;
-                        sum_yx[term_nr].y += phasor.y * pixel_yx.x;
+                        sum_yx.x += phasor.x * pixel_yx.x;
+                        sum_yx.y += phasor.x * pixel_yx.y;
+                        sum_yx.x -= phasor.y * pixel_yx.y;
+                        sum_yx.y += phasor.y * pixel_yx.x;
 
-                        sum_yy[term_nr].x += phasor.x * pixel_yy.x;
-                        sum_yy[term_nr].y += phasor.x * pixel_yy.y;
-                        sum_yy[term_nr].x -= phasor.y * pixel_yy.y;
-                        sum_yy[term_nr].y += phasor.y * pixel_yy.x;
-                    } // end for term_nr
-                } // end for x
-            } // end for y
+                        sum_yy.x += phasor.x * pixel_yy.x;
+                        sum_yy.y += phasor.x * pixel_yy.y;
+                        sum_yy.x -= phasor.y * pixel_yy.y;
+                        sum_yy.y += phasor.y * pixel_yy.x;
+                    } // end for k (batch)
+                } // end for j (pixels)
 
-            // Scale sums and store in device memory
-            for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                 const float scale = 1.0f / nr_pixels;
                 if (time < nr_timesteps) {
                     unsigned int time_idx = time_offset_global + time;
@@ -239,15 +232,15 @@ __device__ void update_sums(
                     unsigned int sum_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
                     unsigned int sum_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
                     unsigned int sum_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
-                    sums[sum_idx_xx] = sum_xx[term_nr] * scale;
-                    sums[sum_idx_xy] = sum_xy[term_nr] * scale;
-                    sums[sum_idx_yx] = sum_yx[term_nr] * scale;
-                    sums[sum_idx_yy] = sum_yy[term_nr] * scale;
+                    sums[sum_idx_xx] = sum_xx * scale;
+                    sums[sum_idx_xy] = sum_xy * scale;
+                    sums[sum_idx_yx] = sum_yx * scale;
+                    sums[sum_idx_yy] = sum_yy * scale;
                 }
+
+                __syncthreads();
+
             } // end for term_nr
-
-            __syncthreads();
-
         } // end for i (visibilities)
     } // end for time_offset_local
 } // end update_sums
@@ -369,6 +362,8 @@ __device__ void update_gradient(
 
                     lmnp_[tid] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
                 }
+
+                __syncthreads();
 
                 // Iterate batch
                 for (unsigned int k = 0; k < nr_threads; k++) {
@@ -584,6 +579,8 @@ __device__ void update_hessian(
 
 extern "C" {
 
+    __shared__ float4 lmnp_[BATCH_SIZE_SUMS];
+    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][BATCH_SIZE_SUMS];
 __global__ void kernel_calibrate_sums(
     const int                         grid_size,
     const int                         subgrid_size,
@@ -607,8 +604,8 @@ __global__ void kernel_calibrate_sums(
           float2*        __restrict__ gradient)
 {
     // Shared memory
-    __shared__ float4 lmnp_[MAX_SUBGRID_SIZE];
-    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][MAX_SUBGRID_SIZE];
+    __shared__ float4 lmnp_[BATCH_SIZE_SUMS];
+    __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_SUMS];
 
     int term_offset = 0;
     UPDATE_SUMS(8)
