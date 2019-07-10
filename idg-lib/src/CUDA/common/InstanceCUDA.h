@@ -296,8 +296,8 @@ namespace idg {
                     cu::Stream  *executestream;
                     cu::Stream  *htodstream;
                     cu::Stream  *dtohstream;
-                    std::vector<cu::Function *> functions_gridder;
-                    std::vector<cu::Function *> functions_degridder;
+                    cu::Function *function_gridder;
+                    cu::Function *function_degridder;
                     cu::Function *function_fft;
                     cu::Function *function_adder;
                     cu::Function *function_splitter;

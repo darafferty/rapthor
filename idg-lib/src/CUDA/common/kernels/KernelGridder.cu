@@ -343,8 +343,14 @@ __device__ void
     __syncthreads();
 } // end kernel_gridder_
 
+#define LOAD_METADATA \
+    int s          = blockIdx.x; \
+    const Metadata &m = metadata[s]; \
+    const int channel_begin = m.channel_begin; \
+    const int channel_end = m.channel_end;
+
 #define KERNEL_GRIDDER(current_nr_channels) \
-    for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
+    for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
         kernel_gridder_<current_nr_channels>( \
             grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
@@ -374,73 +380,10 @@ __device__ void
 
 extern "C" {
 __global__ void
-    kernel_gridder_1(GLOBAL_ARGUMENTS)
+    kernel_gridder(GLOBAL_ARGUMENTS)
 {
-    int channel_offset = 0;
-    KERNEL_GRIDDER(1)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_2(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(2)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_3(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(3)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_4(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(4)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_5(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(5)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_6(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(6)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_7(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(7)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_8(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
-    KERNEL_GRIDDER(8)
-    FINALIZE_SUBGRID
-}
-
-__global__ void
-    kernel_gridder_n(GLOBAL_ARGUMENTS)
-{
-    int channel_offset = 0;
+    LOAD_METADATA
+    int channel_offset = channel_begin;
     KERNEL_GRIDDER(8)
     KERNEL_GRIDDER(7)
     KERNEL_GRIDDER(6)

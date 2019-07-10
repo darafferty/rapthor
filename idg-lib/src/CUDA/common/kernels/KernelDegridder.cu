@@ -217,17 +217,19 @@ __device__ void kernel_degridder_(
     int s          = blockIdx.x; \
     const Metadata &m = metadata[s]; \
     const int nr_timesteps = m.nr_timesteps; \
+    const int channel_begin = m.channel_begin; \
+    const int channel_end = m.channel_end; \
     const int nr_aterms    = m.nr_aterms;
 
 #define KERNEL_DEGRIDDER(current_nr_channels) \
     if (nr_timesteps / nr_aterms < (2*warpSize)) { \
-        for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
+        for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, 1>( \
                 grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     } else { \
-        for (; (channel_offset + current_nr_channels) <= nr_channels; channel_offset += current_nr_channels) { \
+        for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, current_nr_channels>( \
                 grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
@@ -251,76 +253,11 @@ __device__ void kernel_degridder_(
           float2*        __restrict__ subgrid
 
 extern "C" {
-
 __global__ void
-    kernel_degridder_1(GLOBAL_ARGUMENTS)
+    kernel_degridder(GLOBAL_ARGUMENTS)
 {
     LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(1)
-}
-
-__global__ void
-    kernel_degridder_2(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(2)
-}
-
-__global__ void
-    kernel_degridder_3(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(3)
-}
-
-__global__ void
-    kernel_degridder_4(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(4)
-}
-
-__global__ void
-    kernel_degridder_5(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(5)
-}
-
-__global__ void
-    kernel_degridder_6(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(6)
-}
-
-__global__ void
-    kernel_degridder_7(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(7)
-}
-
-__global__ void
-    kernel_degridder_8(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
-    KERNEL_DEGRIDDER(8)
-}
-
-__global__ void
-    kernel_degridder_n(GLOBAL_ARGUMENTS)
-{
-    LOAD_METADATA
-    int channel_offset = 0;
+    int channel_offset = channel_begin;
     KERNEL_DEGRIDDER(8)
     KERNEL_DEGRIDDER(7)
     KERNEL_DEGRIDDER(6)

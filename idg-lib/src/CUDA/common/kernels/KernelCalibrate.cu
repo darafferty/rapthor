@@ -99,6 +99,7 @@ __device__ void update_sums(
     const unsigned int time_offset_global = m.time_index - m0.time_index;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
+    const unsigned int subgrid_nr_channels = m.channel_end - m.channel_begin;
 
     // Iterate timesteps
     int current_nr_timesteps = 0;
@@ -116,9 +117,9 @@ __device__ void update_sums(
         }
 
         // Iterate batch of visibilities from the same timeslot
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-            int time = (i / nr_channels) + time_offset_local;
-            int chan = (i % nr_channels);
+        for (int i = tid; i < ALIGN(current_nr_timesteps * subgrid_nr_channels, nr_threads); i += nr_threads) {
+            int time = (i / subgrid_nr_channels) + time_offset_local;
+            int chan = (i % subgrid_nr_channels) + m.channel_begin;
 
             // Load UVW
             float u, v, w;
@@ -293,6 +294,7 @@ __device__ void update_gradient(
     const Metadata &m = metadata[s];
     const unsigned int time_offset_global = m.time_index - m0.time_index;
     const unsigned int nr_timesteps = m.nr_timesteps;
+    const unsigned int subgrid_nr_channels = m.channel_end - m.channel_begin;
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
 
@@ -315,9 +317,9 @@ __device__ void update_gradient(
         }
 
         // Iterate batch of visibilities from the same timeslot
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-            int time = (i / nr_channels) + time_offset_local;
-            int chan = (i % nr_channels);
+        for (int i = tid; i < ALIGN(current_nr_timesteps * subgrid_nr_channels, nr_threads); i += nr_threads) {
+            int time = (i / subgrid_nr_channels) + time_offset_local;
+            int chan = (i % subgrid_nr_channels) + m.channel_begin;
 
             // Load UVW
             float u, v, w;
@@ -538,8 +540,8 @@ __device__ void update_hessian(
             // Iterate all timesteps
             for (unsigned int time = 0; time < current_nr_timesteps; time++) {
 
-                // Iterate all channels
-                for (unsigned int chan = 0; chan < nr_channels; chan++) {
+                // Iterate all channels in subgrid
+                for (unsigned int chan = m.channel_begin; chan < m.channel_end; chan++) {
 
                     // Iterate all polarizations
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -578,7 +580,7 @@ __device__ void update_hessian(
     for (; (term_offset + current_nr_terms) <= nr_terms; term_offset += current_nr_terms) { \
         update_sums<current_nr_terms>( \
                 subgrid_size, image_size, total_nr_timesteps, nr_channels, nr_stations, \
-                nr_terms, term_offset, \
+                current_nr_terms, term_offset, \
                 uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers, \
                 visibilities, weights, metadata, subgrid, \
                 sums, lmnp_, pixels_); \
