@@ -205,25 +205,10 @@ __device__ void update_sums(
                         float2 pixel_yy = pixels_[3][j];
 
                         // Update sums
-                        sum_xx.x += phasor.x * pixel_xx.x;
-                        sum_xx.y += phasor.x * pixel_xx.y;
-                        sum_xx.x -= phasor.y * pixel_xx.y;
-                        sum_xx.y += phasor.y * pixel_xx.x;
-
-                        sum_xy.x += phasor.x * pixel_xy.x;
-                        sum_xy.y += phasor.x * pixel_xy.y;
-                        sum_xy.x -= phasor.y * pixel_xy.y;
-                        sum_xy.y += phasor.y * pixel_xy.x;
-
-                        sum_yx.x += phasor.x * pixel_yx.x;
-                        sum_yx.y += phasor.x * pixel_yx.y;
-                        sum_yx.x -= phasor.y * pixel_yx.y;
-                        sum_yx.y += phasor.y * pixel_yx.x;
-
-                        sum_yy.x += phasor.x * pixel_yy.x;
-                        sum_yy.y += phasor.x * pixel_yy.y;
-                        sum_yy.x -= phasor.y * pixel_yy.y;
-                        sum_yy.y += phasor.y * pixel_yy.x;
+                        sum_xx += (phasor * pixel_xx);
+                        sum_xy += (phasor * pixel_xy);
+                        sum_yx += (phasor * pixel_yx);
+                        sum_yy += (phasor * pixel_yy);
                     } // end for j (batch)
                 } // end for pixel_offset
 
@@ -321,25 +306,10 @@ __device__ void update_sums(
                             float2 pixel_yy = pixels_[3][j];
 
                             // Update sums
-                            sum_xx.x += phasor.x * pixel_xx.x;
-                            sum_xx.y += phasor.x * pixel_xx.y;
-                            sum_xx.x -= phasor.y * pixel_xx.y;
-                            sum_xx.y += phasor.y * pixel_xx.x;
-
-                            sum_xy.x += phasor.x * pixel_xy.x;
-                            sum_xy.y += phasor.x * pixel_xy.y;
-                            sum_xy.x -= phasor.y * pixel_xy.y;
-                            sum_xy.y += phasor.y * pixel_xy.x;
-
-                            sum_yx.x += phasor.x * pixel_yx.x;
-                            sum_yx.y += phasor.x * pixel_yx.y;
-                            sum_yx.x -= phasor.y * pixel_yx.y;
-                            sum_yx.y += phasor.y * pixel_yx.x;
-
-                            sum_yy.x += phasor.x * pixel_yy.x;
-                            sum_yy.y += phasor.x * pixel_yy.y;
-                            sum_yy.x -= phasor.y * pixel_yy.y;
-                            sum_yy.y += phasor.y * pixel_yy.x;
+                            sum_xx += phasor * pixel_xx;
+                            sum_xy += phasor * pixel_xy;
+                            sum_yx += phasor * pixel_yx;
+                            sum_yy += phasor * pixel_yy;
                         } // end for j (batch)
                     } // end for pixel_offset
 
@@ -373,25 +343,10 @@ __device__ void update_sums(
                             // Compute gradient update
                             float2 update = make_float2(0, 0);
 
-                            update.x += sum_xx.x * residual_xx.x;
-                            update.x += sum_xx.y * residual_xx.y;
-                            update.y += sum_xx.x * residual_xx.y;
-                            update.y -= sum_xx.y * residual_xx.x;
-
-                            update.x += sum_xy.x * residual_xy.x;
-                            update.x += sum_xy.y * residual_xy.y;
-                            update.y += sum_xy.x * residual_xy.y;
-                            update.y -= sum_xy.y * residual_xy.x;
-
-                            update.x += sum_yx.x * residual_yx.x;
-                            update.x += sum_yx.y * residual_yx.y;
-                            update.y += sum_yx.x * residual_yx.y;
-                            update.y -= sum_yx.y * residual_yx.x;
-
-                            update.x += sum_yy.x * residual_yy.x;
-                            update.x += sum_yy.y * residual_yy.y;
-                            update.y += sum_yy.x * residual_yy.y;
-                            update.y -= sum_yy.y * residual_yy.x;
+                            update += residual_xx * conj(sum_xx);
+                            update += residual_xy * conj(sum_xy);
+                            update += residual_yx * conj(sum_yx);
+                            update += residual_yy * conj(sum_yy);
 
                             // Update gradient
                             unsigned int idx = aterm_idx * nr_terms + term_idx;
