@@ -208,7 +208,7 @@ __device__ void update_sums(
                     unsigned int chan_idx = chan;
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
-                        sums[sum_idx] = sum[pol] * scale;
+                        sums[sum_idx] = conj(sum[pol]) * scale;
                     }
                 }
 
@@ -311,7 +311,7 @@ __device__ void update_sums(
                             for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 // Load derivative sums
                                 unsigned int sums_idx = index_sums(total_nr_timesteps, nr_channels, term_idx, pol, time_idx, chan_idx);
-                                update += residual[pol] * conj(sums[sums_idx]);
+                                update += residual[pol] * sums[sums_idx];
                             }
 
                             // Update gradient
@@ -389,14 +389,11 @@ __device__ void update_hessian(
                         unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
                         unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
                         float2 sum0 = sums[sum_idx0];
-                        float2 sum1 = sums[sum_idx1] * weights[vis_idx];
+                        float2 sum1 = conj(sums[sum_idx1]) * weights[vis_idx];
 
                         // Update hessian
                         if (term_nr0 < nr_terms) {
-                            update.x += sum1.x * sum0.x;
-                            update.x += sum1.y * sum0.y;
-                            update.y += sum1.y * sum0.x;
-                            update.y -= sum1.x * sum0.y;
+                            update += sum0 * sum1;
                         }
                     } // end for pol
                 } // end chan
