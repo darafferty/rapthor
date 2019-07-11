@@ -114,19 +114,21 @@ __device__ void update_sums(
 
             // Iterate batch of visibilities from the same timeslot
             for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-                int time = (i / nr_channels) + time_offset_local;
-                int chan = (i % nr_channels);
+                unsigned int time_idx_batch  = (i / nr_channels);
+                unsigned int chan_idx_local  = (i % nr_channels);
+                unsigned int time_idx_local  = time_offset_local + time_idx_batch;
+                unsigned int time_idx_global = time_offset_global + time_idx_local;
 
                 // Load UVW
                 float u, v, w;
-                if (time < nr_timesteps) {
-                    u = uvw[time_offset_global + time].u;
-                    v = uvw[time_offset_global + time].v;
-                    w = uvw[time_offset_global + time].w;
+                if (time_idx_batch < current_nr_timesteps) {
+                    u = uvw[time_idx_global].u;
+                    v = uvw[time_idx_global].v;
+                    w = uvw[time_idx_global].w;
                 }
 
                 // Load wavenumber
-                float wavenumber = wavenumbers[chan];
+                float wavenumber = wavenumbers[chan_idx_local];
 
                 // Accumulate sums in registers
                 float2 sum[NR_POLARIZATIONS] = {0, 0};
@@ -203,11 +205,9 @@ __device__ void update_sums(
                 } // end for pixel_offset
 
                 const float scale = 1.0f / nr_pixels;
-                if (time < nr_timesteps) {
-                    unsigned int time_idx = time_offset_global + time;
-                    unsigned int chan_idx = chan;
+                if (time_idx_batch < current_nr_timesteps) {
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
+                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
                         sums[sum_idx] = conj(sum[pol]) * scale;
                     }
                 }
@@ -290,14 +290,12 @@ __device__ void update_sums(
                         } // end for j (batch)
                     } // end for pixel_offset
 
-                    if ((time - time_offset_local) < current_nr_timesteps) {
+                    if (time_idx_batch < current_nr_timesteps) {
 
                         // Compute residual
-                        unsigned int time_idx = time_offset_global + time;
-                        unsigned int chan_idx = chan;
                         float2 residual[NR_POLARIZATIONS];
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            unsigned int vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                            unsigned int vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
                             residual[pol] = (visibilities[vis_idx] - (sum[pol] * scale)) * weights[vis_idx];
                         }
 
@@ -309,8 +307,7 @@ __device__ void update_sums(
                             float2 update = make_float2(0, 0);
 
                             for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                // Load derivative sums
-                                unsigned int sums_idx = index_sums(total_nr_timesteps, nr_channels, term_idx, pol, time_idx, chan_idx);
+                                unsigned int sums_idx = index_sums(total_nr_timesteps, nr_channels, term_idx, pol, time_idx_global, chan_idx_local);
                                 update += residual[pol] * sums[sums_idx];
                             }
 
@@ -383,11 +380,11 @@ __device__ void update_hessian(
 
                     // Iterate all polarizations
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int time_idx = time_offset_global + time_offset_local + time;
+                        unsigned int time_idx_global = time_offset_global + time_offset_local + time;
                         unsigned int chan_idx = chan;
-                        unsigned int  vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
-                        unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx, chan_idx);
-                        unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx, chan_idx);
+                        unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx, pol);
+                        unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx);
+                        unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx);
                         float2 sum0 = sums[sum_idx0];
                         float2 sum1 = conj(sums[sum_idx1]) * weights[vis_idx];
 
