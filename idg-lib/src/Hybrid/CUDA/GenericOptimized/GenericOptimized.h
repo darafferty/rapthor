@@ -182,6 +182,7 @@ namespace idg {
                         unsigned int nr_channels;
                         Array3D<UVW<float>> uvw;
                         unsigned int d_sums_id;
+                        unsigned int d_lmnp_id;
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
                         std::vector<unsigned int> d_visibilities_ids;

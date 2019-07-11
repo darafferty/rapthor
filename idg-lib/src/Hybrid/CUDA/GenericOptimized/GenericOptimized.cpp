@@ -1033,7 +1033,9 @@ namespace idg {
                 // Allocate scratch device memory
                 auto total_nr_timesteps = nr_baselines * nr_timesteps;
                 auto sizeof_sum_deriv = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
+                auto sizeof_lmnp = subgrid_size * subgrid_size * 4 * sizeof(float);
                 m_calibrate_state.d_sums_id = device.allocate_device_memory(sizeof_sum_deriv);
+                m_calibrate_state.d_lmnp_id = device.allocate_device_memory(sizeof_lmnp);
             }
 
             void GenericOptimized::do_calibrate_update(
@@ -1101,6 +1103,7 @@ namespace idg {
                 unsigned int d_weights_id        = m_calibrate_state.d_weights_ids[antenna_nr];
                 unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[antenna_nr];
                 unsigned int d_sums_id           = m_calibrate_state.d_sums_id;
+                unsigned int d_lmnp_id           = m_calibrate_state.d_lmnp_id;
                 unsigned int d_aterm_idx_id      = m_calibrate_state.d_aterm_idx_ids[antenna_nr];
                 cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                 cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
@@ -1108,6 +1111,7 @@ namespace idg {
                 cu::DeviceMemory& d_weights      = device.retrieve_device_memory(d_weights_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
                 cu::DeviceMemory& d_sums         = device.retrieve_device_memory(d_sums_id);
+                cu::DeviceMemory& d_lmnp         = device.retrieve_device_memory(d_lmnp_id);
                 cu::DeviceMemory& d_aterms_idx   = device.retrieve_device_memory(d_aterm_idx_id);
 
                 // Allocate additional data structures
@@ -1133,7 +1137,7 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                    d_metadata, d_subgrids, d_sums, d_hessian, d_gradient);
+                    d_metadata, d_subgrids, d_sums, d_lmnp, d_hessian, d_gradient);
                 executestream.record(executeFinished);
 
                 // Copy output to host

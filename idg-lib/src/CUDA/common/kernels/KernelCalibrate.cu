@@ -68,6 +68,7 @@ __device__ void update_sums(
     const float*         __restrict__ weights,
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
+          float4*        __restrict__ lmnp,
           float2*        __restrict__ gradient)
 {
     unsigned tidx       = threadIdx.x;
@@ -415,6 +416,7 @@ __global__ void kernel_calibrate_sums(
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ sums,
+          float4*        __restrict__ lmnp,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
@@ -422,7 +424,7 @@ __global__ void kernel_calibrate_sums(
         grid_size, subgrid_size, image_size, w_step,
         total_nr_timesteps, nr_channels, nr_stations, nr_terms,
         uvw, aterm, aterm_indices, aterm_derivatives, wavenumbers,
-        visibilities, weights, metadata, subgrid, gradient);
+        visibilities, weights, metadata, subgrid, lmnp, gradient);
 } // end kernel_calibrate_sums
 
 
@@ -445,6 +447,7 @@ __global__ void kernel_calibrate_hessian(
     const Metadata*      __restrict__ metadata,
     const float2*        __restrict__ subgrid,
           float2*        __restrict__ sums,
+          float4*        __restrict__ lmnp,
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
