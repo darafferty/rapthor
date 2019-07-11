@@ -195,17 +195,10 @@ __device__ void update_sums(
                         float  phase  = (phase_index * wavenumber) - phase_offset;
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
-                        // Load pixels
-                        float2 pixel_xx = pixels_[0][j];
-                        float2 pixel_xy = pixels_[1][j];
-                        float2 pixel_yx = pixels_[2][j];
-                        float2 pixel_yy = pixels_[3][j];
-
                         // Update sums
-                        sum[0] += (phasor * pixel_xx);
-                        sum[1] += (phasor * pixel_xy);
-                        sum[2] += (phasor * pixel_yx);
-                        sum[3] += (phasor * pixel_yy);
+                        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            sum[pol] += (phasor * pixels_[pol][j]);
+                        }
                     } // end for j (batch)
                 } // end for pixel_offset
 
@@ -213,14 +206,10 @@ __device__ void update_sums(
                 if (time < nr_timesteps) {
                     unsigned int time_idx = time_offset_global + time;
                     unsigned int chan_idx = chan;
-                    unsigned int sum_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_nr, 0, time_idx, chan_idx);
-                    unsigned int sum_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_nr, 1, time_idx, chan_idx);
-                    unsigned int sum_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_nr, 2, time_idx, chan_idx);
-                    unsigned int sum_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_nr, 3, time_idx, chan_idx);
-                    sums[sum_idx_xx] = sum[0] * scale;
-                    sums[sum_idx_xy] = sum[1] * scale;
-                    sums[sum_idx_yx] = sum[2] * scale;
-                    sums[sum_idx_yy] = sum[3] * scale;
+                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx, chan_idx);
+                        sums[sum_idx] = sum[pol] * scale;
+                    }
                 }
 
                 __syncthreads();
@@ -228,10 +217,9 @@ __device__ void update_sums(
                 // Update gradient
                 if (term_nr == nr_terms - 1) {
                     // Reset sums
-                    sum[0] = make_float2(0, 0);
-                    sum[1] = make_float2(0, 0);
-                    sum[2] = make_float2(0, 0);
-                    sum[3] = make_float2(0, 0);
+                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        sum[pol] = make_float2(0, 0);
+                    }
 
                     // Iterate all pixels
                     for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_GRADIENT) {
@@ -296,17 +284,9 @@ __device__ void update_sums(
                             float  phase  = (phase_index * wavenumber) - phase_offset;
                             float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
-                            // Load pixels
-                            float2 pixel_xx = pixels_[0][j];
-                            float2 pixel_xy = pixels_[1][j];
-                            float2 pixel_yx = pixels_[2][j];
-                            float2 pixel_yy = pixels_[3][j];
-
-                            // Update sums
-                            sum[0] += phasor * pixel_xx;
-                            sum[1] += phasor * pixel_xy;
-                            sum[2] += phasor * pixel_yx;
-                            sum[3] += phasor * pixel_yy;
+                            for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                sum[pol] += phasor * pixels_[pol][j];
+                            }
                         } // end for j (batch)
                     } // end for pixel_offset
 
@@ -315,35 +295,24 @@ __device__ void update_sums(
                         // Compute residual
                         unsigned int time_idx = time_offset_global + time;
                         unsigned int chan_idx = chan;
-                        unsigned int vis_idx_xx = index_visibility(nr_channels, time_idx, chan_idx, 0);
-                        unsigned int vis_idx_xy = index_visibility(nr_channels, time_idx, chan_idx, 1);
-                        unsigned int vis_idx_yx = index_visibility(nr_channels, time_idx, chan_idx, 2);
-                        unsigned int vis_idx_yy = index_visibility(nr_channels, time_idx, chan_idx, 3);
-                        float2 residual_xx = (visibilities[vis_idx_xx] - (sum[0] * scale)) * weights[vis_idx_xx];
-                        float2 residual_xy = (visibilities[vis_idx_xy] - (sum[1] * scale)) * weights[vis_idx_xy];
-                        float2 residual_yx = (visibilities[vis_idx_yx] - (sum[2] * scale)) * weights[vis_idx_yx];
-                        float2 residual_yy = (visibilities[vis_idx_yy] - (sum[3] * scale)) * weights[vis_idx_yy];
+                        float2 residual[NR_POLARIZATIONS];
+                        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            unsigned int vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                            residual[pol] = (visibilities[vis_idx] - (sum[pol] * scale)) * weights[vis_idx];
+                        }
 
                         #pragma unroll 8
                         for (unsigned int j = 0; j < nr_terms; j++) {
-                            // Load derivative sums
                             unsigned int term_idx = j;
-                            unsigned int sums_idx_xx = index_sums(total_nr_timesteps, nr_channels, term_idx, 0, time_idx, chan_idx);
-                            unsigned int sums_idx_xy = index_sums(total_nr_timesteps, nr_channels, term_idx, 1, time_idx, chan_idx);
-                            unsigned int sums_idx_yx = index_sums(total_nr_timesteps, nr_channels, term_idx, 2, time_idx, chan_idx);
-                            unsigned int sums_idx_yy = index_sums(total_nr_timesteps, nr_channels, term_idx, 3, time_idx, chan_idx);
-                            sum[0] = conj(sums[sums_idx_xx]);
-                            sum[1] = conj(sums[sums_idx_xy]);
-                            sum[2] = conj(sums[sums_idx_yx]);
-                            sum[3] = conj(sums[sums_idx_yy]);
 
                             // Compute gradient update
                             float2 update = make_float2(0, 0);
 
-                            update += residual_xx * sum[0];
-                            update += residual_xy * sum[1];
-                            update += residual_yx * sum[2];
-                            update += residual_yy * sum[3];
+                            for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                                // Load derivative sums
+                                unsigned int sums_idx = index_sums(total_nr_timesteps, nr_channels, term_idx, pol, time_idx, chan_idx);
+                                update += residual[pol] * conj(sums[sums_idx]);
+                            }
 
                             // Update gradient
                             unsigned int idx = aterm_idx * nr_terms + term_idx;
