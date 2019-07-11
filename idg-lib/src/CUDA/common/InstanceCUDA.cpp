@@ -249,8 +249,11 @@ namespace idg {
                 }
 
                 // Find calibration functions
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
+                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
                     functions_calibrate.push_back(new cu::Function(function)); found++;
+                }
+                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
+                    functions_calibrate.push_back(new cu::Function(function));
                 }
                 if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
                     functions_calibrate.push_back(new cu::Function(function));
@@ -542,9 +545,11 @@ namespace idg {
                 dim3 block(block_calibrate);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_calibrate);
                 start_measurement(data);
-                cu::Function *function_sums     = functions_calibrate[0];
-                cu::Function *function_hessian  = functions_calibrate[1];
-                executestream->launchKernel(*function_sums, grid, block, 0, parameters);
+                cu::Function *function_lmnp     = functions_calibrate[0];
+                cu::Function *function_gradient = functions_calibrate[1];
+                cu::Function *function_hessian  = functions_calibrate[2];
+                executestream->launchKernel(*function_lmnp, grid, block, 0, parameters);
+                executestream->launchKernel(*function_gradient, grid, block, 0, parameters);
                 executestream->launchKernel(*function_hessian, grid, block, 0, parameters);
                 end_measurement(data);
             }

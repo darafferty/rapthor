@@ -888,12 +888,19 @@ namespace idg {
                 m_calibrate_state.d_uvw_ids.clear();
                 m_calibrate_state.d_aterm_idx_ids.clear();
 
+                // Find max number of subgrids
+                unsigned int max_nr_subgrids = 0;
+
                 // Create subgrids for every antenna
                 for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
                 {
                     // Allocate subgrids for current antenna
                     unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
+
+                    if (nr_subgrids > max_nr_subgrids) {
+                        max_nr_subgrids = nr_subgrids;
+                    }
 
                     // Get data pointers
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
@@ -1033,7 +1040,7 @@ namespace idg {
                 // Allocate scratch device memory
                 auto total_nr_timesteps = nr_baselines * nr_timesteps;
                 auto sizeof_sum_deriv = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
-                auto sizeof_lmnp = subgrid_size * subgrid_size * 4 * sizeof(float);
+                auto sizeof_lmnp = max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
                 m_calibrate_state.d_sums_id = device.allocate_device_memory(sizeof_sum_deriv);
                 m_calibrate_state.d_lmnp_id = device.allocate_device_memory(sizeof_lmnp);
             }
