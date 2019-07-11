@@ -3,8 +3,7 @@
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 #define MAX_NR_TERMS     8
-#define BATCH_SIZE_SUMS     256
-#define BATCH_SIZE_GRADIENT 256
+#define BATCH_SIZE_PIXELS     256
 
 inline __device__ long index_sums(
     unsigned int total_nr_timesteps, // number of timesteps for all baselines
@@ -91,8 +90,8 @@ __device__ void update_sums(
     const Coordinate coordinate     = m.coordinate;
 
     // Shared memory
-    __shared__ float4 lmnp_[BATCH_SIZE_SUMS];
-    __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_SUMS];
+    __shared__ float4 lmnp_[BATCH_SIZE_PIXELS];
+    __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
 
     // Iterate all terms
     for (unsigned int term_nr = 0; term_nr < nr_terms; term_nr++) {
@@ -134,10 +133,10 @@ __device__ void update_sums(
                 float2 sum[NR_POLARIZATIONS] = {0, 0};
 
                 // Iterate all pixels
-                for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_SUMS) {
+                for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
                     __syncthreads();
 
-                    for (unsigned int j = tid; j < BATCH_SIZE_SUMS; j += nr_threads) {
+                    for (unsigned int j = tid; j < BATCH_SIZE_PIXELS; j += nr_threads) {
                         unsigned int y = (pixel_offset + j) / subgrid_size;
                         unsigned int x = (pixel_offset + j) % subgrid_size;
 
@@ -181,7 +180,7 @@ __device__ void update_sums(
                     __syncthreads();
 
                     // Iterate batch
-                    for (unsigned int j = 0; j < BATCH_SIZE_SUMS; j++) {
+                    for (unsigned int j = 0; j < BATCH_SIZE_PIXELS; j++) {
                         // Load l,m,n
                         float l = lmnp_[j].x;
                         float m = lmnp_[j].y;
@@ -222,10 +221,10 @@ __device__ void update_sums(
                     }
 
                     // Iterate all pixels
-                    for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_GRADIENT) {
+                    for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
                         __syncthreads();
 
-                        for (unsigned int j = tid; j < BATCH_SIZE_GRADIENT; j += nr_threads) {
+                        for (unsigned int j = tid; j < BATCH_SIZE_PIXELS; j += nr_threads) {
                             unsigned int y = (pixel_offset + j) / subgrid_size;
                             unsigned int x = (pixel_offset + j) % subgrid_size;
 
@@ -268,7 +267,7 @@ __device__ void update_sums(
                         __syncthreads();
 
                         // Iterate batch
-                        for (unsigned int j = 0; j < BATCH_SIZE_GRADIENT; j++) {
+                        for (unsigned int j = 0; j < BATCH_SIZE_PIXELS; j++) {
                             // Load l,m,n
                             float l = lmnp_[j].x;
                             float m = lmnp_[j].y;
@@ -410,8 +409,6 @@ __device__ void update_hessian(
 
 extern "C" {
 
-    __shared__ float4 lmnp_[BATCH_SIZE_SUMS];
-    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][BATCH_SIZE_SUMS];
 __global__ void kernel_calibrate_sums(
     const int                         grid_size,
     const int                         subgrid_size,
