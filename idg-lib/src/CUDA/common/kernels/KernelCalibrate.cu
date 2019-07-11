@@ -131,7 +131,8 @@ __device__ void update_sums(
                 float wavenumber = wavenumbers[chan_idx_local];
 
                 // Accumulate sums in registers
-                float2 sum[NR_POLARIZATIONS] = {0, 0};
+                float2 sum1[NR_POLARIZATIONS] = {0, 0};
+                float2 sum2[NR_POLARIZATIONS] = {0, 0};
 
                 // Iterate all pixels
                 for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
@@ -199,7 +200,7 @@ __device__ void update_sums(
 
                         // Update sums
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            sum[pol] += (phasor * pixels_[pol][j]);
+                            sum1[pol] += (phasor * pixels_[pol][j]);
                         }
                     } // end for j (batch)
                 } // end for pixel_offset
@@ -207,16 +208,11 @@ __device__ void update_sums(
                 const float scale = 1.0f / nr_pixels;
                 if (time_idx_batch < current_nr_timesteps) {
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        visibility[pol] = conj(sum[pol]) * scale;
+                        visibility[pol] = conj(sum1[pol]) * scale;
                     }
                 }
 
                 __syncthreads();
-
-                // Reset sums
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    sum[pol] = make_float2(0, 0);
-                }
 
                 // Iterate all pixels
                 for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
@@ -282,7 +278,7 @@ __device__ void update_sums(
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            sum[pol] += phasor * pixels_[pol][j];
+                            sum2[pol] += phasor * pixels_[pol][j];
                         }
                     } // end for j (batch)
                 } // end for pixel_offset
@@ -293,7 +289,7 @@ __device__ void update_sums(
                     float2 residual[NR_POLARIZATIONS];
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
-                        residual[pol] = (visibilities[vis_idx] - (sum[pol] * scale)) * weights[vis_idx];
+                        residual[pol] = (visibilities[vis_idx] - (sum2[pol] * scale)) * weights[vis_idx];
                     }
 
                     // Compute gradient update
