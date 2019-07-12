@@ -486,44 +486,45 @@ __global__ void kernel_calibrate_hessian(
             // Compute hessian update
             float2 update = make_float2(0, 0);
 
-            // Iterate all timesteps
-            for (unsigned int time = 0; time < current_nr_timesteps; time++) {
-
-                // Iterate all channels
-                for (unsigned int chan = 0; chan < nr_channels; chan++) {
-
-                    // Iterate all polarizations
-                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int time_idx_global = time_offset_global + time_offset_local + time;
-                        unsigned int chan_idx = chan;
-                        unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx, pol);
-                        unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx);
-                        unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx);
-                        float2 sum0 = sums1[sum_idx0];
-                        float2 sum1 = conj(sums2[sum_idx1]) * weights[vis_idx];
-
-                        // Update hessian
-                        if (term_nr1 < current_nr_terms) {
-                            update += sum0 * sum1;
-                        }
-                    } // end for pol
-                } // end chan
-            } // end for time
-
-            __syncthreads();
-
-            // Update hessian
             if (term_nr1 < current_nr_terms) {
-                unsigned idx = aterm_idx * nr_terms * nr_terms +
-                               (term_offset2 + term_nr1) * nr_terms+
-                               (term_offset1 + term_nr0);
+                // Iterate all timesteps
+                for (unsigned int time = 0; time < current_nr_timesteps; time++) {
+
+                    // Iterate all channels
+                    for (unsigned int chan = 0; chan < nr_channels; chan++) {
+
+                        // Iterate all polarizations
+                        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            unsigned int time_idx_global = time_offset_global + time_offset_local + time;
+                            unsigned int chan_idx = chan;
+                            unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx, pol);
+                            unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx);
+                            unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx);
+                            float2 sum0 = sums1[sum_idx0];
+                            float2 sum1 = conj(sums2[sum_idx1]) * weights[vis_idx];
+
+                            // Update hessian
+                            if (term_nr1 < current_nr_terms) {
+                                fma(update, sum0, sum1);
+                            }
+                        } // end for pol
+                    } // end chan
+                } // end for time
+
+
+                // Compute term indices
+                unsigned int term_idx1 = term_offset2 + term_nr1;
+                unsigned int term_idx0 = term_offset1 + term_nr0;
+
+                // Update hessian
+                unsigned int idx = aterm_idx * nr_terms * nr_terms +
+                                   term_idx1 * nr_terms + term_idx0;
                 atomicAdd(&hessian[idx], update);
 
-                // Fill mirror hessian
+                // Update mirror hessian
                 if (term_offset1 != term_offset2) {
-                    unsigned idx = aterm_idx * nr_terms * nr_terms +
-                               (term_offset1 + term_nr0) * nr_terms+
-                               (term_offset2 + term_nr1);
+                    unsigned int idx = aterm_idx * nr_terms * nr_terms +
+                                       term_idx0 * nr_terms + term_idx1;
                     atomicAdd(&hessian[idx], conj(update));
                 }
             }
