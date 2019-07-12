@@ -160,6 +160,7 @@ __global__ void kernel_calibrate_sums(
 
             // Iterate all pixels
             for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
+
                 __syncthreads();
 
                 for (unsigned int j = tid; j < BATCH_SIZE_PIXELS; j += nr_threads) {
@@ -340,6 +341,7 @@ __global__ void kernel_calibrate_gradient(
 
             // Iterate all pixels
             for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
+
                 __syncthreads();
 
                 for (unsigned int j = tid; j < BATCH_SIZE_PIXELS; j += nr_threads) {
@@ -424,9 +426,6 @@ __global__ void kernel_calibrate_gradient(
                     } // end for term
                 } // end for pol
             } // end if time
-
-            __syncthreads();
-
         } // end for i (visibilities)
 
         // Update gradient
