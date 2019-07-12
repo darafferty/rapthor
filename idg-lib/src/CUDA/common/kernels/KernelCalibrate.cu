@@ -249,7 +249,7 @@ __global__ void kernel_calibrate_sums(
                     // Update sum
                     for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            sum[term_nr][pol] += (phasor * pixels_[term_nr][pol][j]);
+                            fma(sum[term_nr][pol], phasor, pixels_[term_nr][pol][j]);
                         } // end for pol
                     } // end for term_nr
                 } // end for j (batch)
@@ -423,7 +423,7 @@ __global__ void kernel_calibrate_gradient(
 
                     // Update sum
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        sum[pol] += phasor * pixels_[pol][j];
+                        fma(sum[pol], phasor, pixels_[pol][j]);
                     }
                 } // end for j (batch)
             } // end for pixel_offset
@@ -440,7 +440,7 @@ __global__ void kernel_calibrate_gradient(
                     // Compute gradient update
                     for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
-                        update[term_nr] += residual[pol] * sums[sum_idx];
+                        fma(update[term_nr], residual[pol], sums[sum_idx]);
                     } // end for term
                 } // end for pol
             } // end if time
