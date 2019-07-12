@@ -888,12 +888,19 @@ namespace idg {
                 m_calibrate_state.d_uvw_ids.clear();
                 m_calibrate_state.d_aterm_idx_ids.clear();
 
+                // Find max number of subgrids
+                unsigned int max_nr_subgrids = 0;
+
                 // Create subgrids for every antenna
                 for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++)
                 {
                     // Allocate subgrids for current antenna
                     unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
                     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations, subgrid_size, subgrid_size);
+
+                    if (nr_subgrids > max_nr_subgrids) {
+                        max_nr_subgrids = nr_subgrids;
+                    }
 
                     // Get data pointers
                     void *metadata_ptr     = (void *) plans[antenna_nr]->get_metadata_ptr();
@@ -1030,10 +1037,16 @@ namespace idg {
                 cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
 
-                // Allocate scratch device memory
+                // Allocate device memory for l,m,n and phase offset
+                auto sizeof_lmnp = max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
+                m_calibrate_state.d_lmnp_id = device.allocate_device_memory(sizeof_lmnp);
+
+                // Allocate memory for sums (horizontal and vertical)
                 auto total_nr_timesteps = nr_baselines * nr_timesteps;
-                auto sizeof_sum_deriv = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
-                m_calibrate_state.d_sums_id = device.allocate_device_memory(sizeof_sum_deriv);
+                auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
+                for (unsigned int i = 0; i < 2; i++) {
+                    m_calibrate_state.d_sums_ids.push_back(device.allocate_device_memory(sizeof_sums));
+                }
             }
 
             void GenericOptimized::do_calibrate_update(
@@ -1056,6 +1069,7 @@ namespace idg {
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
                 auto max_nr_terms = m_calibrate_max_nr_terms;
+                auto nr_correlations = 4;
 
                 assert((nr_terms+1) < max_nr_terms);
 
@@ -1064,12 +1078,6 @@ namespace idg {
                     report.initialize(nr_channels, subgrid_size, 0, nr_terms);
                 }
 
-                // Data pointers
-                void *aterm_ptr            = aterms.data();
-                void *aterm_derivative_ptr = aterm_derivatives.data();
-                void *hessian_ptr          = hessian.data();
-                void *gradient_ptr         = gradient.data();
-
                 // Start marker
                 cu::Marker marker("do_calibrate_update");
                 marker.start();
@@ -1077,6 +1085,20 @@ namespace idg {
                 // Load device
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
+
+                // Transpose aterms and aterm derivatives
+                const unsigned int nr_aterms = nr_stations * nr_timeslots;
+                const unsigned int nr_aterm_derivatives = nr_terms * nr_timeslots;
+                Array4D<std::complex<float>> aterms_transposed(nr_aterms, nr_correlations, subgrid_size, subgrid_size);
+                Array4D<std::complex<float>> aterm_derivatives_transposed(nr_aterm_derivatives, nr_correlations, subgrid_size, subgrid_size);
+                device.transpose_aterm(aterms, aterms_transposed);
+                device.transpose_aterm(aterm_derivatives, aterm_derivatives_transposed);
+
+                // Data pointers
+                void *aterm_ptr            = aterms_transposed.data();
+                void *aterm_derivative_ptr = aterm_derivatives_transposed.data();
+                void *hessian_ptr          = hessian.data();
+                void *gradient_ptr         = gradient.data();
 
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();
@@ -1091,14 +1113,18 @@ namespace idg {
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
                 unsigned int d_weights_id        = m_calibrate_state.d_weights_ids[antenna_nr];
                 unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[antenna_nr];
-                unsigned int d_sums_id           = m_calibrate_state.d_sums_id;
+                unsigned int d_sums_id1          = m_calibrate_state.d_sums_ids[0];
+                unsigned int d_sums_id2          = m_calibrate_state.d_sums_ids[1];
+                unsigned int d_lmnp_id           = m_calibrate_state.d_lmnp_id;
                 unsigned int d_aterm_idx_id      = m_calibrate_state.d_aterm_idx_ids[antenna_nr];
                 cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
                 cu::DeviceMemory& d_subgrids     = device.retrieve_device_memory(d_subgrids_id);
                 cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                 cu::DeviceMemory& d_weights      = device.retrieve_device_memory(d_weights_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
-                cu::DeviceMemory& d_sums         = device.retrieve_device_memory(d_sums_id);
+                cu::DeviceMemory& d_sums1        = device.retrieve_device_memory(d_sums_id1);
+                cu::DeviceMemory& d_sums2        = device.retrieve_device_memory(d_sums_id2);
+                cu::DeviceMemory& d_lmnp         = device.retrieve_device_memory(d_lmnp_id);
                 cu::DeviceMemory& d_aterms_idx   = device.retrieve_device_memory(d_aterm_idx_id);
 
                 // Allocate additional data structures
@@ -1107,6 +1133,7 @@ namespace idg {
                 cu::DeviceMemory d_gradient(gradient.bytes());
                 cu::HostMemory h_hessian(hessian.bytes());
                 cu::HostMemory h_gradient(gradient.bytes());
+                //d_hessian.zero();
 
                 // Events
                 cu::Event inputCopied, executeFinished, outputCopied;
@@ -1124,7 +1151,7 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                    d_metadata, d_subgrids, d_sums, d_hessian, d_gradient);
+                    d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp, d_hessian, d_gradient);
                 executestream.record(executeFinished);
 
                 // Copy output to host

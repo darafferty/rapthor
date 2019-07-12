@@ -61,5 +61,13 @@ inline __device__ float raw_cos(float a)
     return r;
 }
 
+inline __device__ void fma(float2 &a, float2 b, float2 c)
+{
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.x) : "f"(b.x), "f"(c.x), "f"(a.x));
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.x), "f"(c.y), "f"(a.y));
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.x) : "f"(-b.y), "f"(c.y), "f"(a.x));
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.y), "f"(c.x), "f"(a.y));
+}
+
 #define FUNCTION_ATTRIBUTES __device__
 #include "common/Math.h"

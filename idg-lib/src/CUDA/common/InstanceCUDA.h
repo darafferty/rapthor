@@ -93,7 +93,9 @@ namespace idg {
                         cu::DeviceMemory& d_aterm_indices,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid,
-                        cu::DeviceMemory& d_sums,
+                        cu::DeviceMemory& d_sums1,
+                        cu::DeviceMemory& d_sums2,
+                        cu::DeviceMemory& d_lmnp,
                         cu::DeviceMemory& d_hessian,
                         cu::DeviceMemory& d_gradient);
 
@@ -397,6 +399,7 @@ namespace idg {
             static const std::string name_splitter  = "kernel_splitter";
             static const std::string name_fft       = "kernel_fft";
             static const std::string name_scaler    = "kernel_scaler";
+            static const std::string name_calibrate_lmnp     = "kernel_calibrate_lmnp";
             static const std::string name_calibrate_sums     = "kernel_calibrate_sums";
             static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
             static const std::string name_calibrate_hessian  = "kernel_calibrate_hessian";
