@@ -31,6 +31,10 @@ inline __device__ long index_lmnp(
            y * subgrid_size + x;
 }
 
+// Shared memory
+__shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
+__shared__ float4 lmnp_[BATCH_SIZE_PIXELS];
+
 extern "C" {
 
 __global__ void kernel_calibrate_lmnp(
@@ -218,6 +222,10 @@ __global__ void kernel_calibrate_sums(
                             for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 pixels_[pol][j] = pixel[pol];
                             }
+
+                            // Load l,m,n and phase_offset into shared memory
+                            unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
+                            lmnp_[j] = lmnp[lmnp_idx];
                         } // end if
                     } // end for j
 
@@ -226,14 +234,10 @@ __global__ void kernel_calibrate_sums(
                     // Iterate batch
                     for (unsigned int j = 0; j < BATCH_SIZE_PIXELS; j++) {
                         // Load l,m,n and phase_offset
-                        unsigned int pixel_idx = pixel_offset + j;
-                        unsigned int y = pixel_idx / subgrid_size;
-                        unsigned int x = pixel_idx % subgrid_size;
-                        unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
-                        float l = lmnp[lmnp_idx].x;
-                        float m = lmnp[lmnp_idx].y;
-                        float n = lmnp[lmnp_idx].z;
-                        float phase_offset = lmnp[lmnp_idx].w;
+                        float l = lmnp_[j].x;
+                        float m = lmnp_[j].y;
+                        float n = lmnp_[j].z;
+                        float phase_offset = lmnp_[j].w;
 
                         // Compute phase index
                         float phase_index = u*l + v*m + w*n;
@@ -302,9 +306,6 @@ __global__ void kernel_calibrate_gradient(
     const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
-
-    // Shared memory
-    __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
 
     // Iterate all terms
     for (unsigned int term_nr = 0; term_nr < nr_terms; term_nr++) {
@@ -384,6 +385,10 @@ __global__ void kernel_calibrate_gradient(
                             for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 pixels_[pol][j] = pixel[pol];
                             }
+
+                            // Load l,m,n and phase_offset into shared memory
+                            unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
+                            lmnp_[j] = lmnp[lmnp_idx];
                         } // end if
                     } // end for j
 
@@ -392,14 +397,10 @@ __global__ void kernel_calibrate_gradient(
                     // Iterate batch
                     for (unsigned int j = 0; j < BATCH_SIZE_PIXELS; j++) {
                         // Load l,m,n and phase_offset
-                        unsigned int pixel_idx = pixel_offset + j;
-                        unsigned int y = pixel_idx / subgrid_size;
-                        unsigned int x = pixel_idx % subgrid_size;
-                        unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
-                        float l = lmnp[lmnp_idx].x;
-                        float m = lmnp[lmnp_idx].y;
-                        float n = lmnp[lmnp_idx].z;
-                        float phase_offset = lmnp[lmnp_idx].w;
+                        float l = lmnp_[j].x;
+                        float m = lmnp_[j].y;
+                        float n = lmnp_[j].z;
+                        float phase_offset = lmnp_[j].w;
 
                         // Compute phase index
                         float phase_index = u*l + v*m + w*n;
