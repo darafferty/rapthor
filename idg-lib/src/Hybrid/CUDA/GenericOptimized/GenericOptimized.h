@@ -181,7 +181,7 @@ namespace idg {
                         unsigned int nr_timesteps;
                         unsigned int nr_channels;
                         Array3D<UVW<float>> uvw;
-                        unsigned int d_sums_id;
+                        std::vector<unsigned int> d_sums_ids;
                         unsigned int d_lmnp_id;
                         std::vector<unsigned int> d_metadata_ids;
                         std::vector<unsigned int> d_subgrids_ids;
@@ -191,8 +191,9 @@ namespace idg {
                         std::vector<unsigned int> d_aterm_idx_ids;
                     } m_calibrate_state;
 
-                    // Note: kernel_calibrate processes nr_terms+1 terms
-                    //       and internally assumes max_nr_terms = 8
+                    // Note:
+                    //     kernel_calibrate internally assumes max_nr_terms = 8
+                    //     and will process larger values of nr_terms in batches
                     const unsigned int m_calibrate_max_nr_terms = 8;
 
             }; // class GenericOptimized

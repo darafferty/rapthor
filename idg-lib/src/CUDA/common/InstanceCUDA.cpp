@@ -534,28 +534,85 @@ namespace idg {
                 cu::DeviceMemory& d_aterm_indices,
                 cu::DeviceMemory& d_metadata,
                 cu::DeviceMemory& d_subgrid,
-                cu::DeviceMemory& d_sums,
+                cu::DeviceMemory& d_sums1,
+                cu::DeviceMemory& d_sums2,
                 cu::DeviceMemory& d_lmnp,
                 cu::DeviceMemory& d_hessian,
                 cu::DeviceMemory& d_gradient)
             {
-                const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_step, &total_nr_timesteps, &nr_channels, &nr_stations, &nr_terms,
-                    d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
-                    d_metadata, d_subgrid, d_sums, d_lmnp, d_hessian, d_gradient };
-
                 dim3 grid(nr_subgrids);
                 dim3 block(block_calibrate);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_calibrate);
                 start_measurement(data);
+
+                // Get functions
                 cu::Function *function_lmnp     = functions_calibrate[0];
                 cu::Function *function_sums     = functions_calibrate[1];
                 cu::Function *function_gradient = functions_calibrate[2];
                 cu::Function *function_hessian  = functions_calibrate[3];
-                executestream->launchKernel(*function_lmnp, grid, block, 0, parameters);
-                executestream->launchKernel(*function_sums, grid, block, 0, parameters);
-                executestream->launchKernel(*function_gradient, grid, block, 0, parameters);
-                executestream->launchKernel(*function_hessian, grid, block, 0, parameters);
+
+                // Precompute l,m,n and phase offset
+                const void *parameters_lmnp[] = { &grid_size, &subgrid_size, &image_size, &w_step, &d_metadata, &d_lmnp };
+                executestream->launchKernel(*function_lmnp, grid, block, 0, parameters_lmnp);
+
+                unsigned int current_nr_terms = 8;
+                for (unsigned int term_offset_y = 0; term_offset_y < (unsigned int) nr_terms; term_offset_y += current_nr_terms) {
+                    unsigned int last_term = min(nr_terms, term_offset_y + current_nr_terms);
+                    unsigned int current_nr_terms = last_term - term_offset_y;
+
+                    // Compute sums1
+                    const void *parameters_sums[] = {
+                        &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations,
+                        &term_offset_y, &current_nr_terms, &nr_terms,
+                        d_uvw, d_wavenumbers, d_aterm, d_aterm_derivatives, d_aterm_indices,
+                        d_metadata, d_subgrid, d_sums1, d_lmnp };
+                    executestream->launchKernel(*function_sums, grid, block, 0, parameters_sums);
+
+                    // Compute gradient (diagonal)
+                    if (term_offset_y == 0) {
+                        const void *parameters_gradient[] = {
+                        &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations, 
+                        &term_offset_y, &current_nr_terms, &nr_terms,
+                        d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
+                        d_metadata, d_subgrid, d_sums1, d_lmnp, d_gradient };
+                        executestream->launchKernel(*function_gradient, grid, block, 0, parameters_gradient);
+                    }
+
+                    // Compute hessian (diagonal)
+                    const void *parameters_hessian1[] = {
+                        &total_nr_timesteps, &nr_channels,
+                        &term_offset_y, &term_offset_y, &current_nr_terms, &nr_terms,
+                        d_weights, d_aterm_indices, d_metadata, d_sums1, d_sums1, d_hessian };
+                    executestream->launchKernel(*function_hessian, grid, block, 0, parameters_hessian1);
+
+                    for (unsigned int term_offset_x = last_term; term_offset_x < (unsigned int) nr_terms; term_offset_x += current_nr_terms) {
+
+                        // Compute sums2 (horizontal offset)
+                        const void *parameters_sums[] = {
+                            &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations,
+                            &term_offset_x, &current_nr_terms, &nr_terms,
+                            d_uvw, d_wavenumbers, d_aterm, d_aterm_derivatives, d_aterm_indices,
+                            d_metadata, d_subgrid, d_sums2, d_lmnp };
+                        executestream->launchKernel(*function_sums, grid, block, 0, parameters_sums);
+
+                        // Compute gradient (horizontal offset)
+                        if (term_offset_y == 0) {
+                            const void *parameters_gradient[] = {
+                                &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations, 
+                                &term_offset_x, &current_nr_terms, &nr_terms,
+                                d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
+                                d_metadata, d_subgrid, d_sums2, d_lmnp, d_gradient };
+                            executestream->launchKernel(*function_gradient, grid, block, 0, parameters_gradient);
+                        }
+
+                        // Compute hessian (horizontal offset)
+                        const void *parameters_hessian2[] = {
+                            &total_nr_timesteps, &nr_channels,
+                            &term_offset_y, &term_offset_x, &current_nr_terms, &nr_terms,
+                            d_weights, d_aterm_indices, d_metadata, d_sums1, d_sums2, d_hessian };
+                        executestream->launchKernel(*function_hessian, grid, block, 0, parameters_hessian2);
+                    }
+                }
                 end_measurement(data);
             }
 

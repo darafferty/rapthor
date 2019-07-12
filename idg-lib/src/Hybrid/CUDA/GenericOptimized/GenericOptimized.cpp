@@ -1037,12 +1037,16 @@ namespace idg {
                 cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
 
-                // Allocate scratch device memory
-                auto total_nr_timesteps = nr_baselines * nr_timesteps;
-                auto sizeof_sum_deriv = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
+                // Allocate device memory for l,m,n and phase offset
                 auto sizeof_lmnp = max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
-                m_calibrate_state.d_sums_id = device.allocate_device_memory(sizeof_sum_deriv);
                 m_calibrate_state.d_lmnp_id = device.allocate_device_memory(sizeof_lmnp);
+
+                // Allocate memory for sums (horizontal and vertical)
+                auto total_nr_timesteps = nr_baselines * nr_timesteps;
+                auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps * nr_channels * sizeof(std::complex<float>);
+                for (unsigned int i = 0; i < 2; i++) {
+                    m_calibrate_state.d_sums_ids.push_back(device.allocate_device_memory(sizeof_sums));
+                }
             }
 
             void GenericOptimized::do_calibrate_update(
@@ -1109,7 +1113,8 @@ namespace idg {
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];
                 unsigned int d_weights_id        = m_calibrate_state.d_weights_ids[antenna_nr];
                 unsigned int d_uvw_id            = m_calibrate_state.d_uvw_ids[antenna_nr];
-                unsigned int d_sums_id           = m_calibrate_state.d_sums_id;
+                unsigned int d_sums_id1          = m_calibrate_state.d_sums_ids[0];
+                unsigned int d_sums_id2          = m_calibrate_state.d_sums_ids[1];
                 unsigned int d_lmnp_id           = m_calibrate_state.d_lmnp_id;
                 unsigned int d_aterm_idx_id      = m_calibrate_state.d_aterm_idx_ids[antenna_nr];
                 cu::DeviceMemory& d_metadata     = device.retrieve_device_memory(d_metadata_id);
@@ -1117,7 +1122,8 @@ namespace idg {
                 cu::DeviceMemory& d_visibilities = device.retrieve_device_memory(d_visibilities_id);
                 cu::DeviceMemory& d_weights      = device.retrieve_device_memory(d_weights_id);
                 cu::DeviceMemory& d_uvw          = device.retrieve_device_memory(d_uvw_id);
-                cu::DeviceMemory& d_sums         = device.retrieve_device_memory(d_sums_id);
+                cu::DeviceMemory& d_sums1        = device.retrieve_device_memory(d_sums_id1);
+                cu::DeviceMemory& d_sums2        = device.retrieve_device_memory(d_sums_id2);
                 cu::DeviceMemory& d_lmnp         = device.retrieve_device_memory(d_lmnp_id);
                 cu::DeviceMemory& d_aterms_idx   = device.retrieve_device_memory(d_aterm_idx_id);
 
@@ -1127,6 +1133,7 @@ namespace idg {
                 cu::DeviceMemory d_gradient(gradient.bytes());
                 cu::HostMemory h_hessian(hessian.bytes());
                 cu::HostMemory h_gradient(gradient.bytes());
+                //d_hessian.zero();
 
                 // Events
                 cu::Event inputCopied, executeFinished, outputCopied;
@@ -1144,7 +1151,7 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                    d_metadata, d_subgrids, d_sums, d_lmnp, d_hessian, d_gradient);
+                    d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp, d_hessian, d_gradient);
                 executestream.record(executeFinished);
 
                 // Copy output to host
