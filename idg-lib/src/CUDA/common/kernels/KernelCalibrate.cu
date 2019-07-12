@@ -20,35 +20,16 @@ inline __device__ long index_sums(
            chan;
 }
 
-inline __device__ float4 compute_lmnp(
-    const Coordinate coordinate,
-    const int        y,
-    const int        x,
-    const int        grid_size,
-    const int        subgrid_size,
-    const float      image_size,
-    const float      w_step)
+inline __device__ long index_lmnp(
+        unsigned int subgrid_size,
+        unsigned int s,
+        unsigned int y,
+        unsigned int x)
 {
-    // Locateion of current subgrid
-    const int x_coordinate = coordinate.x;
-    const int y_coordinate = coordinate.y;
-    const int z_coordinate = coordinate.z;
-
-    // Compute u,v,w offset in wavelenghts
-    const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
-    const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
-
-    // Compute l,m,n and phase_offset
-    float l = compute_l(x, subgrid_size, image_size);
-    float m = compute_m(y, subgrid_size, image_size);
-    float n = compute_n(l, m);
-    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
-
-    // Return result
-    return make_float4(l, m, n, phase_offset);
-} // end compute_lmnp
-
+    // lmnp: [NR_SUBGRIDS][SUBGRIDSIZE][SUBGRIDSIZE]
+    return s * subgrid_size * subgrid_size +
+           y * subgrid_size + x;
+}
 
 extern "C" {
 
@@ -75,10 +56,48 @@ __global__ void kernel_calibrate_lmnp(
           float2*        __restrict__ hessian,
           float2*        __restrict__ gradient)
 {
+    unsigned tidx       = threadIdx.x;
+    unsigned tidy       = threadIdx.y;
+    unsigned tid        = tidx + tidy * blockDim.x;
+    unsigned nr_threads = blockDim.x * blockDim.y;
+    unsigned s          = blockIdx.x;
+    unsigned nr_pixels  = subgrid_size * subgrid_size;
+
+    // Load metadata for current subgrid
+    const Metadata &m = metadata[s];
+    const Coordinate coordinate = m.coordinate;
+
+    // Location of current subgrid
+    const int x_coordinate = coordinate.x;
+    const int y_coordinate = coordinate.y;
+    const int z_coordinate = coordinate.z;
+
+    for (unsigned int i = tid; i < nr_pixels; i += nr_threads) {
+        unsigned int y = i / subgrid_size;
+        unsigned int x = i % subgrid_size;
+
+        if (y < subgrid_size) {
+
+            // Compute u,v,w offset in wavelenghts
+            const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+            const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
+            const float w_offset = w_step * ((float) z_coordinate + 0.5) * 2 * M_PI;
+
+            // Compute l,m,n and phase_offset
+            float l = compute_l(x, subgrid_size, image_size);
+            float m = compute_m(y, subgrid_size, image_size);
+            float n = compute_n(l, m);
+            float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+
+            // Store result
+            unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
+            lmnp[lmnp_idx] = make_float4(l, m, n, phase_offset);
+        }
+    } // end for i
 } // end kernel_calibrate_lmnp
 
 
-__global__ void kernel_calibrate_gradient(
+__global__ void kernel_calibrate_sums(
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
@@ -114,13 +133,10 @@ __global__ void kernel_calibrate_gradient(
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
     const unsigned int time_offset_global = m.time_index - m0.time_index;
-    const unsigned int station1     = m.baseline.station1;
     const unsigned int station2     = m.baseline.station2;
     const unsigned int nr_timesteps = m.nr_timesteps;
-    const Coordinate coordinate     = m.coordinate;
 
     // Shared memory
-    __shared__ float4 lmnp_[BATCH_SIZE_PIXELS];
     __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
 
     // Iterate all terms
@@ -148,8 +164,6 @@ __global__ void kernel_calibrate_gradient(
                 unsigned int time_idx_local  = time_offset_local + time_idx_batch;
                 unsigned int time_idx_global = time_offset_global + time_idx_local;
 
-                float2 visibility[NR_POLARIZATIONS];
-
                 // Load UVW
                 float u, v, w;
                 if (time_idx_batch < current_nr_timesteps) {
@@ -162,8 +176,7 @@ __global__ void kernel_calibrate_gradient(
                 float wavenumber = wavenumbers[chan_idx_local];
 
                 // Accumulate sums in registers
-                float2 sum1[NR_POLARIZATIONS] = {0, 0};
-                float2 sum2[NR_POLARIZATIONS] = {0, 0};
+                float2 sum[NR_POLARIZATIONS] = {0, 0};
 
                 // Iterate all pixels
                 for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
@@ -205,22 +218,22 @@ __global__ void kernel_calibrate_gradient(
                             for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 pixels_[pol][j] = pixel[pol];
                             }
-
-                            lmnp_[j] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
-                        }
+                        } // end if
                     } // end for j
 
                     __syncthreads();
 
                     // Iterate batch
                     for (unsigned int j = 0; j < BATCH_SIZE_PIXELS; j++) {
-                        // Load l,m,n
-                        float l = lmnp_[j].x;
-                        float m = lmnp_[j].y;
-                        float n = lmnp_[j].z;
-
-                        // Load phase offset
-                        float phase_offset = lmnp_[j].w;
+                        // Load l,m,n and phase_offset
+                        unsigned int pixel_idx = pixel_offset + j;
+                        unsigned int y = pixel_idx / subgrid_size;
+                        unsigned int x = pixel_idx % subgrid_size;
+                        unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
+                        float l = lmnp[lmnp_idx].x;
+                        float m = lmnp[lmnp_idx].y;
+                        float n = lmnp[lmnp_idx].z;
+                        float phase_offset = lmnp[lmnp_idx].w;
 
                         // Compute phase index
                         float phase_index = u*l + v*m + w*n;
@@ -229,9 +242,9 @@ __global__ void kernel_calibrate_gradient(
                         float  phase  = (phase_index * wavenumber) - phase_offset;
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
-                        // Update sums
+                        // Update sum
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            sum1[pol] += (phasor * pixels_[pol][j]);
+                            sum[pol] += (phasor * pixels_[pol][j]);
                         }
                     } // end for j (batch)
                 } // end for pixel_offset
@@ -239,11 +252,98 @@ __global__ void kernel_calibrate_gradient(
                 const float scale = 1.0f / nr_pixels;
                 if (time_idx_batch < current_nr_timesteps) {
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        visibility[pol] = conj(sum1[pol]) * scale;
+                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
+                        sums[sum_idx] = conj(sum[pol]) * scale;
                     }
                 }
 
-                __syncthreads();
+            } // end for i (visibilities)
+        } // end for time_offset_local
+    } // end for term_nr
+} // end kernel_calibrate_sums
+
+
+__global__ void kernel_calibrate_gradient(
+    const int                         grid_size,
+    const int                         subgrid_size,
+    const float                       image_size,
+    const float                       w_step,
+    const int                         total_nr_timesteps,
+    const int                         nr_channels,
+    const int                         nr_stations,
+    const int                         nr_terms,
+    const UVW<float>*    __restrict__ uvw,
+    const float*         __restrict__ wavenumbers,
+    const float2*        __restrict__ visibilities,
+    const float*         __restrict__ weights,
+    const float2*        __restrict__ aterm,
+    const float2*        __restrict__ aterm_derivatives,
+    const int*           __restrict__ aterm_indices,
+    const Metadata*      __restrict__ metadata,
+    const float2*        __restrict__ subgrid,
+          float2*        __restrict__ sums,
+          float4*        __restrict__ lmnp,
+          float2*        __restrict__ hessian,
+          float2*        __restrict__ gradient)
+{
+    unsigned tidx       = threadIdx.x;
+    unsigned tidy       = threadIdx.y;
+    unsigned tid        = tidx + tidy * blockDim.x;
+    unsigned nr_threads = blockDim.x * blockDim.y;
+    unsigned s          = blockIdx.x;
+    unsigned nr_pixels  = subgrid_size * subgrid_size;
+
+    // Load metadata for first subgrid
+    const Metadata &m0 = metadata[0];
+
+    // Load metadata for current subgrid
+    const Metadata &m = metadata[s];
+    const unsigned int time_offset_global = m.time_index - m0.time_index;
+    const unsigned int station1     = m.baseline.station1;
+    const unsigned int station2     = m.baseline.station2;
+    const unsigned int nr_timesteps = m.nr_timesteps;
+
+    // Shared memory
+    __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
+
+    // Iterate all terms
+    for (unsigned int term_nr = 0; term_nr < nr_terms; term_nr++) {
+
+        // Iterate timesteps
+        int current_nr_timesteps = 0;
+        for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
+            int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+
+            // Determine number of timesteps to process
+            current_nr_timesteps = 0;
+            for (int time = time_offset_local; time < nr_timesteps; time++) {
+                if (aterm_indices[time_offset_global + time] == aterm_idx) {
+                    current_nr_timesteps++;
+                } else {
+                    break;
+                }
+            }
+
+            // Iterate batch of visibilities from the same timeslot
+            for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
+                unsigned int time_idx_batch  = (i / nr_channels);
+                unsigned int chan_idx_local  = (i % nr_channels);
+                unsigned int time_idx_local  = time_offset_local + time_idx_batch;
+                unsigned int time_idx_global = time_offset_global + time_idx_local;
+
+                // Load UVW
+                float u, v, w;
+                if (time_idx_batch < current_nr_timesteps) {
+                    u = uvw[time_idx_global].u;
+                    v = uvw[time_idx_global].v;
+                    w = uvw[time_idx_global].w;
+                }
+
+                // Load wavenumber
+                float wavenumber = wavenumbers[chan_idx_local];
+
+                // Accumulate sums in registers
+                float2 sum[NR_POLARIZATIONS] = {0, 0};
 
                 // Iterate all pixels
                 for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
@@ -284,22 +384,22 @@ __global__ void kernel_calibrate_gradient(
                             for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
                                 pixels_[pol][j] = pixel[pol];
                             }
-
-                            lmnp_[j] = compute_lmnp(coordinate, y, x, grid_size, subgrid_size, image_size, w_step);
-                        }
+                        } // end if
                     } // end for j
 
                     __syncthreads();
 
                     // Iterate batch
                     for (unsigned int j = 0; j < BATCH_SIZE_PIXELS; j++) {
-                        // Load l,m,n
-                        float l = lmnp_[j].x;
-                        float m = lmnp_[j].y;
-                        float n = lmnp_[j].z;
-
-                        // Load phase offset
-                        float phase_offset = lmnp_[j].w;
+                        // Load l,m,n and phase_offset
+                        unsigned int pixel_idx = pixel_offset + j;
+                        unsigned int y = pixel_idx / subgrid_size;
+                        unsigned int x = pixel_idx % subgrid_size;
+                        unsigned int lmnp_idx = index_lmnp(subgrid_size, s, y, x);
+                        float l = lmnp[lmnp_idx].x;
+                        float m = lmnp[lmnp_idx].y;
+                        float n = lmnp[lmnp_idx].z;
+                        float phase_offset = lmnp[lmnp_idx].w;
 
                         // Compute phase index
                         float phase_index = u*l + v*m + w*n;
@@ -308,8 +408,9 @@ __global__ void kernel_calibrate_gradient(
                         float  phase  = (phase_index * wavenumber) - phase_offset;
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
+                        // Update sum
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            sum2[pol] += phasor * pixels_[pol][j];
+                            sum[pol] += phasor * pixels_[pol][j];
                         }
                     } // end for j (batch)
                 } // end for pixel_offset
@@ -318,16 +419,18 @@ __global__ void kernel_calibrate_gradient(
 
                     // Compute residual
                     float2 residual[NR_POLARIZATIONS];
+                    const float scale = 1.0f / nr_pixels;
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
-                        residual[pol] = (visibilities[vis_idx] - (sum2[pol] * scale)) * weights[vis_idx];
+                        residual[pol] = (visibilities[vis_idx] - (sum[pol] * scale)) * weights[vis_idx];
                     }
 
                     // Compute gradient update
                     float2 update = make_float2(0, 0);
 
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        update += residual[pol] * visibility[pol];
+                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
+                        update += residual[pol] * sums[sum_idx];
                     }
 
                     // Update gradient
@@ -340,7 +443,7 @@ __global__ void kernel_calibrate_gradient(
             } // end for i (visibilities)
         } // end for time_offset_local
     } // end for term_nr
-} // end kernel_calibrate_sums
+} // end kernel_calibrate_gradient
 
 
 __global__ void kernel_calibrate_hessian(
@@ -414,11 +517,11 @@ __global__ void kernel_calibrate_hessian(
                         unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx);
                         unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx);
                         float2 sum0 = sums[sum_idx0];
-                        float2 sum1 = conj(sums[sum_idx1]) * weights[vis_idx];
+                        float2 sum = conj(sums[sum_idx1]) * weights[vis_idx];
 
                         // Update hessian
                         if (term_nr0 < nr_terms) {
-                            update += sum0 * sum1;
+                            update += sum0 * sum;
                         }
                     } // end for pol
                 } // end chan

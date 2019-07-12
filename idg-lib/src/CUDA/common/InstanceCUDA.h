@@ -399,6 +399,7 @@ namespace idg {
             static const std::string name_fft       = "kernel_fft";
             static const std::string name_scaler    = "kernel_scaler";
             static const std::string name_calibrate_lmnp     = "kernel_calibrate_lmnp";
+            static const std::string name_calibrate_sums     = "kernel_calibrate_sums";
             static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
             static const std::string name_calibrate_hessian  = "kernel_calibrate_hessian";
 
