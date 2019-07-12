@@ -118,7 +118,7 @@ __global__ void kernel_calibrate_sums(
     const unsigned int nr_timesteps = m.nr_timesteps;
 
     // Shared memory
-    __shared__ float2 pixels_[MAX_NR_TERMS][NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
+    __shared__ float4 pixels_[MAX_NR_TERMS][BATCH_SIZE_PIXELS][2];
     __shared__ float4 lmnp_[BATCH_SIZE_PIXELS];
 
     // Iterate timesteps
@@ -169,9 +169,8 @@ __global__ void kernel_calibrate_sums(
 
                     for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
                         // Reset pixel to zero
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            pixels_[term_nr][pol][j] = make_float2(0, 0);
-                        }
+                        pixels_[term_nr][j][0] = make_float4(0, 0, 0, 0);
+                        pixels_[term_nr][j][1] = make_float4(0, 0, 0, 0);
 
                         // Prepare batch
                         if (y < subgrid_size) {
@@ -197,10 +196,8 @@ __global__ void kernel_calibrate_sums(
                             apply_aterm_calibrate(pixel, aterm1, aterm2);
 
                             // Store pixel in shared memory
-                            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                                pixels_[term_nr][pol][j] = pixel[pol];
-                            }
-
+                            pixels_[term_nr][j][0] = make_float4(pixel[0].x, pixel[0].y, pixel[1].x, pixel[1].y);
+                            pixels_[term_nr][j][1] = make_float4(pixel[2].x, pixel[2].y, pixel[3].x, pixel[3].y);
                         } // end if
                     } // end for term_nr
 
@@ -230,9 +227,16 @@ __global__ void kernel_calibrate_sums(
 
                     // Update sum
                     for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
-                        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            fma(sum[term_nr][pol], phasor, pixels_[term_nr][pol][j]);
-                        } // end for pol
+                        float4 a = pixels_[term_nr][j][0];
+                        float4 b = pixels_[term_nr][j][1];
+                        float2 pixel_xx = make_float2(a.x, a.y);
+                        float2 pixel_xy = make_float2(a.z, a.w);
+                        float2 pixel_yx = make_float2(b.x, b.y);
+                        float2 pixel_yy = make_float2(b.z, b.w);
+                        fma(sum[term_nr][0], phasor, pixel_xx);
+                        fma(sum[term_nr][1], phasor, pixel_xy);
+                        fma(sum[term_nr][2], phasor, pixel_yx);
+                        fma(sum[term_nr][3], phasor, pixel_yy);
                     } // end for term_nr
                 } // end for j (batch)
             } // end for pixel_offset
