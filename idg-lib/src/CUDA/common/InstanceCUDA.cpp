@@ -474,7 +474,6 @@ namespace idg {
                 dim3 block(block_gridder);
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_gridder);
                 start_measurement(data);
-                int kernel_id = min(nr_channels-1, 8);
                 #if ENABLE_REPEAT_KERNELS
                 for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
                 #endif
