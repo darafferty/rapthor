@@ -214,12 +214,12 @@ __device__ void kernel_degridder_(
 } // end kernel_degridder_
 
 #define LOAD_METADATA \
-    int s          = blockIdx.x; \
-    const Metadata &m = metadata[s]; \
-    const int nr_timesteps = m.nr_timesteps; \
+    int s                   = blockIdx.x; \
+    const Metadata &m       = metadata[s]; \
+    const int nr_timesteps  = m.nr_timesteps; \
     const int channel_begin = m.channel_begin; \
-    const int channel_end = m.channel_end; \
-    const int nr_aterms    = m.nr_aterms;
+    const int channel_end   = m.channel_end; \
+    const int nr_aterms     = m.nr_aterms;
 
 #define KERNEL_DEGRIDDER(current_nr_channels) \
     if (nr_timesteps / nr_aterms < (2*warpSize)) { \

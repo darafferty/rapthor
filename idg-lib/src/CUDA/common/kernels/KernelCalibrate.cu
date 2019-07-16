@@ -114,8 +114,11 @@ __global__ void kernel_calibrate_sums(
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
     const unsigned int time_offset_global = m.time_index - m0.time_index;
-    const unsigned int station2     = m.baseline.station2;
-    const unsigned int nr_timesteps = m.nr_timesteps;
+    const unsigned int station2           = m.baseline.station2;
+    const unsigned int nr_timesteps       = m.nr_timesteps;
+    const unsigned int channel_begin      = m.channel_begin;
+    const unsigned int channel_end        = m.channel_end;
+    const unsigned int nr_channels_local  = channel_end - channel_begin;
 
     // Shared memory
     __shared__ float4 pixels_[MAX_NR_TERMS][BATCH_SIZE_PIXELS][2];
@@ -137,9 +140,9 @@ __global__ void kernel_calibrate_sums(
         }
 
         // Iterate batch of visibilities from the same timeslot
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-            unsigned int time_idx_batch  = (i / nr_channels);
-            unsigned int chan_idx_local  = (i % nr_channels);
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_local, nr_threads); i += nr_threads) {
+            unsigned int time_idx_batch  = (i / nr_channels_local);
+            unsigned int chan_idx_local  = (i % nr_channels_local) + channel_begin;
             unsigned int time_idx_local  = time_offset_local + time_idx_batch;
             unsigned int time_idx_global = time_offset_global + time_idx_local;
 
@@ -291,9 +294,12 @@ __global__ void kernel_calibrate_gradient(
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
     const unsigned int time_offset_global = m.time_index - m0.time_index;
-    const unsigned int station1     = m.baseline.station1;
-    const unsigned int station2     = m.baseline.station2;
-    const unsigned int nr_timesteps = m.nr_timesteps;
+    const unsigned int station1           = m.baseline.station1;
+    const unsigned int station2           = m.baseline.station2;
+    const unsigned int nr_timesteps       = m.nr_timesteps;
+    const unsigned int channel_begin      = m.channel_begin;
+    const unsigned int channel_end        = m.channel_end;
+    const unsigned int nr_channels_local  = channel_end - channel_begin;
 
     // Shared memory
     __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
@@ -323,9 +329,9 @@ __global__ void kernel_calibrate_gradient(
         }
 
         // Iterate batch of visibilities from the same timeslot
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels, nr_threads); i += nr_threads) {
-            unsigned int time_idx_batch  = (i / nr_channels);
-            unsigned int chan_idx_local  = (i % nr_channels);
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_local, nr_threads); i += nr_threads) {
+            unsigned int time_idx_batch  = (i / nr_channels_local);
+            unsigned int chan_idx_local  = (i % nr_channels_local) + channel_begin;
             unsigned int time_idx_local  = time_offset_local + time_idx_batch;
             unsigned int time_idx_global = time_offset_global + time_idx_local;
 
@@ -464,7 +470,10 @@ __global__ void kernel_calibrate_hessian(
     // Metadata for current subgrid
     const Metadata &m = metadata[s];
     const unsigned int time_offset_global = m.time_index;
-    const unsigned int nr_timesteps = m.nr_timesteps;
+    const unsigned int nr_timesteps       = m.nr_timesteps;
+    const unsigned int channel_begin      = m.channel_begin;
+    const unsigned int channel_end        = m.channel_end;
+    const unsigned int nr_channels_local  = channel_end - channel_begin;
 
     // Iterate timesteps
     int current_nr_timesteps = 0;
@@ -494,15 +503,15 @@ __global__ void kernel_calibrate_hessian(
                 for (unsigned int time = 0; time < current_nr_timesteps; time++) {
 
                     // Iterate all channels
-                    for (unsigned int chan = 0; chan < nr_channels; chan++) {
+                    for (unsigned int chan = 0; chan < nr_channels_local; chan++) {
 
                         // Iterate all polarizations
                         for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                             unsigned int time_idx_global = time_offset_global + time_offset_local + time;
-                            unsigned int chan_idx = chan;
-                            unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx, pol);
-                            unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx);
-                            unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx);
+                            unsigned int chan_idx_local  = channel_begin + chan;
+                            unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
+                            unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx_local);
+                            unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx_local);
                             float2 sum0 = sums1[sum_idx0];
                             float2 sum1 = conj(sums2[sum_idx1]) * weights[vis_idx];
 

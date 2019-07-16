@@ -344,10 +344,10 @@ __device__ void
 } // end kernel_gridder_
 
 #define LOAD_METADATA \
-    int s          = blockIdx.x; \
-    const Metadata &m = metadata[s]; \
+    int s                   = blockIdx.x; \
+    const Metadata &m       = metadata[s]; \
     const int channel_begin = m.channel_begin; \
-    const int channel_end = m.channel_end;
+    const int channel_end   = m.channel_end;
 
 #define KERNEL_GRIDDER(current_nr_channels) \
     for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
