@@ -303,46 +303,15 @@ namespace idg {
                         void *visibilities_ptr = visibilities.data(0, 0, 0);
                         void *subgrids_ptr     = subgrids.data(0, 0, 0, 0);
                         void *grid_ptr         = grid.data();
+                        void *wtiles_ptr       = itsWTilesBuffer.data();
 
                         // Splitter kernel
                         if (w_step == 0.0) {
                            kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                         } else if (plan.get_use_wtiles()) {
-                            for(int subgrid_index = 0; subgrid_index < current_nr_subgrids; )
-                            {
-                                if (wtile_initialize_set.front().subgrid_index == subgrid_index + plan.get_subgrid_offset(bl))
-                                {
-                                    wtile_initialize_set.pop_front();
-                                    WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
-                                    kernels.run_splitter_wtiles_from_grid(
-                                        grid_size,
-                                        subgrid_size,
-                                        image_size,
-                                        w_step,
-                                        wtile_initialize_info.wtile_ids.size(),
-                                        wtile_initialize_info.wtile_ids.data(),
-                                        wtile_initialize_info.wtile_coordinates.data(),
-                                        itsWTilesBuffer.data(),
-                                        grid_ptr);
-                                }
-
-                                int nr_subgrids_ = current_nr_subgrids - subgrid_index;
-                                if (wtile_initialize_set.front().subgrid_index - (subgrid_index + plan.get_subgrid_offset(bl)) < nr_subgrids_)
-                                {
-                                    nr_subgrids_ = wtile_initialize_set.front().subgrid_index - (subgrid_index + plan.get_subgrid_offset(bl));
-                                }
-
-                                kernels.run_splitter_subgrids_from_wtiles(
-                                    nr_subgrids_,
-                                    grid_size,
-                                    subgrid_size,
-                                    &static_cast<Metadata*>(metadata_ptr)[subgrid_index],
-                                    &static_cast<std::complex<float>*>(subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
-                                    itsWTilesBuffer.data());
-
-                                subgrid_index += nr_subgrids_;
-                            }
-
+                            kernels.run_splitter_wtiles(
+                                current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+                                wtile_initialize_set, wtiles_ptr, metadata_ptr, subgrids_ptr, grid_ptr);
                         } else {
                             kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                         }

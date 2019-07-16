@@ -183,6 +183,18 @@ namespace idg {
                         void *tiles,
                         void *grid);
 
+                    void run_splitter_wtiles(
+                        unsigned int nr_subgrids,
+                        unsigned int grid_size,
+                        unsigned int subgrid_size,
+                        float image_size,
+                        float w_step,
+                        WTileUpdateSet& wtile_initialize_set,
+                        void *wtiles,
+                        void *metadata,
+                        void *subgrid,
+                        void *grid);
+
                     bool has_adder_wstack() {return (function_adder_wstack != nullptr);}
 
                     bool has_splitter_wstack() {return (function_splitter_wstack != nullptr);}
