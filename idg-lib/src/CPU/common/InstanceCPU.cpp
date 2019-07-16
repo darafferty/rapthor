@@ -444,6 +444,54 @@ namespace idg {
                 if (report) { report->update_adder(states[0], states[1]); }
 
             }
+
+            void InstanceCPU::run_splitter_wtiles(
+                    unsigned int nr_subgrids,
+                    unsigned int grid_size,
+                    unsigned int subgrid_size,
+                    float image_size,
+                    float w_step,
+                    WTileUpdateSet& wtile_initialize_set,
+                    void *wtiles,
+                    void *metadata,
+                    void *subgrid,
+                    void *grid)
+            {
+                for (int subgrid_index = 0; subgrid_index < nr_subgrids; ) {
+                    if (wtile_initialize_set.front().subgrid_index == subgrid_index)
+                    {
+                        wtile_initialize_set.pop_front();
+                        WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+                        run_splitter_wtiles_from_grid(
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            wtile_initialize_info.wtile_ids.size(),
+                            wtile_initialize_info.wtile_ids.data(),
+                            wtile_initialize_info.wtile_coordinates.data(),
+                            wtiles,
+                            grid);
+                    }
+
+                    int nr_subgrids_ = nr_subgrids - subgrid_index;
+                    if (wtile_initialize_set.front().subgrid_index - subgrid_index < nr_subgrids_)
+                    {
+                        nr_subgrids_ = wtile_initialize_set.front().subgrid_index - subgrid_index;
+                    }
+
+                    run_splitter_subgrids_from_wtiles(
+                        nr_subgrids_,
+                        grid_size,
+                        subgrid_size,
+                        &static_cast<Metadata*>(metadata)[subgrid_index],
+                        &static_cast<std::complex<float>*>(subgrid)[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
+                        wtiles);
+
+                    subgrid_index += nr_subgrids_;
+                } // end for subgrid_index
+            } // end run_splitter_wtiles
+
         } // namespace cpu
     } // namespace kernel
 } // namespace idg

@@ -913,51 +913,10 @@ namespace idg {
                         cpuKernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     } else if (plans[antenna_nr]->get_use_wtiles()) {
                         WTileUpdateSet wtile_initialize_set = plans[antenna_nr]->get_wtile_initialize_set();
-                        WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
-                        cpuKernels.run_splitter_wtiles_from_grid(
-                            grid_size,
-                            subgrid_size,
-                            image_size,
-                            w_step,
-                            wtile_initialize_info.wtile_ids.size(),
-                            wtile_initialize_info.wtile_ids.data(),
-                            wtile_initialize_info.wtile_coordinates.data(),
-                            cpuProxy->getWTilesBuffer(),
-                            grid.data());
-                        for(unsigned int subgrid_index = 0; subgrid_index < nr_subgrids; )
-                        {
-                            if ((unsigned int)wtile_initialize_set.front().subgrid_index == subgrid_index)
-                            {
-                                wtile_initialize_set.pop_front();
-                                WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
-                                cpuKernels.run_splitter_wtiles_from_grid(
-                                    grid_size,
-                                    subgrid_size,
-                                    image_size,
-                                    w_step,
-                                    wtile_initialize_info.wtile_ids.size(),
-                                    wtile_initialize_info.wtile_ids.data(),
-                                    wtile_initialize_info.wtile_coordinates.data(),
-                                    cpuProxy->getWTilesBuffer(),
-                                    grid_ptr);
-                            }
-
-                            unsigned int nr_subgrids_ = nr_subgrids - subgrid_index;
-                            if (wtile_initialize_set.front().subgrid_index - subgrid_index < nr_subgrids_)
-                            {
-                                nr_subgrids_ = wtile_initialize_set.front().subgrid_index - subgrid_index;
-                            }
-
-                            cpuKernels.run_splitter_subgrids_from_wtiles(
-                                nr_subgrids_,
-                                grid_size,
-                                subgrid_size,
-                                &static_cast<Metadata*>(metadata_ptr)[subgrid_index],
-                                &static_cast<std::complex<float>*>(subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
-                                cpuProxy->getWTilesBuffer());
-
-                            subgrid_index += nr_subgrids_;
-                        }
+                        std::complex<float>* wtiles_buffer = cpuProxy->getWTilesBuffer();
+                        cpuKernels.run_splitter_wtiles(
+                            nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+                            wtile_initialize_set, wtiles_buffer, metadata_ptr, subgrids_ptr, grid_ptr);
                     } else {
                         cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     }
