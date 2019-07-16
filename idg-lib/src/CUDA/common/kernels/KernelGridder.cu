@@ -301,25 +301,10 @@ __device__ void
                         #endif
 
                         // Multiply visibility by phasor
-                        pixelsXX[j].x += phasor.x * visXX.x;
-                        pixelsXX[j].y += phasor.x * visXX.y;
-                        pixelsXX[j].x -= phasor.y * visXX.y;
-                        pixelsXX[j].y += phasor.y * visXX.x;
-
-                        pixelsXY[j].x += phasor.x * visXY.x;
-                        pixelsXY[j].y += phasor.x * visXY.y;
-                        pixelsXY[j].x -= phasor.y * visXY.y;
-                        pixelsXY[j].y += phasor.y * visXY.x;
-
-                        pixelsYX[j].x += phasor.x * visYX.x;
-                        pixelsYX[j].y += phasor.x * visYX.y;
-                        pixelsYX[j].x -= phasor.y * visYX.y;
-                        pixelsYX[j].y += phasor.y * visYX.x;
-
-                        pixelsYY[j].x += phasor.x * visYY.x;
-                        pixelsYY[j].y += phasor.x * visYY.y;
-                        pixelsYY[j].x -= phasor.y * visYY.y;
-                        pixelsYY[j].y += phasor.y * visYY.x;
+                        fma(pixelsXX[j], phasor, visXX);
+                        fma(pixelsXY[j], phasor, visXY);
+                        fma(pixelsYX[j], phasor, visYX);
+                        fma(pixelsYY[j], phasor, visYY);
                     }
                 } // end for chan
             } // end for time
