@@ -913,9 +913,21 @@ namespace idg {
                         cpuKernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                     } else if (plans[antenna_nr]->get_use_wtiles()) {
                         WTileUpdateSet wtile_initialize_set = plans[antenna_nr]->get_wtile_initialize_set();
+                        WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
                         std::complex<float>* wtiles_buffer = cpuProxy->getWTilesBuffer();
+                        auto subgrid_offset = 0;
+                        cpuKernels.run_splitter_wtiles_from_grid(
+                            grid_size,
+                            subgrid_size,
+                            image_size,
+                            w_step,
+                            wtile_initialize_info.wtile_ids.size(),
+                            wtile_initialize_info.wtile_ids.data(),
+                            wtile_initialize_info.wtile_coordinates.data(),
+                            wtiles_buffer,
+                            grid.data());
                         cpuKernels.run_splitter_wtiles(
-                            nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+                            nr_subgrids, grid_size, subgrid_size, image_size, w_step, subgrid_offset,
                             wtile_initialize_set, wtiles_buffer, metadata_ptr, subgrids_ptr, grid_ptr);
                     } else {
                         cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
