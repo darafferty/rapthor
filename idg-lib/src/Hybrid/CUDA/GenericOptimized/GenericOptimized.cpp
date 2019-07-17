@@ -1042,8 +1042,6 @@ namespace idg {
                 auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
 
-                assert((nr_terms+1) < max_nr_terms);
-
                 // Performance measurement
                 if (antenna_nr == 0) {
                     report.initialize(nr_channels, subgrid_size, 0, nr_terms);

@@ -554,10 +554,11 @@ namespace idg {
                 const void *parameters_lmnp[] = { &grid_size, &subgrid_size, &image_size, &w_step, &d_metadata, &d_lmnp };
                 executestream->launchKernel(*function_lmnp, grid, block, 0, parameters_lmnp);
 
-                unsigned int current_nr_terms = 8;
+                unsigned int max_nr_terms = 8;
+                unsigned int current_nr_terms = max_nr_terms;
                 for (unsigned int term_offset_y = 0; term_offset_y < (unsigned int) nr_terms; term_offset_y += current_nr_terms) {
-                    unsigned int last_term = min(nr_terms, term_offset_y + current_nr_terms);
-                    unsigned int current_nr_terms = last_term - term_offset_y;
+                    unsigned int last_term_y = min(nr_terms, term_offset_y + current_nr_terms);
+                    unsigned int current_nr_terms = last_term_y - term_offset_y;
 
                     // Compute sums1
                     const void *parameters_sums[] = {
@@ -568,12 +569,12 @@ namespace idg {
                     executestream->launchKernel(*function_sums, grid, block, 0, parameters_sums);
 
                     // Compute gradient (diagonal)
-                    if (term_offset_y == 0) {
+                    if (term_offset_y == 0 || current_nr_terms < max_nr_terms) {
                         const void *parameters_gradient[] = {
-                        &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations, 
-                        &term_offset_y, &current_nr_terms, &nr_terms,
-                        d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
-                        d_metadata, d_subgrid, d_sums1, d_lmnp, d_gradient };
+                            &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations,
+                            &term_offset_y, &current_nr_terms, &nr_terms,
+                            d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
+                            d_metadata, d_subgrid, d_sums1, d_lmnp, d_gradient };
                         executestream->launchKernel(*function_gradient, grid, block, 0, parameters_gradient);
                     }
 
@@ -584,7 +585,8 @@ namespace idg {
                         d_weights, d_aterm_indices, d_metadata, d_sums1, d_sums1, d_hessian };
                     executestream->launchKernel(*function_hessian, grid, block, 0, parameters_hessian1);
 
-                    for (unsigned int term_offset_x = last_term; term_offset_x < (unsigned int) nr_terms; term_offset_x += current_nr_terms) {
+                    unsigned int term_offset_x = current_nr_terms == max_nr_terms ? last_term_y : 0;
+                    for (; (term_offset_x + current_nr_terms) < (unsigned int) nr_terms; term_offset_x += current_nr_terms) {
 
                         // Compute sums2 (horizontal offset)
                         const void *parameters_sums[] = {
