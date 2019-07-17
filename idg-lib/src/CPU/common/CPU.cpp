@@ -309,9 +309,10 @@ namespace idg {
                         if (w_step == 0.0) {
                            kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                         } else if (plan.get_use_wtiles()) {
+                            auto subgrid_offset = plan.get_subgrid_offset(bl);
                             kernels.run_splitter_wtiles(
                                 current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-                                wtile_initialize_set, wtiles_ptr, metadata_ptr, subgrids_ptr, grid_ptr);
+                                subgrid_offset, wtile_initialize_set, wtiles_ptr, metadata_ptr, subgrids_ptr, grid_ptr);
                         } else {
                             kernels.run_splitter_wstack(current_nr_subgrids, grid_size, subgrid_size, metadata_ptr, subgrids_ptr, grid_ptr);
                         }

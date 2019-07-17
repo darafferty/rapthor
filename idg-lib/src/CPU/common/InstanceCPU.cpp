@@ -446,16 +446,17 @@ namespace idg {
             }
 
             void InstanceCPU::run_splitter_wtiles(
-                    unsigned int nr_subgrids,
-                    unsigned int grid_size,
-                    unsigned int subgrid_size,
-                    float image_size,
-                    float w_step,
-                    WTileUpdateSet& wtile_initialize_set,
-                    void *wtiles,
-                    void *metadata,
-                    void *subgrid,
-                    void *grid)
+                unsigned int nr_subgrids,
+                unsigned int grid_size,
+                unsigned int subgrid_size,
+                float image_size,
+                float w_step,
+                int subgrid_offset,
+                WTileUpdateSet& wtile_initialize_set,
+                void *wtiles,
+                void *metadata,
+                void *subgrid,
+                void *grid)
             {
                 for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids; ) {
                     unsigned int subgrid_index_front = wtile_initialize_set.front().subgrid_index;
@@ -476,7 +477,7 @@ namespace idg {
                     }
 
                     unsigned int nr_subgrids_ = nr_subgrids - subgrid_index;
-                    if (subgrid_index_front - subgrid_index < nr_subgrids_)
+                    if (subgrid_index_front - (subgrid_offset + subgrid_index) < nr_subgrids_)
                     {
                         nr_subgrids_ = wtile_initialize_set.front().subgrid_index - subgrid_index;
                     }

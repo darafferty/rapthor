@@ -189,6 +189,7 @@ namespace idg {
                         unsigned int subgrid_size,
                         float image_size,
                         float w_step,
+                        int subgrid_offset,
                         WTileUpdateSet& wtile_initialize_set,
                         void *wtiles,
                         void *metadata,
