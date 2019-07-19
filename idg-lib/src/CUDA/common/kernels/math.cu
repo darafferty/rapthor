@@ -80,5 +80,9 @@ inline __device__ void cmac(float2 &a, float2 b, float2 c)
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.y), "f"(c.x), "f"(a.y));
 }
 
+
+/*
+    Common math functions
+*/
 #define FUNCTION_ATTRIBUTES __device__
 #include "common/Math.h"
