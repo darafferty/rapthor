@@ -172,10 +172,10 @@ __device__ void kernel_degridder_(
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                         // Multiply pixels by phasor
-                        fma(visXX[chan], phasor, apXX);
-                        fma(visXY[chan], phasor, apXY);
-                        fma(visYX[chan], phasor, apYX);
-                        fma(visYY[chan], phasor, apYY);
+                        cmac(visXX[chan], phasor, apXX);
+                        cmac(visXY[chan], phasor, apXY);
+                        cmac(visYX[chan], phasor, apYX);
+                        cmac(visYY[chan], phasor, apYY);
                     } // end for chan
                 } // end for k (batch)
             } // end for pixel_offset

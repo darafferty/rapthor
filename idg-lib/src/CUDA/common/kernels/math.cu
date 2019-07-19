@@ -20,8 +20,12 @@ inline __device__ float2 operator*(float a, float2 b) {
 }
 
 inline __device__ float2 operator*(float2 a, float2 b) {
-    return make_float2(a.x * b.x - a.y * b.y,
-                       a.x * b.y + a.y * b.x);
+    float2 c;
+    asm ("mul.f32 %0, %1, %2;" : "=f"(c.x) : "f"(a.x), "f"(b.x));
+    asm ("mul.f32 %0, %1, %2;" : "=f"(c.y) : "f"(a.x), "f"(b.y));
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(c.x) : "f"(-a.y), "f"(b.y), "f"(c.x));
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(c.y) : "f"(a.y), "f"(b.x), "f"(c.y));
+    return c;
 }
 
 inline __device__ float4 operator*(float4 a, float b) {
@@ -35,11 +39,6 @@ inline __device__ float4 operator*(float a, float4 b) {
 inline __device__ void operator+=(float2 &a, float2 b) {
     a.x += b.x;
     a.y += b.y;
-}
-
-inline __device__ void operator*=(float2 &a, float2 b) {
-    a.x = a.x * b.x - a.y * b.y;
-    a.y = a.x * b.y + a.y * b.x;
 }
 
 inline  __device__ void atomicAdd(float2 *a, float2 b) {
@@ -61,7 +60,18 @@ inline __device__ float raw_cos(float a)
     return r;
 }
 
-inline __device__ void fma(float2 &a, float2 b, float2 c)
+
+/*
+    Multiply accumulate: a = a + (b * c)
+*/
+// scalar
+inline __device__ void mac(float &a, float b, float c)
+{
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a) : "f"(b), "f"(c), "f"(a));
+}
+
+// complex
+inline __device__ void cmac(float2 &a, float2 b, float2 c)
 {
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.x) : "f"(b.x), "f"(c.x), "f"(a.x));
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.x), "f"(c.y), "f"(a.y));
@@ -69,5 +79,9 @@ inline __device__ void fma(float2 &a, float2 b, float2 c)
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.y), "f"(c.x), "f"(a.y));
 }
 
+
+/*
+    Common math functions
+*/
 #define FUNCTION_ATTRIBUTES __device__
 #include "common/Math.h"
