@@ -37,11 +37,6 @@ inline __device__ void operator+=(float2 &a, float2 b) {
     a.y += b.y;
 }
 
-inline __device__ void operator*=(float2 &a, float2 b) {
-    a.x = a.x * b.x - a.y * b.y;
-    a.y = a.x * b.y + a.y * b.x;
-}
-
 inline  __device__ void atomicAdd(float2 *a, float2 b) {
     atomicAdd(&a->x, b.x);
     atomicAdd(&a->y, b.y);
