@@ -61,7 +61,18 @@ inline __device__ float raw_cos(float a)
     return r;
 }
 
-inline __device__ void fma(float2 &a, float2 b, float2 c)
+
+/*
+    Multiply accumulate: a = a + (b * c)
+*/
+// scalar
+inline __device__ void mac(float &a, float b, float c)
+{
+    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a) : "f"(b), "f"(c), "f"(a));
+}
+
+// complex
+inline __device__ void cmac(float2 &a, float2 b, float2 c)
 {
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.x) : "f"(b.x), "f"(c.x), "f"(a.x));
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.x), "f"(c.y), "f"(a.y));

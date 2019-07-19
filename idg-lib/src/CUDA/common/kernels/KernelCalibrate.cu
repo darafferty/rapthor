@@ -236,10 +236,10 @@ __global__ void kernel_calibrate_sums(
                         float2 pixel_xy = make_float2(a.z, a.w);
                         float2 pixel_yx = make_float2(b.x, b.y);
                         float2 pixel_yy = make_float2(b.z, b.w);
-                        fma(sum[term_nr][0], phasor, pixel_xx);
-                        fma(sum[term_nr][1], phasor, pixel_xy);
-                        fma(sum[term_nr][2], phasor, pixel_yx);
-                        fma(sum[term_nr][3], phasor, pixel_yy);
+                        cmac(sum[term_nr][0], phasor, pixel_xx);
+                        cmac(sum[term_nr][1], phasor, pixel_xy);
+                        cmac(sum[term_nr][2], phasor, pixel_yx);
+                        cmac(sum[term_nr][3], phasor, pixel_yy);
                     } // end for term_nr
                 } // end for j (batch)
             } // end for pixel_offset
@@ -415,7 +415,7 @@ __global__ void kernel_calibrate_gradient(
 
                     // Update sum
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        fma(sum[pol], phasor, pixels_[pol][j]);
+                        cmac(sum[pol], phasor, pixels_[pol][j]);
                     }
                 } // end for j (batch)
             } // end for pixel_offset
@@ -432,7 +432,7 @@ __global__ void kernel_calibrate_gradient(
                     // Compute gradient update
                     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
-                        fma(update[term_nr], residual[pol], sums[sum_idx]);
+                        cmac(update[term_nr], residual[pol], sums[sum_idx]);
                     } // end for term
                 } // end for pol
             } // end if time
@@ -511,7 +511,7 @@ __global__ void kernel_calibrate_hessian(
                     float2 sum1 = conj(sums_x[sum_idx1]) * weights[vis_idx];
 
                     // Update hessian
-                    fma(update, sum0, sum1);
+                    update += sum0 * sum1;
                 } // end for pol
             } // end chan
         } // end for time

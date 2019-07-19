@@ -301,10 +301,10 @@ __device__ void
                         #endif
 
                         // Multiply visibility by phasor
-                        fma(pixelsXX[j], phasor, visXX);
-                        fma(pixelsXY[j], phasor, visXY);
-                        fma(pixelsYX[j], phasor, visYX);
-                        fma(pixelsYY[j], phasor, visYY);
+                        cmac(pixelsXX[j], phasor, visXX);
+                        cmac(pixelsXY[j], phasor, visXY);
+                        cmac(pixelsYX[j], phasor, visYX);
+                        cmac(pixelsYY[j], phasor, visYY);
                     }
                 } // end for chan
             } // end for time
