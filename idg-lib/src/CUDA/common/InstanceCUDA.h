@@ -97,7 +97,8 @@ namespace idg {
                         cu::DeviceMemory& d_sums2,
                         cu::DeviceMemory& d_lmnp,
                         cu::DeviceMemory& d_hessian,
-                        cu::DeviceMemory& d_gradient);
+                        cu::DeviceMemory& d_gradient,
+                        cu::DeviceMemory& d_residual);
 
                     void launch_grid_fft(
                         cu::DeviceMemory& d_data,

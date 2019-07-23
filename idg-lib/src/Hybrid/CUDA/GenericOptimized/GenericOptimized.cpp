@@ -994,7 +994,8 @@ namespace idg {
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
                 Array3D<std::complex<float>>& hessian,
-                Array2D<std::complex<float>>& gradient)
+                Array2D<std::complex<float>>& gradient,
+                float &residual)
             {
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
@@ -1036,6 +1037,7 @@ namespace idg {
                 void *aterm_derivative_ptr = aterm_derivatives_transposed.data();
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
+                void *residual_ptr         = &residual;
 
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();
@@ -1068,8 +1070,10 @@ namespace idg {
                 cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
                 cu::DeviceMemory d_hessian(hessian.bytes());
                 cu::DeviceMemory d_gradient(gradient.bytes());
+                cu::DeviceMemory d_residual(sizeof(float));
                 cu::HostMemory h_hessian(hessian.bytes());
                 cu::HostMemory h_gradient(gradient.bytes());
+                cu::HostMemory h_residual(sizeof(float));
                 //d_hessian.zero();
 
                 // Events
@@ -1080,6 +1084,7 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr);
                 htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr);
                 htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
+                htodstream.memcpyHtoDAsync(d_residual, residual_ptr);
                 htodstream.record(inputCopied);
 
                 // Run calibration update step
@@ -1088,13 +1093,15 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                    d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp, d_hessian, d_gradient);
+                    d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp, d_hessian, d_gradient, d_residual);
                 executestream.record(executeFinished);
 
                 // Copy output to host
                 dtohstream.waitEvent(executeFinished);
                 dtohstream.memcpyDtoHAsync(h_hessian, d_hessian);
                 dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
+                dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
+                dtohstream.memcpyDtoHAsync(h_residual, d_residual);
                 dtohstream.record(outputCopied);
 
                 // Wait for output to finish
@@ -1103,6 +1110,7 @@ namespace idg {
                 // Copy output on host
                 memcpy(hessian_ptr, h_hessian, hessian.bytes());
                 memcpy(gradient_ptr, h_gradient, gradient.bytes());
+                memcpy(residual_ptr, h_residual, sizeof(float));
 
                 // End marker
                 marker.end();

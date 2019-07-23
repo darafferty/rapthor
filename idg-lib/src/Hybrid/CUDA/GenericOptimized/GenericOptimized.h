@@ -135,7 +135,8 @@ namespace idg {
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
                         Array3D<std::complex<float>>& hessian,
-                        Array2D<std::complex<float>>& gradient) override;
+                        Array2D<std::complex<float>>& gradient,
+                        float &residual) override;
 
                     virtual void do_calibrate_finish() override;
 

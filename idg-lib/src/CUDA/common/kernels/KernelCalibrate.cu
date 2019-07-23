@@ -279,7 +279,8 @@ __global__ void kernel_calibrate_gradient(
     const float2*     __restrict__ subgrid,
     const float2*     __restrict__ sums,
     const float4*     __restrict__ lmnp,
-          float2*     __restrict__ gradient)
+          float2*     __restrict__ gradient,
+          float*      __restrict__ residual_sum)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -307,6 +308,7 @@ __global__ void kernel_calibrate_gradient(
 
     // Accumulate gradient update in registers
     float2 update[MAX_NR_TERMS];
+    float update_residual_sum;
 
     // Iterate timesteps
     int current_nr_timesteps = 0;
@@ -317,6 +319,7 @@ __global__ void kernel_calibrate_gradient(
         for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
             update[term_nr] = make_float2(0, 0);
         }
+        update_residual_sum = 0.0;
 
         // Determine number of timesteps to process
         current_nr_timesteps = 0;
@@ -424,16 +427,22 @@ __global__ void kernel_calibrate_gradient(
 
                 // Compute residual
                 float2 residual[NR_POLARIZATIONS];
+                float2 residual_weighted[NR_POLARIZATIONS];
                 const float scale = 1.0f / nr_pixels;
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     unsigned int vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
-                    residual[pol] = (visibilities[vis_idx] - (sum[pol] * scale)) * weights[vis_idx];
+                    residual[pol] = visibilities[vis_idx] - (sum[pol] * scale);
+                    residual_weighted[pol] = residual[pol] * weights[vis_idx];
 
                     // Compute gradient update
                     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
-                        cmac(update[term_nr], residual[pol], sums[sum_idx]);
+                        cmac(update[term_nr], residual_weighted[pol], sums[sum_idx]);
                     } // end for term
+
+                    // Compute residual_sum update
+                    update_residual_sum += residual_weighted[pol].x*residual[pol].x + residual_weighted[pol].y*residual[pol].y;
+
                 } // end for pol
             } // end if time
         } // end for i (visibilities)
@@ -443,6 +452,9 @@ __global__ void kernel_calibrate_gradient(
             unsigned int idx = aterm_idx * nr_terms + (term_offset + term_nr);
             atomicAdd(&gradient[idx], update[term_nr]);
         }
+
+        if (!term_offset) atomicAdd(residual_sum, update_residual_sum);
+
     } // end for time_offset_local
 } // end kernel_calibrate_gradient
 

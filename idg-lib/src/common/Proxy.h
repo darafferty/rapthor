@@ -193,8 +193,8 @@ namespace idg {
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
                     Array3D<std::complex<float>>& hessian,
-                    Array2D<std::complex<float>>& derivative
-                );
+                    Array2D<std::complex<float>>& gradient,
+                    float &residual);
 
                 void calibrate_finish();
 
@@ -372,7 +372,8 @@ namespace idg {
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
                     Array3D<std::complex<float>>& hessian,
-                    Array2D<std::complex<float>>& gradient
+                    Array2D<std::complex<float>>& gradient,
+                    float &residual
                 ) {}
 
                 virtual void do_calibrate_finish() {}

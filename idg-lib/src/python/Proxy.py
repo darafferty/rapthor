@@ -341,7 +341,7 @@ class Proxy(object):
             aterms_offsets,
             spheroidal)
 
-    def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient):
+    def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient, residual):
 
         nr_timeslots = aterms.shape[0]
         nr_antennas = aterms.shape[1]
@@ -372,6 +372,10 @@ class Proxy(object):
                 dtype=np.complex64,
                 shape=(nr_timeslots, nr_terms),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* gradient
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(1, ),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* gradient
             ]
 
         self.lib.Proxy_calibrate_update(
@@ -384,7 +388,8 @@ class Proxy(object):
             aterms,
             aterm_derivatives,
             hessian,
-            gradient)
+            gradient,
+            residual)
 
     def calibrate_finish(self):
 

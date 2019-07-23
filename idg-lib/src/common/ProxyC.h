@@ -109,7 +109,8 @@ extern "C" {
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,
         std::complex<float>* hessian,
-        std::complex<float>* derivative);
+        std::complex<float>* gradient,
+        float *residual);
 
     void Proxy_calibrate_finish(
          Proxy* p);
