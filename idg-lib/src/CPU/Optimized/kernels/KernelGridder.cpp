@@ -77,7 +77,7 @@ void kernel_gridder(
           idg::float2*               subgrid)
 {
     #if defined(USE_LOOKUP)
-    CREATE_LOOKUP
+    initialize_lookup();
     #endif
 
     // Compute l,m,n

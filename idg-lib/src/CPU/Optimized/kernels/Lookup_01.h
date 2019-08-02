@@ -16,10 +16,9 @@
 #define NR_SAMPLES        TWO_PI_INT
 
 // Lookup table
-#define CREATE_LOOKUP float lookup[NR_SAMPLES]; compute_lookup(lookup);
+float lookup[NR_SAMPLES] __attribute__((aligned(ALIGNMENT)));
 
-inline void compute_lookup(
-    float* __restrict__ lookup)
+inline void initialize_lookup()
 {
     for (unsigned i = 0; i < NR_SAMPLES; i++) {
         lookup[i] = sinf(i * (TWO_PI / TWO_PI_INT));
@@ -30,7 +29,6 @@ inline void compute_sincos_avx2(
     unsigned*                 offset,
     const unsigned            n,
     const float* __restrict__ x,
-    const float* __restrict__ lookup,
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
@@ -61,7 +59,6 @@ inline void compute_sincos_scalar(
     unsigned*                 offset,
     const unsigned            n,
     const float* __restrict__ x,
-    const float* __restrict__ lookup,
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
@@ -78,11 +75,10 @@ inline void compute_sincos_scalar(
 inline void compute_sincos(
     const unsigned            n,
     const float* __restrict__ x,
-    const float* __restrict__ lookup,
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
     unsigned offset = 0;
-    compute_sincos_avx2(&offset, n, x, lookup, sin, cos);
-    compute_sincos_scalar(&offset, n, x, lookup, sin, cos);
+    compute_sincos_avx2(&offset, n, x, sin, cos);
+    compute_sincos_scalar(&offset, n, x, sin, cos);
 }

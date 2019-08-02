@@ -6,10 +6,9 @@
 #define BIT(A,N)	(((A) >> (N)) & 1)
 
 // Lookup table
-#define CREATE_LOOKUP idg::float2 lookup[NR_SAMPLES]; compute_lookup(lookup);
+idg::float2 lookup[NR_SAMPLES] __attribute__((aligned(ALIGNMENT)));
 
-inline void compute_lookup(
-    idg::float2* __restrict__ lookup)
+inline void initialize_lookup()
 {
     for (unsigned i = 0; i < NR_SAMPLES; i++) {
         lookup[i].real = cosf(i * (M_PI_4/QRT_PI_INT));
@@ -18,7 +17,6 @@ inline void compute_lookup(
 }
 
 inline idg::float2 compute_sincos(
-    const idg::float2* __restrict__ lookup,
     const float x)
 {
     unsigned input  = (unsigned) round(x * (ONE_PI_INT / M_PI));
@@ -49,7 +47,6 @@ inline idg::float2 compute_sincos(
 inline void compute_sincos(
     const int                       n,
     const float*       __restrict__ x,
-    const idg::float2* __restrict__ lookup,
     float*             __restrict__ sin,
     float*             __restrict__ cos)
 {
@@ -57,7 +54,7 @@ inline void compute_sincos(
     #pragma vector aligned(x, sin, cos)
     #endif
     for (int i = 0; i < n; i++) {
-        idg::float2 phasor = compute_sincos(lookup, x[i]);
+        idg::float2 phasor = compute_sincos(x[i]);
         cos[i] = phasor.real;
         sin[i] = phasor.imag;
     }

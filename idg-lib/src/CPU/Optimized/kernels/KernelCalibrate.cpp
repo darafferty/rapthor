@@ -53,7 +53,7 @@ void kernel_calibrate(
     idg::float2*                     gradient)
 {
     #if defined(USE_LOOKUP)
-    CREATE_LOOKUP
+    initialize_lookup();
     #endif
 
     // Initialize local gradient
@@ -286,7 +286,7 @@ void kernel_phasor(
           idg::float2*               phasors)
 {
     #if defined(USE_LOOKUP)
-    CREATE_LOOKUP
+    initialize_lookup();
     #endif
 
     // Compute l,m,n
@@ -355,11 +355,7 @@ void kernel_phasor(
                 // Compute phasor
                 float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
                 float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));;
-                #if defined(USE_LOOKUP)
-                compute_sincos(nr_pixels, phase, lookup, phasor_imag, phasor_real);
-                #else
                 compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
-                #endif
 
                 // Store phasor
                 for (unsigned i = 0; i < nr_pixels; i++) {
