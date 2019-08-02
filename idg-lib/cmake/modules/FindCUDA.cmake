@@ -60,4 +60,12 @@ find_library(
     PATH_SUFFIXES lib64
 )
 
+# CUDA compiler
+find_program(
+    CUDA_NVCC
+    NAMES nvcc
+    HINTS ${CUDA_ROOT_DIR}
+    PATH_SUFFIXES bin
+)
+
 find_package_handle_standard_args(CUDA DEFAULT_MSG CUDA_CUDA_LIBRARY CUDA_INCLUDE_DIR)
