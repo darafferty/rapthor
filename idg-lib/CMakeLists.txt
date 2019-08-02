@@ -122,6 +122,11 @@ else()
 find_package(FFTW3 COMPONENTS single threads)
 endif()
 
+# CUDA
+if (BUILD_LIB_CUDA)
+find_package(CUDA QUIET)
+endif()
+
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # add main include folder

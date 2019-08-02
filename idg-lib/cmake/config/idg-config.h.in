@@ -33,4 +33,6 @@
 
 #cmakedefine REGISTER_HOST_MEMORY
 
+#define NVCC "@CUDA_NVCC@"
+
 #endif
