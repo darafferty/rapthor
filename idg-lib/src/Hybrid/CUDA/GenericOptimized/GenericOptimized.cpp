@@ -1039,7 +1039,6 @@ namespace idg {
                 auto grid_size    = m_calibrate_state.grid_size;
                 auto image_size   = m_calibrate_state.image_size;
                 auto w_step       = m_calibrate_state.w_step;
-                auto max_nr_terms = m_calibrate_max_nr_terms;
                 auto nr_correlations = 4;
 
                 // Performance measurement
