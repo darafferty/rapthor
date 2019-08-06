@@ -22,6 +22,7 @@ option (BUILD_WITH_POWERSENSOR " Build with PowerSensor" OFF)
 option (PERFORMANCE_REPORT "Report performance metrics" OFF)
 option (COMPILE_VERBOSE "Report compiler flags used during runtime compilation" OFF)
 option (STRICT_WARNINGS "Turn compiliation warnings into errors" ON)
+option (USE_LOOKUP_TABLE "Use sine/cosine lookup table" OFF)
 
 # build shared or static libraries (default: shared)
 if (BUILD_STATIC_LIBS)
