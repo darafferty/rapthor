@@ -238,6 +238,7 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_grid         = device.get_host_grid();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -291,8 +292,9 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
-                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
+                            htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
                                 auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
