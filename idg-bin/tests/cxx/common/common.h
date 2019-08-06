@@ -188,8 +188,8 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     // Run degridder
     std::clog << ">>> Run degridding" << std::endl;
-    memset(visibilities.data(), 0, visibilities.bytes());
-    memset(visibilities_ref.data(), 0, visibilities_ref.bytes());
+    visibilities.zero();
+    visibilities_ref.zero();
     optimized.degridding(
         plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
