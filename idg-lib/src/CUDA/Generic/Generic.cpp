@@ -205,7 +205,7 @@ namespace idg {
 
                 // Initialize memory
                 initialize_memory(
-                    plan, jobsize_, nr_streams,
+                    plan, jobsize_, max_nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
                     visibilities.data(), uvw.data(), grid.data());
 
@@ -408,7 +408,7 @@ namespace idg {
 
                 // Initialize memory
                 initialize_memory(
-                    plan, jobsize_, nr_streams,
+                    plan, jobsize_, max_nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
                     visibilities.data(), uvw.data(), grid.data());
 
