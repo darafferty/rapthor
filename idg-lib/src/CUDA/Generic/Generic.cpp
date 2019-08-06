@@ -293,12 +293,12 @@ namespace idg {
                         {
                             // Copy input data to device
                             auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                            auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
                             enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
                             htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
-                                auxiliary::sizeof_metadata(current_nr_subgrids));
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                             htodstream.record(inputReady);
 
                             // Launch gridder kernel
@@ -495,10 +495,11 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
-                                auxiliary::sizeof_metadata(current_nr_subgrids));
+                            auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                            auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
+                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                             htodstream.record(inputReady);
 
                             // Initialize visibilities to zero
@@ -524,7 +525,6 @@ namespace idg {
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
-                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                             dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
                             enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
         					dtohstream.record(outputFree);
