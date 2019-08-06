@@ -155,7 +155,7 @@ void kernel_degridder(
             // Iterate all channels
             for (int chan = channel_begin; chan < channel_end; chan++) {
                 // Compute phase
-                float phase[nr_pixels];
+                float phase[nr_pixels] __attribute__((aligned(ALIGNMENT)));
 
                 for (unsigned i = 0; i < nr_pixels; i++) {
                     // Compute phase
