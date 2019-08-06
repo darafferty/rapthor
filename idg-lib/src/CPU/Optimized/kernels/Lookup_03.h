@@ -25,7 +25,7 @@ inline void initialize_lookup()
     }
 }
 
-#if not defined(__AVX2__)
+#if defined(__AVX__) && not defined(__AVX2__)
 __m256i _mm256_and_si256(__m256i a, __m256i b)
 {
 	__m128i ah = _mm256_extractf128_si256(a, 0);
@@ -57,6 +57,7 @@ __m256i _mm256_add_epi32(__m256i a, __m256i b)
 }
 #endif
 
+#if defined(__AVX__)
 __m256 _mm256_gather_ps(float const* base_addr, __m256i vindex)
 {
 	float dst[8];
@@ -67,6 +68,7 @@ __m256 _mm256_gather_ps(float const* base_addr, __m256i vindex)
 	}
 	return _mm256_load_ps(dst);
 }
+#endif
 
 inline void compute_sincos_avx(
     unsigned*                 offset,
