@@ -70,11 +70,11 @@ namespace idg {
                         device.get_device_uvw(t, jobsize[d], nr_timesteps);
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_device_metadata(t, max_nr_subgrids);
+                        device.get_host_visibilities(t, jobsize[d], nr_timesteps, nr_channels);
                     }
 
                     // Host memory
                     if (d == 0) {
-                        device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
                         device.get_host_uvw(nr_baselines, nr_timesteps, uvw);
                         device.get_host_grid(grid_size, grid);
                     } else {
@@ -440,6 +440,7 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_grid         = device.get_host_grid();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -521,7 +522,9 @@ namespace idg {
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
+                            enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
         					dtohstream.record(outputFree);
                         }
 
