@@ -70,11 +70,11 @@ namespace idg {
                         device.get_device_uvw(t, jobsize[d], nr_timesteps);
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_device_metadata(t, max_nr_subgrids);
+                        device.get_host_visibilities(t, jobsize[d], nr_timesteps, nr_channels);
                     }
 
                     // Host memory
                     if (d == 0) {
-                        device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
                         device.get_host_uvw(nr_baselines, nr_timesteps, uvw);
                         device.get_host_grid(grid_size, grid);
                     } else {
@@ -205,7 +205,7 @@ namespace idg {
 
                 // Initialize memory
                 initialize_memory(
-                    plan, jobsize_, nr_streams,
+                    plan, jobsize_, max_nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
                     visibilities.data(), uvw.data(), grid.data());
 
@@ -238,6 +238,7 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_grid         = device.get_host_grid();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -291,12 +292,13 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
-                                auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
-                                auxiliary::sizeof_metadata(current_nr_subgrids));
+                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                            auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
+                            enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
+                            htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                             htodstream.record(inputReady);
 
                             // Launch gridder kernel
@@ -408,7 +410,7 @@ namespace idg {
 
                 // Initialize memory
                 initialize_memory(
-                    plan, jobsize_, nr_streams,
+                    plan, jobsize_, max_nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
                     visibilities.data(), uvw.data(), grid.data());
 
@@ -440,6 +442,7 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
                     cu::HostMemory&   h_grid         = device.get_host_grid();
                     cu::DeviceMemory& d_grid         = device.get_device_grid();
+                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -492,10 +495,11 @@ namespace idg {
                         #pragma omp critical (lock)
                         {
                             // Copy input data to device
-                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr,
-                                auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps));
-                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr,
-                                auxiliary::sizeof_metadata(current_nr_subgrids));
+                            auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+                            auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
+                            auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
+                            htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+                            htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                             htodstream.record(inputReady);
 
                             // Initialize visibilities to zero
@@ -521,7 +525,8 @@ namespace idg {
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels));
+                            dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
+                            enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
         					dtohstream.record(outputFree);
                         }
 
