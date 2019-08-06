@@ -77,7 +77,7 @@ void kernel_gridder(
           idg::float2*               subgrid)
 {
     #if defined(USE_LOOKUP)
-    CREATE_LOOKUP
+    initialize_lookup();
     #endif
 
     // Compute l,m,n
@@ -219,7 +219,7 @@ void kernel_gridder(
                 int x = i % subgrid_size;
 
                 // Compute phase
-                float phase[current_nr_timesteps*nr_channels_subgrid];
+                float phase[current_nr_timesteps*nr_channels_subgrid] __attribute__((aligned(ALIGNMENT)));
 
                 for (int time = 0; time < current_nr_timesteps; time++) {
                     // Load UVW coordinates

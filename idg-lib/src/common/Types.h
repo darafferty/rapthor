@@ -383,6 +383,10 @@ namespace idg {
                        get_x_dim() * sizeof(T);
             }
 
+            void zero() {
+                memset((void *) m_buffer, 0, bytes());
+            }
+
         protected:
             size_t m_x_dim;
             size_t m_y_dim;

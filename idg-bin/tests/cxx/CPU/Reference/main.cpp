@@ -83,7 +83,7 @@ int test01()
     grid_ref(1, location_y, location_x) = amplitude;
     grid_ref(2, location_y, location_x) = amplitude;
     grid_ref(3, location_y, location_x) = amplitude;
-    memset(visibilities_ref.data(), 0, visibilities_ref.bytes());
+    visibilities_ref.zero();
     add_pt_src(visibilities_ref, uvw, frequencies, image_size, grid_size, offset_x, offset_y, amplitude);
     clog << endl;
 
