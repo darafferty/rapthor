@@ -6,6 +6,7 @@
 #endif
 
 #include "Types.h"
+#include "Index.h"
 #include "Math.h"
 
 inline void update_subgrid(

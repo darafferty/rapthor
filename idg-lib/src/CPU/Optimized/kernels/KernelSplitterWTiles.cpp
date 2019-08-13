@@ -8,6 +8,7 @@
 #include <omp.h>
 
 #include "Types.h"
+#include "Index.h"
 #include "idg-fft.h"
 
 

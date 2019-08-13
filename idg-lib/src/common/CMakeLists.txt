@@ -7,7 +7,8 @@ set (${PROJECT_NAME}_headers
     RuntimeWrapper.h
     auxiliary.h
     KernelTypes.h
-    Types.h
+    KernelTypes.h
+    Index.h
     KernelsInstance.h
     Proxy.h
 	Plan.h

@@ -1,6 +1,7 @@
 #include <complex>
 
 #include "Types.h"
+#include "Index.h"
 
 extern "C" {
 void kernel_splitter_wstack(

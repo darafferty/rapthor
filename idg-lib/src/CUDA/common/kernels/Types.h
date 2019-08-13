@@ -7,4 +7,4 @@
     Index methods
 */
 #define FUNCTION_ATTRIBUTES __device__
-#include "common/Types.h"
+#include "common/Index.h"

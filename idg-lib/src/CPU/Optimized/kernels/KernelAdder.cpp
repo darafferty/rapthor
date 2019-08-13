@@ -5,6 +5,7 @@
 #include <omp.h>
 
 #include "Types.h"
+#include "Index.h"
 
 extern "C" {
 void kernel_adder(

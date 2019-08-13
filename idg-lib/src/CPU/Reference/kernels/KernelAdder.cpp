@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "Types.h"
+#include "Index.h"
 
 
 extern "C" {

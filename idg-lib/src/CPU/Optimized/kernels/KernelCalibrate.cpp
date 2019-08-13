@@ -7,6 +7,7 @@
 #endif
 
 #include "Types.h"
+#include "Index.h"
 #include "Math.h"
 
 inline size_t index_phasors(

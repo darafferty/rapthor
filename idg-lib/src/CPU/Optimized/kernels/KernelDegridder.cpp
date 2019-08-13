@@ -6,6 +6,7 @@
 #endif
 
 #include "Types.h"
+#include "Index.h"
 #include "Math.h"
 
 extern "C" {
