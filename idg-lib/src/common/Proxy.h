@@ -196,6 +196,21 @@ namespace idg {
                     Array2D<std::complex<float>>& gradient,
                     float &residual);
 
+                void calibrate_init_hessian_vector_product();
+
+                void calibrate_update_hessian_vector_product1(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    const Array2D<float>& parameter_vector);
+
+                void calibrate_update_hessian_vector_product2(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    Array2D<float>& parameter_vector);
+
+
                 void calibrate_finish();
 
                 virtual void init_wtiles(int subgrid_size) {}
@@ -377,6 +392,20 @@ namespace idg {
                 ) {}
 
                 virtual void do_calibrate_finish() {}
+
+                virtual void do_calibrate_init_hessian_vector_product() {}
+
+                virtual void do_calibrate_update_hessian_vector_product1(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    const Array2D<float>& parameter_vector) {}
+
+                virtual void do_calibrate_update_hessian_vector_product2(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    Array2D<float>& parameter_vector) {}
 
                 //! Applyies (inverse) Fourier transform to grid
                 virtual void do_transform(

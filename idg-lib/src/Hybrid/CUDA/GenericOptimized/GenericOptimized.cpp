@@ -1134,6 +1134,68 @@ namespace idg {
                 report.print_visibilities(auxiliary::name_calibrate);
             }
 
+            void GenericOptimized::do_calibrate_init_hessian_vector_product()
+            {
+                m_calibrate_state.hessian_vector_product_visibilities = Array3D<Visibility<std::complex<float>>>(
+                    m_calibrate_state.nr_baselines,
+                    m_calibrate_state.nr_timesteps,
+                    m_calibrate_state.nr_channels
+                );
+                std::memset(m_calibrate_state.hessian_vector_product_visibilities.data(), 0, m_calibrate_state.hessian_vector_product_visibilities.bytes());
+            }
+
+            void GenericOptimized::do_calibrate_update_hessian_vector_product1(
+                const int antenna_nr,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                const Array2D<float>& parameter_vector)
+            {
+//                 // Arguments
+//                 auto nr_subgrids   = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+//                 auto nr_channels   = m_calibrate_state.wavenumbers.get_x_dim();
+//                 auto nr_terms      = aterm_derivatives.get_z_dim();
+//                 auto subgrid_size  = aterms.get_y_dim();
+//                 auto nr_stations   = aterms.get_z_dim();
+//                 auto nr_timeslots  = aterms.get_w_dim();
+//
+//                 // Performance measurement
+//                 if (antenna_nr == 0) {
+//                     report.initialize(nr_channels, subgrid_size, 0, nr_terms);
+//                 }
+//
+//                 // Data pointers
+//                 auto shift_ptr                     = m_calibrate_state.shift.data();
+//                 auto wavenumbers_ptr               = m_calibrate_state.wavenumbers.data();
+//                 idg::float2 *aterm_ptr             = (idg::float2*) aterms.data();
+//                 idg::float2 * aterm_derivative_ptr = (idg::float2*) aterm_derivatives.data();
+//                 auto aterm_idx_ptr                 = m_calibrate_state.plans[antenna_nr]->get_aterm_indices_ptr();
+//                 auto metadata_ptr                  = m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
+//                 auto uvw_ptr                       = m_calibrate_state.uvw.data(antenna_nr);
+//                 idg::float2 *visibilities_ptr      = (idg::float2*) m_calibrate_state.visibilities.data(antenna_nr);
+//                 float *weights_ptr                 = (float*) m_calibrate_state.weights.data(antenna_nr);
+//                 idg::float2 *subgrids_ptr          = (idg::float2*) m_calibrate_state.subgrids[antenna_nr].data();
+//                 idg::float2 *phasors_ptr           = (idg::float2*) m_calibrate_state.phasors[antenna_nr].data();
+//                 float *parameter_vector_ptr        = (idg::float2*) parameter_vector.data();
+//
+//                 int max_nr_timesteps       = m_calibrate_state.max_nr_timesteps[antenna_nr];
+//
+
+                // TODO for now call the cpu instance
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                cpuKernels.run_calibrate_hessian_vector_product1(antenna_nr, aterms, derivative_aterms, parameter_vector);
+            }
+
+            void GenericOptimized::do_calibrate_update_hessian_vector_product2(
+                const int station_nr,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                Array2D<float>& parameter_vector)
+            {
+                // TODO for now call the cpu instance
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                cpuKernels.run_calibrate_hessian_vector_product2(station_nr, aterms, derivative_aterms, parameter_vector);
+            }
+
             Plan* GenericOptimized::make_plan(
                 const int kernel_size,
                 const int subgrid_size,

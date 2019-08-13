@@ -85,6 +85,18 @@ namespace idg {
                         idg::float2 *hessian,
                         idg::float2 *gradient);
 
+                    void run_calibrate_hessian_vector_product1(
+                        const int station_nr,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                        const Array2D<float>& parameter_vector);
+
+                    void run_calibrate_hessian_vector_product2(
+                        const int station_nr,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                        Array2D<float>& parameter_vector);
+
                     void run_phasor(
                         int nr_subgrids,
                         int grid_size,
@@ -217,6 +229,8 @@ namespace idg {
                     runtime::Function *function_gridder;
                     runtime::Function *function_degridder;
                     runtime::Function *function_calibrate;
+                    runtime::Function *function_calibrate_hessian_vector_product1;
+                    runtime::Function *function_calibrate_hessian_vector_product2;
                     runtime::Function *function_phasor;
                     runtime::Function *function_fft;
                     runtime::Function *function_adder;
@@ -237,6 +251,8 @@ namespace idg {
             static const std::string name_gridder                       = "kernel_gridder";
             static const std::string name_degridder                     = "kernel_degridder";
             static const std::string name_calibrate                     = "kernel_calibrate";
+            static const std::string name_calibrate_hessian_vector_product1 = "kernel_calibrate_hessian_vector_product1";
+            static const std::string name_calibrate_hessian_vector_product2 = "kernel_calibrate_hessian_vector_product2";
             static const std::string name_phasor                        = "kernel_phasor";
             static const std::string name_adder                         = "kernel_adder";
             static const std::string name_splitter                      = "kernel_splitter";

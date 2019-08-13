@@ -428,6 +428,30 @@ namespace idg {
             do_calibrate_finish();
         }
 
+        void Proxy::calibrate_init_hessian_vector_product()
+        {
+            do_calibrate_init_hessian_vector_product();
+        }
+
+        void Proxy::calibrate_update_hessian_vector_product1(
+            const int station_nr,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+            const Array2D<float>& parameter_vector)
+        {
+            do_calibrate_update_hessian_vector_product1(station_nr, aterms, derivative_aterms, parameter_vector);
+        }
+
+        void Proxy::calibrate_update_hessian_vector_product2(
+            const int station_nr,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+            Array2D<float>& parameter_vector)
+        {
+            do_calibrate_update_hessian_vector_product2(station_nr, aterms, derivative_aterms, parameter_vector);
+        }
+
+
         void Proxy::degridding(
             float w_step,
             float* shift,

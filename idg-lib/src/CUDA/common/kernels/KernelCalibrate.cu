@@ -170,7 +170,7 @@ __global__ void kernel_calibrate_sums(
                     unsigned int y = (pixel_offset + j) / subgrid_size;
                     unsigned int x = (pixel_offset + j) % subgrid_size;
 
-                    for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
+                    for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                         // Reset pixel to zero
                         pixels_[term_nr][j][0] = make_float4(0, 0, 0, 0);
                         pixels_[term_nr][j][1] = make_float4(0, 0, 0, 0);
