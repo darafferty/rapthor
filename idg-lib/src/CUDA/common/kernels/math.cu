@@ -20,12 +20,8 @@ inline __device__ float2 operator*(float a, float2 b) {
 }
 
 inline __device__ float2 operator*(float2 a, float2 b) {
-    float2 c;
-    asm ("mul.f32 %0, %1, %2;" : "=f"(c.x) : "f"(a.x), "f"(b.x));
-    asm ("mul.f32 %0, %1, %2;" : "=f"(c.y) : "f"(a.x), "f"(b.y));
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(c.x) : "f"(-a.y), "f"(b.y), "f"(c.x));
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(c.y) : "f"(a.y), "f"(b.x), "f"(c.y));
-    return c;
+    return make_float2(a.x * b.x - a.y * b.y,
+                       a.x * b.y + a.y * b.x);
 }
 
 inline __device__ float4 operator*(float4 a, float b) {
