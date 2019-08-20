@@ -35,4 +35,6 @@
 
 #define NVCC "@CUDA_NVCC@"
 
+#cmakedefine CUDA_KERNEL_DEBUG
+
 #endif

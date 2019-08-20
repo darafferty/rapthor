@@ -109,7 +109,11 @@ namespace idg {
                 // CUDA specific flags
                 std::stringstream flags_cuda;
                 flags_cuda << "-use_fast_math ";
+                #if defined(CUDA_KERNEL_DEBUG)
+                flags_cuda << " -G " ;
+                #else
                 flags_cuda << "-lineinfo ";
+                #endif
                 flags_cuda << "-src-in-ptx";
 
                 // Device specific flags
