@@ -463,8 +463,11 @@ namespace idg {
                 // Append subgrid
                 metadata.push_back(metadata_[bl][i]);
 
-                // Accumulate timesteps
-                total_nr_timesteps += m.nr_timesteps;
+                // Accumulate timesteps, taking only the
+                // first channel group into account
+                if (m.channel_begin == 0) {
+                    total_nr_timesteps += m.nr_timesteps;
+                }
             }
 
             // Set total total number of timesteps for baseline
@@ -583,12 +586,6 @@ namespace idg {
             baseline);
         auto end   = next(begin, n);
         return accumulate(begin, end, 0);
-    }
-
-    int Plan::get_max_nr_timesteps_baseline() const {
-        return *max_element(
-            total_nr_timesteps_per_baseline.begin(),
-            total_nr_timesteps_per_baseline.end());
     }
 
     int Plan::get_max_nr_timesteps_subgrid() const {
