@@ -1,5 +1,7 @@
 #include "KernelsInstance.h"
 
+#include "Index.h"
+
 namespace idg {
     namespace kernel {
 
