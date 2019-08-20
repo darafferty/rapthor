@@ -408,23 +408,23 @@ namespace idg {
                     if (job_id_next < jobs.size()) {
 
                         // Load memory objects
-                        cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id_next);
-                        cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id_next);
+                        cu::DeviceMemory& d_visibilities_next = device.get_device_visibilities(local_id_next);
+                        cu::DeviceMemory& d_uvw_next          = device.get_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next     = device.get_device_metadata(local_id_next);
 
-                        auto current_nr_baselines = jobs[job_id_next].current_nr_baselines;
-                        auto current_nr_subgrids  = jobs[job_id_next].current_nr_subgrids;
-                        void *metadata_ptr        = jobs[job_id_next].metadata_ptr;
-                        void *uvw_ptr             = jobs[job_id_next].uvw_ptr;
-                        void *visibilities_ptr    = jobs[job_id_next].visibilities_ptr;
+                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
+                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
+                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
+                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
 
                         // Copy input data to device
-                        auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
-                        auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
-                        auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
-                        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
-                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
+                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
+                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
+                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
+                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
+                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
                         htodstream.record(*inputCopied[job_id_next]);
                     }
 
@@ -697,17 +697,19 @@ namespace idg {
                     if (job_id_next < jobs.size()) {
 
                         // Load memory objects
-                        cu::DeviceMemory& d_uvw      = device.get_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata = device.get_device_metadata(local_id_next);
+                        cu::DeviceMemory& d_uvw_next      = device.get_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next = device.get_device_metadata(local_id_next);
 
-                        void *metadata_ptr        = jobs[job_id_next].metadata_ptr;
-                        void *uvw_ptr             = jobs[job_id_next].uvw_ptr;
+                        auto nr_baselines_next  = jobs[job_id_next].current_nr_baselines;
+                        auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+                        void *uvw_ptr_next      = jobs[job_id_next].uvw_ptr;
 
                         // Copy input data to device
-                        auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
-                        auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
-                        htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-                        htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+                        auto sizeof_uvw_next         = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
+                        auto sizeof_metadata_next    = auxiliary::sizeof_metadata(nr_subgrids_next);
+                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
+                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
                         htodstream.record(*inputCopied[job_id_next]);
                     }
 
