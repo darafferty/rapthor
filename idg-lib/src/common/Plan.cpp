@@ -463,8 +463,11 @@ namespace idg {
                 // Append subgrid
                 metadata.push_back(metadata_[bl][i]);
 
-                // Accumulate timesteps
-                total_nr_timesteps += m.nr_timesteps;
+                // Accumulate timesteps, taking only the
+                // first channel group into account
+                if (m.channel_begin == 0) {
+                    total_nr_timesteps += m.nr_timesteps;
+                }
             }
 
             // Set total total number of timesteps for baseline
