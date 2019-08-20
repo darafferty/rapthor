@@ -271,6 +271,40 @@ void kernel_calibrate(
 
 } // end kernel_calibrate
 
+void kernel_calibrate_hessian_vector_product1(
+    const unsigned int               nr_subgrids,
+    const unsigned int               grid_size,
+    const unsigned int               subgrid_size,
+    const float                      image_size,
+    const float                      w_step_in_lambda,
+    const float* __restrict__        shift,
+    const unsigned int               max_nr_timesteps,
+    const unsigned int               nr_channels,
+    const unsigned int               nr_stations,
+    const unsigned int               nr_terms,
+    const unsigned int               nr_time_slots,
+    const idg::UVW<float>*           uvw,
+    const float*                     wavenumbers,
+          idg::float2*               visibilities,
+    const float*                     weights,
+    const idg::float2*               aterms,
+    const idg::float2*               aterm_derivatives,
+    const int*                       aterms_indices,
+    const idg::Metadata*             metadata,
+    const idg::float2*               subgrid,
+    const idg::float2*               phasors,
+    const float*                     parameter_vector
+)
+{
+    std::cout << __func__ << std::endl;
+}
+
+void kernel_calibrate_hessian_vector_product2()
+{
+    std::cout << __func__ << std::endl;
+}
+
+
 void kernel_phasor(
     const int                        nr_subgrids,
     const int                        grid_size,
