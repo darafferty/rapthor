@@ -348,7 +348,7 @@ namespace api {
         std::cout << "set grid from image" << std::endl;
 #endif
         double runtime_copy = -omp_get_wtime();
-        m_grid.init(0.0);
+        m_grid.zero();
         if (do_scale)
         {
 #ifndef NDEBUG
