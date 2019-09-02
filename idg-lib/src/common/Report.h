@@ -74,10 +74,10 @@ namespace idg {
 
         struct Parameters
         {
-            int nr_channels;
-            int subgrid_size;
-            int grid_size;
-            int nr_terms;
+            int nr_channels  = 0;
+            int subgrid_size = 0;
+            int grid_size    = 0;
+            int nr_terms     = 0;
         };
 
         struct Counters
@@ -529,8 +529,11 @@ namespace idg {
 
                 host_updated        = false;
                 gridder_updated     = false;
+                gridder_post_updated  = false;
+                degridder_pre_updated = false;
                 degridder_updated   = false;
                 adder_updated       = false;
+                calibrate_updated   = false;
                 splitter_updated    = false;
                 scaler_updated      = false;
                 subgrid_fft_updated = false;
