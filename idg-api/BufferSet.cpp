@@ -216,6 +216,7 @@ namespace api {
         }
 
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
+        m_grid.zero();
 
         m_taper_subgrid.resize(m_subgridsize);
         m_taper_grid.resize(m_padded_size);
