@@ -216,6 +216,7 @@ namespace api {
         }
 
         m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
+        m_grid.zero();
 
         m_taper_subgrid.resize(m_subgridsize);
         m_taper_grid.resize(m_padded_size);
@@ -348,7 +349,7 @@ namespace api {
         std::cout << "set grid from image" << std::endl;
 #endif
         double runtime_copy = -omp_get_wtime();
-        m_grid.init(0.0);
+        m_grid.zero();
         if (do_scale)
         {
 #ifndef NDEBUG
