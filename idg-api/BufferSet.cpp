@@ -63,6 +63,10 @@ namespace api {
         m_proxy(create_proxy())
     {}
 
+    BufferSetImpl::~BufferSetImpl() {
+        if (m_proxy) { delete m_proxy; }
+    }
+
     proxy::Proxy* BufferSetImpl::create_proxy()
     {
         proxy::Proxy* proxy;

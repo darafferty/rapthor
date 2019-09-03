@@ -21,7 +21,7 @@ namespace api {
 
         BufferSetImpl(Type architecture);
 
-        virtual ~BufferSetImpl() {};
+        ~BufferSetImpl();
 
         DegridderBuffer* get_degridder(int i) final override;
         GridderBuffer* get_gridder(int i) final override;
