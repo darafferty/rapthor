@@ -255,36 +255,14 @@ namespace api {
 
         float image_size = get_image_size();
         float frequency = get_frequency(0);
-        float begin_pos = meters_to_pixels(m_max_baseline, image_size, frequency);
-
-        // The first channel group should be the largest, because the Proxy allocates buffers according to the size of the first group.
-        // max_nr_channels the maximum number of channels in a group. It is initially set the total number of channels.
-        // Once the first group is created it is set to the size of the first group.
-
         int max_nr_channels = get_frequencies_size();
 
         m_channel_groups.clear();
-        for (int begin_channel = 0; begin_channel < get_frequencies_size();)
-        {
-            float end_pos;
-            int end_channel;
-            for (end_channel = begin_channel+1; end_channel < (begin_channel + max_nr_channels); end_channel++)
-            {
-                frequency = get_frequency(end_channel);
-                end_pos = meters_to_pixels(m_max_baseline, image_size, frequency);
 
-                if (std::abs(begin_pos - end_pos) > m_uv_span_frequency) break;
-            }
-#ifndef NDEBUG
-            std::cout << begin_channel << "-" << end_channel << std::endl;
-#endif
-            // If this is the first group, reduce max_nr_channels to the size of this group
-            if (m_channel_groups.size() == 0) max_nr_channels = end_channel - begin_channel;
-
-            m_channel_groups.push_back(std::make_pair(begin_channel, end_channel));
-            begin_channel = end_channel;
-            begin_pos = end_pos;
-        }
+        // Channels groups in Buffer are disabled. This functionality is now provided in Plan.
+        // Note that the remainder of the idg-api code has not been updated and therefore contains
+        // superfluous code that needs to be removed at some later stage.
+        m_channel_groups.push_back(std::make_pair(0, max_nr_channels));
 
         m_grouped_frequencies.clear();
         for (auto & channel_group : m_channel_groups)
