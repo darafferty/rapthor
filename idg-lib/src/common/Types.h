@@ -1,6 +1,7 @@
 #ifndef IDG_TYPES_H_
 #define IDG_TYPES_H_
 
+#include <iostream>
 #include <ostream>
 #include <complex>
 #include <cassert>
@@ -92,7 +93,12 @@ namespace idg {
     template<class T>
     T* allocate_memory(size_t n) {
         void *ptr;
-        posix_memalign(&ptr, ALIGNMENT, n * sizeof(T));
+        int bytes = n * sizeof(T);
+        bytes = (((bytes - 1) / ALIGNMENT) * ALIGNMENT) + ALIGNMENT;
+        if (posix_memalign(&ptr, ALIGNMENT, bytes) != 0) {
+            std::cerr << "Could not allocate " << bytes << " bytes" << std::endl;
+            exit(EXIT_FAILURE);
+        };
         return (T *) ptr;
     }
 
