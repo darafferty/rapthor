@@ -685,7 +685,7 @@ namespace idg {
                     executestream.waitEvent(*inputCopied[job_id]);
 
                     // Wait for output buffer to be free
-                    if (job_id > 2) {
+                    if (job_id > 1) {
                         executestream.waitEvent(*outputCopied[job_id - 2]);
                     }
 
