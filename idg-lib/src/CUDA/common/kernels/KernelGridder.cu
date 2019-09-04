@@ -51,7 +51,7 @@ __device__ void update_subgrid(
     }
 }
 
-__device__ void finialize_subgrid(
+__device__ void finalize_subgrid(
     const unsigned                      subgrid_size,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ avg_aterm_correction,
@@ -130,8 +130,21 @@ __device__ void
     int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
+    // Load metadata for first subgrid
+    const Metadata &m0 = metadata[0];
+
+	// Load metadata for current subgrid
+    const Metadata &m = metadata[s];
+    const int time_offset_global = m.time_index - m0.time_index;
+    const int nr_timesteps = m.nr_timesteps;
+    const int x_coordinate = m.coordinate.x;
+    const int y_coordinate = m.coordinate.y;
+    const int station1 = m.baseline.station1;
+    const int station2 = m.baseline.station2;
+    const int channel_begin = m.channel_begin; \
+
 	// Set subgrid to zero
-	if (channel_offset == 0) {
+	if (channel_offset == channel_begin) {
 		for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
             int y = i / subgrid_size;
             int x = i % subgrid_size;
@@ -147,18 +160,6 @@ __device__ void
             }
 		}
 	}
-
-    // Load metadata for first subgrid
-    const Metadata &m0 = metadata[0];
-
-	// Load metadata for current subgrid
-    const Metadata &m = metadata[s];
-    const int time_offset_global = m.time_index - m0.time_index;
-    const int nr_timesteps = m.nr_timesteps;
-    const int x_coordinate = m.coordinate.x;
-    const int y_coordinate = m.coordinate.y;
-    const int station1 = m.baseline.station1;
-    const int station2 = m.baseline.station2;
 
     // Compute u,v,w offset in wavelenghts
     const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
@@ -342,7 +343,7 @@ __device__ void
     }
 
 #define FINALIZE_SUBGRID \
-    finialize_subgrid( \
+    finalize_subgrid( \
     subgrid_size, spheroidal, avg_aterm_correction, metadata, subgrid);
 
 
