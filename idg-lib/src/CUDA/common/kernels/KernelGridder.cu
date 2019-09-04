@@ -51,7 +51,7 @@ __device__ void update_subgrid(
     }
 }
 
-__device__ void finialize_subgrid(
+__device__ void finalize_subgrid(
     const unsigned                      subgrid_size,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ avg_aterm_correction,
@@ -342,7 +342,7 @@ __device__ void
     }
 
 #define FINALIZE_SUBGRID \
-    finialize_subgrid( \
+    finalize_subgrid( \
     subgrid_size, spheroidal, avg_aterm_correction, metadata, subgrid);
 
 
