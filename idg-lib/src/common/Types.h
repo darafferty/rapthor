@@ -92,13 +92,15 @@ namespace idg {
 
     template<class T>
     T* allocate_memory(size_t n) {
-        void *ptr;
-        int bytes = n * sizeof(T);
-        bytes = (((bytes - 1) / ALIGNMENT) * ALIGNMENT) + ALIGNMENT;
-        if (posix_memalign(&ptr, ALIGNMENT, bytes) != 0) {
-            std::cerr << "Could not allocate " << bytes << " bytes" << std::endl;
-            exit(EXIT_FAILURE);
-        };
+        void *ptr = nullptr;
+        if (n > 0) {
+            size_t bytes = n * sizeof(T);
+            bytes = (((bytes - 1) / ALIGNMENT) * ALIGNMENT) + ALIGNMENT;
+            if (posix_memalign(&ptr, ALIGNMENT, bytes) != 0) {
+                std::cerr << "Could not allocate " << bytes << " bytes" << std::endl;
+                exit(EXIT_FAILURE);
+            };
+        }
         return (T *) ptr;
     }
 
@@ -111,7 +113,7 @@ namespace idg {
             Array1D(
                 size_t width) :
                 m_x_dim(width),
-                m_delete_buffer(width > 0),
+                m_delete_buffer(true),
                 m_buffer(allocate_memory<T>(width))
             {}
 
@@ -201,7 +203,7 @@ namespace idg {
                 size_t width) :
                 m_x_dim(width),
                 m_y_dim(height),
-                m_delete_buffer((height*width) > 0),
+                m_delete_buffer(true),
                 m_buffer(allocate_memory<T>(height*width))
             {}
 
@@ -304,7 +306,7 @@ namespace idg {
                 m_x_dim(width),
                 m_y_dim(height),
                 m_z_dim(depth),
-                m_delete_buffer((width*height*depth) > 0),
+                m_delete_buffer(true),
                 m_buffer(allocate_memory<T>(height*width*depth))
             {}
 

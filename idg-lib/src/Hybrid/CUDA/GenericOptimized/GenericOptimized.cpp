@@ -453,6 +453,12 @@ namespace idg {
                 // Enqueue end device measurement
                 hostStream->addCallback((CUstreamCallback) &end_device_measurement, stateData);
 
+                // Free memory
+                hostStream->synchronize();
+                inputCopied.clear();
+                gpuFinished.clear();
+                outputCopied.clear();
+
                 // Update report
                 auto total_nr_subgrids     = plan.get_nr_subgrids();
                 auto total_nr_timesteps    = plan.get_nr_timesteps();
@@ -734,6 +740,12 @@ namespace idg {
 
                 // Enqueue end device measurement
                 hostStream->addCallback((CUstreamCallback) &end_device_measurement, stateData);
+
+                // Free memory
+                hostStream->synchronize();
+                inputCopied.clear();
+                gpuFinished.clear();
+                outputCopied.clear();
 
                 // Update report
                 auto total_nr_subgrids     = plan.get_nr_subgrids();

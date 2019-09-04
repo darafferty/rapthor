@@ -88,6 +88,9 @@ namespace idg {
                 free_device_memory();
                 free_fft_plans();
                 for (cu::Module *module : mModules) { delete module; }
+                delete function_gridder;
+                delete function_degridder;
+                for (cu::Function *function : functions_calibrate) { delete function; };
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
@@ -1228,6 +1231,10 @@ namespace idg {
                 if (d_spheroidal != NULL) {
                     delete d_spheroidal;
                     d_spheroidal = NULL;
+                }
+                if (d_aterms_indices) {
+                    delete d_aterms_indices;
+                    d_aterms_indices = NULL;
                 }
             }
 
