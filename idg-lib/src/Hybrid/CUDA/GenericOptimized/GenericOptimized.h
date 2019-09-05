@@ -158,10 +158,8 @@ namespace idg {
                     idg::proxy::cpu::CPU* cpuProxy;
 
                     /*
-                     * Asynchronous (de)gridding state
+                     * Gridding/degridding state
                      */
-                    std::vector<int> jobsize_;
-                    std::vector<int> planned_max_nr_subgrids;
                     cu::Stream* hostStream;
                     powersensor::State hostStartState;
 

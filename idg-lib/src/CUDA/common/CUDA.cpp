@@ -120,25 +120,64 @@ namespace idg {
                 const unsigned int grid_size,
                 const float fraction_reserved)
             {
+
+                // Get additional parameters
+                unsigned int nr_baselines = plan.get_nr_baselines();
+
+                // Check if parameters have changed
+                bool reset = false;
+                if (nr_stations  != m_gridding_state.nr_stations)  { reset = true; };
+                if (nr_timeslots != m_gridding_state.nr_timeslots) { reset = true; };
+                if (nr_timesteps != m_gridding_state.nr_timesteps) { reset = true; };
+                if (nr_channels  != m_gridding_state.nr_channels)  { reset = true; };
+                if (subgrid_size != m_gridding_state.subgrid_size) { reset = true; };
+                if (grid_size    != m_gridding_state.grid_size)    { reset = true; };
+
+                // Reuse same jobsize if no parameters have changed
+                if (!reset) {
+                    return m_gridding_state.jobsize;
+                } else {
+                    // Reset all memory allocated by devices
+                    for (unsigned d = 0; d < get_num_devices(); d++) {
+                        InstanceCUDA& device = get_device(d);
+                        device.free_host_memory();
+                        device.free_device_memory();
+                        device.free_fft_plans();
+                    }
+                }
+
+                // Set parameters
+                m_gridding_state.nr_stations  = nr_stations;
+                m_gridding_state.nr_timeslots = nr_timeslots;
+                m_gridding_state.nr_timesteps = nr_timesteps;
+                m_gridding_state.nr_channels  = nr_channels;
+                m_gridding_state.subgrid_size = subgrid_size;
+                m_gridding_state.grid_size    = grid_size;
+                m_gridding_state.nr_baselines = nr_baselines;
+
                 // Read maximum jobsize from environment
                 char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
                 auto max_jobsize = cstr_max_jobsize ? atoi(cstr_max_jobsize) : 0;
 
                 // Compute the maximum number of subgrids for any baseline
-                int max_nr_subgrids = plan.get_max_nr_subgrids();
+                int max_nr_subgrids_bl = plan.get_max_nr_subgrids();
 
                 // Compute the amount of bytes needed for that job
                 size_t bytes_jobs = 0;
                 bytes_jobs += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
                 bytes_jobs += auxiliary::sizeof_uvw(1, nr_timesteps);
-                bytes_jobs += auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-                bytes_jobs += auxiliary::sizeof_metadata(max_nr_subgrids);
+                bytes_jobs += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size);
+                bytes_jobs += auxiliary::sizeof_metadata(max_nr_subgrids_bl);
                 bytes_jobs *= nr_streams;
 
                 // Compute the amount of memory needed for data that is identical for all jobs
                 size_t bytes_static = 0;
                 bytes_static += auxiliary::sizeof_grid(grid_size);
                 bytes_static += auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
+                bytes_static += auxiliary::sizeof_spheroidal(subgrid_size);
+                bytes_static += auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                bytes_static += auxiliary::sizeof_wavenumbers(nr_channels);
+                bytes_static += auxiliary::sizeof_avg_aterm_correction(subgrid_size);
 
                 // Print amount of bytes required
                 #if defined(DEBUG)
@@ -149,6 +188,7 @@ namespace idg {
                 // Adjust jobsize to amount of available device memory
                 unsigned nr_devices = devices.size();
                 std::vector<int> jobsize(nr_devices);
+                std::vector<int> max_nr_subgrids_job(nr_devices);
                 for (unsigned i = 0; i < nr_devices; i++) {
                     InstanceCUDA *device = devices[i];
                     cu::Context &context = device->get_context();
@@ -193,7 +233,13 @@ namespace idg {
                     #if defined(DEBUG)
                     printf("Jobsize: %d\n", jobsize[i]);
                     #endif
+
+                    // Get maximum number of subgrids for any job
+                    max_nr_subgrids_job[i] = plan.get_max_nr_subgrids(0, nr_baselines, jobsize[i]);
                 }
+
+                m_gridding_state.jobsize = jobsize;
+                m_gridding_state.max_nr_subgrids = max_nr_subgrids_job;
 
                 return jobsize;
             } // end compute_jobsize
