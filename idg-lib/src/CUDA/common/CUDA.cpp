@@ -120,6 +120,9 @@ namespace idg {
                 const unsigned int grid_size,
                 const float fraction_reserved)
             {
+                #if defined(DEBUG)
+                std::cout << "CUDA::" << __func__ << std::endl;
+                #endif
 
                 // Get additional parameters
                 unsigned int nr_baselines = plan.get_nr_baselines();
@@ -135,6 +138,9 @@ namespace idg {
 
                 // Reuse same jobsize if no parameters have changed
                 if (!reset) {
+                    #if defined(DEBUG)
+                    std::clog << "Reuse previous jobsize" << std::endl;
+                    #endif
                     return m_gridding_state.jobsize;
                 } else {
                     // Reset all memory allocated by devices
@@ -155,9 +161,23 @@ namespace idg {
                 m_gridding_state.grid_size    = grid_size;
                 m_gridding_state.nr_baselines = nr_baselines;
 
+                // Print parameters
+                #if defined(DEBUG)
+                std::cout << "nr_stations  = " << nr_stations  << std::endl;
+                std::cout << "nr_timeslots = " << nr_timeslots << std::endl;
+                std::cout << "nr_timesteps = " << nr_timesteps << std::endl;
+                std::cout << "nr_channels  = " << nr_channels  << std::endl;
+                std::cout << "subgrid_size = " << subgrid_size << std::endl;
+                std::cout << "grid_size    = " << grid_size    << std::endl;
+                std::cout << "nr_baselines = " << nr_baselines << std::endl;
+                #endif
+
                 // Read maximum jobsize from environment
                 char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
                 auto max_jobsize = cstr_max_jobsize ? atoi(cstr_max_jobsize) : 0;
+                #if defined(DEBUG)
+                std::cout << "max_jobsize  = " << max_jobsize << std::endl;
+                #endif
 
                 // Compute the maximum number of subgrids for any baseline
                 int max_nr_subgrids_bl = plan.get_max_nr_subgrids();
