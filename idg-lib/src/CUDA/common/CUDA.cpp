@@ -221,13 +221,13 @@ namespace idg {
                         exit(EXIT_FAILURE);
                     }
 
-                    // Subtract the space for the grid from the amount of free memory
+                    // Subtract the space for static memory from the amount of free memory
                     bytes_free -= bytes_static;
 
-                    // Compute actual jobsize
+                    // Compute jobsize
                     jobsize[i] = (bytes_free * (1 - fraction_reserved)) /  bytes_jobs;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
-                    jobsize[i] = min(jobsize[i], plan.get_nr_baselines());
+                    jobsize[i] = min(jobsize[i], nr_baselines);
 
                     // Print jobsize
                     #if defined(DEBUG)
