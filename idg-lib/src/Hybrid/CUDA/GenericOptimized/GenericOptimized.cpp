@@ -125,6 +125,9 @@ namespace idg {
                 cu::Marker marker("initialize");
                 marker.start();
 
+                // Compute jobsize
+                compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+
                 // Initialize devices
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
@@ -159,29 +162,22 @@ namespace idg {
                 // Set host report
                 cpuProxy->get_kernels().set_report(report);
 
-                jobsize_ = compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
-
                 // Initialize memory/fft
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device  = get_device(d);
-
-                    // Compute maximum number of subgrids for this plan
-                    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d]);
-                    if (planned_max_nr_subgrids.size() <= d) {
-                        planned_max_nr_subgrids.push_back(0);
-                    }
-                    planned_max_nr_subgrids[d] = max_nr_subgrids;
+                    auto jobsize = m_gridding_state.jobsize[d];
+                    auto max_nr_subgrids = m_gridding_state.max_nr_subgrids[d];
 
                     // Initialize memory
                     for (unsigned t = 0; t < max_nr_streams; t++) {
-                        device.get_device_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
-                        device.get_device_uvw(t, jobsize_[d], nr_timesteps);
+                        device.get_device_visibilities(t, jobsize, nr_timesteps, nr_channels);
+                        device.get_device_uvw(t, jobsize, nr_timesteps);
                         device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_device_metadata(t, max_nr_subgrids);
                         device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.get_host_metadata(t, max_nr_subgrids);
                         #if !defined(REGISTER_HOST_MEMORY)
-                        device.get_host_visibilities(t, jobsize_[d], nr_timesteps, nr_channels);
+                        device.get_host_visibilities(t, jobsize, nr_timesteps, nr_channels);
                         #endif
                     }
 
@@ -209,9 +205,6 @@ namespace idg {
                 report.print_devices();
                 report.print_visibilities(name);
                 report.reset();
-
-                // Cleanup
-                planned_max_nr_subgrids.clear();
             } // end finish
 
             typedef struct {
@@ -288,10 +281,14 @@ namespace idg {
                 #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
+                std::vector<int> jobsize_(nr_devices);
                 for (unsigned d = 0; d < nr_devices; d++) {
-                    while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
-                        jobsize_[d] *= 0.9;
+                    auto jobsize = m_gridding_state.jobsize[d];
+                    auto max_nr_subgrids = m_gridding_state.max_nr_subgrids[d];
+                    while (max_nr_subgrids < plan.get_max_nr_subgrids(0, nr_baselines, jobsize)) {
+                        jobsize *= 0.9;
                     }
+                    jobsize_[d] = jobsize;
                 }
 
                 // Performance measurements
@@ -569,10 +566,14 @@ namespace idg {
                 #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
+                std::vector<int> jobsize_(nr_devices);
                 for (unsigned d = 0; d < nr_devices; d++) {
-                    while (planned_max_nr_subgrids[d] < plan.get_max_nr_subgrids(0, nr_baselines, jobsize_[d])) {
-                        jobsize_[d] *= 0.9;
+                    auto jobsize = m_gridding_state.jobsize[d];
+                    auto max_nr_subgrids = m_gridding_state.max_nr_subgrids[d];
+                    while (max_nr_subgrids < plan.get_max_nr_subgrids(0, nr_baselines, jobsize)) {
+                        jobsize *= 0.9;
                     }
+                    jobsize_[d] = jobsize;
                 }
 
                 // Performance measurements
