@@ -86,13 +86,7 @@ namespace idg {
                 free_host_memory();
                 free_device_memory();
                 free_fft_plans();
-                delete function_gridder;
-                delete function_degridder;
-                for (cu::Function *function : functions_calibrate) { delete function; };
                 mModules.clear();
-                delete function_scaler;
-                delete function_adder;
-                delete function_splitter;
                 context->reset();
                 delete device;
                 delete context;
@@ -241,33 +235,34 @@ namespace idg {
 
                     // Find remaining functions
                     if (cuModuleGetFunction(&function, *module, name_gridder.c_str()) == CUDA_SUCCESS) {
-                        function_gridder = new cu::Function(function); found++;
+                        function_gridder.reset(new cu::Function(function)); found++;
                     }
                     if (cuModuleGetFunction(&function, *module, name_degridder.c_str()) == CUDA_SUCCESS) {
-                        function_degridder = new cu::Function(function); found++;
+                        function_degridder.reset(new cu::Function(function)); found++;
                     }
                     if (cuModuleGetFunction(&function, *module, name_scaler.c_str()) == CUDA_SUCCESS) {
-                        function_scaler = new cu::Function(function); found++;
+                        function_scaler.reset(new cu::Function(function)); found++;
                     }
                     if (cuModuleGetFunction(&function, *module, name_adder.c_str()) == CUDA_SUCCESS) {
-                        function_adder = new cu::Function(function); found++;
+                        function_adder.reset(new cu::Function(function)); found++;
                     }
                     if (cuModuleGetFunction(&function, *module, name_splitter.c_str()) == CUDA_SUCCESS) {
-                        function_splitter = new cu::Function(function); found++;
+                        function_splitter.reset(new cu::Function(function)); found++;
                     }
 
                     // Find calibration functions
                     if (cuModuleGetFunction(&function, *module, name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
-                        functions_calibrate.push_back(new cu::Function(function)); found++;
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
+                        found++;
                     }
                     if (cuModuleGetFunction(&function, *module, name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
-                        functions_calibrate.push_back(new cu::Function(function));
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
                     }
                     if (cuModuleGetFunction(&function, *module, name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
-                        functions_calibrate.push_back(new cu::Function(function));
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
                     }
                     if (cuModuleGetFunction(&function, *module, name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
-                        functions_calibrate.push_back(new cu::Function(function));
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
                     }
                 }
 
@@ -554,10 +549,10 @@ namespace idg {
                 start_measurement(data);
 
                 // Get functions
-                cu::Function *function_lmnp     = functions_calibrate[0];
-                cu::Function *function_sums     = functions_calibrate[1];
-                cu::Function *function_gradient = functions_calibrate[2];
-                cu::Function *function_hessian  = functions_calibrate[3];
+                std::unique_ptr<cu::Function>& function_lmnp     = functions_calibrate[0];
+                std::unique_ptr<cu::Function>& function_sums     = functions_calibrate[1];
+                std::unique_ptr<cu::Function>& function_gradient = functions_calibrate[2];
+                std::unique_ptr<cu::Function>& function_hessian  = functions_calibrate[3];
 
                 // Precompute l,m,n and phase offset
                 const void *parameters_lmnp[] = { &grid_size, &subgrid_size, &image_size, &w_step, &d_metadata, &d_lmnp };

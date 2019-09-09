@@ -298,13 +298,13 @@ namespace idg {
                     cu::Stream  *executestream;
                     cu::Stream  *htodstream;
                     cu::Stream  *dtohstream;
-                    cu::Function *function_gridder;
-                    cu::Function *function_degridder;
-                    cu::Function *function_fft;
-                    cu::Function *function_adder;
-                    cu::Function *function_splitter;
-                    cu::Function *function_scaler;
-                    std::vector<cu::Function *> functions_calibrate;
+                    std::unique_ptr<cu::Function> function_gridder;
+                    std::unique_ptr<cu::Function> function_degridder;
+                    std::unique_ptr<cu::Function> function_fft;
+                    std::unique_ptr<cu::Function> function_adder;
+                    std::unique_ptr<cu::Function> function_splitter;
+                    std::unique_ptr<cu::Function> function_scaler;
+                    std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
 
                     // One instance per device
                     cu::DeviceMemory *d_aterms;
