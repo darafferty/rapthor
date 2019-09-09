@@ -39,8 +39,7 @@ namespace idg {
                 d_metadata_(),
                 d_subgrids_(),
                 h_misc_(),
-                d_misc_(),
-                mModules(6)
+                d_misc_()
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -87,10 +86,10 @@ namespace idg {
                 free_host_memory();
                 free_device_memory();
                 free_fft_plans();
-                for (cu::Module *module : mModules) { delete module; }
                 delete function_gridder;
                 delete function_degridder;
                 for (cu::Function *function : functions_calibrate) { delete function; };
+                mModules.clear();
                 delete function_scaler;
                 delete function_adder;
                 delete function_splitter;
@@ -230,7 +229,7 @@ namespace idg {
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
-                    mModules[i] = compile_kernel(flags[i], src[i], cubin[i]);
+                    mModules.push_back(std::unique_ptr<cu::Module>(compile_kernel(flags[i], src[i], cubin[i])));
                 }
             }
 
@@ -238,35 +237,38 @@ namespace idg {
                 CUfunction function;
                 unsigned found = 0;
 
-                // Find remaining functions
-                if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) == CUDA_SUCCESS) {
-                    function_gridder = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) == CUDA_SUCCESS) {
-                    function_degridder = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) == CUDA_SUCCESS) {
-                    function_scaler = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[3], name_adder.c_str()) == CUDA_SUCCESS) {
-                    function_adder = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
-                    function_splitter = new cu::Function(function); found++;
-                }
+                for (std::unique_ptr<cu::Module>& module : mModules) {
 
-                // Find calibration functions
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function)); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function));
-                }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function));
-                }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function));
+                    // Find remaining functions
+                    if (cuModuleGetFunction(&function, *module, name_gridder.c_str()) == CUDA_SUCCESS) {
+                        function_gridder = new cu::Function(function); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_degridder.c_str()) == CUDA_SUCCESS) {
+                        function_degridder = new cu::Function(function); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_scaler.c_str()) == CUDA_SUCCESS) {
+                        function_scaler = new cu::Function(function); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_adder.c_str()) == CUDA_SUCCESS) {
+                        function_adder = new cu::Function(function); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_splitter.c_str()) == CUDA_SUCCESS) {
+                        function_splitter = new cu::Function(function); found++;
+                    }
+
+                    // Find calibration functions
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(new cu::Function(function)); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(new cu::Function(function));
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(new cu::Function(function));
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(new cu::Function(function));
+                    }
                 }
 
                 // Verify that all functions are found

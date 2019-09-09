@@ -335,7 +335,7 @@ namespace idg {
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
 
                     // All CUDA modules private to this InstanceCUDA
-                    std::vector<cu::Module*> mModules;
+                    std::vector<std::unique_ptr<cu::Module>> mModules;
 
                 protected:
                     dim3 block_gridder;
