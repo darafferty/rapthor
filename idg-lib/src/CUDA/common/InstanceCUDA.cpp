@@ -28,42 +28,19 @@ namespace idg {
                 int device_nr,
                 int device_id) :
                 KernelsInstance(),
-                mInfo(info),
-                h_visibilities_(),
-                h_uvw_(),
-                h_metadata_(),
-                h_subgrids_(),
-                d_wavenumbers_(),
-                d_visibilities_(),
-                d_uvw_(),
-                d_metadata_(),
-                d_subgrids_(),
-                h_misc_(),
-                d_misc_(),
-                mModules(6)
+                mInfo(info)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
 
                 // Initialize members
-                device = new cu::Device(device_id);
-                context = new cu::Context(*device);
+                device.reset(new cu::Device(device_id));
+                context.reset(new cu::Context(*device));
                 context->setCurrent();
-                executestream  = new cu::Stream();
-                htodstream     = new cu::Stream();
-                dtohstream     = new cu::Stream();
-                h_visibilities = NULL;
-                h_uvw          = NULL;
-                h_grid         = NULL;
-                d_aterms       = NULL;
-                d_aterms_indices = NULL;
-                d_spheroidal   = NULL;
-                d_avg_aterm_correction = NULL;
-                d_grid         = NULL;
-                fft_plan_bulk  = NULL;
-                fft_plan_misc  = NULL;
-                fft_plan_grid  = NULL;
+                executestream.reset(new cu::Stream());
+                htodstream.reset(new cu::Stream());
+                dtohstream.reset(new cu::Stream());
 
                 // Set kernel parameters
                 set_parameters();
@@ -81,22 +58,16 @@ namespace idg {
             // Destructor
             InstanceCUDA::~InstanceCUDA() {
                 context->setCurrent();
-                delete executestream;
-                delete htodstream;
-                delete dtohstream;
                 free_host_memory();
                 free_device_memory();
                 free_fft_plans();
-                for (cu::Module *module : mModules) { delete module; }
-                delete function_gridder;
-                delete function_degridder;
-                for (cu::Function *function : functions_calibrate) { delete function; };
-                delete function_scaler;
-                delete function_adder;
-                delete function_splitter;
+                mModules.clear();
+                executestream.reset();
+                htodstream.reset();
+                dtohstream.reset();
                 context->reset();
-                delete device;
-                delete context;
+                device.reset();
+                context.reset();
                 delete powerSensor;
             }
 
@@ -230,7 +201,7 @@ namespace idg {
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
-                    mModules[i] = compile_kernel(flags[i], src[i], cubin[i]);
+                    mModules.push_back(std::unique_ptr<cu::Module>(compile_kernel(flags[i], src[i], cubin[i])));
                 }
             }
 
@@ -238,35 +209,39 @@ namespace idg {
                 CUfunction function;
                 unsigned found = 0;
 
-                // Find remaining functions
-                if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) == CUDA_SUCCESS) {
-                    function_gridder = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) == CUDA_SUCCESS) {
-                    function_degridder = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) == CUDA_SUCCESS) {
-                    function_scaler = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[3], name_adder.c_str()) == CUDA_SUCCESS) {
-                    function_adder = new cu::Function(function); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) == CUDA_SUCCESS) {
-                    function_splitter = new cu::Function(function); found++;
-                }
+                for (std::unique_ptr<cu::Module>& module : mModules) {
 
-                // Find calibration functions
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function)); found++;
-                }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function));
-                }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function));
-                }
-                if (cuModuleGetFunction(&function, *mModules[5], name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
-                    functions_calibrate.push_back(new cu::Function(function));
+                    // Find remaining functions
+                    if (cuModuleGetFunction(&function, *module, name_gridder.c_str()) == CUDA_SUCCESS) {
+                        function_gridder.reset(new cu::Function(function)); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_degridder.c_str()) == CUDA_SUCCESS) {
+                        function_degridder.reset(new cu::Function(function)); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_scaler.c_str()) == CUDA_SUCCESS) {
+                        function_scaler.reset(new cu::Function(function)); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_adder.c_str()) == CUDA_SUCCESS) {
+                        function_adder.reset(new cu::Function(function)); found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_splitter.c_str()) == CUDA_SUCCESS) {
+                        function_splitter.reset(new cu::Function(function)); found++;
+                    }
+
+                    // Find calibration functions
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
+                        found++;
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
+                    }
+                    if (cuModuleGetFunction(&function, *module, name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
+                        functions_calibrate.push_back(std::unique_ptr<cu::Function>(new cu::Function(function)));
+                    }
                 }
 
                 // Verify that all functions are found
@@ -552,10 +527,10 @@ namespace idg {
                 start_measurement(data);
 
                 // Get functions
-                cu::Function *function_lmnp     = functions_calibrate[0];
-                cu::Function *function_sums     = functions_calibrate[1];
-                cu::Function *function_gradient = functions_calibrate[2];
-                cu::Function *function_hessian  = functions_calibrate[3];
+                std::unique_ptr<cu::Function>& function_lmnp     = functions_calibrate[0];
+                std::unique_ptr<cu::Function>& function_sums     = functions_calibrate[1];
+                std::unique_ptr<cu::Function>& function_gradient = functions_calibrate[2];
+                std::unique_ptr<cu::Function>& function_hessian  = functions_calibrate[3];
 
                 // Precompute l,m,n and phase offset
                 const void *parameters_lmnp[] = { &grid_size, &subgrid_size, &image_size, &w_step, &d_metadata, &d_lmnp };
@@ -638,10 +613,10 @@ namespace idg {
                 // Plan FFT
                 if (grid_size != fft_grid_size) {
                     if (fft_plan_grid) {
-                        delete fft_plan_grid;
+                        fft_plan_grid.reset();
                     }
                     fft_grid_size = grid_size;
-                    fft_plan_grid = new cufft::C2C_2D(grid_size, grid_size);
+                    fft_plan_grid.reset(new cufft::C2C_2D(grid_size, grid_size));
                     fft_plan_grid->setStream(*executestream);
                 }
 
@@ -679,24 +654,18 @@ namespace idg {
                     try {
                         // Plan bulk fft
                         if (batch >= fft_bulk) {
-                            if (fft_plan_bulk) {
-                                delete fft_plan_bulk;
-                            }
-                            fft_plan_bulk = new cufft::C2C_2D(
+                            fft_plan_bulk.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
-                                fft_bulk * NR_CORRELATIONS);
+                                fft_bulk * NR_CORRELATIONS));
                         }
 
                         // Plan remainder fft
                         int fft_remainder_size = batch % fft_bulk;
 
                         if (fft_remainder_size) {
-                            if (fft_plan_misc) {
-                                delete fft_plan_misc;
-                            }
-                            fft_plan_misc = new cufft::C2C_2D(
+                            fft_plan_misc.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
-                                fft_remainder_size * NR_CORRELATIONS);
+                                fft_remainder_size * NR_CORRELATIONS));
                         }
 
                         // Store parameters
@@ -705,8 +674,6 @@ namespace idg {
 
                     } catch (cufft::Error& e) {
                         // bulk might be too large, try again using half the bulk size
-                        if (fft_plan_bulk) { delete fft_plan_bulk; }
-                        if (fft_plan_misc) { delete fft_plan_misc; }
                         fft_bulk /= 2;
                         if (fft_bulk > 0) {
                             std::clog << __func__ << ": reducing subgrid-fft bulk size to: " << fft_bulk << std::endl;
@@ -927,62 +894,64 @@ namespace idg {
             template<typename T>
             T* InstanceCUDA::reuse_memory(
                 uint64_t size,
-                T* memory)
+                std::unique_ptr<T>& memory)
             {
                 if (!memory) {
-                    memory = new T(size);
+                    memory.reset(new T(size));
                 } else {
                     memory->resize(size);
                 }
-                return memory;
+                return memory.get();
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_grid(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_grid(
                 unsigned int grid_size)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                d_grid = reuse_memory(size, d_grid);
+                reuse_memory(size, d_grid);
                 return *d_grid;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
-                unsigned int nr_channels)
-            {
-                return get_device_wavenumbers(0, nr_channels);
-            }
-
-            cu::DeviceMemory& InstanceCUDA::get_device_aterms(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(
                 unsigned int nr_stations,
                 unsigned int nr_timeslots,
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
-                d_aterms = reuse_memory(size, d_aterms);
+                reuse_memory(size, d_aterms);
                 return *d_aterms;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_aterms_indices(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms_indices(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps)
             {
                 auto size = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-                d_aterms_indices = reuse_memory(size, d_aterms_indices);
+                reuse_memory(size, d_aterms_indices);
                 return *d_aterms_indices;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_spheroidal(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(
+                unsigned int nr_channels)
+            {
+                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
+                reuse_memory(size, d_wavenumbers);
+                return *d_wavenumbers;
+            }
+
+            cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_spheroidal(subgrid_size);
-                d_spheroidal = reuse_memory(size, d_spheroidal);
+                reuse_memory(size, d_spheroidal);
                 return *d_spheroidal;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_avg_aterm_correction(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
-                d_avg_aterm_correction = reuse_memory(size, d_avg_aterm_correction);
+                reuse_memory(size, d_avg_aterm_correction);
                 return *d_avg_aterm_correction;
             }
 
@@ -1012,7 +981,7 @@ namespace idg {
                 return ptr;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_subgrids(
+            cu::HostMemory& InstanceCUDA::allocate_host_subgrids(
                 unsigned int id,
                 unsigned int nr_subgrids,
                 unsigned int subgrid_size)
@@ -1021,7 +990,7 @@ namespace idg {
                 return *reuse_memory(h_subgrids_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_visibilities(
+            cu::HostMemory& InstanceCUDA::allocate_host_visibilities(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps,
@@ -1031,7 +1000,7 @@ namespace idg {
                 return *reuse_memory(h_visibilities_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_uvw(
+            cu::HostMemory& InstanceCUDA::allocate_host_uvw(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps)
@@ -1040,7 +1009,7 @@ namespace idg {
                 return *reuse_memory(h_uvw_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_metadata(
+            cu::HostMemory& InstanceCUDA::allocate_host_metadata(
                 unsigned int id,
                 unsigned int nr_subgrids)
             {
@@ -1048,18 +1017,7 @@ namespace idg {
                 return *reuse_memory(h_metadata_, id, size);
             }
 
-             cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
-                unsigned int id,
-                unsigned int nr_channels)
-            {
-                if (nr_channels == 0) {
-                    return *d_wavenumbers_[id];
-                }
-                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
-                return *reuse_memory(d_wavenumbers_, id, size);
-            }
-
-             cu::DeviceMemory& InstanceCUDA::get_device_visibilities(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_visibilities(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps,
@@ -1069,7 +1027,7 @@ namespace idg {
                 return *reuse_memory(d_visibilities_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_uvw(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_uvw(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps)
@@ -1078,7 +1036,7 @@ namespace idg {
                 return *reuse_memory(d_uvw_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_subgrids(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_subgrids(
                 unsigned int id,
                 unsigned int nr_subgrids,
                 unsigned int subgrid_size)
@@ -1087,7 +1045,7 @@ namespace idg {
                 return *reuse_memory(d_subgrids_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_metadata(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_metadata(
                 unsigned int id,
                 unsigned int nr_subgrids)
             {
@@ -1161,77 +1119,71 @@ namespace idg {
                 return m;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_grid(
+            cu::HostMemory& InstanceCUDA::allocate_host_grid(
+                unsigned int grid_size)
+            {
+                auto size = auxiliary::sizeof_grid(grid_size);
+                h_grid_allocated = reuse_memory(h_misc_, size, NULL);
+                return *h_grid_allocated;
+            }
+
+            cu::HostMemory& InstanceCUDA::register_host_grid(
                 unsigned int grid_size,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = reuse_memory(h_misc_, size, ptr);
-                return *h_grid;
+                h_grid_registered = reuse_memory(h_misc_, size, ptr);
+                return *h_grid_registered;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_visibilities(
+            cu::HostMemory& InstanceCUDA::register_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 unsigned int nr_channels,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(h_misc_, size, ptr);
-                return *h_visibilities;
+                h_visibilities_registered = reuse_memory(h_misc_, size, ptr);
+                return *h_visibilities_registered;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_uvw(
+            cu::HostMemory& InstanceCUDA::register_host_uvw(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(h_misc_, size, ptr);
-                return *h_uvw;
+                h_uvw_registered = reuse_memory(h_misc_, size, ptr);
+                return *h_uvw_registered;
             }
 
             /*
              * Host memory destructor
              */
             void InstanceCUDA::free_host_memory() {
-                h_misc_.clear();
                 h_visibilities_.clear();
                 h_uvw_.clear();
                 h_metadata_.clear();
                 h_subgrids_.clear();
+                h_misc_.clear();
             }
 
             /*
              * Device memory destructor
              */
             void InstanceCUDA::free_device_memory() {
-                d_wavenumbers_.clear();
                 d_visibilities_.clear();
                 d_uvw_.clear();
                 d_metadata_.clear();
                 d_subgrids_.clear();
                 d_misc_.clear();
-                if (d_grid != NULL) {
-                    delete d_grid;
-                    d_grid = NULL;
-                }
-                if (d_aterms != NULL) {
-                    delete d_aterms;
-                    d_aterms = NULL;
-                }
-                if (d_avg_aterm_correction != NULL) {
-                    delete d_avg_aterm_correction;
-                    d_avg_aterm_correction = NULL;
-                }
-                if (d_spheroidal != NULL) {
-                    delete d_spheroidal;
-                    d_spheroidal = NULL;
-                }
-                if (d_aterms_indices) {
-                    delete d_aterms_indices;
-                    d_aterms_indices = NULL;
-                }
+                d_aterms.reset();
+                d_aterms_indices.reset();
+                d_aterms_derivatives.reset();
+                d_avg_aterm_correction.reset();
+                d_wavenumbers.reset();
+                d_spheroidal.reset();
+                d_grid.reset();
             }
 
 
@@ -1239,12 +1191,9 @@ namespace idg {
              * FFT plan destructor
              */
             void InstanceCUDA::free_fft_plans() {
-                if (fft_plan_bulk) { delete fft_plan_bulk; }
-                if (fft_plan_misc) { delete fft_plan_misc; }
-                if (fft_plan_grid) { delete fft_plan_grid; }
-                fft_plan_bulk = NULL;
-                fft_plan_misc = NULL;
-                fft_plan_grid = NULL;
+                fft_plan_bulk.reset();
+                fft_plan_misc.reset();
+                fft_plan_grid.reset();
                 fft_bulk  = fft_bulk_default;
                 fft_batch = 0;
                 fft_size  = 0;
@@ -1254,15 +1203,15 @@ namespace idg {
              * Reset device
              */
             void InstanceCUDA::reset() {
-                delete executestream;
-                delete htodstream;
-                delete dtohstream;
+                executestream.reset();
+                htodstream.reset();
+                dtohstream.reset();
                 context->reset();
-                context = new cu::Context(*device);
+                context.reset(new cu::Context(*device));
                 context->setCurrent();
-                executestream  = new cu::Stream();
-                htodstream     = new cu::Stream();
-                dtohstream     = new cu::Stream();
+                executestream.reset(new cu::Stream());
+                htodstream.reset(new cu::Stream());
+                dtohstream.reset(new cu::Stream());
             }
 
         } // end namespace cuda

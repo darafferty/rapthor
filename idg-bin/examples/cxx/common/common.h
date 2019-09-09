@@ -210,13 +210,13 @@ void run()
     clog << ">>> Initialize data structures" << endl;
     #if USE_DUMMY_VISIBILITIES
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
-        idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps, nr_channels);
+        idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
     #endif
     idg::Array2D<idg::UVW<float>> uvw_(nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-        idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
-        idg::get_example_aterms_offsets(proxy, nr_timeslots, nr_timesteps);
+        idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Grid grid =
@@ -455,9 +455,4 @@ void run()
     idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
     idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
     idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
-
-    // Cleanup
-    delete aterms.data();
-    delete visibilities_.data();
-    delete aterms_offsets.data();
 }
