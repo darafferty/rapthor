@@ -304,9 +304,9 @@ namespace idg {
                 int jobsize = jobsize_[0];
 
                 // Events
-                std::vector<cu::Event*> inputCopied;
-                std::vector<cu::Event*> gpuFinished;
-                std::vector<cu::Event*> outputCopied;
+                std::vector<std::unique_ptr<cu::Event>> inputCopied;
+                std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+                std::vector<std::unique_ptr<cu::Event>> outputCopied;
 
                 // Prepare job data
                 struct JobData {
@@ -331,9 +331,9 @@ namespace idg {
                     job.uvw_ptr              = uvw.data(first_bl, 0);
                     job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
                     jobs.push_back(job);
-                    inputCopied.push_back(new cu::Event());
-                    gpuFinished.push_back(new cu::Event());
-                    outputCopied.push_back(new cu::Event());
+                    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
+                    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
+                    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                 }
 
                 // Load memory objects
@@ -449,12 +449,6 @@ namespace idg {
 
                 // Enqueue end device measurement
                 hostStream->addCallback((CUstreamCallback) &end_device_measurement, stateData);
-
-                // Free memory
-                hostStream->synchronize();
-                inputCopied.clear();
-                gpuFinished.clear();
-                outputCopied.clear();
 
                 // Update report
                 auto total_nr_subgrids     = plan.get_nr_subgrids();
@@ -589,9 +583,9 @@ namespace idg {
                 int jobsize = jobsize_[0];
 
                 // Events
-                std::vector<cu::Event*> inputCopied;
-                std::vector<cu::Event*> gpuFinished;
-                std::vector<cu::Event*> outputCopied;
+                std::vector<std::unique_ptr<cu::Event>> inputCopied;
+                std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+                std::vector<std::unique_ptr<cu::Event>> outputCopied;
 
                 // Prepare job data
                 struct JobData {
@@ -616,9 +610,9 @@ namespace idg {
                     job.uvw_ptr              = uvw.data(first_bl, 0);
                     job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
                     jobs.push_back(job);
-                    inputCopied.push_back(new cu::Event());
-                    gpuFinished.push_back(new cu::Event());
-                    outputCopied.push_back(new cu::Event());
+                    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
+                    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
+                    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                 }
 
                 // Load memory objects
@@ -741,12 +735,6 @@ namespace idg {
 
                 // Enqueue end device measurement
                 hostStream->addCallback((CUstreamCallback) &end_device_measurement, stateData);
-
-                // Free memory
-                hostStream->synchronize();
-                inputCopied.clear();
-                gpuFinished.clear();
-                outputCopied.clear();
 
                 // Update report
                 auto total_nr_subgrids     = plan.get_nr_subgrids();
