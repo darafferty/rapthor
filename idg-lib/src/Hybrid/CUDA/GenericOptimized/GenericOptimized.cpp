@@ -137,13 +137,13 @@ namespace idg {
                     device.set_report(report);
 
                     // Allocate device memory
-                    cu::DeviceMemory& d_spheroidal     = device.get_device_spheroidal(subgrid_size);
-                    cu::DeviceMemory& d_aterms         = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
-                    cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices(nr_baselines, nr_timesteps);
-                    device.get_device_wavenumbers(nr_channels);
+                    cu::DeviceMemory& d_spheroidal     = device.allocate_device_spheroidal(subgrid_size);
+                    cu::DeviceMemory& d_aterms         = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                    cu::DeviceMemory& d_aterms_indices = device.allocate_device_aterms_indices(nr_baselines, nr_timesteps);
+                    device.allocate_device_wavenumbers(nr_channels);
 
                     unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
-                    cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction(avg_aterm_correction_subgrid_size);
+                    cu::DeviceMemory& d_avg_aterm_correction = device.allocate_device_avg_aterm_correction(avg_aterm_correction_subgrid_size);
 
                     // Copy static data structures
                     cu::Stream& htodstream = device.get_htod_stream();
@@ -170,14 +170,14 @@ namespace idg {
 
                     // Initialize memory
                     for (unsigned t = 0; t < max_nr_streams; t++) {
-                        device.get_device_visibilities(t, jobsize, nr_timesteps, nr_channels);
-                        device.get_device_uvw(t, jobsize, nr_timesteps);
-                        device.get_device_subgrids(t, max_nr_subgrids, subgrid_size);
-                        device.get_device_metadata(t, max_nr_subgrids);
-                        device.get_host_subgrids(t, max_nr_subgrids, subgrid_size);
-                        device.get_host_metadata(t, max_nr_subgrids);
+                        device.allocate_device_visibilities(t, jobsize, nr_timesteps, nr_channels);
+                        device.allocate_device_uvw(t, jobsize, nr_timesteps);
+                        device.allocate_device_subgrids(t, max_nr_subgrids, subgrid_size);
+                        device.allocate_device_metadata(t, max_nr_subgrids);
+                        device.allocate_host_subgrids(t, max_nr_subgrids, subgrid_size);
+                        device.allocate_host_metadata(t, max_nr_subgrids);
                         #if !defined(REGISTER_HOST_MEMORY)
-                        device.get_host_visibilities(t, jobsize, nr_timesteps, nr_channels);
+                        device.allocate_host_visibilities(t, jobsize, nr_timesteps, nr_channels);
                         #endif
                     }
 
@@ -276,8 +276,8 @@ namespace idg {
 
                 // Page-lock host memory
                 #if defined(REGISTER_HOST_MEMORY)
-                device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                device.register_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
@@ -337,11 +337,11 @@ namespace idg {
                 }
 
                 // Load memory objects
-                cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
-                cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
-                cu::DeviceMemory& d_avg_aterm_correction = device.get_device_avg_aterm_correction();
+                cu::DeviceMemory& d_wavenumbers  = device.retrieve_device_wavenumbers();
+                cu::DeviceMemory& d_spheroidal   = device.retrieve_device_spheroidal();
+                cu::DeviceMemory& d_aterms       = device.retrieve_device_aterms();
+                cu::DeviceMemory& d_aterms_indices = device.retrieve_device_aterms_indices();
+                cu::DeviceMemory& d_avg_aterm_correction = device.retrieve_device_avg_aterm_correction();
 
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();
@@ -368,11 +368,11 @@ namespace idg {
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
 
                     // Load memory objects
-                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
-                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
-                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
-                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
-                    cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
+                    cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
+                    cu::DeviceMemory& d_uvw          = device.retrieve_device_uvw(local_id);
+                    cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
+                    cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
+                    cu::HostMemory&   h_subgrids     = device.retrieve_host_subgrids(local_id);
 
                     // Copy input data for first job to device
                     if (job_id == 0) {
@@ -405,9 +405,9 @@ namespace idg {
                     if (job_id_next < jobs.size()) {
 
                         // Load memory objects
-                        cu::DeviceMemory& d_visibilities_next = device.get_device_visibilities(local_id_next);
-                        cu::DeviceMemory& d_uvw_next          = device.get_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata_next     = device.get_device_metadata(local_id_next);
+                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
+                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
 
                         auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
                         auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
@@ -616,10 +616,10 @@ namespace idg {
                 }
 
                 // Load memory objects
-                cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                cu::DeviceMemory& d_spheroidal   = device.get_device_spheroidal();
-                cu::DeviceMemory& d_aterms       = device.get_device_aterms();
-                cu::DeviceMemory& d_aterms_indices = device.get_device_aterms_indices();
+                cu::DeviceMemory& d_wavenumbers  = device.retrieve_device_wavenumbers();
+                cu::DeviceMemory& d_spheroidal   = device.retrieve_device_spheroidal();
+                cu::DeviceMemory& d_aterms       = device.retrieve_device_aterms();
+                cu::DeviceMemory& d_aterms_indices = device.retrieve_device_aterms_indices();
 
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();
@@ -646,13 +646,13 @@ namespace idg {
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
 
                     // Load memory objects
-                    cu::DeviceMemory& d_visibilities = device.get_device_visibilities(local_id);
-                    cu::DeviceMemory& d_uvw          = device.get_device_uvw(local_id);
-                    cu::DeviceMemory& d_subgrids     = device.get_device_subgrids(local_id);
-                    cu::DeviceMemory& d_metadata     = device.get_device_metadata(local_id);
-                    cu::HostMemory&   h_subgrids     = device.get_host_subgrids(local_id);
+                    cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
+                    cu::DeviceMemory& d_uvw          = device.retrieve_device_uvw(local_id);
+                    cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
+                    cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
+                    cu::HostMemory&   h_subgrids     = device.retrieve_host_subgrids(local_id);
                     #if !defined(REGISTER_HOST_MEMORY)
-                    cu::HostMemory&   h_visibilities = device.get_host_visibilities(local_id);
+                    cu::HostMemory&   h_visibilities = device.retrieve_host_visibilities(local_id);
                     #endif
 
                     // Copy input data for first job to device
@@ -698,8 +698,8 @@ namespace idg {
                     if (job_id_next < jobs.size()) {
 
                         // Load memory objects
-                        cu::DeviceMemory& d_uvw_next      = device.get_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata_next = device.get_device_metadata(local_id_next);
+                        cu::DeviceMemory& d_uvw_next      = device.retrieve_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next = device.retrieve_device_metadata(local_id_next);
 
                         auto nr_baselines_next  = jobs[job_id_next].current_nr_baselines;
                         auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
@@ -974,7 +974,7 @@ namespace idg {
                 m_calibrate_state.nr_channels  = nr_channels;
 
                 // Initialize wavenumbers
-                cu::DeviceMemory& d_wavenumbers = device.get_device_wavenumbers(nr_channels);
+                cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
                 htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
 
                 // Allocate device memory for l,m,n and phase offset
@@ -1043,8 +1043,8 @@ namespace idg {
                 cu::Stream& dtohstream    = device.get_dtoh_stream();
 
                 // Load memory objects
-                cu::DeviceMemory& d_wavenumbers  = device.get_device_wavenumbers();
-                cu::DeviceMemory& d_aterms       = device.get_device_aterms(nr_stations, nr_timeslots, subgrid_size);
+                cu::DeviceMemory& d_wavenumbers  = device.retrieve_device_wavenumbers();
+                cu::DeviceMemory& d_aterms       = device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                 unsigned int d_metadata_id       = m_calibrate_state.d_metadata_ids[antenna_nr];
                 unsigned int d_subgrids_id       = m_calibrate_state.d_subgrids_ids[antenna_nr];
                 unsigned int d_visibilities_id   = m_calibrate_state.d_visibilities_ids[antenna_nr];

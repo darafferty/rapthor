@@ -28,18 +28,7 @@ namespace idg {
                 int device_nr,
                 int device_id) :
                 KernelsInstance(),
-                mInfo(info),
-                h_visibilities_(),
-                h_uvw_(),
-                h_metadata_(),
-                h_subgrids_(),
-                d_wavenumbers_(),
-                d_visibilities_(),
-                d_uvw_(),
-                d_metadata_(),
-                d_subgrids_(),
-                h_misc_(),
-                d_misc_()
+                mInfo(info)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
@@ -52,14 +41,6 @@ namespace idg {
                 executestream.reset(new cu::Stream());
                 htodstream.reset(new cu::Stream());
                 dtohstream.reset(new cu::Stream());
-                h_visibilities = NULL;
-                h_uvw          = NULL;
-                h_grid         = NULL;
-                d_aterms       = NULL;
-                d_aterms_indices = NULL;
-                d_spheroidal   = NULL;
-                d_avg_aterm_correction = NULL;
-                d_grid         = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -923,7 +904,7 @@ namespace idg {
                 return memory.get();
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_grid(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_grid(
                 unsigned int grid_size)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
@@ -931,13 +912,7 @@ namespace idg {
                 return *d_grid;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
-                unsigned int nr_channels)
-            {
-                return get_device_wavenumbers(0, nr_channels);
-            }
-
-            cu::DeviceMemory& InstanceCUDA::get_device_aterms(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(
                 unsigned int nr_stations,
                 unsigned int nr_timeslots,
                 unsigned int subgrid_size)
@@ -947,7 +922,7 @@ namespace idg {
                 return *d_aterms;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_aterms_indices(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms_indices(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps)
             {
@@ -956,7 +931,15 @@ namespace idg {
                 return *d_aterms_indices;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_spheroidal(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(
+                unsigned int nr_channels)
+            {
+                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
+                reuse_memory(size, d_wavenumbers);
+                return *d_wavenumbers;
+            }
+
+            cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_spheroidal(subgrid_size);
@@ -964,7 +947,7 @@ namespace idg {
                 return *d_spheroidal;
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_avg_aterm_correction(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
@@ -998,7 +981,7 @@ namespace idg {
                 return ptr;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_subgrids(
+            cu::HostMemory& InstanceCUDA::allocate_host_subgrids(
                 unsigned int id,
                 unsigned int nr_subgrids,
                 unsigned int subgrid_size)
@@ -1007,7 +990,7 @@ namespace idg {
                 return *reuse_memory(h_subgrids_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_visibilities(
+            cu::HostMemory& InstanceCUDA::allocate_host_visibilities(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps,
@@ -1017,7 +1000,7 @@ namespace idg {
                 return *reuse_memory(h_visibilities_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_uvw(
+            cu::HostMemory& InstanceCUDA::allocate_host_uvw(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps)
@@ -1026,7 +1009,7 @@ namespace idg {
                 return *reuse_memory(h_uvw_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_metadata(
+            cu::HostMemory& InstanceCUDA::allocate_host_metadata(
                 unsigned int id,
                 unsigned int nr_subgrids)
             {
@@ -1034,18 +1017,7 @@ namespace idg {
                 return *reuse_memory(h_metadata_, id, size);
             }
 
-             cu::DeviceMemory& InstanceCUDA::get_device_wavenumbers(
-                unsigned int id,
-                unsigned int nr_channels)
-            {
-                if (nr_channels == 0) {
-                    return *d_wavenumbers_[id];
-                }
-                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
-                return *reuse_memory(d_wavenumbers_, id, size);
-            }
-
-             cu::DeviceMemory& InstanceCUDA::get_device_visibilities(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_visibilities(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps,
@@ -1055,7 +1027,7 @@ namespace idg {
                 return *reuse_memory(d_visibilities_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_uvw(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_uvw(
                 unsigned int id,
                 unsigned int jobsize,
                 unsigned int nr_timesteps)
@@ -1064,7 +1036,7 @@ namespace idg {
                 return *reuse_memory(d_uvw_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_subgrids(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_subgrids(
                 unsigned int id,
                 unsigned int nr_subgrids,
                 unsigned int subgrid_size)
@@ -1073,7 +1045,7 @@ namespace idg {
                 return *reuse_memory(d_subgrids_, id, size);
             }
 
-            cu::DeviceMemory& InstanceCUDA::get_device_metadata(
+            cu::DeviceMemory& InstanceCUDA::allocate_device_metadata(
                 unsigned int id,
                 unsigned int nr_subgrids)
             {
@@ -1147,52 +1119,59 @@ namespace idg {
                 return m;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_grid(
+            cu::HostMemory& InstanceCUDA::allocate_host_grid(
+                unsigned int grid_size)
+            {
+                auto size = auxiliary::sizeof_grid(grid_size);
+                h_grid_allocated = reuse_memory(h_misc_, size, NULL);
+                return *h_grid_allocated;
+            }
+
+            cu::HostMemory& InstanceCUDA::register_host_grid(
                 unsigned int grid_size,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid = reuse_memory(h_misc_, size, ptr);
-                return *h_grid;
+                h_grid_registered = reuse_memory(h_misc_, size, ptr);
+                return *h_grid_registered;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_visibilities(
+            cu::HostMemory& InstanceCUDA::register_host_visibilities(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 unsigned int nr_channels,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities = reuse_memory(h_misc_, size, ptr);
-                return *h_visibilities;
+                h_visibilities_registered = reuse_memory(h_misc_, size, ptr);
+                return *h_visibilities_registered;
             }
 
-            cu::HostMemory& InstanceCUDA::get_host_uvw(
+            cu::HostMemory& InstanceCUDA::register_host_uvw(
                 unsigned int nr_baselines,
                 unsigned int nr_timesteps,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw = reuse_memory(h_misc_, size, ptr);
-                return *h_uvw;
+                h_uvw_registered = reuse_memory(h_misc_, size, ptr);
+                return *h_uvw_registered;
             }
 
             /*
              * Host memory destructor
              */
             void InstanceCUDA::free_host_memory() {
-                h_misc_.clear();
                 h_visibilities_.clear();
                 h_uvw_.clear();
                 h_metadata_.clear();
                 h_subgrids_.clear();
+                h_misc_.clear();
             }
 
             /*
              * Device memory destructor
              */
             void InstanceCUDA::free_device_memory() {
-                d_wavenumbers_.clear();
                 d_visibilities_.clear();
                 d_uvw_.clear();
                 d_metadata_.clear();
@@ -1202,6 +1181,7 @@ namespace idg {
                 d_aterms_indices.reset();
                 d_aterms_derivatives.reset();
                 d_avg_aterm_correction.reset();
+                d_wavenumbers.reset();
                 d_spheroidal.reset();
                 d_grid.reset();
             }

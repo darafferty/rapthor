@@ -164,84 +164,83 @@ namespace idg {
                         void *u_subgrid);
 
                     // Memory management per device
-                    cu::HostMemory& get_host_grid(
-                        unsigned int grid_size,
-                        void *ptr = NULL);
-
-                    cu::DeviceMemory& get_device_grid(
+                    cu::DeviceMemory& allocate_device_grid(
                         unsigned int grid_size);
 
-                    cu::DeviceMemory& get_device_wavenumbers(
+                    cu::DeviceMemory& allocate_device_wavenumbers(
                         unsigned int nr_channels = 0);
 
-                    cu::DeviceMemory& get_device_aterms(
+                    cu::DeviceMemory& allocate_device_aterms(
                         unsigned int nr_stations,
                         unsigned int nr_timeslots,
                         unsigned int subgrid_size);
 
-                    cu::DeviceMemory& get_device_aterms_indices(
+                    cu::DeviceMemory& allocate_device_aterms_indices(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps);
 
-                    cu::DeviceMemory& get_device_spheroidal(
+                    cu::DeviceMemory& allocate_device_spheroidal(
                         unsigned int subgrid_size);
 
-                    cu::DeviceMemory& get_device_avg_aterm_correction(
+                    cu::DeviceMemory& allocate_device_avg_aterm_correction(
                         unsigned int subgrid_size);
 
                     // Memory management per stream
-                    cu::HostMemory& get_host_subgrids(
+                    cu::HostMemory& allocate_host_subgrids(
                         unsigned int id,
                         unsigned int nr_subgrids,
                         unsigned int subgrid_size);
 
-                    cu::HostMemory& get_host_visibilities(
+                    cu::HostMemory& allocate_host_visibilities(
                         unsigned int id,
                         unsigned int jobsize,
                         unsigned int nr_timesteps,
                         unsigned int nr_channels);
 
-                    cu::HostMemory& get_host_uvw(
+                    cu::HostMemory& allocate_host_uvw(
                         unsigned int id,
                         unsigned int jobsize,
                         unsigned int nr_timesteps);
 
-                    cu::HostMemory& get_host_metadata(
+                    cu::HostMemory& allocate_host_metadata(
                         unsigned int id,
                         unsigned int nr_subgrids);
 
-                    cu::DeviceMemory& get_device_wavenumbers(
-                        unsigned int id,
-                        unsigned int nr_channels);
-
-                    cu::DeviceMemory& get_device_visibilities(
+                    cu::DeviceMemory& allocate_device_visibilities(
                         unsigned int id,
                         unsigned int jobsize,
                         unsigned int nr_timesteps,
                         unsigned int nr_channels);
 
-                    cu::DeviceMemory& get_device_uvw(
+                    cu::DeviceMemory& allocate_device_uvw(
                         unsigned int id,
                         unsigned int jobsize,
                         unsigned int nr_timesteps);
 
-                    cu::DeviceMemory& get_device_subgrids(
+                    cu::DeviceMemory& allocate_device_subgrids(
                         unsigned int id,
                         unsigned int nr_subgrids,
                         unsigned int subgrid_size);
 
-                    cu::DeviceMemory& get_device_metadata(
+                    cu::DeviceMemory& allocate_device_metadata(
                         unsigned int id,
                         unsigned int nr_subgrids);
 
                     // Memory management for large (host) buffers
-                    cu::HostMemory& get_host_visibilities(
+                    cu::HostMemory& allocate_host_grid(
+                        unsigned int grid_size);
+
+                    cu::HostMemory& register_host_grid(
+                        unsigned int grid_size,
+                        void *ptr);
+
+                    cu::HostMemory& register_host_visibilities(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps,
                         unsigned int nr_channels,
                         void *ptr);
 
-                    cu::HostMemory& get_host_uvw(
+                    cu::HostMemory& register_host_uvw(
                         unsigned int nr_baselines,
                         unsigned int nr_timesteps,
                         void *ptr);
@@ -251,23 +250,24 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
                     // Retrieve pre-allocated buffers (per device)
-                    cu::HostMemory& get_host_grid() { return *h_grid; }
-                    cu::DeviceMemory& get_device_grid() { return *d_grid; }
-                    cu::DeviceMemory& get_device_aterms() { return *d_aterms; }
-                    cu::DeviceMemory& get_device_aterms_indices() { return *d_aterms_indices; }
-                    cu::DeviceMemory& get_device_aterms_derivatives() { return *d_aterms_derivatives; }
-                    cu::DeviceMemory& get_device_spheroidal() { return *d_spheroidal; }
-                    cu::DeviceMemory& get_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
+                    cu::HostMemory& retrieve_host_grid() { return *h_grid_allocated; }
+                    cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
+                    cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
+                    cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
+                    cu::DeviceMemory& retrieve_device_aterms_derivatives() { return *d_aterms_derivatives; }
+                    cu::DeviceMemory& retrieve_device_wavenumbers() { return *d_wavenumbers; }
+                    cu::DeviceMemory& retrieve_device_spheroidal() { return *d_spheroidal; }
+                    cu::DeviceMemory& retrieve_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
                     // Retrieve pre-allocated buffers (per stream)
-                    cu::HostMemory& get_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
-                    cu::HostMemory& get_host_visibilities(unsigned int id) { return *h_visibilities_[id]; }
-                    cu::HostMemory& get_host_uvw(unsigned int id) { return *h_uvw_[id]; }
-                    cu::HostMemory& get_host_metadata(unsigned int id) { return *h_metadata_[id]; }
-                    cu::DeviceMemory& get_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
-                    cu::DeviceMemory& get_device_uvw(unsigned int id) { return *d_uvw_[id]; }
-                    cu::DeviceMemory& get_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
-                    cu::DeviceMemory& get_device_metadata(unsigned int id) { return *d_metadata_[id]; }
+                    cu::HostMemory& retrieve_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
+                    cu::HostMemory& retrieve_host_visibilities(unsigned int id) { return *h_visibilities_[id]; }
+                    cu::HostMemory& retrieve_host_uvw(unsigned int id) { return *h_uvw_[id]; }
+                    cu::HostMemory& retrieve_host_metadata(unsigned int id) { return *h_metadata_[id]; }
+                    cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
+                    cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
+                    cu::DeviceMemory& retrieve_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
+                    cu::DeviceMemory& retrieve_device_metadata(unsigned int id) { return *d_metadata_[id]; }
 
                     // Misc
                     void free_host_memory();
@@ -311,18 +311,15 @@ namespace idg {
                     std::unique_ptr<cu::DeviceMemory> d_aterms_indices;
                     std::unique_ptr<cu::DeviceMemory> d_aterms_derivatives;
                     std::unique_ptr<cu::DeviceMemory> d_avg_aterm_correction;
+                    std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
                     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
                     std::unique_ptr<cu::DeviceMemory> d_grid;
-                    cu::HostMemory *h_visibilities;
-                    cu::HostMemory *h_uvw;
-                    cu::HostMemory *h_grid;
 
                     // One instance per stream
                     std::vector<std::unique_ptr<cu::HostMemory>> h_visibilities_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_uvw_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_metadata_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_subgrids_;
-                    std::vector<std::unique_ptr<cu::DeviceMemory>> d_wavenumbers_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
@@ -330,6 +327,10 @@ namespace idg {
 
                     // Misc host memory
                     std::vector<std::unique_ptr<cu::HostMemory>> h_misc_;
+                    cu::HostMemory *h_grid_registered;
+                    cu::HostMemory *h_visibilities_registered;
+                    cu::HostMemory *h_uvw_registered;
+                    cu::HostMemory *h_grid_allocated;
 
                     // Misc device memory
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
