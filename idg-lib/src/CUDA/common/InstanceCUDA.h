@@ -351,15 +351,15 @@ namespace idg {
 
                     // Grid FFT
                     int fft_grid_size;
-                    cufft::C2C_2D *fft_plan_grid;
+                    std::unique_ptr<cufft::C2C_2D> fft_plan_grid;
 
                     // Subgrid FFT
                     const unsigned fft_bulk_default = 1024;
                     unsigned fft_bulk  = fft_bulk_default;
                     unsigned fft_batch = 0;
                     unsigned fft_size  = 0;
-                    cufft::C2C_2D *fft_plan_bulk;
-                    cufft::C2C_2D *fft_plan_misc;
+                    std::unique_ptr<cufft::C2C_2D> fft_plan_bulk;
+                    std::unique_ptr<cufft::C2C_2D> fft_plan_misc;
 
                 private:
                     // Memory allocation/reuse methods

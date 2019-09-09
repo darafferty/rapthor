@@ -60,9 +60,6 @@ namespace idg {
                 d_spheroidal   = NULL;
                 d_avg_aterm_correction = NULL;
                 d_grid         = NULL;
-                fft_plan_bulk  = NULL;
-                fft_plan_misc  = NULL;
-                fft_plan_grid  = NULL;
 
                 // Set kernel parameters
                 set_parameters();
@@ -635,10 +632,10 @@ namespace idg {
                 // Plan FFT
                 if (grid_size != fft_grid_size) {
                     if (fft_plan_grid) {
-                        delete fft_plan_grid;
+                        fft_plan_grid.reset();
                     }
                     fft_grid_size = grid_size;
-                    fft_plan_grid = new cufft::C2C_2D(grid_size, grid_size);
+                    fft_plan_grid.reset(new cufft::C2C_2D(grid_size, grid_size));
                     fft_plan_grid->setStream(*executestream);
                 }
 
@@ -676,24 +673,18 @@ namespace idg {
                     try {
                         // Plan bulk fft
                         if (batch >= fft_bulk) {
-                            if (fft_plan_bulk) {
-                                delete fft_plan_bulk;
-                            }
-                            fft_plan_bulk = new cufft::C2C_2D(
+                            fft_plan_bulk.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
-                                fft_bulk * NR_CORRELATIONS);
+                                fft_bulk * NR_CORRELATIONS));
                         }
 
                         // Plan remainder fft
                         int fft_remainder_size = batch % fft_bulk;
 
                         if (fft_remainder_size) {
-                            if (fft_plan_misc) {
-                                delete fft_plan_misc;
-                            }
-                            fft_plan_misc = new cufft::C2C_2D(
+                            fft_plan_misc.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
-                                fft_remainder_size * NR_CORRELATIONS);
+                                fft_remainder_size * NR_CORRELATIONS));
                         }
 
                         // Store parameters
@@ -702,8 +693,6 @@ namespace idg {
 
                     } catch (cufft::Error& e) {
                         // bulk might be too large, try again using half the bulk size
-                        if (fft_plan_bulk) { delete fft_plan_bulk; }
-                        if (fft_plan_misc) { delete fft_plan_misc; }
                         fft_bulk /= 2;
                         if (fft_bulk > 0) {
                             std::clog << __func__ << ": reducing subgrid-fft bulk size to: " << fft_bulk << std::endl;
@@ -1236,12 +1225,9 @@ namespace idg {
              * FFT plan destructor
              */
             void InstanceCUDA::free_fft_plans() {
-                if (fft_plan_bulk) { delete fft_plan_bulk; }
-                if (fft_plan_misc) { delete fft_plan_misc; }
-                if (fft_plan_grid) { delete fft_plan_grid; }
-                fft_plan_bulk = NULL;
-                fft_plan_misc = NULL;
-                fft_plan_grid = NULL;
+                fft_plan_bulk.reset();
+                fft_plan_misc.reset();
+                fft_plan_grid.reset();
                 fft_bulk  = fft_bulk_default;
                 fft_batch = 0;
                 fft_size  = 0;
