@@ -49,9 +49,9 @@ namespace idg {
                 device = new cu::Device(device_id);
                 context = new cu::Context(*device);
                 context->setCurrent();
-                executestream  = new cu::Stream();
-                htodstream     = new cu::Stream();
-                dtohstream     = new cu::Stream();
+                executestream.reset(new cu::Stream());
+                htodstream.reset(new cu::Stream());
+                dtohstream.reset(new cu::Stream());
                 h_visibilities = NULL;
                 h_uvw          = NULL;
                 h_grid         = NULL;
@@ -80,13 +80,13 @@ namespace idg {
             // Destructor
             InstanceCUDA::~InstanceCUDA() {
                 context->setCurrent();
-                delete executestream;
-                delete htodstream;
-                delete dtohstream;
                 free_host_memory();
                 free_device_memory();
                 free_fft_plans();
                 mModules.clear();
+                executestream.reset();
+                htodstream.reset();
+                dtohstream.reset();
                 context->reset();
                 delete device;
                 delete context;
@@ -1251,15 +1251,15 @@ namespace idg {
              * Reset device
              */
             void InstanceCUDA::reset() {
-                delete executestream;
-                delete htodstream;
-                delete dtohstream;
+                executestream.reset();
+                htodstream.reset();
+                dtohstream.reset();
                 context->reset();
                 context = new cu::Context(*device);
                 context->setCurrent();
-                executestream  = new cu::Stream();
-                htodstream     = new cu::Stream();
-                dtohstream     = new cu::Stream();
+                executestream.reset(new cu::Stream());
+                htodstream.reset(new cu::Stream());
+                dtohstream.reset(new cu::Stream());
             }
 
         } // end namespace cuda
