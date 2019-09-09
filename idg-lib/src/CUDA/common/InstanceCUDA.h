@@ -293,8 +293,8 @@ namespace idg {
                     ProxyInfo &mInfo;
 
                 private:
-                    cu::Context *context;
-                    cu::Device  *device;
+                    std::unique_ptr<cu::Context> context;
+                    std::unique_ptr<cu::Device>  device;
                     std::unique_ptr<cu::Stream> executestream;
                     std::unique_ptr<cu::Stream> htodstream;
                     std::unique_ptr<cu::Stream> dtohstream;

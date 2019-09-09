@@ -46,8 +46,8 @@ namespace idg {
                 #endif
 
                 // Initialize members
-                device = new cu::Device(device_id);
-                context = new cu::Context(*device);
+                device.reset(new cu::Device(device_id));
+                context.reset(new cu::Context(*device));
                 context->setCurrent();
                 executestream.reset(new cu::Stream());
                 htodstream.reset(new cu::Stream());
@@ -88,8 +88,8 @@ namespace idg {
                 htodstream.reset();
                 dtohstream.reset();
                 context->reset();
-                delete device;
-                delete context;
+                device.reset();
+                context.reset();
                 delete powerSensor;
             }
 
@@ -1255,7 +1255,7 @@ namespace idg {
                 htodstream.reset();
                 dtohstream.reset();
                 context->reset();
-                context = new cu::Context(*device);
+                context.reset(new cu::Context(*device));
                 context->setCurrent();
                 executestream.reset(new cu::Stream());
                 htodstream.reset(new cu::Stream());
