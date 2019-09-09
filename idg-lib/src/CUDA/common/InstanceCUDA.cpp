@@ -913,21 +913,21 @@ namespace idg {
             template<typename T>
             T* InstanceCUDA::reuse_memory(
                 uint64_t size,
-                T* memory)
+                std::unique_ptr<T>& memory)
             {
                 if (!memory) {
-                    memory = new T(size);
+                    memory.reset(new T(size));
                 } else {
                     memory->resize(size);
                 }
-                return memory;
+                return memory.get();
             }
 
             cu::DeviceMemory& InstanceCUDA::get_device_grid(
                 unsigned int grid_size)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                d_grid = reuse_memory(size, d_grid);
+                reuse_memory(size, d_grid);
                 return *d_grid;
             }
 
@@ -943,7 +943,7 @@ namespace idg {
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
-                d_aterms = reuse_memory(size, d_aterms);
+                reuse_memory(size, d_aterms);
                 return *d_aterms;
             }
 
@@ -952,7 +952,7 @@ namespace idg {
                 unsigned int nr_timesteps)
             {
                 auto size = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-                d_aterms_indices = reuse_memory(size, d_aterms_indices);
+                reuse_memory(size, d_aterms_indices);
                 return *d_aterms_indices;
             }
 
@@ -960,7 +960,7 @@ namespace idg {
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_spheroidal(subgrid_size);
-                d_spheroidal = reuse_memory(size, d_spheroidal);
+                reuse_memory(size, d_spheroidal);
                 return *d_spheroidal;
             }
 
@@ -968,7 +968,7 @@ namespace idg {
                 unsigned int subgrid_size)
             {
                 auto size = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
-                d_avg_aterm_correction = reuse_memory(size, d_avg_aterm_correction);
+                reuse_memory(size, d_avg_aterm_correction);
                 return *d_avg_aterm_correction;
             }
 
@@ -1198,26 +1198,12 @@ namespace idg {
                 d_metadata_.clear();
                 d_subgrids_.clear();
                 d_misc_.clear();
-                if (d_grid != NULL) {
-                    delete d_grid;
-                    d_grid = NULL;
-                }
-                if (d_aterms != NULL) {
-                    delete d_aterms;
-                    d_aterms = NULL;
-                }
-                if (d_avg_aterm_correction != NULL) {
-                    delete d_avg_aterm_correction;
-                    d_avg_aterm_correction = NULL;
-                }
-                if (d_spheroidal != NULL) {
-                    delete d_spheroidal;
-                    d_spheroidal = NULL;
-                }
-                if (d_aterms_indices) {
-                    delete d_aterms_indices;
-                    d_aterms_indices = NULL;
-                }
+                d_aterms.reset();
+                d_aterms_indices.reset();
+                d_aterms_derivatives.reset();
+                d_avg_aterm_correction.reset();
+                d_spheroidal.reset();
+                d_grid.reset();
             }
 
 

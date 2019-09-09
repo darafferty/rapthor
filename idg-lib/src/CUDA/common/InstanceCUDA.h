@@ -307,12 +307,12 @@ namespace idg {
                     std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
 
                     // One instance per device
-                    cu::DeviceMemory *d_aterms;
-                    cu::DeviceMemory *d_aterms_indices;
-                    cu::DeviceMemory *d_aterms_derivatives;
-                    cu::DeviceMemory *d_avg_aterm_correction;
-                    cu::DeviceMemory *d_spheroidal;
-                    cu::DeviceMemory *d_grid;
+                    std::unique_ptr<cu::DeviceMemory> d_aterms;
+                    std::unique_ptr<cu::DeviceMemory> d_aterms_indices;
+                    std::unique_ptr<cu::DeviceMemory> d_aterms_derivatives;
+                    std::unique_ptr<cu::DeviceMemory> d_avg_aterm_correction;
+                    std::unique_ptr<cu::DeviceMemory> d_spheroidal;
+                    std::unique_ptr<cu::DeviceMemory> d_grid;
                     cu::HostMemory *h_visibilities;
                     cu::HostMemory *h_uvw;
                     cu::HostMemory *h_grid;
@@ -366,7 +366,7 @@ namespace idg {
                     template<typename T>
                     T* reuse_memory(
                         uint64_t size,
-                        T* memory);
+                        std::unique_ptr<T>& memory);
 
                     template<typename T>
                     T* reuse_memory(
