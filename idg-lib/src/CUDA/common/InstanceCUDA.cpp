@@ -912,6 +912,14 @@ namespace idg {
                 return *d_grid;
             }
 
+            cu::HostMemory& InstanceCUDA::allocate_host_grid(
+                unsigned int grid_size)
+            {
+                auto size = auxiliary::sizeof_grid(grid_size);
+                reuse_memory(size, h_grid);
+                return *h_grid;
+            }
+
             cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(
                 unsigned int nr_stations,
                 unsigned int nr_timeslots,
@@ -1119,21 +1127,12 @@ namespace idg {
                 return m;
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_grid(
-                unsigned int grid_size)
-            {
-                auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid_allocated = reuse_memory(h_misc_, size, NULL);
-                return *h_grid_allocated;
-            }
-
             cu::HostMemory& InstanceCUDA::register_host_grid(
                 unsigned int grid_size,
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_grid(grid_size);
-                h_grid_registered = reuse_memory(h_misc_, size, ptr);
-                return *h_grid_registered;
+                return *reuse_memory(h_registered_, size, ptr);
             }
 
             cu::HostMemory& InstanceCUDA::register_host_visibilities(
@@ -1143,8 +1142,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                h_visibilities_registered = reuse_memory(h_misc_, size, ptr);
-                return *h_visibilities_registered;
+                return *reuse_memory(h_registered_, size, ptr);
             }
 
             cu::HostMemory& InstanceCUDA::register_host_uvw(
@@ -1153,8 +1151,7 @@ namespace idg {
                 void *ptr)
             {
                 auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                h_uvw_registered = reuse_memory(h_misc_, size, ptr);
-                return *h_uvw_registered;
+                return *reuse_memory(h_registered_, size, ptr);
             }
 
             /*
@@ -1165,7 +1162,7 @@ namespace idg {
                 h_uvw_.clear();
                 h_metadata_.clear();
                 h_subgrids_.clear();
-                h_misc_.clear();
+                h_registered_.clear();
             }
 
             /*
@@ -1212,6 +1209,19 @@ namespace idg {
                 executestream.reset(new cu::Stream());
                 htodstream.reset(new cu::Stream());
                 dtohstream.reset(new cu::Stream());
+            }
+
+            void InstanceCUDA::print_device_memory_info() {
+                #if defined(DEBUG)
+                std::cout << "InstanceCUDA::" << __func__ << std::endl;
+                #endif
+                auto memory_total = device->get_total_memory() / ((float) 1024*1024*1024); // GBytes
+                auto memory_free  = device->get_free_memory()  / ((float) 1024*1024*1024); // GBytes
+                auto memory_used  = memory_total - memory_free;
+                std::clog << "Device memory -> ";
+                std::clog << "total: " << memory_total << " Gb, ";
+                std::clog << "used: "  << memory_used  << " Gb, ";
+                std::clog << "free: "  << memory_free  << " Gb" << std::endl;
             }
 
         } // end namespace cuda

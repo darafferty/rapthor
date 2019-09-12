@@ -45,6 +45,11 @@ namespace idg {
                           Array4D<std::complex<float>>& aterms_dst) const;
 
                 /*
+                    Debug
+                 */
+                void print_memory_info();
+
+                /*
                     Performance reporting
                 */
             public:

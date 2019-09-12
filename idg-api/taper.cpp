@@ -241,7 +241,7 @@ void init_optimal_gridding_taper_1D(int subgridsize, int gridsize, float kernels
         }
     }
     
-    delete RR;
+    delete [] RR;
     
     double S[N/2];
     double U[N/2][N/2];

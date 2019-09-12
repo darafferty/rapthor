@@ -2,6 +2,8 @@
 #include <iomanip>
 #include <cstdint>
 #include <omp.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 #include "idg-config.h"
 #include "idg-common.h"
@@ -348,5 +350,18 @@ namespace idg {
         std::string get_lib_dir() {
             return std::string(IDG_INSTALL_DIR) + "/lib";
         }
+
+        size_t get_total_memory() {
+            auto pages = sysconf(_SC_PHYS_PAGES);
+            auto page_size = sysconf(_SC_PAGE_SIZE);
+            return pages * page_size / (1024 * 1024); // in MBytes;
+        }
+
+        size_t get_used_memory() {
+            struct rusage r_usage;
+            getrusage(RUSAGE_SELF, &r_usage); // in KBytes
+            return r_usage.ru_maxrss / 1024; // in MBytes
+        }
+
     } // namespace auxiliary
 } // namespace idg

@@ -153,5 +153,15 @@ namespace idg {
             }
         }
 
+        void KernelsInstance::print_memory_info() {
+            auto memory_total = auxiliary::get_total_memory() / (float) 1024; // GBytes
+            auto memory_used  = auxiliary::get_used_memory() / (float) 1024; // GBytes
+            auto memory_free  = memory_total - memory_used;
+            std::clog << "Host memory -> " << std::fixed << std::setprecision(1);
+            std::clog << "total: " << memory_total << " Gb, ";
+            std::clog << "used: "  << memory_used  << " Gb, ";
+            std::clog << "free: "  << memory_free  << " Gb" << std::endl;
+        }
+
     } // namespace kernel
 } // namespace idg

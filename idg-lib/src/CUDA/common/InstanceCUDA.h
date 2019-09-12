@@ -250,7 +250,7 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
                     // Retrieve pre-allocated buffers (per device)
-                    cu::HostMemory& retrieve_host_grid() { return *h_grid_allocated; }
+                    cu::HostMemory& retrieve_host_grid() { return *h_grid; }
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
@@ -275,6 +275,7 @@ namespace idg {
                     void free_fft_plans();
                     void reset();
                     int get_tile_size_grid() const { return tile_size_grid; };
+                    void print_device_memory_info();
 
                 protected:
                     cu::Module* compile_kernel(std::string& flags, std::string& src, std::string& bin);
@@ -314,6 +315,7 @@ namespace idg {
                     std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
                     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
                     std::unique_ptr<cu::DeviceMemory> d_grid;
+                    std::unique_ptr<cu::HostMemory>   h_grid;
 
                     // One instance per stream
                     std::vector<std::unique_ptr<cu::HostMemory>> h_visibilities_;
@@ -325,12 +327,8 @@ namespace idg {
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
 
-                    // Misc host memory
-                    std::vector<std::unique_ptr<cu::HostMemory>> h_misc_;
-                    cu::HostMemory *h_grid_registered;
-                    cu::HostMemory *h_visibilities_registered;
-                    cu::HostMemory *h_uvw_registered;
-                    cu::HostMemory *h_grid_allocated;
+                    // Registered host memory
+                    std::vector<std::unique_ptr<cu::HostMemory>> h_registered_;
 
                     // Misc device memory
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
