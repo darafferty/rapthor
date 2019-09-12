@@ -166,6 +166,10 @@ namespace idg {
         std::vector<std::string> split_string(char *string, const char *delimiter);
 
         std::string get_lib_dir();
+
+        size_t get_total_memory();
+        size_t get_used_memory();
+
     } // namespace auxiliary
 } // namespace idg
 
