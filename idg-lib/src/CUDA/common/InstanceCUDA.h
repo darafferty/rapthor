@@ -275,6 +275,7 @@ namespace idg {
                     void free_fft_plans();
                     void reset();
                     int get_tile_size_grid() const { return tile_size_grid; };
+                    void print_device_memory_info();
 
                 protected:
                     cu::Module* compile_kernel(std::string& flags, std::string& src, std::string& bin);

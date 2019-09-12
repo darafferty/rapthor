@@ -1211,6 +1211,19 @@ namespace idg {
                 dtohstream.reset(new cu::Stream());
             }
 
+            void InstanceCUDA::print_device_memory_info() {
+                #if defined(DEBUG)
+                std::cout << "InstanceCUDA::" << __func__ << std::endl;
+                #endif
+                auto memory_total = device->get_total_memory() / ((float) 1024*1024*1024); // GBytes
+                auto memory_free  = device->get_free_memory()  / ((float) 1024*1024*1024); // GBytes
+                auto memory_used  = memory_total - memory_free;
+                std::clog << "Device memory -> ";
+                std::clog << "total: " << memory_total << " Gb, ";
+                std::clog << "used: "  << memory_used  << " Gb, ";
+                std::clog << "free: "  << memory_free  << " Gb" << std::endl;
+            }
+
         } // end namespace cuda
     } // end namespace kernel
 } // end namespace idg
