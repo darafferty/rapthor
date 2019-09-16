@@ -137,7 +137,7 @@ namespace idg {
                         float cell_size;
                         float image_size;
                         unsigned int kernel_size;
-                        long unsigned int grid_size;
+                        unsigned int grid_size;
                         unsigned int subgrid_size;
                         unsigned int nr_baselines;
                         unsigned int nr_timesteps;
