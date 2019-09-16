@@ -176,8 +176,9 @@ namespace idg {
                                                           const idg::Metadata*             metadata,\
                                                           const idg::float2*               subgrid,\
                                                           const idg::float2*               phasors,\
-                                                          idg::float2*                     hessian,\
-                                                          idg::float2*                     gradient))
+                                                          double*                          hessian,\
+                                                          double*                          gradient, \
+                                                          double*                          residual))
 
             #define sig_calibrate_hessian_vector_product1 (void (*)(\
                                                           const unsigned int               nr_subgrids,\
@@ -293,14 +294,15 @@ namespace idg {
                 const idg::Metadata *metadata,
                 const idg::float2 *subgrid,
                 const idg::float2 *phasors,
-                idg::float2 *hessian,
-                idg::float2 *gradient)
+                double *hessian,
+                double *gradient,
+                double *residual)
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
                 (sig_calibrate (void *) *function_calibrate)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, max_nr_timesteps, nr_channels, nr_stations, nr_terms, nr_time_slots,
-                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, aterms_indices, metadata, subgrid, phasors, hessian, gradient);
+                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, aterms_indices, metadata, subgrid, phasors, hessian, gradient, residual);
                 states[1] = powerSensor->read();
                 if (report) { report->update_calibrate(states[0], states[1]); }
                 if (report) { report->update_host(states[0], states[1]); }

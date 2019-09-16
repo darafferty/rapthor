@@ -597,8 +597,9 @@ namespace idg {
                 float *weights_ptr                 = (float*) m_calibrate_state.weights.data(antenna_nr);
                 idg::float2 *subgrids_ptr          = (idg::float2*) m_calibrate_state.subgrids[antenna_nr].data();
                 idg::float2 *phasors_ptr           = (idg::float2*) m_calibrate_state.phasors[antenna_nr].data();
-                idg::float2 *hessian_ptr           = (idg::float2*) hessian.data();
-                idg::float2 *gradient_ptr          = (idg::float2*) gradient.data();
+                double *hessian_ptr                = hessian.data();
+                double *gradient_ptr               = gradient.data();
+                double *residual_ptr               = &residual;
 
                 int max_nr_timesteps       = m_calibrate_state.max_nr_timesteps[antenna_nr];
 
@@ -626,7 +627,8 @@ namespace idg {
                     subgrids_ptr,
                     phasors_ptr,
                     hessian_ptr,
-                    gradient_ptr);
+                    gradient_ptr,
+                    residual_ptr);
 
                 // Performance reporting
                 auto current_nr_subgrids  = nr_subgrids;

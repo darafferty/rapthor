@@ -82,8 +82,9 @@ namespace idg {
                         const idg::Metadata *metadata,
                         const idg::float2 *subgrid,
                         const idg::float2 *phasors,
-                        idg::float2 *hessian,
-                        idg::float2 *gradient);
+                        double *hessian,
+                        double *gradient,
+                        double *residual);
 
                     void run_calibrate_hessian_vector_product1(
                         const int station_nr,

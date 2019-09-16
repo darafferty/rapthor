@@ -51,11 +51,17 @@ void kernel_calibrate(
     const idg::float2*               subgrid,
     const idg::float2*               phasors,
     double*                          hessian,
-    double*                          gradient)
+    double*                          gradient,
+    double*                          residual)
 {
     #if defined(USE_LOOKUP)
     initialize_lookup();
     #endif
+
+    // Initialize local residual
+    double residual_local[nr_subgrids] __attribute__((aligned((ALIGNMENT))));
+    size_t sizeof_residual = nr_subgrids * sizeof(double);
+    memset(residual_local, 0, sizeof_residual);
 
     // Initialize local gradient
     double gradient_local[nr_subgrids][nr_time_slots][nr_terms] __attribute__((aligned((ALIGNMENT))));
@@ -207,13 +213,15 @@ void kernel_calibrate(
                     visibility_res_imag[pol] = visibilities[vis_idx].imag - sums_imag[pol][nr_terms];
                 }
 
-                // Update local gradient
+                // Update local residual and gradient
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
                     size_t vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                    residual_local[s] += weights[vis_idx] * (
+                        visibility_res_real[pol] * visibility_res_real[pol] +
+                        visibility_res_imag[pol] * visibility_res_imag[pol]);
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
-
                         gradient_local[s][aterm_idx_current][term_nr0] += weights[vis_idx] * (
                            sums_real[pol][term_nr0] * visibility_res_real[pol] +
                            sums_imag[pol][term_nr0] * visibility_res_imag[pol]);
@@ -236,6 +244,11 @@ void kernel_calibrate(
             } // end for channel
         } // end for time
     } // end #pragma parallel
+
+    // Update global residual
+    for (unsigned int s = 0; s < nr_subgrids; s++) {
+        *residual += residual_local[s];
+    }
 
     // Update global gradient
     for (unsigned int s = 0; s < nr_subgrids; s++) {
