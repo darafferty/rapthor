@@ -416,9 +416,9 @@ namespace idg {
             const int station_nr,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-            Array3D<std::complex<float>>& hessian,
-            Array2D<std::complex<float>>& gradient,
-            float &residual)
+            Array3D<double>& hessian,
+            Array2D<double>& gradient,
+            double &residual)
         {
             do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient, residual);
         }

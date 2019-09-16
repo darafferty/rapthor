@@ -222,14 +222,14 @@ extern "C" {
         const unsigned int nr_terms,
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,
-        std::complex<float>* hessian,
-        std::complex<float>* gradient,
-        float *residual)
+        double* hessian,
+        double* gradient,
+        double *residual)
     {
         idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms), nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
         idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterm_derivatives_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives), nr_timeslots, nr_terms, subgrid_size, subgrid_size);
-        idg::Array3D<std::complex<float>> hessian_(hessian, nr_timeslots, nr_terms, nr_terms);
-        idg::Array2D<std::complex<float>> gradient_(gradient, nr_timeslots, nr_terms);
+        idg::Array3D<double> hessian_(hessian, nr_timeslots, nr_terms, nr_terms);
+        idg::Array2D<double> gradient_(gradient, nr_timeslots, nr_terms);
         reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update(antenna_nr, aterms_, aterm_derivatives_, hessian_, gradient_, *residual);
     }
 

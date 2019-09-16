@@ -993,9 +993,9 @@ namespace idg {
                 const int antenna_nr,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
-                Array3D<std::complex<float>>& hessian,
-                Array2D<std::complex<float>>& gradient,
-                float &residual)
+                Array3D<double>& hessian,
+                Array2D<double>& gradient,
+                double &residual)
             {
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
@@ -1070,10 +1070,10 @@ namespace idg {
                 cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
                 cu::DeviceMemory d_hessian(hessian.bytes());
                 cu::DeviceMemory d_gradient(gradient.bytes());
-                cu::DeviceMemory d_residual(sizeof(float));
+                cu::DeviceMemory d_residual(sizeof(double));
                 cu::HostMemory h_hessian(hessian.bytes());
                 cu::HostMemory h_gradient(gradient.bytes());
-                cu::HostMemory h_residual(sizeof(float));
+                cu::HostMemory h_residual(sizeof(double));
                 //d_hessian.zero();
 
                 // Events
@@ -1110,7 +1110,7 @@ namespace idg {
                 // Copy output on host
                 memcpy(hessian_ptr, h_hessian, hessian.bytes());
                 memcpy(gradient_ptr, h_gradient, gradient.bytes());
-                memcpy(residual_ptr, h_residual, sizeof(float));
+                memcpy(residual_ptr, h_residual, sizeof(double));
 
                 // End marker
                 marker.end();

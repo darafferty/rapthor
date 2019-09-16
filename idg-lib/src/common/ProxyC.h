@@ -108,9 +108,9 @@ extern "C" {
         const unsigned int nr_terms,
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,
-        std::complex<float>* hessian,
-        std::complex<float>* gradient,
-        float *residual);
+        double* hessian,
+        double* gradient,
+        double *residual);
 
     void Proxy_calibrate_finish(
          Proxy* p);

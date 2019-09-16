@@ -279,8 +279,8 @@ __global__ void kernel_calibrate_gradient(
     const float2*     __restrict__ subgrid,
     const float2*     __restrict__ sums,
     const float4*     __restrict__ lmnp,
-          float2*     __restrict__ gradient,
-          float*      __restrict__ residual_sum)
+          double*     __restrict__ gradient,
+          double*     __restrict__ residual_sum)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -307,8 +307,8 @@ __global__ void kernel_calibrate_gradient(
     __shared__ float4 lmnp_[BATCH_SIZE_PIXELS];
 
     // Accumulate gradient update in registers
-    float2 update[MAX_NR_TERMS];
-    float update_residual_sum;
+    double update[MAX_NR_TERMS];
+    double update_residual_sum;
 
     // Iterate timesteps
     int current_nr_timesteps = 0;
@@ -317,7 +317,7 @@ __global__ void kernel_calibrate_gradient(
 
         // Reset update to zero
         for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
-            update[term_nr] = make_float2(0, 0);
+            update[term_nr] = 0.0;
         }
         update_residual_sum = 0.0;
 
@@ -437,11 +437,13 @@ __global__ void kernel_calibrate_gradient(
                     // Compute gradient update
                     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
-                        cmac(update[term_nr], residual_weighted[pol], sums[sum_idx]);
+                        update[term_nr] += residual_weighted[pol].x * sums[sum_idx].x;
+                        update[term_nr] += residual_weighted[pol].y * sums[sum_idx].y;
                     } // end for term
 
                     // Compute residual_sum update
-                    update_residual_sum += residual_weighted[pol].x*residual[pol].x + residual_weighted[pol].y*residual[pol].y;
+                    update_residual_sum += residual_weighted[pol].x*residual[pol].x;
+                    update_residual_sum += residual_weighted[pol].y*residual[pol].y;
 
                 } // end for pol
             } // end if time
@@ -470,7 +472,7 @@ __global__ void kernel_calibrate_hessian(
     const Metadata* __restrict__ metadata,
     const float2*   __restrict__ sums_y,
     const float2*   __restrict__ sums_x,
-          float2*   __restrict__ hessian)
+          double*   __restrict__ hessian)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -504,7 +506,7 @@ __global__ void kernel_calibrate_hessian(
         unsigned int term_nr0 = tidy;
 
         // Compute hessian update
-        float2 update = make_float2(0, 0);
+        double update = 0.0;
 
         // Iterate all timesteps
         for (unsigned int time = 0; time < current_nr_timesteps; time++) {
@@ -523,7 +525,7 @@ __global__ void kernel_calibrate_hessian(
                     float2 sum1 = conj(sums_x[sum_idx1]) * weights[vis_idx];
 
                     // Update hessian
-                    update += sum0 * sum1;
+                    update += sum0.x * sum1.x + sum0.y * sum1.y;
                 } // end for pol
             } // end chan
         } // end for time
@@ -541,7 +543,7 @@ __global__ void kernel_calibrate_hessian(
         if (term_offset_y != term_offset_x) {
             unsigned int idx = aterm_idx * nr_terms * nr_terms +
                                term_idx0 * nr_terms + term_idx1;
-            atomicAdd(&hessian[idx], conj(update));
+            atomicAdd(&hessian[idx], update);
         }
     } // end for time_offset_local
 } // end kernel_calibrate_hessian

@@ -365,17 +365,17 @@ class Proxy(object):
                 shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
             np.ctypeslib.ndpointer(
-                dtype=np.complex64,
+                dtype=np.float64,
                 shape=(nr_timeslots, nr_terms, nr_terms),
-                flags='C_CONTIGUOUS'),   #std::complex<float>* hessian
+                flags='C_CONTIGUOUS'),   #double* hessian
             np.ctypeslib.ndpointer(
-                dtype=np.complex64,
+                dtype=np.float64,
                 shape=(nr_timeslots, nr_terms),
-                flags='C_CONTIGUOUS'),   #std::complex<float>* gradient
+                flags='C_CONTIGUOUS'),   #double* gradient
             np.ctypeslib.ndpointer(
-                dtype=np.float32,
+                dtype=np.float64,
                 shape=(1, ),
-                flags='C_CONTIGUOUS'),   #std::complex<float>* residual
+                flags='C_CONTIGUOUS'),   #double* residual
             ]
 
         self.lib.Proxy_calibrate_update(
