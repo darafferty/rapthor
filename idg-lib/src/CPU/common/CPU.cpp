@@ -667,7 +667,8 @@ namespace idg {
                 const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
                 const Array2D<float>& parameter_vector)
             {
-
+                // TODO
+#if 0
                 // Arguments
                 auto nr_subgrids   = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
                 auto nr_channels   = m_calibrate_state.wavenumbers.get_x_dim();
@@ -699,6 +700,7 @@ namespace idg {
 
 
                 kernels.run_calibrate_hessian_vector_product1(antenna_nr, aterms, aterm_derivatives, parameter_vector);
+#endif
             }
 
             void CPU::do_calibrate_update_hessian_vector_product2(
