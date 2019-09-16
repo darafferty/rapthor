@@ -196,7 +196,7 @@ __global__ void kernel_calibrate_sums(
                             }
 
                             // Apply aterm
-                            apply_aterm_calibrate(pixel, aterm1, aterm2);
+                            apply_aterm_degridder(pixel, aterm1, aterm2);
 
                             // Store pixel in shared memory
                             pixels_[term_nr][j][0] = make_float4(pixel[0].x, pixel[0].y, pixel[1].x, pixel[1].y);
@@ -249,7 +249,7 @@ __global__ void kernel_calibrate_sums(
                 for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
                     for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                         unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
-                        sums[sum_idx] = conj(sum[term_nr][pol]) * scale;
+                        sums[sum_idx] = sum[term_nr][pol] * scale;
                     } // end for pol
                 } // end for term_nr
             } // end if time
@@ -386,7 +386,7 @@ __global__ void kernel_calibrate_gradient(
                         }
 
                         // Apply aterm
-                        apply_aterm_calibrate(pixel, aterm1, aterm2);
+                        apply_aterm_degridder(pixel, aterm1, aterm2);
 
                         // Store pixel in shared memory
                         for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -522,7 +522,7 @@ __global__ void kernel_calibrate_hessian(
                     unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx_local);
                     unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx_local);
                     float2 sum0 = sums_y[sum_idx0];
-                    float2 sum1 = conj(sums_x[sum_idx1]) * weights[vis_idx];
+                    float2 sum1 = sums_x[sum_idx1] * weights[vis_idx];
 
                     // Update hessian
                     update += sum0.x * sum1.x + sum0.y * sum1.y;

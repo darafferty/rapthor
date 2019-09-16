@@ -138,7 +138,7 @@ void kernel_calibrate(
                         idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
 
                         // Apply aterm
-                        apply_aterm_calibrate(pixels, aterm1_ptr, aterm2_ptr);
+                        apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
 
                         // Store pixels
                         pixels_xx_real[term_nr][i] = pixels[0].real;
