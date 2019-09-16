@@ -98,10 +98,25 @@ namespace idg {
                         const int station_nr,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-                        Array3D<std::complex<float>>& hessian,
-                        Array2D<std::complex<float>>& gradient) override;
+                        Array3D<double>& hessian,
+                        Array2D<double>& gradient,
+                        double &residual) override;
 
                     virtual void do_calibrate_finish() override;
+
+                    virtual void do_calibrate_init_hessian_vector_product() override;
+
+                    virtual void do_calibrate_update_hessian_vector_product1(
+                        const int station_nr,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                        const Array2D<float>& parameter_vector) override;
+
+                    virtual void do_calibrate_update_hessian_vector_product2(
+                        const int station_nr,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                        Array2D<float>& parameter_vector) override;
 
                     virtual void do_transform(
                         DomainAtoDomainB direction,
@@ -124,6 +139,9 @@ namespace idg {
                         unsigned int kernel_size;
                         long unsigned int grid_size;
                         unsigned int subgrid_size;
+                        unsigned int nr_baselines;
+                        unsigned int nr_timesteps;
+                        unsigned int nr_channels;
                         Array1D<float> wavenumbers;
                         Array4D<Visibility<std::complex<float>>> visibilities;
                         Array4D<Visibility<float>> weights;
@@ -132,6 +150,7 @@ namespace idg {
                         std::vector<Array4D<std::complex<float>>> subgrids;
                         std::vector<Array4D<std::complex<float>>> phasors;
                         std::vector<int> max_nr_timesteps;
+                        Array3D<Visibility<std::complex<float>>> hessian_vector_product_visibilities;
                     } m_calibrate_state;
 
 

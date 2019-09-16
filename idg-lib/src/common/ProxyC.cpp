@@ -222,20 +222,60 @@ extern "C" {
         const unsigned int nr_terms,
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,
-        std::complex<float>* hessian,
-        std::complex<float>* gradient)
+        double* hessian,
+        double* gradient,
+        double *residual)
     {
         idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms), nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
         idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterm_derivatives_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives), nr_timeslots, nr_terms, subgrid_size, subgrid_size);
-        idg::Array3D<std::complex<float>> hessian_(hessian, nr_timeslots, nr_terms, nr_terms);
-        idg::Array2D<std::complex<float>> gradient_(gradient, nr_timeslots, nr_terms);
-        reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update(antenna_nr, aterms_, aterm_derivatives_, hessian_, gradient_);
+        idg::Array3D<double> hessian_(hessian, nr_timeslots, nr_terms, nr_terms);
+        idg::Array2D<double> gradient_(gradient, nr_timeslots, nr_terms);
+        reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update(antenna_nr, aterms_, aterm_derivatives_, hessian_, gradient_, *residual);
     }
 
     void Proxy_calibrate_finish(
         Proxy* p)
     {
         reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_finish();
+    }
+
+    void Proxy_calibrate_init_hessian_vector_product(Proxy* p)
+    {
+        reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_init_hessian_vector_product();
+    }
+
+    void Proxy_calibrate_hessian_vector_product1(
+        Proxy* p,
+        const unsigned int antenna_nr,
+        const unsigned int subgrid_size,
+        const unsigned int nr_antennas,
+        const unsigned int nr_timeslots,
+        const unsigned int nr_terms,
+        std::complex<float>* aterms,
+        std::complex<float>* aterm_derivatives,
+        float* parameter_vector)
+    {
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms), nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterm_derivatives_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives), nr_timeslots, nr_terms, subgrid_size, subgrid_size);
+        idg::Array2D<float> parameter_vector_(parameter_vector, nr_timeslots, nr_terms);
+        reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update_hessian_vector_product1(antenna_nr, aterms_, aterm_derivatives_, parameter_vector_);
+    }
+
+    void Proxy_calibrate_hessian_vector_product2(
+        Proxy* p,
+        const unsigned int antenna_nr,
+        const unsigned int subgrid_size,
+        const unsigned int nr_antennas,
+        const unsigned int nr_timeslots,
+        const unsigned int nr_terms,
+        std::complex<float>* aterms,
+        std::complex<float>* aterm_derivatives,
+        float* parameter_vector)
+    {
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms), nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterm_derivatives_(reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives), nr_timeslots, nr_terms, subgrid_size, subgrid_size);
+        idg::Array2D<float> parameter_vector_(parameter_vector, nr_timeslots, nr_terms);
+        reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_update_hessian_vector_product2(antenna_nr, aterms_, aterm_derivatives_, parameter_vector_);
     }
 
     void Proxy_transform(

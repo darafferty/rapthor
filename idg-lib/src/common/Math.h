@@ -165,16 +165,3 @@ template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_degridder(
     // Apply aterm: P = P * A2^H
     matmul(temp, aterm2_h, pixels);
 }
-
-template <typename T> inline FUNCTION_ATTRIBUTES void apply_aterm_calibrate(
-          T *pixels,
-    const T *aterm1,
-    const T *aterm2)
-{
-    // Apply aterm: P = A1 * P
-    T temp1[4];
-    matmul(pixels, aterm1, temp1);
-
-    // Apply aterm: P = P * A2
-    matmul(aterm2, temp1, pixels);
-}

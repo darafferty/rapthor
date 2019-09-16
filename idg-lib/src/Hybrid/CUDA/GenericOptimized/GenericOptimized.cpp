@@ -993,8 +993,9 @@ namespace idg {
                 const int antenna_nr,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
-                Array3D<std::complex<float>>& hessian,
-                Array2D<std::complex<float>>& gradient)
+                Array3D<double>& hessian,
+                Array2D<double>& gradient,
+                double &residual)
             {
                 // Arguments
                 auto nr_subgrids  = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
@@ -1036,6 +1037,7 @@ namespace idg {
                 void *aterm_derivative_ptr = aterm_derivatives_transposed.data();
                 void *hessian_ptr          = hessian.data();
                 void *gradient_ptr         = gradient.data();
+                void *residual_ptr         = &residual;
 
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();
@@ -1068,8 +1070,10 @@ namespace idg {
                 cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
                 cu::DeviceMemory d_hessian(hessian.bytes());
                 cu::DeviceMemory d_gradient(gradient.bytes());
+                cu::DeviceMemory d_residual(sizeof(double));
                 cu::HostMemory h_hessian(hessian.bytes());
                 cu::HostMemory h_gradient(gradient.bytes());
+                cu::HostMemory h_residual(sizeof(double));
                 //d_hessian.zero();
 
                 // Events
@@ -1080,6 +1084,7 @@ namespace idg {
                 htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr);
                 htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr);
                 htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
+                htodstream.memcpyHtoDAsync(d_residual, residual_ptr);
                 htodstream.record(inputCopied);
 
                 // Run calibration update step
@@ -1088,13 +1093,15 @@ namespace idg {
                 device.launch_calibrate(
                     nr_subgrids, grid_size, subgrid_size, image_size, w_step, total_nr_timesteps, nr_channels, nr_stations, nr_terms,
                     d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                    d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp, d_hessian, d_gradient);
+                    d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp, d_hessian, d_gradient, d_residual);
                 executestream.record(executeFinished);
 
                 // Copy output to host
                 dtohstream.waitEvent(executeFinished);
                 dtohstream.memcpyDtoHAsync(h_hessian, d_hessian);
                 dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
+                dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
+                dtohstream.memcpyDtoHAsync(h_residual, d_residual);
                 dtohstream.record(outputCopied);
 
                 // Wait for output to finish
@@ -1103,6 +1110,7 @@ namespace idg {
                 // Copy output on host
                 memcpy(hessian_ptr, h_hessian, hessian.bytes());
                 memcpy(gradient_ptr, h_gradient, gradient.bytes());
+                memcpy(residual_ptr, h_residual, sizeof(double));
 
                 // End marker
                 marker.end();
@@ -1124,6 +1132,68 @@ namespace idg {
                 }
                 report.print_total(total_nr_timesteps, total_nr_subgrids);
                 report.print_visibilities(auxiliary::name_calibrate);
+            }
+
+            void GenericOptimized::do_calibrate_init_hessian_vector_product()
+            {
+                m_calibrate_state.hessian_vector_product_visibilities = Array3D<Visibility<std::complex<float>>>(
+                    m_calibrate_state.nr_baselines,
+                    m_calibrate_state.nr_timesteps,
+                    m_calibrate_state.nr_channels
+                );
+                std::memset(m_calibrate_state.hessian_vector_product_visibilities.data(), 0, m_calibrate_state.hessian_vector_product_visibilities.bytes());
+            }
+
+            void GenericOptimized::do_calibrate_update_hessian_vector_product1(
+                const int antenna_nr,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                const Array2D<float>& parameter_vector)
+            {
+//                 // Arguments
+//                 auto nr_subgrids   = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+//                 auto nr_channels   = m_calibrate_state.wavenumbers.get_x_dim();
+//                 auto nr_terms      = aterm_derivatives.get_z_dim();
+//                 auto subgrid_size  = aterms.get_y_dim();
+//                 auto nr_stations   = aterms.get_z_dim();
+//                 auto nr_timeslots  = aterms.get_w_dim();
+//
+//                 // Performance measurement
+//                 if (antenna_nr == 0) {
+//                     report.initialize(nr_channels, subgrid_size, 0, nr_terms);
+//                 }
+//
+//                 // Data pointers
+//                 auto shift_ptr                     = m_calibrate_state.shift.data();
+//                 auto wavenumbers_ptr               = m_calibrate_state.wavenumbers.data();
+//                 idg::float2 *aterm_ptr             = (idg::float2*) aterms.data();
+//                 idg::float2 * aterm_derivative_ptr = (idg::float2*) aterm_derivatives.data();
+//                 auto aterm_idx_ptr                 = m_calibrate_state.plans[antenna_nr]->get_aterm_indices_ptr();
+//                 auto metadata_ptr                  = m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
+//                 auto uvw_ptr                       = m_calibrate_state.uvw.data(antenna_nr);
+//                 idg::float2 *visibilities_ptr      = (idg::float2*) m_calibrate_state.visibilities.data(antenna_nr);
+//                 float *weights_ptr                 = (float*) m_calibrate_state.weights.data(antenna_nr);
+//                 idg::float2 *subgrids_ptr          = (idg::float2*) m_calibrate_state.subgrids[antenna_nr].data();
+//                 idg::float2 *phasors_ptr           = (idg::float2*) m_calibrate_state.phasors[antenna_nr].data();
+//                 float *parameter_vector_ptr        = (idg::float2*) parameter_vector.data();
+//
+//                 int max_nr_timesteps       = m_calibrate_state.max_nr_timesteps[antenna_nr];
+//
+
+                // TODO for now call the cpu instance
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                cpuKernels.run_calibrate_hessian_vector_product1(antenna_nr, aterms, derivative_aterms, parameter_vector);
+            }
+
+            void GenericOptimized::do_calibrate_update_hessian_vector_product2(
+                const int station_nr,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                Array2D<float>& parameter_vector)
+            {
+                // TODO for now call the cpu instance
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                cpuKernels.run_calibrate_hessian_vector_product2(station_nr, aterms, derivative_aterms, parameter_vector);
             }
 
             Plan* GenericOptimized::make_plan(

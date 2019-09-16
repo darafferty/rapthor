@@ -519,7 +519,8 @@ namespace idg {
                 cu::DeviceMemory& d_sums2,
                 cu::DeviceMemory& d_lmnp,
                 cu::DeviceMemory& d_hessian,
-                cu::DeviceMemory& d_gradient)
+                cu::DeviceMemory& d_gradient,
+                cu::DeviceMemory& d_residual)
             {
                 dim3 grid(nr_subgrids);
                 dim3 block(block_calibrate);
@@ -556,7 +557,7 @@ namespace idg {
                             &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations,
                             &term_offset_y, &current_nr_terms_y, &nr_terms,
                             d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
-                            d_metadata, d_subgrid, d_sums1, d_lmnp, d_gradient };
+                            d_metadata, d_subgrid, d_sums1, d_lmnp, d_gradient, d_residual };
                         executestream->launchKernel(*function_gradient, grid, block, 0, parameters_gradient);
                     }
 

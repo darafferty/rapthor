@@ -108,11 +108,36 @@ extern "C" {
         const unsigned int nr_terms,
         std::complex<float>* aterms,
         std::complex<float>* aterm_derivatives,
-        std::complex<float>* hessian,
-        std::complex<float>* derivative);
+        double* hessian,
+        double* gradient,
+        double *residual);
 
     void Proxy_calibrate_finish(
          Proxy* p);
+
+    void Proxy_calibrate_init_hessian_vector_product(Proxy* p);
+
+    void Proxy_calibrate_hessian_vector_product1(
+        Proxy* p,
+        const unsigned int station_nr,
+        const unsigned int subgrid_size,
+        const unsigned int nr_stations,
+        const unsigned int nr_time_slots,
+        const unsigned int nr_terms,
+        std::complex<float>* aterms,
+        std::complex<float>* aterm_derivatives,
+        float* parameter_vector);
+
+    void Proxy_calibrate_update_hessian_vector_product2(
+        Proxy* p,
+        const unsigned int station_nr,
+        const unsigned int subgrid_size,
+        const unsigned int nr_stations,
+        const unsigned int nr_time_slots,
+        const unsigned int nr_terms,
+        std::complex<float>* aterms,
+        std::complex<float>* aterm_derivatives,
+        float* parameter_vector);
 
     void Proxy_transform(
         Proxy* p,

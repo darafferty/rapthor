@@ -341,7 +341,7 @@ class Proxy(object):
             aterms_offsets,
             spheroidal)
 
-    def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient):
+    def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient, residual):
 
         nr_timeslots = aterms.shape[0]
         nr_antennas = aterms.shape[1]
@@ -365,13 +365,17 @@ class Proxy(object):
                 shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
             np.ctypeslib.ndpointer(
-                dtype=np.complex64,
+                dtype=np.float64,
                 shape=(nr_timeslots, nr_terms, nr_terms),
-                flags='C_CONTIGUOUS'),   #std::complex<float>* hessian
+                flags='C_CONTIGUOUS'),   #double* hessian
             np.ctypeslib.ndpointer(
-                dtype=np.complex64,
+                dtype=np.float64,
                 shape=(nr_timeslots, nr_terms),
-                flags='C_CONTIGUOUS'),   #std::complex<float>* gradient
+                flags='C_CONTIGUOUS'),   #double* gradient
+            np.ctypeslib.ndpointer(
+                dtype=np.float64,
+                shape=(1, ),
+                flags='C_CONTIGUOUS'),   #double* residual
             ]
 
         self.lib.Proxy_calibrate_update(
@@ -384,7 +388,97 @@ class Proxy(object):
             aterms,
             aterm_derivatives,
             hessian,
-            gradient)
+            gradient,
+            residual)
+
+    def calibrate_init_hessian_vector_product(self):
+
+        self.lib.Proxy_calibrate_init_hessian_vector_product.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ]
+
+        self.lib.Proxy_calibrate_init_hessian_vector_product(
+            self.obj)
+
+    def calibrate_hessian_vector_product1(self, antenna_nr, aterms, aterm_derivatives, parameter_vector):
+
+        nr_timeslots = aterms.shape[0]
+        nr_antennas = aterms.shape[1]
+        subgrid_size = aterms.shape[2]
+        nr_terms = parameter_vector.shape[1]
+        nr_correlations = 4
+
+        self.lib.Proxy_calibrate_hessian_vector_product1.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_uint,               #unsigned int antenna_nr
+            ctypes.c_uint,               #unsigned int subgrid_size
+            ctypes.c_uint,               #unsigned int nr_antennas
+            ctypes.c_uint,               #unsigned int nr_timeslots
+            ctypes.c_uint,               #unsigned int nr_terms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(nr_timeslots, nr_terms),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* parameter_vector
+            ]
+
+        self.lib.Proxy_calibrate_hessian_vector_product1(
+            self.obj,
+            antenna_nr,
+            subgrid_size,
+            nr_antennas,
+            nr_timeslots,
+            nr_terms,
+            aterms,
+            aterm_derivatives,
+            parameter_vector)
+
+    def calibrate_hessian_vector_product2(self, antenna_nr, aterms, aterm_derivatives, parameter_vector):
+
+        nr_timeslots = aterms.shape[0]
+        nr_antennas = aterms.shape[1]
+        subgrid_size = aterms.shape[2]
+        nr_terms = parameter_vector.shape[1]
+        nr_correlations = 4
+
+        self.lib.Proxy_calibrate_hessian_vector_product2.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_uint,               #unsigned int antenna_nr
+            ctypes.c_uint,               #unsigned int subgrid_size
+            ctypes.c_uint,               #unsigned int nr_antennas
+            ctypes.c_uint,               #unsigned int nr_timeslots
+            ctypes.c_uint,               #unsigned int nr_terms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(nr_timeslots, nr_terms),
+                flags='C_CONTIGUOUS'),   #float* parameter_vector
+            ]
+        self.lib.Proxy_calibrate_hessian_vector_product2(
+            self.obj,
+            antenna_nr,
+            subgrid_size,
+            nr_antennas,
+            nr_timeslots,
+            nr_terms,
+            aterms,
+            aterm_derivatives,
+            parameter_vector)
+
 
     def calibrate_finish(self):
 

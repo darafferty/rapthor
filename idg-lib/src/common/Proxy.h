@@ -192,9 +192,24 @@ namespace idg {
                     const int station_nr,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-                    Array3D<std::complex<float>>& hessian,
-                    Array2D<std::complex<float>>& derivative
-                );
+                    Array3D<double>& hessian,
+                    Array2D<double>& gradient,
+                    double &residual);
+
+                void calibrate_init_hessian_vector_product();
+
+                void calibrate_update_hessian_vector_product1(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    const Array2D<float>& parameter_vector);
+
+                void calibrate_update_hessian_vector_product2(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    Array2D<float>& parameter_vector);
+
 
                 void calibrate_finish();
 
@@ -371,11 +386,26 @@ namespace idg {
                     const int station_nr,
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                     const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-                    Array3D<std::complex<float>>& hessian,
-                    Array2D<std::complex<float>>& gradient
+                    Array3D<double>& hessian,
+                    Array2D<double>& gradient,
+                    double &residual
                 ) {}
 
                 virtual void do_calibrate_finish() {}
+
+                virtual void do_calibrate_init_hessian_vector_product() {}
+
+                virtual void do_calibrate_update_hessian_vector_product1(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    const Array2D<float>& parameter_vector) {}
+
+                virtual void do_calibrate_update_hessian_vector_product2(
+                    const int station_nr,
+                    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                    Array2D<float>& parameter_vector) {}
 
                 //! Applyies (inverse) Fourier transform to grid
                 virtual void do_transform(

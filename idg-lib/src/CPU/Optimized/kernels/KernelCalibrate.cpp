@@ -50,26 +50,28 @@ void kernel_calibrate(
     const idg::Metadata*             metadata,
     const idg::float2*               subgrid,
     const idg::float2*               phasors,
-    idg::float2*                     hessian,
-    idg::float2*                     gradient)
+    double*                          hessian,
+    double*                          gradient,
+    double*                          residual)
 {
     #if defined(USE_LOOKUP)
     initialize_lookup();
     #endif
 
+    // Initialize local residual
+    double residual_local[nr_subgrids] __attribute__((aligned((ALIGNMENT))));
+    size_t sizeof_residual = nr_subgrids * sizeof(double);
+    memset(residual_local, 0, sizeof_residual);
+
     // Initialize local gradient
-    float gradient_real[nr_subgrids][nr_time_slots][nr_terms] __attribute__((aligned((ALIGNMENT))));
-    float gradient_imag[nr_subgrids][nr_time_slots][nr_terms] __attribute__((aligned((ALIGNMENT))));
-    size_t sizeof_gradient = nr_subgrids * nr_time_slots * nr_terms * sizeof(float);
-    memset(gradient_real, 0, sizeof_gradient);
-    memset(gradient_imag, 0, sizeof_gradient);
+    double gradient_local[nr_subgrids][nr_time_slots][nr_terms] __attribute__((aligned((ALIGNMENT))));
+    size_t sizeof_gradient = nr_subgrids * nr_time_slots * nr_terms * sizeof(double);
+    memset(gradient_local, 0, sizeof_gradient);
 
     // Initialize local hessian
-    float hessian_real[nr_subgrids][nr_time_slots][nr_terms][nr_terms] __attribute__((aligned((ALIGNMENT))));
-    float hessian_imag[nr_subgrids][nr_time_slots][nr_terms][nr_terms] __attribute__((aligned((ALIGNMENT))));
-    size_t sizeof_hessian = nr_subgrids * nr_time_slots * nr_terms * nr_terms * sizeof(float);
-    memset(hessian_real, 0, sizeof_hessian);
-    memset(hessian_imag, 0, sizeof_hessian);
+    double hessian_local[nr_subgrids][nr_time_slots][nr_terms][nr_terms] __attribute__((aligned((ALIGNMENT))));
+    size_t sizeof_hessian = nr_subgrids * nr_time_slots * nr_terms * nr_terms * sizeof(double);
+    memset(hessian_local, 0, sizeof_hessian);
 
     // Iterate all subgrids
     #pragma omp parallel for schedule(guided)
@@ -142,7 +144,7 @@ void kernel_calibrate(
                         idg::float2 *aterm2_ptr = (idg::float2 *) &aterms[station2_idx];
 
                         // Apply aterm
-                        apply_aterm_calibrate(pixels, aterm1_ptr, aterm2_ptr);
+                        apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
 
                         // Store pixels
                         pixels_xx_real[term_nr][i] = pixels[0].real;
@@ -211,18 +213,18 @@ void kernel_calibrate(
                     visibility_res_imag[pol] = visibilities[vis_idx].imag - sums_imag[pol][nr_terms];
                 }
 
-                // Update local gradient
+                // Update local residual and gradient
                 for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
                     int time_idx = time_offset + time;
                     int chan_idx = chan;
                     size_t vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
+                    residual_local[s] += weights[vis_idx] * (
+                        visibility_res_real[pol] * visibility_res_real[pol] +
+                        visibility_res_imag[pol] * visibility_res_imag[pol]);
                     for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
-                        gradient_real[s][aterm_idx_current][term_nr0] += weights[vis_idx] * (
+                        gradient_local[s][aterm_idx_current][term_nr0] += weights[vis_idx] * (
                            sums_real[pol][term_nr0] * visibility_res_real[pol] +
                            sums_imag[pol][term_nr0] * visibility_res_imag[pol]);
-                        gradient_imag[s][aterm_idx_current][term_nr0] += weights[vis_idx] * (
-                           sums_real[pol][term_nr0] * visibility_res_imag[pol] -
-                           sums_imag[pol][term_nr0] * visibility_res_real[pol]);
                     }
                 }
 
@@ -233,12 +235,9 @@ void kernel_calibrate(
                     size_t vis_idx = index_visibility(nr_channels, time_idx, chan_idx, pol);
                     for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                         for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
-                            hessian_real[s][aterm_idx_current][term_nr1][term_nr0] += weights[vis_idx] * (
+                            hessian_local[s][aterm_idx_current][term_nr1][term_nr0] += weights[vis_idx] * (
                                 sums_real[pol][term_nr0] * sums_real[pol][term_nr1] +
                                 sums_imag[pol][term_nr0] * sums_imag[pol][term_nr1]);
-                            hessian_imag[s][aterm_idx_current][term_nr1][term_nr0] += weights[vis_idx] * (
-                                sums_real[pol][term_nr0] * sums_imag[pol][term_nr1] -
-                                sums_imag[pol][term_nr0] * sums_real[pol][term_nr1]);
                         }
                     }
                 }
@@ -246,13 +245,17 @@ void kernel_calibrate(
         } // end for time
     } // end #pragma parallel
 
+    // Update global residual
+    for (unsigned int s = 0; s < nr_subgrids; s++) {
+        *residual += residual_local[s];
+    }
+
     // Update global gradient
     for (unsigned int s = 0; s < nr_subgrids; s++) {
         for (unsigned int aterm_idx = 0; aterm_idx < nr_time_slots; aterm_idx++) {
             for (unsigned int i = 0; i < nr_terms; i++) {
                 unsigned idx = aterm_idx * nr_terms + i;
-                gradient[idx].real += gradient_real[s][aterm_idx][i];
-                gradient[idx].imag += gradient_imag[s][aterm_idx][i];
+                gradient[idx] += gradient_local[s][aterm_idx][i];
             }
         }
     }
@@ -263,8 +266,7 @@ void kernel_calibrate(
             for (unsigned int term_nr1 = 0; term_nr1 < nr_terms; term_nr1++) {
                 for (unsigned int term_nr0 = 0; term_nr0 < nr_terms; term_nr0++) {
                     unsigned idx = aterm_idx * nr_terms * nr_terms + term_nr1 * nr_terms + term_nr0;
-                    hessian[idx].real += hessian_real[s][aterm_idx][term_nr1][term_nr0];
-                    hessian[idx].imag += hessian_imag[s][aterm_idx][term_nr1][term_nr0];
+                    hessian[idx] += hessian_local[s][aterm_idx][term_nr1][term_nr0];
                 }
             }
         }

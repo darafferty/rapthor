@@ -20,6 +20,8 @@ namespace idg {
                 function_gridder(nullptr),
                 function_degridder(nullptr),
                 function_calibrate(nullptr),
+                function_calibrate_hessian_vector_product1(nullptr),
+                function_calibrate_hessian_vector_product2(nullptr),
                 function_phasor(nullptr),
                 function_fft(nullptr),
                 function_adder(nullptr),
@@ -57,6 +59,8 @@ namespace idg {
                 delete function_gridder;
                 delete function_degridder;
                 delete function_calibrate;
+                delete function_calibrate_hessian_vector_product1;
+                delete function_calibrate_hessian_vector_product2;
                 delete function_phasor;
                 delete function_fft;
                 delete function_adder;
@@ -106,6 +110,12 @@ namespace idg {
                     }
                     if (dlsym(*modules[i], kernel::cpu::name_calibrate.c_str())) {
                         function_calibrate = new runtime::Function(*modules[i], name_calibrate.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_calibrate_hessian_vector_product1.c_str())) {
+                        function_calibrate_hessian_vector_product1 = new runtime::Function(*modules[i], name_calibrate_hessian_vector_product1.c_str());
+                    }
+                    if (dlsym(*modules[i], kernel::cpu::name_calibrate_hessian_vector_product1.c_str())) {
+                        function_calibrate_hessian_vector_product2 = new runtime::Function(*modules[i], name_calibrate_hessian_vector_product2.c_str());
                     }
                     if (dlsym(*modules[i], kernel::cpu::name_phasor.c_str())) {
                         function_phasor = new runtime::Function(*modules[i], name_phasor.c_str());
@@ -166,8 +176,35 @@ namespace idg {
                                                           const idg::Metadata*             metadata,\
                                                           const idg::float2*               subgrid,\
                                                           const idg::float2*               phasors,\
-                                                          idg::float2*                     hessian,\
-                                                          idg::float2*                     gradient))
+                                                          double*                          hessian,\
+                                                          double*                          gradient, \
+                                                          double*                          residual))
+
+            #define sig_calibrate_hessian_vector_product1 (void (*)(\
+                                                          const unsigned int               nr_subgrids,\
+                                                          const unsigned int               grid_size,\
+                                                          const unsigned int               subgrid_size,\
+                                                          const float                      image_size,\
+                                                          const float                      w_step_in_lambda,\
+                                                          const float* __restrict__        shift,\
+                                                          const unsigned int               max_nr_timesteps,\
+                                                          const unsigned int               nr_channels,\
+                                                          const unsigned int               nr_stations,\
+                                                          const unsigned int               nr_terms,\
+                                                          const unsigned int               nr_time_slots,\
+                                                          const idg::UVW<float>*           uvw,\
+                                                          const float*                     wavenumbers,\
+                                                                idg::float2*               visibilities,\
+                                                          const float*                     weights,\
+                                                          const idg::float2*               aterms,\
+                                                          const idg::float2*               aterm_derivatives,\
+                                                          const int*                       aterms_indices,\
+                                                          const idg::Metadata*             metadata,\
+                                                          const idg::float2*               subgrid,\
+                                                          const idg::float2*               phasors,\
+                                                          const float*                     parameter_vector))
+
+            #define sig_calibrate_hessian_vector_product2 (void (*)())
 
             #define sig_phasor                        (void (*)(int,int,int,float,float,const float*,int,int,void*,void*,void*,void*))
             #define sig_fft		                      (void (*)(long,long,long,void*,int))
@@ -257,14 +294,43 @@ namespace idg {
                 const idg::Metadata *metadata,
                 const idg::float2 *subgrid,
                 const idg::float2 *phasors,
-                idg::float2 *hessian,
-                idg::float2 *gradient)
+                double *hessian,
+                double *gradient,
+                double *residual)
             {
                 powersensor::State states[2];
                 states[0] = powerSensor->read();
                 (sig_calibrate (void *) *function_calibrate)(
                   nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift, max_nr_timesteps, nr_channels, nr_stations, nr_terms, nr_time_slots,
-                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, aterms_indices, metadata, subgrid, phasors, hessian, gradient);
+                  uvw, wavenumbers, visibilities, weights, aterm, aterm_derivative, aterms_indices, metadata, subgrid, phasors, hessian, gradient, residual);
+                states[1] = powerSensor->read();
+                if (report) { report->update_calibrate(states[0], states[1]); }
+                if (report) { report->update_host(states[0], states[1]); }
+            }
+
+            void InstanceCPU::run_calibrate_hessian_vector_product1(
+                const int station_nr,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                const Array2D<float>& parameter_vector)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+//                 (sig_calibrate_hessian_vector_product1 (void *) *function_calibrate_hessian_vector_product1)();
+                states[1] = powerSensor->read();
+                if (report) { report->update_calibrate(states[0], states[1]); }
+                if (report) { report->update_host(states[0], states[1]); }
+            }
+
+            void InstanceCPU::run_calibrate_hessian_vector_product2(
+                const int station_nr,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+                Array2D<float>& parameter_vector)
+            {
+                powersensor::State states[2];
+                states[0] = powerSensor->read();
+                (sig_calibrate_hessian_vector_product2 (void *) *function_calibrate_hessian_vector_product2)();
                 states[1] = powerSensor->read();
                 if (report) { report->update_calibrate(states[0], states[1]); }
                 if (report) { report->update_host(states[0], states[1]); }

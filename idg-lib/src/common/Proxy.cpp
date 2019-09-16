@@ -416,17 +416,41 @@ namespace idg {
             const int station_nr,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-            Array3D<std::complex<float>>& hessian,
-            Array2D<std::complex<float>>& gradient
-        )
+            Array3D<double>& hessian,
+            Array2D<double>& gradient,
+            double &residual)
         {
-            do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient);
+            do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient, residual);
         }
 
         void Proxy::calibrate_finish()
         {
             do_calibrate_finish();
         }
+
+        void Proxy::calibrate_init_hessian_vector_product()
+        {
+            do_calibrate_init_hessian_vector_product();
+        }
+
+        void Proxy::calibrate_update_hessian_vector_product1(
+            const int station_nr,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+            const Array2D<float>& parameter_vector)
+        {
+            do_calibrate_update_hessian_vector_product1(station_nr, aterms, derivative_aterms, parameter_vector);
+        }
+
+        void Proxy::calibrate_update_hessian_vector_product2(
+            const int station_nr,
+            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+            const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+            Array2D<float>& parameter_vector)
+        {
+            do_calibrate_update_hessian_vector_product2(station_nr, aterms, derivative_aterms, parameter_vector);
+        }
+
 
         void Proxy::degridding(
             float w_step,
