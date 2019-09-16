@@ -658,7 +658,7 @@ namespace idg {
                     m_calibrate_state.nr_timesteps,
                     m_calibrate_state.nr_channels
                 );
-                std::memset(m_calibrate_state.hessian_vector_product_visibilities.data(), 0, m_calibrate_state.hessian_vector_product_visibilities.bytes());
+                m_calibrate_state.hessian_vector_product_visibilities.zero();
             }
 
             void CPU::do_calibrate_update_hessian_vector_product1(
