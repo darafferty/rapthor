@@ -41,6 +41,16 @@ set_target_properties(
     SOVERSION 0
 )
 
+# No need to link Boost for the Stopwatch class
+#set(
+#    LINK_LIBRARIES ${Boost_DATE_TIME_LIBRARY_RELEASE}
+#)
+#
+#target_link_libraries(
+#    idg-external
+#    ${LINK_LIBRARIES}
+#)
+
 install(
     TARGETS idg-external
     EXPORT idg-targets

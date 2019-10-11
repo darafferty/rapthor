@@ -1,13 +1,21 @@
 project(external)
 
+# workaround for compilation warning with gcc/8.3.0 and boost/1.66
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=parentheses")
+
+# external header files
+if (Boost_FOUND)
+include_directories(${Boost_INCLUDE_DIR})
+endif()
+
 # sources and header files
 set (${PROJECT_NAME}_headers
     ThrowAssert.hpp
-    stopwatch.h
+    Stopwatch.h
 )
 
 set (${PROJECT_NAME}_sources
-    stopwatch.cpp
+    Stopwatch.cpp
 )
 
 add_library(

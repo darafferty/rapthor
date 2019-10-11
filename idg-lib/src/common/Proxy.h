@@ -7,7 +7,7 @@
 #include <cstring>
 #include <utility> // pair
 
-#include <external/stopwatch.h> // Stopwatch
+#include <external/Stopwatch.h> // Stopwatch
 
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"
@@ -464,7 +464,7 @@ namespace idg {
                 Report report;
 
                 void report_runtime();
-                Stopwatch m_gridding_watch, m_degridding_watch, m_transform_watch;
+                std::unique_ptr<Stopwatch> m_gridding_watch, m_degridding_watch, m_transform_watch;
 
         }; // end class Proxy
 
