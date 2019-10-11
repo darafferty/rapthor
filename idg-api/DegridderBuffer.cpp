@@ -16,7 +16,6 @@ namespace api {
         proxy::Proxy* proxy,
         size_t bufferTimesteps)
         : BufferImpl(bufferset, proxy, bufferTimesteps),
-          m_bufferVisibilities2(0,0,0),
           m_buffer_full(false),
           m_data_read(true)
     {
@@ -83,7 +82,7 @@ namespace api {
         // #endif
 
         // Keep mapping rowId -> (local_bl, local_time) for reading
-        m_row_ids_to_data.push_back(make_pair(rowId, (complex<float>*) &m_bufferVisibilities2(local_bl, local_time, 0)));
+        m_row_ids_to_data.push_back(make_pair(rowId, (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0)));
 
         // Copy data into buffers
         m_bufferUVW(local_bl, local_time) = {
@@ -172,11 +171,6 @@ namespace api {
                 m_aterm_offsets_array,
                 m_spheroidal);
 
-            // Copy data from per channel buffer into buffer for all channels
-            std::copy(m_bufferVisibilities.data(),
-                      m_bufferVisibilities.data() + m_nr_baselines * m_bufferTimesteps * m_nr_channels,
-                      m_bufferVisibilities2.data());
-
         // Wait for all plans to be executed
         m_proxy->finish_degridding();
 
@@ -231,7 +225,6 @@ namespace api {
     void DegridderBufferImpl::malloc_buffers()
     {
         BufferImpl::malloc_buffers();
-        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, get_frequencies_size());
     }
 
 } // namespace api
