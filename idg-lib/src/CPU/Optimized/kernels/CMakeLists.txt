@@ -7,14 +7,10 @@ include_directories(
 )
 
 # Build type options
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    add_compile_options("-Wall")
-    add_compile_options("-DDEBUG")
-else()
-    add_compile_options("-O3")
-    add_compile_options("-ffast-math")
-endif()
-
+add_compile_options("-Wall")
+add_compile_options("-DDEBUG")
+add_compile_options("-O3")
+add_compile_options("-ffast-math")
 
 # Compiler options
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
