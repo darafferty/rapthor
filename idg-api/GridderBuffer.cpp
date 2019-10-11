@@ -222,7 +222,9 @@ namespace api {
                             }
 
                             // Add kronecker product to sum
-                            sum[ii][jj] += std::complex<float>(update_real, update_imag);
+                            if (!std::isnan(update_real) && !std::isnan(update_imag)) {
+                                sum[ii][jj] += std::complex<float>(update_real, update_imag);
+                            }
                         }
                     }
                 } // end for baselines
