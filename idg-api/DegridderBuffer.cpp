@@ -146,7 +146,7 @@ namespace api {
                     m_kernel_size,
                     m_subgridsize,
                     m_grouped_frequencies[i],
-                    m_bufferVisibilities[i],
+                    m_bufferVisibilities,
                     m_bufferUVW,
                     m_bufferStationPairs,
                     *m_grid,
@@ -164,7 +164,7 @@ namespace api {
                 m_kernel_size,
                 m_subgridsize,
                 m_grouped_frequencies[i],
-                m_bufferVisibilities[i],
+                m_bufferVisibilities,
                 m_bufferUVW,
                 m_bufferStationPairs,
                 *m_grid,
@@ -173,8 +173,8 @@ namespace api {
                 m_spheroidal);
 
             // Copy data from per channel buffer into buffer for all channels
-            std::copy(m_bufferVisibilities[i].data(),
-                      m_bufferVisibilities[i].data() + m_nr_baselines * m_bufferTimesteps * m_nr_channels,
+            std::copy(m_bufferVisibilities.data(),
+                      m_bufferVisibilities.data() + m_nr_baselines * m_bufferTimesteps * m_nr_channels,
                       m_bufferVisibilities2.data());
 
         // Wait for all plans to be executed

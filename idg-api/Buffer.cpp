@@ -285,17 +285,8 @@ namespace api {
     void BufferImpl::malloc_buffers()
     {
         m_bufferUVW = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-        m_bufferVisibilities.clear();
-        int max_nr_channels = 0;
-        for (auto & channel_group : m_channel_groups)
-        {
-            int nr_channels = channel_group.second - channel_group.first;
-            if (nr_channels > max_nr_channels) {
-                max_nr_channels = nr_channels;
-            }
-            m_bufferVisibilities.push_back(Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, nr_channels));
-        }
-        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, max_nr_channels);
+        m_bufferVisibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_bufferStationPairs.init({m_nrStations, m_nrStations});
         // already done: m_spheroidal.reserve(m_subgridsize, m_subgridsize);
@@ -305,10 +296,7 @@ namespace api {
 
     void BufferImpl::reset_buffers()
     {
-        for (auto & buffer : m_bufferVisibilities)
-        {
-            memset(buffer.data(), 0, buffer.bytes());
-        }
+        m_bufferVisibilities.zero();
         set_uvw_to_infinity();
         init_default_aterm();
     }

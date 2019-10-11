@@ -94,7 +94,7 @@ namespace api {
 
         std::copy(visibilities,
                   visibilities + m_nr_channels * m_nrPolarizations,
-                  (complex<float>*) &m_bufferVisibilities[0](local_bl, local_time, 0));
+                  (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0));
         std::copy(weights, weights + m_nr_channels*4, &m_buffer_weights(local_bl, local_time, 0, 0));
     }
 
@@ -292,7 +292,7 @@ namespace api {
                     m_kernel_size,
                     m_subgridsize,
                     m_grouped_frequencies[i],
-                    m_bufferVisibilities2[i],
+                    m_bufferVisibilities2,
                     m_bufferUVW2,
                     m_bufferStationPairs2,
                     *m_grid,
@@ -310,7 +310,7 @@ namespace api {
                 m_kernel_size,
                 m_subgridsize,
                 m_grouped_frequencies[i],
-                m_bufferVisibilities2[i],
+                m_bufferVisibilities2,
                 m_bufferUVW2,
                 m_bufferStationPairs2,
                 *m_grid,
@@ -388,8 +388,7 @@ namespace api {
         BufferImpl::malloc_buffers();
         
         m_bufferUVW2 = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-        m_bufferVisibilities2.clear();
-        m_bufferVisibilities2.push_back(Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels));
+        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
         m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_buffer_weights = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
         m_buffer_weights2 = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
