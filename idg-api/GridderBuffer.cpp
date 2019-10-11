@@ -263,60 +263,51 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = false;
 
-        // Iterate all channel groups
-        int i = 0;
-            #ifndef NDEBUG
-            std::cout << "gridding channels: " << 0 << "-"
-                                               << m_nr_channels << std::endl;
-            #endif
+        // Create plan
+        Plan plan(
+            m_kernel_size,
+            m_subgridsize,
+            m_gridHeight,
+            m_cellHeight,
+            m_frequencies,
+            m_bufferUVW2,
+            m_bufferStationPairs2,
+            m_aterm_offsets_array,
+            options);
 
-            // Create plan
-            Plan plan(
-                m_kernel_size,
-                m_subgridsize,
-                m_gridHeight,
-                m_cellHeight,
-                m_frequencies,
-                m_bufferUVW2,
-                m_bufferStationPairs2,
-                m_aterm_offsets_array,
-                options);
+        // Initialize gridding
+        m_proxy->initialize(
+            plan,
+            m_wStepInLambda,
+            m_shift,
+            m_cellHeight,
+            m_kernel_size,
+            m_subgridsize,
+            m_frequencies,
+            m_bufferVisibilities2,
+            m_bufferUVW2,
+            m_bufferStationPairs2,
+            *m_grid,
+            m_aterms_array,
+            m_aterm_offsets_array,
+            m_spheroidal);
 
-            // Initialize gridding for first channel group
-            if (i == 0) {
-                m_proxy->initialize(
-                    plan,
-                    m_wStepInLambda,
-                    m_shift,
-                    m_cellHeight,
-                    m_kernel_size,
-                    m_subgridsize,
-                    m_frequencies,
-                    m_bufferVisibilities2,
-                    m_bufferUVW2,
-                    m_bufferStationPairs2,
-                    *m_grid,
-                    m_aterms_array,
-                    m_aterm_offsets_array,
-                    m_spheroidal);
-            }
-
-            // Start flush
-            m_proxy->run_gridding(
-                plan,
-                m_wStepInLambda,
-                m_shift,
-                m_cellHeight,
-                m_kernel_size,
-                m_subgridsize,
-                m_frequencies,
-                m_bufferVisibilities2,
-                m_bufferUVW2,
-                m_bufferStationPairs2,
-                *m_grid,
-                m_aterms_array,
-                m_aterm_offsets_array,
-                m_spheroidal);
+        // Start flush
+        m_proxy->run_gridding(
+            plan,
+            m_wStepInLambda,
+            m_shift,
+            m_cellHeight,
+            m_kernel_size,
+            m_subgridsize,
+            m_frequencies,
+            m_bufferVisibilities2,
+            m_bufferUVW2,
+            m_bufferStationPairs2,
+            *m_grid,
+            m_aterms_array,
+            m_aterm_offsets_array,
+            m_spheroidal);
 
         // Wait for all plans to be executed
         m_proxy->finish_gridding();
