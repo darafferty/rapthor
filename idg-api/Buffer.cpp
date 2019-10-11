@@ -251,20 +251,7 @@ namespace api {
 
         // NOTE: assume m_gridWidth == m_gridHeight
 
-        // (1) Partition channels according to m_max_baseline and m_uv_span_frequency
-
-        float image_size = get_image_size();
-        float frequency = get_frequency(0);
-        int max_nr_channels = get_frequencies_size();
-
-        m_channel_groups.clear();
-
-        // Channels groups in Buffer are disabled. This functionality is now provided in Plan.
-        // Note that the remainder of the idg-api code has not been updated and therefore contains
-        // superfluous code that needs to be removed at some later stage.
-        m_channel_groups.push_back(std::make_pair(0, max_nr_channels));
-
-        // (2) Setup buffers
+        // Setup buffers
         malloc_buffers();
         reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
     }

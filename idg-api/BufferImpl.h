@@ -144,7 +144,6 @@ namespace api {
         size_t m_timeStartThisBatch;
         size_t m_timeStartNextBatch;
         std::set<size_t> m_timeindices;
-        std::vector<std::pair<int, int>> m_channel_groups;
 
         //
         float m_max_baseline;
