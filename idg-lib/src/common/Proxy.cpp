@@ -6,7 +6,11 @@
 
 namespace idg {
     namespace proxy {
-        Proxy::Proxy() {
+        Proxy::Proxy() :
+            m_gridding_watch(false),
+            m_degridding_watch(false),
+            m_transform_watch(false)
+        {
             grid_ptr = NULL;
         }
 
@@ -14,6 +18,15 @@ namespace idg {
             if (grid_ptr != NULL) {
                 delete[] grid_ptr;
             }
+            report_runtime();
+        }
+
+        void Proxy::report_runtime() {
+            std::clog << "IDG Proxy runtime: ";
+            std::clog << "gridding: " << m_gridding_watch.ToString();
+            std::clog << ", degridding: " << m_degridding_watch.ToString();
+            std::clog << ", transform: " << m_transform_watch.ToString();
+            std::clog << std::endl;
         }
 
         void Proxy::gridding(
@@ -39,7 +52,10 @@ namespace idg {
             if ((w_step != 0.0) && (!supports_wstack_gridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
+
+            m_gridding_watch.Start();
             do_gridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+            m_gridding_watch.Pause();
         }
 
         void Proxy::gridding(
@@ -213,7 +229,9 @@ namespace idg {
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
             }
+            m_degridding_watch.Start();
             do_degridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+            m_degridding_watch.Pause();
         }
 
         void Proxy::degridding(
@@ -576,7 +594,11 @@ namespace idg {
             DomainAtoDomainB direction, 
             Array3D<std::complex<float>>& grid)
         {
+            m_transform_watch.Start();
+
             do_transform(direction, grid);
+
+            m_transform_watch.Pause();
         }
 
         void Proxy::transform(
