@@ -152,6 +152,7 @@ install(
 
 # Create idg-targets.cmake
 set(TARGETS_TO_EXPORT idg)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-external)
 set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-common)
 set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-fft)
 if (BUILD_LIB_CPU)
