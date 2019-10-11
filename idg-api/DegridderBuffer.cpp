@@ -118,11 +118,10 @@ namespace api {
         options.plan_strict = false;
 
         // Iterate all channel groups
-        const int nr_channel_groups = m_channel_groups.size();
-        for (int i = 0; i < nr_channel_groups; i++) {
+        int i = 0;
             #ifndef NDEBUG
-            std::cout << "degridding channels: " << m_channel_groups[i].first << "-"
-                                                 << m_channel_groups[i].second << std::endl;
+            std::cout << "degridding channels: " << 0 << "-"
+                                                 << m_nr_channels << std::endl;
             #endif
 
             // Create plan
@@ -174,14 +173,9 @@ namespace api {
                 m_spheroidal);
 
             // Copy data from per channel buffer into buffer for all channels
-            for (int bl = 0; bl < m_nr_baselines; bl++) {
-                for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
-                    std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
-                            &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
-                            &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
-                }
-            }
-        } // end for i (channel groups)
+            std::copy(m_bufferVisibilities[i].data(),
+                      m_bufferVisibilities[i].data() + m_nr_baselines * m_bufferTimesteps * m_nr_channels,
+                      m_bufferVisibilities2.data());
 
         // Wait for all plans to be executed
         m_proxy->finish_degridding();
