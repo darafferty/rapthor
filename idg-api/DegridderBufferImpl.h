@@ -137,7 +137,6 @@ namespace api {
     private:
 
         // Data
-        Array3D<Visibility<std::complex<float>>> m_bufferVisibilities2;   // BL x TI x CH
         bool m_buffer_full;
         bool m_data_read;
         std::vector<std::pair<size_t, std::complex<float>*>> m_row_ids_to_data;

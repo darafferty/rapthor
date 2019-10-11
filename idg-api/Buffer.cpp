@@ -251,32 +251,7 @@ namespace api {
 
         // NOTE: assume m_gridWidth == m_gridHeight
 
-        // (1) Partition channels according to m_max_baseline and m_uv_span_frequency
-
-        float image_size = get_image_size();
-        float frequency = get_frequency(0);
-        int max_nr_channels = get_frequencies_size();
-
-        m_channel_groups.clear();
-
-        // Channels groups in Buffer are disabled. This functionality is now provided in Plan.
-        // Note that the remainder of the idg-api code has not been updated and therefore contains
-        // superfluous code that needs to be removed at some later stage.
-        m_channel_groups.push_back(std::make_pair(0, max_nr_channels));
-
-        m_grouped_frequencies.clear();
-        for (auto & channel_group : m_channel_groups)
-        {
-            int nr_channels = channel_group.second - channel_group.first;
-            Array1D<float> frequencies(nr_channels);
-            for (int i=0; i<nr_channels; i++)
-            {
-                frequencies(i) = m_frequencies(channel_group.first + i);
-            }
-            m_grouped_frequencies.push_back(std::move(frequencies));
-        }
-
-        // (2) Setup buffers
+        // Setup buffers
         malloc_buffers();
         reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here
     }
@@ -285,17 +260,8 @@ namespace api {
     void BufferImpl::malloc_buffers()
     {
         m_bufferUVW = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-        m_bufferVisibilities.clear();
-        int max_nr_channels = 0;
-        for (auto & channel_group : m_channel_groups)
-        {
-            int nr_channels = channel_group.second - channel_group.first;
-            if (nr_channels > max_nr_channels) {
-                max_nr_channels = nr_channels;
-            }
-            m_bufferVisibilities.push_back(Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, nr_channels));
-        }
-        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, max_nr_channels);
+        m_bufferVisibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_bufferStationPairs.init({m_nrStations, m_nrStations});
         // already done: m_spheroidal.reserve(m_subgridsize, m_subgridsize);
@@ -305,10 +271,7 @@ namespace api {
 
     void BufferImpl::reset_buffers()
     {
-        for (auto & buffer : m_bufferVisibilities)
-        {
-            memset(buffer.data(), 0, buffer.bytes());
-        }
+        m_bufferVisibilities.zero();
         set_uvw_to_infinity();
         init_default_aterm();
     }

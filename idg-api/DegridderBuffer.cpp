@@ -16,7 +16,6 @@ namespace api {
         proxy::Proxy* proxy,
         size_t bufferTimesteps)
         : BufferImpl(bufferset, proxy, bufferTimesteps),
-          m_bufferVisibilities2(0,0,0),
           m_buffer_full(false),
           m_data_read(true)
     {
@@ -83,7 +82,7 @@ namespace api {
         // #endif
 
         // Keep mapping rowId -> (local_bl, local_time) for reading
-        m_row_ids_to_data.push_back(make_pair(rowId, (complex<float>*) &m_bufferVisibilities2(local_bl, local_time, 0)));
+        m_row_ids_to_data.push_back(make_pair(rowId, (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0)));
 
         // Copy data into buffers
         m_bufferUVW(local_bl, local_time) = {
@@ -117,71 +116,51 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = false;
 
-        // Iterate all channel groups
-        const int nr_channel_groups = m_channel_groups.size();
-        for (int i = 0; i < nr_channel_groups; i++) {
-            #ifndef NDEBUG
-            std::cout << "degridding channels: " << m_channel_groups[i].first << "-"
-                                                 << m_channel_groups[i].second << std::endl;
-            #endif
+        // Create plan
+        Plan plan(
+            m_kernel_size,
+            m_subgridsize,
+            m_gridHeight,
+            m_cellHeight,
+            m_frequencies,
+            m_bufferUVW,
+            m_bufferStationPairs,
+            m_aterm_offsets_array,
+            options);
 
-            // Create plan
-            Plan plan(
-                m_kernel_size,
-                m_subgridsize,
-                m_gridHeight,
-                m_cellHeight,
-                m_grouped_frequencies[i],
-                m_bufferUVW,
-                m_bufferStationPairs,
-                m_aterm_offsets_array,
-                options);
+        // Initialize degridding
+        m_proxy->initialize(
+            plan,
+            m_wStepInLambda,
+            m_shift,
+            m_cellHeight,
+            m_kernel_size,
+            m_subgridsize,
+            m_frequencies,
+            m_bufferVisibilities,
+            m_bufferUVW,
+            m_bufferStationPairs,
+            *m_grid,
+            m_aterms_array,
+            m_aterm_offsets_array,
+            m_spheroidal);
 
-            // Initialize degridding for first channel group
-            if (i == 0) {
-                m_proxy->initialize(
-                    plan,
-                    m_wStepInLambda,
-                    m_shift,
-                    m_cellHeight,
-                    m_kernel_size,
-                    m_subgridsize,
-                    m_grouped_frequencies[i],
-                    m_bufferVisibilities[i],
-                    m_bufferUVW,
-                    m_bufferStationPairs,
-                    *m_grid,
-                    m_aterms_array,
-                    m_aterm_offsets_array,
-                    m_spheroidal);
-            }
-
-            // Start flush
-            m_proxy->run_degridding(
-                plan,
-                m_wStepInLambda,
-                m_shift,
-                m_cellHeight,
-                m_kernel_size,
-                m_subgridsize,
-                m_grouped_frequencies[i],
-                m_bufferVisibilities[i],
-                m_bufferUVW,
-                m_bufferStationPairs,
-                *m_grid,
-                m_aterms_array,
-                m_aterm_offsets_array,
-                m_spheroidal);
-
-            // Copy data from per channel buffer into buffer for all channels
-            for (int bl = 0; bl < m_nr_baselines; bl++) {
-                for (int time_idx = 0;  time_idx < m_bufferTimesteps; time_idx++) {
-                    std::copy(&m_bufferVisibilities[i](bl, time_idx, 0),
-                            &m_bufferVisibilities[i](bl, time_idx, m_channel_groups[i].second - m_channel_groups[i].first),
-                            &m_bufferVisibilities2(bl, time_idx, m_channel_groups[i].first));
-                }
-            }
-        } // end for i (channel groups)
+        // Start flush
+        m_proxy->run_degridding(
+            plan,
+            m_wStepInLambda,
+            m_shift,
+            m_cellHeight,
+            m_kernel_size,
+            m_subgridsize,
+            m_frequencies,
+            m_bufferVisibilities,
+            m_bufferUVW,
+            m_bufferStationPairs,
+            *m_grid,
+            m_aterms_array,
+            m_aterm_offsets_array,
+            m_spheroidal);
 
         // Wait for all plans to be executed
         m_proxy->finish_degridding();
@@ -237,7 +216,6 @@ namespace api {
     void DegridderBufferImpl::malloc_buffers()
     {
         BufferImpl::malloc_buffers();
-        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, get_frequencies_size());
     }
 
 } // namespace api

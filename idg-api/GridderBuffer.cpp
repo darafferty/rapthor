@@ -92,12 +92,9 @@ namespace api {
             static_cast<int>(antenna2)
         };
 
-        for (int i = 0; i<m_channel_groups.size(); i++)
-        {
-            std::copy(visibilities + m_channel_groups[i].first * m_nrPolarizations,
-                      visibilities + m_channel_groups[i].second * m_nrPolarizations,
-                      (complex<float>*) &m_bufferVisibilities[i](local_bl, local_time, 0));
-        }
+        std::copy(visibilities,
+                  visibilities + m_nr_channels * m_nrPolarizations,
+                  (complex<float>*) &m_bufferVisibilities(local_bl, local_time, 0));
         std::copy(weights, weights + m_nr_channels*4, &m_buffer_weights(local_bl, local_time, 0, 0));
     }
 
@@ -266,62 +263,51 @@ namespace api {
         options.nr_w_layers = m_nr_w_layers;
         options.plan_strict = false;
 
-        // Iterate all channel groups
-        const int nr_channel_groups = m_channel_groups.size();
-        for (int i = 0; i < nr_channel_groups; i++) {
-            #ifndef NDEBUG
-            std::cout << "gridding channels: " << m_channel_groups[i].first << "-"
-                                               << m_channel_groups[i].second << std::endl;
-            #endif
+        // Create plan
+        Plan plan(
+            m_kernel_size,
+            m_subgridsize,
+            m_gridHeight,
+            m_cellHeight,
+            m_frequencies,
+            m_bufferUVW2,
+            m_bufferStationPairs2,
+            m_aterm_offsets_array,
+            options);
 
-            // Create plan
-            Plan plan(
-                m_kernel_size,
-                m_subgridsize,
-                m_gridHeight,
-                m_cellHeight,
-                m_grouped_frequencies[i],
-                m_bufferUVW2,
-                m_bufferStationPairs2,
-                m_aterm_offsets_array,
-                options);
+        // Initialize gridding
+        m_proxy->initialize(
+            plan,
+            m_wStepInLambda,
+            m_shift,
+            m_cellHeight,
+            m_kernel_size,
+            m_subgridsize,
+            m_frequencies,
+            m_bufferVisibilities2,
+            m_bufferUVW2,
+            m_bufferStationPairs2,
+            *m_grid,
+            m_aterms_array,
+            m_aterm_offsets_array,
+            m_spheroidal);
 
-            // Initialize gridding for first channel group
-            if (i == 0) {
-                m_proxy->initialize(
-                    plan,
-                    m_wStepInLambda,
-                    m_shift,
-                    m_cellHeight,
-                    m_kernel_size,
-                    m_subgridsize,
-                    m_grouped_frequencies[i],
-                    m_bufferVisibilities2[i],
-                    m_bufferUVW2,
-                    m_bufferStationPairs2,
-                    *m_grid,
-                    m_aterms_array,
-                    m_aterm_offsets_array,
-                    m_spheroidal);
-            }
-
-            // Start flush
-            m_proxy->run_gridding(
-                plan,
-                m_wStepInLambda,
-                m_shift,
-                m_cellHeight,
-                m_kernel_size,
-                m_subgridsize,
-                m_grouped_frequencies[i],
-                m_bufferVisibilities2[i],
-                m_bufferUVW2,
-                m_bufferStationPairs2,
-                *m_grid,
-                m_aterms_array,
-                m_aterm_offsets_array,
-                m_spheroidal);
-        } // end for i (channel groups)
+        // Start flush
+        m_proxy->run_gridding(
+            plan,
+            m_wStepInLambda,
+            m_shift,
+            m_cellHeight,
+            m_kernel_size,
+            m_subgridsize,
+            m_frequencies,
+            m_bufferVisibilities2,
+            m_bufferUVW2,
+            m_bufferStationPairs2,
+            *m_grid,
+            m_aterms_array,
+            m_aterm_offsets_array,
+            m_spheroidal);
 
         // Wait for all plans to be executed
         m_proxy->finish_gridding();
@@ -393,12 +379,7 @@ namespace api {
         BufferImpl::malloc_buffers();
         
         m_bufferUVW2 = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-        m_bufferVisibilities2.clear();
-        for (auto & channel_group : m_channel_groups)
-        {
-            int nr_channels = channel_group.second - channel_group.first;
-            m_bufferVisibilities2.push_back(Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, nr_channels));
-        }
+        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
         m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_buffer_weights = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
         m_buffer_weights2 = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
