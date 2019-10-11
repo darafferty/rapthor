@@ -264,18 +264,6 @@ namespace api {
         // superfluous code that needs to be removed at some later stage.
         m_channel_groups.push_back(std::make_pair(0, max_nr_channels));
 
-        m_grouped_frequencies.clear();
-        for (auto & channel_group : m_channel_groups)
-        {
-            int nr_channels = channel_group.second - channel_group.first;
-            Array1D<float> frequencies(nr_channels);
-            for (int i=0; i<nr_channels; i++)
-            {
-                frequencies(i) = m_frequencies(channel_group.first + i);
-            }
-            m_grouped_frequencies.push_back(std::move(frequencies));
-        }
-
         // (2) Setup buffers
         malloc_buffers();
         reset_buffers(); // optimization: only call "set_uvw_to_infinity()" here

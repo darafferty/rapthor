@@ -170,7 +170,6 @@ namespace api {
 
         // Buffers
         Array1D<float> m_frequencies;                               // CH
-        std::vector<Array1D<float>> m_grouped_frequencies;          // CH
         Array2D<float> m_spheroidal;                                     // SB x SB
         std::vector<Matrix2x2<std::complex<float>>> m_aterms;
         std::vector<Matrix2x2<std::complex<float>>> m_default_aterms;
