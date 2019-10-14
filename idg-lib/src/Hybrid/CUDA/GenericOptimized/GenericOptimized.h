@@ -110,10 +110,16 @@ namespace idg {
                         const Array2D<float>& spheroidal) override;
 
                     virtual void finish_gridding() override
-                    { finish(auxiliary::name_gridding); };
+                    {
+                        finish(auxiliary::name_gridding);
+                        m_gridding_watch->Pause();
+                    };
 
                     virtual void finish_degridding() override
-                    { finish(auxiliary::name_degridding); };
+                    {
+                        finish(auxiliary::name_degridding);
+                        m_degridding_watch->Pause();
+                    };
 
                     virtual void do_calibrate_init(
                         std::vector<std::unique_ptr<Plan>> &&plans,

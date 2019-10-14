@@ -40,6 +40,8 @@ namespace idg {
 
                 // Deallocate FFTWs internally allocated memory
                 fftwf_cleanup();
+
+                report_runtime("CPU");
             }
 
 
@@ -110,6 +112,8 @@ namespace idg {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
+
+                m_gridding_watch->Start();
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -218,6 +222,8 @@ namespace idg {
                     std::cerr << __func__ << ": caught unknown exception" << std::endl;
                     exit(3);
                 }
+
+                m_gridding_watch->Pause();
             } // end gridding
 
             void CPU::do_degridding(
@@ -239,6 +245,8 @@ namespace idg {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
                 #endif
+
+                m_degridding_watch->Start();
 
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -366,6 +374,8 @@ namespace idg {
                     std::cerr << __func__ << ": caught unknown exception" << std::endl;
                     exit(3);
                 }
+
+                m_degridding_watch->Pause();
             } // end degridding
 
 
@@ -721,6 +731,8 @@ namespace idg {
                 std::cout << "FFT (direction: " << direction << ")" << std::endl;
                 #endif
 
+                m_transform_watch->Start();
+
                 try {
                     int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
@@ -763,6 +775,8 @@ namespace idg {
                 } catch (...) {
                     std::cerr << __func__ << " caught unknown exception" << std::endl;
                 }
+
+                m_transform_watch->Pause();
             } // end transform
 
             void CPU::init_wtiles(int subgrid_size)
