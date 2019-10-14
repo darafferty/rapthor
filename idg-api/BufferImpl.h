@@ -183,7 +183,6 @@ namespace api {
 
         // references to members of parent BufferSet
         size_t &m_subgridsize;
-
     };
 
 } // namespace api

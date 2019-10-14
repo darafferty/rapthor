@@ -100,6 +100,8 @@ namespace api {
 
     void GridderBufferImpl::compute_avg_beam()
     {
+        m_bufferset->m_avg_beam_watch->Start();
+
         const unsigned int subgrid_size    = m_subgridsize;
         const unsigned int nr_correlations = 4;
         const unsigned int nr_aterms       = m_aterm_offsets2.size() - 1;
@@ -234,10 +236,14 @@ namespace api {
                 }
             }
         } // end for pixels
+
+        m_bufferset->m_avg_beam_watch->Pause();
+
     } // end compute_avg_beam
 
     void GridderBufferImpl::flush_thread_worker()
     {
+
         if (m_do_compute_avg_beam)
         {
             compute_avg_beam();
@@ -275,6 +281,8 @@ namespace api {
             m_aterm_offsets_array,
             options);
 
+        m_bufferset->m_gridding_watch->Start();
+
         // Initialize gridding
         m_proxy->initialize(
             plan,
@@ -311,6 +319,8 @@ namespace api {
 
         // Wait for all plans to be executed
         m_proxy->finish_gridding();
+
+        m_bufferset->m_gridding_watch->Pause();
     }
 
     // Must be called whenever the buffer is full or no more data added

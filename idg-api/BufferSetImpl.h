@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "idg-common.h"
+#include "idg-external.h"
 
 
 #include "BufferSet.h"
@@ -56,6 +57,8 @@ namespace api {
         virtual void set_matrix_inverse_beam(std::shared_ptr<std::vector<std::complex<float>>> matrix_inverse_beam) final override;
         virtual void unset_matrix_inverse_beam() final override;
 
+        void report_runtime();
+
     private:
 
         proxy::Proxy* create_proxy();
@@ -87,6 +90,13 @@ namespace api {
         bool m_apply_aterm = false;
         bool m_do_gridding = true;
         bool m_do_compute_avg_beam = false;
+
+        // timing
+        std::unique_ptr<Stopwatch> m_get_image_watch;
+        std::unique_ptr<Stopwatch> m_set_image_watch;
+        std::unique_ptr<Stopwatch> m_avg_beam_watch;
+        std::unique_ptr<Stopwatch> m_gridding_watch;
+        std::unique_ptr<Stopwatch> m_degridding_watch;
 
         friend BufferImpl;
         friend GridderBufferImpl;

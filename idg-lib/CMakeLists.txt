@@ -129,6 +129,13 @@ if (BUILD_LIB_CUDA)
 find_package(CUDA QUIET)
 endif()
 
+# Boost
+# used for external/Stopwatch
+find_package(Boost COMPONENTS date_time QUIET)
+if (Boost_FOUND)
+set(HAVE_BOOST TRUE)
+endif()
+
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # add main include folder
@@ -152,6 +159,7 @@ install(
 
 # Create idg-targets.cmake
 set(TARGETS_TO_EXPORT idg)
+set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-external)
 set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-common)
 set(TARGETS_TO_EXPORT ${TARGETS_TO_EXPORT} idg-fft)
 if (BUILD_LIB_CPU)

@@ -7,6 +7,7 @@ include_directories(external)
 
 # add subfolders
 add_subdirectory(common)
+add_subdirectory(external)
 add_subdirectory(fft)
 if (BUILD_LIB_CPU)
     add_subdirectory(CPU)
@@ -27,6 +28,41 @@ endif()
 
 
 #########################################################
+# build libidg-external, containing all external code   #
+#########################################################
+add_library(
+    idg-external
+    $<TARGET_OBJECTS:external>
+)
+
+set_target_properties(
+    idg-external PROPERTIES
+    PUBLIC_HEADER idg-external.h
+    SOVERSION 0
+)
+
+# No need to link Boost for the Stopwatch class
+#set(
+#    LINK_LIBRARIES ${Boost_DATE_TIME_LIBRARY_RELEASE}
+#)
+#
+#target_link_libraries(
+#    idg-external
+#    ${LINK_LIBRARIES}
+#)
+
+install(
+    TARGETS idg-external
+    EXPORT idg-targets
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+    PUBLIC_HEADER DESTINATION include
+)
+
+
+
+#########################################################
 # build libidg-common, containing all common code       #
 # Note: used to access common functionality from python #
 #########################################################
@@ -35,11 +71,23 @@ add_library(
     $<TARGET_OBJECTS:common>
 )
 
+set(
+    LINK_LIBRARIES
+    idg-external
+)
+
 if(HAVE_POWERSENSOR)
-    target_link_libraries(
-        idg-common
-        ${POWERSENSOR_LIBRARY})
+    set(
+        LINK_LIBRARIES
+        ${LINK_LIBRARIES}
+        ${POWERSENSOR_LIBRARY}
+    )
 endif()
+
+target_link_libraries(
+    idg-common
+    ${LINK_LIBRARIES}
+)
 
 set_target_properties(
     idg-common PROPERTIES

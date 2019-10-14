@@ -6,7 +6,8 @@
 
 namespace idg {
     namespace proxy {
-        Proxy::Proxy() {
+        Proxy::Proxy()
+        {
             grid_ptr = NULL;
         }
 
@@ -39,6 +40,7 @@ namespace idg {
             if ((w_step != 0.0) && (!supports_wstack_gridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
+
             do_gridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
 
