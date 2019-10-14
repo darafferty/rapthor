@@ -60,11 +60,17 @@ namespace api {
         m_default_aterm_correction(0,0,0,0),
         m_avg_aterm_correction(0,0,0,0),
         m_grid(0,0,0,0,0),
-        m_proxy(create_proxy())
+        m_proxy(create_proxy()),
+        m_get_image_watch(Stopwatch::create()),
+        m_set_image_watch(Stopwatch::create()),
+        m_avg_beam_watch(Stopwatch::create()),
+        m_gridding_watch(Stopwatch::create()),
+        m_degridding_watch(Stopwatch::create())
     {}
 
     BufferSetImpl::~BufferSetImpl() {
         if (m_proxy) { delete m_proxy; }
+        report_runtime();
     }
 
     proxy::Proxy* BufferSetImpl::create_proxy()
@@ -339,6 +345,8 @@ namespace api {
     
     void BufferSetImpl::set_image(const double* image, bool do_scale)
     {
+        m_set_image_watch->Start();
+
         double runtime = -omp_get_wtime();
 #ifndef NDEBUG
         std::cout << std::setprecision(3);
@@ -459,10 +467,14 @@ namespace api {
 #ifndef NDEBUG
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
 #endif
+
+        m_set_image_watch->Pause();
     };
 
     void BufferSetImpl::get_image(double* image) 
     {
+        m_get_image_watch->Start();
+
         double runtime = -omp_get_wtime();
 #ifndef NDEBUG
         std::cout << std::setprecision(3);
@@ -560,6 +572,7 @@ namespace api {
 #ifndef NDEBUG
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
 #endif
+        m_get_image_watch->Pause();
     }
 
     void BufferSetImpl::finished()
@@ -745,6 +758,14 @@ namespace api {
         m_matrix_inverse_beam.reset();
         m_avg_aterm_correction = Array4D<std::complex<float>>(0,0,0,0);
         m_proxy->unset_avg_aterm_correction();
+    }
+
+    void BufferSetImpl::report_runtime() {
+        std::clog << "avg beam:   " << m_avg_beam_watch->ToString() << std::endl;
+        std::clog << "gridding:   " << m_gridding_watch->ToString() << std::endl;
+        std::clog << "degridding: " << m_degridding_watch->ToString() << std::endl;
+        std::clog << "set image:  " << m_get_image_watch->ToString() << std::endl;
+        std::clog << "get image:  " << m_set_image_watch->ToString() << std::endl;
     }
 
 

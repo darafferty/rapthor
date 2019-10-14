@@ -3,6 +3,7 @@
  */
 
 #include "DegridderBufferImpl.h"
+#include "BufferSetImpl.h"
 
 #include <mutex>
 
@@ -128,6 +129,8 @@ namespace api {
             m_aterm_offsets_array,
             options);
 
+        m_bufferset->m_degridding_watch->Start();
+
         // Initialize degridding
         m_proxy->initialize(
             plan,
@@ -164,6 +167,8 @@ namespace api {
 
         // Wait for all plans to be executed
         m_proxy->finish_degridding();
+
+        m_bufferset->m_degridding_watch->Pause();
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
