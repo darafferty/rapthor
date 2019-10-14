@@ -6,10 +6,7 @@
 
 namespace idg {
     namespace proxy {
-        Proxy::Proxy() :
-            m_gridding_watch(Stopwatch::create()),
-            m_degridding_watch(Stopwatch::create()),
-            m_transform_watch(Stopwatch::create())
+        Proxy::Proxy()
         {
             grid_ptr = NULL;
         }
@@ -18,16 +15,6 @@ namespace idg {
             if (grid_ptr != NULL) {
                 delete[] grid_ptr;
             }
-        }
-
-        void Proxy::report_runtime(std::string name) {
-            #if defined(HAVE_BOOST)
-            std::clog << "runtime " << name << " -> ";
-            std::clog << "gridding: " << m_gridding_watch->ToString();
-            std::clog << ", degridding: " << m_degridding_watch->ToString();
-            std::clog << ", transform: " << m_transform_watch->ToString();
-            std::clog << std::endl;
-            #endif
         }
 
         void Proxy::gridding(

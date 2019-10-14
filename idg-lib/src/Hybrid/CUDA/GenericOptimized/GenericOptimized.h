@@ -112,13 +112,11 @@ namespace idg {
                     virtual void finish_gridding() override
                     {
                         finish(auxiliary::name_gridding);
-                        m_gridding_watch->Pause();
                     };
 
                     virtual void finish_degridding() override
                     {
                         finish(auxiliary::name_degridding);
-                        m_degridding_watch->Pause();
                     };
 
                     virtual void do_calibrate_init(

@@ -56,7 +56,6 @@ namespace idg {
                 delete hostPowerSensor;
                 delete hostStream;
                 cuProfilerStop();
-                report_runtime("GenericOptimized");
             }
 
             /*
@@ -70,8 +69,6 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 std::cout << "Transform direction: " << direction << std::endl;
                 #endif
-                // the m_transform_watch is started and paused in proxy::CPU
-                cpuProxy->transform(direction, grid);
             } // end transform
 
 
@@ -257,8 +254,6 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
-                m_gridding_watch->Start();
-
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
 
@@ -538,8 +533,6 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
-                m_degridding_watch->Start();
-
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
 
