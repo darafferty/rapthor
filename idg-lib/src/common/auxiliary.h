@@ -170,6 +170,8 @@ namespace idg {
         size_t get_total_memory();
         size_t get_used_memory();
 
+        void print_version();
+
     } // namespace auxiliary
 } // namespace idg
 
