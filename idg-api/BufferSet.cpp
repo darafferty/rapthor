@@ -37,6 +37,7 @@ namespace api {
 
     BufferSet* BufferSet::create(Type architecture)
     {
+        idg::auxiliary::print_version();
         return new BufferSetImpl(architecture);
     }
 
