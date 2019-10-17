@@ -4,9 +4,11 @@
 #include <omp.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <string>
 
 #include "idg-config.h"
 #include "idg-common.h"
+#include "idg-version.h"
 #include "auxiliary.h"
 #include "PowerSensor.h"
 
@@ -361,6 +363,14 @@ namespace idg {
             struct rusage r_usage;
             getrusage(RUSAGE_SELF, &r_usage); // in KBytes
             return r_usage.ru_maxrss / 1024; // in MBytes
+        }
+
+        void print_version() {
+            cout << "IDG version ";
+            if (!string(GIT_TAG).empty()) {
+                cout << " " << GIT_TAG << ":";
+            }
+            cout << GIT_BRANCH << ":" << GIT_REV << endl;
         }
 
     } // namespace auxiliary

@@ -139,6 +139,7 @@ void print_parameters(
 template <typename ProxyType>
 void run()
 {
+    idg::auxiliary::print_version();
 
     // Constants
     unsigned int nr_w_layers = 1;

@@ -13,6 +13,11 @@ set(IDG_UTIL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/idg-util/src
                          ${CMAKE_BINARY_DIR}/idg-util/src )
 set(IDG_LIBRARY idg)
 
+# Version
+set(GIT_VERSION_HEADER "idg-version.h")
+include(cmake/version.cmake)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 enable_testing()
 add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
