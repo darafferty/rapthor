@@ -69,6 +69,8 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 std::cout << "Transform direction: " << direction << std::endl;
                 #endif
+
+                cpuProxy->transform(direction, grid);
             } // end transform
 
 
@@ -553,8 +555,8 @@ namespace idg {
 
                 // Page-lock host memory
                 #if defined(REGISTER_HOST_MEMORY)
-                device.get_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                device.get_host_uvw(nr_baselines, nr_timesteps, uvw.data());
+                device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
+                device.register_host_uvw(nr_baselines, nr_timesteps, uvw.data());
                 #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
