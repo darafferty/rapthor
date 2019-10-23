@@ -697,7 +697,7 @@ namespace idg {
             if (grid_ptr != NULL) {
                 delete grid_ptr;
             }
-            grid_ptr = new std::complex<float>[nr_w_layers*nr_correlations*height*width];
+            grid_ptr = allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
             Grid grid(grid_ptr, nr_w_layers, nr_correlations, height, width);
             grid.zero();
             return grid;
@@ -707,7 +707,7 @@ namespace idg {
             Grid& grid)
         {
             assert(grid_ptr == grid.data());
-            delete grid_ptr;
+            free(grid_ptr);
             grid_ptr = NULL;
         }
 
