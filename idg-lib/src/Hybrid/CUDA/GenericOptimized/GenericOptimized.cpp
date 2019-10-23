@@ -69,6 +69,8 @@ namespace idg {
                 std::cout << __func__ << std::endl;
                 std::cout << "Transform direction: " << direction << std::endl;
                 #endif
+
+                cpuProxy->transform(direction, grid);
             } // end transform
 
 
