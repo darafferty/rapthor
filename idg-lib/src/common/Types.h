@@ -379,8 +379,8 @@ namespace idg {
             }
 
             void init(const T& a) {
-                const unsigned int n = m_x_dim*m_y_dim*m_z_dim;
-                for (unsigned int i = 0; i < n; ++i) {
+                const size_t n = m_x_dim*m_y_dim*m_z_dim;
+                for (size_t i = 0; i < n; ++i) {
                     m_buffer[i] = a;
                 }
             }
@@ -512,7 +512,8 @@ namespace idg {
 
             void init(const T& a) {
                 const unsigned int n = m_x_dim*m_y_dim*m_z_dim*m_w_dim;
-                for (unsigned int i = 0; i < n; ++i) {
+                #pragma omp parallel for
+                for (size_t i = 0; i < n; ++i) {
                     m_buffer.get()[i] = a;
                 }
             }
@@ -562,7 +563,8 @@ namespace idg {
                 {}
 
                 void zero() {
-                    memset((void *) m_buffer.get(), 0, bytes());
+                    const std::complex<float> zero(0.0f, 0.0f);
+                    init(zero);
                 }
     };
 

@@ -18,6 +18,11 @@ using namespace powersensor;
 #define NR_REPETITIONS_ADDER       50
 #define NR_REPETITIONS_GRID_FFT    500
 
+/*
+ * Use custom FFT kernel
+ */
+#define USE_CUSTOM_FFT 0
+
 namespace idg {
     namespace kernel {
         namespace cuda {
@@ -198,6 +203,13 @@ namespace idg {
                 cubin.push_back("Calibrate.cubin");
                 flags.push_back(flags_common);
 
+                // FFT
+                #if USE_CUSTOM_FFT
+                src.push_back("KernelFFT.cu");
+                cubin.push_back("FFT.cubin");
+                flags.push_back(flags_common);
+                #endif
+
                 // Compile all kernels
                 #pragma omp parallel for
                 for (unsigned i = 0; i < src.size(); i++) {
@@ -227,6 +239,11 @@ namespace idg {
                     if (cuModuleGetFunction(&function, *module, name_splitter.c_str()) == CUDA_SUCCESS) {
                         function_splitter.reset(new cu::Function(function)); found++;
                     }
+                    #if USE_CUSTOM_FFT
+                    if (cuModuleGetFunction(&function, *module, name_fft.c_str()) == CUDA_SUCCESS) {
+                        function_fft.reset(new cu::Function(function)); found++;
+                    }
+                    #endif
 
                     // Find calibration functions
                     if (cuModuleGetFunction(&function, *module, name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
@@ -585,7 +602,7 @@ namespace idg {
                         // Compute gradient (horizontal offset)
                         if (term_offset_y == 0) {
                             const void *parameters_gradient[] = {
-                                &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations, 
+                                &subgrid_size, &image_size, &total_nr_timesteps, &nr_channels, &nr_stations,
                                 &term_offset_x, &current_nr_terms_x, &nr_terms,
                                 d_uvw, d_wavenumbers, d_visibilities, d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
                                 d_metadata, d_subgrid, d_sums2, d_lmnp, d_gradient };
@@ -648,6 +665,14 @@ namespace idg {
                 unsigned size,
                 unsigned batch)
             {
+                #if USE_CUSTOM_FFT
+                if (size == 32) {
+                    fft_size  = size;
+                    fft_batch = batch;
+                    return;
+                }
+                #endif
+
                 unsigned stride = 1;
                 unsigned dist = size * size;
 
@@ -692,6 +717,16 @@ namespace idg {
             {
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(d_data));
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
+
+                #if USE_CUSTOM_FFT
+                if (fft_size == 32) {
+                    const void *parameters[] = { &data_ptr, &data_ptr, &sign};
+                    dim3 block(128);
+                    dim3 grid(NR_CORRELATIONS * fft_batch);
+                    executestream->launchKernel(*function_fft, grid, block, 0, parameters);
+                    return;
+                }
+                #endif
 
                 if (fft_plan_bulk) {
                     fft_plan_bulk->setStream(*executestream);
