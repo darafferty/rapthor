@@ -379,8 +379,8 @@ namespace idg {
             }
 
             void init(const T& a) {
-                const unsigned int n = m_x_dim*m_y_dim*m_z_dim;
-                for (unsigned int i = 0; i < n; ++i) {
+                const size_t n = m_x_dim*m_y_dim*m_z_dim;
+                for (size_t i = 0; i < n; ++i) {
                     m_buffer[i] = a;
                 }
             }
