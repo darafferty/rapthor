@@ -129,10 +129,9 @@ namespace api {
             m_aterm_offsets_array,
             options);
 
+        // Run degridding
         m_bufferset->m_degridding_watch->Start();
-
-        // Initialize degridding
-        m_proxy->initialize(
+        m_proxy->degridding(
             plan,
             m_wStepInLambda,
             m_shift,
@@ -147,27 +146,6 @@ namespace api {
             m_aterms_array,
             m_aterm_offsets_array,
             m_spheroidal);
-
-        // Start flush
-        m_proxy->run_degridding(
-            plan,
-            m_wStepInLambda,
-            m_shift,
-            m_cellHeight,
-            m_kernel_size,
-            m_subgridsize,
-            m_frequencies,
-            m_bufferVisibilities,
-            m_bufferUVW,
-            m_bufferStationPairs,
-            *m_grid,
-            m_aterms_array,
-            m_aterm_offsets_array,
-            m_spheroidal);
-
-        // Wait for all plans to be executed
-        m_proxy->finish_degridding();
-
         m_bufferset->m_degridding_watch->Pause();
 
         // Prepare next batch

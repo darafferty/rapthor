@@ -306,10 +306,9 @@ namespace api {
             m_aterm_offsets_array,
             options);
 
+        // Run gridding
         m_bufferset->m_gridding_watch->Start();
-
-        // Initialize gridding
-        m_proxy->initialize(
+        m_proxy->gridding(
             plan,
             m_wStepInLambda,
             m_shift,
@@ -324,27 +323,6 @@ namespace api {
             m_aterms_array,
             m_aterm_offsets_array,
             m_spheroidal);
-
-        // Start flush
-        m_proxy->run_gridding(
-            plan,
-            m_wStepInLambda,
-            m_shift,
-            m_cellHeight,
-            m_kernel_size,
-            m_subgridsize,
-            m_frequencies,
-            m_bufferVisibilities2,
-            m_bufferUVW2,
-            m_bufferStationPairs2,
-            *m_grid,
-            m_aterms_array,
-            m_aterm_offsets_array,
-            m_spheroidal);
-
-        // Wait for all plans to be executed
-        m_proxy->finish_gridding();
-
         m_bufferset->m_gridding_watch->Pause();
     }
 
