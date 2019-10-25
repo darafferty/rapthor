@@ -8,6 +8,12 @@
 #include "BufferSetImpl.h"
 
 #include <mutex>
+#include <csignal>
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_NAN_FLUSH_ATERM 0
 
 using namespace std;
 

@@ -491,6 +491,31 @@ namespace api {
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
+        // Debugging
+        #if DEBUG_NAN_GET_IMAGE
+        std::vector<float> grid_real(nr_w_layers * 4 * m_size * m_size * sizeof(float));
+        std::vector<float> grid_imag(nr_w_layers * 4 * m_size * m_size * sizeof(float));
+        for (int w = 0; w < nr_w_layers; w++) {
+            #pragma omp parallel for
+            for (int y = 0; y < m_size; y++) {
+                for (int x = 0; x < m_size; x++) {
+                    for (int pol = 0; pol < 4; pol++) {
+                        size_t idx = w * 4 * m_size * m_size +
+                                     pol * m_size * m_size +
+                                     y * m_size +
+                                     x;
+                        grid_real[idx] = m_grid(w, pol, y, x).real();
+                        grid_imag[idx] = m_grid(w, pol, y, x).imag();
+                    }
+                }
+            }
+        }
+        std::cout << "writing grid to grid_real.npy and grid_imag.npy" << std::endl;
+        const long unsigned leshape [] = {(long unsigned int) nr_w_layers, 4, m_size, m_size};
+        npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape, grid_real);
+        npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
+        #endif
+
         // Fourier transform w layers
 #ifndef NDEBUG
         std::cout << "ifft w_layers";
@@ -528,6 +553,18 @@ namespace api {
 
                     // Compute inverse spheroidal
                     float inv_taper = m_inv_taper[y] * m_inv_taper[x];
+
+                    // Check for NaN
+                    #if DEBUG_NAN_GET_IMAGE
+                    if (isnan(m_grid(w, 0, y+y0, x+x0)) ||
+                        isnan(m_grid(w, 1, y+y0, x+x0)) ||
+                        isnan(m_grid(w, 2, y+y0, x+x0)) ||
+                        isnan(m_grid(w, 3, y+y0, x+x0)))
+                    {
+                        std::cerr << "NaN detected during w-stacking!" << std::endl;
+                        std::raise(SIGFPE);
+                    }
+                    #endif
 
                     // Apply correction
                     m_grid(w, 0, y+y0, x+x0) = m_grid(w, 0, y+y0, x+x0) * inv_taper * phasor;
