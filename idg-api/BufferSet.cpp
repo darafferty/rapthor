@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+#include <csignal>
 
 #include <omp.h>
 
@@ -24,6 +25,11 @@
 #include "taper.h"
 #include "idg-fft.h"
 #include "npy.hpp"
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_NAN_GET_IMAGE 0
 
 extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
                     int* lda, int* ipiv, int *info );
@@ -561,6 +567,19 @@ namespace api {
             image[2*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).real() + m_grid(0,2,y+y0,x+x0).real());
             // Stokes V
             image[3*m_size*m_size + m_size*y+x] = 0.5 * (-m_grid(0,1,y+y0,x+x0).imag() + m_grid(0,2,y+y0,x+x0).imag());
+
+            // Check for NaN
+            #if DEBUG_NAN_GET_IMAGE
+            if (std::isnan(image[0*m_size*m_size + m_size*y+x]) ||
+                std::isnan(image[1*m_size*m_size + m_size*y+x]) ||
+                std::isnan(image[2*m_size*m_size + m_size*y+x]) ||
+                std::isnan(image[3*m_size*m_size + m_size*y+x]))
+            {
+                std::cerr << "NaN detected during setting stokes!" << std::endl;
+                std::raise(SIGFPE);
+            }
+            #endif
+
             } // end for x
         } // end for y
         runtime_copy += omp_get_wtime();
