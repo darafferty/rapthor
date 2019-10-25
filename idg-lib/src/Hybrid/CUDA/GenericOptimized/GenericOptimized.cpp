@@ -33,7 +33,7 @@ namespace idg {
                 CUDA(default_info())
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 // Initialize cpu proxy
@@ -66,7 +66,7 @@ namespace idg {
                 Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 std::cout << "Transform direction: " << direction << std::endl;
                 #endif
 
@@ -105,7 +105,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 // Checks arguments
@@ -202,7 +202,7 @@ namespace idg {
                 std::string name)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 synchronize();
@@ -268,7 +268,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 InstanceCUDA& device = get_device(0);
@@ -489,7 +489,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 std::clog << "### Initialize gridding" << std::endl;
@@ -551,7 +551,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 InstanceCUDA& device = get_device(0);
@@ -779,7 +779,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                std::cout << __func__ << std::endl;
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
                 std::clog << "### Initialize degridding" << std::endl;
