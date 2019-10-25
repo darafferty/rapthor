@@ -295,6 +295,7 @@ namespace api {
         options.plan_strict = false;
 
         // Create plan
+        m_bufferset->m_plan_watch->Start();
         Plan plan(
             m_kernel_size,
             m_subgridsize,
@@ -305,6 +306,7 @@ namespace api {
             m_bufferStationPairs2,
             m_aterm_offsets_array,
             options);
+        m_bufferset->m_plan_watch->Pause();
 
         // Run gridding
         m_bufferset->m_gridding_watch->Start();

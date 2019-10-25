@@ -95,6 +95,7 @@ namespace api {
         std::unique_ptr<Stopwatch> m_get_image_watch;
         std::unique_ptr<Stopwatch> m_set_image_watch;
         std::unique_ptr<Stopwatch> m_avg_beam_watch;
+        std::unique_ptr<Stopwatch> m_plan_watch;
         std::unique_ptr<Stopwatch> m_gridding_watch;
         std::unique_ptr<Stopwatch> m_degridding_watch;
 

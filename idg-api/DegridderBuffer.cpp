@@ -118,6 +118,7 @@ namespace api {
         options.plan_strict = false;
 
         // Create plan
+        m_bufferset->m_plan_watch->Start();
         Plan plan(
             m_kernel_size,
             m_subgridsize,
@@ -128,6 +129,7 @@ namespace api {
             m_bufferStationPairs,
             m_aterm_offsets_array,
             options);
+        m_bufferset->m_plan_watch->Pause();
 
         // Run degridding
         m_bufferset->m_degridding_watch->Start();

@@ -71,6 +71,7 @@ namespace api {
         m_get_image_watch(Stopwatch::create()),
         m_set_image_watch(Stopwatch::create()),
         m_avg_beam_watch(Stopwatch::create()),
+        m_plan_watch(Stopwatch::create()),
         m_gridding_watch(Stopwatch::create()),
         m_degridding_watch(Stopwatch::create())
     {}
@@ -819,6 +820,7 @@ namespace api {
 
     void BufferSetImpl::report_runtime() {
         std::clog << "avg beam:   " << m_avg_beam_watch->ToString() << std::endl;
+        std::clog << "plan:       " << m_plan_watch->ToString() << std::endl;
         std::clog << "gridding:   " << m_gridding_watch->ToString() << std::endl;
         std::clog << "degridding: " << m_degridding_watch->ToString() << std::endl;
         std::clog << "set image:  " << m_get_image_watch->ToString() << std::endl;
