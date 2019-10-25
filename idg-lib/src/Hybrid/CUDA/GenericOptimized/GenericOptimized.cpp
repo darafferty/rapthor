@@ -115,7 +115,8 @@ namespace idg {
                 auto nr_channels  = frequencies.get_x_dim();
                 auto nr_stations  = aterms.get_z_dim();
                 auto nr_timeslots = aterms.get_w_dim();
-                auto grid_size    = grid.get_x_dim();
+                auto nr_correlations = grid.get_z_dim();
+                auto grid_size       = grid.get_x_dim();
                 auto nr_baselines = visibilities.get_z_dim();
                 auto nr_timesteps = visibilities.get_y_dim();
 
@@ -147,15 +148,17 @@ namespace idg {
 
                     // Copy static data structures
                     cu::Stream& htodstream = device.get_htod_stream();
-                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                    htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
+                    auto sizeof_aterm_indices = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
+                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+                    htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
                     // wavenumber can differ for individual gridding/degridding calls,
                     // need to copy them in the routines rather than here
 
                     if (avg_aterm_correction_subgrid_size)
                     {
-                        htodstream.memcpyHtoDAsync(d_avg_aterm_correction, m_avg_aterm_correction.data());
+                        auto sizeof_avg_aterm_correction = auxiliary::sizeof_avg_aterm_correction(avg_aterm_correction_subgrid_size, nr_correlations);
+                        htodstream.memcpyHtoDAsync(d_avg_aterm_correction, m_avg_aterm_correction.data(), sizeof_avg_aterm_correction);
                     }
                 }
 
@@ -349,7 +352,7 @@ namespace idg {
                 cu::Stream& dtohstream    = device.get_dtoh_stream();
 
                 // Copy static data structures
-                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
 
                 // Id for double-buffering
                 unsigned local_id = 0;
@@ -627,7 +630,7 @@ namespace idg {
                 cu::Stream& dtohstream    = device.get_dtoh_stream();
 
                 // Copy static data structures
-                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
 
                 // Id for double-buffering
                 unsigned local_id = 0;
@@ -975,7 +978,7 @@ namespace idg {
 
                 // Initialize wavenumbers
                 cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(nr_channels);
-                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
+                htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
 
                 // Allocate device memory for l,m,n and phase offset
                 auto sizeof_lmnp = max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
@@ -1032,13 +1035,6 @@ namespace idg {
                 device.transpose_aterm(aterms, aterms_transposed);
                 device.transpose_aterm(aterm_derivatives, aterm_derivatives_transposed);
 
-                // Data pointers
-                void *aterm_ptr            = aterms_transposed.data();
-                void *aterm_derivative_ptr = aterm_derivatives_transposed.data();
-                void *hessian_ptr          = hessian.data();
-                void *gradient_ptr         = gradient.data();
-                void *residual_ptr         = &residual;
-
                 // Load streams
                 cu::Stream& executestream = device.get_execute_stream();
                 cu::Stream& htodstream    = device.get_htod_stream();
@@ -1080,11 +1076,11 @@ namespace idg {
                 cu::Event inputCopied, executeFinished, outputCopied;
 
                 // Copy input data to device
-                htodstream.memcpyHtoDAsync(d_aterms, aterm_ptr);
-                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivative_ptr);
-                htodstream.memcpyHtoDAsync(d_hessian, hessian_ptr);
-                htodstream.memcpyHtoDAsync(d_gradient, gradient_ptr);
-                htodstream.memcpyHtoDAsync(d_residual, residual_ptr);
+                htodstream.memcpyHtoDAsync(d_aterms, aterms_transposed.data(), aterms_transposed.bytes());
+                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivatives.data(), aterm_derivatives.bytes());
+                htodstream.memcpyHtoDAsync(d_hessian, hessian.data(), hessian.bytes());
+                htodstream.memcpyHtoDAsync(d_gradient, gradient.data(), gradient.bytes());
+                htodstream.memcpyHtoDAsync(d_residual, &residual, sizeof(double));
                 htodstream.record(inputCopied);
 
                 // Run calibration update step
@@ -1098,19 +1094,18 @@ namespace idg {
 
                 // Copy output to host
                 dtohstream.waitEvent(executeFinished);
-                dtohstream.memcpyDtoHAsync(h_hessian, d_hessian);
-                dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
-                dtohstream.memcpyDtoHAsync(h_gradient, d_gradient);
-                dtohstream.memcpyDtoHAsync(h_residual, d_residual);
+                dtohstream.memcpyDtoHAsync(h_hessian, d_hessian, d_hessian.size());
+                dtohstream.memcpyDtoHAsync(h_gradient, d_gradient, d_gradient.size());
+                dtohstream.memcpyDtoHAsync(h_residual, d_residual, d_residual.size());
                 dtohstream.record(outputCopied);
 
                 // Wait for output to finish
                 outputCopied.synchronize();
 
                 // Copy output on host
-                memcpy(hessian_ptr, h_hessian, hessian.bytes());
-                memcpy(gradient_ptr, h_gradient, gradient.bytes());
-                memcpy(residual_ptr, h_residual, sizeof(double));
+                memcpy(hessian.data(), h_hessian, hessian.bytes());
+                memcpy(gradient.data(), h_gradient, gradient.bytes());
+                memcpy(&residual, h_residual, sizeof(double));
 
                 // End marker
                 marker.end();

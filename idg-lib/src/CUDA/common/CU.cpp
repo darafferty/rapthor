@@ -403,16 +403,8 @@ namespace cu {
         assertCudaCall(cuStreamDestroy(_stream));
     }
 
-    void Stream::memcpyHtoDAsync(DeviceMemory &devPtr, const void *hostPtr) {
-        assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, devPtr.size(), _stream));
-    }
-
     void Stream::memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size) {
         assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, size, _stream));
-    }
-
-    void Stream::memcpyDtoHAsync(void *hostPtr, DeviceMemory &devPtr) {
-        assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, devPtr.size(), _stream));
     }
 
     void Stream::memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size) {
