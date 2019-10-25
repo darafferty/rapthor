@@ -10,6 +10,8 @@
 #include <mutex>
 #include <csignal>
 
+#include <omp.h>
+
 /*
  * Enable checking for NaN values
  */
@@ -268,6 +270,23 @@ namespace api {
             m_aterms_array = Array4D<Matrix2x2<complex<float>>>(m_default_aterms.data(), m_default_aterm_offsets.size()-1, m_nrStations, m_subgridsize, m_subgridsize);
             aterm_correction = &m_default_aterm_correction;
         }
+
+        // Check m_aterms_array for NaN values
+        #if DEBUG_NAN_FLUSH_ATERM
+        for (unsigned int time = 0; time < m_aterms_array.get_w_dim(); time++) {
+            #pragma omp parallel for
+            for (unsigned int station = 0; station < m_aterms_array.get_z_dim(); station++) {
+                for (unsigned int y = 0; y < m_aterms_array.get_y_dim(); y++) {
+                    for (unsigned int x = 0; x < m_aterms_array.get_x_dim(); x++) {
+                        if (isnan(m_aterms_array(time, station, y, x))) {
+                            std::cerr << "NaN detected in aterm!" << std::endl;
+                            std::raise(SIGFPE);
+                        }
+                    }
+                }
+            }
+        }
+        #endif
 
         // Set Plan options
         Plan::Options options;
