@@ -104,6 +104,10 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
+                #endif
+
                 // Checks arguments
                 if (kernel_size <= 0 || kernel_size >= subgrid_size-1) {
                     throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
@@ -197,6 +201,10 @@ namespace idg {
             void GenericOptimized::finish(
                 std::string name)
             {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
+                #endif
+
                 synchronize();
 
                 // End host performance measurement
@@ -259,6 +267,10 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
+                #endif
+
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
 
@@ -538,6 +550,10 @@ namespace idg {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal)
             {
+                #if defined(DEBUG)
+                std::cout << __func__ << std::endl;
+                #endif
+
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
 
